@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="<http://www.thymeleaf.org>">
+<head>
+    <meta charset="UTF-8">
+    <title>Editor</title>
+  <link rel="stylesheet" href="./bootstrap-5.3.3-dist/css/bootstrap.min.css">
+  <style>
+
+    #objects{
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      height: 100%;
+    }
+
+    #menu{
+      display: table-column;
+      position: relative;
+      width: fit-content;
+      height: 100%;
+      background-color: rgb(123, 123, 123);
+      z-index: 2;
+    }
+
+    #right{
+      position: fixed;
+      height: 100%;
+      width: 100%;
+      top:0;
+      left:0;
+    }
+
+    #img-container{
+      position: absolute;
+      height: 100%;
+      width: 100%;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 5px;
+      margin: 5px;
+    }
+
+    li{
+      /* display: inline-block; */
+      padding: 10px 20px;
+      background-color: #007BFF;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+      margin: 2px;
+      font-size: 20px;
+    }
+
+    li:hover {
+      background-color: #0056b3;
+    }
+
+    button, #buttons li, #file-input{
+      /* display: inline-block; */
+      padding: 10px 20px;
+      background-color: #551702;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+      margin: 2px;
+      font-size: 18px;
+
+    }
+
+    button:hover, #buttons li:hover {
+      background-color: #761105;
+      font-size: large;
+    }
+
+    #image{
+      width: 100%;
+      height: auto;
+      overflow: hidden;
+      position: relative;
+      /* transition: transform 0.3s ease-in-out; */
+      /* transition: width 0.3s ease-in-out, height 0.3s ease-in-out; */
+      z-index: 1;
+    }
+
+
+
+    #floatingMenu{
+      position:absolute;
+      display:flex;
+      flex-direction: column;
+      justify-content: center;
+      top: 150px;
+      right: 5px;
+      /* bottom: 0px;
+      left:0px; */
+      z-index: 100;
+      background-color: rgb(2, 29, 84);
+      width: 200px;
+      height: 80px;
+    }
+
+    #controls{
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      z-index: 100;
+      width: auto;
+      height: auto;
+    }
+
+    #bar{
+      position: relative;
+      top: 0px;
+      width: 100%;
+      height: 20px;
+      min-height: 10px;
+      background-color: rgb(4, 0, 78);
+      z-index: 100;
+
+    }
+    #cutimage{
+      justify-content: center;
+      flex:auto;
+      height: 33px;
+      width: auto;
+      object-fit: contain;
+      left: 0px;
+
+
+    }
+
+    #equipmentId{
+      flex:auto;
+      font-size: 10px;
+      font-weight: bold;
+      object-fit: contain;
+      max-width: 100%;
+      /* font-family:'Comic Sans'; */
+    }
+
+    .textSize{
+      font-size: 10px;
+      width: auto;
+      overflow: hidden;
+      /*min-height: 15px;*/
+      /* height: 10px; */
+    }
+
+    #confirm{
+      background-color: rgb(3, 82, 3);
+      padding: 0;
+      font-size:large;
+    }
+    #remove{
+      background-color: rgb(135, 1, 1);
+      padding: 0;
+      font-size:large;
+    }
+
+
+  </style>
+
+</head>
+<body>
+<div th:replace="partials/index::header"></div>
+<div id="objects">
+
+  <div id="menu">
+
+    <div >
+      <ul id="buttons">
+        <li onclick="showNewUploads()">Show Uploads</li>
+        <li onclick="deleteKiewit()">Delete all</li>
+        <li ><a href="/file/upload">Upload Files</a></li>
+      </ul>
+    </div>
+    <div id="items"></div>
+    <div id="itemsObjects"></div>
+  </div>
+
+  <div id="right">
+
+    <div id="floatingMenu">
+      <div id="bar"></div>
+      <!-- <p id="equipmentId"></p> -->
+      <input type="text" id="equipmentId">
+      <img src="/cutImage.jpg" id="cutimage">
+      <div id="controls">
+        <select name="type" id="one" class="dropdown textSize" onchange="setEquipmentType(this.value)">
+          <option value="line">Line</option>
+          <option value="manualValve">manualValve</option>
+          <option value="instrument">instrument</option>
+          <option value="connector">connector</option>
+          <option value="AOV">AOV</option>
+          <option value="MOV">MOV</option>
+          <option value="SOV">SOV</option>
+          <option value="airSupply">airSupply</option>
+        </select>
+
+        <button id="confirm" class="textSize" onclick="updateAndConfirm()">+</button>
+        <button id="remove" class="textSize" onclick="removeLastHighlite()">-</button>
+      </div>
+    </div>
+
+    <div id="img-container">
+      <iframe src="" width="100%" height="100%" id="pdfFrame" style="display: none;"></iframe>
+      <canvas id="jpgFrame" width="100%" height="100%" style="display: none;"></canvas>
+      <img src="/display0.png" alt="" width="100%" height="auto" id="image">
+    </div>
+  </div>
+
+</div>
+<script src="./bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+<script src="./functions/dev_functions/Picture.js"></script>
+<script src="./functions/dev_functions/Editing.js"></script>
+<script src="./functions/dev_functions/DomBuilder.js"></script>
+<script>
+  let right = document.getElementById('right');
+  let items = document.getElementById('items');
+  let itemsObjects = document.getElementById('itemsObjects');
+  let pdfFrame = document.getElementById('pdfFrame');
+  let jpgFrame = document.getElementById('jpgFrame');
+  let imgContainer = document.getElementById('img-container');
+  let picture = document.getElementById('image');
+  let floatingMenu = document.getElementById('floatingMenu');
+  let bar = document.getElementById('bar');
+
+  //img.setAttribute('src','/display0.png?'+ new Date().getTime())
+
+  let context = jpgFrame.getContext('2d');
+  jpgFrame.height = right.offsetHeight;
+  jpgFrame.width = right.offsetWidth;
+
+
+  /**********************************************REQUESTS**********************************************/
+
+  function getFiles(){
+    fetch('/dev/get_objects?type=pids',{
+      method:'GET',
+      headers:{'Content-Type':'application/json'}
+    })
+            .then(response=>response.json())
+            .then(data=>{
+              //console.log('items',JSON.stringify(data));
+              listFiles(Array.from(data.data));
+            })
+  }
+
+  function listFiles(arr){
+    let list = document.createElement('ul');
+    arr.forEach(e=>{
+      let i = document.createElement('li');
+      list.appendChild(i);
+      i.textContent = e.num;
+      //i.addEventListener('click', ()=>pdfFrame.setAttribute('src',e.link));
+      i.addEventListener('click', ()=>{
+        convertPdf(e.link);
+
+      });
+    });
+    items.appendChild(list);
+  }
+
+  function convertPdf(path){
+    fetch(`/dev/convert_pdf?path=${path}`,{
+      method:'GET',
+    })
+            .then(re=>re.json())
+            .then((response)=>{
+              console.log(response.message);
+              //document.getElementById('image').setAttribute('src','/display20.png')
+              document.getElementById('image').setAttribute('src','/display0.png?'+ new Date().getTime() )
+            })
+  }
+
+
+  drag(picture, imgContainer);
+  picture.addEventListener('wheel',()=>zoomPicture(picture));
+  document.addEventListener('contextmenu',()=>event.preventDefault());
+
+  getFileObjects('public/database/',buildList);
+
+  function showNewUploads(){
+    fetch("/data/get-files")
+            .then(resp=>resp.json())
+            .then(data=>{
+              items.appendChild(buildList(Array.from(data)));
+            })
+  }
+
+  function buildList(arr){
+    let list = document.createElement('ul');
+    arr.forEach(e=>{
+      let item = document.createElement('li');
+      list.appendChild(item);
+      item.textContent = e.number;
+      item.addEventListener('click', ()=>frame.setAttribute('src',e.folder+e.number))
+    })
+    return list;
+  }
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="<http://www.thymeleaf.org>">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<div th:replace="partials/index::header"></div>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <form th:action="@{/file/upload}" th:object="${files}" method="post" enctype="multipart/form-data">>
+                <label>Select Files</label>
+                <input type="file" th:field="*{files}" id="files" multiple> <br>
+                <label>Type</label>
+                <input type="text" th:field="*{type}" id="type"><br>
+                <label>Vendor</label>
+                <input type="text" th:field="*{vendor}" id="vendor"><br>
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

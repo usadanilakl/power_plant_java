@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="<http://www.thymeleaf.org>">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Main Layout</title>
+
+    <link rel="stylesheet" href="./my_styles/page.css">
+    <link rel="stylesheet" href="./my_styles/menu.css">
+    <link rel="stylesheet" href="./my_styles/util.css">
+    <link rel="stylesheet" href="./my_styles/floating-menu.css">
+</head>
+<body>
+
+    <div id="all">
+        <div id="upper">
+            <ul id="navigation">
+                <li><a href=""></a>Home</li>
+                <li><a href=""></a>Loto</li>
+                <li onclick="toggleEditMenu()">Admin</li>
+            </ul>
+        </div>
+        <div id="middle">
+            <button id="pin-menu">Menu</button>
+            <div id="left">
+                hello
+                <div id="menu-resize"></div>
+            </div>
+            <div id="right"></div>
+        </div>
+        <div id="lower">
+            <ul>
+                <li>Upload Files</li>
+                <li onclick="showNewUploads()">Edit New Uploads</li>
+                <li><a href="/upload"></a></li>
+            </ul>
+        </div>
+
+        <div id="floatingMenu">
+            <div id="bar"></div>
+            <!-- <p id="equipmentId"></p> -->
+            <input type="text" id="equipmentId">
+            <img src="/cutImage.jpg" id="cutimage">
+            <div id="controls">
+                <select name="type" id="one" class="dropdown textSize" onchange="setEquipmentType(this.value)">
+                    <option value="line">Line</option>
+                    <option value="manualValve">manualValve</option>
+                    <option value="instrument">instrument</option>
+                    <option value="connector">connector</option>
+                    <option value="AOV">AOV</option>
+                    <option value="MOV">MOV</option>
+                    <option value="SOV">SOV</option>
+                    <option value="airSupply">airSupply</option>
+                </select>
+
+                <button id="confirm" class="textSize" onclick="updateAndConfirm()">+</button>
+                <button id="remove" class="textSize" onclick="removeLastHighlite()">-</button>
+            </div>
+        </div>
+    </div>
+    <script src="./functions/dev_functions/Page.js"></script>
+
+</body>
+</html>
