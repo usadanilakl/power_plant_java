@@ -9,7 +9,7 @@ ul {
     margin: 5px;
 }
 
-li{
+.btn-list-in-line{
      display: inline-block;
     padding: 10px 20px;
     background-color: #007BFF;
@@ -21,7 +21,7 @@ li{
     font-size: 20px;
 }
 
-li:hover {
+.btn-list-in-line:hover {
     background-color: #0056b3;
 }
 

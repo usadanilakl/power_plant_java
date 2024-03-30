@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
     @GetMapping("/")
     String getHome(){
-        return "partials/main-template";
+        return "layouts/main-template";
     }
     @GetMapping("/admin")
     String getAdmin(){
@@ -15,7 +15,7 @@ public class HomeController {
 
     @GetMapping("/loto")
     String getLoto(){
-        return "partials/main-template";
+        return "loto/loto";
     }
 
     @GetMapping("/dev")

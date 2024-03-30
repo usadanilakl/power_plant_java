@@ -14,7 +14,6 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 @Setter
 @ToString
 @Builder
-@MappedSuperclass
 public class File {
     private String type,name,link;
     @Id

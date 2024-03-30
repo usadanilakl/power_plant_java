@@ -17,6 +17,9 @@ Iterable<PID> getAllPids();
 List<PID> getPidsByName(String name);
 List<PID> getPidsByNumber(String num);
 List<PID> getPidsByVendor(String vend);
+PID getPidById(Long id);
+
+void updatePid(Long id,PID newPid);
 
 void deletByVendor(String vendor);
 

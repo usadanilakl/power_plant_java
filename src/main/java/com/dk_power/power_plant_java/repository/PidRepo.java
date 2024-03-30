@@ -10,6 +10,7 @@ public interface PidRepo extends CrudRepository<PID,Long>{
     List<PID> findByName(String name);
     List<PID> findByNumber(String number);
     List<PID> findByVendor(String number);
+    PID findPIDById(Long id);
     void deleteAllByVendor(String vendor);
 
 }

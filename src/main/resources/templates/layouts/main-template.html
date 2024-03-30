@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Main Layout</title>
 
+    <link rel="stylesheet" href="./bootstrap-5.3.3-dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="./my_styles/page.css">
     <link rel="stylesheet" href="./my_styles/menu.css">
     <link rel="stylesheet" href="./my_styles/util.css">
@@ -23,17 +24,29 @@
         <div id="middle">
             <button id="pin-menu">Menu</button>
             <div id="left">
-                hello
+                <div id="items"></div>
                 <div id="menu-resize"></div>
             </div>
             <div id="right"></div>
         </div>
-        <div id="lower">
-            <ul>
-                <li>Upload Files</li>
-                <li onclick="showNewUploads()">Edit New Uploads</li>
-                <li><a href="/upload"></a></li>
-            </ul>
+
+        <div id="lower" class="container">
+            <div class="row">
+                <div class="col-12">
+                    <ul >
+                        <li class="btn-list-in-line" id="fileUploadButton">Upload Files</li>
+                        <li class="btn-list-in-line" onclick="showNewUploads()">Edit New Uploads</li>
+                        <li class="btn-list-in-line"><a href="/upload"></a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <div id="formContainer">
+
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="floatingMenu">
@@ -58,7 +71,29 @@
             </div>
         </div>
     </div>
+    <script src="./bootstrap-5.3.3-dist/js/popper.min.js"></script>
+    <script src="./bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
     <script src="./functions/dev_functions/Page.js"></script>
+    <script src="./functions/FileFunctions.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('#fileUploadButton').click(function() {
+                console.log("executing")
+                $.get('/file/upload', function(data) {
+                    $('#formContainer').html(data);
+                });
+            });
+
+            $('#loadProductFormButton').click(function() {
+                $.get('/path/to/productForm', function(data) {
+                    $('#formContainer').html(data);
+                });
+            });
+        });
+    </script>
 
 </body>
 </html>

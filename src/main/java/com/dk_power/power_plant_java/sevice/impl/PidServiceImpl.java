@@ -47,6 +47,18 @@ public class PidServiceImpl implements PidService {
     }
 
     @Override
+    public PID getPidById(Long id) {
+        return pidRepo.findPIDById(id);
+    }
+
+    @Override
+    public void updatePid(Long id, PID newPid) {
+        PID pid = pidRepo.findPIDById(id);
+        pid.setVendor(newPid.getVendor());
+        pidRepo.save(pid);
+    }
+
+    @Override
     public void deletByVendor(String vendor) {
         //fileRepo.deleteAllByVendor(vendor);
         pidRepo.deleteAll();
