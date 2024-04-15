@@ -23,10 +23,8 @@ public class FileController {
     @GetMapping("/upload")
     public String uploadFiles(Model model){
         model.addAttribute("files",new FileUploader());
-
         return "admin/upload";
     }
-
     @PostMapping("/upload")
     public String submitFiles(@ModelAttribute("files") FileUploader files, Model model){
        String message = fus.uploadFiles(files);
@@ -34,25 +32,20 @@ public class FileController {
         //return "redirect:/admin";
         return "redirect:/";
     }
-
     @GetMapping("/edit")
     public String editPid(@RequestParam("id") String id, Model model){
         Long pidId = Long.parseLong(id);
         PID pid = ps.getPidById(pidId);
         model.addAttribute("pid",pid);
-
         return "admin/edit-file";
     }
-
     @PostMapping("/edit")
     public String updatePid(@ModelAttribute("pid") PID pid){
-
         ps.updatePid(pid.getId(),pid);
         return "redirect:/";
     }
     @GetMapping("/get")
     public String getFiles(Model model){
-
         model.addAttribute("files",ps.getAllPids());
         return "admin/all-files";
     }

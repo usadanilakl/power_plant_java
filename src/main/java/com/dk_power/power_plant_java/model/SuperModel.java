@@ -1,22 +1,24 @@
 package com.dk_power.power_plant_java.model;
 
-import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
 @Data
-@Entity
-public class Type {
-    //private String group, category, type;
-    private String section; // group,                 category,                      type
-    private String name;//   file,area,         pid,manual,map, equip             valve,pump
+@MappedSuperclass
+@Builder
+public class SuperModel {
+    private LocalDateTime created;
+    private LocalDateTime modified;
+    private String createdBy;
+    private String modifiedBy;
     @Id
     @GeneratedValue
     private Long id;

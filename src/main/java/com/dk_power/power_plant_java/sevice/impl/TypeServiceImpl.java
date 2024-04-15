@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.impl;
 import com.dk_power.power_plant_java.model.Type;
 import com.dk_power.power_plant_java.repository.TypeRepo;
 import com.dk_power.power_plant_java.sevice.TypeService;
+import jakarta.persistence.EntityManager;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,19 +15,20 @@ import java.util.List;
 @Data
 public class TypeServiceImpl implements TypeService {
     private final TypeRepo tr;
+    private final EntityManager entityManager;
     @Override
-    public void createNewType(String category, String group, String type) {
-        tr.save(Type.builder().category(category).group(group).type(type).build());
+    public void createNewType(String section, String name) {
+        tr.save(Type.builder().section(section).name(name).build());
     }
 
     @Override
-    public List<Type> getAllGroups(String group) {
-        return tr.findByGroup(group);
+    public List<String> getAllSections() {
+        return null;
     }
 
     @Override
-    public List<Type> getAllCategories(String category) {
-        return tr.findByCategory(category);
+    public List<Type> getAllTypes(String section) {
+        return null;
     }
 
 
