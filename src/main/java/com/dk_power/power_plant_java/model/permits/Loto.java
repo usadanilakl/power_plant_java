@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @NoArgsConstructor
-@Builder
 @AllArgsConstructor
 @Data
 public class Loto extends SuperModel {
