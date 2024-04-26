@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <title>Partials</title>
-  <link rel="stylesheet" href="./bootstrap-5.3.3-dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
 </head>
 <body>
 
 <div th:fragment="header">
 
   <nav class="navbar navbar-expand-lg navbar-dark bg-black">
-    <a class="navbar-brand" href="#">Jackson Generation</a>
+    <div th:if="${#authorization.expression('isAuthenticated()')}">
+    <a class="navbar-brand" href="#" th:text="${#authentication.principal.name} +', Welcome to Jackson Generation'"></a>
+    </div>
+    <div th:if="${#authorization.expression('isAnonymous()')}">
+      <a class="navbar-brand" href="#">Guest, Welcome to Jackson Generation</a>
+    </div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -20,7 +25,7 @@
           <a class="nav-link" href="/">Home</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="/loto">LOTOs</a>
+          <a class="nav-link" href="/lotos">LOTOs</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="/admin/">Admin</a>
@@ -29,13 +34,19 @@
           <a class="nav-link" href="/dev">Dev</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="/login">Login</a>
-        </li>
+          <div th:if="${#authorization.expression('isAuthenticated()')}">
+            <form th:action="@{/logout}" method="post">
+              <input class="nav-link" type="submit" value="Sign Out"/>
+            </form>
+          </div>
+          <div th:if="${#authorization.expression('isAnonymous()')}">
+            <a class="nav-link" href="/login">Login</a>
+          </div>
       </ul>
     </div>
   </nav>
 
-  <script src="./bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+  <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
 </div>
 
 <div th:fragment="side-menu" >

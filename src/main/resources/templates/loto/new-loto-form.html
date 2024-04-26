@@ -12,21 +12,19 @@
 <div class="container">
     <div class="row">
         <div class="col-md-12">
-            <div th:if="${param.error}">
-                Invalid username and password.
-            </div>
-            <div th:if="${param.logout}">
-                You have been logged out.
-            </div>
-            <form th:action="@{/login}" method="post">
-                <div><label> User Name : <input type="text" name="username"/> </label></div>
-                <div><label> Password: <input type="password" name="password"/> </label></div>
-                <div><input type="submit" value="Sign In"/></div>
+            <form th:object="${loto}" th:action="@{/loto/create}" method="post">
+                <div class="form-group">
+                    <label for="created-by">Created By</label>
+                    <input type="text" id="created-by" th:value="${#authentication.principal.name}">
+                </div>
+                <div class="form-group">
+                    <label for="time">Name</label>
+                    <input class="form-control" type="datetime-local" id="time">
+                </div>
             </form>
         </div>
     </div>
 </div>
-
 
 <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
 </body>

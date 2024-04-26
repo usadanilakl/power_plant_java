@@ -15,7 +15,7 @@ public class HomeController {
 
     @GetMapping("/loto")
     String getLoto(){
-        return "loto/loto";
+        return "new-loto-form";
     }
 
     @GetMapping("/dev")

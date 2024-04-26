@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Main Layout</title>
 
-    <link rel="stylesheet" href="./bootstrap-5.3.3-dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="./my_styles/page.css">
-    <link rel="stylesheet" href="./my_styles/menu.css">
-    <link rel="stylesheet" href="./my_styles/util.css">
-    <link rel="stylesheet" href="./my_styles/floating-menu.css">
+    <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/my_styles/page.css">
+    <link rel="stylesheet" href="/my_styles/menu.css">
+    <link rel="stylesheet" href="/my_styles/util.css">
+    <link rel="stylesheet" href="/my_styles/floating-menu.css">
 </head>
 <body>
 
     <div id="all">
         <div id="upper">
-            <div th:replace="partials/index::header"></div>
+            <div th:replace="~{partials/index::header}"></div>
 
 <!--            <nav class="navbar navbar-expand-sm navbar-dark bg-dark mb-3">-->
 <!--                <div class="container-fluid">-->
@@ -87,12 +87,11 @@
             </div>
         </div>
     </div>
-    <script src="./bootstrap-5.3.3-dist/js/popper.min.js"></script>
-    <script src="./bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+    <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
-    <script src="./functions/dev_functions/Page.js"></script>
-    <script src="./functions/FileFunctions.js"></script>
+    <script src="/functions/dev_functions/Page.js"></script>
+    <script src="/functions/FileFunctions.js"></script>
 
     <script>
         $(document).ready(function() {
