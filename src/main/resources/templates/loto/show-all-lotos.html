@@ -17,20 +17,20 @@
                 <tr>
                     <th>#</th>
                     <th>Job</th>
-                    <th>Foreman</th>
+                    <th>Requestor</th>
                     <th>Status</th>
                     <th>ID</th>
                     <th>Edit</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="user, stat : ${users}">
+                <tr th:each="loto, stat : ${lotos}">
                     <th scope="row" th:text="${stat.index+1}"></th>
-                    <td th:text="${user.name}"></td>
-                    <td th:text="${user.role}"></td>
-                    <td th:text="${user.email}"></td>
-                    <td th:text="${user.id}"></td>
-                    <td><a class="btn btn-warning" th:href="@{/users/edit/{id}(id=${user.id})}">Edit</a></td>
+                    <td th:text="${loto.workScope}"></td>
+                    <td th:text="${loto.requestor}"></td>
+                    <td th:text="Inactive"></td>
+                    <td th:text="${loto.id}"></td>
+                    <td><a class="btn btn-warning" th:href="@{/lotos/edit/{id}(id=${loto.id})}">Edit</a></td>
                 </tr>
                 </tbody>
             </table>

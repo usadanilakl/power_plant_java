@@ -1,9 +1,8 @@
-package com.dk_power.power_plant_java.sevice.impl;
+package com.dk_power.power_plant_java.sevice.files.impl;
 
-import com.dk_power.power_plant_java.model.File;
-import com.dk_power.power_plant_java.model.PID;
-import com.dk_power.power_plant_java.repository.PidRepo;
-import com.dk_power.power_plant_java.sevice.PidService;
+import com.dk_power.power_plant_java.entities.files.PID;
+import com.dk_power.power_plant_java.repository.files.PidRepo;
+import com.dk_power.power_plant_java.sevice.files.PidService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 

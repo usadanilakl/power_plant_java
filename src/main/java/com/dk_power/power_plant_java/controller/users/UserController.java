@@ -1,10 +1,8 @@
 package com.dk_power.power_plant_java.controller.users;
 
-import com.dk_power.power_plant_java.model.users.User;
-import com.dk_power.power_plant_java.repository.users.UserDao;
+import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.sevice.users.UserService;
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;

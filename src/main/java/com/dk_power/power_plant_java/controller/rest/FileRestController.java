@@ -1,8 +1,7 @@
 package com.dk_power.power_plant_java.controller.rest;
 
-import com.dk_power.power_plant_java.model.File;
-import com.dk_power.power_plant_java.model.PID;
-import com.dk_power.power_plant_java.sevice.PidService;
+import com.dk_power.power_plant_java.entities.files.PID;
+import com.dk_power.power_plant_java.sevice.files.PidService;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.web.bind.annotation.DeleteMapping;

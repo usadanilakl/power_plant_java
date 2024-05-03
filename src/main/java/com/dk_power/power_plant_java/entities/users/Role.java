@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.model.users;
+package com.dk_power.power_plant_java.entities.users;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

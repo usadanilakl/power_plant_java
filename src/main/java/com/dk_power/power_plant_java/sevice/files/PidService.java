@@ -1,7 +1,6 @@
-package com.dk_power.power_plant_java.sevice;
+package com.dk_power.power_plant_java.sevice.files;
 
-import com.dk_power.power_plant_java.model.File;
-import com.dk_power.power_plant_java.model.PID;
+import com.dk_power.power_plant_java.entities.files.PID;
 
 import java.util.List;
 

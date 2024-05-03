@@ -1,13 +1,7 @@
-package com.dk_power.power_plant_java.model;
+package com.dk_power.power_plant_java.entities;
 
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import jakarta.persistence.*;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -21,8 +15,10 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class)
 public class SuperModel {
     @CreatedDate
+    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime dateCreated;
     @LastModifiedDate
+    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime dateModified;
     @CreatedBy
     private String createdBy;

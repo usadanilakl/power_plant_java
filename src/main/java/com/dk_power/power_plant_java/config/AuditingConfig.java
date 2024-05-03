@@ -1,5 +1,7 @@
 package com.dk_power.power_plant_java.config;
 
+import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
+import com.dk_power.power_plant_java.sevice.users.impl.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
@@ -27,6 +29,7 @@ class AuditorAwareImpl implements AuditorAware<String> {
         if (authentication == null || !authentication.isAuthenticated()) {
             return Optional.empty();
         }
-        return Optional.of(authentication.getName());
+        CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
+        return Optional.of(userPrincipal.getName());
     }
 }

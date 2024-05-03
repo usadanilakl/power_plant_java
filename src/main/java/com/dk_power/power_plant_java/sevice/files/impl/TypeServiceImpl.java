@@ -1,12 +1,11 @@
-package com.dk_power.power_plant_java.sevice.impl;
+package com.dk_power.power_plant_java.sevice.files.impl;
 
-import com.dk_power.power_plant_java.model.Type;
-import com.dk_power.power_plant_java.repository.TypeRepo;
-import com.dk_power.power_plant_java.sevice.TypeService;
+import com.dk_power.power_plant_java.entities.files.Type;
+import com.dk_power.power_plant_java.repository.files.TypeRepo;
+import com.dk_power.power_plant_java.sevice.files.TypeService;
 import jakarta.persistence.EntityManager;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

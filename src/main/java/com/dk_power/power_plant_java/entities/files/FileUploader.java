@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.model;
+package com.dk_power.power_plant_java.entities.files;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

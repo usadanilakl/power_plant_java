@@ -1,12 +1,8 @@
-package com.dk_power.power_plant_java.model;
+package com.dk_power.power_plant_java.entities.files;
 
-import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
 import lombok.*;
-
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 
 @AllArgsConstructor(access = AccessLevel.PUBLIC)
 @NoArgsConstructor(access = AccessLevel.PUBLIC)

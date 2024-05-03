@@ -1,7 +1,6 @@
-package com.dk_power.power_plant_java.repository;
+package com.dk_power.power_plant_java.repository.files;
 
-import com.dk_power.power_plant_java.model.File;
-import com.dk_power.power_plant_java.model.PID;
+import com.dk_power.power_plant_java.entities.files.PID;
 import org.springframework.data.repository.CrudRepository;
 
 import java.util.List;
