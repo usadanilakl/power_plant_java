@@ -16,9 +16,15 @@ public class PermitNumbersServiceImpl implements PermitNumbersService {
     private final PermitNumbersRepo permitNumbersRepo;
     @Override
     public Long getNumber(PermitTypes type) {
-        PermitNumbers numbers = permitNumbersRepo.findById(type).orElse(null);
-        if(numbers==null) numbers = saveNumber(new PermitNumbers(type, generate(0L)));
-        return numbers.getNumber();
+        PermitNumbers number = permitNumbersRepo.findById(type).orElse(null);
+        if(number==null){
+            number = saveNumber(new PermitNumbers(type, generate(0L)));
+        }
+        else{
+            number.setNumber(generate(number.getNumber()));
+            saveNumber(number);
+        }
+        return number.getNumber();
     }
     @Override
     public Long generate(Long lastCreatedNumber){

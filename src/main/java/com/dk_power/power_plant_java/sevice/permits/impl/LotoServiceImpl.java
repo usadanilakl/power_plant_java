@@ -2,9 +2,13 @@ package com.dk_power.power_plant_java.sevice.permits.impl;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.permits.Loto;
+import com.dk_power.power_plant_java.enums.PermitTypes;
+import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.repository.permits.LotoTempRepo;
 import com.dk_power.power_plant_java.repository.permits.LotoRepo;
+import com.dk_power.power_plant_java.sevice.permits.LotoDtoService;
 import com.dk_power.power_plant_java.sevice.permits.LotoService;
+import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
 import com.dk_power.power_plant_java.util.Util;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -20,6 +24,8 @@ import java.util.Optional;
 @Transactional
 public class LotoServiceImpl implements LotoService {
     private final LotoRepo lotoRepo;
+    private final LotoDtoService lotoDtoService;
+    private final PermitNumbersService permitNumbersService;
     @PersistenceContext
     private final EntityManager entityManager;
     @Override
@@ -35,6 +41,21 @@ public class LotoServiceImpl implements LotoService {
     @Override
     public Loto saveLoto(Loto loto) {
         lotoRepo.save(loto);
+        return loto;
+    }
+
+    @Override
+    public Loto createNewLoto(LotoDto loto) {
+        Loto entity = lotoDtoService.toEntity(loto);
+        entity.setLotoNum(permitNumbersService.getNumber(PermitTypes.LOTO));
+        entity.setStatus(Status.INCATCIVE);
+        return saveLoto(entity);
+    }
+
+    @Override
+    public Loto changeStatus(Long id, Status status) {
+        Loto loto = getLotoById(id);
+        loto.setStatus(status);
         return loto;
     }
 

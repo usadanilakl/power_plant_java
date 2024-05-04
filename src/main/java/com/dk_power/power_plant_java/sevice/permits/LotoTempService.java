@@ -6,6 +6,8 @@ import java.util.Optional;
 
 public interface LotoTempService {
     LotoTemp saveTempLoto(LotoTemp loto);
-    LotoTemp getTempById(String id);
+    LotoTemp getTempById();
     Optional<LotoTemp> getTempByUser(String user);
+    LotoTemp deleteTemp(LotoTemp loto);
+    void resetFields();
 }
