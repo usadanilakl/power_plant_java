@@ -12,17 +12,19 @@
 <div class="container">
     <div class="row">
         <div class="col-md-12">
-            <form th:object="${loto}" th:action="@{/lotos/create}" method="post">
+            <form th:object="${loto}" th:action="@{/lotos/create}" method="post" id="lotoForm">
+<!--                <input class="form-control" type="text" th:field="*{id}"  th:value="${loto.id}">-->
                 <div class="form-group">
 
                     <div th:if="${loto.createdBy != null}">
-<!--                        <label for="created-by">Created By</label>-->
-<!--                        <input type="text" id="created-by" th:field="*{approvedBy}" th:value="${loto.createdBy}">-->
-                        <p th:text="${loto.createdBy}"></p>
+                        <label for="created-by">Created By</label>
+                        <input type="text" id="created-by" th:field="*{createdBy}" th:value="${loto.createdBy}">
+<!--                        <p th:text="${loto.createdBy}"></p>-->
                     </div>
                     <div th:if="${loto.createdBy == null}">
                         <label for="created-by2">Created By</label>
-                        <input type="text" id="created-by2" th:value="${#authentication.principal.name}">
+                        <input type="text" id="created-by2" th:field="*{createdBy}" th:value="${#authentication.principal.name}">
+                        <p th:text="${#authentication.principal.name}"></p>
                     </div>
 <!--                    <input type="text" id="created-by" th:field="*{approvedBy}" th:value="${loto.createdBy}">-->
 <!--                    <input type="text" id="created-by" th:value="${#authentication.principal.name}">-->
@@ -54,5 +56,23 @@
 </div>
 
 <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+<script>
+    document.querySelectorAll('input').forEach(input => {
+        input.addEventListener('change', function(e) {
+            e.preventDefault();
+
+            var formData = new FormData(document.getElementById('lotoForm'));
+            fetch('/lotos/autosave', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => console.log(data))
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+        });
+    });
+</script>
 </body>
 </html>

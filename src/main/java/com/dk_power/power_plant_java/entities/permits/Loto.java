@@ -11,22 +11,21 @@ import org.hibernate.envers.Audited;
 @Audited
 @Data
 @NoArgsConstructor
-
 public class Loto extends SuperModel {
     private String workScope;
     private String system;
     private String equipment;
     private String requestor;
-    private String approvedBy;
     private String controlAuthority;
     private Long lotoNum;
 
-    public Loto(String workScope, String system, String equipment, String requestor, String approvedBy) {
+    public Loto(String workScope, String system, String equipment, String requestor, String controlAuthority) {
         super();
         this.workScope = workScope;
         this.system = system;
         this.equipment = equipment;
         this.requestor = requestor;
-        this.approvedBy = approvedBy;
+        this.controlAuthority = controlAuthority;
+        this.lotoNum = lotoNum;
     }
 }

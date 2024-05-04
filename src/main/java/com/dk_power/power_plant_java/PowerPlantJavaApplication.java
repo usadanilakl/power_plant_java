@@ -3,7 +3,7 @@ package com.dk_power.power_plant_java;
 import com.dk_power.power_plant_java.repository.permits.LotoRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitNumbersRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
-import com.dk_power.power_plant_java.util.PermitNumberGenerator;
+import com.dk_power.power_plant_java.util.Util;
 import lombok.AllArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -22,7 +22,7 @@ private final PermitNumbersRepo permitNumbersRepo;
 
     @Override
     public void run(String... args) throws Exception {
-        PermitNumberGenerator.lotoNumber = permitNumbersRepo.findByPermitType("loto").getNumber();
+       // Util.lotoNumber = permitNumbersRepo.findByPermitType("loto").getNumber();
     }
 
 

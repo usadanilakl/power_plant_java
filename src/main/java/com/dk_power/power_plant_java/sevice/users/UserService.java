@@ -9,4 +9,5 @@ public interface UserService {
     User addNewUser(User user);
     List<User> showAllUsers();
     User getUserById(Long id);
+    String getNameOfCurrentlyLoggedInUser();
 }

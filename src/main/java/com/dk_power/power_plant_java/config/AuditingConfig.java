@@ -22,7 +22,7 @@ public class AuditingConfig {
 }
 
 class AuditorAwareImpl implements AuditorAware<String> {
-
+    @Bean
     @Override
     public Optional<String> getCurrentAuditor() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
