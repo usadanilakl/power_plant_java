@@ -17,10 +17,13 @@
                 <thead>
                 <tr>
                     <th>#</th>
-                    <th>Job</th>
-                    <th>Requestor</th>
-                    <th>Status</th>
-                    <th>Number</th>
+                    <th class="row flex-column">
+                        <div class="row"><input type="text" id="job"> <button>S</button></div>
+                        <a class="btn btn-warning" th:href="@{/lotos/sort?column=workScope}">Job</a>
+                    </th>
+                    <th><a class="btn btn-warning" th:href="@{/lotos/sort?column=requestor}">Requestor</a></th>
+                    <th><a class="btn btn-warning" th:href="@{/lotos/sort?column=status}">Status</a></th>
+                    <th><a class="btn btn-warning" th:href="@{/lotos/sort?column=lotoNum}">Number</a></th>
                     <th>Edit</th>
                 </tr>
                 </thead>

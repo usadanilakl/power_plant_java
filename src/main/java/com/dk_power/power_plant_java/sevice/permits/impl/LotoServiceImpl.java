@@ -13,6 +13,7 @@ import com.dk_power.power_plant_java.util.Util;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,11 @@ public class LotoServiceImpl implements LotoService {
     @Override
     public List<Loto> getAllLotos() {
         return Util.toList(lotoRepo.findAll());
+    }
+
+    @Override
+    public List<Loto> getAllSorted(Sort column) {
+        return lotoRepo.findAll(column);
     }
 
     @Override

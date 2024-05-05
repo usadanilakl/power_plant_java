@@ -2,8 +2,10 @@ package com.dk_power.power_plant_java.util;
 
 import lombok.Data;
 
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 
@@ -26,6 +28,28 @@ public class Util {
         List<T> list = new ArrayList<>();
         iterable.forEach(list::add);
         return list;
+    }
+
+    public static <T> void sortList(List<T> list, String fieldName) {
+        if (list == null || fieldName == null) {
+            throw new IllegalArgumentException("List or fieldName cannot be null");
+        }
+        list.sort(Comparator.nullsLast(Comparator.comparing(o -> {
+            if (o == null) {
+                return null;
+            }
+            try {
+                Field field = o.getClass().getDeclaredField(fieldName);
+                field.setAccessible(true);
+                Object fieldValue = field.get(o);
+                System.out.println(fieldValue);
+                return fieldValue != null ? (Comparable) fieldValue : null;
+            } catch (NoSuchFieldException | IllegalAccessException | NullPointerException e) {
+                e.printStackTrace();
+                return null;
+            }
+
+        })));
     }
 
 }

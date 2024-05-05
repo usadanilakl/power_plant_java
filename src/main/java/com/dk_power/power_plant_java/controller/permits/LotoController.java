@@ -10,10 +10,14 @@ import com.dk_power.power_plant_java.sevice.permits.LotoDtoService;
 import com.dk_power.power_plant_java.sevice.permits.LotoService;
 import com.dk_power.power_plant_java.sevice.permits.LotoTempService;
 import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
+import com.dk_power.power_plant_java.util.Util;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @AllArgsConstructor
 @Controller
@@ -24,6 +28,8 @@ public class LotoController {
     private final LotoDtoService lotoDtoService;
     private final AuditingConfig auditingConfig;
     private final PermitNumbersService permitNumbersService;
+    private static String lastSortingRequest = "";
+    private static boolean ascending = true;
     @GetMapping("/")
     public String showAllLotots(Model model){
         model.addAttribute("lotos", lotoService.getAllLotos());
@@ -69,8 +75,25 @@ public class LotoController {
         Status stat = Status.valueOf(status.toUpperCase());
         Loto loto = lotoService.changeStatus(lotoId,stat);
         lotoService.saveLoto(loto);
-        System.out.println(loto.getStatus());
         return "redirect:/lotos/";
+    }
+    @GetMapping("/sort")
+    public String sortByColumn(@RequestParam(name="column")String column, Model model){
+        List<Loto> lotos;
+
+        if(lastSortingRequest.equals(column)){
+            if(ascending) ascending = false;
+            else ascending = true;
+        }
+
+        if(ascending){
+            lotos = lotoService.getAllSorted(Sort.by(column));
+        }else {
+            lotos = lotoService.getAllSorted(Sort.by(Sort.Direction.DESC, column));
+        }
+        lastSortingRequest = column;
+        model.addAttribute("lotos", lotos);
+        return "loto/show-all-lotos";
     }
 
 
