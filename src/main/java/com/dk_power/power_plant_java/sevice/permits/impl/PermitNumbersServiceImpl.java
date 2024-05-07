@@ -4,7 +4,6 @@ import com.dk_power.power_plant_java.entities.permits.PermitNumbers;
 import com.dk_power.power_plant_java.enums.PermitTypes;
 import com.dk_power.power_plant_java.repository.permits.PermitNumbersRepo;
 import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
-import com.dk_power.power_plant_java.util.Util;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
