@@ -4,10 +4,13 @@ import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToMany;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.util.List;
 
 @Entity
 @NoArgsConstructor
@@ -20,6 +23,10 @@ public class LotoTemp {
     private String id;
     @CreatedBy
     private String createdBy;
+    @ManyToMany(mappedBy = "lotosTemp")
+    private List<Ticket> tickets;
+    @ManyToMany(mappedBy = "lotosTemp")
+    private List<TicketTemp> ticketsTemp;
 
     public LotoTemp(String requestor, String controlAuthority, String createdBy, String system, String workScope, String equipment) {
         this.requestor = requestor;

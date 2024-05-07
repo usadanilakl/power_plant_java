@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class PermitNumbers {
+    @Enumerated(EnumType.STRING)
     @Id
     PermitTypes permitType;
     Long number;

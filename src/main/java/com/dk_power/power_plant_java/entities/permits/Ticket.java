@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,22 @@ public class Ticket extends SuperModel {
             inverseJoinColumns = @JoinColumn(name="sw_id")
     )
     private List<Sw> swList;
+    @ManyToMany
+    @JoinTable(
+            name="ticket_temp_loto",
+            joinColumns = @JoinColumn(name="t_id"),
+            inverseJoinColumns = @JoinColumn(name="l_id")
+    )
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
+    private List<LotoTemp> lotosTemp;
+    @ManyToMany
+    @JoinTable(
+            name="ticket_temp_sw",
+            joinColumns = @JoinColumn(name="t_id"),
+            inverseJoinColumns = @JoinColumn(name="sw_id")
+    )
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
+    private List<SwTemp> swTempList;
 
     public Ticket(String workScope, String system, String equipment, String requestor, String controlAuthority,List<Loto> lotos, List<Sw> swList) {
         super();
@@ -47,8 +64,10 @@ public class Ticket extends SuperModel {
         this.equipment = equipment;
         this.requestor = requestor;
         this.controlAuthority = controlAuthority;
-        this.lotos = new ArrayList<>(lotos);
-        this.swList = new ArrayList<>(swList);
+        if(lotos!=null)this.lotos = new ArrayList<>(lotos);
+        else this.lotos = new ArrayList<>();
+        if(swList!=null)this.swList = new ArrayList<>(swList);
+        else this.swList = new ArrayList<>();
     }
     public Ticket(String workScope, String system, String equipment, String requestor, String controlAuthority) {
         super();
@@ -95,6 +114,26 @@ public class Ticket extends SuperModel {
     }
     public void removeSw(Sw sw){
         if(swList!=null) swList.removeIf(e->e.getId().equals(sw.getId()));
+        if(sw.getTickets()!=null) sw.getTickets().remove(this);
+    }
+    public void addLotoTemp(LotoTemp loto){
+        if(lotosTemp == null) lotosTemp = new ArrayList<>();
+        lotosTemp.add(loto);
+        if(loto.getTickets()==null) loto.setTickets(new ArrayList<>());
+        loto.getTickets().add(this);
+    }
+    public void removeLotoTemp(LotoTemp loto){
+        if(lotosTemp!=null)  lotosTemp.removeIf(e->e.getId().equals(loto.getId()));
+        if(loto.getTickets()!=null) loto.getTickets().remove(this);
+    }
+    public void addSw(SwTemp sw){
+        if(swTempList == null) swTempList = new ArrayList<>();
+        swTempList.add(sw);
+        if(sw.getTickets()==null) sw.setTickets(new ArrayList<>());
+        sw.getTickets().add(this);
+    }
+    public void removeSwTemp(Sw sw){
+        if(swTempList!=null) swTempList.removeIf(e->e.getId().equals(sw.getId()));
         if(sw.getTickets()!=null) sw.getTickets().remove(this);
     }
 }

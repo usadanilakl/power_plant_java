@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connection Test</title>
+    <title>New Safe Work Permit</title>
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
 </head>
 <body>
@@ -12,16 +12,16 @@
 <div class="container">
     <div class="row">
         <div class="col-md-12">
-            <form th:object="${loto}" th:action="@{/lotos/create}" method="post" id="lotoForm">
+            <form th:object="${sw}" th:action="@{/tickets/create}" method="post" id="safeWorkForm">
 <!--                <input class="form-control" type="text" th:field="*{id}"  th:value="${loto.id}">-->
                 <div class="form-group">
 
-                    <div th:if="${loto.createdBy != null}">
+                    <div th:if="${sw.createdBy != null}">
                         <label for="created-by">Created By</label>
-                        <input type="text" id="created-by" th:field="*{createdBy}" th:value="${loto.createdBy}">
+                        <input type="text" id="created-by" th:field="*{createdBy}" th:value="${sw.createdBy}">
 <!--                        <p th:text="${loto.createdBy}"></p>-->
                     </div>
-                    <div th:if="${loto.createdBy == null}">
+                    <div th:if="${sw.createdBy == null}">
                         <label for="created-by2">Created By</label>
                         <input type="text" id="created-by2" th:field="*{createdBy}" th:value="${#authentication.principal.name}">
                         <p th:text="${#authentication.principal.name}"></p>
@@ -60,14 +60,12 @@
     document.querySelectorAll('input').forEach(input => {
         input.addEventListener('change', function(e) {
             e.preventDefault();
-
-            var formData = new FormData(document.getElementById('lotoForm'));
-            fetch('/lotos/autosave', {
+            var formData = new FormData(document.getElementById('safeWorkForm'));
+            fetch('/safe_work/autosave', {
                 method: 'POST',
                 body: formData
             })
-                .then(response => response.json())
-                .then(data => console.log(data))
+                .then(() => console.log("success"))
                 .catch((error) => {
                     console.error('Error:', error);
                 });

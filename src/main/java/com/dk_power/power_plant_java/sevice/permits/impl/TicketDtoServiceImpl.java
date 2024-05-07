@@ -3,7 +3,11 @@ package com.dk_power.power_plant_java.sevice.permits.impl;
 import com.dk_power.power_plant_java.dto.permits.TicketDto;
 import com.dk_power.power_plant_java.entities.permits.Ticket;
 import com.dk_power.power_plant_java.sevice.permits.TicketDtoService;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
+@AllArgsConstructor
 public class TicketDtoServiceImpl implements TicketDtoService {
     @Override
     public TicketDto toDto(Ticket ticket) {

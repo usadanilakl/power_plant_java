@@ -114,7 +114,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public List<Ticket> getLastFilter() {
-        if(tickets==null) tickets = getAll();
+        if(tickets==null || tickets.size()==0) tickets = getAll();
         return tickets;
     }
 
@@ -139,8 +139,9 @@ public class TicketServiceImpl implements TicketService {
                     return;
                 }
             }
+            if(contains)tickets.add(ticket);
         }
 
-        if(contains)tickets.add(ticket);
+
     }
 }

@@ -8,6 +8,7 @@ import jakarta.persistence.ManyToMany;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
 
 import java.util.List;
 
@@ -26,6 +27,9 @@ public class Sw extends SuperModel {
     private Status status;
     @ManyToMany(mappedBy = "swList")
     private List<Ticket> tickets;
+    @ManyToMany(mappedBy = "swList")
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
+    private List<TicketTemp> ticketsTemp;
 
     public Sw(String workScope, String system, String equipment, String requestor, String controlAuthority) {
         super();
