@@ -1,11 +1,10 @@
 package com.dk_power.power_plant_java.controller.permits;
 
 import com.dk_power.power_plant_java.dto.permits.TicketDto;
-import com.dk_power.power_plant_java.entities.permits.Ticket;
-import com.dk_power.power_plant_java.entities.permits.TicketTemp;
+import com.dk_power.power_plant_java.entities.permits.tickets.BaseTicket;
+import com.dk_power.power_plant_java.entities.permits.tickets.Ticket;
 import com.dk_power.power_plant_java.enums.Status;
-import com.dk_power.power_plant_java.sevice.permits.TicketService;
-import com.dk_power.power_plant_java.sevice.permits.TicketTempService;
+import com.dk_power.power_plant_java.sevice.permits.impl.TicketService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,30 +18,29 @@ import java.util.Map;
 @RequestMapping("/tickets")
 public class TicketController {
     private final TicketService ticketService;
-    private final TicketTempService ticketTempService;
 
     @GetMapping("/")
     public String showAll(Model model){
-        model.addAttribute("tickets", ticketService.getLastFilter());
+        model.addAttribute("tickets", ticketService.getLastFilteredList());
         return "ticket/show-all";
     }
     @GetMapping("/create")
     public String createNew(Model model){
-        TicketTemp sw = ticketTempService.getTempById();
+        BaseTicket sw = ticketService.getByCreatedBy();
         model.addAttribute("sw", sw);
         return "ticket/new-form";
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("sw") TicketDto data){
-        TicketTemp sw = ticketTempService.getTempById();
+        BaseTicket sw = ticketService.getByCreatedBy();
         sw.copy(data);
-        ticketTempService.saveTempSw(sw);
+        ticketService.saveTempTicket(sw);
         return "redirect:/tickets/create";
     }
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute TicketDto sw){
         ticketService.createNew(sw);
-        ticketTempService.resetFields();
+        ticketService.resetFields();
         return "redirect:/tickets/";
     }
 

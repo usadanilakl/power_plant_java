@@ -1,11 +1,10 @@
 package com.dk_power.power_plant_java.controller.permits;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
-import com.dk_power.power_plant_java.entities.permits.Loto;
-import com.dk_power.power_plant_java.entities.permits.LotoTemp;
+import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
+import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.enums.Status;
-import com.dk_power.power_plant_java.sevice.permits.LotoService;
-import com.dk_power.power_plant_java.sevice.permits.LotoTempService;
+import com.dk_power.power_plant_java.sevice.permits.impl.LotoService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,45 +18,44 @@ import java.util.Map;
 @RequestMapping("/lotos")
 public class LotoController {
     private final LotoService lotoService;
-    private final LotoTempService lotoTempService;
 
     @GetMapping("/")
     public String showAllLotots(Model model){
-        model.addAttribute("lotos", lotoService.getLastFilter());
+        model.addAttribute("lotos", lotoService.getLastFilteredList());
         return "loto/show-all-lotos";
     }
     @GetMapping("/create")
     public String createNewLoto(Model model){
-        LotoTemp loto = lotoTempService.getTempById();
+        BaseLoto loto = lotoService.getByCreatedBy();
+        if(loto == null) loto = new BaseLoto();
         model.addAttribute("loto", loto);
         return "loto/new-loto-form";
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("loto") LotoDto data){
-        LotoTemp loto = lotoTempService.getTempById();
+        BaseLoto loto = lotoService.getByCreatedBy();
         loto.copy(data);
-        lotoTempService.saveTempLoto(loto);
-//        return "loto/new-loto-form";
+        lotoService.saveTempLoto(loto);
         return "redirect:/lotos/create";
     }
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute LotoDto loto){
-        lotoService.createNewLoto(loto);
-        lotoTempService.resetFields();
+        lotoService.createNew(loto);
+        lotoService.resetFields();
         return "redirect:/lotos/";
     }
 
     @GetMapping("/edit/{id}")
     public String editLoto(@PathVariable("id") String id, Model model){
-        Loto loto = lotoService.getLotoById(Long.parseLong(id));
+        Loto loto = lotoService.getById(Long.parseLong(id));
         model.addAttribute("loto",loto);
         return "loto/update-loto-form";
     }
     @PostMapping("/edit")
     public String updateLoto(@ModelAttribute LotoDto loto){
-        Loto entity = lotoService.getLotoById(loto.getId());
+        Loto entity = lotoService.getById(loto.getId());
         entity.copy(loto);
-        lotoService.saveLoto(entity);
+        lotoService.save(entity);
         return "redirect:/lotos/";
     }
     @PostMapping("/status/{id}")
@@ -65,7 +63,7 @@ public class LotoController {
         Long lotoId = Long.parseLong(id);
         Status stat = Status.valueOf(status.toUpperCase());
         Loto loto = lotoService.changeStatus(lotoId,stat);
-        lotoService.saveLoto(loto);
+        lotoService.save(loto);
         return "redirect:/lotos/";
     }
     @GetMapping("/sort")

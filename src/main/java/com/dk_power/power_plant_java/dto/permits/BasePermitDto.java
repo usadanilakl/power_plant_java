@@ -1,0 +1,35 @@
+package com.dk_power.power_plant_java.dto.permits;
+
+
+import com.dk_power.power_plant_java.entities.permits.BasePermit;
+import com.dk_power.power_plant_java.entities.permits.tickets.BaseTicket;
+import com.dk_power.power_plant_java.enums.PermitType;
+import com.dk_power.power_plant_java.enums.Status;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
+public abstract class BasePermitDto <T extends BasePermit> {
+    private String workScope;
+    private String system;
+    private String equipment;
+    private String requestor;
+    private String controlAuthority;
+    private PermitType type;
+    private Long docNum;
+    private Status status;
+    private List<BaseTicket> tickets;
+    private String createdBy;
+    private Long id;
+
+    public abstract T toEntity();
+//    {
+//        return new BasePermit(this.workScope,this.system,this.equipment,this.requestor, this.controlAuthority, this.type, this.docNum, this.status, this.tickets);
+//    }
+
+}

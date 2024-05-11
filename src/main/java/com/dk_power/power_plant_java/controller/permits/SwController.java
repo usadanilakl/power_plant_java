@@ -1,11 +1,10 @@
 package com.dk_power.power_plant_java.controller.permits;
 
 import com.dk_power.power_plant_java.dto.permits.SwDto;
-import com.dk_power.power_plant_java.entities.permits.Sw;
-import com.dk_power.power_plant_java.entities.permits.SwTemp;
+import com.dk_power.power_plant_java.entities.permits.safe_works.BaseSw;
+import com.dk_power.power_plant_java.entities.permits.safe_works.Sw;
 import com.dk_power.power_plant_java.enums.Status;
-import com.dk_power.power_plant_java.sevice.permits.SwService;
-import com.dk_power.power_plant_java.sevice.permits.SwTempService;
+import com.dk_power.power_plant_java.sevice.permits.impl.SwService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,30 +18,29 @@ import java.util.Map;
 @RequestMapping("/safe_work")
 public class SwController {
     private final SwService swService;
-    private final SwTempService swTempService;
 
     @GetMapping("/")
     public String showAllLotots(Model model){
-        model.addAttribute("swList", swService.getLastFilter());
+        model.addAttribute("swList", swService.getLastFilteredList());
         return "safe_work/show-all-sw";
     }
     @GetMapping("/create")
     public String createNewSw(Model model){
-        SwTemp sw = swTempService.getTempById();
+        BaseSw sw = swService.getByCreatedBy();
         model.addAttribute("sw", sw);
         return "safe_work/new-sw-form";
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("sw") SwDto data){
-        SwTemp sw = swTempService.getTempById();
+        BaseSw sw = swService.getByCreatedBy();
         sw.copy(data);
-        swTempService.saveTempSw(sw);
+        swService.saveTempSw(sw);
         return "redirect:/safe_work/create";
     }
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute SwDto sw){
-        swService.createNewSw(sw);
-        swTempService.resetFields();
+        swService.createNew(sw);
+        swService.resetFields();
         return "redirect:/safe_work/";
     }
 
@@ -56,7 +54,7 @@ public class SwController {
     public String updateLoto(@ModelAttribute SwDto sw){
         Sw entity = swService.getById(sw.getId());
         entity.copy(sw);
-        swService.saveSw(entity);
+        swService.save(entity);
         return "redirect:/safe_work/";
     }
     @PostMapping("/status/{id}")
@@ -64,7 +62,7 @@ public class SwController {
         Long docId = Long.parseLong(id);
         Status stat = Status.valueOf(status.toUpperCase());
         Sw sw = swService.changeStatus(docId,stat);
-        swService.saveSw(sw);
+        swService.save(sw);
         return "redirect:/lotos/";
     }
     @GetMapping("/sort")

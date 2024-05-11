@@ -1,9 +1,8 @@
 package com.dk_power.power_plant_java;
 
-import com.dk_power.power_plant_java.repository.permits.LotoRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitNumbersRepo;
+import com.dk_power.power_plant_java.repository.permits.loto_repo.LotoRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
-import com.dk_power.power_plant_java.util.Util;
 import lombok.AllArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;

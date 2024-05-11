@@ -1,0 +1,23 @@
+package com.dk_power.power_plant_java.sevice.permits;
+
+import com.dk_power.power_plant_java.enums.Status;
+
+import java.util.List;
+import java.util.Map;
+
+public interface BasePermitService<T,D> {
+    List<T> getAll();
+    List<T> getAllSorted(String column);
+    T getById(Long id);
+    T getByCreatedBy();
+    T save(T entity);
+    T createNew(D dto);
+    T changeStatus(Long id, Status status);
+    List<T> sortTable(String column);
+    List<T> filterTable(Map<String,String> filters);
+    List<T> getLastFilteredList();
+    List<T> clearFilters();
+    void filterNew(T entity);
+    void resetFields();
+
+}

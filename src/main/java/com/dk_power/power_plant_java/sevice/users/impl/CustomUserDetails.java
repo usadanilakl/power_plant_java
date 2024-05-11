@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.sevice.users.impl;
 
-import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 
