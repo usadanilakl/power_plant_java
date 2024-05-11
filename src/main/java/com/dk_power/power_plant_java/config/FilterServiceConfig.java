@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.config;
 
+import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.entities.permits.safe_works.Sw;
 import com.dk_power.power_plant_java.entities.permits.tickets.Ticket;
@@ -13,7 +14,8 @@ import org.springframework.context.annotation.Configuration;
 public class FilterServiceConfig {
     @Autowired
     private BasePermitRepo<Loto> lotoRepo;
-
+    @Autowired
+    private BasePermitRepo<BaseLoto> baseLotoRepo;
     @Autowired
     private BasePermitRepo<Ticket> ticketRepo;
     @Autowired
@@ -22,6 +24,10 @@ public class FilterServiceConfig {
     @Bean
     public FilterService<Loto> lotoFilterService() {
         return new FilterService<>(lotoRepo);
+    }
+    @Bean
+    public FilterService<BaseLoto> baseLotoFilterService() {
+        return new FilterService<>(baseLotoRepo);
     }
 
     @Bean

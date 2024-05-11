@@ -124,4 +124,5 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
         permit.copy(new BasePermit());
     }
 
+
 }

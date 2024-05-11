@@ -19,10 +19,8 @@ public class LotoService extends BasePermitServiceImpl<Loto, LotoDto>{
         this.baseLotoRepo = baseLotoRepo;
     }
 
-    public BaseLoto saveTempLoto(BaseLoto loto){
-        baseLotoRepo.save(loto);
-        return loto;
-    }
+
+
 
 }
 

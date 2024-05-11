@@ -10,4 +10,5 @@ public interface BasePermitRepo <T extends BasePermit> extends CrudRepository<T,
     List<T> findAll(Sort sortBy);
     T findByCreatedBy(String name);
 
+
 }

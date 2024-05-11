@@ -11,10 +11,12 @@ import org.hibernate.envers.Audited;
 
 import java.util.List;
 
+import static org.hibernate.envers.RelationTargetAuditMode.NOT_AUDITED;
+
 @Entity
 @Data
 @NoArgsConstructor
-@Audited
+@Audited(targetAuditMode = NOT_AUDITED)
 public class BaseLoto extends BasePermit {
     {
         this.setType(PermitType.LOTO);

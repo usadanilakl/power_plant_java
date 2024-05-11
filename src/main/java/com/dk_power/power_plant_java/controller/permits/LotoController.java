@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.enums.Status;
+import com.dk_power.power_plant_java.sevice.permits.impl.BaseLotoService;
 import com.dk_power.power_plant_java.sevice.permits.impl.LotoService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RequestMapping("/lotos")
 public class LotoController {
     private final LotoService lotoService;
+    private final BaseLotoService baseLotoService;
 
     @GetMapping("/")
     public String showAllLotots(Model model){
@@ -26,16 +28,15 @@ public class LotoController {
     }
     @GetMapping("/create")
     public String createNewLoto(Model model){
-        BaseLoto loto = lotoService.getByCreatedBy();
-        if(loto == null) loto = new BaseLoto();
+        BaseLoto loto = baseLotoService.getByCreatedBy();
         model.addAttribute("loto", loto);
         return "loto/new-loto-form";
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("loto") LotoDto data){
-        BaseLoto loto = lotoService.getByCreatedBy();
+        BaseLoto loto = baseLotoService.getByCreatedBy();
         loto.copy(data);
-        lotoService.saveTempLoto(loto);
+        baseLotoService.saveTempLoto(loto);
         return "redirect:/lotos/create";
     }
     @PostMapping("/create")
