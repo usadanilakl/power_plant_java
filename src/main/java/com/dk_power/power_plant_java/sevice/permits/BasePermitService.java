@@ -11,13 +11,15 @@ public interface BasePermitService<T,D> {
     T getById(Long id);
     T getByCreatedBy();
     T save(T entity);
-    T createNew(D dto);
+    T createNew(D dto, Class<T> tClass);
     T changeStatus(Long id, Status status);
     List<T> sortTable(String column);
     List<T> filterTable(Map<String,String> filters);
     List<T> getLastFilteredList();
     List<T> clearFilters();
     void filterNew(T entity);
-    void resetFields();
+    T resetFields();
+    T convertToEntity(D dto, Class<T> tClass);
+    D convertToDto(T entity, Class<D> dClass);
 
 }

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="<http://www.thymeleaf.org>">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Safe Work Permit</title>
+    <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+</head>
+<body>
+
+<div th:replace="~{partials/index::header}"></div>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <form th:object="${sw}" th:action="@{/safe_work/edit}" method="post" id="safeWorkForm">
+                <input class="form-control" type="text" th:field="*{id}"  th:value="${sw.id}" style="display: none;">
+                <div class="form-group">
+
+                    <div th:if="${sw.createdBy != null}">
+                        <label for="created-by">Created By</label>
+                        <input type="text" id="created-by" th:field="*{createdBy}" th:value="${sw.createdBy}">
+<!--                        <p th:text="${loto.createdBy}"></p>-->
+                    </div>
+                    <div th:if="${sw.createdBy == null}">
+                        <label for="created-by2">Created By</label>
+                        <input type="text" id="created-by2" th:field="*{createdBy}" th:value="${#authentication.principal.name}">
+                        <p th:text="${#authentication.principal.name}"></p>
+                    </div>
+<!--                    <input type="text" id="created-by" th:field="*{approvedBy}" th:value="${loto.createdBy}">-->
+<!--                    <input type="text" id="created-by" th:value="${#authentication.principal.name}">-->
+                </div>
+                <div class="form-group">
+                    <label for="requestor">Requestor</label>
+                    <input class="form-control" type="text" id="requestor" th:field="*{requestor}">
+                </div>
+<!--                <div class="form-group">-->
+<!--                    <label for="time">Time</label>-->
+<!--                    <input class="form-control" type="datetime-local" id="time" th:value="${loto.dateCreated}">-->
+<!--                </div>-->
+                <div class="form-group">
+                    <label for="workscope">Scope of Work</label>
+                    <input class="form-control" type="text" id="workscope" th:field="*{workScope}">
+                </div>
+                <div class="form-group">
+                    <label for="system">System</label>
+                    <input class="form-control" type="text" id="system" th:field="*{system}">
+                </div>
+                <div class="form-group">
+                    <label for="equipment">Equipment</label>
+                    <input class="form-control" type="text" id="equipment" th:field="*{equipment}">
+                </div>
+                <button class="btn btn-primary btn-block" type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+
+</body>
+</html>

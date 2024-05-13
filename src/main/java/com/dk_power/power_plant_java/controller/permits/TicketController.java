@@ -39,7 +39,7 @@ public class TicketController {
     }
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute TicketDto sw){
-        ticketService.createNew(sw);
+        ticketService.createNew(sw, Ticket.class);
         ticketService.resetFields();
         return "redirect:/tickets/";
     }

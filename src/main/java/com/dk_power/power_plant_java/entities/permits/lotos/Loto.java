@@ -10,5 +10,5 @@ import org.hibernate.envers.Audited;
 @Data
 @NoArgsConstructor
 @Audited
-public class Loto extends BasePermit {
+public class Loto extends BaseLoto {
 }

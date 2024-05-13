@@ -39,7 +39,7 @@ public class SwController {
     }
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute SwDto sw){
-        swService.createNew(sw);
+        swService.createNew(sw, Sw.class);
         swService.resetFields();
         return "redirect:/safe_work/";
     }

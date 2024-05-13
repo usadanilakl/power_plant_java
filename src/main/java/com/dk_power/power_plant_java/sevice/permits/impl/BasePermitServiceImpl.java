@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.permits.impl;
 import com.dk_power.power_plant_java.dto.permits.BasePermitDto;
 import com.dk_power.power_plant_java.entities.permits.BasePermit;
 import com.dk_power.power_plant_java.enums.Status;
+import com.dk_power.power_plant_java.mappers.BasePermitMapper;
 import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;
 import com.dk_power.power_plant_java.sevice.permits.BasePermitService;
 import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
@@ -15,11 +16,12 @@ import java.util.List;
 import java.util.Map;
 
 @AllArgsConstructor
-public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto<T>> implements BasePermitService<T, D> {
+public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto> implements BasePermitService<T, D> {
     private final BasePermitRepo<T> repository;
     protected PermitNumbersService permitNumbersService;
     private final FilterService<T> filterService;
     private final UserDetailsServiceImpl customUserDetails;
+    private final BasePermitMapper<T,D> permitMapper;
 
     @Override
     public List<T> getAll() {
@@ -47,11 +49,11 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
     }
 
     @Override
-    public T createNew(D dto) {
-        T permit = dto.toEntity();
+    public T createNew(D dto, Class<T> tClass) {
+        T permit = permitMapper.convertToEntity(dto, tClass);
         permit.setDocNum(permitNumbersService.getNumber(permit.getType()));
         permit.setStatus(Status.INCATCIVE);
-        return null;
+        return save(permit);
     }
 
     @Override
@@ -89,7 +91,7 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
 
     @Override
     public List<T> getLastFilteredList() {
-        if(filterService.getPermits()==null) filterService.setPermits(getAll());
+        if(filterService.getPermits()==null || filterService.getPermits().isEmpty()) filterService.setPermits(getAll());
         return filterService.getPermits();
     }
 
@@ -119,9 +121,19 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
     }
 
     @Override
-    public void resetFields() {
+    public T resetFields() {
         T permit = getByCreatedBy();
-        permit.copy(new BasePermit());
+        return permit;
+    }
+
+    @Override
+    public T convertToEntity(D dto, Class<T> tClass) {
+        return permitMapper.convertToEntity(dto,tClass);
+    }
+
+    @Override
+    public D convertToDto(T entity, Class<D> dClass) {
+        return permitMapper.convertToDto(entity,dClass);
     }
 
 

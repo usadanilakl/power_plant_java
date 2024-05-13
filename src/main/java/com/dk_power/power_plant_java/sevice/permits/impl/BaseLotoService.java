@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.permits.impl;
 
 import com.dk_power.power_plant_java.dto.permits.BaseLotoDto;
 import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
+import com.dk_power.power_plant_java.mappers.BasePermitMapper;
 import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.BaseLotoRepo;
 import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
@@ -11,10 +12,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class BaseLotoService extends BasePermitServiceImpl<BaseLoto, BaseLotoDto>{
     private final BaseLotoRepo baseLotoRepo;
-    public BaseLotoService(BasePermitRepo<BaseLoto> repository, PermitNumbersService permitNumbersService, FilterService<BaseLoto> filterService, UserDetailsServiceImpl customUserDetails, BaseLotoRepo baseLotoRepo) {
-        super(repository, permitNumbersService, filterService, customUserDetails);
+
+    public BaseLotoService(BasePermitRepo<BaseLoto> repository, PermitNumbersService permitNumbersService, FilterService<BaseLoto> filterService, UserDetailsServiceImpl customUserDetails, BasePermitMapper<BaseLoto, BaseLotoDto> permitMapper, BaseLotoRepo baseLotoRepo) {
+        super(repository, permitNumbersService, filterService, customUserDetails, permitMapper);
         this.baseLotoRepo = baseLotoRepo;
     }
+
 
     @Override
     public BaseLoto getByCreatedBy() {
@@ -27,7 +30,23 @@ public class BaseLotoService extends BasePermitServiceImpl<BaseLoto, BaseLotoDto
     }
 
     public BaseLoto saveTempLoto(BaseLoto loto){
+        BaseLoto bLoto = getByCreatedBy();
+        if(bLoto!=null){
+            bLoto.copy(loto);
+            baseLotoRepo.save(bLoto);
+            return bLoto;
+        }
         baseLotoRepo.save(loto);
         return loto;
+    }
+
+    @Override
+    public BaseLoto resetFields() {
+        BaseLoto baseLoto = getByCreatedBy();
+        System.out.println("=============================================");
+        System.out.println(baseLoto.getId());
+        baseLoto.copy(new BaseLoto());
+        System.out.println(baseLoto.getId());
+        return saveTempLoto(baseLoto);
     }
 }

@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.permits;
 
+import com.dk_power.power_plant_java.dto.permits.BaseLotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
@@ -35,14 +36,16 @@ public class LotoController {
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("loto") LotoDto data){
         BaseLoto loto = baseLotoService.getByCreatedBy();
+        System.out.println("==================================================");
+        System.out.println(loto.getId());
         loto.copy(data);
         baseLotoService.saveTempLoto(loto);
         return "redirect:/lotos/create";
     }
     @PostMapping("/create")
-    public String createdNewLoto(@ModelAttribute LotoDto loto){
-        lotoService.createNew(loto);
-        lotoService.resetFields();
+    public String createdNewLoto(@ModelAttribute("loto") LotoDto tempLoto){
+        Loto aNew = lotoService.createNew(tempLoto, Loto.class);
+        baseLotoService.resetFields();
         return "redirect:/lotos/";
     }
 
