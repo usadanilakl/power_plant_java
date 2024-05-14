@@ -26,13 +26,13 @@ public class SwController {
     }
     @GetMapping("/create")
     public String createNewSw(Model model){
-        BaseSw sw = swService.getByCreatedBy();
+        BaseSw sw = swService.getByCreatedBy().get(0);
         model.addAttribute("sw", sw);
         return "safe_work/new-sw-form";
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("sw") SwDto data){
-        BaseSw sw = swService.getByCreatedBy();
+        BaseSw sw = swService.getByCreatedBy().get(0);
         sw.copy(data);
         swService.saveTempSw(sw);
         return "redirect:/safe_work/create";

@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.util.Util;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -39,8 +40,25 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
     }
 
     @Override
-    public T getByCreatedBy() {
+    public List<T> getByCreatedBy() {
         return repository.findByCreatedBy(customUserDetails.getUsersName());
+    }
+
+    @Override
+    public String getLoggedInUserName() {
+        return customUserDetails.getUsersName();
+    }
+
+    @Override
+    public Long generatePermitNum() {
+        Long lastCreatedNumber = repository.findMaxPermitNum();
+        String yearr = LocalDateTime.now().getYear()+"0000";
+        Long year =Long.parseLong(yearr.substring(2));
+        if(lastCreatedNumber == null||year>lastCreatedNumber){
+            return year;
+        }else{
+            return lastCreatedNumber+1;
+        }
     }
 
     @Override
@@ -51,7 +69,8 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
     @Override
     public T createNew(D dto, Class<T> tClass) {
         T permit = permitMapper.convertToEntity(dto, tClass);
-        permit.setDocNum(permitNumbersService.getNumber(permit.getType()));
+        //permit.setDocNum(permitNumbersService.getNumber(permit.getType()));
+        permit.setDocNum(generatePermitNum());
         permit.setStatus(Status.INCATCIVE);
         return save(permit);
     }
@@ -122,8 +141,7 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
 
     @Override
     public T resetFields() {
-        T permit = getByCreatedBy();
-        return permit;
+        return getTempPermit();
     }
 
     @Override
@@ -134,6 +152,11 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
     @Override
     public D convertToDto(T entity, Class<D> dClass) {
         return permitMapper.convertToDto(entity,dClass);
+    }
+
+    @Override
+    public T getTempPermit() {
+        return repository.getTempPermit(getLoggedInUserName());
     }
 
 

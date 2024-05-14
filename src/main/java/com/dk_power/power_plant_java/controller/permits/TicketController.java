@@ -26,13 +26,13 @@ public class TicketController {
     }
     @GetMapping("/create")
     public String createNew(Model model){
-        BaseTicket sw = ticketService.getByCreatedBy();
+        BaseTicket sw = ticketService.getByCreatedBy().get(0);
         model.addAttribute("sw", sw);
         return "ticket/new-form";
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("sw") TicketDto data){
-        BaseTicket sw = ticketService.getByCreatedBy();
+        BaseTicket sw = ticketService.getByCreatedBy().get(0);
         sw.copy(data);
         ticketService.saveTempTicket(sw);
         return "redirect:/tickets/create";

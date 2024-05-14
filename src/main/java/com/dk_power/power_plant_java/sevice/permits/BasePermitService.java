@@ -9,7 +9,7 @@ public interface BasePermitService<T,D> {
     List<T> getAll();
     List<T> getAllSorted(String column);
     T getById(Long id);
-    T getByCreatedBy();
+    List<T> getByCreatedBy();
     T save(T entity);
     T createNew(D dto, Class<T> tClass);
     T changeStatus(Long id, Status status);
@@ -21,5 +21,8 @@ public interface BasePermitService<T,D> {
     T resetFields();
     T convertToEntity(D dto, Class<T> tClass);
     D convertToDto(T entity, Class<D> dClass);
+    T getTempPermit();
+    String getLoggedInUserName();
+    Long generatePermitNum();
 
 }

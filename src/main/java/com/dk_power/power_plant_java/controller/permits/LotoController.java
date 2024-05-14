@@ -29,15 +29,13 @@ public class LotoController {
     }
     @GetMapping("/create")
     public String createNewLoto(Model model){
-        BaseLoto loto = baseLotoService.getByCreatedBy();
+        BaseLoto loto = baseLotoService.getTempPermit();
         model.addAttribute("loto", loto);
         return "loto/new-loto-form";
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("loto") LotoDto data){
-        BaseLoto loto = baseLotoService.getByCreatedBy();
-        System.out.println("==================================================");
-        System.out.println(loto.getId());
+        BaseLoto loto = baseLotoService.getTempPermit();
         loto.copy(data);
         baseLotoService.saveTempLoto(loto);
         return "redirect:/lotos/create";
@@ -45,6 +43,7 @@ public class LotoController {
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute("loto") LotoDto tempLoto){
         Loto aNew = lotoService.createNew(tempLoto, Loto.class);
+        lotoService.filterNew(aNew);
         baseLotoService.resetFields();
         return "redirect:/lotos/";
     }
@@ -60,6 +59,7 @@ public class LotoController {
         Loto entity = lotoService.getById(loto.getId());
         entity.copy(loto);
         lotoService.save(entity);
+        lotoService.filterNew(entity);
         return "redirect:/lotos/";
     }
     @PostMapping("/status/{id}")
@@ -68,6 +68,7 @@ public class LotoController {
         Status stat = Status.valueOf(status.toUpperCase());
         Loto loto = lotoService.changeStatus(lotoId,stat);
         lotoService.save(loto);
+        lotoService.filterNew(loto);
         return "redirect:/lotos/";
     }
     @GetMapping("/sort")

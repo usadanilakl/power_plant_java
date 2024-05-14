@@ -20,8 +20,8 @@ public class BaseLotoService extends BasePermitServiceImpl<BaseLoto, BaseLotoDto
 
 
     @Override
-    public BaseLoto getByCreatedBy() {
-        BaseLoto loto = super.getByCreatedBy();
+    public BaseLoto getTempPermit() {
+        BaseLoto loto = baseLotoRepo.getTempPermit(getLoggedInUserName());
         if(loto==null){
             loto = new BaseLoto();
             baseLotoRepo.save(loto);
@@ -30,7 +30,7 @@ public class BaseLotoService extends BasePermitServiceImpl<BaseLoto, BaseLotoDto
     }
 
     public BaseLoto saveTempLoto(BaseLoto loto){
-        BaseLoto bLoto = getByCreatedBy();
+        BaseLoto bLoto = getTempPermit();
         if(bLoto!=null){
             bLoto.copy(loto);
             baseLotoRepo.save(bLoto);
@@ -42,11 +42,8 @@ public class BaseLotoService extends BasePermitServiceImpl<BaseLoto, BaseLotoDto
 
     @Override
     public BaseLoto resetFields() {
-        BaseLoto baseLoto = getByCreatedBy();
-        System.out.println("=============================================");
-        System.out.println(baseLoto.getId());
+        BaseLoto baseLoto = getTempPermit();
         baseLoto.copy(new BaseLoto());
-        System.out.println(baseLoto.getId());
         return saveTempLoto(baseLoto);
     }
 }
