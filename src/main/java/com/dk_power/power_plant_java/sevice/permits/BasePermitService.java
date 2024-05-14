@@ -24,5 +24,6 @@ public interface BasePermitService<T,D> {
     T getTempPermit();
     String getLoggedInUserName();
     Long generatePermitNum();
+    List<T> getRevision(Long id,Class<T> entityClass);
 
 }

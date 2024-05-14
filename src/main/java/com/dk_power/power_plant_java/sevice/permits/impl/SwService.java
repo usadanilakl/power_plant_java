@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;
 import com.dk_power.power_plant_java.repository.permits.safe_work_repo.BaseSwRepo;
 import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
 import com.dk_power.power_plant_java.sevice.users.impl.UserDetailsServiceImpl;
+import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -15,8 +16,16 @@ import org.springframework.stereotype.Service;
 public class SwService extends BasePermitServiceImpl<Sw, SwDto>{
     private final BaseSwRepo swRepo;
 
-    public SwService(@Qualifier("swRepo")BasePermitRepo<Sw> repository, PermitNumbersService permitNumbersService, FilterService<Sw> filterService, UserDetailsServiceImpl customUserDetails, BasePermitMapper<Sw, SwDto> permitMapper, BaseSwRepo swRepo) {
-        super(repository, permitNumbersService, filterService, customUserDetails, permitMapper);
+    public SwService(
+            @Qualifier("swRepo")BasePermitRepo<Sw> repository,
+            PermitNumbersService permitNumbersService,
+            FilterService<Sw> filterService,
+            UserDetailsServiceImpl customUserDetails,
+            BasePermitMapper<Sw, SwDto> permitMapper,
+            BaseSwRepo swRepo,
+            EntityManagerFactory entityManagerFactory
+    ) {
+        super(repository, permitNumbersService, filterService, customUserDetails, permitMapper,entityManagerFactory);
         this.swRepo = swRepo;
     }
 

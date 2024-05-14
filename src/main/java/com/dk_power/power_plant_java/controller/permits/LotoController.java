@@ -75,13 +75,11 @@ public class LotoController {
     public String sortByColumn(@RequestParam(name="column")String column, Model model){
         List<Loto> lotos = lotoService.sortTable(column);
         model.addAttribute("lotos", lotos);
-        System.out.println("sort");
         return "loto/show-all-lotos";
     }
     @PostMapping("/filter")
     public String filterByColumn(@RequestBody Map<String, String> payload, Model model){
         List<Loto> l = lotoService.filterTable(payload);
-        System.out.println(l.size());
         model.addAttribute("lotos", l);
         return "loto/show-all-lotos";
     }

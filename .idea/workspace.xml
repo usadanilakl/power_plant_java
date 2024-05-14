@@ -5,19 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="21acb2d7-60a7-467d-8e30-ed2c2c3409bf" name="Changes" comment="Working on Entities">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/util/DataGenerator.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/PowerPlantJavaApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/PowerPlantJavaApplication.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/controller/permits/LotoController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/controller/permits/LotoController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/controller/permits/SwController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/controller/permits/SwController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/controller/permits/TicketController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/controller/permits/TicketController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/repository/permits/BasePermitRepo.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/repository/permits/BasePermitRepo.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/repository/permits/loto_repo/BaseLotoRepo.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/repository/permits/loto_repo/BaseLotoRepo.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/BasePermitService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/BasePermitService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/BaseLotoService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/BaseLotoService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/BasePermitServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/BasePermitServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/templates/loto/show-all-lotos.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/templates/loto/show-all-lotos.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/PowerPlantJavaApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/PowerPlantJavaApplication.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/permits/LotoController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/permits/LotoController.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/testdb.mv.db" beforeDir="false" afterPath="$PROJECT_DIR$/testdb.mv.db" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -39,6 +35,10 @@
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 3
@@ -59,6 +59,7 @@
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "git-widget-placeholder": "cleanup",
     "kotlin-language-version-configured": "true",
+    "node.js.selected.package.tslint": "(autodetect)",
     "settings.editor.selected.configurable": "reference.projectsettings.compiler.annotationProcessors"
   }
 }]]></component>

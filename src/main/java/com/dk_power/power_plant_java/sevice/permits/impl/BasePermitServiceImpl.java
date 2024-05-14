@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.permits.impl;
 
 import com.dk_power.power_plant_java.dto.permits.BasePermitDto;
 import com.dk_power.power_plant_java.entities.permits.BasePermit;
+import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.BasePermitMapper;
 import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;
@@ -9,10 +10,18 @@ import com.dk_power.power_plant_java.sevice.permits.BasePermitService;
 import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
 import com.dk_power.power_plant_java.sevice.users.impl.UserDetailsServiceImpl;
 import com.dk_power.power_plant_java.util.Util;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import lombok.AllArgsConstructor;
+import org.hibernate.envers.AuditReader;
+import org.hibernate.envers.AuditReaderFactory;
+import org.hibernate.envers.RevisionType;
+import org.hibernate.envers.query.AuditEntity;
+import org.hibernate.envers.query.AuditQuery;
 import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +32,7 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
     private final FilterService<T> filterService;
     private final UserDetailsServiceImpl customUserDetails;
     private final BasePermitMapper<T,D> permitMapper;
+    private EntityManagerFactory entityManagerFactory;
 
     @Override
     public List<T> getAll() {
@@ -157,6 +167,25 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
     @Override
     public T getTempPermit() {
         return repository.getTempPermit(getLoggedInUserName());
+    }
+
+    @Override
+    public List<T> getRevision(Long id, Class<T> entityClass){
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        List<T> entities = new ArrayList<>();
+        try {
+            AuditReader reader = AuditReaderFactory.get(entityManager);
+            AuditQuery query = reader.createQuery().forRevisionsOfEntity(entityClass, false, true);
+            query.add(AuditEntity.id().eq(652));
+            List<Object[]> result = query.getResultList();
+            result.forEach(e->entities.add(entityClass.cast(e[0])));
+
+        } finally {
+            if (entityManager != null) {
+                entityManager.close();
+            }
+        }
+        return entities;
     }
 
 

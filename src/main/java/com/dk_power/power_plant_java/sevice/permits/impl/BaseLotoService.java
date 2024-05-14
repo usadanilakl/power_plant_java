@@ -7,14 +7,30 @@ import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.BaseLotoRepo;
 import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
 import com.dk_power.power_plant_java.sevice.users.impl.UserDetailsServiceImpl;
+import jakarta.persistence.EntityManagerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class BaseLotoService extends BasePermitServiceImpl<BaseLoto, BaseLotoDto>{
     private final BaseLotoRepo baseLotoRepo;
 
-    public BaseLotoService(BasePermitRepo<BaseLoto> repository, PermitNumbersService permitNumbersService, FilterService<BaseLoto> filterService, UserDetailsServiceImpl customUserDetails, BasePermitMapper<BaseLoto, BaseLotoDto> permitMapper, BaseLotoRepo baseLotoRepo) {
-        super(repository, permitNumbersService, filterService, customUserDetails, permitMapper);
+    public BaseLotoService(
+            BasePermitRepo<BaseLoto> repository,
+            PermitNumbersService permitNumbersService,
+            FilterService<BaseLoto> filterService,
+            UserDetailsServiceImpl customUserDetails,
+            BasePermitMapper<BaseLoto, BaseLotoDto> permitMapper,
+            BaseLotoRepo baseLotoRepo,
+            EntityManagerFactory entityManagerFactory
+    ) {
+        super(
+                repository,
+                permitNumbersService,
+                filterService,
+                customUserDetails,
+                permitMapper,
+                entityManagerFactory
+        );
         this.baseLotoRepo = baseLotoRepo;
     }
 
