@@ -81,7 +81,7 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
         T permit = permitMapper.convertToEntity(dto, tClass);
         //permit.setDocNum(permitNumbersService.getNumber(permit.getType()));
         permit.setDocNum(generatePermitNum());
-        permit.setStatus(Status.INCATCIVE);
+        permit.setStatus(Status.INACTIVE);
         return save(permit);
     }
 
@@ -176,7 +176,7 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
         try {
             AuditReader reader = AuditReaderFactory.get(entityManager);
             AuditQuery query = reader.createQuery().forRevisionsOfEntity(entityClass, false, true);
-            query.add(AuditEntity.id().eq(652));
+            query.add(AuditEntity.id().eq(id));
             List<Object[]> result = query.getResultList();
             result.forEach(e->entities.add(entityClass.cast(e[0])));
 

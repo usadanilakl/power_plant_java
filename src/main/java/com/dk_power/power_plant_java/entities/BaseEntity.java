@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.entities;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 @MappedSuperclass
 @Data
 @EntityListeners(AuditingEntityListener.class)
+@Audited
 public class BaseEntity {
     @CreatedDate
     @Temporal(TemporalType.TIMESTAMP)

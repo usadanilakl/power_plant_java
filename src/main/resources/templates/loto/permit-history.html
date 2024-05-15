@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connection Test</title>
+    <title>Permit History</title>
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
     <style>
         .column-position{
@@ -47,9 +47,8 @@
                         <input type="text" name="getDocNum" class="filters full-width">
                         <a class="btn btn-warning full-width" th:href="@{/lotos/sort?column=getDocNum}">Number</a>
                     </th>
-                    <th>Edit</th>
-                    <th>History</th>
-
+                    <th>Edited By</th>
+                    <th>Edited Time</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -57,10 +56,10 @@
                     <th scope="row" th:text="${stat.index+1}"></th>
                     <td th:text="${loto.workScope}"></td>
                     <td th:text="${loto.requestor}"></td>
-                    <td><a class="btn btn-warning" onclick="fillPopUpInfo(event)" th:text="${loto.status}"></a></td>
+                    <td th:text="${loto.status}">></td>
                     <td th:text="${loto.docNum}"></td>
-                    <td><a class="btn btn-warning" th:href="@{/lotos/edit/{id}(id=${loto.id})}">Edit</a></td>
-                    <td><a class="btn btn-warning" th:href="@{/lotos/history/{id}(id=${loto.id})}">Details</a></td>
+                    <td th:text="${#temporals.format(loto.dateModified, 'dd/MM/yyyy HH:mm')}"></td>
+                    <td th:text="${loto.modifiedBy}"></td>
                     <td th:text="${loto.id}" style="display: none;" name="id"></td>
                 </tr>
                 </tbody>

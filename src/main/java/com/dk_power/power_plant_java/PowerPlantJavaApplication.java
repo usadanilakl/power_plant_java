@@ -50,15 +50,15 @@ private EntityManagerFactory entityManagerFactory;
 
             // get a list of revisions for a specific entity
             AuditQuery query = reader.createQuery().forRevisionsOfEntity(Loto.class, false, true);
-            query.add(AuditEntity.id().eq(652));
+            query.add(AuditEntity.id().eq(853));
             List<Object[]> result = query.getResultList();
-            result.forEach(e->{
-                System.out.println("================================");
-                System.out.println(((Loto) e[0]).getWorkScope());
-                System.out.println(e[1].toString());
-                System.out.println((RevisionType) e[2]);
-                System.out.println("================================");
-            });
+//            result.forEach(e->{
+//                System.out.println("================================");
+//                System.out.println(((Loto) e[0]).getWorkScope());
+//                System.out.println(e[1].toString());
+//                System.out.println((RevisionType) e[2]);
+//                System.out.println("================================");
+//            });
         } finally {
             if (entityManager != null) {
                 entityManager.close();

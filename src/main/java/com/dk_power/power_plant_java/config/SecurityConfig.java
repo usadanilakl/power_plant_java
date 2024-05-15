@@ -27,11 +27,15 @@ public class SecurityConfig{
                                 "/functions/**",
                                 "/interact.js-main/**",
                                 "/my_styles/**",
-                                "/uploads**"
+                                "/uploads**",
+                                "/h2-console/**"
                         ).permitAll()
                         //.requestMatchers("/**").hasRole("Admin")
                         .anyRequest().authenticated()
+
                 )
+                .csrf(csrf->csrf.ignoringRequestMatchers("/h2-console/**"))
+                .headers(headers->headers.frameOptions(frame->frame.sameOrigin()))
                 .formLogin((form) -> form
                         .loginPage("/login")
                         .defaultSuccessUrl("/")
