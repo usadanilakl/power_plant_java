@@ -4,42 +4,21 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="21acb2d7-60a7-467d-8e30-ed2c2c3409bf" name="Changes" comment="New permits work. Changed permit numbering.">
-      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/converter/BoxConverter.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/dto/permits/BoxDto.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/dto/permits/TempLotoDto.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/TempLoto.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/mappers/BaseItemMapper.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/repository/permits/loto_repo/TempLotoRepo.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/BoxService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/BoxServiceImpl.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/TempLotoService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/templates/loto/LotoForm.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/templates/loto/new-loto-form2.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/templates/loto/permit-history.html" afterDir="false" />
+    <list default="true" id="21acb2d7-60a7-467d-8e30-ed2c2c3409bf" name="Changes" comment="Working on getting revisions for viewing history of a permit.">
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_14_2024_6_30_PM__Changes_.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_14_2024_6_30_PM__Changes_.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/PowerPlantJavaApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/PowerPlantJavaApplication.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/config/SecurityConfig.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/controller/permits/LotoController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/controller/permits/LotoController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/BaseEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/BaseEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/dto/permits/BaseLotoDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/dto/permits/BaseLotoDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/dto/permits/LotoDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/dto/permits/LotoDto.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/Box.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/Box.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/enums/Status.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/enums/Status.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/Loto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/Loto.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/repository/permits/loto_repo/BoxRepo.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/repository/permits/loto_repo/BoxRepo.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/BasePermitServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/BasePermitServiceImpl.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/templates/loto/new-loto-form.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/templates/loto/new-loto-form.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/BoxServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/permits/impl/BoxServiceImpl.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/templates/loto/show-all-lotos.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/templates/loto/show-all-lotos.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/application.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/PowerPlantJavaApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/PowerPlantJavaApplication.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/config/SecurityConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/config/SecurityConfig.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/permits/LotoController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/permits/LotoController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/BaseEntity.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/BaseEntity.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/permits/lotos/Box.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/permits/lotos/Box.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/enums/Status.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/enums/Status.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/repository/permits/loto_repo/BoxRepo.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/repository/permits/loto_repo/BoxRepo.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/BasePermitServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/BasePermitServiceImpl.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/templates/loto/new-loto-form.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/loto/new-loto-form.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/BoxServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/BoxServiceImpl.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/templates/loto/show-all-lotos.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/loto/show-all-lotos.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/testdb.mv.db" beforeDir="false" afterPath="$PROJECT_DIR$/testdb.mv.db" afterDir="false" />
     </list>
@@ -48,11 +27,14 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="ChangesViewManager">
+    <option name="groupingKeys">
+      <option value="directory" />
+    </option>
+  </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="HTML File" />
-        <option value="Interface" />
         <option value="Class" />
       </list>
     </option>
@@ -64,6 +46,10 @@
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 3
@@ -79,26 +65,20 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "Application.PowerPlantJavaApplication.executor": "Run",
-    "DefaultHtmlFileTemplate": "HTML File",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "WebServerToolWindowFactoryState": "false",
     "git-widget-placeholder": "cleanup",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/usada/my_projects/power_plant_java/src/main/resources/templates/loto",
-    "settings.editor.selected.configurable": "reference.projectsettings.compiler.annotationProcessors"
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "settings.editor.selected.configurable": "reference.projectsettings.compiler.annotationProcessors",
+    "spring.configuration.checksum": "f4973db257979f7204ec40539d1d4cfa",
+    "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Users\usada\my_projects\power_plant_java\src\main\resources\templates\loto" />
-    </key>
-    <key name="CopyClassDialog.RECENTS_KEY">
-      <recent name="com.dk_power.power_plant_java.mappers" />
-      <recent name="com.dk_power.power_plant_java.dto.permits" />
-      <recent name="com.dk_power.power_plant_java.sevice.permits.impl" />
-    </key>
-  </component>
   <component name="RunManager">
     <configuration name="PowerPlantJavaApplication" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="com.dk_power.power_plant_java.PowerPlantJavaApplication" />
@@ -134,6 +114,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1712186845923</updated>
+      <workItem from="1715770179070" duration="4490000" />
     </task>
     <task id="LOCAL-00001" summary="Working on Entities">
       <option name="closed" value="true" />
@@ -143,24 +124,30 @@
       <option name="project" value="LOCAL" />
       <updated>1712190880056</updated>
     </task>
-    <task id="LOCAL-00002" summary="New permits work. Changed permit numbering.">
-      <option name="closed" value="true" />
-      <created>1715677185793</created>
+    <task id="LOCAL-00002" summary="Working on getting revisions for viewing history of a permit.">
+      <created>1715692012356</created>
       <option name="number" value="00002" />
       <option name="presentableId" value="LOCAL-00002" />
       <option name="project" value="LOCAL" />
-      <updated>1715677185793</updated>
+      <updated>1715692012356</updated>
     </task>
-    <task id="LOCAL-00003" summary="New permits work. Changed permit numbering.">
-      <option name="closed" value="true" />
-      <created>1715677215573</created>
+    <task id="LOCAL-00003" summary="Working on getting revisions for viewing history of a permit.">
+      <created>1715692144111</created>
       <option name="number" value="00003" />
       <option name="presentableId" value="LOCAL-00003" />
       <option name="project" value="LOCAL" />
-      <updated>1715677215573</updated>
+      <updated>1715692144111</updated>
     </task>
     <option name="localTasksCounter" value="4" />
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+    <option name="exactExcludedFiles">
+      <list>
+        <option value="$PROJECT_DIR$/src/main/resources/static/interact.js-main/packages/interactjs/index.d.ts" />
+      </list>
+    </option>
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
@@ -175,7 +162,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Working on Entities" />
-    <MESSAGE value="New permits work. Changed permit numbering." />
-    <option name="LAST_COMMIT_MESSAGE" value="New permits work. Changed permit numbering." />
+    <MESSAGE value="Working on getting revisions for viewing history of a permit." />
+    <option name="LAST_COMMIT_MESSAGE" value="Working on getting revisions for viewing history of a permit." />
   </component>
 </project>

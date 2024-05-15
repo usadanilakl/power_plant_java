@@ -56,7 +56,7 @@ public class LotoController {
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute("loto") LotoDto tempLoto){
         Loto aNew = lotoService.createNew(tempLoto, Loto.class);
-        if(aNew.getBox()==null) boxService.assignLoto(aNew);
+        if(aNew.getBox()==null || aNew.getBox().getNumber()==0) boxService.assignLoto(aNew);
         lotoService.filterNew(aNew);
         tempLotoService.resetFields();
         return "redirect:/lotos/";

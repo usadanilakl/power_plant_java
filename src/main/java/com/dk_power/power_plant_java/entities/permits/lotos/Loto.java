@@ -11,4 +11,7 @@ import org.hibernate.envers.Audited;
 @NoArgsConstructor
 @Audited
 public class Loto extends BaseLoto {
+    public Integer boxNumber(){
+        return this.getBox().getNumber();
+    }
 }

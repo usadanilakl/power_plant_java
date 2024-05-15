@@ -49,18 +49,23 @@
                     </th>
                     <th>Edit</th>
                     <th>History</th>
+                    <th>
+                        <input type="text" name="boxNumber" class="filters full-width">
+                        <a class="btn btn-warning full-width" th:href="@{/lotos/sort?column=boxNumber}">Box</a>
+                    </th>
 
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="loto, stat : ${lotos}" th:id="${loto.docNum}">
-                    <th scope="row" th:text="${stat.index+1}"></th>
+                    <td scope="row" th:text="${stat.index+1}"></td>
                     <td th:text="${loto.workScope}"></td>
                     <td th:text="${loto.requestor}"></td>
                     <td><a class="btn btn-warning" onclick="fillPopUpInfo(event)" th:text="${loto.status}"></a></td>
                     <td th:text="${loto.docNum}"></td>
                     <td><a class="btn btn-warning" th:href="@{/lotos/edit/{id}(id=${loto.id})}">Edit</a></td>
                     <td><a class="btn btn-warning" th:href="@{/lotos/history/{id}(id=${loto.id})}">Details</a></td>
+                    <td th:if="${loto.box}!=null" th:text="${loto.box.number}"></td>
                     <td th:text="${loto.id}" style="display: none;" name="id"></td>
                 </tr>
                 </tbody>

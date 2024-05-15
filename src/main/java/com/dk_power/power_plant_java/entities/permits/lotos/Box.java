@@ -15,10 +15,13 @@ import org.hibernate.envers.Audited;
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
+
 public class Box extends BaseEntity {
     private Integer number = 0;
     @OneToOne
     @JoinColumn(name = "loto_id")
     private BaseLoto loto;
     private Status status;
+
+
 }

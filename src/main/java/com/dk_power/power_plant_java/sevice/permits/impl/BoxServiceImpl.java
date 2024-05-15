@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.BaseItemMapper;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.BoxRepo;
+import com.dk_power.power_plant_java.repository.permits.loto_repo.LotoRepo;
 import com.dk_power.power_plant_java.sevice.permits.BoxService;
 import com.dk_power.power_plant_java.util.Util;
 import lombok.AllArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.List;
 @AllArgsConstructor
 public class BoxServiceImpl implements BoxService {
     private final BoxRepo boxRepo;
+    private final LotoRepo lotoRepo;
     private final BaseItemMapper<Box,BoxDto> itemMapper;
     @Override
     public List<Box> getAllBoxes() {
@@ -53,7 +55,10 @@ public class BoxServiceImpl implements BoxService {
     public void assignLoto(Loto loto) {
         Box box = getEmptyBox();
         box.setLoto(loto);
+        loto.setBox(box);
         changeBoxStatus(box);
+        boxRepo.save(box);
+        lotoRepo.save(loto);
     }
 
     @Override
