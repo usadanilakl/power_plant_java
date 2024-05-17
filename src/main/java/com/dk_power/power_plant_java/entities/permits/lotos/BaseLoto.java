@@ -6,7 +6,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.envers.Audited;
 
 import java.util.List;
@@ -14,21 +16,18 @@ import java.util.List;
 import static org.hibernate.envers.RelationTargetAuditMode.NOT_AUDITED;
 
 @Entity
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @Audited(targetAuditMode = NOT_AUDITED)
 public class BaseLoto extends BasePermit {
     {
         this.setType(PermitType.LOTO);
     }
-    @OneToOne(mappedBy = "loto")
-    private Box box;
+
     @OneToMany(mappedBy = "loto")
     private List<Lock> locks;
 
-    public Box getBox() {
-        if(box!=null)return box;
-        else return new Box();
-    }
+
 }
 

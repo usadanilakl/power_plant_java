@@ -20,7 +20,7 @@ public class Box extends BaseEntity {
     private Integer number = 0;
     @OneToOne
     @JoinColumn(name = "loto_id")
-    private BaseLoto loto;
+    private Loto loto;
     private Status status;
 
 
