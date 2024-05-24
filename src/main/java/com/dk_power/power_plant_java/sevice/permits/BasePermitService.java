@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.permits;
 
+import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.enums.Status;
 
 import java.util.List;
@@ -26,4 +27,5 @@ public interface BasePermitService<T,D> {
     Long generatePermitNum();
     List<T> getRevision(Long id,Class<T> entityClass);
 
+    D getDtoById(String ID);
 }

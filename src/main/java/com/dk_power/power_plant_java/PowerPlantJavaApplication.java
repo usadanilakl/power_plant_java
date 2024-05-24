@@ -1,16 +1,23 @@
 package com.dk_power.power_plant_java;
 
 import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
+import com.dk_power.power_plant_java.entities.permits.lotos.Box;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
+import com.dk_power.power_plant_java.entities.permits.lotos.TestLoto;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitNumbersRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.BaseLotoRepo;
+import com.dk_power.power_plant_java.repository.permits.loto_repo.BoxRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.LotoRepo;
+import com.dk_power.power_plant_java.repository.permits.loto_repo.TestLotoRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.permits.BoxService;
 import com.dk_power.power_plant_java.util.DataGenerator;
+import com.dk_power.power_plant_java.util.Util;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.hibernate.envers.AuditReader;
 import org.hibernate.envers.AuditReaderFactory;
@@ -33,7 +40,10 @@ private final PermitNumbersRepo permitNumbersRepo;
 private final BaseLotoRepo baseLotoRepo;
 private final DataGenerator dataGenerator;
 private final EntityManager entityManager;
-private EntityManagerFactory entityManagerFactory;
+//private EntityManagerFactory entityManagerFactory;
+private final BoxService boxService;
+private final BoxRepo boxRepo;
+private final TestLotoRepo testLotoRepo;
 
     public static void main(String[] args) {
         SpringApplication.run(PowerPlantJavaApplication.class, args);
@@ -41,29 +51,12 @@ private EntityManagerFactory entityManagerFactory;
     }
 
     @Override
+    @Transactional
     public void run(String... args) throws Exception {
-        EntityManager entityManager = entityManagerFactory.createEntityManager();
-        try {
-            AuditReader reader = AuditReaderFactory.get(entityManager);
-            // get an audited entity by primary key and revision number
-            Loto entity = reader.find(Loto.class, 652, 141);
 
-            // get a list of revisions for a specific entity
-            AuditQuery query = reader.createQuery().forRevisionsOfEntity(Loto.class, false, true);
-            query.add(AuditEntity.id().eq(853));
-            List<Object[]> result = query.getResultList();
-//            result.forEach(e->{
-//                System.out.println("================================");
-//                System.out.println(((Loto) e[0]).getWorkScope());
-//                System.out.println(e[1].toString());
-//                System.out.println((RevisionType) e[2]);
-//                System.out.println("================================");
-//            });
-        } finally {
-            if (entityManager != null) {
-                entityManager.close();
-            }
-        }
+
+
+        System.out.println("=====================================================");
 
 
 

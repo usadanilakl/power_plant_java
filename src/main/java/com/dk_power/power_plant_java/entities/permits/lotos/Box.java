@@ -2,16 +2,13 @@ package com.dk_power.power_plant_java.entities.permits.lotos;
 
 import com.dk_power.power_plant_java.entities.BaseEntity;
 import com.dk_power.power_plant_java.enums.Status;
-import jakarta.persistence.Entity;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import lombok.*;
 import org.hibernate.envers.Audited;
 
 @Entity
-@Data
+@Setter
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
@@ -19,9 +16,23 @@ import org.hibernate.envers.Audited;
 public class Box extends BaseEntity {
     private Integer number = 0;
     @OneToOne
-    @JoinColumn(name = "loto_id")
+    @JoinColumn(name = "loto")
     private Loto loto;
     private Status status;
+    private String equipment = "Available";
+
+    @OneToOne
+    @JoinColumn(name = "test_loto")
+    private TestLoto testLoto;
+
+    @PostPersist
+    public void setEquipment(){
+        if(this.loto == null) this.equipment = "Available";
+        else this.equipment = this.loto.getEquipment();
+    }
 
 
+//    @OneToOne
+//    @JoinColumn(name = "base_loto")
+//    private BaseLoto baseLoto;
 }

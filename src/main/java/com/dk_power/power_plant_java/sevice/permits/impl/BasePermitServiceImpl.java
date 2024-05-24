@@ -12,6 +12,8 @@ import com.dk_power.power_plant_java.sevice.users.impl.UserDetailsServiceImpl;
 import com.dk_power.power_plant_java.util.Util;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.MapKey;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.hibernate.envers.AuditReader;
 import org.hibernate.envers.AuditReaderFactory;
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 @AllArgsConstructor
+@Transactional
 public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto> implements BasePermitService<T, D> {
     private final BasePermitRepo<T> repository;
     protected PermitNumbersService permitNumbersService;
@@ -186,6 +189,11 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
             }
         }
         return entities;
+    }
+
+    @Override
+    public D getDtoById(String ID) {
+        return null;
     }
 
 

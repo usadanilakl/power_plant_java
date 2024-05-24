@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.repository.permits.loto_repo.BoxRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.LotoRepo;
 import com.dk_power.power_plant_java.sevice.permits.BoxService;
 import com.dk_power.power_plant_java.util.Util;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ import java.util.List;
 
 @Service
 @AllArgsConstructor
+@Transactional
 public class BoxServiceImpl implements BoxService {
     private final BoxRepo boxRepo;
     private final LotoRepo lotoRepo;
@@ -52,13 +54,14 @@ public class BoxServiceImpl implements BoxService {
         }
     }
     @Override
-    public void assignLoto(Loto loto) {
+    public Box assignLoto(Loto loto) {
         Box box = getEmptyBox();
         box.setLoto(loto);
         loto.setBox(box);
         changeBoxStatus(box);
         boxRepo.save(box);
         lotoRepo.save(loto);
+        return box;
     }
 
     @Override
@@ -71,5 +74,21 @@ public class BoxServiceImpl implements BoxService {
     public BoxDto getBoxDtoById(Long id) {
         Box box = boxRepo.findById(id).orElse(null);
         return itemMapper.convertToDto(box,BoxDto.class);
+    }
+
+    @Override
+    public BoxDto getBoxDtoByNumber(String number) {
+        Box box = boxRepo.findByNumber(Integer.parseInt(number));
+        return itemMapper.convertToDto(box, BoxDto.class);
+    }
+
+    @Override
+    public Box getBoxById(Long id) {
+        return boxRepo.findById(id).orElse(null);
+    }
+
+    @Override
+    public Box saveBox(Box box) {
+        return boxRepo.save(box);
     }
 }

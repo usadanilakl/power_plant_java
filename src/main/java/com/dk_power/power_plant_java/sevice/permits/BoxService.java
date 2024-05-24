@@ -12,8 +12,11 @@ public interface BoxService {
     void addNewBox();
     Box getEmptyBox();
     void changeBoxStatus(Box box);
-    void assignLoto(Loto loto);
+    Box assignLoto(Loto loto);
     void resetLoto(Box box);
     BoxDto getBoxDtoById(Long id);
+    BoxDto getBoxDtoByNumber(String number);
+    Box getBoxById(Long id);
+    Box saveBox(Box box);
 
 }

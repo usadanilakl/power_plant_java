@@ -31,5 +31,10 @@ public class LotoService extends BasePermitServiceImpl<Loto, LotoDto>{
         this.lotoRepo = lotoRepo;
     }
 
+    @Override
+    public LotoDto getDtoById(String ID) {
+        Loto lot = lotoRepo.findById(Long.parseLong(ID)).orElse(null);
+        return convertToDto(lot,LotoDto.class);
+    }
 }
 

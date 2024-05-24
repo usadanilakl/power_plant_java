@@ -13,6 +13,11 @@
 <div class="container">
     <div class="row">
         <div class="col-md-12">
+
+            <div th:if="${emptyBox == null}">
+                <h1>NO EMPTY BOXES LEFT. ADD NEW BOX OR EMPTY ONE OF BOXES THAT ARE IN USE</h1>
+            </div>
+
             <form th:object="${loto}" th:action="@{/lotos/create}" method="post" id="lotoForm">
 <!--                <input class="form-control" type="text" th:field="*{id}"  th:value="${loto.id}">-->
                 <div class="form-group">
@@ -55,9 +60,9 @@
                     <select th:field="*{box}" id="boxDropdown" onchange="selectFunction()">
                         <option value="" >Select Box</option>
                         <option
-                                th:each="box:${boxes}"
-                                th:text="${box.number}"
-                                th:value="${box.id}"
+                                th:each="b:${boxes}"
+                                th:text="${b.number}"
+                                th:value="${b.id}"
                         ></option>
                         <option value="-1">Add New Box</option>
                     </select>

@@ -16,4 +16,5 @@ public interface BoxRepo extends CrudRepository<Box,Long> {
     }
     @Query("SELECT MAX(b.number) FROM Box b")
     Integer getMaxNumber();
+    Box findByNumber(Integer number);
 }

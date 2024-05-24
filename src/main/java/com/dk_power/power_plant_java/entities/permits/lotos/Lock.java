@@ -19,5 +19,5 @@ public class Lock extends BaseEntity {
     private Status status;
     @ManyToOne
     @JoinColumn(name = "loto_id")
-    private BaseLoto loto;
+    private Loto loto;
 }
