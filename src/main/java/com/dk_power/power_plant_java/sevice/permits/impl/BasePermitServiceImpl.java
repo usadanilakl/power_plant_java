@@ -136,20 +136,16 @@ public class BasePermitServiceImpl <T extends BasePermit,D extends BasePermitDto
     @Override
     public void filterNew(T entity) {
         boolean contains = true;
+        boolean exists = false;
         if(filterService.getLastSetOfFileters()!=null){
             for(Map.Entry<String,String> e : filterService.getLastSetOfFileters().entrySet()){
                 if(!filterService.getFieldByName(entity,e.getKey()).toString().contains(e.getValue())) contains = false;
             }
         }
         if(filterService.getPermits()!=null){
-            for (BasePermit el : filterService.getPermits()) {
-                if(el.getId().equals(entity.getId())){
-                    el.copy(entity);
-                    return;
-                }
-            }
+            exists = filterService.updateItem(entity);
         }
-        if(contains)filterService.addItem(entity);
+        if(contains && !exists)filterService.addItem(entity);
     }
 
     @Override

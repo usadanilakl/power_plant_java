@@ -6,15 +6,14 @@ import com.dk_power.power_plant_java.entities.permits.tickets.BaseTicket;
 import com.dk_power.power_plant_java.enums.PermitType;
 import com.dk_power.power_plant_java.enums.Status;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.envers.Audited;
 
 import java.util.List;
 
 @Entity
-@Data
+@Setter
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited

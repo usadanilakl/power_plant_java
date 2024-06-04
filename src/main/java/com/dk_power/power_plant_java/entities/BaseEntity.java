@@ -29,4 +29,16 @@ public class BaseEntity {
     @Id
     @GeneratedValue
     private Long id;
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        BaseEntity otherEntity = (BaseEntity) obj;
+        return id.equals(otherEntity.getId());
+    }
 }

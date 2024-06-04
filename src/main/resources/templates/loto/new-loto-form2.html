@@ -12,6 +12,9 @@
 <div class="container">
     <div class="row">
         <div class="col-md-12">
+            <div th:if="${emptyBox == null}">
+                <h1>NO EMPTY BOXES LEFT. ADD NEW BOX OR EMPTY ONE OF BOXES THAT ARE IN USE</h1>
+            </div>
             <form th:object="${loto}" th:action="@{/lotos/create}" method="post" id="lotoForm">
                 <div class="row">
                     <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">

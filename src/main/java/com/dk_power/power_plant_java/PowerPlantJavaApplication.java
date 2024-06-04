@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java;
 
+import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
 import com.dk_power.power_plant_java.entities.permits.lotos.Box;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
@@ -12,6 +13,7 @@ import com.dk_power.power_plant_java.repository.permits.loto_repo.BoxRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.LotoRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.TestLotoRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.permits.BasePermitService;
 import com.dk_power.power_plant_java.sevice.permits.BoxService;
 import com.dk_power.power_plant_java.util.DataGenerator;
 import com.dk_power.power_plant_java.util.Util;
@@ -37,6 +39,7 @@ private final UserRepo userRepo;
 private final LotoRepo lotoRepo;
 private final BasePermitRepo basePermitRepo;
 private final PermitNumbersRepo permitNumbersRepo;
+private final BasePermitService<Loto, LotoDto> basePermitService;
 private final BaseLotoRepo baseLotoRepo;
 private final DataGenerator dataGenerator;
 private final EntityManager entityManager;

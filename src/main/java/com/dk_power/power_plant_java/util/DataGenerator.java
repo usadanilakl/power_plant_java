@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.util;
 
+import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.entities.permits.safe_works.Sw;
 import com.dk_power.power_plant_java.entities.permits.tickets.Ticket;
@@ -19,6 +20,7 @@ public class DataGenerator {
     private final SwService swService;
     private final TicketService ticketService;
     private final UserRepo userRepo;
+    private final BasePermitService<Loto, LotoDto> basePermitService;
     public void createLoto(){
         Loto loto = new Loto();
         loto.setCreatedBy("Danil");
@@ -53,5 +55,17 @@ public class DataGenerator {
         user.setPassword("123");
         user.setRole("Operator");
         userRepo.save(user);
+    }
+
+    public void resetLotoDocNumber(){
+        Iterable<Loto> all = lotoService.getAll();
+        all.forEach(e->{
+            e.setDocNum(null);
+            lotoService.save(e);
+        });
+        all.forEach(e->{
+            e.setDocNum(basePermitService.generatePermitNum());
+            lotoService.save(e);
+        });
     }
 }

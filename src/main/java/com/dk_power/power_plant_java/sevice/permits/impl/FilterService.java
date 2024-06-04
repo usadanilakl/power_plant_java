@@ -54,6 +54,15 @@ public class FilterService<T extends BasePermit>{
         return permits;
     }
 
+    public boolean updateItem(T item){
+        int index = permits.indexOf(item);
+        if(index!=-1){
+            permits.set(index,item);
+            return true;
+        }
+        return false;
+    }
+
 
 
 

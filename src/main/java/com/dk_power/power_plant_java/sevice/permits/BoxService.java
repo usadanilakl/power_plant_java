@@ -18,5 +18,6 @@ public interface BoxService {
     BoxDto getBoxDtoByNumber(String number);
     Box getBoxById(Long id);
     Box saveBox(Box box);
+    void assignBoxAndLoto(Box box, Loto loto);
 
 }

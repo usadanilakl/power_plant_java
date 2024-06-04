@@ -91,4 +91,13 @@ public class BoxServiceImpl implements BoxService {
     public Box saveBox(Box box) {
         return boxRepo.save(box);
     }
+
+    @Override
+    public void assignBoxAndLoto(Box box, Loto loto) {
+        box.setLoto(loto);
+        loto.setBox(box);
+        changeBoxStatus(box);
+        boxRepo.save(box);
+        lotoRepo.save(loto);
+    }
 }

@@ -32,6 +32,7 @@ public class LotoController {
     @GetMapping("/")
     public String showAllLotots(Model model){
         model.addAttribute("lotos", lotoService.getLastFilteredList());
+        model.addAttribute("statuses", Status.values());
         return "loto/show-all-lotos";
     }
     @GetMapping("/history/{id}")
@@ -59,11 +60,11 @@ public class LotoController {
     }
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute("loto") LotoDto tempLoto){
-        Loto aNew = lotoService.createNew(tempLoto, Loto.class);
+        Loto loto = lotoService.createNew(tempLoto, Loto.class);
         Box box = null;
-        if(aNew.getBox()==null || aNew.getBox().getNumber()==0) box = boxService.assignLoto(aNew);
+        if(loto.getBox()==null || loto.getBox().getNumber()==0) box = boxService.assignLoto(loto);
         if (box==null) return "redirect:/lotos/create";
-        lotoService.filterNew(aNew);
+        lotoService.filterNew(loto);
         tempLotoService.resetFields();
         return "redirect:/lotos/";
     }
@@ -78,12 +79,11 @@ public class LotoController {
     }
     @PostMapping("/edit")
     public String updateLoto(@ModelAttribute LotoDto loto){
-//        Loto entity = lotoService.getById(loto.getId());
-//        entity.copy(loto);
         Box box = boxService.getBoxById(loto.getBox().getId());
-        boxService.saveBox(box);
         Loto entity = lotoService.convertToEntity(loto,Loto.class);
-        System.out.println("entity.getId() = " + entity.getId());
+        entity.setBox(box);
+        box.setLoto(entity);
+        boxService.saveBox(box);
         lotoService.save(entity);
         lotoService.filterNew(entity);
         return "redirect:/lotos/";
@@ -101,6 +101,8 @@ public class LotoController {
     public String sortByColumn(@RequestParam(name="column")String column, Model model){
         List<Loto> lotos = lotoService.sortTable(column);
         model.addAttribute("lotos", lotos);
+        model.addAttribute("statuses", Status.values());
+
         return "loto/show-all-lotos";
     }
     @PostMapping("/filter")
