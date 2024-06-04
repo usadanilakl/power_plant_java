@@ -29,7 +29,6 @@ public class FilterServiceConfig {
     public FilterService<BaseLoto> baseLotoFilterService() {
         return new FilterService<>(baseLotoRepo);
     }
-
     @Bean
     public FilterService<Ticket> ticketFilterService() {
         return new FilterService<>(ticketRepo);
