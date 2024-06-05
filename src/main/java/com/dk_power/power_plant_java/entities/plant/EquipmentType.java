@@ -10,6 +10,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-public class EquipmentType extends BaseEntity {
-    private String name;
+public class EquipmentType extends Group {
+
 }

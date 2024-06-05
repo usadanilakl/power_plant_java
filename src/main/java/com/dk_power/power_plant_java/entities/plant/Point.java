@@ -10,6 +10,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-public class Point extends BaseEntity {
-    private String name;
+public class Point extends Group {
+
 }

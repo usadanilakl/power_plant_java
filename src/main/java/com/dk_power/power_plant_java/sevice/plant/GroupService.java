@@ -1,9 +1,12 @@
 package com.dk_power.power_plant_java.sevice.plant;
 
+import com.dk_power.power_plant_java.entities.plant.Group;
+
 import java.util.List;
 
-public interface GroupService <T>{
+public interface GroupService <T extends Group>{
     List<T> getAll();
-    T getById();
-    T save();
+    T getById(Long id);
+    T save(T entity);
+    Group createNew(String name , Class<T> groupType);
 }

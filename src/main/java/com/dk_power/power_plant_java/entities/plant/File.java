@@ -10,6 +10,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-public class File extends BaseEntity {
-    private String name;
+public class File extends Group {
+
 }

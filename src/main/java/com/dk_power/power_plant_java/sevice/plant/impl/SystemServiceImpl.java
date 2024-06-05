@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
+import com.dk_power.power_plant_java.entities.plant.System;
 import com.dk_power.power_plant_java.repository.plant.SystemRepo;
 import com.dk_power.power_plant_java.sevice.plant.SystemService;
 import org.springframework.stereotype.Service;

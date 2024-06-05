@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @Entity
 @NoArgsConstructor
-public class System extends BaseEntity {
-    private String name;
+public class System extends Group {
+
 
 }
