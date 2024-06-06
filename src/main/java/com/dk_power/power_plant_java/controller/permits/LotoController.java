@@ -6,11 +6,14 @@ import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
 import com.dk_power.power_plant_java.entities.permits.lotos.Box;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.entities.permits.lotos.TempLoto;
+import com.dk_power.power_plant_java.entities.plant.System;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.sevice.permits.BoxService;
 import com.dk_power.power_plant_java.sevice.permits.impl.BaseLotoService;
 import com.dk_power.power_plant_java.sevice.permits.impl.LotoService;
 import com.dk_power.power_plant_java.sevice.permits.impl.TempLotoService;
+import com.dk_power.power_plant_java.sevice.plant.GroupService;
+import com.dk_power.power_plant_java.sevice.plant.impl.GroupServiceImpl;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -28,6 +31,7 @@ public class LotoController {
     private final LotoService lotoService;
     private final BoxService boxService;
     private final TempLotoService tempLotoService;
+    private final GroupService<System> systemService;
 
     @GetMapping("/")
     public String showAllLotots(Model model){
@@ -49,6 +53,7 @@ public class LotoController {
         model.addAttribute("loto", loto);
         model.addAttribute("boxes",boxes);
         model.addAttribute("emptyBox", box);
+        model.addAttribute("systems", systemService.getAll());
         return "loto/new-loto-form";
     }
     @PostMapping("/autosave")

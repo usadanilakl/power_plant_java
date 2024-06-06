@@ -48,8 +48,21 @@
                     <input class="form-control" type="text" id="workscope" th:field="*{workScope}">
                 </div>
                 <div class="form-group">
-                    <label for="system">System</label>
-                    <input class="form-control" type="text" id="system" th:field="*{system}">
+<!--                    <label for="system">System</label>-->
+<!--                    <input class="form-control" type="text" id="system" th:field="*{system}">-->
+                    <label for="systems">Choose System:</label>
+<!--                    <input class="form-control" list="systems" id="system" name="system" th:field="*{system}">-->
+<!--                    <datalist id="systems" onchange="systemSelection(this.value, '/group/create?group=system&value='+this.value.substring(8),'/lotos/create)">-->
+<!--                        <option value="Add New: " text="Add New: ">-->
+<!--                        <option th:each="system : ${systems}" th:value="${system.name}" th:text="${system.name}">-->
+<!--                        <option value="Add New: " text="Add New: ">-->
+<!--                    </datalist>-->
+
+                    <select id="systems" onchange="fillPopUpInfo('System')">
+                        <option value="">Select System</option>
+                        <option th:each="system : ${systems}" th:value="${system.name}" th:text="${system.name}"></option>
+                        <option value="-1">Add New System</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="equipment">Equipment</label>
@@ -69,6 +82,29 @@
                 </div>
                 <button class="btn btn-primary btn-block" type="submit">Submit</button>
             </form>
+
+
+            <!-- Modal -->
+            <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Create New Item</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" >
+                            <label for="system-name">New System Name:</label>
+                            <input class="form-control group-value" type="text" id="system-name" onchange="updateValue(this.value)">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary"  id="save">Save changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
         </div>
     </div>
 </div>
@@ -76,8 +112,11 @@
 <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
 <script>
     let csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    let groupValue;
+    let saveButton = document.getElementById('save');
 
-    document.querySelectorAll('input').forEach(input => {
+    let lotoForm = document.getElementById("lotoForm");
+    lotoForm.querySelectorAll('input').forEach(input => {
         input.addEventListener('change', function(e) {
             e.preventDefault();
 
@@ -94,8 +133,7 @@
         });
     });
 
-   function createNewBoxPostRequest(){
-
+function createNewBoxPostRequest(){
     fetch("/lotos/add-box", {
         method: 'POST',
         headers: {
@@ -109,7 +147,6 @@
         .catch((error) => {
             console.error('Error:', error);
         })
-
 }
 
   function selectFunction() {
@@ -118,6 +155,46 @@
     createNewBoxPostRequest()
   }
 }
+
+    function systemSelection(value,url,redirect){
+        if(value === '-1' || value.includes("Add New")){
+            createNewItem(url, redirect);
+        }
+    }
+
+ function createNewItem(url,redirect){
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(()=>{
+            window.location.href = redirect;
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        })
+}
+
+      function fillPopUpInfo(group){
+        let title = document.getElementById("exampleModalLabel");
+        let modal = document.getElementById('exampleModal');
+        let myModal = new bootstrap.Modal(modal, {});
+        myModal.show();
+        title.textContent = "Create New " + group;
+        console.log(groupValue);
+        save.addEventListener('click', ()=>{
+            systemSelection('-1', '/group/create?group=system&value='+groupValue,'/lotos/create');
+        })
+
+      }
+
+    function updateValue(value){
+        groupValue = value;
+    }
 </script>
 </body>
 </html>

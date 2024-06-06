@@ -11,6 +11,7 @@ import lombok.Setter;
 @Entity
 @NoArgsConstructor
 public class System extends Group {
-
-
+    public System(String name) {
+        super(name);
+    }
 }

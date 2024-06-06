@@ -6,18 +6,26 @@ import com.dk_power.power_plant_java.repository.plant.*;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.sevice.plant.impl.GroupServiceImpl;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @AllArgsConstructor
 public class GroupServiceConfig {
+    @Autowired
     private EquipmentTypeRepo equipmentTypeRepo;
+    @Autowired
     private FileRepo fileRepo;
+    @Autowired
     private FileTypeRepo fileTypeRepo;
+    @Autowired
     private LocationRepo locationRepo;
+    @Autowired
     private PointRepo pointRepo;
+    @Autowired
     private SystemRepo systemRepo;
+    @Autowired
     private VendorRepo vendorRepo;
 
     @Bean

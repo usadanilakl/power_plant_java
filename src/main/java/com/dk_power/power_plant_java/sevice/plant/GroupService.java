@@ -8,5 +8,5 @@ public interface GroupService <T extends Group>{
     List<T> getAll();
     T getById(Long id);
     T save(T entity);
-    Group createNew(String name , Class<T> groupType);
+    T createNew(String name , Class<T> groupType);
 }

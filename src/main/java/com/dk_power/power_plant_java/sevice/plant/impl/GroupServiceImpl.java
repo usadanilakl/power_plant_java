@@ -2,13 +2,15 @@ package com.dk_power.power_plant_java.sevice.plant.impl;
 
 import com.dk_power.power_plant_java.entities.BaseEntity;
 import com.dk_power.power_plant_java.entities.plant.Group;
+import com.dk_power.power_plant_java.entities.plant.System;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.util.Util;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Constructor;
 import java.util.List;
-@Service
+
 public class GroupServiceImpl<T extends Group> implements GroupService<T> {
     private final CrudRepository<T,Long> repo;
     public GroupServiceImpl(CrudRepository<T,Long> repository) {
@@ -29,7 +31,15 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
     }
 
     @Override
-    public Group createNew(String name, Class<T> groupType) {
-        return save(groupType.cast(new Group(name))) ;
+    public T createNew(String name, Class<T> groupType) {
+        try {
+            Constructor<T> constructor = groupType.getConstructor(String.class);
+            T instance = constructor.newInstance(name);
+            return save(instance);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create a new instance", e);
+        }
+
+//        return save(groupType.cast(new Group(name))) ;
     }
 }

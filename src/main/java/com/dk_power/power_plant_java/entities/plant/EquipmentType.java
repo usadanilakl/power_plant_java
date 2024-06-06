@@ -11,5 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Entity
 public class EquipmentType extends Group {
-
+    public EquipmentType(String name) {
+        super(name);
+    }
 }
