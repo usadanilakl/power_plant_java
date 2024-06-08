@@ -1,11 +1,20 @@
 package com.dk_power.power_plant_java.controller;
 
+import com.dk_power.power_plant_java.entities.plant.FileObject;
+import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
+import com.dk_power.power_plant_java.sevice.plant.GroupService;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 @Controller
+@AllArgsConstructor
 public class HomeController {
+    private final GroupService<FileObject> fileObjectGroupService;
+
     @GetMapping("/")
-    String getHome(){
+    String getHome(Model model){
+        model.addAttribute("files", fileObjectGroupService.getAll());
         return "layouts/main-template";
     }
     @GetMapping("/admin")

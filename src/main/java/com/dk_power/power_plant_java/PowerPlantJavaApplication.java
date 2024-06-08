@@ -53,8 +53,8 @@ private final FileRepo fileRepo;
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        fileUploaderService.getFileFromGitHub(Util.toList(fileRepo.findAll()).get(0).getLink());
-        fileUploaderService.PdfToJpgConverter();
+//        fileUploaderService.getFileFromGitHub(Util.toList(fileRepo.findAll()).get(0).getLink());
+//        fileUploaderService.PdfToJpgConverter();
         System.out.println("=====================================================");
 
 

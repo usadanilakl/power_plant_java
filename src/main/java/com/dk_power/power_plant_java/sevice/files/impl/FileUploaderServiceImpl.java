@@ -23,9 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -43,10 +41,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
     private final PidService ps;
     private final PidRepo pr;
     private final FileRepo fileRepo;
-//    @Value("${message.success}")
-//    private String sucessUpload;
-//    @Value("${message.failed}")
-//    private String failedUpload;
+
 
     public String uploadFilesToLocal(FileUploader files){
         String message = "Files are successfully uploaded.";
@@ -75,18 +70,13 @@ public class FileUploaderServiceImpl implements FileUploaderService {
 
             for (MultipartFile file : files.getFiles()) {
                 uploadContent(file,path);
+                initialSave(file.getOriginalFilename(),path);
             }
-
         }catch (FileNotFoundException e) {
             createNewFolder(path);
             for (MultipartFile file : files.getFiles()) {
                 uploadContentHandled(file,path);
-
-                String number = file.getOriginalFilename();
-                FileObject fileObjectObj = new FileObject();
-                fileObjectObj.setLink(path+"/"+number);
-                fileObjectObj.setNumber(number);
-                fileRepo.save(fileObjectObj);
+                initialSave(file.getOriginalFilename(),path);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -98,12 +88,31 @@ public class FileUploaderServiceImpl implements FileUploaderService {
     public byte[] getFileFromGitHub(String path) {
         GitHub gitHub = connectToGitHub();
         GHRepository repository = null;
+//        try {
+//            repository = gitHub.getRepository("usadanilakl" + "/" + "power_plant_java");
+//            GHContent fileContent = repository.getFileContent(path);
+//            byte[] file = IOUtils.toByteArray(fileContent.read());
+//            saveToFile(file,"display.pdf");
+//            return file;
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+
+
         try {
             repository = gitHub.getRepository("usadanilakl" + "/" + "power_plant_java");
             GHContent fileContent = repository.getFileContent(path);
-            byte[] file = IOUtils.toByteArray(fileContent.read());
-            saveToFile(file,"display.pdf");
-            return file;
+            InputStream is = fileContent.read();
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            int nRead;
+            byte[] data = new byte[1024];
+            while ((nRead = is.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            buffer.flush();
+            byte[] byteArray = buffer.toByteArray();
+            saveToFile(byteArray, "display.pdf");
+            return byteArray;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -140,6 +149,14 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public FileObject initialSave(String number, String link) {
+        FileObject fileObjectObj = new FileObject();
+        fileObjectObj.setLink(link+"/"+number);
+        fileObjectObj.setNumber(number);
+        return fileRepo.save(fileObjectObj);
     }
 
     private GitHub connectToGitHub(){

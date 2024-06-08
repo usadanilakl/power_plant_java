@@ -22,11 +22,17 @@
         <div id="middle">
             <button id="pin-menu">Menu</button>
             <div id="left">
-                <div id="items"></div>
+                <div id="items">
+                    <ul>
+                        <li th:each="file:${files}"><a th:href="@{/file/display/{id}(id=${file.id})}" th:text="${file.number}"></a></li>
+                    </ul>
+
+                </div>
                 <div id="menu-resize"></div>
             </div>
             <div id="right">
                 <iframe src="/data/displayPdf" width="100%" height="600px"></iframe>
+                <img src="/data/displayJpg" alt="" width="100%" height="600px">
             </div>
         </div>
 
