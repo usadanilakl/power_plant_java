@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import com.dk_power.power_plant_java.sevice.files.PidService;
 import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
+import com.dk_power.power_plant_java.util.PropertyReader;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.apache.commons.io.IOUtils;
@@ -144,7 +145,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
 
     private GitHub connectToGitHub(){
         try {
-            return GitHub.connectUsingOAuth("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");
+            return GitHub.connectUsingOAuth(new PropertyReader().token);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -14,6 +14,7 @@ import com.dk_power.power_plant_java.repository.permits.loto_repo.BoxRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.LotoRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.TestLotoRepo;
 import com.dk_power.power_plant_java.repository.plant.EquipmentTypeRepo;
+import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.permits.BasePermitService;
@@ -41,6 +42,7 @@ import java.util.List;
 public class PowerPlantJavaApplication implements CommandLineRunner {
 private final GroupService<EquipmentType> equipmentTypeGroupService;
 private final FileUploaderService fileUploaderService;
+private final FileRepo fileRepo;
 
 
     public static void main(String[] args) {
@@ -51,7 +53,8 @@ private final FileUploaderService fileUploaderService;
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-
+        fileUploaderService.getFileFromGitHub(Util.toList(fileRepo.findAll()).get(0).getLink());
+        fileUploaderService.PdfToJpgConverter();
         System.out.println("=====================================================");
 
 
