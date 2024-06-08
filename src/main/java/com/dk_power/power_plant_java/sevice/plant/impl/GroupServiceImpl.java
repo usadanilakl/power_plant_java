@@ -1,12 +1,9 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
-import com.dk_power.power_plant_java.entities.BaseEntity;
 import com.dk_power.power_plant_java.entities.plant.Group;
-import com.dk_power.power_plant_java.entities.plant.System;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.util.Util;
 import org.springframework.data.repository.CrudRepository;
-import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Constructor;
 import java.util.List;

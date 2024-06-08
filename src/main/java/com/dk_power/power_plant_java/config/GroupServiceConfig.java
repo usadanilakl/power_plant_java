@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.config;
 
 import com.dk_power.power_plant_java.entities.plant.*;
-import com.dk_power.power_plant_java.entities.plant.System;
+import com.dk_power.power_plant_java.entities.plant.Syst;
 import com.dk_power.power_plant_java.repository.plant.*;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.sevice.plant.impl.GroupServiceImpl;
@@ -39,7 +39,7 @@ public class GroupServiceConfig {
     @Bean
     public GroupService<Point> groupServicePoint(){return new GroupServiceImpl<Point>(pointRepo);}
     @Bean
-    public GroupService<System> groupServiceSystem(){return new GroupServiceImpl<System>(systemRepo);}
+    public GroupService<Syst> groupServiceSystem(){return new GroupServiceImpl<Syst>(systemRepo);}
     @Bean
     public GroupService<Vendor> groupServiceVendor(){return new GroupServiceImpl<Vendor>(vendorRepo);}
 

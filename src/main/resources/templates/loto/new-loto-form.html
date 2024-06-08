@@ -48,17 +48,8 @@
                     <input class="form-control" type="text" id="workscope" th:field="*{workScope}">
                 </div>
                 <div class="form-group">
-<!--                    <label for="system">System</label>-->
-<!--                    <input class="form-control" type="text" id="system" th:field="*{system}">-->
                     <label for="systems">Choose System:</label>
-<!--                    <input class="form-control" list="systems" id="system" name="system" th:field="*{system}">-->
-<!--                    <datalist id="systems" onchange="systemSelection(this.value, '/group/create?group=system&value='+this.value.substring(8),'/lotos/create)">-->
-<!--                        <option value="Add New: " text="Add New: ">-->
-<!--                        <option th:each="system : ${systems}" th:value="${system.name}" th:text="${system.name}">-->
-<!--                        <option value="Add New: " text="Add New: ">-->
-<!--                    </datalist>-->
-
-                    <select id="systems" onchange="fillPopUpInfo('System')">
+                    <select th:field="*{system}" id="systems" onchange="fillPopUpInfo('System')">
                         <option value="">Select System</option>
                         <option th:each="system : ${systems}" th:value="${system.name}" th:text="${system.name}"></option>
                         <option value="-1">Add New System</option>
@@ -66,7 +57,11 @@
                 </div>
                 <div class="form-group">
                     <label for="equipment">Equipment</label>
-                    <input class="form-control" type="text" id="equipment" th:field="*{equipment}">
+                    <select name="equpment-types" id="equipment" th:field="*{equipment}" onchange="fillPopUpInfo('Equipment Type')">
+                        <option value="">Select Equipment</option>
+                        <option th:each="e : ${eqTypes}" th:value="${e.name}" th:text="${e.name}"></option>
+                        <option value="-1">Add New Equipment Type</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="boxDropdown">Box</label>
@@ -93,7 +88,7 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body" >
-                            <label for="system-name">New System Name:</label>
+                            <label for="system-name">New Item Name:</label>
                             <input class="form-control group-value" type="text" id="system-name" onchange="updateValue(this.value)">
                         </div>
                         <div class="modal-footer">
@@ -183,11 +178,12 @@ function createNewBoxPostRequest(){
         let title = document.getElementById("exampleModalLabel");
         let modal = document.getElementById('exampleModal');
         let myModal = new bootstrap.Modal(modal, {});
+        let groupType = group.toLocaleLowerCase().replaceAll(" ","");
         myModal.show();
         title.textContent = "Create New " + group;
         console.log(groupValue);
-        save.addEventListener('click', ()=>{
-            systemSelection('-1', '/group/create?group=system&value='+groupValue,'/lotos/create');
+          saveButton.addEventListener('click', ()=>{
+            systemSelection('-1', '/group/create?group='+groupType+'&value='+groupValue,'/lotos/create');
         })
 
       }

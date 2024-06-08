@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.entities.plant;
 
-import com.dk_power.power_plant_java.entities.BaseEntity;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,8 +9,8 @@ import lombok.Setter;
 @Setter
 @Entity
 @NoArgsConstructor
-public class System extends Group {
-    public System(String name) {
+public class Syst extends Group {
+    public Syst(String name) {
         super(name);
     }
 }

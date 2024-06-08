@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
-import com.dk_power.power_plant_java.entities.plant.System;
-import com.dk_power.power_plant_java.repository.plant.SystemRepo;
+import com.dk_power.power_plant_java.entities.plant.Syst;
 import com.dk_power.power_plant_java.sevice.plant.SystemService;
 import org.springframework.stereotype.Service;
 
@@ -9,7 +8,7 @@ import org.springframework.stereotype.Service;
 public class SystemServiceImpl implements SystemService {
 
     @Override
-    public System createNew(String name) {
+    public Syst createNew(String name) {
         //System system = new System();
         return null;
     }

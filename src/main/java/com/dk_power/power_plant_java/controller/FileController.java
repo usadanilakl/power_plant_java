@@ -27,7 +27,7 @@ public class FileController {
     }
     @PostMapping("/upload")
     public String submitFiles(@ModelAttribute("files") FileUploader files, Model model){
-       String message = fus.uploadFiles(files);
+       String message = fus.uploadFilesToGitHub(files,"uploads");
         model.addAttribute("message",message);
         //return "redirect:/admin";
         return "redirect:/";
@@ -49,6 +49,7 @@ public class FileController {
         model.addAttribute("files",ps.getAllPids());
         return "admin/all-files";
     }
+
 
 
 }

@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
 import com.dk_power.power_plant_java.entities.permits.lotos.Box;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.entities.permits.lotos.TestLoto;
+import com.dk_power.power_plant_java.entities.plant.EquipmentType;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitNumbersRepo;
@@ -12,9 +13,11 @@ import com.dk_power.power_plant_java.repository.permits.loto_repo.BaseLotoRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.BoxRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.LotoRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.TestLotoRepo;
+import com.dk_power.power_plant_java.repository.plant.EquipmentTypeRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.permits.BasePermitService;
 import com.dk_power.power_plant_java.sevice.permits.BoxService;
+import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.util.DataGenerator;
 import com.dk_power.power_plant_java.util.Util;
 import jakarta.persistence.EntityManager;
@@ -35,18 +38,8 @@ import java.util.List;
 @SpringBootApplication
 @AllArgsConstructor
 public class PowerPlantJavaApplication implements CommandLineRunner {
-private final UserRepo userRepo;
-private final LotoRepo lotoRepo;
-private final BasePermitRepo basePermitRepo;
-private final PermitNumbersRepo permitNumbersRepo;
-private final BasePermitService<Loto, LotoDto> basePermitService;
-private final BaseLotoRepo baseLotoRepo;
-private final DataGenerator dataGenerator;
-private final EntityManager entityManager;
-//private EntityManagerFactory entityManagerFactory;
-private final BoxService boxService;
-private final BoxRepo boxRepo;
-private final TestLotoRepo testLotoRepo;
+private final GroupService<EquipmentType> equipmentTypeGroupService;
+
 
     public static void main(String[] args) {
         SpringApplication.run(PowerPlantJavaApplication.class, args);
@@ -56,9 +49,6 @@ private final TestLotoRepo testLotoRepo;
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-
-
-
         System.out.println("=====================================================");
 
 
