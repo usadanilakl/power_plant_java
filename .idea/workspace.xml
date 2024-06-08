@@ -4,15 +4,61 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="21acb2d7-60a7-467d-8e30-ed2c2c3409bf" name="Changes" comment="Working on loto and box connection">
+    <list default="true" id="21acb2d7-60a7-467d-8e30-ed2c2c3409bf" name="Changes" comment="upload/download/convert work good, need to set up filing directories by different groups in the github and set up entity repo operations.">
+      <change afterPath="$PROJECT_DIR$/token.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_14_2024_6_30_PM_[Changes]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_14_2024_6_30_PM__Changes_.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/BaseLoto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/BaseLoto.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/Box.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/Box.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/Loto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/permits/lotos/Loto.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/dto/permits/BaseLotoDto.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/dto/permits/BaseLotoDto.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/dto/permits/LotoDto.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/dto/permits/LotoDto.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/permits/lotos/Loto.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/permits/lotos/Loto.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/testdb.mv.db" beforeDir="false" afterPath="$PROJECT_DIR$/testdb.mv.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/config/GroupServiceConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/config/GroupServiceConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/plant/File.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/entities/plant/FileObject.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/repository/plant/FileRepo.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/repository/plant/FileRepo.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/files/impl/FileUploaderServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/dk_power/power_plant_java/sevice/files/impl/FileUploaderServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/PowerPlantJavaApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/PowerPlantJavaApplication.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/config/FilterServiceConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/config/FilterServiceConfig.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/config/WebConfigurer.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/config/WebConfigurer.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/FileController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/FileController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/permits/LotoController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/permits/LotoController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/rest/FileRestController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/controller/rest/FileRestController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/BaseEntity.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/BaseEntity.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/files/File$FileBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/files/File$FileBuilder.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/files/File.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/files/File.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/permits/BasePermit.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/entities/permits/BasePermit.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/files/FileUploaderService.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/files/FileUploaderService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/files/impl/FileUploaderServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/files/impl/FileUploaderServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/BoxService.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/BoxService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/BasePermitServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/BasePermitServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/BoxServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/BoxServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/FilterService.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/sevice/permits/impl/FilterService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/util/DataGenerator.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/dk_power/power_plant_java/util/DataGenerator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-grid.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-grid.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-grid.min.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-grid.min.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-grid.rtl.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-grid.rtl.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-grid.rtl.min.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-grid.rtl.min.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-reboot.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-reboot.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-reboot.min.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-reboot.min.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-reboot.rtl.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-reboot.rtl.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-reboot.rtl.min.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-reboot.rtl.min.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-utilities.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-utilities.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-utilities.min.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-utilities.min.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-utilities.rtl.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-utilities.rtl.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-utilities.rtl.min.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap-utilities.rtl.min.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap.min.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap.min.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap.rtl.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap.rtl.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap.rtl.min.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/css/bootstrap.rtl.min.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.bundle.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.bundle.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.esm.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.esm.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.esm.min.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.esm.min.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.min.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/bootstrap-5.3.3-dist/js/bootstrap.min.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/functions/dev_functions/Editing.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/functions/dev_functions/Editing.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/templates/layouts/main-template.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/layouts/main-template.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/templates/loto/new-loto-form.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/loto/new-loto-form.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/templates/loto/new-loto-form2.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/loto/new-loto-form2.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/templates/loto/show-all-lotos.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/loto/show-all-lotos.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/templates/loto/update-loto-form.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/loto/update-loto-form.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/testdb.trace.db" beforeDir="false" afterPath="$PROJECT_DIR$/testdb.trace.db" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,6 +73,7 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Interface" />
         <option value="Class" />
       </list>
     </option>
@@ -71,7 +118,13 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
-  <component name="RunManager">
+  <component name="RecentsManager">
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="com.dk_power.power_plant_java.repository.plant" />
+      <recent name="com.dk_power.power_plant_java.entities.plant" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.PowerPlantJavaApplication">
     <configuration name="PowerPlantJavaApplication" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="com.dk_power.power_plant_java.PowerPlantJavaApplication" />
       <module name="power_plant_java" />
@@ -81,6 +134,13 @@
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="PowerPlantJavaApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="power_plant_java" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.dk_power.power_plant_java.PowerPlantJavaApplication" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -108,6 +168,13 @@
       <updated>1712186845923</updated>
       <workItem from="1715770179070" duration="4774000" />
       <workItem from="1715861445290" duration="2850000" />
+      <workItem from="1715948485614" duration="56000" />
+      <workItem from="1717479648441" duration="2562000" />
+      <workItem from="1717520692929" duration="4049000" />
+      <workItem from="1717674908581" duration="35000" />
+      <workItem from="1717797501955" duration="6137000" />
+      <workItem from="1717807110440" duration="21798000" />
+      <workItem from="1717863198660" duration="328000" />
     </task>
     <task id="LOCAL-00001" summary="Working on Entities">
       <option name="closed" value="true" />
@@ -138,7 +205,42 @@
       <option name="project" value="LOCAL" />
       <updated>1715774949653</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Working on loto and box connection">
+      <created>1715948522323</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1715948522323</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Working on points: creating entities, repo, service">
+      <created>1717527382627</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1717527382627</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Upload files to github works, need to orginize classes and figure out download part">
+      <created>1717817644080</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1717817644080</updated>
+    </task>
+    <task id="LOCAL-00008" summary="upload/download/convert work good, need to set up filing directories by different groups in the github and set up entity repo operations.">
+      <created>1717837068205</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1717837068205</updated>
+    </task>
+    <task id="LOCAL-00009" summary="upload/download/convert work good, need to set up filing directories by different groups in the github and set up entity repo operations.">
+      <created>1717838975513</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1717838975513</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -164,6 +266,9 @@
     <MESSAGE value="Working on Entities" />
     <MESSAGE value="Working on getting revisions for viewing history of a permit." />
     <MESSAGE value="Working on loto and box connection" />
-    <option name="LAST_COMMIT_MESSAGE" value="Working on loto and box connection" />
+    <MESSAGE value="Working on points: creating entities, repo, service" />
+    <MESSAGE value="Upload files to github works, need to orginize classes and figure out download part" />
+    <MESSAGE value="upload/download/convert work good, need to set up filing directories by different groups in the github and set up entity repo operations." />
+    <option name="LAST_COMMIT_MESSAGE" value="upload/download/convert work good, need to set up filing directories by different groups in the github and set up entity repo operations." />
   </component>
 </project>

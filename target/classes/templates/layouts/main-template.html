@@ -14,36 +14,20 @@
 <body>
 
     <div id="all">
+
         <div id="upper">
             <div th:replace="~{partials/index::header}"></div>
-
-<!--            <nav class="navbar navbar-expand-sm navbar-dark bg-dark mb-3">-->
-<!--                <div class="container-fluid">-->
-<!--                    <a class="navbar-brand" href="#">Jackson Generation</a>-->
-<!--                    <ul class="navbar-nav">-->
-<!--                        <li class="nav-item">-->
-<!--                            <a class="nav-link" href="/">Home</a>-->
-<!--                        </li>-->
-<!--                        <li class="nav-item">-->
-<!--                            <a class="nav-link" href="/admin/">Admin</a>-->
-<!--                        </li>-->
-<!--                        <li class="nav-item">-->
-<!--                            <a class="nav-link" href="#">Services</a>-->
-<!--                        </li>-->
-<!--                        <li class="nav-item">-->
-<!--                            <a class="nav-link" href="#">Contact</a>-->
-<!--                        </li>-->
-<!--                    </ul>-->
-<!--                </div>-->
-<!--            </nav>-->
         </div>
+
         <div id="middle">
             <button id="pin-menu">Menu</button>
             <div id="left">
                 <div id="items"></div>
                 <div id="menu-resize"></div>
             </div>
-            <div id="right"></div>
+            <div id="right">
+                <iframe src="/data/displayPdf" width="100%" height="600px"></iframe>
+            </div>
         </div>
 
         <div id="lower" class="container-fluid">
@@ -52,7 +36,7 @@
                     <ul >
                         <li class="btn-list-in-line" id="fileUploadButton">Upload Files</li>
                         <li class="btn-list-in-line" onclick="showNewUploads()">Edit New Uploads</li>
-                        <li class="btn-list-in-line"><a href="/upload"></a></li>
+                        <li class="btn-list-in-line"><a href="/file/upload">upload</a></li>
                     </ul>
                 </div>
             </div>
@@ -91,7 +75,9 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
     <script src="/functions/dev_functions/Page.js"></script>
+    <script src="/functions/dev_functions/Editing.js"></script>
     <script src="/functions/FileFunctions.js"></script>
+
 
     <script>
         $(document).ready(function() {

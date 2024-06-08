@@ -1,11 +1,11 @@
 package com.dk_power.power_plant_java.sevice.files.impl;
 
 import com.dk_power.power_plant_java.entities.files.FileUploader;
+import com.dk_power.power_plant_java.entities.plant.FileObject;
 import com.dk_power.power_plant_java.repository.files.PidRepo;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import com.dk_power.power_plant_java.sevice.files.PidService;
 import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
-import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.util.PropertyReader;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,7 +19,6 @@ import org.kohsuke.github.GitHub;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -84,10 +83,10 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 uploadContentHandled(file,path);
 
                 String number = file.getOriginalFilename();
-                com.dk_power.power_plant_java.entities.plant.File fileObj = new com.dk_power.power_plant_java.entities.plant.File();
-                fileObj.setLink(path+"/"+number);
-                fileObj.setNumber(number);
-                fileRepo.save(fileObj);
+                FileObject fileObjectObj = new FileObject();
+                fileObjectObj.setLink(path+"/"+number);
+                fileObjectObj.setNumber(number);
+                fileRepo.save(fileObjectObj);
             }
         } catch (IOException e) {
             e.printStackTrace();

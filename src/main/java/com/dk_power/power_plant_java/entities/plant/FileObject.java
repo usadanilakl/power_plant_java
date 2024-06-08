@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.entities.plant;
 
-import com.dk_power.power_plant_java.entities.BaseEntity;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,9 +9,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-public class File extends Group {
+public class FileObject extends Group {
 
-    public File(String name, FileType type, String link, Syst sytem, String number, Vendor vendor) {
+    public FileObject(String name, FileType type, String link, Syst sytem, String number, Vendor vendor) {
         super(name);
         //this.type = type;
         this.link = link;
@@ -20,7 +19,7 @@ public class File extends Group {
         this.number = number;
         //this.vendor = vendor;
     }
-    public File(String name) {
+    public FileObject(String name) {
         super(name);
     }
 

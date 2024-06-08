@@ -33,7 +33,7 @@ public class GroupServiceConfig {
     @Bean
     public GroupService<FileType> groupServiceFileType(){return new GroupServiceImpl<FileType>(fileTypeRepo);}
     @Bean
-    public GroupService<File> groupServiceFile(){return new GroupServiceImpl<File>(fileRepo);}
+    public GroupService<FileObject> groupServiceFile(){return new GroupServiceImpl<FileObject>(fileRepo);}
     @Bean
     public GroupService<Location> groupServiceLocation(){return new GroupServiceImpl<Location>(locationRepo);}
     @Bean

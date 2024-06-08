@@ -479,9 +479,9 @@ function fillInfoWindow(object){
   }
 
   function createNewFolder(path){
-    fetch('/dev/create_new_folder',(res,rej){
+    fetch('/dev/create_new_folder',(res,rej)=>{
 
-    })
+    });
   }
 
   function retrieve(data){
