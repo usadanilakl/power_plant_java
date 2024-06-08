@@ -4,10 +4,19 @@ import com.dk_power.power_plant_java.entities.files.PID;
 import com.dk_power.power_plant_java.sevice.files.PidService;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @AllArgsConstructor
 @Data
@@ -25,5 +34,20 @@ public class FileRestController {
     public void deleteKiewit(){
         System.out.println("deleting");
         ps.deletByVendor("Kiewit");
+    }
+    @GetMapping("/displayPdf")
+    public ResponseEntity<Resource> displayPdf() {
+        String filename = "uploads/display.pdf";
+        Path path = Paths.get(filename);
+        Resource resource;
+        try {
+            resource = new UrlResource(path.toUri());
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("Error: " + e.getMessage());
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/pdf"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
     }
 }

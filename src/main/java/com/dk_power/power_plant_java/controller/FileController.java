@@ -27,9 +27,8 @@ public class FileController {
     }
     @PostMapping("/upload")
     public String submitFiles(@ModelAttribute("files") FileUploader files, Model model){
-       String message = fus.uploadFilesToGitHub(files,"uploads");
+        String message = fus.uploadFilesToGitHub(files,"uploads");
         model.addAttribute("message",message);
-        //return "redirect:/admin";
         return "redirect:/";
     }
     @GetMapping("/edit")

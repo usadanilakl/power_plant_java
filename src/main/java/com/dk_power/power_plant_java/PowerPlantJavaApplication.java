@@ -15,6 +15,7 @@ import com.dk_power.power_plant_java.repository.permits.loto_repo.LotoRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.TestLotoRepo;
 import com.dk_power.power_plant_java.repository.plant.EquipmentTypeRepo;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
+import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.permits.BasePermitService;
 import com.dk_power.power_plant_java.sevice.permits.BoxService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
@@ -39,6 +40,7 @@ import java.util.List;
 @AllArgsConstructor
 public class PowerPlantJavaApplication implements CommandLineRunner {
 private final GroupService<EquipmentType> equipmentTypeGroupService;
+private final FileUploaderService fileUploaderService;
 
 
     public static void main(String[] args) {
@@ -49,6 +51,7 @@ private final GroupService<EquipmentType> equipmentTypeGroupService;
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+
         System.out.println("=====================================================");
 
 

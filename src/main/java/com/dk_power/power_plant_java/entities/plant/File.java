@@ -12,4 +12,21 @@ import lombok.Setter;
 @Entity
 public class File extends Group {
 
+    public File(String name, FileType type, String link, Syst sytem, String number, Vendor vendor) {
+        super(name);
+        this.type = type;
+        this.link = link;
+        this.sytem = sytem;
+        this.number = number;
+        this.vendor = vendor;
+    }
+    public File(String name) {
+        super(name);
+    }
+
+    private FileType type;
+    private String link;
+    private Syst sytem;
+    private String number;
+    private Vendor vendor;
 }

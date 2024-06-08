@@ -9,8 +9,8 @@ public class WebConfigurer implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-//        registry.addResourceHandler("/files/**")
-//                .addResourceLocations("file:/C:/Users/usada/IdeaProjects/power_plant_java/src/main/resources/static/pics/");
+        registry.addResourceHandler("/files/**")
+                .addResourceLocations("file:/C:/Users/usada/IdeaProjects/power_plant_java/uploads/display.pdf");
 
     }
 }
