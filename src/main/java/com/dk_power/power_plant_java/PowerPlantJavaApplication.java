@@ -5,7 +5,9 @@ import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
 import com.dk_power.power_plant_java.entities.permits.lotos.Box;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.entities.permits.lotos.TestLoto;
+import com.dk_power.power_plant_java.entities.plant.EqPojo;
 import com.dk_power.power_plant_java.entities.plant.EquipmentType;
+import com.dk_power.power_plant_java.entities.plant.Point;
 import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;
 import com.dk_power.power_plant_java.repository.permits.PermitNumbersRepo;
@@ -21,6 +23,7 @@ import com.dk_power.power_plant_java.sevice.permits.BasePermitService;
 import com.dk_power.power_plant_java.sevice.permits.BoxService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.util.DataGenerator;
+import com.dk_power.power_plant_java.util.JsonToPojo;
 import com.dk_power.power_plant_java.util.Util;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -56,6 +59,11 @@ private final FileRepo fileRepo;
 //        fileUploaderService.getFileFromGitHub(Util.toList(fileRepo.findAll()).get(0).getLink());
 //        fileUploaderService.PdfToJpgConverter();
         System.out.println("=====================================================");
+//        List<EqPojo> points = new JsonToPojo<EqPojo>().readProductsFromFile("/Equipment.js", EqPojo.class);
+//        System.out.println(points.get(0).getArea());
+
+//        List<Point> points = new JsonToPojo<Point>().readProductsFromFile("/Equipment.js", Point.class);
+//        System.out.println(points.get(0).getC());
 
 
 

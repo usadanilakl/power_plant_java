@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
+import com.dk_power.power_plant_java.dto.permits.BoxDto;
 import com.dk_power.power_plant_java.entities.plant.Group;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.util.Util;
@@ -38,5 +39,10 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
         }
 
 //        return save(groupType.cast(new Group(name))) ;
+    }
+
+    @Override
+    public BoxDto getDtoById(Long l) {
+        return null;
     }
 }

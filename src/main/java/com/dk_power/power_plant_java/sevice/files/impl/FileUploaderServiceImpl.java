@@ -154,8 +154,8 @@ public class FileUploaderServiceImpl implements FileUploaderService {
     @Override
     public FileObject initialSave(String number, String link) {
         FileObject fileObjectObj = new FileObject();
-        fileObjectObj.setLink(link+"/"+number);
-        fileObjectObj.setNumber(number);
+        fileObjectObj.setFileLink(link+"/"+number);
+        fileObjectObj.setFileNumber(number);
         return fileRepo.save(fileObjectObj);
     }
 

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script src="Equipment.js"></script>
+<script>
+
+    fetch("http://localhost:8082/points/create", {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': "2455qEqN2UIFbRGqDqLLLOofDG-kn0ezffiUZQIQmz3njrV077pAmXm9v3YoWnefao__FY96IVeQrHCeTJ6kVmBz_liDuYJF",
+            'Content-Type': 'application/json'
+        },
+        body:JSON.stringify(equipment)
+    })
+        .then(()=>{
+            console.log("/success/");
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        })
+
+</script>
+</body>
+</html>

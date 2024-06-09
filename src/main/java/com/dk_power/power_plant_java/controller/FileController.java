@@ -54,7 +54,7 @@ public class FileController {
     @GetMapping("/display/{id}")
     public String display(@PathVariable("id") String id){
         FileObject file = fileObjectGroupService.getById(Long.parseLong(id));
-        fileUploaderService.getFileFromGitHub(file.getLink());
+        fileUploaderService.getFileFromGitHub(file.getFileLink());
         fileUploaderService.PdfToJpgConverter();
         return "redirect:/";
     }

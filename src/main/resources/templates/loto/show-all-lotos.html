@@ -118,7 +118,7 @@
     let csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
     let elements = document.getElementsByClassName('status-change');
 
-
+    console.log(csrfToken)
     function sendPostRequest(url){
 
     fetch(url, {

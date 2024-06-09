@@ -1,3 +1,13 @@
+let picture = document.getElementById('picture')
+let pictureContainer = document.getElementById('picture-container')
+let map = document.getElementById('map')
+
+const zoom = zoomPicture.bind(null,picture);
+
+drag(picture, pictureContainer);
+pictureContainer.addEventListener('wheel',zoom);
+
+
 function drag(picture,element){
     let isDragging = false;
     let startMouseX = 0;

@@ -2,9 +2,12 @@ package com.dk_power.power_plant_java.entities.plant;
 
 import com.dk_power.power_plant_java.entities.BaseEntity;
 import jakarta.persistence.Entity;
+import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -12,4 +15,11 @@ import lombok.Setter;
 @Entity
 public class Vendor extends Group {
 
+    public Vendor(String name) {
+        super(name);
+    }
+    @OneToMany(mappedBy = "vendor")
+    private List<Point> points;
+    @OneToMany(mappedBy = "vendor")
+    private List<FileObject> files;
 }
