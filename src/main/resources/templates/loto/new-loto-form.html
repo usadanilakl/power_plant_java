@@ -128,7 +128,7 @@
         });
     });
 
-function createNewBoxPostRequest(){
+    function createNewBoxPostRequest(){
     fetch("/lotos/add-box", {
         method: 'POST',
         headers: {
@@ -144,7 +144,7 @@ function createNewBoxPostRequest(){
         })
 }
 
-  function selectFunction() {
+    function selectFunction() {
   var x = document.getElementById("boxDropdown").value;
   if(x === "-1") {
     createNewBoxPostRequest()
@@ -157,7 +157,7 @@ function createNewBoxPostRequest(){
         }
     }
 
- function createNewItem(url,redirect){
+    function createNewItem(url,redirect){
 
     fetch(url, {
         method: 'POST',
@@ -174,7 +174,7 @@ function createNewBoxPostRequest(){
         })
 }
 
-      function fillPopUpInfo(group){
+    function fillPopUpInfo(group){
         let title = document.getElementById("exampleModalLabel");
         let modal = document.getElementById('exampleModal');
         let myModal = new bootstrap.Modal(modal, {});

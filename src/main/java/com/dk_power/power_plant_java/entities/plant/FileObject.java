@@ -28,6 +28,8 @@ public class FileObject extends Group {
     @JoinColumn(name = "file_type_id")
     private FileType fileType;
     private String fileLink;
+    private String baseLink;
+    private String groupFolder;
     @ManyToOne
     @JoinColumn(name = "system_id")
     private Syst system;
@@ -40,4 +42,8 @@ public class FileObject extends Group {
             joinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
     private List<Point> points;
+
+    public void setFileLink(){
+        fileLink = baseLink+"/"+groupFolder+"/"+fileNumber;
+    }
 }

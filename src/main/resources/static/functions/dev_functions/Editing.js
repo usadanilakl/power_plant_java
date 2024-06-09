@@ -454,7 +454,7 @@ function fillInfoWindow(object){
   //document.addEventListener('mousedown',handleMouseDown);
 
   document.addEventListener('mousedown', function(event){
-    if (!event.target.matches('.dropdown') && !event.target.matches('#equipmentId')) {
+    if (!event.target.matches('.dropdown') && !event.target.matches('.ignore') && !event.target.matches('#equipmentId')) {
       event.preventDefault();
     }
     if(event.button === 2){

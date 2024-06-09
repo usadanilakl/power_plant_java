@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.entities.files.FileUploader;
 import com.dk_power.power_plant_java.entities.plant.FileObject;
 import com.dk_power.power_plant_java.repository.files.PidRepo;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
+import com.dk_power.power_plant_java.repository.plant.FileTypeRepo;
 import com.dk_power.power_plant_java.sevice.files.PidService;
 import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
 import com.dk_power.power_plant_java.util.PropertyReader;
@@ -38,9 +39,8 @@ import java.util.Base64;
 @PropertySource("classpath:messages.properties")
 public class FileUploaderServiceImpl implements FileUploaderService {
 
-    private final PidService ps;
-    private final PidRepo pr;
     private final FileRepo fileRepo;
+    private final FileTypeRepo fileTypeRepo;
 
 
     public String uploadFilesToLocal(FileUploader files){
@@ -55,7 +55,8 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 Files.createDirectories(path.getParent());
                 file.transferTo(path.toFile());
 
-               ps.createNewPid("File",null, name, files.getVendor(), rootFolder, null);
+               FileObject newFile = new FileObject();
+               newFile.setFileType(fileTypeRepo.findByName(files.getType()));
             }
         }catch (IOException e){
             //throw new RuntimeException("failedUpload");

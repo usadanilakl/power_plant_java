@@ -10,6 +10,6 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 public class FileUploader {
-    private String type,vendor;
+    private String type,vendor,folder;
     private List<MultipartFile> files;
 }

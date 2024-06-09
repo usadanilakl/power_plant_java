@@ -4,10 +4,18 @@
             <form th:action="@{/file/upload}" th:object="${files}" method="post" enctype="multipart/form-data">>
                 <label>Select Files</label>
                 <input type="file" th:field="*{files}" id="files" multiple> <br>
-                <label>Type</label>
-                <input type="text" th:field="*{type}" id="type"><br>
+
+                <label for="file-type">Equipment</label>
+                <select class="ignore" name="file-types" id="file-type" th:field="*{type}" onchange="selectionCheck(this.value,'File Type')">
+                    <option value="">Select File Type</option>
+                    <option th:each="e : ${fileTypes}" th:value="${e.name}" th:text="${e.name}"></option>
+                    <option value="-1">Add New File Type</option>
+                </select>
+
                 <label>Vendor</label>
                 <input type="text" th:field="*{vendor}" id="vendor"><br>
+                <label>Vendor</label>
+                <input type="text" th:field="*{folder}" id="folder"><br>
                 <button type="submit">Submit</button>
             </form>
 

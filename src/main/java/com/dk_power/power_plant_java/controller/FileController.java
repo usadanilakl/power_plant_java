@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller;
 import com.dk_power.power_plant_java.entities.files.FileUploader;
 import com.dk_power.power_plant_java.entities.files.PID;
 import com.dk_power.power_plant_java.entities.plant.FileObject;
+import com.dk_power.power_plant_java.entities.plant.FileType;
 import com.dk_power.power_plant_java.sevice.files.PidService;
 import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
@@ -23,9 +24,11 @@ public class FileController {
     private final FileUploaderService fileUploaderService;
     private final PidService ps;
     private final GroupService<FileObject> fileObjectGroupService;
+    private final GroupService<FileType> fileTypeGroupService;
     @GetMapping("/upload")
     public String uploadFiles(Model model){
         model.addAttribute("files",new FileUploader());
+        model.addAttribute("fileTypes",fileTypeGroupService.getAll());
         return "admin/upload";
     }
     @PostMapping("/upload")
