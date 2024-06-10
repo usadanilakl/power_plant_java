@@ -453,16 +453,18 @@ function fillInfoWindow(object){
 
   //document.addEventListener('mousedown',handleMouseDown);
 
-  document.addEventListener('mousedown', function(event){
-    if (!event.target.matches('.dropdown') && !event.target.matches('.ignore') && !event.target.matches('#equipmentId')) {
-      event.preventDefault();
-    }
-    if(event.button === 2){
-      event.preventDefault();
-      handleMouseDown(event);
-      
-    } 
-  });
+/******This is to prevent highlighting everything and disable right click default********/
+
+//  document.addEventListener('mousedown', function(event){
+//    if (!event.target.matches('.dropdown') && !event.target.matches('.ignoreDk') && !event.target.matches('#equipmentId')) {
+//      event.preventDefault();
+//    }
+//    if(event.button === 2){
+//      event.preventDefault();
+//      handleMouseDown(event);
+//
+//    }
+//  });
 
   setEquipmentType('line');
   /*******************************************BUILDING OBJECT MENU*************************************************** */

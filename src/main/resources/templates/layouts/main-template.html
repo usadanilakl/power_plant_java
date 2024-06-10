@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
     <title>My Main Layout</title>
 
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
@@ -25,7 +26,7 @@
             <div id="left">
                 <div id="items">
                     <ul>
-                        <li th:each="file:${files}"><a th:href="@{/file/display/{id}(id=${file.id})}" th:text="${file.fileNumber}"></a></li>
+                        <li th:each="file:${files}"><a th:href="@{/file/display/{id}(id=${file.id})}" th:text="${file.fileNumber}"></a><a th:href="@{/file/edit/{id}(id=${file.id})}">Edit</a></li>
                     </ul>
 
                 </div>
@@ -60,7 +61,7 @@
             </div>
         </div>
 
-        <div id="popup"></div>
+
 
         <div id="floatingMenu">
             <div id="bar"></div>
@@ -84,6 +85,7 @@
             </div>
         </div>
     </div>
+    <div id="popup" class="ignoreDk" style="z-index:1060;"></div>
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 

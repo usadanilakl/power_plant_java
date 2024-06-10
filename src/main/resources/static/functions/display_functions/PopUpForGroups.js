@@ -1,17 +1,20 @@
 
 let groupValue;
-function getPopUp(){
+let csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+
+function getPopUp(group){
     fetch('/popup/get')
         .then(response => response.text())
         .then((data) => {
             document.querySelector('#popup').innerHTML = data;
-        });
+        })
+        .then(()=>fillPopUpInfo(group))
+        .then(()=>setBackDropStyle);
 
 }
 function selectionCheck(value, group){
     if(value === '-1' || value.includes("Add New")){
-        getPopUp();
-        fillPopUpInfo(group);
+        getPopUp(group);
     }
 }
 
@@ -43,8 +46,14 @@ function fillPopUpInfo(group){
     title.textContent = "Create New " + group;
     saveButton.addEventListener('click', ()=>{
         createNewItem( '/group/create?group='+groupType+'&value='+groupValue,'/lotos/create');
-    })
+    });
 
+}
+
+function setBackDropStyle(){
+    let backDrop = document.querySelector(".modal-backdrop");
+    backDrop.style.zIndex = "20";
+    //backDrop.style.display = "none";
 }
 
 function updateValue(value){

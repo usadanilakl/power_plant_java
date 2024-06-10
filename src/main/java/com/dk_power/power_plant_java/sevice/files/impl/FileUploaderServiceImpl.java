@@ -2,10 +2,8 @@ package com.dk_power.power_plant_java.sevice.files.impl;
 
 import com.dk_power.power_plant_java.entities.files.FileUploader;
 import com.dk_power.power_plant_java.entities.plant.FileObject;
-import com.dk_power.power_plant_java.repository.files.PidRepo;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import com.dk_power.power_plant_java.repository.plant.FileTypeRepo;
-import com.dk_power.power_plant_java.sevice.files.PidService;
 import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
 import com.dk_power.power_plant_java.util.PropertyReader;
 import lombok.AllArgsConstructor;
@@ -48,8 +46,9 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         try {
             for (MultipartFile file : files.getFiles()) {
                 String name = file.getOriginalFilename();
-                String folder = "/src/main/resources/static/uploads/"+files.getType()+"/";
-                String rootFolder = "./uploads/"+files.getType()+"/";
+                String baseLink = "/src/main/resources/static/uploads/";
+                String folder = baseLink+files.getFolder()+"/";
+                String rootFolder = "./uploads/"+files.getFolder()+"/";
                 String baseDir = System.getProperty("user.dir") + folder;
                 Path path = Paths.get(baseDir + name);
                 Files.createDirectories(path.getParent());
@@ -57,6 +56,11 @@ public class FileUploaderServiceImpl implements FileUploaderService {
 
                FileObject newFile = new FileObject();
                newFile.setFileType(fileTypeRepo.findByName(files.getType()));
+               newFile.setFileNumber(name);
+               newFile.setGroupFolder(files.getFolder());
+               newFile.setBaseLink(baseLink);
+               newFile.setFileLink();
+               fileRepo.save(newFile);
             }
         }catch (IOException e){
             //throw new RuntimeException("failedUpload");
@@ -151,6 +155,37 @@ public class FileUploaderServiceImpl implements FileUploaderService {
             e.printStackTrace();
         }
     }
+    public void PdfToJpgConverter(String pathToFile) {
+        try {
+            String sourceDir = pathToFile; // Pdf files are read from this folder
+            String destinationDir = "uploads/"; // converted images from pdf would be saved here
+
+            File sourceFile = new File(sourceDir);
+            File destinationFile = new File(destinationDir);
+
+            if (!destinationFile.exists()) {
+                destinationFile.mkdir();
+            }
+            if (sourceFile.exists()) {
+                PDDocument document = PDDocument.load(sourceFile);
+
+                PDFRenderer pdfRenderer = new PDFRenderer(document);
+                int numberOfPages = document.getNumberOfPages();
+
+                for (int i = 0; i < numberOfPages; ++i) {
+                    BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 300);
+                    ImageIO.write(bim, "jpg", new File(destinationDir + "/" + (i + 1) + ".jpg"));
+                }
+
+                document.close();
+                System.out.println("Images created");
+            } else {
+                System.err.println(sourceFile.getName() +" File not exists");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public FileObject initialSave(String number, String link) {
@@ -158,6 +193,13 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         fileObjectObj.setFileLink(link+"/"+number);
         fileObjectObj.setFileNumber(number);
         return fileRepo.save(fileObjectObj);
+    }
+
+    @Override
+    public File[] getListOfFolders(String path) {
+        File directory = new File(path);
+        File[] folders = directory.listFiles(File::isDirectory);
+        return new File[0];
     }
 
     private GitHub connectToGitHub(){

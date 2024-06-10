@@ -2,7 +2,7 @@
 <html xmlns:th="<http://www.thymeleaf.org>">
 
 <!-- Modal -->
-<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" style="z-index:1060;">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -11,11 +11,11 @@
       </div>
       <div class="modal-body" >
         <label for="system-name">New Item Name:</label>
-        <input class="form-control group-value" type="text" id="system-name" onchange="updateValue(this.value)">
+        <input class="form-control group-value ignoreDk" type="text" id="system-name" onchange="updateValue(this.value)">
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary"  id="save">Save changes</button>
+        <button type="button" class="btn btn-primary ignoreDk"  id="save">Save changes</button>
       </div>
     </div>
   </div>

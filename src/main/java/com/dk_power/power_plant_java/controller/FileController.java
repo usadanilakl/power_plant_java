@@ -4,6 +4,8 @@ import com.dk_power.power_plant_java.entities.files.FileUploader;
 import com.dk_power.power_plant_java.entities.files.PID;
 import com.dk_power.power_plant_java.entities.plant.FileObject;
 import com.dk_power.power_plant_java.entities.plant.FileType;
+import com.dk_power.power_plant_java.entities.plant.Syst;
+import com.dk_power.power_plant_java.entities.plant.Vendor;
 import com.dk_power.power_plant_java.sevice.files.PidService;
 import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
@@ -25,23 +27,31 @@ public class FileController {
     private final PidService ps;
     private final GroupService<FileObject> fileObjectGroupService;
     private final GroupService<FileType> fileTypeGroupService;
+    private final GroupService<Vendor> vendorGroupService;
+    private final GroupService<Syst> systGroupService;
     @GetMapping("/upload")
     public String uploadFiles(Model model){
         model.addAttribute("files",new FileUploader());
         model.addAttribute("fileTypes",fileTypeGroupService.getAll());
+        model.addAttribute("vendors",vendorGroupService.getAll());
         return "admin/upload";
     }
     @PostMapping("/upload")
     public String submitFiles(@ModelAttribute("files") FileUploader files, Model model){
-        String message = fileUploaderService.uploadFilesToGitHub(files,"uploads");
+        //String message = fileUploaderService.uploadFilesToGitHub(files,"uploads");
+        String message = fileUploaderService.uploadFilesToLocal(files);
         model.addAttribute("message",message);
         return "redirect:/";
     }
-    @GetMapping("/edit")
-    public String editPid(@RequestParam("id") String id, Model model){
+    @GetMapping("/edit/{id}")
+    public String editPid(@PathVariable("id") String id, Model model){
         Long pidId = Long.parseLong(id);
-        PID pid = ps.getPidById(pidId);
-        model.addAttribute("pid",pid);
+        FileObject file = fileObjectGroupService.getById(pidId);
+        model.addAttribute("pid",file);
+        model.addAttribute("files",new FileUploader());
+        model.addAttribute("fileTypes",fileTypeGroupService.getAll());
+        model.addAttribute("vendors",vendorGroupService.getAll());
+        model.addAttribute("systems", systGroupService.getAll());
         return "admin/edit-file";
     }
     @PostMapping("/edit")
@@ -49,6 +59,7 @@ public class FileController {
         ps.updatePid(pid.getId(),pid);
         return "redirect:/";
     }
+
     @GetMapping("/get")
     public String getFiles(Model model){
         model.addAttribute("files",ps.getAllPids());
@@ -57,8 +68,10 @@ public class FileController {
     @GetMapping("/display/{id}")
     public String display(@PathVariable("id") String id){
         FileObject file = fileObjectGroupService.getById(Long.parseLong(id));
-        fileUploaderService.getFileFromGitHub(file.getFileLink());
-        fileUploaderService.PdfToJpgConverter();
+        fileUploaderService.PdfToJpgConverter("."+file.getFileLink());
+        /*File reader from github*/
+//        fileUploaderService.getFileFromGitHub(file.getFileLink());
+//        fileUploaderService.PdfToJpgConverter();
         return "redirect:/";
     }
 
