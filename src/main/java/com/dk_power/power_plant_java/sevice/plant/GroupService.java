@@ -11,5 +11,4 @@ public interface GroupService <T extends Group>{
     T save(T entity);
     T createNew(String name , Class<T> groupType);
 
-    BoxDto getDtoById(Long l);
 }

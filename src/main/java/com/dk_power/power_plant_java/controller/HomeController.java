@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.controller;
 
-import com.dk_power.power_plant_java.entities.plant.FileObject;
-import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
+import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;

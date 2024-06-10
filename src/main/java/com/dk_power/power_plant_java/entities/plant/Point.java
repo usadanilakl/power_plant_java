@@ -1,10 +1,8 @@
 package com.dk_power.power_plant_java.entities.plant;
 
-import com.dk_power.power_plant_java.converter.GroupConverter;
-import com.dk_power.power_plant_java.entities.BaseEntity;
+import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -40,10 +38,10 @@ public class Point extends Group {
     private Syst system;
     @JsonProperty("area")
     @Transient
-    private Dimension  c;
+    private Map<String,Integer>  c;
     @Transient
     @JsonProperty("originalSize")
-    private Dimension  o;
+    private Map<String,Integer>  o;
     //@JsonProperty("area")
     private String coordinates;
     //@JsonProperty("originalSize")

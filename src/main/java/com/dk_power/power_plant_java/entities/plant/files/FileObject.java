@@ -1,5 +1,9 @@
-package com.dk_power.power_plant_java.entities.plant;
+package com.dk_power.power_plant_java.entities.plant.files;
 
+import com.dk_power.power_plant_java.entities.plant.Group;
+import com.dk_power.power_plant_java.entities.plant.Point;
+import com.dk_power.power_plant_java.entities.plant.Syst;
+import com.dk_power.power_plant_java.entities.plant.Vendor;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

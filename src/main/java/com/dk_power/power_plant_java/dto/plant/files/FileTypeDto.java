@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.dto.plant;
+package com.dk_power.power_plant_java.dto.plant.files;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

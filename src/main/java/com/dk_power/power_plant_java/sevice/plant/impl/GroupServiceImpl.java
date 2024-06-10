@@ -41,8 +41,4 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
 //        return save(groupType.cast(new Group(name))) ;
     }
 
-    @Override
-    public BoxDto getDtoById(Long l) {
-        return null;
-    }
 }

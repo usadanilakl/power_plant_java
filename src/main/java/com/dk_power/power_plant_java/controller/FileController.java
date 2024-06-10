@@ -1,9 +1,9 @@
 package com.dk_power.power_plant_java.controller;
 
-import com.dk_power.power_plant_java.entities.files.FileUploader;
+import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
 import com.dk_power.power_plant_java.entities.files.PID;
-import com.dk_power.power_plant_java.entities.plant.FileObject;
-import com.dk_power.power_plant_java.entities.plant.FileType;
+import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.entities.plant.files.FileType;
 import com.dk_power.power_plant_java.entities.plant.Syst;
 import com.dk_power.power_plant_java.entities.plant.Vendor;
 import com.dk_power.power_plant_java.sevice.files.PidService;

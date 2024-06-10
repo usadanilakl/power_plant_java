@@ -1,6 +1,6 @@
-package com.dk_power.power_plant_java.entities.plant;
+package com.dk_power.power_plant_java.entities.plant.files;
 
-import com.dk_power.power_plant_java.entities.BaseEntity;
+import com.dk_power.power_plant_java.entities.plant.Group;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import lombok.Getter;

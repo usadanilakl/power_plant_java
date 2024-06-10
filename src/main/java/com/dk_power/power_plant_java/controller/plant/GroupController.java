@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.controller.plant;
 
 import com.dk_power.power_plant_java.entities.plant.EquipmentType;
-import com.dk_power.power_plant_java.entities.plant.FileType;
+import com.dk_power.power_plant_java.entities.plant.files.FileType;
 import com.dk_power.power_plant_java.entities.plant.Syst;
 import com.dk_power.power_plant_java.entities.plant.Vendor;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
