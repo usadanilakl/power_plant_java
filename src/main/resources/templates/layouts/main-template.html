@@ -26,9 +26,12 @@
             <div id="left">
                 <div id="items">
                     <ul>
-                        <li th:each="file:${files}"><a th:href="@{/file/display/{id}(id=${file.id})}" th:text="${file.fileNumber}"></a><a th:href="@{/file/edit/{id}(id=${file.id})}">Edit</a></li>
+                        <li th:each="file:${files}">
+                            <a th:href="@{/file/display/{id}(id=${file.id})}" th:text="${file.fileNumber}"></a>
+                            <a th:href="@{/file/edit/{id}(id=${file.id})}">Edit</a>
+                            <button class="delete-buttons" th:id="${file.id}">delete</button>
+                        </li>
                     </ul>
-
                 </div>
                 <div id="menu-resize"></div>
             </div>
@@ -86,14 +89,17 @@
         </div>
     </div>
     <div id="popup" class="ignoreDk" style="z-index:1060;"></div>
+
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
     <script src="/functions/dev_functions/Page.js"></script>
     <script src="/functions/dev_functions/Picture.js"></script>
     <script src="/functions/dev_functions/Editing.js"></script>
+    <script src="/functions/dev_functions/Http.js"></script>
     <script src="/functions/FileFunctions.js"></script>
     <script src="/functions/display_functions/PopUpForGroups.js"></script>
+    <script src="/functions/display_functions/PopUpForHtml.js"></script>
 
 
     <script>
@@ -112,6 +118,16 @@
             });
         });
 
+window.onload = function() {
+    let buttons = document.getElementsByClassName('delete-buttons');
+    console.log(buttons.length);
+    for (let i = 0; i < buttons.length; i++) {
+        buttons[i].addEventListener('click', function() {
+            console.log('deleting', buttons[i].getAttribute('id'));
+            postRequest('/file/delete/' + buttons[i].getAttribute("id"));
+        });
+    }
+};
 
 
 

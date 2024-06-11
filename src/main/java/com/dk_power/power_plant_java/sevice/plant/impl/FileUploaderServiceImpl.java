@@ -202,6 +202,18 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         return new File[0];
     }
 
+    @Override
+    public void deleteFile(String filePath) {
+            try {
+                Path path = Paths.get(filePath);
+                Files.delete(path);
+                System.out.println("File deleted successfully");
+            } catch (IOException e) {
+                System.out.println("An error occurred while deleting the file");
+                e.printStackTrace();
+            }
+    }
+
     private GitHub connectToGitHub(){
         try {
             return GitHub.connectUsingOAuth(new PropertyReader().token);

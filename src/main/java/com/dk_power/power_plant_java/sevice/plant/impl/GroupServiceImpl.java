@@ -1,14 +1,10 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
-import com.dk_power.power_plant_java.dto.permits.BoxDto;
-import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.entities.plant.Group;
-import com.dk_power.power_plant_java.mappers.BaseItemMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.GroupRepo;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.util.Util;
-import org.apache.tomcat.util.bcel.Const;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Service;
@@ -18,8 +14,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 @Service
 public class GroupServiceImpl<T extends Group> implements GroupService<T> {
-    private final CrudRepository<T,Long> repo;
-    private final UniversalMapper mapper;
+    protected final GroupRepo<T> repo;
+    protected final UniversalMapper mapper;
 
     public GroupServiceImpl(@Qualifier("groupRepo") GroupRepo<T> repo, UniversalMapper mapper) {
         this.repo = repo;
@@ -59,7 +55,25 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
         } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
+    }
+//    T getByName(String name){
+//       return repo.findByName(name);
+//    }
 
+//    @Override
+//    public <D> D getDtoByName(String name,Class<D> type) {
+//        try {
+//            Constructor<D> constructor = type.getConstructor();
+//            return mapper.convert(getByName(name), constructor.newInstance());
+//        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+
+    @Override
+    public String delete(Long id) {
+        repo.delete(getById(id));
+        return "Sucess";
     }
 
 

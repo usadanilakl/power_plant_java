@@ -14,6 +14,12 @@ public class FileServiceImpl extends GroupServiceImpl<FileObject>{
     public FileServiceImpl(FileRepo repo, UniversalMapper mapper) {
         super(repo, mapper);
     }
-
+    @Override
+    public String delete(Long id) {
+        FileObject entity = getById(id);
+        String path = entity.getFileLink();
+        repo.delete(entity);
+        return path;
+    }
 
 }

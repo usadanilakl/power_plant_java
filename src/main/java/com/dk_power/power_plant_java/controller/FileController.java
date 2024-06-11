@@ -19,19 +19,18 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/file")
 @Component
 @AllArgsConstructor
-@Data
 
 public class FileController {
     private final FileUploaderService fileUploaderService;
-    private final FileServiceImpl fileObjectGroupService;
-    private final FileTypeServiceImpl fileTypeGroupService;
-    private final VendorServiceImpl vendorGroupService;
-    private final SystemServiceImpl systGroupService;
+    private final FileServiceImpl fileService;
+    private final FileTypeServiceImpl fileTypeService;
+    private final VendorServiceImpl vendorService;
+    private final SystemServiceImpl systemService;
     @GetMapping("/upload")
     public String uploadFiles(Model model){
         model.addAttribute("files",new FileUploader());
-        model.addAttribute("fileTypes",fileTypeGroupService.getAll());
-        model.addAttribute("vendors",vendorGroupService.getAll());
+        model.addAttribute("fileTypes", fileTypeService.getAll());
+        model.addAttribute("vendors", vendorService.getAll());
         return "admin/upload";
     }
     @PostMapping("/upload")
@@ -44,27 +43,35 @@ public class FileController {
     @GetMapping("/edit/{id}")
     public String editPid(@PathVariable("id") String id, Model model){
         Long pidId = Long.parseLong(id);
-        FileObject file = fileObjectGroupService.getById(pidId);
+        FileDto file = fileService.getDtoById(pidId, FileDto.class);
         model.addAttribute("pid",file);
         model.addAttribute("files",new FileUploader());
-        model.addAttribute("fileTypes",fileTypeGroupService.getAll());
-        model.addAttribute("vendors",vendorGroupService.getAll());
-        model.addAttribute("systems", systGroupService.getAll());
+        model.addAttribute("fileTypes", fileTypeService.getAll());
+        model.addAttribute("vendors", vendorService.getAll());
+        model.addAttribute("systems", systemService.getAll());
         return "admin/edit-file";
     }
     @PostMapping("/edit")
     public String updatePid(@ModelAttribute("pid") FileDto pid){
         return "redirect:/";
     }
+    @PostMapping("/delete/{id}")
+    public String deletePid(@PathVariable("id") String id){
+        System.out.println("Deleting file");
+        String path = fileService.delete(Long.parseLong(id));
+        fileUploaderService.deleteFile(path);
+        System.out.println("deleting:"+path);
+        return "redirect:/";
+    }
 
     @GetMapping("/get")
     public String getFiles(Model model){
-        model.addAttribute("files",fileObjectGroupService.getAll());
+        model.addAttribute("files", fileService.getAll());
         return "admin/all-files";
     }
     @GetMapping("/display/{id}")
     public String display(@PathVariable("id") String id){
-        FileObject file = fileObjectGroupService.getById(Long.parseLong(id));
+        FileObject file = fileService.getById(Long.parseLong(id));
         fileUploaderService.PdfToJpgConverter("."+file.getFileLink());
         /*File reader from github*/
 //        fileUploaderService.getFileFromGitHub(file.getFileLink());

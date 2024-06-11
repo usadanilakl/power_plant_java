@@ -17,7 +17,7 @@ import java.util.List;
 public class FileDto {
     private Long id;
     private String name;
-    private MultipartFile file;
+    //private MultipartFile file;
     private FileType fileType;
     private String fileLink;
     private String baseLink;
