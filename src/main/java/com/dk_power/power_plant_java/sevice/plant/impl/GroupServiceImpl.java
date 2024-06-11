@@ -34,6 +34,17 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
     public T save(T entity) {
         return repo.save(entity);
     }
+
+    @Override
+    public <D> T update(D dto, Class<T> type) {
+        try {
+            Constructor<T> constructor = type.getConstructor();
+            return save(mapper.convert(dto, constructor.newInstance()));
+        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public T createNew(String name, Class<T> groupType) {
         try {

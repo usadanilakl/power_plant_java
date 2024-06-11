@@ -21,7 +21,7 @@ public class FileTypeConverter implements Converter<String, FileTypeDto> {
         if (source == null || source.equals("")) {
             return null;
         }
-//        return service.getDtoById(Long.parseLong(source), FileTypeDto.class);
-        return service.getDtoByName(source);
+        return service.getDtoById(Long.parseLong(source), FileTypeDto.class);
+//        return service.getDtoByName(source);
     }
 }

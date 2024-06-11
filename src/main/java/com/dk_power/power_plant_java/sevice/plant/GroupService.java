@@ -8,6 +8,7 @@ public interface GroupService <T extends Group>{
     List<T> getAll();
     T getById(Long id);
     T save(T entity);
+    <D> T update(D dto,Class<T> type);
     T createNew(String name , Class<T> groupType);
     <D> D getDtoById(Long id,Class<D> type);
     String delete(Long id);

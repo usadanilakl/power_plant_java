@@ -44,8 +44,8 @@ public class FileController {
     public String editPid(@PathVariable("id") String id, Model model){
         Long pidId = Long.parseLong(id);
         FileDto file = fileService.getDtoById(pidId, FileDto.class);
-        model.addAttribute("pid",file);
-        model.addAttribute("files",new FileUploader());
+        model.addAttribute("file",file);
+        //model.addAttribute("files",new FileUploader());
         model.addAttribute("fileTypes", fileTypeService.getAll());
         model.addAttribute("vendors", vendorService.getAll());
         model.addAttribute("systems", systemService.getAll());
@@ -53,14 +53,14 @@ public class FileController {
     }
     @PostMapping("/edit")
     public String updatePid(@ModelAttribute("pid") FileDto pid){
+        fileService.update(pid,FileObject.class);
         return "redirect:/";
     }
     @PostMapping("/delete/{id}")
     public String deletePid(@PathVariable("id") String id){
         System.out.println("Deleting file");
         String path = fileService.delete(Long.parseLong(id));
-        fileUploaderService.deleteFile(path);
-        System.out.println("deleting:"+path);
+        fileUploaderService.deleteFile("."+path);
         return "redirect:/";
     }
 
@@ -73,6 +73,7 @@ public class FileController {
     public String display(@PathVariable("id") String id){
         FileObject file = fileService.getById(Long.parseLong(id));
         fileUploaderService.PdfToJpgConverter("."+file.getFileLink());
+
         /*File reader from github*/
 //        fileUploaderService.getFileFromGitHub(file.getFileLink());
 //        fileUploaderService.PdfToJpgConverter();

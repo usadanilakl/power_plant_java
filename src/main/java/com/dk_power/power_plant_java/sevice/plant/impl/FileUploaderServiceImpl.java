@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import com.dk_power.power_plant_java.repository.plant.FileTypeRepo;
+import com.dk_power.power_plant_java.repository.plant.VendorRepo;
 import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.util.PropertyReader;
 import lombok.AllArgsConstructor;
@@ -39,6 +40,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
 
     private final FileRepo fileRepo;
     private final FileTypeRepo fileTypeRepo;
+    private final VendorRepo vendorRepo;
 
 
     public String uploadFilesToLocal(FileUploader files){
@@ -56,6 +58,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
 
                FileObject newFile = new FileObject();
                newFile.setFileType(fileTypeRepo.findByName(files.getType()));
+               newFile.setVendor(vendorRepo.findByName(files.getVendor()));
                newFile.setFileNumber(name);
                newFile.setGroupFolder(files.getFolder());
                newFile.setBaseLink(baseLink);
@@ -68,7 +71,6 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         }
         return message;
     }
-
     @Override
     public String uploadFilesToGitHub(FileUploader files, String path) {
         try {
@@ -88,7 +90,6 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         }
         return "Message";
     }
-
     @Override
     public byte[] getFileFromGitHub(String path) {
         GitHub gitHub = connectToGitHub();
@@ -122,7 +123,6 @@ public class FileUploaderServiceImpl implements FileUploaderService {
             throw new RuntimeException(e);
         }
     }
-
     @Override
     public void PdfToJpgConverter() {
         try {
@@ -180,13 +180,12 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 document.close();
                 System.out.println("Images created");
             } else {
-                System.err.println(sourceFile.getName() +" File not exists");
+                System.err.println(sourceFile.toPath() +" File not exists");
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
     @Override
     public FileObject initialSave(String number, String link) {
         FileObject fileObjectObj = new FileObject();
@@ -194,26 +193,23 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         fileObjectObj.setFileNumber(number);
         return fileRepo.save(fileObjectObj);
     }
-
     @Override
     public File[] getListOfFolders(String path) {
         File directory = new File(path);
         File[] folders = directory.listFiles(File::isDirectory);
         return new File[0];
     }
-
     @Override
     public void deleteFile(String filePath) {
+        Path path = Paths.get(filePath);
             try {
-                Path path = Paths.get(filePath);
                 Files.delete(path);
-                System.out.println("File deleted successfully");
+                System.out.println("File deleted successfully:" + path);
             } catch (IOException e) {
-                System.out.println("An error occurred while deleting the file");
+                System.out.println("An error occurred while deleting the file:" + path);
                 e.printStackTrace();
             }
     }
-
     private GitHub connectToGitHub(){
         try {
             return GitHub.connectUsingOAuth(new PropertyReader().token);
