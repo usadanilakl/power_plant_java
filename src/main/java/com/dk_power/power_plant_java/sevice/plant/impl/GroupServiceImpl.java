@@ -1,18 +1,29 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
 import com.dk_power.power_plant_java.dto.permits.BoxDto;
+import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.entities.plant.Group;
+import com.dk_power.power_plant_java.mappers.BaseItemMapper;
+import com.dk_power.power_plant_java.mappers.UniversalMapper;
+import com.dk_power.power_plant_java.repository.plant.GroupRepo;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.util.Util;
+import org.apache.tomcat.util.bcel.Const;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-
+@Service
 public class GroupServiceImpl<T extends Group> implements GroupService<T> {
     private final CrudRepository<T,Long> repo;
-    public GroupServiceImpl(CrudRepository<T,Long> repository) {
-        repo = repository;
+    private final UniversalMapper mapper;
+
+    public GroupServiceImpl(@Qualifier("groupRepo") GroupRepo<T> repo, UniversalMapper mapper) {
+        this.repo = repo;
+        this.mapper = mapper;
     }
 
     @Override
@@ -27,7 +38,6 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
     public T save(T entity) {
         return repo.save(entity);
     }
-
     @Override
     public T createNew(String name, Class<T> groupType) {
         try {
@@ -40,5 +50,17 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
 
 //        return save(groupType.cast(new Group(name))) ;
     }
+
+    @Override
+    public <D> D getDtoById(Long id,Class<D> type) {
+        try {
+            Constructor<D> constructor = type.getConstructor();
+            return mapper.convert(getById(id), constructor.newInstance());
+        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
 
 }

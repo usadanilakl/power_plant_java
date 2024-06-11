@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.controller;
 
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
-import com.dk_power.power_plant_java.sevice.plant.GroupService;
+import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -9,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 @AllArgsConstructor
 public class HomeController {
-    private final GroupService<FileObject> fileObjectGroupService;
+    private final FileServiceImpl fileObjectGroupService;
 
     @GetMapping("/")
     String getHome(Model model){

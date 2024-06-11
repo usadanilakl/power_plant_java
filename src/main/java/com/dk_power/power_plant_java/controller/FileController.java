@@ -1,14 +1,13 @@
 package com.dk_power.power_plant_java.controller;
 
+import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
-import com.dk_power.power_plant_java.entities.files.PID;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
-import com.dk_power.power_plant_java.entities.plant.files.FileType;
-import com.dk_power.power_plant_java.entities.plant.Syst;
-import com.dk_power.power_plant_java.entities.plant.Vendor;
-import com.dk_power.power_plant_java.sevice.files.PidService;
-import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
-import com.dk_power.power_plant_java.sevice.plant.GroupService;
+import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
+import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
+import com.dk_power.power_plant_java.sevice.plant.impl.FileTypeServiceImpl;
+import com.dk_power.power_plant_java.sevice.plant.impl.SystemServiceImpl;
+import com.dk_power.power_plant_java.sevice.plant.impl.VendorServiceImpl;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.stereotype.Component;
@@ -24,11 +23,10 @@ import org.springframework.web.bind.annotation.*;
 
 public class FileController {
     private final FileUploaderService fileUploaderService;
-    private final PidService ps;
-    private final GroupService<FileObject> fileObjectGroupService;
-    private final GroupService<FileType> fileTypeGroupService;
-    private final GroupService<Vendor> vendorGroupService;
-    private final GroupService<Syst> systGroupService;
+    private final FileServiceImpl fileObjectGroupService;
+    private final FileTypeServiceImpl fileTypeGroupService;
+    private final VendorServiceImpl vendorGroupService;
+    private final SystemServiceImpl systGroupService;
     @GetMapping("/upload")
     public String uploadFiles(Model model){
         model.addAttribute("files",new FileUploader());
@@ -55,14 +53,13 @@ public class FileController {
         return "admin/edit-file";
     }
     @PostMapping("/edit")
-    public String updatePid(@ModelAttribute("pid") PID pid){
-        ps.updatePid(pid.getId(),pid);
+    public String updatePid(@ModelAttribute("pid") FileDto pid){
         return "redirect:/";
     }
 
     @GetMapping("/get")
     public String getFiles(Model model){
-        model.addAttribute("files",ps.getAllPids());
+        model.addAttribute("files",fileObjectGroupService.getAll());
         return "admin/all-files";
     }
     @GetMapping("/display/{id}")

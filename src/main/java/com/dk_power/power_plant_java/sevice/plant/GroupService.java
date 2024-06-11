@@ -10,5 +10,6 @@ public interface GroupService <T extends Group>{
     T getById(Long id);
     T save(T entity);
     T createNew(String name , Class<T> groupType);
+    <D> D getDtoById(Long id,Class<D> type);
 
 }

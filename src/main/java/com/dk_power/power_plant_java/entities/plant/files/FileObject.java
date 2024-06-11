@@ -47,7 +47,8 @@ public class FileObject extends Group {
             inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
     private List<Point> points;
 
-    public void setFileLink(){
+    public void buildFileLink(){
         fileLink = baseLink+"/"+groupFolder+"/"+fileNumber;
     }
+
 }

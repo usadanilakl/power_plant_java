@@ -1,10 +1,10 @@
-package com.dk_power.power_plant_java.sevice.files.impl;
+package com.dk_power.power_plant_java.sevice.plant.impl;
 
 import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import com.dk_power.power_plant_java.repository.plant.FileTypeRepo;
-import com.dk_power.power_plant_java.sevice.files.FileUploaderService;
+import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.util.PropertyReader;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -59,7 +59,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                newFile.setFileNumber(name);
                newFile.setGroupFolder(files.getFolder());
                newFile.setBaseLink(baseLink);
-               newFile.setFileLink();
+               newFile.buildFileLink();
                fileRepo.save(newFile);
             }
         }catch (IOException e){

@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.controller.rest;
 
-import com.dk_power.power_plant_java.entities.files.PID;
-import com.dk_power.power_plant_java.sevice.files.PidService;
+import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.core.io.Resource;
@@ -23,17 +22,15 @@ import java.nio.file.Paths;
 @RestController
 @RequestMapping("/data")
 public class FileRestController {
-    private final PidService ps;
 
     @GetMapping("/get-files")
-    public Iterable<PID> getFiles(){
-        return ps.getAllPids();
+    public Iterable<FileDto> getFiles(){
+        return null;
     }
 
     @DeleteMapping("/delete-kiewit")
     public void deleteKiewit(){
-        System.out.println("deleting");
-        ps.deletByVendor("Kiewit");
+
     }
     @GetMapping("/displayPdf")
     public ResponseEntity<Resource> displayPdf() {

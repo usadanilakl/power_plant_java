@@ -1,23 +1,26 @@
 package com.dk_power.power_plant_java.converter;
 
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
-import com.dk_power.power_plant_java.sevice.plant.GroupService;
+import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 
 @Component
 @ConfigurationPropertiesBinding
 public class FileConverter implements Converter<String, FileDto> {
-    private final GroupService<FileObject> fileObjectGroupService;
+    private final FileServiceImpl fileService;
 
-    public FileConverter(GroupService<FileObject> fileObjectGroupService) {
-        this.fileObjectGroupService = fileObjectGroupService;
+    public FileConverter(@Lazy FileServiceImpl fileService) {
+        this.fileService = fileService;
     }
 
     @Override
     public FileDto convert(String source) {
-        return null;
+        if (source == null || source.equals("")) {
+            return null;
+        }
+        return fileService.getDtoById(Long.parseLong(source),FileDto.class);
     }
 }

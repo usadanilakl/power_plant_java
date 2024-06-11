@@ -4,7 +4,10 @@ import com.dk_power.power_plant_java.entities.plant.EquipmentType;
 import com.dk_power.power_plant_java.entities.plant.files.FileType;
 import com.dk_power.power_plant_java.entities.plant.Syst;
 import com.dk_power.power_plant_java.entities.plant.Vendor;
-import com.dk_power.power_plant_java.sevice.plant.GroupService;
+import com.dk_power.power_plant_java.sevice.plant.impl.EquipmentTypeServiceImpl;
+import com.dk_power.power_plant_java.sevice.plant.impl.FileTypeServiceImpl;
+import com.dk_power.power_plant_java.sevice.plant.impl.SystemServiceImpl;
+import com.dk_power.power_plant_java.sevice.plant.impl.VendorServiceImpl;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -17,10 +20,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/group")
 @Transactional
 public class GroupController {
-    private final GroupService<Syst> groupServiceSystem;
-    private final GroupService<EquipmentType> groupServiceEquipmentType;
-    private final GroupService<FileType> fileTypeGroupService;
-    private final GroupService<Vendor> vendorGroupService;
+    private final SystemServiceImpl groupServiceSystem;
+    private final EquipmentTypeServiceImpl groupServiceEquipmentType;
+    private final FileTypeServiceImpl fileTypeGroupService;
+    private final VendorServiceImpl vendorGroupService;
     @PostMapping("/create")
     public String createNewItem(@RequestParam(name="group") String group, @RequestParam(name="value") String value){
         switch (group) {
