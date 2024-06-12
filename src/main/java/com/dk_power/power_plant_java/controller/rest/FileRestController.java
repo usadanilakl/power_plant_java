@@ -25,14 +25,15 @@ public class FileRestController {
     private final FileServiceImpl fileService;
 
     @GetMapping("/get-files")
-    public Iterable<FileDto> getFiles(){
+    public Iterable<FileDto> getFiles() {
         return null;
     }
 
     @DeleteMapping("/delete-kiewit")
-    public void deleteKiewit(){
+    public void deleteKiewit() {
 
     }
+
     @GetMapping("/displayPdf")
     public ResponseEntity<Resource> displayPdf() {
         String filename = "uploads/display.pdf";
@@ -48,6 +49,7 @@ public class FileRestController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
     }
+
     @GetMapping("/displayJpg")
     public ResponseEntity<Resource> displayJpg() {
         String filename = "uploads/1.jpg";
@@ -63,12 +65,20 @@ public class FileRestController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
     }
+
     @GetMapping("/get-items/{value}")
-    public ResponseEntity<List<String>> getItems(@PathVariable("value") String value, @RequestParam(name="group") String group) {
+    public ResponseEntity<List<FileDto>> getItems(@PathVariable("value") String value, @RequestParam(name = "field") String field, @RequestParam(name = "type") String type) {
+        List<FileDto> items = fileService.getAllDtos();
+        return ResponseEntity.ok().body(items);
+    }
+
+    @GetMapping("/get-subgroups/{value}")
+    public ResponseEntity<List<String>> getSubGroups(@PathVariable("value") String value, @RequestParam(name = "field") String field) {
         List<String> items = new ArrayList<>();
-        if(value.equalsIgnoreCase("vendor")){
+        if (value.equalsIgnoreCase("vendor")) {
             items = fileService.getVendors();
         }
         return ResponseEntity.ok().body(items);
+
     }
 }

@@ -34,10 +34,9 @@
 <!--                    </ul>-->
                     <ul>
                         <li th:each="group : ${sortingGroups}">
-                            <a class="btn btn-warning dropdownDk" th:text="${group[value]}" th:id="${group[group]}"></a>
+                            <a class="btn btn-warning dropdownDk" th:text="${group[value]}" th:id="${group[group]}" name="subgroups"></a>
                         </li>
                     </ul>
-                    <a href="/data/get-items/vendor?group=placeholder">TEST</a>
                 </div>
                 <div id="menu-resize"></div>
             </div>

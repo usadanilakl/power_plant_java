@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
+import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.entities.plant.Syst;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
@@ -31,5 +32,9 @@ public class FileServiceImpl extends GroupServiceImpl<FileObject>{
     }
     public List<FileObject> getFilesByVendor(String value) {
         return repo.findByVendor(value);
+    }
+
+    public List<FileDto> getAllDtos() {
+        return mapper.convertAll(getAll(),new FileDto());
     }
 }
