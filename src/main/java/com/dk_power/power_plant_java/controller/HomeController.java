@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller;
 
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.enums.SortingGroup;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -9,11 +10,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 @AllArgsConstructor
 public class HomeController {
-    private final FileServiceImpl fileObjectGroupService;
+    private final FileServiceImpl fileService;
 
     @GetMapping("/")
     String getHome(Model model){
-        model.addAttribute("files", fileObjectGroupService.getAll());
+        model.addAttribute("files", fileService.getAll());
+        model.addAttribute("sortingGroups", SortingGroup.getValues());
         return "layouts/main-template";
     }
     @GetMapping("/admin")
@@ -30,4 +32,5 @@ public class HomeController {
     String getDev(){
         return "admin/dev";
     }
+
 }

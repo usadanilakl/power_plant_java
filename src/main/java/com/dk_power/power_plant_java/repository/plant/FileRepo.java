@@ -1,6 +1,13 @@
 package com.dk_power.power_plant_java.repository.plant;
 
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
 
 public interface FileRepo extends GroupRepo<FileObject> {
+    @Query("SELECT DISTINCT e.vendor.name FROM FileObject e")
+    List<String> getVendors();
+    @Query("SELECT e FROM FileObject e WHERE e.vendor.name=?1")
+    List<FileObject> findByVendor(String vendor);
 }

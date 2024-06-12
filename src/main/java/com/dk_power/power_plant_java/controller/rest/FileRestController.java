@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.rest;
 
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
+import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.core.io.Resource;
@@ -8,20 +9,20 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 @AllArgsConstructor
 @Data
 @RestController
 @RequestMapping("/data")
 public class FileRestController {
+    private final FileServiceImpl fileService;
 
     @GetMapping("/get-files")
     public Iterable<FileDto> getFiles(){
@@ -61,5 +62,13 @@ public class FileRestController {
                 .contentType(MediaType.parseMediaType("image/jpeg"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
+    }
+    @GetMapping("/get-items/{value}")
+    public ResponseEntity<List<String>> getItems(@PathVariable("value") String value, @RequestParam(name="group") String group) {
+        List<String> items = new ArrayList<>();
+        if(value.equalsIgnoreCase("vendor")){
+            items = fileService.getVendors();
+        }
+        return ResponseEntity.ok().body(items);
     }
 }

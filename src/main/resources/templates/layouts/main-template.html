@@ -25,13 +25,19 @@
             <button id="pin-menu">Menu</button>
             <div id="left">
                 <div id="items">
+<!--                    <ul>-->
+<!--                        <li th:each="file:${files}">-->
+<!--                            <a th:href="@{/file/display/{id}(id=${file.id})}" th:text="${file.fileNumber}"></a>-->
+<!--                            <a th:href="@{/file/edit/{id}(id=${file.id})}">Edit</a>-->
+<!--                            <button class="delete-buttons" th:id="${file.id}">delete</button>-->
+<!--                        </li>-->
+<!--                    </ul>-->
                     <ul>
-                        <li th:each="file:${files}">
-                            <a th:href="@{/file/display/{id}(id=${file.id})}" th:text="${file.fileNumber}"></a>
-                            <a th:href="@{/file/edit/{id}(id=${file.id})}">Edit</a>
-                            <button class="delete-buttons" th:id="${file.id}">delete</button>
+                        <li th:each="group : ${sortingGroups}">
+                            <a class="btn btn-warning dropdownDk" th:text="${group[value]}" th:id="${group[group]}"></a>
                         </li>
                     </ul>
+                    <a href="/data/get-items/vendor?group=placeholder">TEST</a>
                 </div>
                 <div id="menu-resize"></div>
             </div>
@@ -100,6 +106,7 @@
     <script src="/functions/FileFunctions.js"></script>
     <script src="/functions/display_functions/PopUpForGroups.js"></script>
     <script src="/functions/display_functions/PopUpForHtml.js"></script>
+    <script src="/functions/display_functions/FileDropdown.js"></script>
 
 
     <script>
@@ -120,13 +127,14 @@
 
 window.onload = function() {
     let buttons = document.getElementsByClassName('delete-buttons');
-    console.log(buttons.length);
     for (let i = 0; i < buttons.length; i++) {
         buttons[i].addEventListener('click', function() {
             console.log('deleting', buttons[i].getAttribute('id'));
             postRequest('/file/delete/' + buttons[i].getAttribute("id"));
         });
     }
+    console.log("window is loaded");
+    openDropdown();
 };
 
 
