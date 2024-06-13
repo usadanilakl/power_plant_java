@@ -25,7 +25,6 @@ public class Point extends Group {
     @JsonProperty("type")
     private EquipmentType eqType;
     @ManyToMany(mappedBy = "points")
-    @JsonProperty("pid")
     private List<FileObject> files;
     @ManyToOne
     @JoinColumn(name = "vendor_id")
@@ -46,5 +45,10 @@ public class Point extends Group {
     private String coordinates;
     //@JsonProperty("originalSize")
     private String originalPictureSize;
+    @ManyToOne
+    @JoinColumn(name = "pid_id")
+    private FileObject mainFile;
+    @Transient
+    private String pid;
 
 }

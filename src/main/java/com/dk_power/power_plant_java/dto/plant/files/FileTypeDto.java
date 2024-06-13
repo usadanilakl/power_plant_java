@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.dto.plant.files;
 
+import com.dk_power.power_plant_java.dto.plant.BaseDto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -7,7 +8,9 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class FileTypeDto {
+public class FileTypeDto extends BaseDto {
     private Long id;
     private String name;
+
+
 }

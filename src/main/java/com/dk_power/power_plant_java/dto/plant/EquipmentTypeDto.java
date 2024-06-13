@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class EquipmentTypeDto {
+public class EquipmentTypeDto extends BaseDto{
     private Long id;
     private String name;
 }

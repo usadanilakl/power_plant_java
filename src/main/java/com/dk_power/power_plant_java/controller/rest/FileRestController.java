@@ -1,7 +1,11 @@
 package com.dk_power.power_plant_java.controller.rest;
 
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
+import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
+import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
+import com.dk_power.power_plant_java.util.Util;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.core.io.Resource;
@@ -23,6 +27,7 @@ import java.util.List;
 @RequestMapping("/data")
 public class FileRestController {
     private final FileServiceImpl fileService;
+    private final FileUploaderService fileUploaderService;
 
     @GetMapping("/get-files")
     public Iterable<FileDto> getFiles() {
@@ -52,7 +57,7 @@ public class FileRestController {
 
     @GetMapping("/displayJpg")
     public ResponseEntity<Resource> displayJpg() {
-        String filename = "uploads/1.jpg";
+        String filename = "./src/main/resources/static/1.jpg";
         Path path = Paths.get(filename);
         Resource resource;
         try {
@@ -66,19 +71,40 @@ public class FileRestController {
                 .body(resource);
     }
 
+    @GetMapping("/display/{id}")
+    public void display(@PathVariable("id") String id){
+        FileObject file = fileService.getById(Long.parseLong(id));
+        fileUploaderService.PdfToJpgConverter("."+file.getFileLink());
+
+    }
+
     @GetMapping("/get-items/{value}")
-    public ResponseEntity<List<FileDto>> getItems(@PathVariable("value") String value, @RequestParam(name = "field") String field, @RequestParam(name = "type") String type) {
+    public ResponseEntity<List<FileDto>> getItems(@PathVariable("value") String value, @RequestParam(name = "field") String field) {
         List<FileDto> items = fileService.getAllDtos();
-        return ResponseEntity.ok().body(items);
+        items = Util.filterList(items,field,value);
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.set("itemType", "items");
+        responseHeaders.set("itemHolds", "items");
+        responseHeaders.set("field", value);
+        return ResponseEntity.ok().headers(responseHeaders).body(items);
     }
 
     @GetMapping("/get-subgroups/{value}")
-    public ResponseEntity<List<String>> getSubGroups(@PathVariable("value") String value, @RequestParam(name = "field") String field) {
+    public ResponseEntity<List<String>> getSubGroups(@PathVariable("value") String value) {
         List<String> items = new ArrayList<>();
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.set("field", value);
+        responseHeaders.set("itemType", "subgroups");
+
         if (value.equalsIgnoreCase("vendor")) {
+            responseHeaders.set("itemHolds", "items");
             items = fileService.getVendors();
         }
-        return ResponseEntity.ok().body(items);
+        if(value.equalsIgnoreCase("system")){
+            responseHeaders.set("itemHolds", "items");
+            items = fileService.getSystems();
+        }
+        return ResponseEntity.ok().headers(responseHeaders).body(items);
 
     }
 }

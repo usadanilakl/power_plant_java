@@ -15,7 +15,7 @@ public class HomeController {
     @GetMapping("/")
     String getHome(Model model){
         model.addAttribute("files", fileService.getAll());
-        model.addAttribute("sortingGroups", SortingGroup.getValues());
+        model.addAttribute("sortingGroups", SortingGroup.values());
         return "layouts/main-template";
     }
     @GetMapping("/admin")

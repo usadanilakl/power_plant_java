@@ -17,8 +17,8 @@ public class Syst extends Group {
     public Syst(String name) {
         super(name);
     }
-    @OneToMany(mappedBy = "system")
-    private List<Point> points;
+//    @OneToMany(mappedBy = "system")
+//    private List<Point> points;
     @OneToMany(mappedBy = "system")
     private List<FileObject> files;
 }

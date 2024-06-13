@@ -17,6 +17,6 @@ public class EquipmentType extends Group {
     public EquipmentType(String name) {
         super(name);
     }
-    @OneToMany(mappedBy = "eqType")
-    private List<Point> points;
+//    @OneToMany(mappedBy = "eqType")
+//    private List<Point> points;
 }

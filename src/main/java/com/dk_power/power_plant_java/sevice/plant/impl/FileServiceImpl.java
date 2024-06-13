@@ -37,4 +37,8 @@ public class FileServiceImpl extends GroupServiceImpl<FileObject>{
     public List<FileDto> getAllDtos() {
         return mapper.convertAll(getAll(),new FileDto());
     }
+
+    public List<String> getSystems() {
+        return repo.getSystems();
+    }
 }

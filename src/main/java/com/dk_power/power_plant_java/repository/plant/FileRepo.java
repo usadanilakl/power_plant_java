@@ -10,4 +10,6 @@ public interface FileRepo extends GroupRepo<FileObject> {
     List<String> getVendors();
     @Query("SELECT e FROM FileObject e WHERE e.vendor.name=?1")
     List<FileObject> findByVendor(String vendor);
+    @Query("SELECT DISTINCT e.system.name FROM FileObject e")
+    List<String> getSystems();
 }

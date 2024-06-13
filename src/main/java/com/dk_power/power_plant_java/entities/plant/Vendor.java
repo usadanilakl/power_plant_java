@@ -18,8 +18,13 @@ public class Vendor extends Group {
     public Vendor(String name) {
         super(name);
     }
-    @OneToMany(mappedBy = "vendor")
-    private List<Point> points;
+//    @OneToMany(mappedBy = "vendor")
+//    private List<Point> points;
     @OneToMany(mappedBy = "vendor")
     private List<FileObject> files;
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

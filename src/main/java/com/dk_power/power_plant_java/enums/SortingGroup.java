@@ -1,15 +1,13 @@
 package com.dk_power.power_plant_java.enums;
 
-import org.springframework.data.domain.Sort;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public enum SortingGroup {
-    PID_BY_VENDOR("P&IDs By Vendor"),
-    PID_BY_SYSTEM("P&IDs By System"),
+    VENDOR("P&IDs By Vendor"),
+    SYSTEM("P&IDs By System"),
     HEATTRACE("Heat Trace"),
     ELECTRICAL("Electrical Breakers");
     private final String value;
@@ -30,3 +28,4 @@ public enum SortingGroup {
         return values;
     }
 }
+

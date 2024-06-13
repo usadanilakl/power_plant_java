@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class LocationDto {
+public class LocationDto extends BaseDto{
     private Long id;
     private String name;
 }

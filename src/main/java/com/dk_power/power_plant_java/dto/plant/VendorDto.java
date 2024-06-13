@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class VendorDto {
+public class VendorDto extends BaseDto{
     private Long id;
     private String name;
 }

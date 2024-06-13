@@ -17,6 +17,6 @@ public class Location extends Group {
     public Location(String name) {
         super(name);
     }
-    @OneToMany(mappedBy = "location")
-    private List<Point> points;
+//    @OneToMany(mappedBy = "location")
+//    private List<Point> points;
 }
