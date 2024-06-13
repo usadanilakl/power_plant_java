@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 public class GroupServiceImpl<T extends Group> implements GroupService<T> {
     protected final GroupRepo<T> repo;
@@ -34,7 +36,14 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
     public T save(T entity) {
         return repo.save(entity);
     }
-
+    @Override
+    public List<T> saveAll(List<T> entities){
+        return entities.stream().map(this::save).collect(Collectors.toList());
+    }
+    @Override
+    public T saveForTransfer(T transfer){
+        return null;
+    }
     @Override
     public <D> T update(D dto, Class<T> type) {
         try {

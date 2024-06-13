@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
 import com.dk_power.power_plant_java.dto.plant.files.FileTypeDto;
+import com.dk_power.power_plant_java.entities.plant.EquipmentType;
 import com.dk_power.power_plant_java.entities.plant.Syst;
 import com.dk_power.power_plant_java.entities.plant.files.FileType;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
@@ -20,8 +21,14 @@ public class FileTypeServiceImpl extends GroupServiceImpl<FileType>{
     public FileType getByName(String name){
         return repo.findByName(name);
     }
-        public FileTypeDto getDtoByName(String name) {
+    public FileTypeDto getDtoByName(String name) {
             return mapper.convert(getByName(name), new FileTypeDto());
 
+    }
+    @Override
+    public FileType saveForTransfer(FileType transfer) {
+        FileType entity = repo.findByName(transfer.getName());
+        if(entity!=null) transfer.setId(entity.getId());
+        return save(transfer);
     }
 }
