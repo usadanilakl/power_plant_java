@@ -161,7 +161,7 @@
 {"fileNumber":"94.03.32.100-PD-0018-001.10.APP.10.01","pidNumber":"PD-0018-001.10/2080_80405","folder":"P&IDs/John Cockerill","vendor":"John Cockerill","systems":["Ductburners","HRSG","Ductburner","Fuel Gas","John Cockerill"],"fileType":"PID","extension":"pdf","name":"Ductburners"},
 
 
-{"fileNumber":"20023894-PD-000.00.C2CR.00.01","pidNumber":"List of P&IDs","folder":"P&IDs/undefined","systems":["kiewit"],"fileType":"PID","extension":"pdf","name":["symbol","Kiewit"]},
+{"fileNumber":"20023894-PD-000.00.C2CR.00.01","pidNumber":"List of P&IDs","folder":"P&IDs/undefined","systems":["kiewit"],"fileType":"PID","extension":"pdf","name":"symbol Kiewit"},
 
 
 {"fileNumber":"20023894-PD-020A.01.C2CR.01.01","pidNumber":"PD-020A","folder":"P&IDs/Kiewit","vendor":"Kiewit","systems":["HP","Kiewit","U1","Steam","HRSG"],"fileType":"PID","extension":"pdf","name":" HP Steam Header (HRSG)"},
@@ -881,7 +881,7 @@
 {"fileNumber":"94.03.32.175-PD-0002-001.07.APP.07.01_symbol","pidNumber":"94.03.32.175-PD-0002-001.07.APP.07.01_symbol","folder":"P&IDs/Aux Boiler (CleaverBrooks)","vendor":"Aux Boiler (CleaverBrooks)","systems":["Aux Boiler (CleaverBrooks)","symbol"],"fileType":"PID","extension":"pdf","name":"Symbol"},
 
 
-{"fileNumber":"94.03.32.175-PD-0001-001.05.APP.05.01_FuelGas","pidNumber":"94.03.32.175-PD-0001-001.05.APP.05.01_FuelGas","folder":"P&IDs/Aux Boiler (CleaverBrooks)","vendor":"Aux Boiler (CleaverBrooks)","systems":["Aux Boiler (CleaverBrooks)","Aux Boiler","Fuel Gas"],"fileType":"PID","extension":"pdf","name":"Fuel Gas"},
+{"fileNumber":"94.03.32.175-PD-0001-001.05.APP.05.01_FuelGas","pidNumber":"94.03.32.175-PD-0001-001.05.APP.05.01_FuelGas","folder":"P&IDs/Aux Boiler (CleaverBrooks)","vendor":"Aux Boiler (CleaverBrooks)","systems":["Aux Boiler (CleaverBrooks)","Aux Boiler","Fuel Gas"],"fileType":"PID","extension":"pdf","name":"Fuel Gas"}
 
 
 ]

@@ -17,12 +17,10 @@ import java.util.Map;
 @Entity
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Point extends Group {
-    @JsonProperty("id")
     private String label;
     private String description;
     @ManyToOne
     @JoinColumn(name="eq_type_id")
-    @JsonProperty("type")
     private EquipmentType eqType;
     @ManyToMany(mappedBy = "points")
     private List<FileObject> files;
@@ -35,15 +33,7 @@ public class Point extends Group {
     @ManyToOne
     @JoinColumn(name = "system_id")
     private Syst system;
-    @JsonProperty("area")
-    @Transient
-    private Map<String,Integer>  c;
-    @Transient
-    @JsonProperty("originalSize")
-    private Map<String,Integer>  o;
-    //@JsonProperty("area")
     private String coordinates;
-    //@JsonProperty("originalSize")
     private String originalPictureSize;
     @ManyToOne
     @JoinColumn(name = "pid_id")

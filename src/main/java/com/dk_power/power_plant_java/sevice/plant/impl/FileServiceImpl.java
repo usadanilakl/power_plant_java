@@ -45,11 +45,15 @@ public class FileServiceImpl extends GroupServiceImpl<FileObject>{
     }
     public FileObject saveForTransfer(FileObject transfer){
         fileTypeService.saveForTransfer(transfer.getFileType());
-        systemService.saveForTransfer(transfer.getSystem());
-        vendorService.saveForTransfer(transfer.getVendor());
-        pointService.saveAllForTransfer(transfer.getPoints());
+        if(transfer.getSystem()!=null)systemService.saveForTransfer(transfer.getSystem());
+        if(transfer.getVendor()!=null)vendorService.saveForTransfer(transfer.getVendor());
+        if(transfer.getPoints()!=null)pointService.saveAllForTransfer(transfer.getPoints());
         FileObject entity = repo.findByFileNumber(transfer.getFileNumber());
         if(entity!=null) transfer.setId(entity.getId());
         return save(transfer);
+    }
+
+    public List<FileObject> getIfNumberContains(String pid) {
+        return repo.findByFileNumberContaining(pid);
     }
 }

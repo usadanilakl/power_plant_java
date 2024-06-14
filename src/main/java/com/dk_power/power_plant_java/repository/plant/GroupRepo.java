@@ -9,5 +9,5 @@ import java.util.List;
 
 @Transactional
 public interface GroupRepo<T extends Group> extends CrudRepository<T,Long> {
-    Group findByName(String name);
+
 }

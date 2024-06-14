@@ -14,4 +14,5 @@ public interface FileRepo extends GroupRepo<FileObject> {
     List<String> getSystems();
     FileObject findByName(String name);
     FileObject findByFileNumber(String number);
+    List<FileObject> findByFileNumberContaining(String text);
 }

@@ -60,7 +60,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                newFile.setFileType(fileTypeRepo.findByName(files.getType()));
                newFile.setVendor(vendorRepo.findByName(files.getVendor()));
                newFile.setFileNumber(name);
-               newFile.setGroupFolder(files.getFolder());
+               newFile.setFolder(files.getFolder());
                newFile.setBaseLink(baseLink);
                newFile.buildFileLink();
                fileRepo.save(newFile);
