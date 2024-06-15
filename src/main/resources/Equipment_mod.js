@@ -30683,10 +30683,10 @@
     {"pid":"PD-0004-003.05.INF.05.01","lable":"LP-01197","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:3734,height:2438","coordinates":"startX:1132,startY:1963,endX:1156,endY:2135,width:23,height:172"},
 
 
-    {"pid":"PD-0005-001.05.INF.05.01","lable":"LP-01226","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:3734,height:2438","coordinates":"startX:1788,startY:420,endX:1960,endY:447,width:172,height:26"},
+    {"pid":"94.03.36.100-PD-0005-001.05.INF.05.01","lable":"LP-01226","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:3734,height:2438","coordinates":"startX:1788,startY:420,endX:1960,endY:447,width:172,height:26"},
 
 
-    {"pid":"PD-0005-001.05.INF.05.01","lable":"LP-01200","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:3734,height:2438","coordinates":"startX:2772,startY:1887,endX:2947,endY:1910,width:175,height:23"},
+    {"pid":"94.03.36.100-PD-0005-001.05.INF.05.01","lable":"LP-01200","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:3734,height:2438","coordinates":"startX:2772,startY:1887,endX:2947,endY:1910,width:175,height:23"},
 
 
     {"pid":"PD-0008-001.04.APP.04.01","lable":"LP-01199","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:3734,height:2438","coordinates":"startX:374,startY:1187,endX:551,endY:1213,width:177,height:25"},
@@ -31550,22 +31550,22 @@
     {"pid":"PD-0024-001.04.INF.04.01","lable":"LP-01226","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:3734,height:2438","coordinates":"startX:2111,startY:1395,endX:2286,endY:1418,width:175,height:23"},
 
 
-    {"pid":"PD-0002-001.06.INF.06.01","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:1926,startY:3842,endX:2289,endY:3891,width:362,height:48"},
+    {"pid":"PD-0002-001.06.INF.06.01(1)","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:1926,startY:3842,endX:2289,endY:3891,width:362,height:48"},
 
 
-    {"pid":"PD-0002-001.06.INF.06.01","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:3752,startY:3669,endX:4112,endY:3724,width:360,height:54"},
+    {"pid":"PD-0002-001.06.INF.06.01(1)","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:3752,startY:3669,endX:4112,endY:3724,width:360,height:54"},
 
 
-    {"pid":"PD-0002-001.06.INF.06.01","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:2808,startY:914,endX:3166,endY:964,width:358,height:50"},
+    {"pid":"PD-0002-001.06.INF.06.01(1)","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:2808,startY:914,endX:3166,endY:964,width:358,height:50"},
 
 
-    {"pid":"PD-0002-001.06.INF.06.01","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:2808,startY:778,endX:3174,endY:828,width:366,height:50"},
+    {"pid":"PD-0002-001.06.INF.06.01(1)","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:2808,startY:778,endX:3174,endY:828,width:366,height:50"},
 
 
-    {"pid":"PD-0002-001.06.INF.06.01","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:2806,startY:644,endX:3172,endY:692,width:366,height:48"},
+    {"pid":"PD-0002-001.06.INF.06.01(1)","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:2806,startY:644,endX:3172,endY:692,width:366,height:48"},
 
 
-    {"pid":"PD-0002-001.06.INF.06.01","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:2804,startY:502,endX:3170,endY:554,width:366,height:52"},
+    {"pid":"PD-0002-001.06.INF.06.01(1)","lable":"LP-01191","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:2804,startY:502,endX:3170,endY:554,width:366,height:52"},
 
 
     {"pid":"PD-0002-001.06.INF.06.01(2)","lable":"LP-01196","vendor":"Mitsubishi","eqType":"connector","originalPictureSize":"width:7272,height:5173","coordinates":"startX:5747,startY:2432,endX:6147,endY:2485,width:400,height:52"},

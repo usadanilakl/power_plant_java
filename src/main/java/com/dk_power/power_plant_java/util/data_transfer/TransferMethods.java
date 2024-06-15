@@ -29,7 +29,7 @@ public class TransferMethods {
         int n = 0;
         for (Point point : points) {
             pointService.saveForTransfer(point);
-            n++;
+            System.out.println(++n + point.getPid());
         }
         System.out.println(n);
     }

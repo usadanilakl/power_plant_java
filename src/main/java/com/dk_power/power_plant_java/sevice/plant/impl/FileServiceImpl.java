@@ -56,4 +56,8 @@ public class FileServiceImpl extends GroupServiceImpl<FileObject>{
     public List<FileObject> getIfNumberContains(String pid) {
         return repo.findByFileNumberContaining(pid);
     }
+
+    public FileObject getFileByNumber(String s) {
+        return repo.findByFileNumber(s);
+    }
 }

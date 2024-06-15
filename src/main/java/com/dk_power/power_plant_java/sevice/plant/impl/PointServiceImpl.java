@@ -31,28 +31,37 @@ public class PointServiceImpl extends GroupServiceImpl<Point>{
         this.mapper = mapper;
     }
 
+    public Point getByCoords(String coord){
+        return repo.findByCoordinates(coord);
+    }
+
     @Override
     public Point saveForTransfer(Point transfer) {
         if(transfer.getVendor()!=null) vendorService.saveForTransfer(transfer.getVendor());
         if(transfer.getSystem()!=null) systemService.saveForTransfer(transfer.getSystem());
         if(transfer.getLocation()!=null) locationService.saveForTransfer(transfer.getLocation());
         if(transfer.getEqType()!=null) equipmentTypeService.saveForTransfer(transfer.getEqType());
-        Point entity = repo.findByLabel(transfer.getLabel());
+        Point entity = getByCoords(transfer.getCoordinates());
         if(entity!=null) transfer.setId(entity.getId());
-        List<FileObject> files = fileService.getIfNumberContains(transfer.getPid());
-        if(files!=null&&files.size()>1) files.forEach(e-> System.out.println(e));
+
         FileObject file = null;
-        if(files!=null && files.size()>0)  file = files.get(0);
+        List<FileObject> files = fileService.getIfNumberContains(transfer.getPid());
+
+        if(files!=null && files.size()==1)  file = files.get(0);
+        else if(files!=null&&files.size()>1){
+            for (FileObject e : files) {
+                if( e.getVendor().getName().equals(transfer.getVendor().getName())) file = e;
+            }
+        }
 
         if(file==null){
             file = new FileObject();
             file.setFileNumber(transfer.getPid());
-            System.out.println(file.getFileNumber());
+            System.out.println(file.getFileNumber()+" is null");
         }
         file.addPoint(entity);
         fileService.save(file);
         transfer.setMainFile(file);
-
         return save(transfer);
     }
     public void saveAllForTransfer(List<Point> transers){

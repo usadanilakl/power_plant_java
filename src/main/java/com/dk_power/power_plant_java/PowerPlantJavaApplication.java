@@ -16,7 +16,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @SpringBootApplication
 @AllArgsConstructor
@@ -42,6 +44,22 @@ private final TransferMethods transferMethods;
 
 //        transferMethods.transferPids();
 //        transferMethods.transferPoints();
+
+
+//        List<Point> points = new JsonToPojo<Point>().readProductsFromFile("/Equipment_mod.js", Point.class);
+//        Set<FileObject>doubleFiles = new LinkedHashSet<>();
+//        Set<String>missingFiles = new LinkedHashSet<>();
+//        for (Point point : points) {
+//            List<FileObject> filesFound = fileService.getIfNumberContains(point.getPid());
+//            if( filesFound ==null|| filesFound.size()==0) missingFiles.add(point.getPid());
+//            else if(filesFound.size()>1)doubleFiles.addAll(filesFound);
+//        }
+//
+//        System.out.println("missingFiles = " + missingFiles);
+//        doubleFiles.forEach(e-> System.out.println(e.getFileNumber()+" vendor: "+e.getVendor().getName()));
+
+
+
 
     }
 }
