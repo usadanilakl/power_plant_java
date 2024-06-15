@@ -79,15 +79,15 @@ function fillDropdownWithItems(items,element){
      editFileButton.textContent = "Edit";
      deleteFileButton.textContent = "Delete";
 
-    //  showFileButton.setAttribute('href','/data/display/'+e.id);
+     showFileButton.addEventListener('click',()=>setPicSrc("uploads/jpg/P&IDs/Kiewit/"+e.fileNumber+".jpg"));
      editFileButton.setAttribute('href','/file/edit/'+e.id);
      deleteFileButton.setAttribute('href','/file/delete/'+e.id);
 
-     showFileButton.addEventListener('click', function() {
-         fetch('/data/display/'+e.id)
-         .then(response => console.log("success"))
-         .catch(error => console.error('Error:', error));
-     });
+    //  showFileButton.addEventListener('click', function() {
+    //      fetch('/data/display/'+e.id)
+    //      .then(response => console.log("success"))
+    //      .catch(error => console.error('Error:', error));
+    //  });
 
     //  editFileButton.addEventListener('click', function() {
     //     fetch('/file/edit/'+e.id)
