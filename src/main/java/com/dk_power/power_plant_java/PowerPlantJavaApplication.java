@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java;
 
+import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.entities.plant.EquipmentType;
 import com.dk_power.power_plant_java.entities.plant.Point;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
@@ -8,6 +9,7 @@ import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import com.dk_power.power_plant_java.sevice.plant.impl.PointServiceImpl;
+import com.dk_power.power_plant_java.util.Util;
 import com.dk_power.power_plant_java.util.data_transfer.JsonToPojo;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
 import jakarta.transaction.Transactional;
@@ -46,17 +48,10 @@ private final TransferMethods transferMethods;
 //        transferMethods.transferPoints();
 
 
-//        List<Point> points = new JsonToPojo<Point>().readProductsFromFile("/Equipment_mod.js", Point.class);
-//        Set<FileObject>doubleFiles = new LinkedHashSet<>();
-//        Set<String>missingFiles = new LinkedHashSet<>();
-//        for (Point point : points) {
-//            List<FileObject> filesFound = fileService.getIfNumberContains(point.getPid());
-//            if( filesFound ==null|| filesFound.size()==0) missingFiles.add(point.getPid());
-//            else if(filesFound.size()>1)doubleFiles.addAll(filesFound);
-//        }
-//
-//        System.out.println("missingFiles = " + missingFiles);
-//        doubleFiles.forEach(e-> System.out.println(e.getFileNumber()+" vendor: "+e.getVendor().getName()));
+        List<FileDto> items = fileService.getAllDtos();
+        items = Util.filterList(items,"vendor","kiewit");
+        System.out.println("items.size() = " + items.size());
+        items.get(10).getPoints().forEach(e-> System.out.println(e.getCoordinates()));
 
 
 

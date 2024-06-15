@@ -1,25 +1,29 @@
+
 function openDropdown(){
     const elements = document.querySelectorAll('.dropdownDk'); // Select all elements of a certain class
     elements.forEach(element => { 
     const itemHolder = document.createElement('ul'); // Create item container for next level list
     element.parentElement.appendChild(itemHolder); //Add container to the li of current level list
     element.addEventListener('click', function() {
-        
-        fetch('/data/get-subgroups/'+element.getAttribute('id').toLocaleLowerCase()) // Send a GET request when the element is clicked
-        .then(response =>{
-            return response.json().then(items=>{
-            let data = {
-                "itemType":response.headers.get("itemType"),
-                "itemHolds":response.headers.get("itemHolds"),
-                "field":response.headers.get("field"),
-                "items":items
-            }
-            return data; 
-        }) 
-        })  
-        
-        .then(data => fillDropdownWithSubgroups(data,element.parentElement))
-        .catch(error => console.error('Error:', error));
+        if(itemHolder.children.length!==0){
+            itemHolder.innerHTML = "";
+        }else{
+            fetch('/data/get-subgroups/'+element.getAttribute('id').toLocaleLowerCase()) // Send a GET request when the element is clicked
+            .then(response =>{
+                return response.json().then(items=>{
+                let data = {
+                    "itemType":response.headers.get("itemType"),
+                    "itemHolds":response.headers.get("itemHolds"),
+                    "field":response.headers.get("field"),
+                    "items":items
+                }
+                return data; 
+            }) 
+            })  
+            
+            .then(data => fillDropdownWithSubgroups(data,element.parentElement))
+            .catch(error => console.error('Error:', error));
+        }
     });
     });
 }
@@ -37,6 +41,7 @@ function fillDropdownWithSubgroups(data,element){
     let list2 = document.createElement('ul'); //container for the next level
 
     button.classList.add('btn'); //style link to look like button
+    button.classList.add('btn-warning'); //style link to look like button
     button.textContent = e; //text of the button
 
     let link; //link for the request
@@ -44,16 +49,17 @@ function fillDropdownWithSubgroups(data,element){
     if(itemHolds==="items") link='/data/get-items/'+e+'?field='+field; //will get file objects
 
     button.addEventListener('click', function() { //Send get request on click
-        fetch(link)
-        .then(response => handleResponse(response)) 
-        .then(data =>{
-            if(data.itemHolds==='subgroups')fillDropdownWithSubgroups(data,item);
-            else if(data.itemHolds==='items'){
-                console.log("getting items")
-                fillDropdownWithItems(data,item);
-            } 
-        })
-        .catch(error => console.error('Error:', error));
+        if(list2.children.length!==0){
+            list2.innerHTML = "";
+        }else{
+            fetch(link)
+            .then(response => handleResponse(response)) 
+            .then(data =>{
+                if(data.itemHolds==='subgroups')fillDropdownWithSubgroups(data,item);
+                else if(data.itemHolds==='items')fillDropdownWithItems(data,item);
+            })
+            .catch(error => console.error('Error:', error)); 
+        }
     });
     button.setAttribute('id',e);
     item.appendChild(button);
@@ -72,14 +78,18 @@ function fillDropdownWithItems(items,element){
      let deleteFileButton = document.createElement('a');
  
      showFileButton.classList.add('btn');
+     showFileButton.classList.add('btn-primary');
      editFileButton.classList.add('btn');
+     editFileButton.classList.add('btn-warning');
      deleteFileButton.classList.add('btn');
+     deleteFileButton.classList.add('btn-danger');
 
      showFileButton.textContent = e.fileNumber;
      editFileButton.textContent = "Edit";
      deleteFileButton.textContent = "Delete";
 
-     showFileButton.addEventListener('click',()=>setPicSrc("uploads/jpg/P&IDs/Kiewit/"+e.fileNumber+".jpg"));
+     console.log(JSON.stringify(e))
+     showFileButton.addEventListener('click',()=>loadPictureWithAreas("uploads/jpg/P&IDs/Kiewit/"+e.fileNumber+".jpg", e.points));
      editFileButton.setAttribute('href','/file/edit/'+e.id);
      deleteFileButton.setAttribute('href','/file/delete/'+e.id);
 
