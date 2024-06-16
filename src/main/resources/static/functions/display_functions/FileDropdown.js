@@ -88,8 +88,7 @@ function fillDropdownWithItems(items,element){
      editFileButton.textContent = "Edit";
      deleteFileButton.textContent = "Delete";
 
-     console.log(JSON.stringify(e))
-     showFileButton.addEventListener('click',()=>loadPictureWithAreas("uploads/jpg/P&IDs/Kiewit/"+e.fileNumber+".jpg", e.points));
+     showFileButton.addEventListener('click',()=>loadPictureWithAreas("uploads/jpg/P&IDs/Kiewit/"+e.fileNumber+".jpg", e.filePoints));
      editFileButton.setAttribute('href','/file/edit/'+e.id);
      deleteFileButton.setAttribute('href','/file/delete/'+e.id);
 

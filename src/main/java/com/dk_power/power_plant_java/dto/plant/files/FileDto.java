@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.plant.files.FileType;
 import com.fasterxml.jackson.annotation.JacksonAnnotation;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -31,8 +32,11 @@ public class FileDto {
     private String fileNumber;
     @JsonIgnore
     private Vendor vendor;
-    @JsonIgnore
+    @JsonManagedReference
     private List<Point> points;
+    @JsonManagedReference
+    private List<Point> filePoints;
+
     public void buildFileLink(){
         fileLink = baseLink+"/"+groupFolder+"/"+fileNumber;
     }

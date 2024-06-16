@@ -51,6 +51,8 @@ public class FileObject extends Group {
             joinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
     private List<Point> points;
+    @OneToMany(mappedBy = "mainFile")
+    private List<Point> filePoints;
     @Transient
     private List<String> systems;
 
@@ -62,5 +64,10 @@ public class FileObject extends Group {
     public void addPoint(Point entity) {
         if(points==null) points = new ArrayList<>();
         points.add(entity);
+    }
+
+    public void addFilePoint(Point point) {
+        if(filePoints==null) filePoints = new ArrayList<>();
+        filePoints.add(point);
     }
 }

@@ -48,12 +48,6 @@ private final TransferMethods transferMethods;
 //        transferMethods.transferPoints();
 
 
-        List<FileDto> items = fileService.getAllDtos();
-        items = Util.filterList(items,"vendor","kiewit");
-        System.out.println("items.size() = " + items.size());
-        items.get(10).getPoints().forEach(e-> System.out.println(e.getCoordinates()));
-
-
 
 
     }
