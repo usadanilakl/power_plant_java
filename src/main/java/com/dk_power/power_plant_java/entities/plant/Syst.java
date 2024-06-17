@@ -19,6 +19,6 @@ public class Syst extends Group {
     }
 //    @OneToMany(mappedBy = "system")
 //    private List<Point> points;
-    @OneToMany(mappedBy = "system")
-    private List<FileObject> files;
+//    @OneToMany(mappedBy = "system")
+//    private List<FileObject> files;
 }

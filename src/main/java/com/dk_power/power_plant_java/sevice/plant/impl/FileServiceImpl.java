@@ -6,6 +6,8 @@ import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -47,9 +49,11 @@ public class FileServiceImpl extends GroupServiceImpl<FileObject>{
         fileTypeService.saveForTransfer(transfer.getFileType());
         if(transfer.getSystem()!=null)systemService.saveForTransfer(transfer.getSystem());
         if(transfer.getVendor()!=null)vendorService.saveForTransfer(transfer.getVendor());
-        if(transfer.getPoints()!=null)pointService.saveAllForTransfer(transfer.getPoints());
-        FileObject entity = repo.findByFileNumber(transfer.getFileNumber());
-        if(entity!=null) transfer.setId(entity.getId());
+//        if(transfer.getPoints()!=null)pointService.saveAllForTransfer(transfer.getPoints());
+//        FileObject entity = repo.findByFileNumber(transfer.getFileNumber());
+//        if(entity!=null) transfer.setId(entity.getId());
+        transfer.setRelatedSystems(transfer.getSystems().toString());
+        transfer.setBaseLink("uploads");
         return save(transfer);
     }
 

@@ -1,13 +1,13 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
-import com.dk_power.power_plant_java.entities.plant.Location;
-import com.dk_power.power_plant_java.entities.plant.Point;
-import com.dk_power.power_plant_java.entities.plant.Syst;
+import com.dk_power.power_plant_java.entities.plant.*;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.*;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -31,18 +31,25 @@ public class PointServiceImpl extends GroupServiceImpl<Point>{
         this.mapper = mapper;
     }
 
-    public Point getByCoords(String coord){
+    public List<Point> getByCoords(String coord){
         return repo.findByCoordinates(coord);
     }
 
-    @Override
+
     public Point saveForTransfer(Point transfer) {
-        if(transfer.getVendor()!=null) vendorService.saveForTransfer(transfer.getVendor());
-        if(transfer.getSystem()!=null) systemService.saveForTransfer(transfer.getSystem());
-        if(transfer.getLocation()!=null) locationService.saveForTransfer(transfer.getLocation());
-        if(transfer.getEqType()!=null) equipmentTypeService.saveForTransfer(transfer.getEqType());
-        Point entity = getByCoords(transfer.getCoordinates());
-        if(entity!=null) transfer.setId(entity.getId());
+
+        List<Point> points = repo.findByCoordinates(transfer.getCoordinates());
+        for (Point point : points) {
+            if(
+                    point != null &&
+                    point.getLabel()!=null &&
+                    transfer.getLabel()!=null &&
+                    point.getLabel().equals(transfer.getLabel())
+            ) transfer.setId(point.getId());
+        }
+
+        vendorService.saveForTransfer(transfer.getVendor());
+        equipmentTypeService.saveForTransfer(transfer.getEqType());
 
         FileObject file = null;
         List<FileObject> files = fileService.getIfNumberContains(transfer.getPid());
@@ -59,9 +66,11 @@ public class PointServiceImpl extends GroupServiceImpl<Point>{
             file.setFileNumber(transfer.getPid());
             System.out.println(file.getFileNumber()+" is null");
         }
-        file.addPoint(entity);
+        file.addPoint(transfer);
+        save(transfer);
         fileService.save(file);
         transfer.setMainFile(file);
+        transfer.addFile(file);
         return save(transfer);
     }
     public void saveAllForTransfer(List<Point> transers){

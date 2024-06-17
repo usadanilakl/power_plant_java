@@ -3,8 +3,10 @@ package com.dk_power.power_plant_java;
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.entities.plant.EquipmentType;
 import com.dk_power.power_plant_java.entities.plant.Point;
+import com.dk_power.power_plant_java.entities.plant.Vendor;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
+import com.dk_power.power_plant_java.repository.plant.VendorRepo;
 import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
@@ -31,6 +33,7 @@ private final FileRepo fileRepo;
 private final FileServiceImpl fileService;
 private final PointServiceImpl pointRepo;
 private final TransferMethods transferMethods;
+private final VendorRepo vendorRepo;
 
 
     public static void main(String[] args) {
@@ -45,7 +48,16 @@ private final TransferMethods transferMethods;
         System.err.println("=====================================================");
 
 //        transferMethods.transferPids();
+//        System.out.println(fileService.getAll().size());
 //        transferMethods.transferPoints();
+//        System.out.println("pointRepo.getAll().size() = " + pointRepo.getAll().size());
+//
+//        for (Point point : pointRepo.getAll()) {
+//            FileObject mainFile = point.getMainFile();
+//            mainFile.setPoints(null);
+//            fileService.save(mainFile);
+//            pointRepo.delete(point.getId());
+//        }
 
 
 

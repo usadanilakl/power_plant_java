@@ -4,7 +4,10 @@ import com.dk_power.power_plant_java.entities.plant.Group;
 import com.dk_power.power_plant_java.entities.plant.Point;
 import com.dk_power.power_plant_java.entities.plant.Syst;
 import com.dk_power.power_plant_java.entities.plant.Vendor;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -50,14 +53,15 @@ public class FileObject extends Group {
     @JoinTable(name = "file_point",
             joinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
+    @JsonManagedReference
     private List<Point> points;
-    @OneToMany(mappedBy = "mainFile")
-    private List<Point> filePoints;
+
+
     @Transient
     private List<String> systems;
 
     public void buildFileLink(){
-        fileLink = baseLink+"/"+folder+"/"+fileNumber+"."+extension;
+        fileLink = baseLink+"/"+extension+"/"+folder+"/"+fileNumber+"."+extension;
     }
 
 
@@ -66,8 +70,11 @@ public class FileObject extends Group {
         points.add(entity);
     }
 
-    public void addFilePoint(Point point) {
-        if(filePoints==null) filePoints = new ArrayList<>();
-        filePoints.add(point);
-    }
+//    @JsonManagedReference
+//    @OneToMany(mappedBy="mainFile")
+//    private List<Point> filePoints;
+//    public void addFilePoint(Point entity) {
+//        if(filePoints==null) filePoints = new ArrayList<>();
+//        filePoints.add(entity);
+//    }
 }

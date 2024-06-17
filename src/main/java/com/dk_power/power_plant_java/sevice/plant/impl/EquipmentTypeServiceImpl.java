@@ -6,6 +6,8 @@ import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.EquipmentTypeRepo;
 import com.dk_power.power_plant_java.repository.plant.FileTypeRepo;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EquipmentTypeServiceImpl extends GroupServiceImpl<EquipmentType>{
@@ -17,9 +19,15 @@ public class EquipmentTypeServiceImpl extends GroupServiceImpl<EquipmentType>{
     }
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public EquipmentType saveForTransfer(EquipmentType transfer) {
         EquipmentType entity = repo.findByName(transfer.getName());
         if(entity!=null) transfer.setId(entity.getId());
         return save(transfer);
+    }
+
+    public EquipmentType getByName(String name) {
+        EquipmentType byName = repo.findByName(name);
+        return byName;
     }
 }

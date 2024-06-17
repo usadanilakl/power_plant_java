@@ -8,6 +8,8 @@ import com.dk_power.power_plant_java.util.Util;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -94,6 +96,10 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
     public String delete(Long id) {
         repo.delete(getById(id));
         return "Sucess";
+    }
+
+    public T saveAndFlush(T entity){
+        return repo.saveAndFlush(entity);
     }
 
 

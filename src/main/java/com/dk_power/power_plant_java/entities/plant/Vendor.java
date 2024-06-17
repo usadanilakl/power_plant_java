@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.plant;
 
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import lombok.Getter;
@@ -20,8 +21,9 @@ public class Vendor extends Group {
     }
 //    @OneToMany(mappedBy = "vendor")
 //    private List<Point> points;
-    @OneToMany(mappedBy = "vendor")
-    private List<FileObject> files;
+//    @OneToMany(mappedBy = "vendor")
+//    @JsonIgnore
+//    private List<FileObject> files;
 
     @Override
     public String toString() {

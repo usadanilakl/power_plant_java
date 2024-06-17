@@ -12,16 +12,10 @@ import java.util.Map;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class EqPojo {
-    private String id;
-    private String name;
-    private String description;
-    private String type;
-    private String location;
+    private String label;
+    private String eqType;
     private String pid;
-    private String system;
     private String vendor;
-    private Map<String, Integer> originalSize;
-    private Map<String, Integer> area;
-    private Map<String, String> manuals;
-    private String section;
+    private String originalPictureSize;
+    private String coordinates;
 }

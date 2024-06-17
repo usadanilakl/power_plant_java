@@ -17,6 +17,6 @@ public class FileType extends Group {
     public FileType(String name) {
         super(name);
     }
-    @OneToMany(mappedBy = "fileType")
-    private List<FileObject> files;
+//    @OneToMany(mappedBy = "fileType")
+//    private List<FileObject> files;
 }
