@@ -30,8 +30,8 @@ public class FileRestController {
     private final FileUploaderService fileUploaderService;
 
     @GetMapping("/get-files")
-    public Iterable<FileDto> getFiles() {
-        return null;
+    public List<FileObject> getFiles() {
+        return fileService.getAll();
     }
 
     @DeleteMapping("/delete-kiewit")
@@ -105,6 +105,5 @@ public class FileRestController {
             items = fileService.getSystems();
         }
         return ResponseEntity.ok().headers(responseHeaders).body(items);
-
     }
 }

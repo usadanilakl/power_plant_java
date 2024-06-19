@@ -1,9 +1,12 @@
 //let picture = document.getElementById("picture");
 //let map = document.getElementById("map");
 let oldWidth; 
+let activeHighlights = [];
+let highlatedAreas = [];
 
 function loadPictureWithAreas(src, areas){
     picture.setAttribute('src',src);
+    removeAllHighlights();
     setAreas(areas);
 }
 function setAreas(areas){
@@ -14,12 +17,16 @@ function setAreas(areas){
     areas.forEach(e=>{
         oldWidth = getOriginalPictureSizes(e.originalPictureSize).w;
         let area = createAreaElement(e);
-        let shape = createHighlight(area);
+        area.addEventListener('click',()=>{
+            event.preventDefault();
+            removeAllHighlights();
+            createHighlight(area);
+        })
         //doubleClick(shape, e);
         map.appendChild(area);
     });
     resizeAreas();
-    resizeHighlites();
+    //highlightAll()
     
 }
 function createAreaElement(area){
@@ -27,13 +34,17 @@ function createAreaElement(area){
     let coord = getAreaCoordinates(area.coordinates);
     let newArea = document.createElement('area');
     newArea.setAttribute('alt',area.label);
-    newArea.setAttribute('title', area.name);
-    newArea.setAttribute('href',area.label);
+    newArea.setAttribute('title', area.label);
+    //newArea.setAttribute('href',area.label);
     newArea.setAttribute('class',"ar");
+    //newArea.classList.add(area.eqType.name.replace(/" "/g, ""));
     newArea.setAttribute('id',coord);
     //newArea.classList.add(area.type);
     newArea.setAttribute('coords', coord);
     newArea.setAttribute('shape',"rect");
+
+    drag(newArea,pictureContainer);
+
     return newArea;
 }
 function getAreaCoordinates(coord){
@@ -44,7 +55,6 @@ function getAreaCoordinates(coord){
     arr[2].substring(arr[2].indexOf(":")+1)+","+
     arr[3].substring(arr[3].indexOf(":")+1);
 
-    console.log(result)
     return result;
 }
 function resizeAreas(){
@@ -74,7 +84,7 @@ function resizeHighlites(){
        e.style.left = getShapeCoordinates(area).x;
        e.style.width = getShapeCoordinates(area).w;
        e.style.height = getShapeCoordinates(area).h;
-       console.log(JSON.stringify(getShapeCoordinates(area)));
+       //console.log(JSON.stringify(getShapeCoordinates(area)));
 
        //console.log(parseFloat((e.style.top.replace('px',''))-picture.offsetTop)*coefficient + picture.offsetTop+ 'px');
     })
@@ -85,6 +95,8 @@ function createHighlight(area){
     let highlight = document.createElement('div');
     highlight.setAttribute('id', area.getAttribute('id') + "h");
     highlight.setAttribute('class','areaHighlights');
+    //if(area.classList.contains('connector'))highlight.classList.add('connector')
+    highlight.setAttribute('name',area.getAttribute('title'))
     //document.body.appendChild(highlight);
     document.getElementById('all').appendChild(highlight);
     highlight.style.width = position.w;
@@ -94,7 +106,26 @@ function createHighlight(area){
     let x = parseFloat(coords[0])+picture.offsetLeft;
     highlight.style.top = position.y;
     highlight.style.left = position.x;
-    highlight.style.zIndex = '10';
+    highlight.style.zIndex = '1';
+
+    highlight.addEventListener('mousedown',(event)=>{
+        event.preventDefault();
+        relocateHighlightsWithPicture(event);
+    })
+    const zoom = zoomPicture.bind(null,picture);
+    highlight.addEventListener('wheel',zoom);
+
+    const dClick = doubleClickArea.bind(null,highlight);
+    highlight.addEventListener('click',dClick);
+    setTimeout(()=>{
+        highlight.removeEventListener('click',dClick);
+        dbClick(highlight,()=>console.log("highlight one click"), ()=>console.log("highlight db click"));
+    },300)
+
+    
+
+    activeHighlights.push(highlight);
+    highlatedAreas.push(area);
     return highlight;
 }
 function getShapeCoordinates(area){
@@ -114,8 +145,64 @@ function getOriginalPictureSizes(originalPictureSize){
 function removeAllHighlights(){
     document.querySelectorAll('.areaHighlights').forEach(e=>{
         document.getElementById('all').removeChild(e);
+        activeHighlights = [];
+        highlatedAreas = [];
     })
 }
 function highlightAll(){
+    let areas = document.querySelectorAll('.ar');
+    removeAllHighlights();
+    areas.forEach(e=>{
+        createHighlight(e);
+    })
+}
+function relocateHighlightsWithPicture(event){
+    //let allHighlights = [...activeHighlights];
 
+    let highlightPosition = [];
+    activeHighlights.forEach(e=>{
+        highlightPosition.push({top:e.offsetTop, left:e.offsetLeft}); // get current position of each highlight
+    });
+    
+    let picPosition = {top:picture.offsetTop, left:picture.offsetLeft} // get current position of picture
+
+    let startX = event.clientX; // get current position of mouse
+    let startY = event.clientY;
+
+    const handleMouseMove = (event) =>{
+        let changeX = startX-event.clientX;
+        let changeY = startY-event.clientY;
+
+        let i = 0;
+        activeHighlights.forEach(e=>{
+            e.style.top = highlightPosition[i].top - changeY + 'px';
+            e.style.left = highlightPosition[i].left - changeX + 'px';
+            i++;
+        });
+
+        picture.style.top = picPosition.top - changeY + "px";
+        picture.style.left = picPosition.left - changeX + "px";
+
+    }
+
+    const handleMouseUp = ()=>{
+        document.removeEventListener('mousemove', handleMouseMove);
+    }
+
+    document.addEventListener('mousemove',handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+
+}
+function doubleClickArea(element){
+    jumpToFile(element.getAttribute('name'))
+}
+function jumpToFile(fileNumber, area){
+   // if(area.getAttribute('class').includes('connector')){
+        let file = findFileByPartualNumber(fileNumber)
+        loadPictureWithAreas("uploads/jpg/P&IDs/Kiewit/"+file.fileNumber+".jpg", file.filePoints)
+    //}
+}
+function findFileByPartualNumber(fileNumber){
+    return files.find(e=>e.fileNumber.includes(fileNumber));
 }

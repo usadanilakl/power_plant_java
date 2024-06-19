@@ -28,7 +28,7 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
 
     @Override
     public List<T> getAll() {
-        return Util.toList(repo.findAll());
+        return repo.findAll();
     }
     @Override
     public T getById(Long id) {

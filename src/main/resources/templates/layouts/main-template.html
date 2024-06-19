@@ -77,7 +77,7 @@
 
 
 
-        <div id="floatingMenu">
+        <div id="floatingMenu" style="display: none;">
             <div id="bar"></div>
             <!-- <p id="equipmentId"></p> -->
             <input type="text" id="equipmentId">
@@ -113,6 +113,7 @@
     <script src="/functions/display_functions/PopUpForHtml.js"></script>
     <script src="/functions/display_functions/DisplayPicture.js"></script>
     <script src="/functions/display_functions/FileDropdown.js"></script>
+    <script src="/functions/util_functions/util.js"></script>
 
 
     <script>
@@ -144,6 +145,8 @@ window.onload = function() {
     // var img = document.getElementById('picture');
     // var timestamp = new Date().getTime();
     // img.src = "1.jpg?" + timestamp;
+    
+    console.log(JSON.stringify(files))
 };
 
 
