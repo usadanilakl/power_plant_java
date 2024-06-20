@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.rest;
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.enums.SortingGroup;
 import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import com.dk_power.power_plant_java.util.Util;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @AllArgsConstructor
 @Data
@@ -32,6 +34,14 @@ public class FileRestController {
     @GetMapping("/get-files")
     public List<FileObject> getFiles() {
         return fileService.getAll();
+    }
+    @GetMapping("/get-vendors")
+    public List<String> getAllVendors(){
+        return fileService.getVendors();
+    }
+    @GetMapping("/get-categories")
+    public List<Map<String,String>> getAllCategories(){
+        return SortingGroup.getValues();
     }
 
     @DeleteMapping("/delete-kiewit")

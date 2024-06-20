@@ -1,6 +1,9 @@
 let fileRepository;
 let filesAreLoded = false;
 
+let vendors;
+let categories;
+
 async function getAllFiles(){
     try{
         const data = await fetch('/data/get-files', { 
@@ -20,5 +23,20 @@ async function getAllFiles(){
 async function getUploadFileForm(){
     const response = await fetch('/file/upload');
     const data = await response.text();
+    return data;
+}
+
+async function getCategories(){
+    const response = await fetch('/data/get-categories');
+    const data = await response.json();
+    categories = data;
+    return data;
+}
+
+async function getVendors(){
+    const response = await fetch('/data/get-vendors');
+    const data = await response.json();
+    vendors = data;
+    console.log(JSON.stringify(vendors))
     return data;
 }

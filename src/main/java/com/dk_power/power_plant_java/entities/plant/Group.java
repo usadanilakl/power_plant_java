@@ -12,7 +12,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @MappedSuperclass
 public class Group extends BaseEntity {
-    @JsonIgnore
+
     private String name;
 
     public Group(String name) {
