@@ -1,3 +1,6 @@
+let fileRepository;
+let filesAreLoded = false;
+
 async function getAllFiles(){
     try{
         const data = await fetch('/data/get-files', { 
@@ -7,11 +10,15 @@ async function getAllFiles(){
         'Content-Type': 'application/json'
         } 
     }); 
-    files = await data.json();
-    //console.log(JSON.stringify(files[40]))
-    return files;
-    
+    fileRepository = await data.json();
+    filesAreLoded = true;
     }catch(err){
         console.log(err)
     }    
+}
+
+async function getUploadFileForm(){
+    const response = await fetch('/file/upload');
+    const data = await response.text();
+    return data;
 }
