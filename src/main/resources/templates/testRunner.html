@@ -41,7 +41,7 @@
             </div>
             <div id="right">
                 <div id="picture-container" class="view">
-                    <img src="1.jpg" usemap="#image_map" id="picture">
+                    <img src="/1.jpg" usemap="#image_map" id="picture">
                     <map name="image_map" id="map"></map>
                 </div>
             </div>
@@ -84,14 +84,18 @@
     <script src="/functions/util_functions/util.js"></script> -->
     
     <script src="/functions/controllers/FileController.js"></script>
+    <script src="/functions/service/PictureService.js"></script>
     <script src="/functions/service/FileService.js"></script>
     <script src="/functions/service/MasterService.js"></script>
     <script src="/functions/service/MenuDropdownService.js"></script>
+    <script src="/functions/util_functions/util.js"></script>
     
 
 
     <script>
         let container = document.getElementById('items');
+        let picture = document.getElementById('picture');
+        let pictureContainer = document.getElementById('picture-container')
 
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('fileUploadButton').addEventListener('click', async function() {
@@ -105,9 +109,18 @@
     .then(()=>{
         console.log("Dropdown is ready to be built");
         createDropdownItem(categories,container);
-        console.log(JSON.stringify(fileRepository[0]))
-        console.log(getFilesByVendor("Kiewit"))
+        let arr = getFilesByVendor("Kiewit");
+        //console.log(JSON.stringify(arr[0]))
     });
+
+    pictureContainer.addEventListener('mousedown',(event)=>{
+    event.preventDefault();
+    relocateHighlightsWithPicture(event);
+    
+});
+const zoom = zoomPicture.bind(null,picture);
+pictureContainer.addEventListener('wheel',zoom);
+
 
     
 

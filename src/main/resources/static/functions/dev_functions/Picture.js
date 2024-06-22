@@ -108,7 +108,7 @@ if (event.deltaY < 0 && startW/window.innerWidth < 25) {
     picture.style.left = `${newPictureX}px`;
     picture.style.top = `${newPictureY}px`;
     resizeAreas(picture); 
-    resizeHighlites(); 
+    resizeHighlights(); 
     //resizeManualHighlites(); 
 
 }

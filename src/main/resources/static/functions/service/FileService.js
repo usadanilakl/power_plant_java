@@ -7,7 +7,7 @@ function getVendor(vendor){
 function getFilesByVendor(vendor){
     let result =  fileRepository.filter(e=>e!==null && e.vendor!==null && e.vendor.name.toLowerCase().includes(vendor.toLowerCase()));
     result.forEach(e=>{
-        e['dropdownFunc'] = function(){loadPictureWithAreas("uploads/jpg/P&IDs/"+e.vendor.name+"/"+e.fileNumber+".jpg", e.filePoints);} 
+        e['dropdownFunc'] = function(){loadPictureWithAreas("/uploads/jpg/P&IDs/"+e.vendor.name+"/"+e.fileNumber+".jpg", e.points);} 
         e.value = e.fileNumber;
     })
     return result;

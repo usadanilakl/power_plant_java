@@ -43,7 +43,11 @@ function createAreaElement(area){
     newArea.setAttribute('coords', coord);
     newArea.setAttribute('shape',"rect");
 
-    drag(newArea,pictureContainer);
+    //drag(newArea,pictureContainer);
+    newArea.addEventListener('mousedown',(event)=>{
+        event.preventDefault();
+        relocateHighlightsWithPicture(event);
+    })
 
     return newArea;
 }
@@ -75,7 +79,7 @@ function resizeAreas(){
     //resizeHighlite();
     oldWidth = width; 
 }
-function resizeHighlites(){
+function resizeHighlights(){
     
     let allHighlites = document.querySelectorAll('.areaHighlights');
     allHighlites.forEach(e=>{
@@ -206,3 +210,56 @@ function jumpToFile(fileNumber, area){
 function findFileByPartualNumber(fileNumber){
     return files.find(e=>e.fileNumber.includes(fileNumber));
 }
+function zoomPicture(){
+
+    let size = picture.getBoundingClientRect();
+    let startW = picture.offsetWidth; // get current width of picture
+    let startH = picture.offsetHeight;
+    let correction = window.innerWidth*0.028
+    correction = 0 //to turn off correction (it was caused by menu, now they overlap and no need for correction)
+    
+    //finding the original spot where mosue is pointed before zooming
+    let areaX = event.clientX - size.left;
+    let areaY = event.clientY - size.top;
+    
+    // get new spot on the picture where mouse is currently pointing at
+    let newAreaX = event.clientX - size.left; 
+    let newAreaY = event.clientY - size.top;
+    
+    //find original picture position
+    let startPictureX = picture.offsetLeft;
+    let startPictureY = picture.offsetTop;
+    
+    let width = picture.offsetWidth;
+    let scale = width;
+    
+    let zoomIn = 1.2;
+    let zoomOut = 0.8;
+    
+    //scroll in
+    if (event.deltaY < 0 && startW/window.innerWidth < 25) {
+        scale *= zoomIn;
+        areaX = areaX*zoomIn-correction; //this is X of where mosue was pointed before zooming
+        areaY *= zoomIn; //this is Y of where mosue was pointed before zooming
+        
+            
+    //scroll out   
+    }else if(event.deltaY>0 && startW/window.innerWidth>0.2){
+        scale *=zoomOut;
+        areaX = areaX*zoomOut+correction; //this is X of where mosue was pointed before zooming
+        areaY *= zoomOut; //this is Y of where mosue was pointed before zooming
+        
+    }
+        // Apply the new scale to the picture
+        picture.style.width = scale + 'px';
+        event.preventDefault();
+        let newPictureX = newAreaX - areaX + startPictureX;
+        let newPictureY = newAreaY - areaY + startPictureY;
+    
+        picture.style.left = `${newPictureX}px`;
+        picture.style.top = `${newPictureY}px`;
+        resizeAreas(); 
+        resizeHighlights(); 
+        //resizeManualHighlites(); 
+    
+    }

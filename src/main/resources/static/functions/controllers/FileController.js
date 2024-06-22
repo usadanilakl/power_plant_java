@@ -34,8 +34,14 @@ async function getCategories(){
     const data = await response.json();
     categories = data;
     categories.forEach(e=>{
-        e['getContent'] = function(){return vendors}
-        e['dropdownFunc'] = function(event){createDropdownItem(vendors, event.target.parentNode);console.log(JSON.stringify(vendors))} 
+        e['getContent'] = function(){
+            if(e.value.toLowerCase().includes("vendor"))return vendors;
+            else if(e.value.toLowerCase().includes("system"))return systems;
+            else if(e.value.toLowerCase().includes("heat trace"))return heatTrace;
+            else if(e.value.toLowerCase().includes("electrical"))return electircal;
+
+        }
+        e['dropdownFunc'] = function(event){createDropdownItem(this.getContent(e.value), event.target.parentNode);}.bind(e) 
     })
     return data;
 }
@@ -51,7 +57,6 @@ async function getVendors(){
             }
           };
           i.dropdownFunc = function(event) {
-            console.log(JSON.stringify(this.getContent()))
             createDropdownItem(this.getContent(), event.target.parentNode);
           }.bind(i);
           vendors.push(i);
