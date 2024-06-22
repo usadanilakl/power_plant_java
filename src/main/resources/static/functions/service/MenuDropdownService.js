@@ -136,8 +136,25 @@ function fillDropdownWithItems(items,element){
   * filter files by column vendor with value kiewit and 
   * *********************************************** */
 
- function buildDropdown(){
-    categories.forEach(e=>{
+
+ function createDropdownItem(content, container){
+    let list = document.createElement('ul');
+    content.forEach(e=>{
+        if(container===null) container = item;
+        let item = document.createElement('li');
+        let button = document.createElement('a');
         
+        button.addEventListener('click',e.dropdownFunc)
+        button.classList.add('btn'); //style link to look like button
+        button.classList.add('btn-warning'); //style link to look like button
+        button.textContent = e.value; //text of the button
+
+        item.appendChild(button);
+        list.appendChild(item);
     })
+
+
+    if(container!==null)container.appendChild(list);
+
+    
  }

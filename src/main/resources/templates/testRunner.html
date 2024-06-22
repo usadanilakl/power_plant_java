@@ -31,11 +31,11 @@
             <button id="pin-menu">Menu</button>
             <div id="left">
                 <div id="items">
-                    <ul>
+                    <!-- <ul>
                         <li th:each="group : ${sortingGroups}">
                             <a class="btn btn-warning dropdownDk" th:text="${group.getValue()}" th:id="${group}" name="subgroups"></a>
                         </li>
-                    </ul>
+                    </ul> -->
                 </div>
                 <div id="menu-resize"></div>
             </div>
@@ -86,10 +86,12 @@
     <script src="/functions/controllers/FileController.js"></script>
     <script src="/functions/service/FileService.js"></script>
     <script src="/functions/service/MasterService.js"></script>
+    <script src="/functions/service/MenuDropdownService.js"></script>
     
 
 
     <script>
+        let container = document.getElementById('items');
 
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('fileUploadButton').addEventListener('click', async function() {
@@ -104,6 +106,7 @@
         console.log("Dropdown is ready to be built");
         console.log(JSON.stringify(vendors));
         console.log(JSON.stringify(categories));
+        createDropdownItem(categories,container);
     });
 
 
