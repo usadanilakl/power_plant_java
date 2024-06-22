@@ -104,10 +104,12 @@
     .then(()=>getCategories())
     .then(()=>{
         console.log("Dropdown is ready to be built");
-        console.log(JSON.stringify(vendors));
-        console.log(JSON.stringify(categories));
         createDropdownItem(categories,container);
+        console.log(JSON.stringify(fileRepository[0]))
+        console.log(getFilesByVendor("Kiewit"))
     });
+
+    
 
 
 

@@ -35,7 +35,7 @@ async function getCategories(){
     categories = data;
     categories.forEach(e=>{
         e['getContent'] = function(){return vendors}
-        e['dropdownfunc'] = function(event){createDropdownItem(vendors, event.target.paretnNode);} 
+        e['dropdownFunc'] = function(event){createDropdownItem(vendors, event.target.parentNode);console.log(JSON.stringify(vendors))} 
     })
     return data;
 }
@@ -44,8 +44,17 @@ async function getVendors(){
     const response = await fetch('/data/get-vendors');
     const data = await response.json();
     data.forEach(e=>{
-        let i = {'value':e,'getContent':function(){return getFilesByVendor(e)}, 'dropdownFunc':function(event){createDropdownItem(getContent(), event.target.paretnNode)}}
-        vendors.push(i);
+        let i = {
+            'value': e,
+            'getContent': function() {
+              return getFilesByVendor(e);
+            }
+          };
+          i.dropdownFunc = function(event) {
+            console.log(JSON.stringify(this.getContent()))
+            createDropdownItem(this.getContent(), event.target.parentNode);
+          }.bind(i);
+          vendors.push(i);
     });
     return data;
 }
