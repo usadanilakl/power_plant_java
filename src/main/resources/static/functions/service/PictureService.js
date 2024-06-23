@@ -199,16 +199,17 @@ function relocateHighlightsWithPicture(event){
 
 }
 function doubleClickArea(element){
-    jumpToFile(element.getAttribute('name'))
+    if(modes.viewMode.state) jumpToFile(element.getAttribute('name'))
+    else if(modes.editMode.state) console.log('editing'+element.getAttribute('name'))
 }
 function jumpToFile(fileNumber, area){
    // if(area.getAttribute('class').includes('connector')){
         let file = findFileByPartualNumber(fileNumber)
-        loadPictureWithAreas("uploads/jpg/P&IDs/Kiewit/"+file.fileNumber+".jpg", file.filePoints)
+        loadPictureWithAreas("/uploads/jpg/P&IDs/Kiewit/"+file.fileNumber+".jpg", file.points)
     //}
 }
 function findFileByPartualNumber(fileNumber){
-    return files.find(e=>e.fileNumber.includes(fileNumber));
+    return fileRepository.find(e=>e.fileNumber.includes(fileNumber));
 }
 function zoomPicture(){
 

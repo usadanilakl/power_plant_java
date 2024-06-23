@@ -15,3 +15,8 @@ function dbClick(element, oneClickFunc, twoClickFunc) {
     };
     element.addEventListener('click', clickCounter);
 }
+
+function toggleBoolean(booleanVariable){
+    if(booleanVariable) booleanVariable = false;
+    else booleanVariable = true;
+}
