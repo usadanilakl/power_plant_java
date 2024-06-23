@@ -117,7 +117,16 @@ function createHighlight(area){
 
     highlight.addEventListener('mousedown',(event)=>{
         event.preventDefault();
-        relocateHighlightsWithPicture(event);
+        if(modes.viewMode.state){
+            console.log("view: "+modes.viewMode.state)
+            deleteResizeElements(highlight);
+            relocateHighlightsWithPicture(event); 
+        }else if(modes.editMode.state){
+            console.log("edit: "+modes.editMode.state)
+            initResize(highlight);
+            relocate(event,highlight);
+        }
+        
     })
     const zoom = zoomPicture.bind(null,picture);
     highlight.addEventListener('wheel',zoom);
@@ -351,7 +360,6 @@ async function handleMouseUp() {
 
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-    console.log(coords.getObjHeight() + ', ' + coords.getObjHeight());
 
     await offsetSizing(picture);
     //await sendCoordinates();

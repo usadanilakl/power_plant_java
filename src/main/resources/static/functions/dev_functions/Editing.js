@@ -72,7 +72,6 @@ function resizeManualHighlites(){
 }
 
 function manualHighlighterPosition(coord){
-    let picture = document.getElementById('image');
     const coefficient = picture.offsetWidth/picture.naturalWidth;
     let coords = coord.split(",");
 

@@ -20,8 +20,14 @@ function createModeButtons(){
         option.setAttribute('value', m);
         dropdown.appendChild(option);
     }
-    dropdown.addEventListener('change',()=>{setMode(dropdown.value)});
+    dropdown.addEventListener('change',()=>{
+        setMode(dropdown.value)
+        console.log(JSON.stringify(modes.editMode))
+        console.log(JSON.stringify(modes.viewMode))
+    });
     return dropdown;
 }
-let left = document.getElementById('left');
-left.appendChild(createModeButtons());
+document.addEventListener('DOMContentLoaded', (event) => {
+    let left = document.getElementById('left');
+    left.appendChild(createModeButtons());
+});
