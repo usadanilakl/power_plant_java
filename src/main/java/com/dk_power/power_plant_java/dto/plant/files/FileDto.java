@@ -1,11 +1,8 @@
 package com.dk_power.power_plant_java.dto.plant.files;
 
-import com.dk_power.power_plant_java.entities.plant.Point;
-import com.dk_power.power_plant_java.entities.plant.Syst;
-import com.dk_power.power_plant_java.entities.plant.Vendor;
-import com.dk_power.power_plant_java.entities.plant.files.FileType;
-import com.fasterxml.jackson.annotation.JacksonAnnotation;
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.dk_power.power_plant_java.dto.plant.PointDto;
+import com.dk_power.power_plant_java.dto.plant.SystemDto;
+import com.dk_power.power_plant_java.dto.plant.VendorDto;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.Getter;
@@ -21,24 +18,37 @@ import java.util.List;
 public class FileDto {
     private Long id;
     private String name;
-    private MultipartFile file;
     @JsonIgnore
-    private FileType fileType;
+    private MultipartFile file;
+    private FileTypeDto fileType;
     private String fileLink;
     private String baseLink;
-    private String groupFolder;
-    @JsonIgnore
-    private Syst system;
+    private String folder;
+    private SystemDto system;
     private String fileNumber;
-    @JsonIgnore
-    private Vendor vendor;
-    @JsonManagedReference
-    private List<Point> points;
-    @JsonManagedReference
-    private List<Point> filePoints;
+    private VendorDto vendor;
+    private List<PointDto> points;
+    private List<PointDto> filePoints;
 
     public void buildFileLink(){
-        fileLink = baseLink+"/"+groupFolder+"/"+fileNumber;
+        fileLink = baseLink+"/"+ folder +"/"+fileNumber;
     }
 
+    @Override
+    public String toString() {
+        return "FileDto{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", file=" + file +
+                ", fileType=" + fileType +
+                ", fileLink='" + fileLink + '\'' +
+                ", baseLink='" + baseLink + '\'' +
+                ", groupFolder='" + folder + '\'' +
+                ", system=" + system +
+                ", fileNumber='" + fileNumber + '\'' +
+                ", vendor=" + vendor +
+                ", points=" + points +
+                ", filePoints=" + filePoints +
+                '}';
+    }
 }

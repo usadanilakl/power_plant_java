@@ -8,6 +8,5 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class SystemDto extends BaseDto{
-    private Long id;
-    private String name;
+
 }

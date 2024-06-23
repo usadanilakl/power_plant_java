@@ -57,12 +57,12 @@ let area = {
 }
 
 
-let highliterArray = [];
+let newHighlights = [];
 let eType = "line";
 
 
 function resizeManualHighlites(){
-    highliterArray.forEach(e=>{  //
+    newHighlights.forEach(e=>{  //
        let coords = JSON.stringify(e.id).slice(1,-1);
        e.element.style.top = manualHighlighterPosition(coords).y; 
        e.element.style.left = manualHighlighterPosition(coords).x;
@@ -98,7 +98,7 @@ function handleMouseDown(event) {
         let highlight = document.createElement('div');
         highlight.setAttribute('class', 'hglt');
         all.appendChild(highlight);
-        highliterArray.push({element:highlight});
+        newHighlights.push({element:highlight});
         drag(highlight, imgContainer);
 
         console.log(event.clientY);
@@ -122,7 +122,7 @@ function handleMouseMove(event) {
         currentX = event.clientX - picture.offsetLeft;
         currentY = event.clientY - picture.offsetTop;
 
-        let highlight = highliterArray[highliterArray.length-1].element;
+        let highlight = newHighlights[newHighlights.length-1].element;
         highlight.style.width = (currentX-startX)+'px';
         highlight.style.height = (currentY-startY)+'px';
         highlight.style.border = '2px solid blue';
@@ -151,8 +151,8 @@ async function handleMouseUp() {
 
         let id = startX + ',' + startY+ ','+ endX + ',' + endY;
         let picSize = picture.offsetWidth;
-        highliterArray[highliterArray.length-1].id = id;
-        highliterArray[highliterArray.length-1].picSize = picSize;
+        newHighlights[newHighlights.length-1].id = id;
+        newHighlights[newHighlights.length-1].picSize = picSize;
   
         if(endX-startX < 20 && endY - startY < 20) removeLastHighlite();
 }
@@ -205,8 +205,8 @@ fetch(url,{
 }
 
 function removeLastHighlite(){
-    let i = highliterArray.length-1;
-    highliterArray.pop().element.remove();
+    let i = newHighlights.length-1;
+    newHighlights.pop().element.remove();
 }
 
 async function confirmCoords(){

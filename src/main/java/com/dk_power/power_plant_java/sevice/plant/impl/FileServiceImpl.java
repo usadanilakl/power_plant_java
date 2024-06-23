@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.plant.impl;
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.entities.plant.Point;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import org.springframework.stereotype.Service;
@@ -18,13 +19,15 @@ public class FileServiceImpl extends GroupServiceImpl<FileObject>{
     private final SystemServiceImpl systemService;
     private final VendorServiceImpl vendorService;
     private final PointServiceImpl pointService;
-    public FileServiceImpl(FileRepo repo, UniversalMapper mapper, FileRepo repo1, FileTypeServiceImpl fileTypeService, SystemServiceImpl systemService, VendorServiceImpl vendorService, PointServiceImpl pointService) {
+    private final FileMapper fileMapper;
+    public FileServiceImpl(FileRepo repo, UniversalMapper mapper, FileRepo repo1, FileTypeServiceImpl fileTypeService, SystemServiceImpl systemService, VendorServiceImpl vendorService, PointServiceImpl pointService, FileMapper fileMapper) {
         super(repo, mapper);
         this.repo = repo1;
         this.fileTypeService = fileTypeService;
         this.systemService = systemService;
         this.vendorService = vendorService;
         this.pointService = pointService;
+        this.fileMapper = fileMapper;
     }
     @Override
     public String delete(Long id) {
@@ -40,7 +43,8 @@ public class FileServiceImpl extends GroupServiceImpl<FileObject>{
         return repo.findByVendor(value);
     }
     public List<FileDto> getAllDtos() {
-        return mapper.convertAll(getAll(),new FileDto());
+        //return mapper.convertAll(getAll(),new FileDto());
+        return getAll().stream().map(fileMapper::convertToDto).toList();
     }
     public List<String> getSystems() {
         return repo.getSystems();

@@ -96,7 +96,8 @@
     <script>
         let container = document.getElementById('items');
         let picture = document.getElementById('picture');
-        let pictureContainer = document.getElementById('picture-container')
+        let pictureContainer = document.getElementById('picture-container');
+        let all = document.getElementById('all');
 
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('fileUploadButton').addEventListener('click', async function() {
@@ -115,12 +116,16 @@
     });
 
     pictureContainer.addEventListener('mousedown',(event)=>{
-    event.preventDefault();
-    relocateHighlightsWithPicture(event);
+        if(event.button===0){
+            event.preventDefault();
+            relocateHighlightsWithPicture(event);
+        }
+
     
 });
 const zoom = zoomPicture.bind(null,picture);
 pictureContainer.addEventListener('wheel',zoom);
+document.addEventListener('mousedown',handleMouseDown);
 
 
     

@@ -32,8 +32,8 @@ public class FileRestController {
     private final FileUploaderService fileUploaderService;
 
     @GetMapping("/get-files")
-    public List<FileObject> getFiles() {
-        return fileService.getAll();
+    public List<FileDto> getFiles() {
+        return fileService.getAllDtos();
     }
     @GetMapping("/get-vendors")
     public List<String> getAllVendors(){

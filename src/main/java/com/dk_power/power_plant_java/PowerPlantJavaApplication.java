@@ -52,7 +52,8 @@ private final VendorRepo vendorRepo;
 //        transferMethods.transferPoints();
 //        System.out.println("pointRepo.getAll().size() = " + pointRepo.getAll().size());
 
-        System.out.println("fileService.getAll().get(33) = " + fileService.getAll().get(33));
+//        fileService.getAll().forEach(FileObject::buildFileLink);
+//        System.out.println("fileService.getAll().get(33) = " + fileService.getAllDtos().get(48));
 
 
     }

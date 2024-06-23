@@ -9,8 +9,5 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class FileTypeDto extends BaseDto {
-    private Long id;
-    private String name;
-
 
 }

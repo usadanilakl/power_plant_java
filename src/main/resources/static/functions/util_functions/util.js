@@ -20,3 +20,4 @@ function toggleBoolean(booleanVariable){
     if(booleanVariable) booleanVariable = false;
     else booleanVariable = true;
 }
+

@@ -1,8 +1,11 @@
 //let picture = document.getElementById("picture");
 //let map = document.getElementById("map");
-let oldWidth; 
+let oldWidth;
+let originalWidth;
 let activeHighlights = [];
 let highlatedAreas = [];
+
+/*****************************************************DISPLAY FUNCTIONS*****************************************************************/
 
 function loadPictureWithAreas(src, areas){
     picture.setAttribute('src',src);
@@ -144,6 +147,7 @@ function getOriginalPictureSizes(originalPictureSize){
     let arr = originalPictureSize.split(",");
     let w = arr[0].substring(arr[0].indexOf(":")+1);
     let h = arr[1].substring(arr[1].indexOf(":")+1);
+    originalWidth = w;
     return {w:w,h:h}
 }
 function removeAllHighlights(){
@@ -264,3 +268,138 @@ function zoomPicture(){
         //resizeManualHighlites(); 
     
     }
+
+/************************************************************EDIT FUNCTIONS****************************************************************************/
+
+let newHighlights = [];
+let coords = {}
+coords.getObjWidth = function(){return this.mouseOnPictureEnd.x-this.mouseOnPictureStart.x}.bind(coords);
+coords.getObjHeight = function(){return this.mouseOnPictureEnd.y-this.mouseOnPictureStart.y}.bind(coords);
+let areaInfo = {
+    label:"",
+    description:"",
+    mainSystem:"",
+    systems:[],
+    loto:true,
+    files:[],
+    coordinates:"",
+    originalPictureSize:"",
+    vendor:"",
+}
+
+function registerMouseCoordsOnPicture(event){
+    let x = event.clientX - picture.offsetLeft;
+    let y = event.clientY - picture.offsetTop;
+    return{x:x,y:y};
+}
+
+function registerMouseCoordsOnScreen(event){
+    let x = event.clientX;
+    let y = event.clientY;
+    return{x:x,y:y};
+}
+
+function getPictureCoordsOnScreen(){
+    let x = picture.offsetLeft;
+    let y = picture.offsetTop;
+    return{x:x,y:y};
+}
+
+function getObjCoordOnPicture(object){
+    let x = object.offsetLeft - picture.offsetLeft;
+    let y = object.offsetTop - picture.offsetTop;
+    return {x:x,y:y};
+}
+
+function handleMouseDown(event) {
+    if(event.button===2){
+
+    let shape = document.createElement('div');
+    shape.setAttribute('class', 'areaHighlights');
+    all.appendChild(shape);
+    newHighlights.push({element:shape});
+    shape.addEventListener('mousedown',(event)=>{
+        event.preventDefault();
+        relocateHighlightsWithPicture(event);
+    })
+
+    coords.picture = getPictureCoordsOnScreen();
+    coords.mouseOnScreenStart = registerMouseCoordsOnScreen(event);
+    coords.mouseOnPictureStart = registerMouseCoordsOnPicture(event);
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup',handleMouseUp);    
+}
+}
+  
+function handleMouseMove(event) {
+
+    coords.mouseOnPictureEnd = registerMouseCoordsOnPicture(event);
+
+    let highlight = newHighlights[newHighlights.length-1].element;
+    highlight.style.width = (coords.mouseOnPictureEnd.x-coords.mouseOnPictureStart.x)+'px';
+    highlight.style.height = (coords.mouseOnPictureEnd.y-coords.mouseOnPictureStart.y)+'px';
+    highlight.style.border = '2px solid blue';
+    highlight.style.position = 'fixed';
+    highlight.style.top = coords.mouseOnScreenStart.y+'px';
+    highlight.style.left = coords.mouseOnScreenStart.x+'px';
+    highlight.style.zIndex = '10';
+
+}
+
+async function handleMouseUp() {
+
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    console.log(coords.getObjHeight() + ', ' + coords.getObjHeight());
+
+    await offsetSizing(picture);
+    //await sendCoordinates();
+
+    let areaCoordinates = 'StartX:'+coords.mouseOnPictureStart.x + ',StartY:' + coords.mouseOnPictureStart.y+ ',EndX:'+ coords.mouseOnPictureEnd.x + ',EndY:' + coords.mouseOnPictureEnd.y;
+    let id = coords.mouseOnPictureStart.x + ',' + coords.mouseOnPictureStart.y+ ','+ coords.mouseOnPictureEnd.x + ',' + coords.mouseOnPictureEnd.y;
+    let picSize = picture.offsetWidth;
+    newHighlights[newHighlights.length-1].id = id+'h';
+    newHighlights[newHighlights.length-1].element.setAttribute('id',id+'h');
+    newHighlights[newHighlights.length-1].picSize = picSize;
+
+    if(coords.getObjWidth() < 20 && coords.getObjHeight() < 20) removeLastHighlight();
+
+    areaInfo.coordinates = areaCoordinates;
+    areaInfo.label = "new Area";
+    let area = createAreaElement(areaInfo);
+    area.addEventListener('click',()=>{
+        event.preventDefault();
+        removeAllHighlights();
+        createHighlight(area);
+    })
+    //doubleClick(shape, e);
+    map.appendChild(area);
+    resizeNewArea(area);
+
+    
+}
+
+async function offsetSizing(picture){
+
+const coefficientX = originalWidth/picture.offsetWidth;
+
+coords.mouseOnPictureStart.x = Math.floor(coords.mouseOnPictureStart.x*coefficientX);
+coords.mouseOnPictureStart.y = Math.floor(coords.mouseOnPictureStart.y*coefficientX);
+coords.mouseOnPictureEnd.x = Math.floor(coords.mouseOnPictureEnd.x*coefficientX);
+coords.mouseOnPictureEnd.y = Math.floor(coords.mouseOnPictureEnd.y*coefficientX);
+}
+
+function removeLastHighlight(){
+    let i = newHighlights.length-1;
+    newHighlights.pop().element.remove();
+}
+
+function resizeNewArea(area){
+    let coefficient = picture.offsetWidth/originalWidth;
+    let coord = area.getAttribute('coords').split(",");
+    for(let i = 0; i<coord.length; i++){
+        coord[i] = coord[i]*coefficient;
+    }
+    area.setAttribute('coords', ""+coord.join(","));
+}
