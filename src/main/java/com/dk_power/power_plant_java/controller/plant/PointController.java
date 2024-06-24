@@ -8,9 +8,7 @@ import com.dk_power.power_plant_java.entities.plant.Vendor;
 import com.dk_power.power_plant_java.sevice.plant.impl.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -39,6 +37,11 @@ public class PointController {
         model.addAttribute("eqTypes",equipmentTypeService.getAll());
         model.addAttribute("point",pointService.getPointDtoById(Long.parseLong(id)));
         return "/partials/point-info-form";
+    }
+
+    @PostMapping("/get-info-form")
+    public void updatePoint(@ModelAttribute("point") PointDto point){
+        pointService.updatePoint(point);
     }
 
 }

@@ -4,4 +4,9 @@ async function getPointInfoForm(id){
     return data;
 }
 
+function updatePoint(){
+    let index = fileRepository.findIndex(e=>e.id===picture.getAttribute('data-file-id'));
+    
+}
+
 

@@ -12,6 +12,13 @@ function loadPictureWithAreas(src, areas){
     removeAllHighlights();
     setAreas(areas);
 }
+
+function loadPictureWithFile(file){
+    picture.setAttribute('src','/'+file.fileLink);
+    picture.setAttribute('data-file-id', file.id);
+    removeAllHighlights();
+    setAreas(file.points);
+}
 function setAreas(areas){
     map.innerHTML = "";
     removeAllHighlights();

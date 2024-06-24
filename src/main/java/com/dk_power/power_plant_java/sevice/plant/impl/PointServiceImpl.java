@@ -84,4 +84,7 @@ public class PointServiceImpl extends GroupServiceImpl<Point>{
     public PointDto getPointDtoById(Long id) {
         return pointMapper.convertToDto(getById(id));
     }
+    public Point updatePoint(PointDto dto){
+        return save(pointMapper.convertToEntity(dto));
+    }
 }
