@@ -21,3 +21,7 @@ function toggleBoolean(booleanVariable){
     else booleanVariable = true;
 }
 
+function hide(element){
+    element.classList.add('hide');
+}
+

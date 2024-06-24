@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="/my_styles/util.css">
     <link rel="stylesheet" href="/my_styles/floating-menu.css">
     <link rel="stylesheet" href="/my_styles/resize_style.css">
+    <link rel="stylesheet" href="/my_styles/infoWindow.css">
     <style>
 .areaHighlights{
     border: 2px solid blue !important;
@@ -67,6 +68,11 @@
             </div>
         </div>
 
+        <div id="infoFrame">
+              <button class="close" id="close"  onclick="hide(document.getElementById('infoFrame'))">X</button>
+            <div id="infoWindow" class="scroll"></div>
+          </div>
+
     </div>
     <div id="popup" class="ignoreDk" style="z-index:1060;"></div>
 
@@ -91,6 +97,7 @@
     <script src="/functions/service/MasterService.js"></script>
     <script src="/functions/service/MenuDropdownService.js"></script>
     <script src="/functions/service/ModeService.js"></script>
+    <script src="/functions/service/InfoWindowService.js"></script>
     <script src="/functions/util_functions/util.js"></script>
     
 
@@ -100,6 +107,7 @@
         let picture = document.getElementById('picture');
         let pictureContainer = document.getElementById('picture-container');
         let all = document.getElementById('all');
+        let infoWindow = document.getElementById('infoFrame');
 
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('fileUploadButton').addEventListener('click', async function() {
