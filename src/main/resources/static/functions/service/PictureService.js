@@ -24,6 +24,7 @@ function setAreas(areas){
             event.preventDefault();
             removeAllHighlights();
             createHighlight(area);
+            pointEditModeControl();
         })
         //doubleClick(shape, e);
         map.appendChild(area);
@@ -117,17 +118,9 @@ function createHighlight(area){
 
     highlight.addEventListener('mousedown',(event)=>{
         event.preventDefault();
-        if(modes.viewMode.state){
-            console.log("view: "+modes.viewMode.state)
-            deleteResizeElements(highlight);
-            relocateHighlightsWithPicture(event); 
-        }else if(modes.editMode.state){
-            console.log("edit: "+modes.editMode.state)
-            initResize(highlight);
-            relocate(event,highlight);
-        }
-        
+        relocateHighlightsWithPicture(event); 
     })
+
     const zoom = zoomPicture.bind(null,picture);
     highlight.addEventListener('wheel',zoom);
 
@@ -142,6 +135,7 @@ function createHighlight(area){
 
     activeHighlights.push(highlight);
     highlatedAreas.push(area);
+    initResize(highlight, true); //resizing tools setup (for editing)
     return highlight;
 }
 function getShapeCoordinates(area){
@@ -410,4 +404,12 @@ function resizeNewArea(area){
         coord[i] = coord[i]*coefficient;
     }
     area.setAttribute('coords', ""+coord.join(","));
+}
+
+function pointEditModeControl(){
+    if(modes.viewMode.state){
+        hideAllResizeElements();
+    }else if(modes.editMode.state){
+        showAllResizeElements();
+    }
 }

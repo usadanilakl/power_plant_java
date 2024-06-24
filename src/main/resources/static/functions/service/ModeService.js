@@ -10,6 +10,7 @@ function setMode(mode){
         modes[m].state = false
     }
     modes[mode].state = true;
+    pointEditModeControl();
 }
 
 function createModeButtons(){
@@ -21,9 +22,7 @@ function createModeButtons(){
         dropdown.appendChild(option);
     }
     dropdown.addEventListener('change',()=>{
-        setMode(dropdown.value)
-        console.log(JSON.stringify(modes.editMode))
-        console.log(JSON.stringify(modes.viewMode))
+        setMode(dropdown.value);
     });
     return dropdown;
 }

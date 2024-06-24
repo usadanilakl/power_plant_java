@@ -226,8 +226,8 @@ function relocate(event,element){
     document.addEventListener('mouseup', handleMouseUp);
 }
 
-function initResize(elementContainer){
-    createResizeElements(elementContainer);
+function initResize(elementContainer, hide){
+    createResizeElements(elementContainer, hide);
 
     elementContainer.querySelector('#rbc').addEventListener('mousedown',()=>{
         event.preventDefault();
@@ -252,28 +252,46 @@ function initResize(elementContainer){
         event.stopImmediatePropagation();
         resizeLUC(event,elementContainer);
     });
+
+    elementContainer.querySelector('#grab').addEventListener('mousedown',()=>{
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        relocate(event,elementContainer);
+    });
 }
 
-function createResizeElements(containerElement){
+function createResizeElements(containerElement, hide){
     let luc = document.createElement('div');
     let ruc = document.createElement('div');
     let rbc = document.createElement('div');
     let lbc = document.createElement('div');
+    let grab = document.createElement('div');
 
     luc.classList.add('corners');
     ruc.classList.add('corners');
     rbc.classList.add('corners');
     lbc.classList.add('corners');
+    grab.classList.add('corners');
 
     luc.setAttribute('id','luc');
     ruc.setAttribute('id','ruc');
     rbc.setAttribute('id','rbc');
     lbc.setAttribute('id','lbc');
+    grab.setAttribute('id','grab');
 
     containerElement.appendChild(luc)
     containerElement.appendChild(ruc)
     containerElement.appendChild(rbc)
     containerElement.appendChild(lbc)
+    containerElement.appendChild(grab)
+
+    if(hide){
+        luc.classList.add('hide');
+        ruc.classList.add('hide');
+        rbc.classList.add('hide');
+        lbc.classList.add('hide');
+        grab.classList.add('hide');
+    }
 }
 
 function deleteResizeElements(containerElement){
@@ -319,4 +337,18 @@ function createHintWindow(){
         event.preventDefault();
         relocate(event,info);
     });
+}
+
+function hideAllResizeElements(){
+    let allControls = document.querySelectorAll('.corners');
+    allControls.forEach(e=>{
+        e.classList.add('hide');
+    })
+}
+
+function showAllResizeElements(){
+    let allControls = document.querySelectorAll('.corners');
+    allControls.forEach(e=>{
+        e.classList.remove('hide');
+    })
 }
