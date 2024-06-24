@@ -25,6 +25,7 @@ function setAreas(areas){
             removeAllHighlights();
             createHighlight(area);
             pointEditModeControl();
+            fillInfoWindow(e.id);
         })
         //doubleClick(shape, e);
         map.appendChild(area);
@@ -39,6 +40,7 @@ function createAreaElement(area){
     let newArea = document.createElement('area');
     newArea.setAttribute('alt',area.label);
     newArea.setAttribute('title', area.label);
+    newArea.setAttribute('data-point-id', area.id);
     //newArea.setAttribute('href',area.label);
     newArea.setAttribute('class',"ar");
     //newArea.classList.add(area.eqType.name.replace(/" "/g, ""));

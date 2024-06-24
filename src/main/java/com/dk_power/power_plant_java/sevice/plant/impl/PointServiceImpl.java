@@ -1,7 +1,9 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
+import com.dk_power.power_plant_java.dto.plant.PointDto;
 import com.dk_power.power_plant_java.entities.plant.*;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.mappers.PointMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.*;
 import org.springframework.context.annotation.Lazy;
@@ -19,16 +21,18 @@ public class PointServiceImpl extends GroupServiceImpl<Point>{
     private final EquipmentTypeServiceImpl equipmentTypeService;
     private final LocationServiceImpl locationService;
     private final FileServiceImpl fileService;
+    private final PointMapper pointMapper;
     private final UniversalMapper mapper;
-    public PointServiceImpl(PointRepo repo, VendorServiceImpl vendorService, SystemServiceImpl systemService, EquipmentTypeServiceImpl equipmentTypeService, LocationServiceImpl locationService, @Lazy FileServiceImpl fileService, UniversalMapper mapper) {
-        super(repo,mapper);
+    public PointServiceImpl(PointRepo repo, VendorServiceImpl vendorService, SystemServiceImpl systemService, EquipmentTypeServiceImpl equipmentTypeService, LocationServiceImpl locationService, @Lazy FileServiceImpl fileService, PointMapper mapper, UniversalMapper universalMapper) {
+        super(repo,universalMapper);
         this.repo = repo;
         this.vendorService = vendorService;
         this.systemService = systemService;
         this.equipmentTypeService = equipmentTypeService;
         this.locationService = locationService;
         this.fileService = fileService;
-        this.mapper = mapper;
+        this.pointMapper = mapper;
+        this.mapper = universalMapper;
     }
 
     public List<Point> getByCoords(String coord){
@@ -77,4 +81,7 @@ public class PointServiceImpl extends GroupServiceImpl<Point>{
         transers.forEach(this::saveForTransfer);
     }
 
+    public PointDto getPointDtoById(Long id) {
+        return pointMapper.convertToDto(getById(id));
+    }
 }

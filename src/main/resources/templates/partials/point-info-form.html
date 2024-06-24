@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="<http://www.thymeleaf.org>">
+    <form action="#" method="post" th:object="${point}">
+        <div class="form-group">
+            <label for="label">Point ID</label>
+            <input class="form-control" type="text" id="label" th:field="*{label}">
+        </div>
+
+        <div class="form-group">
+            <label for="description">Point Description</label>
+            <input class="form-control" type="text" id="description" th:field="*{description}">
+        </div>
+
+        <div class="form-group">
+            <label for="eqType">Equipment Type</label>
+            <input class="form-control" type="text" id="eqType" th:field="*{eqType}">
+        </div>
+
+        <div class="form-group">
+            <label for="vendor">Vendor</label>
+            <input class="form-control" type="text" id="vendor" th:field="*{vendor}">
+        </div>
+
+        <div class="form-group">
+            <label for="location">Point Location</label>
+            <input class="form-control" type="text" id="location" th:field="*{location}">
+        </div>
+
+        <div class="form-group">
+            <label for="system">Main System</label>
+            <input class="form-control" type="text" id="system" th:field="*{system}">
+        </div>
+
+        <div class="form-group">
+            <label for="mainFile">Main File</label>
+            <input class="form-control" type="text" id="mainFile" th:field="*{mainFile}">
+        </div>
+
+        <div class="form-group">
+            <label for="files">Equipment Type</label>
+            <input class="form-control" type="text" id="files" th:field="*{files}">
+        </div>
+
+        <button class="btn btn-primary btn-block" type="submit">Submit</button>
+
+    </form>
+    <script>
+        /********************************************************
+         *  private String label;
+            private String description;
+            private EquipmentTypeDto eqType;
+            private List<String> files;
+            private VendorDto vendor;
+            private LocationDto location;
+            private SystemDto system;
+            private String coordinates;
+            private String originalPictureSize;
+            private String mainFile;
+         * 
+         * 
+         * 
+         * *****************************************************************/
+    </script>
+</html>

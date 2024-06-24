@@ -1,3 +1,12 @@
+async function fillInfoWindow(id){
+    let form = await getPointInfoForm(id);
+    let infoContainer = document.getElementById('infoWindow');
+    infoContainer.innerHTML = "";
+    infoContainer.innerHTML = form;
+}
+
+
+
 initResize(infoFrame,false);
 let grab = infoFrame.querySelector('#grab')
 let p = document.createElement('p');

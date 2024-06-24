@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
 import com.dk_power.power_plant_java.entities.plant.Group;
+import com.dk_power.power_plant_java.entities.plant.Point;
+import com.dk_power.power_plant_java.mappers.PointMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.GroupRepo;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
@@ -78,6 +80,7 @@ public class GroupServiceImpl<T extends Group> implements GroupService<T> {
             throw new RuntimeException(e);
         }
     }
+
 //    T getByName(String name){
 //       return repo.findByName(name);
 //    }
