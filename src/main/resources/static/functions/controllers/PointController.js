@@ -5,12 +5,8 @@ async function getPointInfoForm(id){
 }
 
 async function updatePoint(){
-    let coordInputField = document.getElementById('coordinates');
-    coordInputField.value = JSON.stringify(getNewAreaCoordinates(selectedArea))
-    const response = await fetch('/point/update-point'+selectedArea.id)
-    const data = await response.json;
-    let index = fileRepository.findIndex(e=>e.id===picture.getAttribute('data-file-id'));  
-    if(index!==-1) fileRepository.splice(index,1,data)
+    console.log(JSON.stringify(selectedArea));
+    selectedArea.coordinates = getNewAreaCoorinates(selectedArea);
 }
 
 function findFile(path){
@@ -20,5 +16,8 @@ function findFile(path){
     if(index!==-1) pointArray.splice(index,1,selectedArea)
 
 }
+
+let button = document.getElementById('pointUpdateButton');
+button.addEventListener('click',updatePoint);
 
 

@@ -39,7 +39,7 @@ public class PointController {
         return "/partials/point-info-form";
     }
 
-    @PostMapping("/get-info-form")
+    @PostMapping("/update")
     public void updatePoint(@ModelAttribute("point") PointDto point){
         pointService.updatePoint(point);
     }
