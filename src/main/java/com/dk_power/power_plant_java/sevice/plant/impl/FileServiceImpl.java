@@ -42,8 +42,10 @@ public class FileServiceImpl extends GroupServiceImpl<FileObject>{
     public List<FileObject> getFilesByVendor(String value) {
         return repo.findByVendor(value);
     }
+    public List<FileDto> getAllDtos(String ext) {
+        return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
+    }
     public List<FileDto> getAllDtos() {
-        //return mapper.convertAll(getAll(),new FileDto());
         return getAll().stream().map(fileMapper::convertToDto).toList();
     }
     public List<String> getSystems() {

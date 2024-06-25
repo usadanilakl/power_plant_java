@@ -4,6 +4,7 @@ let oldWidth;
 let originalWidth;
 let activeHighlights = [];
 let highlatedAreas = [];
+let selectedArea;
 
 /*****************************************************DISPLAY FUNCTIONS*****************************************************************/
 
@@ -33,6 +34,7 @@ function setAreas(areas){
             createHighlight(area);
             pointEditModeControl();
             fillInfoWindow(e.id);
+            selectedArea = e;
         })
         //doubleClick(shape, e);
         map.appendChild(area);
@@ -320,7 +322,9 @@ function getPictureCoordsOnScreen(){
 function getObjCoordOnPicture(object){
     let x = object.offsetLeft - picture.offsetLeft;
     let y = object.offsetTop - picture.offsetTop;
-    return {x:x,y:y};
+    let w = object.offsetWidth;
+    let h = object.offsetHeight;
+    return {x:x,y:y,w:w,h:h};
 }
 
 function handleMouseDown(event) {
@@ -421,4 +425,17 @@ function pointEditModeControl(){
     }else if(modes.editMode.state){
         showAllResizeElements();
     }
+}
+
+function getNewAreaCoordinates(area){
+    let coords = getObjCoordOnPicture(area);
+    return {
+        startX:x,
+        startY:y,
+        endX:x+w,
+        endY:y+h,
+        width:w,
+        height:y
+    }
+
 }

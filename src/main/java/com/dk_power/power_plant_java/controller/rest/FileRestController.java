@@ -33,7 +33,7 @@ public class FileRestController {
 
     @GetMapping("/get-files")
     public List<FileDto> getFiles() {
-        return fileService.getAllDtos();
+        return fileService.getAllDtos("jpg");
     }
     @GetMapping("/get-vendors")
     public List<String> getAllVendors(){

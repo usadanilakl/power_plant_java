@@ -19,7 +19,7 @@ public class FileMapper {
 
     public FileDto convertToDto(FileObject file){
         FileDto fileDto = new FileDto();
-        fileDto.setFileLink(file.getFileLink());
+        fileDto.setFileLink(file.buildFileLink());
         fileDto.setFileNumber(file.getFileNumber());
         if(file.getPoints()!=null)fileDto.setFilePoints(file.getPoints().stream().map(pointMapper::convertToDto).toList());
         if(file.getPoints()!=null)fileDto.setPoints(file.getPoints().stream().map(pointMapper::convertToDto).toList());
@@ -30,6 +30,11 @@ public class FileMapper {
         fileDto.setFileNumber(file.getFileNumber());
         fileDto.setBaseLink(file.getBaseLink());
         fileDto.setFolder(file.getFolder());
+        return fileDto;
+    }
+    public FileDto convertToDto(FileObject file, String extension){
+        FileDto fileDto = convertToDto(file);
+        fileDto.setFileLink(file.buildFileLink(extension));
         return fileDto;
     }
     public FileObject convertToEntity(FileDto fileDto){

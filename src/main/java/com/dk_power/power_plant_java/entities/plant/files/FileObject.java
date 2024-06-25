@@ -60,8 +60,14 @@ public class FileObject extends Group {
     @Transient
     private List<String> systems;
 
-    public void buildFileLink(){
+    public String buildFileLink(){
         fileLink = baseLink+"/"+extension+"/"+folder+"/"+fileNumber+"."+extension;
+        return fileLink;
+    }
+    public String buildFileLink(String extention){
+        this.extension = extention;
+        fileLink = baseLink+"/"+extension+"/"+folder+"/"+fileNumber+"."+extension;
+        return fileLink;
     }
 
 
