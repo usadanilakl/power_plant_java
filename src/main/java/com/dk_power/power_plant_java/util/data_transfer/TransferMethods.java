@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.util.data_transfer;
 import com.dk_power.power_plant_java.entities.plant.EqPojo;
 import com.dk_power.power_plant_java.entities.plant.Point;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.sevice.ExcelService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import com.dk_power.power_plant_java.sevice.plant.impl.PointServiceImpl;
 import lombok.AllArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.List;
 public class TransferMethods {
     private final FileServiceImpl fileService;
     private final PointServiceImpl pointService;
+    private final ExcelService excelService;
     public void transferPids(){
         List<FileObject> files = new JsonToPojo<FileObject>().readProductsFromFile("/pids_json_mod.js",FileObject.class);
         System.out.println(files.size());
@@ -36,5 +38,9 @@ public class TransferMethods {
             //if(n==2) break;
 
         }
+    }
+
+    public void transferPointsFromExcel(){
+        System.out.println(excelService.getDataList().get(0));
     }
 }
