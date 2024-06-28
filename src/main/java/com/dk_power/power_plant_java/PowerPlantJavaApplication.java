@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.plant.Vendor;
 import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import com.dk_power.power_plant_java.repository.plant.VendorRepo;
+import com.dk_power.power_plant_java.sevice.ExcelService;
 import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
@@ -16,6 +17,7 @@ import com.dk_power.power_plant_java.util.data_transfer.JsonToPojo;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -55,8 +57,7 @@ private final VendorRepo vendorRepo;
 //        fileService.getAll().forEach(FileObject::buildFileLink);
 //        System.out.println("fileService.getAll().get(33) = " + fileService.getAllDtos().get(48));
 
-        transferMethods.transferPointsFromExcel();
-
+        System.out.println(new ExcelService("C:/Users/usada/IdeaProjects/power_plant_java/src/main/resources/LOTO_ready.xlsx", "IsoPoints").getDataList().get(0));
 
 
     }

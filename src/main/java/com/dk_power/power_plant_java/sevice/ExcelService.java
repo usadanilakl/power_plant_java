@@ -10,20 +10,21 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-@Service
+//@Service
 public class ExcelService {
     private Sheet workSheet;
     private Workbook workBook;
     private String path;
-    private FileInputStream ExcelFile;
+    private FileInputStream excelFile;
 
     public ExcelService(@Value("${excel.path}") String path, @Value("${excel.sheetName}") String sheetName) {
         this.path=path;
         try {
             // Open the Excel file
-            ExcelFile = new FileInputStream(path);
+            excelFile = new FileInputStream(path);
             // Access the required test data sheet
-            workBook = WorkbookFactory.create(ExcelFile);
+//            workBook = new XSSFWorkbook(excelFile);
+            workBook = WorkbookFactory.create(excelFile);
             workSheet = workBook.getSheet(sheetName);
             // check if sheet is null or not. null means  sheetname was wrong
             //Assert.assertNotNull(workSheet, "Sheet: \""+sheetName+"\" does not exist\n");
@@ -137,7 +138,7 @@ public class ExcelService {
 
             fileOut.close();
             workBook.close();
-            ExcelFile.close();
+            excelFile.close();
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -17,7 +17,7 @@ import java.util.List;
 public class TransferMethods {
     private final FileServiceImpl fileService;
     private final PointServiceImpl pointService;
-    private final ExcelService excelService;
+    //private final ExcelService excelService;
     public void transferPids(){
         List<FileObject> files = new JsonToPojo<FileObject>().readProductsFromFile("/pids_json_mod.js",FileObject.class);
         System.out.println(files.size());
@@ -40,7 +40,7 @@ public class TransferMethods {
         }
     }
 
-    public void transferPointsFromExcel(){
-        System.out.println(excelService.getDataList().get(0));
-    }
+//    public void transferPointsFromExcel(){
+//        System.out.println(excelService.getDataList().get(0));
+//    }
 }
