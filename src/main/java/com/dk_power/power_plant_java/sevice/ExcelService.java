@@ -1,5 +1,7 @@
 package com.dk_power.power_plant_java.sevice;
 
+import com.dk_power.power_plant_java.entities.plant.RevisedExcelPoints;
+import com.dk_power.power_plant_java.repository.plant.RevisedExcelPointsRepo;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -10,15 +12,17 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-//@Service
+@Service
 public class ExcelService {
     private Sheet workSheet;
     private Workbook workBook;
     private String path;
     private FileInputStream excelFile;
+    private final RevisedExcelPointsRepo revisedExcelPointsRepo;
 
-    public ExcelService(@Value("${excel.path}") String path, @Value("${excel.sheetName}") String sheetName) {
+    public ExcelService(@Value("${excel.path}") String path, @Value("${excel.sheetName}") String sheetName, RevisedExcelPointsRepo revisedExcelPointsRepo) {
         this.path=path;
+        this.revisedExcelPointsRepo = revisedExcelPointsRepo;
         try {
             // Open the Excel file
             excelFile = new FileInputStream(path);
@@ -166,5 +170,27 @@ public class ExcelService {
 
             }
         }
+    }
+
+    public void saveRevisedPoints(LinkedHashMap<String,String> excelPoint){
+        RevisedExcelPoints point = new RevisedExcelPoints();
+        point.setUnit(excelPoint.get("Unit"));
+        point.setTagged(excelPoint.get("Tagged"));
+        point.setLabel(excelPoint.get("ID"));
+        point.setDescription(excelPoint.get("Description"));
+        point.setLocation(excelPoint.get("Location"));
+        point.setStandard(excelPoint.get("Standard"));
+        point.setGeneralLocation(excelPoint.get("GENERAL LOCATION"));
+        point.setEquipment(excelPoint.get("Equipment"));
+        point.setExtraInfo(excelPoint.get("Extra Info"));
+        point.setType(excelPoint.get("Type"));
+        point.setSystem(excelPoint.get("System"));
+        point.setNormalPosition(excelPoint.get("Normal Pos"));
+        point.setIsolatedPosition(excelPoint.get("Iso Pos"));
+        point.setFluid(excelPoint.get("Fluid"));
+        point.setSize(excelPoint.get("Size"));
+        point.setElectricalCheckStatus(excelPoint.get("T"));
+        point.setRedTagId(excelPoint.get("Rec ID"));
+        revisedExcelPointsRepo.save(point);
     }
 }

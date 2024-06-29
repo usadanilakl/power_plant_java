@@ -36,6 +36,7 @@ private final FileServiceImpl fileService;
 private final PointServiceImpl pointRepo;
 private final TransferMethods transferMethods;
 private final VendorRepo vendorRepo;
+private final ExcelService excelService;
 
 
     public static void main(String[] args) {
@@ -48,16 +49,20 @@ private final VendorRepo vendorRepo;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+/***************************TransferMethods*************************************************
+        transferMethods.transferPids();
+        System.out.println(fileService.getAll().size());
 
-//        transferMethods.transferPids();
-//        System.out.println(fileService.getAll().size());
-//        transferMethods.transferPoints();
-//        System.out.println("pointRepo.getAll().size() = " + pointRepo.getAll().size());
+        transferMethods.transferPoints();
+        System.out.println("pointRepo.getAll().size() = " + pointRepo.getAll().size());
+
+        transferMethods.transferPointsFromExcel();
+ ********************************************************************************/
 
 //        fileService.getAll().forEach(FileObject::buildFileLink);
 //        System.out.println("fileService.getAll().get(33) = " + fileService.getAllDtos().get(48));
 
-        System.out.println(new ExcelService("C:/Users/usada/IdeaProjects/power_plant_java/src/main/resources/LOTO_ready.xlsx", "IsoPoints").getDataList().get(0));
+
 
 
     }
