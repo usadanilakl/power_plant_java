@@ -19,6 +19,7 @@ import java.util.Map;
 public class Point extends Group {
     private String label;
     private String description;
+    private String specificLocation;
     @ManyToOne
     @JoinColumn(name="eq_type_id")
     private EquipmentType eqType;

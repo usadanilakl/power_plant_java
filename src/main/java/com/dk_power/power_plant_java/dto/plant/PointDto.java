@@ -24,6 +24,7 @@ import java.util.List;
 public class PointDto extends BaseDto{
     private String label;
     private String description;
+    private String specificLocation;
     private EquipmentTypeDto eqType;
     private List<String> files;
     private VendorDto vendor;
