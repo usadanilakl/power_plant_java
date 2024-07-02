@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.entities.plant;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -32,4 +33,6 @@ public class RevisedExcelPoints {
     String size;
     String electricalCheckStatus;
     String redTagId;
+    @Column(nullable = true)
+    Boolean inUse = false;
 }

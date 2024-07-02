@@ -35,6 +35,8 @@ function setAreas(areas){
             pointEditModeControl();
             fillInfoWindow(e.id);
             selectedArea = e;
+            let points = getExcelPointsByLabel(e.label);
+            console.log(JSON.stringify(points));
         })
         //doubleClick(shape, e);
         map.appendChild(area);

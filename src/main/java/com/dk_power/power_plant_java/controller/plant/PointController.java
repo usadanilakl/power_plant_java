@@ -1,11 +1,9 @@
 package com.dk_power.power_plant_java.controller.plant;
 
 import com.dk_power.power_plant_java.dto.plant.PointDto;
-import com.dk_power.power_plant_java.entities.plant.EquipmentType;
-import com.dk_power.power_plant_java.entities.plant.Location;
-import com.dk_power.power_plant_java.entities.plant.Syst;
-import com.dk_power.power_plant_java.entities.plant.Vendor;
+import com.dk_power.power_plant_java.entities.plant.*;
 import com.dk_power.power_plant_java.sevice.plant.impl.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -20,13 +18,15 @@ public class PointController {
     private final SystemServiceImpl systemService;
     private final EquipmentTypeServiceImpl equipmentTypeService;
     private final LocationServiceImpl locationService;
+    private final RevisedExcelPointsService revisedExcelPointsService;
 
-    public PointController(PointServiceImpl pointService, VendorServiceImpl vendorService, SystemServiceImpl systemService, EquipmentTypeServiceImpl equipmentTypeService, LocationServiceImpl locationService) {
+    public PointController(PointServiceImpl pointService, VendorServiceImpl vendorService, SystemServiceImpl systemService, EquipmentTypeServiceImpl equipmentTypeService, LocationServiceImpl locationService, RevisedExcelPointsService revisedExcelPointsService) {
         this.pointService = pointService;
         this.vendorService = vendorService;
         this.systemService = systemService;
         this.equipmentTypeService = equipmentTypeService;
         this.locationService = locationService;
+        this.revisedExcelPointsService = revisedExcelPointsService;
     }
 
     @GetMapping("/get-info-form/{id}")
@@ -44,4 +44,8 @@ public class PointController {
         pointService.updatePoint(point);
     }
 
+    @GetMapping("/get-revised-excel-points")
+    public ResponseEntity<List<RevisedExcelPoints>> getAllRivisedPoint(){
+        return ResponseEntity.ok(revisedExcelPointsService.getAll());
+    }
 }
