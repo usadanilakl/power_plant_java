@@ -5,6 +5,9 @@ async function fillInfoWindow(id){
     infoContainer.innerHTML = form;
 }
 
+function newInfoWindow(){
+    
+}
 
 
 initResize(infoFrame,false);
