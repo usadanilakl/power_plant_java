@@ -33,10 +33,11 @@ function setAreas(areas){
             removeAllHighlights();
             createHighlight(area);
             pointEditModeControl();
-            fillInfoWindow(e.id);
+            fillPointInfoWindow(e.id);
             selectedArea = e;
             let points = getExcelPointsByLabel(e.label);
-            console.log(JSON.stringify(points));
+            fillExcelPointInfoWindow(points);
+            positionInfoWindowsInline();
         })
         //doubleClick(shape, e);
         map.appendChild(area);

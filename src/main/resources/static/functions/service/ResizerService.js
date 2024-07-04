@@ -229,31 +229,31 @@ function relocate(event,element){
 function initResize(elementContainer, hide){
     createResizeElements(elementContainer, hide);
 
-    elementContainer.querySelector('#rbc').addEventListener('mousedown',()=>{
+    elementContainer.querySelector('.rbc').addEventListener('mousedown',()=>{
         event.preventDefault();
         event.stopImmediatePropagation();
         resizeRBC(event,elementContainer);
     });
 
-    elementContainer.querySelector('#lbc').addEventListener('mousedown',()=>{
+    elementContainer.querySelector('.lbc').addEventListener('mousedown',()=>{
         event.preventDefault();
         event.stopImmediatePropagation();
         resizeLBC(event,elementContainer);
     });
 
-    elementContainer.querySelector('#ruc').addEventListener('mousedown',()=>{
+    elementContainer.querySelector('.ruc').addEventListener('mousedown',()=>{
         event.preventDefault();
         event.stopImmediatePropagation();
         resizeRUC(event,elementContainer);
     });
 
-    elementContainer.querySelector('#luc').addEventListener('mousedown',()=>{
+    elementContainer.querySelector('.luc').addEventListener('mousedown',()=>{
         event.preventDefault();
         event.stopImmediatePropagation();
         resizeLUC(event,elementContainer);
     });
 
-    elementContainer.querySelector('#grab').addEventListener('mousedown',()=>{
+    elementContainer.querySelector('.grab').addEventListener('mousedown',()=>{
         event.preventDefault();
         event.stopImmediatePropagation();
         relocate(event,elementContainer);
@@ -273,11 +273,17 @@ function createResizeElements(containerElement, hide){
     lbc.classList.add('corners');
     grab.classList.add('corners');
 
-    luc.setAttribute('id','luc');
-    ruc.setAttribute('id','ruc');
-    rbc.setAttribute('id','rbc');
-    lbc.setAttribute('id','lbc');
-    grab.setAttribute('id','grab');
+    // luc.setAttribute('id','luc');
+    // ruc.setAttribute('id','ruc');
+    // rbc.setAttribute('id','rbc');
+    // lbc.setAttribute('id','lbc');
+    // grab.setAttribute('id','grab');
+
+    luc.classList.add('luc');
+    ruc.classList.add('ruc');
+    rbc.classList.add('rbc');
+    lbc.classList.add('lbc');
+    grab.classList.add('grab');
 
     containerElement.appendChild(luc)
     containerElement.appendChild(ruc)

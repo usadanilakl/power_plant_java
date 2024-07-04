@@ -3,7 +3,6 @@ let revisedExcelPoints = [];
 async function getRevisedExcelPoints(){
     let response = await fetch('/point/get-revised-excel-points');
     let data = await response.json();
-    console.log(JSON.stringify(data[0]))
     revisedExcelPoints = data;
     return data;
 }

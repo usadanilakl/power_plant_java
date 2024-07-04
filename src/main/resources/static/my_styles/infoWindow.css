@@ -1,4 +1,9 @@
-#infoFrame{
+/* #infoWindowsContainer{
+  display: flex;
+  flex-direction: row-reverse;
+} */
+
+.infoFrame{
     position: absolute;
     top:40px;
     right:5px;
@@ -9,19 +14,20 @@
     z-index: 22;
     min-width: 100px;
     min-height: 100px;
+    max-height: 80%;
     
     
   }
 
-  #infoWindow{
+  .infoWindow{
     position: relative;
     width: 100%;
     overflow: auto;
-    top: 10px;
+    padding-top: 60px;
   
   }
   
-  #close{
+  .close{
     position: absolute;
     right: 0;
   }
@@ -33,4 +39,10 @@
     height: 22px;
     z-index: 22;
     background-color: rgb(83, 79, 79);
+}
+
+.searchInputField{
+  position: absolute;
+  right: 0;
+  top:30px;
 }

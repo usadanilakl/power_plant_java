@@ -39,6 +39,11 @@ public class PointController {
         return "/partials/point-info-form";
     }
 
+    @GetMapping("/")
+    public String showAllPoints(){
+        return "/loto/show-all-points";
+    }
+
     @PostMapping("/update")
     public void updatePoint(@ModelAttribute("point") PointDto point){
         pointService.updatePoint(point);

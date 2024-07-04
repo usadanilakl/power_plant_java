@@ -1,7 +1,7 @@
 function getExcelPointsByLabel(label){
     let result = [];
     revisedExcelPoints.forEach(e=>{
-        if(formatLabel(e.label).includes(formatLabel(label))) result.push(e);
+        if(formatLabel(e.label).includes(formatLabel(label)) ) result.push(e);
     })
     return result;
 }
@@ -16,6 +16,13 @@ function formatLabel(label){
     return result;
 }
 
+function trimToLowerCaseRemoveDashes(label){
+        let result = label.toLowerCase();
+        result = result.trim();
+        result = result.replace(/-/g, "");
+        return result;
+}
+
 function showPointInfo(point){
     let form = document.createElement('form');
     for(let e in point){
@@ -25,9 +32,11 @@ function showPointInfo(point){
         let label = document.createElement('label');
         div.appendChild(label);
         label.setAttribute('for',e);
+        label.textContent = e;
         let input = document.createElement('input');
         div.appendChild(input);
         input.setAttribute('id',e);
+        input.classList.add('form-control');
         input.value = point[e];
         input.readOnly = true;
     }
@@ -39,18 +48,63 @@ function excelPointDropdown(points){
     points.forEach(e=>{
         let item = document.createElement('li');
         list.appendChild(item);
-        let formContainer = document.createElement('div');
-        item.appendChild(div);
         let button = document.createElement('button');
         item.appendChild(button);
+        let formContainer = document.createElement('div');
+        item.appendChild(formContainer);
         button.textContent = e.label;
         button.addEventListener('click', ()=>{
             if(formContainer.children.length === 0){
-               div.appendChild(showPointInfo(e));
+                formContainer.appendChild(showPointInfo(e));
             }else{
                 formContainer.innerHTML = "";
             }
         })
     })
     return list;
+}
+
+async function fillPointInfoWindow(id){
+    let form = await getPointInfoForm(id);
+    let infoFrame = document.getElementById('infoFramePoint');
+    let infoContainer = document.getElementById('infoWindowPoint');
+    if(infoContainer === null) newInfoWindow("Point");
+    if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
+    infoContainer.innerHTML = "";
+    infoContainer.innerHTML = form;
+}
+
+async function fillExcelPointInfoWindow(points){
+    let form = excelPointDropdown(points);
+    let infoFrame = document.getElementById('infoFrameOld-LOTO-Points');
+    let infoContainer = document.getElementById('infoWindowOld-LOTO-Points');
+    if(infoContainer === null) newInfoWindow("Old-LOTO-Points");
+    if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
+    infoContainer.innerHTML = "";
+    infoContainer.appendChild(form);
+}
+
+function excelPointSearch(searchValue){
+    let result = [];
+    revisedExcelPoints.forEach(e=>{
+        if(trimToLowerCaseRemoveDashes(e.label).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.label))) result.push(e);
+    })
+    return result;
+}
+
+function buildPointSearchField(){
+    let div = document.createElement('div');
+    div.classList.add('searchInputField');
+    let input = document.createElement('input');
+    div.appendChild(input);
+    input.setAttribute('type','text');
+    input.setAttribute('placeholder','search');
+    let button = document.createElement('button');
+    div.appendChild(button);
+    button.textContent = "Search";
+    button.addEventListener('click', ()=>{
+        let points = excelPointSearch(input.value);
+        fillExcelPointInfoWindow(points);
+    });
+    return div;
 }

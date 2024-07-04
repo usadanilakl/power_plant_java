@@ -68,10 +68,7 @@
             </div>
         </div>
 
-        <div id="infoFrame">
-              <button class="close" id="close"  onclick="hide(document.getElementById('infoFrame'))">X</button>
-            <div id="infoWindow" class="scroll"></div>
-          </div>
+        <div id="infoWindowsContainer"></div>
 
     </div>
     <div id="popup" class="ignoreDk" style="z-index:1060;"></div>
@@ -109,7 +106,7 @@
         let picture = document.getElementById('picture');
         let pictureContainer = document.getElementById('picture-container');
         let all = document.getElementById('all');
-        let infoWindow = document.getElementById('infoFrame');
+        let infoWindowsContainer = document.getElementById('infoWindowsContainer');
 
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('fileUploadButton').addEventListener('click', async function() {
@@ -125,6 +122,7 @@
         createDropdownItem(categories,container);
         let arr = getFilesByVendor("Kiewit");
         //console.log(JSON.stringify(arr[0]))
+        document.getElementById('infoFrameOld-LOTO-Points').appendChild(buildPointSearchField());
     });
 
     pictureContainer.addEventListener('mousedown',(event)=>{

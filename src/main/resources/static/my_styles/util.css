@@ -25,6 +25,10 @@ ul {
     background-color: #0056b3;
 }
 
+.search-field-button-inline{
+    display: inline-block;
+}
+
 /*button, #buttons li, #file-input{*/
 /*    !* display: inline-block; *!*/
 /*    padding: 10px 20px;*/

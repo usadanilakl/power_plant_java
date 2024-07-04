@@ -1,4 +1,4 @@
-#luc{
+.luc{
     position: absolute;
     top:0px;
     left:0px;
@@ -9,7 +9,7 @@
     cursor: nwse-resize;
 }
 
-#ruc{
+.ruc{
     position: absolute;
     top:0;
     right:0;
@@ -20,7 +20,7 @@
     cursor: nesw-resize;
 }
 
-#lbc{
+.lbc{
     position: absolute;
     bottom:0;
     left:0;
@@ -31,7 +31,7 @@
     cursor: nesw-resize;
 }
 
-#rbc{
+.rbc{
     position: absolute;
     bottom:0;
     right:0;
@@ -42,7 +42,7 @@
     cursor: nwse-resize;
 }
 
-#grab{
+.grab{
     position: absolute;
     top:-20px;
     left:48%;
@@ -53,7 +53,7 @@
     cursor: nwse-resize;
 }
 
-#mresize{
+.mresize{
     background-color: rgb(0, 0, 0);
     height: 100%;
     width: 5px;
