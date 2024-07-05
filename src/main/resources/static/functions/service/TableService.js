@@ -86,9 +86,7 @@ function filterObjects(key,value, objects){
 }
 
 function sortObjects(key){
-    console.log(lastSortedBy);
     if(lastSortedBy !== key){
-        console.log(key)
             filteredArray.sort((a,b)=>{
                 return a[key].toString().localeCompare(b[key].toString());
         });
@@ -159,7 +157,6 @@ function tableDisplayControl(table, scrollUp){
 function deleteRowsFromBottom(num,tbody){
     for (let i = 0; i < num; i++) {
         if (tbody.rows.length > 80) {
-            console.log(tbody.rows.length);
             tbody.deleteRow(tbody.rows.length-1);
         } else {
             break;

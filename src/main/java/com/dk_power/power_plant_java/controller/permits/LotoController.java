@@ -133,6 +133,12 @@ public class LotoController {
         return "redirect:/lotos/create";
     }
 
+    @GetMapping("/add-points")
+    public String getAddPoints(Model model){
+        model.addAttribute("mode","lotoMode");
+        return "testRunner";
+    }
+
 
 
 

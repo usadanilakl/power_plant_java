@@ -1,10 +1,11 @@
 let infoWindows = [];
 
-function newInfoWindow(type){
+function newInfoWindow(type,hidden){
     let frame = document.createElement('div');
     infoWindowsContainer.appendChild(frame);
     frame.setAttribute('id','infoFrame'+type);
     frame.classList.add('infoFrame');
+    if(hidden) frame.classList.add('hide');
     let button = document.createElement('button');
     frame.appendChild(button);
     button.setAttribute('id', 'close'+type);
@@ -18,6 +19,7 @@ function newInfoWindow(type){
     infoWindow.classList.add('scroll');
     infoWindowResizer(frame,type);
     infoWindows.push(frame);
+    return infoWindow;
 }
 
 function infoWindowResizer(frame, type){
@@ -44,6 +46,6 @@ function positionInfoWindowsInline(){
     }
 }
 
-newInfoWindow("Point");
-newInfoWindow("Old-LOTO-Points");
+newInfoWindow("Point",true);
+newInfoWindow("Old-LOTO-Points",true);
 document.getElementById('infoWindowOld-LOTO-Points').appendChild(buildPointSearchField());

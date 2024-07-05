@@ -48,10 +48,14 @@ function excelPointDropdown(points){
     points.forEach(e=>{
         let item = document.createElement('li');
         list.appendChild(item);
+        let buttons = document.createElement('div');
+        item.appendChild(buttons);
+        buttons.classList.add('flex-inline');
         let button = document.createElement('button');
-        item.appendChild(button);
+        buttons.appendChild(button);
         let formContainer = document.createElement('div');
         item.appendChild(formContainer);
+
         button.textContent = e.label;
         button.addEventListener('click', ()=>{
             if(formContainer.children.length === 0){
@@ -59,8 +63,15 @@ function excelPointDropdown(points){
             }else{
                 formContainer.innerHTML = "";
             }
-        })
-    })
+        });
+        let addButton = document.createElement('button');
+        buttons.appendChild(addButton);
+        addButton.classList.add('addButtons');
+        addButton.textContent = "ADD";
+        // if(!modes.lotoMode.status) addButton.classList.add('hide');
+        // else addButton.classList.remove('hide');
+        addButton.addEventListener('click',()=>addPointToLotoWindow(e));
+    });
     return list;
 }
 

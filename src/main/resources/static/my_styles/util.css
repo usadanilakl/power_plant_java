@@ -29,6 +29,11 @@ ul {
     display: inline-block;
 }
 
+.flex-inline{
+    display: flex;
+    flex-direction: row;
+}
+
 /*button, #buttons li, #file-input{*/
 /*    !* display: inline-block; *!*/
 /*    padding: 10px 20px;*/

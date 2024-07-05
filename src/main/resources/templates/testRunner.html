@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta id="mode" th:content="${mode}"/>
     <title>My Main Layout</title>
 
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
@@ -97,6 +98,7 @@
     <script src="/functions/service/ModeService.js"></script>
     <script src="/functions/service/InfoWindowService.js"></script>
     <script src="/functions/service/PointService.js"></script>
+    <script src="/functions/service/LotoService.js"></script>
     <script src="/functions/util_functions/util.js"></script>
     
 
@@ -107,6 +109,7 @@
         let pictureContainer = document.getElementById('picture-container');
         let all = document.getElementById('all');
         let infoWindowsContainer = document.getElementById('infoWindowsContainer');
+        let mode = document.getElementById('mode').getAttribute('content');
 
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('fileUploadButton').addEventListener('click', async function() {
@@ -123,6 +126,11 @@
         let arr = getFilesByVendor("Kiewit");
         //console.log(JSON.stringify(arr[0]))
         document.getElementById('infoFrameOld-LOTO-Points').appendChild(buildPointSearchField());
+
+        let left = document.getElementById('left');
+        left.appendChild(createModeButtons());
+
+        if(mode) setMode(mode);
     });
 
     pictureContainer.addEventListener('mousedown',(event)=>{
