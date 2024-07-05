@@ -25,13 +25,33 @@
         .full-width{
             width:100%;
         }
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; /* Prevent document scroll bar */
+        }
+        /* .container-fluid {
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        } */
+        #tableContainer {
+            height: 100vh;
+            overflow: scroll;
+            border: 1px solid #000;
+            width: 100%; /* Adjust width as needed */
+        }
+        table {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
 <meta name="_csrf" th:content="${_csrf.token}"/>
 
 <div th:replace="~{partials/index::header}"></div>
-<div class="container-fluid">
+<div class="container-fluid" id="main">
     <div class="row">
         <div class="col-md-12" id="tableContainer">
             
@@ -56,18 +76,37 @@
 
 <script>
     let tableContainer = document.getElementById('tableContainer');
+    let main = document.getElementById('main');
     async function init() {
     try {
         let arr = await getRevisedExcelPoints();
         let table = createTableFromObjects(arr);
         tableContainer.innerHTML = "";
         tableContainer.appendChild(table);
+
+        let lastScrollTop = 0
+
+        tableContainer.addEventListener('scroll', function() {
+        const scrollPosition = tableContainer.scrollTop + tableContainer.clientHeight;
+        const tableHeight = tableContainer.scrollHeight;
+        let currentScrollTop = tableContainer.scrollTop;
+
+        // Check if the scroll position is within 100px of the bottom of the table
+        if (tableHeight - scrollPosition < 500 && currentScrollTop>lastScrollTop) {
+            tableDisplayControl(table, false);
+        }else if(tableContainer.scrollTop < 500 && currentScrollTop<lastScrollTop){
+            tableDisplayControl(table, true);
+        }
+        lastScrollTop = currentScrollTop;
+    });
+
     } catch (error) {
         console.error('Error fetching or processing data:', error);
     }
 }
 
     init();
+
     
 </script>
 

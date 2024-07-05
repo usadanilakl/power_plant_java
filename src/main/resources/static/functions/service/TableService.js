@@ -1,6 +1,7 @@
 let searchValues = [];
 let filteredArray = [];
 let lastSortedBy = "";
+let rows = [];
 
 /*************
  * <table class="table table-dark">
@@ -23,6 +24,9 @@ function createTableFromObjects(objects){
     header.appendChild(index);
     index.textContent = 'Index';
 
+    let tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+
     for(let e in objects[0]){
         let th = document.createElement('th');
         header.appendChild(th);
@@ -32,29 +36,39 @@ function createTableFromObjects(objects){
         search.setAttribute('placeholder','filter');
         search.addEventListener('change', ()=>{
             filteredArray = filterObjects(e,search.value,objects);
-            tableContainer.innerHTML = "";
-            tableContainer.appendChild(createTableFromObjects(filteredArray));
+            tbody.innerHTML = "";
+            createRows(tbody);
     });
         let button = document.createElement('button');
         th.appendChild(button);
         button.textContent = e;
         button.addEventListener('click',()=>{
             sortObjects(e);
-            tableContainer.innerHTML = "";
-            tableContainer.appendChild(createTableFromObjects(filteredArray));
+            tbody.innerHTML = "";
+            createRows(tbody);
         });
     }
 
-    let tbody = document.createElement('tbody');
-    table.appendChild(tbody);
+    createRows(tbody);
+
+    return table;
+}
+
+function createRows(tbody){
     let i = 1;
+    rows = [];
     filteredArray.forEach(el=>{
         let row = document.createElement('tr');
-        tbody.appendChild(row);
+        if(i<100){
+           tbody.appendChild(row); 
+        }
+        
+        rows.push(row);
 
         let indexData = document.createElement('td');
         indexData.textContent = i++;
         row.appendChild(indexData);
+        indexData.classList.add('idexData');
 
         for(let key in el){
             let td = document.createElement('td');
@@ -62,7 +76,6 @@ function createTableFromObjects(objects){
             row.appendChild(td);
         }
     })
-    return table;
 }
 
 function filterObjects(key,value, objects){
@@ -105,4 +118,73 @@ function searchFieldAndButtonInLine(){
     div.appendChild(button);
     return div;
 }
+
+function deleteRowsFromTop(num,tbody){
+    for (let i = 0; i < num; i++) {
+        if (tbody.rows.length > 80) {
+            tbody.deleteRow(0);
+        } else {
+            break;
+        }
+    }
+}
+
+function addRowsToBottom(num,tbody,arr){
+    const lastRow = tbody.rows[tbody.rows.length - 1];
+    const indexValue = lastRow.cells[0].textContent;
+    const index = parseInt(indexValue);
+    for(let i = 0; i<num; i++){
+        let next = index+i;
+        if(next<arr.length) tbody.appendChild(arr[next]);
+        else break;
+    }
+    
+}
+
+function tableDisplayControl(table, scrollUp){
+    let tbody = table.querySelector('tbody');
+    let numberOfRows = 20
+    
+        if(scrollUp){
+            addRowsOnTop(numberOfRows,tbody,rows);
+            deleteRowsFromBottom(numberOfRows,tbody);
+        }else{
+            addRowsToBottom(numberOfRows,tbody,rows);
+            deleteRowsFromTop(numberOfRows,tbody);            
+        }
+
+    
+}
+
+function deleteRowsFromBottom(num,tbody){
+    for (let i = 0; i < num; i++) {
+        if (tbody.rows.length > 80) {
+            console.log(tbody.rows.length);
+            tbody.deleteRow(tbody.rows.length-1);
+        } else {
+            break;
+        }
+    }
+}
+
+function addRowsOnTop(num,tbody,arr){
+    const firstRow = tbody.rows[0];
+    if(firstRow){
+        const indexValue = firstRow.cells[0].textContent;
+        const index = parseInt(indexValue);
+        for(let i = 0; i<num; i++){
+            let next = index-i;
+            if(next>-1) tbody.insertBefore(arr[next],tbody.rows[0]);
+            else break;
+        }
+    }
+
+    
+}
+
+
+
+
+
+
 
