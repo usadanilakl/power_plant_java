@@ -1,24 +1,19 @@
 package com.dk_power.power_plant_java.dto.permits;
 
-import jakarta.persistence.Access;
+import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
+import com.dk_power.power_plant_java.entities.plant.RevisedExcelPoints;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.ManyToMany;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+import java.util.List;
 
-@NoArgsConstructor
-@AllArgsConstructor
-@Data
-public class LotoDto {
-    private String requestor, controlAuthority,  system, workScope, equipment,createdBy;
-    private Long id;
+@Getter
+@Setter
+public class LotoDto extends BaseLotoDto{
 
-    public LotoDto(String requestor, String controlAuthority, String system, String workScope, String equipment, String createdBy) {
-        this.requestor = requestor;
-        this.controlAuthority = controlAuthority;
-        this.system = system;
-        this.workScope = workScope;
-        this.equipment = equipment;
-        this.createdBy = createdBy;
-    }
+    private List<RevisedExcelPoints> lotoPoints;
 }

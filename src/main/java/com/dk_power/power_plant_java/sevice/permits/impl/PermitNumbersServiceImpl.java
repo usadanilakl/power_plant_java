@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.sevice.permits.impl;
 
 import com.dk_power.power_plant_java.entities.permits.PermitNumbers;
-import com.dk_power.power_plant_java.enums.PermitTypes;
+import com.dk_power.power_plant_java.enums.PermitType;
 import com.dk_power.power_plant_java.repository.permits.PermitNumbersRepo;
 import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
 import lombok.AllArgsConstructor;
@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class PermitNumbersServiceImpl implements PermitNumbersService {
     private final PermitNumbersRepo permitNumbersRepo;
     @Override
-    public Long getNumber(PermitTypes type) {
+    public Long getNumber(PermitType type) {
         PermitNumbers number = permitNumbersRepo.findById(type).orElse(null);
         if(number==null){
             number = saveNumber(new PermitNumbers(type, generate(0L)));

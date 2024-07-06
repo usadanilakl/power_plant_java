@@ -1,7 +1,10 @@
 package com.dk_power.power_plant_java.entities.permits;
 
-import com.dk_power.power_plant_java.enums.PermitTypes;
-import jakarta.persistence.*;
+import com.dk_power.power_plant_java.enums.PermitType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,6 +16,6 @@ import lombok.NoArgsConstructor;
 public class PermitNumbers {
     @Enumerated(EnumType.STRING)
     @Id
-    PermitTypes permitType;
+    PermitType permitType;
     Long number;
 }

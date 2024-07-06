@@ -1,3 +1,20 @@
+let picture = document.getElementById('picture')
+let pictureContainer = document.getElementById('picture-container')
+let map = document.getElementById('map')
+
+
+
+//drag(picture, pictureContainer);
+pictureContainer.addEventListener('mousedown',(event)=>{
+    event.preventDefault();
+    relocateHighlightsWithPicture(event);
+    
+});
+    
+const zoom = zoomPicture.bind(null,picture);
+pictureContainer.addEventListener('wheel',zoom);
+
+
 function drag(picture,element){
     let isDragging = false;
     let startMouseX = 0;
@@ -5,33 +22,8 @@ function drag(picture,element){
     let startPictureX = 0;
     let startPictureY = 0;
 
-if(element==null){
-    picture.addEventListener('mousedown', function(event){
+    let rehighlight = [];
 
-      if(event.button === 0){
-        event.preventDefault();
-        isDragging = true;
-        startMouseX = event.clientX;
-        startMouseY = event.clientY;
-        startPictureX = picture.offsetLeft;
-        startPictureY = picture.offsetTop;
-      }
-        
-    });
-    picture.addEventListener('mouseup', function(){isDragging=false});
-    picture.addEventListener('mouseleave', function(){isDragging=false});
-    picture.addEventListener('mousemove', function(event) {
-        if (isDragging) {
-          const offsetX = event.clientX - startMouseX;
-          const offsetY = event.clientY - startMouseY;
-          const newPictureX = startPictureX + offsetX;
-          const newPictureY = startPictureY + offsetY;
-      
-          picture.style.left = `${newPictureX}px`;
-          picture.style.top = `${newPictureY}px`;
-        }
-      });
-}else{
     element.addEventListener('mousedown', function(event){
     if(event.button===0){  
         event.preventDefault();
@@ -40,10 +32,15 @@ if(element==null){
         startMouseY = event.clientY;
         startPictureX = picture.offsetLeft;
         startPictureY = picture.offsetTop;
+
+        rehighlight = [...highlatedAreas];
     }
         
     });
-    element.addEventListener('mouseup', function(){isDragging=false});
+    element.addEventListener('mouseup', function(){
+        isDragging=false;
+        //rehighlight.forEach(e=>createHighlight(e)); 
+    });
     element.addEventListener('mouseleave', function(){isDragging=false});
     element.addEventListener('mousemove', function(event) {
         if (isDragging) {
@@ -54,10 +51,12 @@ if(element==null){
       
           picture.style.left = `${newPictureX}px`;
           picture.style.top = `${newPictureY}px`;
+
+        
+        //removeAllHighlights();
+        
         }
-      });
-}
-    
+      });  
 }
 
 function zoomPicture(picture){
@@ -108,9 +107,9 @@ if (event.deltaY < 0 && startW/window.innerWidth < 25) {
 
     picture.style.left = `${newPictureX}px`;
     picture.style.top = `${newPictureY}px`;
-    // resizeAreas(picture); 
-    // resizeShapes(); 
-    resizeManualHighlites(); 
+    resizeAreas(picture); 
+    resizeHighlights(); 
+    //resizeManualHighlites(); 
 
 }
 

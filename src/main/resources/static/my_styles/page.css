@@ -44,6 +44,7 @@
     background-color: rgb(71, 23, 116);
     height: 100%;
     z-index: 10;
+    overflow:auto;
 }
 
 #right{

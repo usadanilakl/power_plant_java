@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connection Test</title>
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+    <style>
+        .column-position{
+            display: flex;
+            flex-direction: column;
+        }
+        .row-position{
+            display: flex;
+            flex-direction: row;
+        }
+        .full-width{
+            width:100%;
+        }
+    </style>
 </head>
 <body>
 <meta name="_csrf" th:content="${_csrf.token}"/>
@@ -16,35 +29,43 @@
             <table class="table table-dark">
                 <thead class="sticky-top">
                 <button onclick="buildFilters()">Filter</button>
-                <tr>
+                <tr class="">
                     <th>#</th>
-                    <th class="row flex-column">
-                        <input type="text" name="workScope" class="filters">
-                        <a class="btn btn-warning" th:href="@{/lotos/sort?column=workScope}">Job</a>
+                    <th class="">
+                        <input type="text" name="getWorkScope" class="filters full-width">
+                        <a class="btn btn-warning full-width" th:href="@{/lotos/sort?column=getWorkScope}">Job</a>
+                    </th>
+                    <th class="">
+                        <input type="text" name="getRequestor" class="filters full-width">
+                        <a class="btn btn-warning full-width" th:href="@{/lotos/sort?column=getRequestor}">Requestor</a>
                     </th>
                     <th>
-                        <input type="text" name="requestor" class="filters">
-                        <a class="btn btn-warning" th:href="@{/lotos/sort?column=requestor}">Requestor</a>
+                        <input type="text" name="getStatus" class="filters full-width">
+                        <a class="btn btn-warning full-width" th:href="@{/lotos/sort?column=getStatus}">Status</a>
                     </th>
                     <th>
-                        <input type="text" name="status" class="filters">
-                        <a class="btn btn-warning" th:href="@{/lotos/sort?column=status}">Status</a>
-                    </th>
-                    <th>
-                        <input type="text" name="lotoNum" class="filters">
-                        <a class="btn btn-warning" th:href="@{/lotos/sort?column=lotoNum}">Number</a>
+                        <input type="text" name="getDocNum" class="filters full-width">
+                        <a class="btn btn-warning full-width" th:href="@{/lotos/sort?column=getDocNum}">Number</a>
                     </th>
                     <th>Edit</th>
+                    <th>History</th>
+                    <th>
+                        <input type="text" name="boxNumber" class="filters full-width">
+                        <a class="btn btn-warning full-width" th:href="@{/lotos/sort?column=boxNumber}">Box</a>
+                    </th>
+
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="loto, stat : ${lotos}" th:id="${loto.lotoNum}">
-                    <th scope="row" th:text="${stat.index+1}"></th>
+                <tr th:each="loto, stat : ${lotos}" th:id="${loto.docNum}">
+                    <td scope="row" th:text="${stat.index+1}"></td>
                     <td th:text="${loto.workScope}"></td>
                     <td th:text="${loto.requestor}"></td>
                     <td><a class="btn btn-warning" onclick="fillPopUpInfo(event)" th:text="${loto.status}"></a></td>
-                    <td th:text="${loto.lotoNum}"></td>
+                    <td th:text="${loto.docNum}"></td>
                     <td><a class="btn btn-warning" th:href="@{/lotos/edit/{id}(id=${loto.id})}">Edit</a></td>
+                    <td><a class="btn btn-warning" th:href="@{/lotos/history/{id}(id=${loto.id})}">Details</a></td>
+                    <td th:if="${loto.box}!=null" th:text="${loto.box.number}"></td>
                     <td th:text="${loto.id}" style="display: none;" name="id"></td>
                 </tr>
                 </tbody>
@@ -55,6 +76,7 @@
                 Open Popup
             </button>
             <div></div>
+
             <!-- Modal -->
             <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                 <div class="modal-dialog" role="document">
@@ -63,9 +85,13 @@
                             <h5 class="modal-title" id="exampleModalLabel">Change LOTO Status</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <div class="modal-body">
-                            <a class="btn btn-warning" id="toActive"></a>
-                            <a class="btn btn-warning" id="toCanceled"></a>
+                        <div class="modal-body" >
+<!--                            <a class="btn btn-warning" id="toActive"></a>-->
+<!--                            <a class="btn btn-warning" id="toCanceled"></a>-->
+                            <ul th:each="status : ${statuses}">
+                                <li><a class="btn btn-warning status-change" th:id="${status}" th:text="${status}"></a></li>
+                            </ul>
+
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -80,9 +106,19 @@
 </div>
 
 <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+
+        var statuses = /*[[${statuses}]]*/ [];
+
+
+    /*]]>*/
+</script>
 <script>
     let csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    let elements = document.getElementsByClassName('status-change');
 
+    console.log(csrfToken)
     function sendPostRequest(url){
 
     fetch(url, {
@@ -122,7 +158,6 @@
         let modal = document.getElementById('exampleModal');
         let myModal = new bootstrap.Modal(modal, {});
         myModal.show();
-         // modal.addEventListener('shown.bs.modal', function () {
             let button = event.target;
             let fields = button.parentNode.parentNode;
             let title = document.getElementById("exampleModalLabel");
@@ -131,18 +166,11 @@
             title.textContent = "Change LOTO " + number + " Status";
             let id = fields.querySelector('[name="id"]');
 
-            let toActive = document.getElementById("toActive");
-            //toActive.setAttribute('href', '/lotos/status/' + id.textContent + '?status=active');
-            toActive.textContent = "Active";
-            toActive.addEventListener('click',()=>{sendPostRequest('/lotos/status/' + id.textContent + '?status=active')})
-
-            let toCanceled = document.getElementById("toCanceled");
-            toCanceled.textContent = "Canceled";
-            //toCanceled.setAttribute('href', '/lotos/edit/' + id.textContent + '?status=canceled');
-            toCanceled.addEventListener('click',()=>{sendPostRequest('/lotos/status/' + id.textContent + '?status=canceled')})
-         // });
 
 
+            for(let i = 0; i<elements.length; i++){
+                elements[i].addEventListener('click',()=>{sendPostRequest('/lotos/status/' + id.textContent + '?status='+elements[i].id)})
+            }
     }
     function buildFilters(){
         let inputs = document.querySelectorAll(".filters");
