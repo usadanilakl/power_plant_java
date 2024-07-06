@@ -20,6 +20,7 @@ function setUpLotoWindow(){
     let ob = {label:obj.label,description:obj.description}
     lotoWindow = newInfoWindow("Loto");
     lotoWindow.appendChild(createTable(ob));
+    lotoWindow.appendChild(updateLotoPointsButton());
 }
 
 function addPointToLotoWindow(point){
@@ -123,7 +124,21 @@ function createRemoveButton(label){
     
 }
 
-function submitLotoPoints(loto){
-    //update loto on server (temp loto)
-    //redirect to loto create page
+async function submitLotoPoints(){
+    //get temp loto from server and save it on client side
+    let loto = await getTempLoto();
+    //Add selected poins to loto
+    loto.lotoPoints = lotoPoints;
+    //update loto on server (temp loto) and redirect to creating form
+    updateTempLoto(loto,token);
+    //console.log(JSON.stringify(loto))
+}
+
+function updateLotoPointsButton(){
+    let button = document.createElement('button');
+    button.classList.add();
+    button.setAttribute('id','updateLotoPointsButton');
+    button.textContent = 'Add Points to LOTO';
+    button.addEventListener('click',submitLotoPoints);
+    return button;
 }

@@ -5,6 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connection Test</title>
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+
+    <link rel="stylesheet" href="/my_styles/util.css">
+
+    <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
+    <meta id="token-header" name="_csrf_header" content="${_csrf.headerName}" />
+
+    <style>
+        .outline{
+            outline: 2px solid black;
+        }
+        .orange{
+          /* background-image: url(orange.jpg) !important; */
+          box-shadow: inset 0 0 0 1000px  orange;
+        }
+        .green{
+          background-color: rgb(140, 255, 0);
+        }
+        .no-margins{
+          width: 100%;
+          margin: 0px;
+          padding: 0px;
+        }
+        @media print {
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        /* max-width: 9.5in;
+        max-height: 12in; */
+        overflow: hidden;
+      }
+      .btn, .navbar{
+        display: none;
+      }
+      .orange{
+          /* background-image: url(orange.jpg) !important; */
+          box-shadow: inset 0 0 0 1000px orange !important;
+      }
+      .green{
+        box-shadow: inset 0 0 0 1000px rgb(0, 255, 115) !important;
+      }
+    }
+    </style>
+
 </head>
 <body>
 
@@ -19,8 +64,12 @@
                 <div class="row">
                     <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">
                         <div class="form-inline">
-                            <label for="equipment-system">Equipment/System:</label>
-                            <input class="form-control flex-grow-1" type="text" id="equipment-system" name="equipment-system">
+                            <label for="systems">Choose System:</label>
+                            <select th:field="*{system}" id="systems" onchange="fillPopUpInfo('System')">
+                                <option value="">Select System</option>
+                                <option th:each="system : ${systems}" th:value="${system.name}" th:text="${system.name}"></option>
+                                <option value="-1">Add New System</option>
+                            </select>
                         </div>
                     </div>
                     <div class="col-xl-2 col-lg-2 col-md-2 col-sm-2 col-2 outline">
@@ -30,7 +79,16 @@
                     </div>
                     <div class="col-xl-2 col-lg-2 col-md-2 col-sm-2 col-2 outline">
                         <div class="form-group">
-                            <p>Box# 55</p>
+                            <label for="boxDropdown">Box#</label>
+                            <select th:field="*{box}" id="boxDropdown" onchange="selectFunction()">
+                                <option value="" >Select Box</option>
+                                <option
+                                        th:each="b:${boxes}"
+                                        th:text="${b.number}"
+                                        th:value="${b.id}"
+                                ></option>
+                                <option value="-1">Add New Box</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -336,15 +394,18 @@
                                 <th scope="col" class="col-1 outline text-center">Removed By</th>
                             </tr>
                             </thead>
-                            <tbody>
-                            <tr>
-                                <td class="outline text-center">1</td>
+                            <tbody th:if="${loto.lotoPoints != null}">
+                            <tr th:each="p, iterStat : ${loto.lotoPoints}">
+                                <td class="outline text-center" th:text="${iterStat.index + 1}">1</td>
                                 <td class="outline text-center">222</td>
-                                <td class="outline text-center">U1 ACC Fan 2B </br>ACC MCC BR7B</br> 01-ACC-MFN123 </br></td>
-                                <td class="outline text-center">OPEN</td>
+                                <td class="outline text-center">
+                                    <p style="margin: 0;" th:text="${p.description}"></p>
+                                    <p style="margin: 0;" th:text="${p.location}"></p>
+                                    <p style="margin: 0;" th:text="${p.label}"></p></td>
+                                <td class="outline text-center" th:text="${p.isolatedPosition}"></td>
                                 <td class="outline text-center">DK</td>
                                 <td class="outline text-center">AG</td>
-                                <td class="outline text-center">CLOSED</td>
+                                <td class="outline text-center" th:text="${p.normalPosition}">CLOSED</td>
                                 <td class="outline text-center">DK</td>
                             </tr>
                             </tbody>
@@ -352,6 +413,7 @@
                         </br>
                     </div>
                 </div>
+                <button onclick="saveTempLoto()" type="button">Add Points</button>
                 <button class="btn btn-primary btn-block" type="submit">Submit</button>
             </form>
         </div>
@@ -360,7 +422,13 @@
 
 <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
 <script>
-    document.querySelectorAll('input').forEach(input => {
+    let csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    let tokenHeader = document.getElementById('token-header').getAttribute('content');
+    let groupValue;
+    let saveButton = document.getElementById('save');
+    let lotoForm = document.getElementById("lotoForm");
+
+    lotoForm.querySelectorAll('input').forEach(input => {
         input.addEventListener('change', function(e) {
             e.preventDefault();
 
@@ -376,6 +444,117 @@
                 });
         });
     });
+
+    function createNewBoxPostRequest(){
+    fetch("/lotos/add-box", {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(()=>{
+            window.location.href = "/lotos/create";
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        })
+}
+
+    function selectFunction() {
+  var x = document.getElementById("boxDropdown").value;
+  if(x === "-1") {
+    createNewBoxPostRequest()
+  }
+}
+
+    function systemSelection(value,url,redirect){
+        if(value === '-1' || value.includes("Add New")){
+            createNewItem(url, redirect);
+        }
+    }
+
+    function createNewItem(url,redirect){
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(()=>{
+            window.location.href = redirect;
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        })
+}
+
+    function fillPopUpInfo(group){
+        let title = document.getElementById("exampleModalLabel");
+        let modal = document.getElementById('exampleModal');
+        let myModal = new bootstrap.Modal(modal, {});
+        let groupType = group.toLocaleLowerCase().replaceAll(" ","");
+        myModal.show();
+        title.textContent = "Create New " + group;
+        console.log(groupValue);
+          saveButton.addEventListener('click', ()=>{
+            systemSelection('-1', '/group/create?group='+groupType+'&value='+groupValue,'/lotos/create');
+        })
+
+      }
+
+    function updateValue(value){
+        groupValue = value;
+    }
+
+    function saveTempLoto(){
+        let tempLoto = objectFromForm(lotoForm);
+        postSaveTemp2();
+    }
+
+    function objectFromForm(form){
+        const formData = new FormData(form);
+        const formObject = {};
+
+        formData.forEach((value, key) => {
+            formObject[key] = value;
+        });
+        
+        return formObject;
+    }
+
+    async function postSaveTemp(data){
+
+        console.log(JSON.stringify(data) + " - sent to server");
+
+        const response = await fetch('/lotos/save-temp',{
+            method: 'POST',
+            // headers: {
+            //     'Content-Type': 'application/json',
+            //     tokenHeader: csrfToken
+            // },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.text();
+        console.log(result + " received from server")
+        window.open(result);
+    }
+
+    function postSaveTemp2(data){
+        var formData = new FormData(document.getElementById('lotoForm'));
+            fetch('/lotos/save-temp', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.text())
+                .then(data => window.location.href ='/lotos/add-points')
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+    }
 </script>
 </body>
 </html>

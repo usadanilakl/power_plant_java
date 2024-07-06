@@ -1,6 +1,9 @@
 package com.dk_power.power_plant_java.entities.permits.lotos;
 
+import com.dk_power.power_plant_java.entities.plant.RevisedExcelPoints;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Entity;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import lombok.Getter;
@@ -29,6 +32,10 @@ public class Loto extends BaseLoto {
         if(box!=null)return box;
         else return new Box();
     }
+
+    @JsonIgnore
+    @ManyToMany(mappedBy = "permLotos")
+    private List<RevisedExcelPoints> lotoPoints;
 
 
 }

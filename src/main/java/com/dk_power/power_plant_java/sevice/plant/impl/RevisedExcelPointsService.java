@@ -24,4 +24,10 @@ public class RevisedExcelPointsService {
     public List<RevisedExcelPoints> getAll() {
         return revisedExcelPointsRepo.findAll();
     }
+    public RevisedExcelPoints save(RevisedExcelPoints point){
+       return revisedExcelPointsRepo.save(point);
+    }
+    public void saveAll(List<RevisedExcelPoints> points){
+        revisedExcelPointsRepo.saveAll(points);
+    }
 }

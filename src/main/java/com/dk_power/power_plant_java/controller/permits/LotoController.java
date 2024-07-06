@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.permits;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
+import com.dk_power.power_plant_java.dto.permits.TempLotoDto;
 import com.dk_power.power_plant_java.entities.permits.lotos.Box;
 import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
 import com.dk_power.power_plant_java.entities.permits.lotos.TempLoto;
@@ -57,7 +58,7 @@ public class LotoController {
         model.addAttribute("emptyBox", box);
         model.addAttribute("systems", systemService.getAll());
         model.addAttribute("eqTypes", allEqTypes);
-        return "loto/new-loto-form";
+        return "loto/new-loto-form2";
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("loto") LotoDto data){
@@ -83,7 +84,7 @@ public class LotoController {
         List<Box> boxes = boxService.getAllBoxes();
         model.addAttribute("loto",loto);
         model.addAttribute("boxes", boxes);
-        return "loto/update-loto-form";
+        return "loto/update-loto-form2";
     }
     @PostMapping("/edit")
     public String updateLoto(@ModelAttribute LotoDto loto){
@@ -137,6 +138,18 @@ public class LotoController {
     public String getAddPoints(Model model){
         model.addAttribute("mode","lotoMode");
         return "testRunner";
+    }
+
+    @PostMapping("/update-points")
+    public String updatePoints(@RequestBody TempLotoDto loto){
+        TempLoto tempLoto = tempLotoService.saveTempLotoDto(loto);
+        return "redirect:/lotos/create";
+    }
+
+    @PostMapping("/save-temp")
+    public String saveTempLoto(@ModelAttribute("loto") TempLotoDto lotoDto){
+        TempLoto tempLoto = tempLotoService.saveTempLotoDto(lotoDto);
+        return "redirect:/lotos/add-points";
     }
 
 

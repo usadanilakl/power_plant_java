@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
     <meta id="mode" th:content="${mode}"/>
     <title>My Main Layout</title>
 
@@ -87,9 +87,14 @@
     <script src="/functions/display_functions/DisplayPicture.js"></script>
     <script src="/functions/display_functions/FileDropdown.js"></script>
     <script src="/functions/util_functions/util.js"></script> -->
+
+    <script>
+        let token = document.getElementById('token').getAttribute('content');
+    </script>
     
     <script src="/functions/controllers/FileController.js"></script>
     <script src="/functions/controllers/PointController.js"></script>
+    <script src="/functions/controllers/LotoController.js"></script>
     <script src="/functions/service/PictureService.js"></script>
     <script src="/functions/service/ResizerService.js"></script>
     <script src="/functions/service/FileService.js"></script>
@@ -145,8 +150,6 @@ const zoom = zoomPicture.bind(null,picture);
 pictureContainer.addEventListener('wheel',zoom);
 document.addEventListener('mousedown',handleMouseDown);
 
-
-    
 
 
 

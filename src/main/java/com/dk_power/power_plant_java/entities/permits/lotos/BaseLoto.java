@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.permits.lotos;
 
 import com.dk_power.power_plant_java.entities.permits.BasePermit;
+import com.dk_power.power_plant_java.entities.plant.RevisedExcelPoints;
 import com.dk_power.power_plant_java.enums.PermitType;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -28,6 +29,8 @@ public class BaseLoto extends BasePermit {
     //@OneToOne(mappedBy = "baseLoto")
     @Transient
     private Box box;
+    @Transient
+    private List<RevisedExcelPoints> lotoPoints;
 
 
 

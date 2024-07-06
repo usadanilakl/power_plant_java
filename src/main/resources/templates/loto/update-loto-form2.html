@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html xmlns:th="<http://www.thymeleaf.org>">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connection Test</title>
+    <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+
+    <link rel="stylesheet" href="/my_styles/util.css">
+
+    <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
+    <meta id="token-header" name="_csrf_header" content="${_csrf.headerName}" />
+
+    <style>
+        .outline{
+            outline: 2px solid black;
+        }
+        .orange{
+          /* background-image: url(orange.jpg) !important; */
+          box-shadow: inset 0 0 0 1000px  orange;
+        }
+        .green{
+          background-color: rgb(140, 255, 0);
+        }
+        .no-margins{
+          width: 100%;
+          margin: 0px;
+          padding: 0px;
+        }
+        @media print {
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        /* max-width: 9.5in;
+        max-height: 12in; */
+        overflow: hidden;
+      }
+      .btn, .navbar{
+        display: none;
+      }
+      .orange{
+          /* background-image: url(orange.jpg) !important; */
+          box-shadow: inset 0 0 0 1000px orange !important;
+      }
+      .green{
+        box-shadow: inset 0 0 0 1000px rgb(0, 255, 115) !important;
+      }
+    }
+    </style>
+
+</head>
+<body>
+
+<div th:replace="~{partials/index::header}"></div>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div th:if="${emptyBox == null}">
+                <h1>NO EMPTY BOXES LEFT. ADD NEW BOX OR EMPTY ONE OF BOXES THAT ARE IN USE</h1>
+            </div>
+            <form th:object="${loto}" th:action="@{/lotos/edit}" method="post" id="lotoForm">
+                <div class="row">
+                    <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">
+                        <div class="form-inline">
+                            <label for="systems">Choose System:</label>
+                            <select th:field="*{system}" id="systems" onchange="fillPopUpInfo('System')">
+                                <option value="">Select System</option>
+                                <option th:each="system : ${systems}" th:value="${system.name}" th:text="${system.name}"></option>
+                                <option value="-1">Add New System</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-lg-2 col-md-2 col-sm-2 col-2 outline">
+                        <div class="form-group">
+                            <p th:text="${loto.docNum}"></p>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-lg-2 col-md-2 col-sm-2 col-2 outline">
+                        <div class="form-group">
+                            <label for="boxDropdown">Box#</label>
+                            <select th:field="*{box}" id="boxDropdown" onchange="selectFunction()">
+                                <option value="" >Select Box</option>
+                                <option
+                                        th:each="b:${boxes}"
+                                        th:text="${b.number}"
+                                        th:value="${b.id}"
+                                ></option>
+                                <option value="-1">Add New Box</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">
+                        <div class="form-inline">
+                            <label for="requestor">LOTO Requiestor:</label>
+                            <input class="form-control flex-grow-1" type="text" id="requestor" placeholder="Enter requestor name">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="date">Date:</label>
+                            <input class="form-control flex-grow-1" type="datetime-local" id="date" placeholder="Enter time">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 outline">
+                        <div class="form-inline">
+                            <label for="scope-of-work">Reason For LOTO:</label>
+                            <input class="form-control flex-grow-1" type="text" id="scope-of-work" placeholder="Enter scope of work">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">
+                        <div class="form-inline">
+                            <label for="approved-by">LOTO Approved by:</label>
+                            <input class="form-control flex-grow-1" type="text" id="approved-by" placeholder="Enter Control Authority name">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="approved-date">Date:</label>
+                            <input class="form-control flex-grow-1" type="datetime-local" id="approved-date" placeholder="Enter approved-date">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- LOTO ACTIVATION  -->
+                <!-- ============================================================== -->
+
+                <div class="row green">
+                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 outline text-center">
+                        <h3>LOTO Activation Section</h3>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="hung-by">Locked by:</label>
+                            <input class="form-control flex-grow-1" type="text" id="hung-by" placeholder="Enter hanger name">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="tags-hung">#Tags Placed:</label>
+                            <input class="form-control flex-grow-1" type="text" id="tags-hung" placeholder="Number of tags placed">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="hung-date">Date:</label>
+                            <input class="form-control flex-grow-1" type="datetime-local" id="hung-date" placeholder="Enter hung-date">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="verified-by">Verified by:</label>
+                            <input class="form-control flex-grow-1" type="text" id="verified-by" placeholder="Enter verifier name">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="tags-verified">#Tags Verified:</label>
+                            <input class="form-control flex-grow-1" type="text" id="tags-verified" placeholder="Number of tags verified">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="verified-date">Date:</label>
+                            <input class="form-control flex-grow-1" type="datetime-local" id="verified-date" placeholder="Enter verified-date">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 outline text-center">
+                        <p><b>The above equipment has been properly positioned, locked/tagged, a Safe to Work (Zero Energy) check has been performed and equipment is safe to perform the work described in the Scope Of Work above.</b></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="control-authority-issued">Control Authority Issued:</label>
+                            <input class="form-control flex-grow-1" type="text" id="control-authority-issued" placeholder="Enter control authority name">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="lock-placed">Lock # Placed:</label>
+                            <input class="form-control flex-grow-1" type="text" id="lock-placed" placeholder="Number of tags verified">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="activate-date">Date:</label>
+                            <input class="form-control flex-grow-1" type="datetime-local" id="activate-date">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- REQUESTOR TRANSFER  -->
+                <!-- ============================================================== -->
+
+                <div class="row orange">
+                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 outline text-center">
+                        <h3>Requestor Transfer</h3>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="released-by1">Released By</label>
+                                <input class="form-control flex-grow-1" type="text" id="released-by1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="released-by-date1">Date</label>
+                                <input class="form-control flex-grow-1" type="datetime-local" id="released-by-date1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="accepted-by">Accepted By</label>
+                                <input class="form-control flex-grow-1" type="text" id="accepted-by">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="accepted-by-date1">Date</label>
+                                <input class="form-control flex-grow-1" type="datetime-local" id="accepted-by-date1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="released-by1">Released By</label>
+                                <input class="form-control flex-grow-1" type="text" id="released-by1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="released-by-date1">Date</label>
+                                <input class="form-control flex-grow-1" type="datetime-local" id="released-by-date1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="accepted-by">Accepted By</label>
+                                <input class="form-control flex-grow-1" type="text" id="accepted-by">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="accepted-by-date1">Date</label>
+                                <input class="form-control flex-grow-1" type="datetime-local" id="accepted-by-date1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- LOTO RELEASE  -->
+                <!-- ============================================================== -->
+                <div class="row orange">
+                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 outline text-center">
+                        <h3>LOTO Release</h3>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="final-released-by">Requestor Authorization to Remove LOTO:</label>
+                                <input class="form-control flex-grow-1" type="text" id="final-released-by1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="final-released-by-date">Date</label>
+                                <input class="form-control flex-grow-1" type="datetime-local" id="final-released-by-date">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="control-authority-released">Control Authority Released:</label>
+                            <input class="form-control flex-grow-1" type="text" id="control-authority-released" placeholder="Enter control authority name">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="lock-removed">Lock # Removed:</label>
+                            <input class="form-control flex-grow-1" type="text" id="lock-removed" placeholder="Number of tags verified">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="relese-date">Date:</label>
+                            <input class="form-control flex-grow-1" type="datetime-local" id="relese-date">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="removed-by">Removed by:</label>
+                            <input class="form-control flex-grow-1" type="text" id="removed-by" placeholder="Enter hanger name">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="tags-removed">#Tags Removed:</label>
+                            <input class="form-control flex-grow-1" type="text" id="tags-removed" placeholder="Number of tags placed">
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-inline">
+                            <label for="removed-date">Date:</label>
+                            <input class="form-control flex-grow-1" type="datetime-local" id="removed-date" placeholder="Enter hung-date">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="loto-closed">Equipment is Ready for Service:</label>
+                                <input class="form-control flex-grow-1" type="text" id="loto-closed">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
+                        <div class="form-check">
+                            <div class="form-inline">
+                                <label for="loto-closed-date">Date</label>
+                                <input class="form-control flex-grow-1" type="datetime-local" id="loto-closed-date">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row orange">
+                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 outline text-center">
+                        <h3>LOTO Tags and Locks</h3>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 outline">
+                        <table class="table table-bordered border-dark no-margins outline">
+                            <thead>
+                            <tr class="outline">
+                                <th scope="col" class="col-1 outline text-center">Tag#</th>
+                                <th scope="col" class="col-1 outline text-center">Lock#</th>
+                                <th scope="col" class="col-5 outline text-center">Isolation Device</th>
+                                <th scope="col" class="col-1 outline text-center">LOTO Position</th>
+                                <th scope="col" class="col-1 outline text-center">Hung By</th>
+                                <th scope="col" class="col-1 outline text-center">Verified By</th>
+                                <th scope="col" class="col-1 outline text-center">Released Position</th>
+                                <th scope="col" class="col-1 outline text-center">Removed By</th>
+                            </tr>
+                            </thead>
+                            <tbody th:if="${loto.lotoPoints != null}">
+                            <tr th:each="p, iterStat : ${loto.lotoPoints}">
+                                <td class="outline text-center" th:text="${iterStat.index + 1}">1</td>
+                                <td class="outline text-center">222</td>
+                                <td class="outline text-center">
+                                    <p style="margin: 0;" th:text="${p.description}"></p>
+                                    <p style="margin: 0;" th:text="${p.location}"></p>
+                                    <p style="margin: 0;" th:text="${p.label}"></p></td>
+                                <td class="outline text-center" th:text="${p.isolatedPosition}"></td>
+                                <td class="outline text-center">DK</td>
+                                <td class="outline text-center">AG</td>
+                                <td class="outline text-center" th:text="${p.normalPosition}">CLOSED</td>
+                                <td class="outline text-center">DK</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                        </br>
+                    </div>
+                </div>
+                <button onclick="saveTempLoto()" type="button">Add Points</button>
+                <button class="btn btn-primary btn-block" type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+<script>
+    let csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    let tokenHeader = document.getElementById('token-header').getAttribute('content');
+    let groupValue;
+    let saveButton = document.getElementById('save');
+    let lotoForm = document.getElementById("lotoForm");
+
+
+
+    function createNewBoxPostRequest(){
+    fetch("/lotos/add-box", {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(()=>{
+            window.location.href = "/lotos/create";
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        })
+}
+
+    function selectFunction() {
+  var x = document.getElementById("boxDropdown").value;
+  if(x === "-1") {
+    createNewBoxPostRequest()
+  }
+}
+
+    function systemSelection(value,url,redirect){
+        if(value === '-1' || value.includes("Add New")){
+            createNewItem(url, redirect);
+        }
+    }
+
+    function createNewItem(url,redirect){
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(()=>{
+            window.location.href = redirect;
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        })
+}
+
+    function fillPopUpInfo(group){
+        let title = document.getElementById("exampleModalLabel");
+        let modal = document.getElementById('exampleModal');
+        let myModal = new bootstrap.Modal(modal, {});
+        let groupType = group.toLocaleLowerCase().replaceAll(" ","");
+        myModal.show();
+        title.textContent = "Create New " + group;
+        console.log(groupValue);
+          saveButton.addEventListener('click', ()=>{
+            systemSelection('-1', '/group/create?group='+groupType+'&value='+groupValue,'/lotos/create');
+        })
+
+      }
+
+    function updateValue(value){
+        groupValue = value;
+    }
+
+    function saveTempLoto(){
+        let tempLoto = objectFromForm(lotoForm);
+        postSaveTemp2();
+    }
+
+    function objectFromForm(form){
+        const formData = new FormData(form);
+        const formObject = {};
+
+        formData.forEach((value, key) => {
+            formObject[key] = value;
+        });
+        
+        return formObject;
+    }
+
+    async function postSaveTemp(data){
+
+        console.log(JSON.stringify(data) + " - sent to server");
+
+        const response = await fetch('/lotos/save-temp',{
+            method: 'POST',
+            // headers: {
+            //     'Content-Type': 'application/json',
+            //     tokenHeader: csrfToken
+            // },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.text();
+        console.log(result + " received from server")
+        window.open(result);
+    }
+
+    function postSaveTemp2(data){
+        var formData = new FormData(document.getElementById('lotoForm'));
+            fetch('/lotos/save-temp', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.text())
+                .then(data => window.location.href ='/lotos/add-points')
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+    }
+</script>
+</body>
+</html>
