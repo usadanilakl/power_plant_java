@@ -1,13 +1,14 @@
-package com.dk_power.power_plant_java.sevice.permits.impl;
+package com.dk_power.power_plant_java.sevice.loto;
 
 import com.dk_power.power_plant_java.dto.permits.BoxDto;
 import com.dk_power.power_plant_java.entities2.loto.Box;
 import com.dk_power.power_plant_java.entities2.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.BaseItemMapper;
+import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.BoxRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
-import com.dk_power.power_plant_java.sevice.permits.BoxService;
+import com.dk_power.power_plant_java.sevice.loto.BoxService;
 import com.dk_power.power_plant_java.util.Util;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -20,11 +21,11 @@ import java.util.List;
 @Transactional
 public class BoxServiceImpl implements BoxService {
     private final BoxRepo boxRepo;
-    private final LotoRepo lotoRepo;
-    private final BaseItemMapper<Box,BoxDto> itemMapper;
+    private final LotoService lotoService;
+    private final UniversalMapper universalMapper;
     @Override
     public List<Box> getAllBoxes() {
-        return Util.toList(boxRepo.findAll());
+        return boxRepo.findAll();
     }
     @Override
     public List<Box> getEmptyBoxes() {
@@ -60,7 +61,7 @@ public class BoxServiceImpl implements BoxService {
         loto.setBox(box);
         changeBoxStatus(box);
         boxRepo.save(box);
-        lotoRepo.save(loto);
+        lotoService.saveEntity(loto);
         return box;
     }
 
@@ -73,13 +74,13 @@ public class BoxServiceImpl implements BoxService {
     @Override
     public BoxDto getBoxDtoById(Long id) {
         Box box = boxRepo.findById(id).orElse(null);
-        return itemMapper.convertToDto(box,BoxDto.class);
+        return universalMapper.convert(box,new BoxDto());
     }
 
     @Override
     public BoxDto getBoxDtoByNumber(String number) {
         Box box = boxRepo.findByNumber(Integer.parseInt(number));
-        return itemMapper.convertToDto(box, BoxDto.class);
+        return universalMapper.convert(box,new BoxDto());
     }
 
     @Override
@@ -98,6 +99,6 @@ public class BoxServiceImpl implements BoxService {
         loto.setBox(box);
         changeBoxStatus(box);
         boxRepo.save(box);
-        lotoRepo.save(loto);
+        lotoService.saveEntity(loto);
     }
 }

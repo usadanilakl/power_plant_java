@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.converter.loto;
 
 import com.dk_power.power_plant_java.dto.permits.BoxDto;
-import com.dk_power.power_plant_java.sevice.permits.BoxService;
+import com.dk_power.power_plant_java.sevice.loto.BoxService;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.convert.converter.Converter;

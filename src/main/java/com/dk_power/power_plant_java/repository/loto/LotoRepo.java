@@ -17,4 +17,5 @@ public interface LotoRepo extends JpaRepository<Loto,Long> {
     @Query("SELECT u FROM Loto u WHERE u.docNum IS NULL AND u.createdBy = ?1")
     Loto getTempPermit(String currentUserName);
 
+
 }

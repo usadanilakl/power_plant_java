@@ -9,7 +9,7 @@ import com.dk_power.power_plant_java.entities.equipment.EquipmentType;
 import com.dk_power.power_plant_java.entities.Syst;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.repository.plant.EquipmentTypeRepo;
-import com.dk_power.power_plant_java.sevice.permits.BoxService;
+import com.dk_power.power_plant_java.sevice.loto.BoxService;
 import com.dk_power.power_plant_java.sevice.permits.impl.LotoService;
 import com.dk_power.power_plant_java.sevice.permits.impl.TempLotoService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
