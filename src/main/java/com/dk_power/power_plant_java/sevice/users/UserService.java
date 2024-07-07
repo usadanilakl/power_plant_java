@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.sevice.users;
 
-import com.dk_power.power_plant_java.entities.users.User;
+import com.dk_power.power_plant_java.entities2.users.User;
 
 import java.util.List;
 

@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
-import com.dk_power.power_plant_java.entities.plant.Syst;
-import com.dk_power.power_plant_java.entities.plant.files.FileType;
+import com.dk_power.power_plant_java.entities.Syst;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.SystemRepo;
 import com.dk_power.power_plant_java.sevice.plant.SystemService;

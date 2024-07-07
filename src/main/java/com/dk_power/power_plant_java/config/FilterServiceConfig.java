@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.config;
 
 import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
-import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
+import com.dk_power.power_plant_java.entities2.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.safe_works.Sw;
 import com.dk_power.power_plant_java.entities.permits.tickets.Ticket;
 import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;

@@ -2,23 +2,17 @@ package com.dk_power.power_plant_java.controller;
 
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.entities2.FileObject;
 import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileTypeServiceImpl;
 import com.dk_power.power_plant_java.sevice.plant.impl.SystemServiceImpl;
 import com.dk_power.power_plant_java.sevice.plant.impl.VendorServiceImpl;
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 @Controller
 @RequestMapping("/file")

@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.entities.plant;
 
-import com.dk_power.power_plant_java.entities.BaseEntity;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.dk_power.power_plant_java.entities2.BaseEntity;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

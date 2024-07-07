@@ -1,8 +1,7 @@
 package com.dk_power.power_plant_java.dto.permits;
 
-import com.dk_power.power_plant_java.entities.plant.RevisedExcelPoints;
+import com.dk_power.power_plant_java.entities.equipment.RevisedExcelPoints;
 import com.dk_power.power_plant_java.enums.PermitType;
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

@@ -1,16 +1,13 @@
 package com.dk_power.power_plant_java.util.data_transfer;
 
-import com.dk_power.power_plant_java.entities.plant.EqPojo;
-import com.dk_power.power_plant_java.entities.plant.Point;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.entities.equipment.Point;
+import com.dk_power.power_plant_java.entities2.FileObject;
 import com.dk_power.power_plant_java.repository.plant.RevisedExcelPointsRepo;
 import com.dk_power.power_plant_java.sevice.ExcelService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import com.dk_power.power_plant_java.sevice.plant.impl.PointServiceImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;

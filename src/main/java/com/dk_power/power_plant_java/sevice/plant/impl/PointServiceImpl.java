@@ -1,15 +1,13 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
 import com.dk_power.power_plant_java.dto.plant.PointDto;
-import com.dk_power.power_plant_java.entities.plant.*;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.entities.equipment.Point;
+import com.dk_power.power_plant_java.entities2.FileObject;
 import com.dk_power.power_plant_java.mappers.PointMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.*;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 

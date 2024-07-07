@@ -1,13 +1,11 @@
 package com.dk_power.power_plant_java.sevice.permits.impl;
 
-import com.dk_power.power_plant_java.dto.permits.BaseLotoDto;
 import com.dk_power.power_plant_java.dto.permits.TempLotoDto;
 import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
 import com.dk_power.power_plant_java.entities.permits.lotos.TempLoto;
-import com.dk_power.power_plant_java.entities.plant.RevisedExcelPoints;
+import com.dk_power.power_plant_java.entities.equipment.RevisedExcelPoints;
 import com.dk_power.power_plant_java.mappers.BasePermitMapper;
 import com.dk_power.power_plant_java.repository.permits.BasePermitRepo;
-import com.dk_power.power_plant_java.repository.permits.loto_repo.BaseLotoRepo;
 import com.dk_power.power_plant_java.repository.permits.loto_repo.TempLotoRepo;
 import com.dk_power.power_plant_java.sevice.permits.PermitNumbersService;
 import com.dk_power.power_plant_java.sevice.plant.impl.RevisedExcelPointsService;

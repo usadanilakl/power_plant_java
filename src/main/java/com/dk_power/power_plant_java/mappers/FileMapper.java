@@ -4,7 +4,7 @@ import com.dk_power.power_plant_java.dto.plant.SystemDto;
 import com.dk_power.power_plant_java.dto.plant.VendorDto;
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.dto.plant.files.FileTypeDto;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.entities2.FileObject;
 import org.springframework.stereotype.Component;
 
 @Component

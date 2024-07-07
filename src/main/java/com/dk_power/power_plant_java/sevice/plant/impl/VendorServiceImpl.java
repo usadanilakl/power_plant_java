@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
-import com.dk_power.power_plant_java.entities.plant.Syst;
-import com.dk_power.power_plant_java.entities.plant.Vendor;
+import com.dk_power.power_plant_java.entities.Vendor;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.VendorRepo;
 import org.springframework.stereotype.Service;

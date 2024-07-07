@@ -1,12 +1,12 @@
 package com.dk_power.power_plant_java.sevice.permits.impl;
 
 import com.dk_power.power_plant_java.dto.permits.BoxDto;
-import com.dk_power.power_plant_java.entities.permits.lotos.Box;
-import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
+import com.dk_power.power_plant_java.entities2.loto.Box;
+import com.dk_power.power_plant_java.entities2.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.BaseItemMapper;
-import com.dk_power.power_plant_java.repository.permits.loto_repo.BoxRepo;
-import com.dk_power.power_plant_java.repository.permits.loto_repo.LotoRepo;
+import com.dk_power.power_plant_java.repository.loto.BoxRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.sevice.permits.BoxService;
 import com.dk_power.power_plant_java.util.Util;
 import jakarta.transaction.Transactional;

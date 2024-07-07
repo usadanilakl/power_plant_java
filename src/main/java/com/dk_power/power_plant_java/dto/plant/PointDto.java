@@ -1,17 +1,5 @@
 package com.dk_power.power_plant_java.dto.plant;
 
-import com.dk_power.power_plant_java.dto.plant.files.FileDto;
-import com.dk_power.power_plant_java.entities.plant.EquipmentType;
-import com.dk_power.power_plant_java.entities.plant.Location;
-import com.dk_power.power_plant_java.entities.plant.Syst;
-import com.dk_power.power_plant_java.entities.plant.Vendor;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

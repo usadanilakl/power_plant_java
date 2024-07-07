@@ -1,17 +1,11 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
 import com.dk_power.power_plant_java.entities.plant.Group;
-import com.dk_power.power_plant_java.entities.plant.Point;
-import com.dk_power.power_plant_java.mappers.PointMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.GroupRepo;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
-import com.dk_power.power_plant_java.util.Util;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;

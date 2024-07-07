@@ -1,16 +1,16 @@
 package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.plant.*;
-import com.dk_power.power_plant_java.dto.plant.files.FileDto;
-import com.dk_power.power_plant_java.entities.plant.*;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
-import org.modelmapper.ModelMapper;
+import com.dk_power.power_plant_java.entities.Location;
+import com.dk_power.power_plant_java.entities.Syst;
+import com.dk_power.power_plant_java.entities.Vendor;
+import com.dk_power.power_plant_java.entities.equipment.EquipmentType;
+import com.dk_power.power_plant_java.entities.equipment.Point;
+import com.dk_power.power_plant_java.entities2.FileObject;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class PointMapper {

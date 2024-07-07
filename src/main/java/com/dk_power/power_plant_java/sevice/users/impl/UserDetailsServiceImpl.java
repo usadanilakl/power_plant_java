@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.sevice.users.impl;
 
-import com.dk_power.power_plant_java.entities.users.User;
+import com.dk_power.power_plant_java.entities2.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;

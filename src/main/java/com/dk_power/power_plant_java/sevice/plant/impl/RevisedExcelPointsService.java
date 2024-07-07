@@ -1,9 +1,8 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
-import com.dk_power.power_plant_java.entities.plant.RevisedExcelPoints;
+import com.dk_power.power_plant_java.entities.equipment.RevisedExcelPoints;
 import com.dk_power.power_plant_java.repository.plant.RevisedExcelPointsRepo;
 import lombok.AllArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

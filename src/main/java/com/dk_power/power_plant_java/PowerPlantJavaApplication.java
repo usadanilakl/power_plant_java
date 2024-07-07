@@ -1,10 +1,6 @@
 package com.dk_power.power_plant_java;
 
-import com.dk_power.power_plant_java.dto.plant.files.FileDto;
-import com.dk_power.power_plant_java.entities.plant.EquipmentType;
-import com.dk_power.power_plant_java.entities.plant.Point;
-import com.dk_power.power_plant_java.entities.plant.Vendor;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.entities.equipment.EquipmentType;
 import com.dk_power.power_plant_java.repository.plant.FileRepo;
 import com.dk_power.power_plant_java.repository.plant.VendorRepo;
 import com.dk_power.power_plant_java.sevice.ExcelService;
@@ -12,19 +8,12 @@ import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.GroupService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import com.dk_power.power_plant_java.sevice.plant.impl.PointServiceImpl;
-import com.dk_power.power_plant_java.util.Util;
-import com.dk_power.power_plant_java.util.data_transfer.JsonToPojo;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
 
 @SpringBootApplication
 @AllArgsConstructor

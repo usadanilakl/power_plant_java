@@ -1,8 +1,8 @@
 package com.dk_power.power_plant_java.sevice.permits;
 
 import com.dk_power.power_plant_java.dto.permits.BoxDto;
-import com.dk_power.power_plant_java.entities.permits.lotos.Box;
-import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
+import com.dk_power.power_plant_java.entities2.loto.Box;
+import com.dk_power.power_plant_java.entities2.loto.Loto;
 
 import java.util.List;
 

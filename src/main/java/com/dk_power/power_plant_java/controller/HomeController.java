@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.controller;
 
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
 import com.dk_power.power_plant_java.enums.SortingGroup;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import lombok.AllArgsConstructor;

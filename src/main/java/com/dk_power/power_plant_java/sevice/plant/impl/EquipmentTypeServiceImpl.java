@@ -1,10 +1,8 @@
 package com.dk_power.power_plant_java.sevice.plant.impl;
 
-import com.dk_power.power_plant_java.entities.plant.EquipmentType;
-import com.dk_power.power_plant_java.entities.plant.files.FileType;
+import com.dk_power.power_plant_java.entities.equipment.EquipmentType;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.plant.EquipmentTypeRepo;
-import com.dk_power.power_plant_java.repository.plant.FileTypeRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

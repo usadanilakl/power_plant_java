@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.repository.plant;
 
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.entities2.FileObject;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;

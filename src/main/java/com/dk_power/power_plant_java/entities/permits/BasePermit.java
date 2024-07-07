@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.entities.permits;
 
 import com.dk_power.power_plant_java.dto.permits.BasePermitDto;
-import com.dk_power.power_plant_java.entities.BaseEntity;
+import com.dk_power.power_plant_java.entities2.BaseEntity;
 import com.dk_power.power_plant_java.entities.permits.tickets.BaseTicket;
 import com.dk_power.power_plant_java.enums.PermitType;
 import com.dk_power.power_plant_java.enums.Status;

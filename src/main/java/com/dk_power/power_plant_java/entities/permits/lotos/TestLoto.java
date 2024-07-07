@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.entities.permits.lotos;
 
+import com.dk_power.power_plant_java.entities2.loto.Box;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;

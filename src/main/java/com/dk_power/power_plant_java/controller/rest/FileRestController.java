@@ -1,8 +1,7 @@
 package com.dk_power.power_plant_java.controller.rest;
 
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
-import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
+import com.dk_power.power_plant_java.entities2.FileObject;
 import com.dk_power.power_plant_java.enums.SortingGroup;
 import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;

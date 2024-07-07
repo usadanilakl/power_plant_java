@@ -1,14 +1,11 @@
 package com.dk_power.power_plant_java.entities.permits.lotos;
 
-import com.dk_power.power_plant_java.entities.plant.RevisedExcelPoints;
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.dk_power.power_plant_java.entities.equipment.RevisedExcelPoints;
+import com.dk_power.power_plant_java.entities2.loto.Box;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToMany;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Transient;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
