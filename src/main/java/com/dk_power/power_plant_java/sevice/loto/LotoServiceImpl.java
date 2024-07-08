@@ -7,10 +7,12 @@ import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
+import com.dk_power.power_plant_java.sevice.users.impl.CustomUserDetails;
 import com.dk_power.power_plant_java.sevice.users.impl.UserDetailsServiceImpl;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.AllArgsConstructor;
+import org.hibernate.SessionFactory;
 import org.hibernate.envers.AuditReader;
 import org.hibernate.envers.AuditReaderFactory;
 import org.hibernate.envers.query.AuditEntity;
@@ -30,128 +32,41 @@ public class LotoServiceImpl implements LotoService {
     private final UniversalMapper universalMapper;
     private final EntityManagerFactory entityManagerFactory;
     private final LotoPointService lotoPointService;
+    private final SessionFactory sessionFactory;
+
+
     @Override
-    public List<Loto> getAll() {
-        return lotoRepo.findAll();
+    public UserDetailsServiceImpl getUserDetails() {
+        return customUserDetails;
     }
 
     @Override
-    public List<Loto> getAllSorted(String column) {
-        return lotoRepo.findAll(Sort.by(column));
+    public EntityManagerFactory getEntityManager() {
+        return entityManagerFactory;
     }
 
     @Override
-    public Loto getEntityById(Long id) {
-        return lotoRepo.findById(id).orElse(null);
-    }
-    @Override
-    public LotoDto getDtoById(String ID) {
-        Loto lot = lotoRepo.findById(Long.parseLong(ID)).orElse(null);
-        return universalMapper.convert(lot,new LotoDto());
-    }
-    @Override
-    public List<Loto> getByCreatedBy() {
-        return lotoRepo.findByCreatedBy(customUserDetails.getUsersName());
+    public Loto getEntity() {
+        return new Loto();
     }
 
     @Override
-    public Loto saveEntity(Loto entity) {
-        if(entity.getLotoPoints()!=null){
-            for (LotoPoint p : entity.getLotoPoints()) {
-                p.addPermLoto(entity);
-                //entity.addPoint(p);
-                lotoPointService.save(p);
-            }
-        }
-        else System.out.println("points are null");
-        return lotoRepo.save(entity);
+    public LotoDto getDto() {
+        return new LotoDto();
     }
 
     @Override
-    public Loto saveDto(LotoDto dto) {
-        Loto entity = universalMapper.convert(dto,new Loto());
-        return saveEntity(entity);
+    public LotoRepo getRepo() {
+        return lotoRepo;
     }
 
     @Override
-    public Loto createNew(LotoDto dto) {
-        Loto permit = universalMapper.convert(dto, new Loto());
-        permit.setDocNum(generatePermitNum());
-        permit.setStatus(Status.INACTIVE);
-        return saveEntity(permit);
+    public UniversalMapper getMapper() {
+        return universalMapper;
     }
 
     @Override
-    public Loto changeStatus(Long id, Status status) {
-        Loto permit = getEntityById(id);
-        permit.setStatus(status);
-        return saveEntity(permit);
+    public SessionFactory getSessionFactory() {
+        return sessionFactory;
     }
-
-//    @Override
-//    public List<Loto> sortTable(String column) {
-//        return null;
-//    }
-//
-//    @Override
-//    public List<Loto> filterTable(Map<String, String> filters) {
-//        return null;
-//    }
-//
-//    @Override
-//    public List<Loto> getLastFilteredList() {
-//        return null;
-//    }
-//
-//    @Override
-//    public List<Loto> clearFilters() {
-//        return null;
-//    }
-//
-//    @Override
-//    public void filterNew(Loto entity) {
-//
-//    }
-//
-//    @Override
-//    public Loto resetFields() {
-//        return null;
-//    }
-
-    @Override
-    public Loto getTempPermit() {
-        return lotoRepo.getTempPermit(customUserDetails.getUsersName());
-    }
-
-    @Override
-    public Long generatePermitNum() {
-        Long lastCreatedNumber = lotoRepo.findMaxPermitNum();
-        String yearr = LocalDateTime.now().getYear()+"0000";
-        Long year =Long.parseLong(yearr.substring(2));
-        if(lastCreatedNumber == null||year>lastCreatedNumber){
-            return year;
-        }else{
-            return lastCreatedNumber+1;
-        }
-    }
-
-    @Override
-    public List<Loto> getRevision(Long id) {
-        EntityManager entityManager = entityManagerFactory.createEntityManager();
-        List<Loto> entities = new ArrayList<>();
-        try {
-            AuditReader reader = AuditReaderFactory.get(entityManager);
-            AuditQuery query = reader.createQuery().forRevisionsOfEntity(Loto.class, false, true);
-            query.add(AuditEntity.id().eq(id));
-            List<Object[]> result = query.getResultList();
-            result.forEach(e->entities.add((Loto)(e[0])));
-
-        } finally {
-            if (entityManager != null) {
-                entityManager.close();
-            }
-        }
-        return entities;
-    }
-
 }

@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice;
 
-import com.dk_power.power_plant_java.entities.equipment.RevisedExcelPoints;
+import com.dk_power.power_plant_java.entities.equipment.LotoPoint;
+import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -17,9 +18,9 @@ public class ExcelService {
     private Workbook workBook;
     private String path;
     private FileInputStream excelFile;
-    private final RevisedExcelPointsRepo revisedExcelPointsRepo;
+    private final LotoPointService revisedExcelPointsRepo;
 
-    public ExcelService(@Value("${excel.path}") String path, @Value("${excel.sheetName}") String sheetName, RevisedExcelPointsRepo revisedExcelPointsRepo) {
+    public ExcelService(@Value("${excel.path}") String path, @Value("${excel.sheetName}") String sheetName, LotoPointService revisedExcelPointsRepo) {
         this.path=path;
         this.revisedExcelPointsRepo = revisedExcelPointsRepo;
         try {
@@ -172,7 +173,7 @@ public class ExcelService {
     }
 
     public void saveRevisedPoints(LinkedHashMap<String,String> excelPoint){
-        RevisedExcelPoints point = new RevisedExcelPoints();
+        LotoPoint point = new LotoPoint();
         point.setUnit(excelPoint.get("Unit"));
         point.setTagged(excelPoint.get("Tagged"));
         point.setLabel(excelPoint.get("ID"));

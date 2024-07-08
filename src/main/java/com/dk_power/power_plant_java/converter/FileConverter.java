@@ -21,6 +21,6 @@ public class FileConverter implements Converter<String, FileDto> {
         if (source == null || source.equals("")) {
             return null;
         }
-        return fileService.getDtoById(Long.parseLong(source),FileDto.class);
+        return fileService.getDtoById(Long.parseLong(source));
     }
 }

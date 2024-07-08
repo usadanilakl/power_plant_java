@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.plant;
 
-import com.dk_power.power_plant_java.entities.equipment.Point;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,11 +14,11 @@ import java.util.List;
 @RequestMapping("/points")
 @AllArgsConstructor
 public class PointRestController {
-    private final PointRepo pointRepo;
+    private final EquipmentService equipmentService;
     @PostMapping("/create")
-    public List<Point> createPoints(@RequestBody List<Point> points){
-        for (Point point : points) {
-            pointRepo.save(point);
+    public List<Equipment> createPoints(@RequestBody List<Equipment> points){
+        for (Equipment point : points) {
+            equipmentService.save(point);
         }
         return points;
     }

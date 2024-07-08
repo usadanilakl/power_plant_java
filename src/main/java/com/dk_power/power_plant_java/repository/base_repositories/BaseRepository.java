@@ -7,5 +7,8 @@ import java.util.List;
 public interface BaseRepository<E> extends JpaRepository<E,Long> {
     List<E> findByCreatedBy(String name);
     List<E> findByDeletedTrue();
+    List<E> findByTempTrue();
+
+    Long findMaxPermitNum();
 
 }

@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.sevice.memory_repo;
 
 import com.dk_power.power_plant_java.entities.loto.Loto;
-import com.dk_power.power_plant_java.sevice.permits.impl.LotoService;
+import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 

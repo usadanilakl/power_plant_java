@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.sevice.file;
 import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
 import com.dk_power.power_plant_java.entities.FileObject;
 import com.dk_power.power_plant_java.repository.FileRepo;
+import com.dk_power.power_plant_java.sevice.categories.CategoryService;
+import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
 import com.dk_power.power_plant_java.util.PropertyReader;
 import lombok.AllArgsConstructor;
@@ -37,8 +39,8 @@ import java.util.Base64;
 public class FileUploaderServiceImpl implements FileUploaderService {
 
     private final FileRepo fileRepo;
-    private final FileTypeRepo fileTypeRepo;
-    private final VendorRepo vendorRepo;
+    private final CategoryService categoryService;
+    private final ValueService valueService;
 
 
     public String uploadFilesToLocal(FileUploader files){
@@ -55,8 +57,8 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 file.transferTo(path.toFile());
 
                FileObject newFile = new FileObject();
-               newFile.setFileType(fileTypeRepo.findByName(files.getType()));
-               newFile.setVendor(vendorRepo.findByName(files.getVendor()));
+               newFile.setFileType(valueService.saveIfNew(files.getType(),"fileType"));
+               newFile.setVendor(valueService.saveIfNew(files.getVendor(),"vendor"));
                newFile.setFileNumber(name);
                newFile.setFolder(files.getFolder());
                newFile.setBaseLink(baseLink);

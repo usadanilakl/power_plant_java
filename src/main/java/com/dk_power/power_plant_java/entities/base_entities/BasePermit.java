@@ -23,5 +23,6 @@ public class BasePermit extends BaseEntity {
     private PermitType type;
     private Long docNum;
     private Status status;
+    private Boolean temp;
 
 }

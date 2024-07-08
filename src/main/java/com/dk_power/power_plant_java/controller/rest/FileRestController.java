@@ -82,7 +82,7 @@ public class FileRestController {
 
     @GetMapping("/display/{id}")
     public void display(@PathVariable("id") String id){
-        FileObject file = fileService.getById(Long.parseLong(id));
+        FileObject file = fileService.getEntityById(Long.parseLong(id));
         fileUploaderService.PdfToJpgConverter("."+file.getFileLink());
 
     }

@@ -59,7 +59,7 @@ public class BoxServiceImpl implements BoxService {
         loto.setBox(box);
         changeBoxStatus(box);
         boxRepo.save(box);
-        lotoService.saveEntity(loto);
+        lotoService.save(loto);
         return box;
     }
 
@@ -97,7 +97,7 @@ public class BoxServiceImpl implements BoxService {
         loto.setBox(box);
         changeBoxStatus(box);
         boxRepo.save(box);
-        lotoService.saveEntity(loto);
+        lotoService.save(loto);
     }
 
     @Override

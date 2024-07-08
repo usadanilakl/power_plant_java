@@ -26,10 +26,6 @@ public class LotoController {
     private final LotoService lotoService;
     private final BoxService boxService;
     private final CategoryService categoryService;
-    private final TempLotoService tempLotoService;
-    private final GroupService<Syst> systemService;
-    private final GroupService<EquipmentType> equipmentTypeGroupServiceService;
-    private final EquipmentTypeRepo equipmentTypeRepo;
 
     @GetMapping("/")
     public String showAllLotots(Model model){
@@ -39,7 +35,7 @@ public class LotoController {
     }
     @GetMapping("/history/{id}")
     public String showAHistory(@PathVariable("id") String id,Model model){
-        List<Loto> revision = lotoService.getRevision(Long.parseLong(id));
+        List<Loto> revision = lotoService.getRevision(Long.parseLong(id), Loto.class);
         model.addAttribute("lotos", revision);
         return "loto/permit-history";
     }
@@ -58,8 +54,7 @@ public class LotoController {
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("loto") LotoDto data){
-
-        lotoService.saveTempLoto(data);
+        lotoService.save(data);
         return "redirect:/lotos/create";
     }
     @PostMapping("/create")
@@ -83,12 +78,11 @@ public class LotoController {
     @PostMapping("/edit")
     public String updateLoto(@ModelAttribute LotoDto loto){
         Box box = boxService.getBoxById(loto.getBox().getId());
-        Loto entity = lotoService.convertToEntity(loto,Loto.class);
+        Loto entity = lotoService.convertToEntity(loto);
         entity.setBox(box);
         box.setLoto(entity);
         boxService.saveBox(box);
         lotoService.save(entity);
-        lotoService.filterNew(entity);
         return "redirect:/lotos/";
     }
     @PostMapping("/status/{id}")
@@ -97,30 +91,29 @@ public class LotoController {
         Status stat = Status.valueOf(status.toUpperCase());
         Loto loto = lotoService.changeStatus(lotoId,stat);
         lotoService.save(loto);
-        lotoService.filterNew(loto);
         return "redirect:/lotos/";
     }
-    @GetMapping("/sort")
-    public String sortByColumn(@RequestParam(name="column")String column, Model model){
-        List<Loto> lotos = lotoService.sortTable(column);
-        model.addAttribute("lotos", lotos);
-        model.addAttribute("statuses", Status.values());
+//    @GetMapping("/sort")
+//    public String sortByColumn(@RequestParam(name="column")String column, Model model){
+//        List<Loto> lotos = lotoService.sortTable(column);
+//        model.addAttribute("lotos", lotos);
+//        model.addAttribute("statuses", Status.values());
+//
+//        return "loto/show-all-lotos";
+//    }
+//    @PostMapping("/filter")
+//    public String filterByColumn(@RequestBody Map<String, String> payload, Model model){
+//        List<Loto> l = lotoService.filterTable(payload);
+//        model.addAttribute("lotos", l);
+//        return "loto/show-all-lotos";
+//    }
 
-        return "loto/show-all-lotos";
-    }
-    @PostMapping("/filter")
-    public String filterByColumn(@RequestBody Map<String, String> payload, Model model){
-        List<Loto> l = lotoService.filterTable(payload);
-        model.addAttribute("lotos", l);
-        return "loto/show-all-lotos";
-    }
-
-    @GetMapping("/sort-history")
-    public String sortHistoryByColumn(@RequestParam(name="column")String column, Model model){
-        List<Loto> lotos = lotoService.sortTable(column);
-        model.addAttribute("lotos", lotos);
-        return "loto/show-all-lotos";
-    }
+//    @GetMapping("/sort-history")
+//    public String sortHistoryByColumn(@RequestParam(name="column")String column, Model model){
+//        List<Loto> lotos = lotoService.sortTable(column);
+//        model.addAttribute("lotos", lotos);
+//        return "loto/show-all-lotos";
+//    }
 
     @PostMapping("/add-box")
     public String addNewBox(){
@@ -135,14 +128,14 @@ public class LotoController {
     }
 
     @PostMapping("/update-points")
-    public String updatePoints(@RequestBody TempLotoDto loto){
-        TempLoto tempLoto = tempLotoService.saveTempLotoDto(loto);
+    public String updatePoints(@RequestBody LotoDto loto){
+        Loto tempLoto = lotoService.save(loto);
         return "redirect:/lotos/create";
     }
 
     @PostMapping("/save-temp")
-    public String saveTempLoto(@ModelAttribute("loto") TempLotoDto lotoDto){
-        TempLoto tempLoto = tempLotoService.saveTempLotoDto(lotoDto);
+    public String saveTempLoto(@ModelAttribute("loto") LotoDto lotoDto){
+        Loto tempLoto = lotoService.save(lotoDto);
         return "redirect:/lotos/add-points";
     }
 

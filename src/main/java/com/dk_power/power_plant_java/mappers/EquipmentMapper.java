@@ -1,12 +1,7 @@
 package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
-import com.dk_power.power_plant_java.entities.Location;
-import com.dk_power.power_plant_java.entities.Syst;
-import com.dk_power.power_plant_java.entities.Vendor;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.entities.equipment.EquipmentType;
-import com.dk_power.power_plant_java.entities.equipment.Point;
 import com.dk_power.power_plant_java.entities.FileObject;
 import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;

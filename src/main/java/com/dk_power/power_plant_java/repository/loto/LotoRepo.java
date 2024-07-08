@@ -11,6 +11,7 @@ public interface LotoRepo extends BaseRepository<Loto> {
     @Query("SELECT u FROM Loto u WHERE u.docNum IS NULL AND u.createdBy = ?1")
     Loto getLoto(String currentUserName);
     @Query("SELECT MAX(e.docNum) FROM Loto e")
+    @Override
     Long findMaxPermitNum();
     List<Loto> findByCreatedBy(String name);
     @Query("SELECT u FROM Loto u WHERE u.docNum IS NULL AND u.createdBy = ?1")
