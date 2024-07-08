@@ -1,10 +1,8 @@
 package com.dk_power.power_plant_java.dto.plant.files;
 
-import com.dk_power.power_plant_java.dto.plant.PointDto;
-import com.dk_power.power_plant_java.dto.plant.SystemDto;
-import com.dk_power.power_plant_java.dto.plant.VendorDto;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,15 +18,15 @@ public class FileDto {
     private String name;
     @JsonIgnore
     private MultipartFile file;
-    private FileTypeDto fileType;
+    private Value fileType;
     private String fileLink;
     private String baseLink;
     private String folder;
-    private SystemDto system;
+    private Value system;
     private String fileNumber;
-    private VendorDto vendor;
-    private List<PointDto> points;
-    private List<PointDto> filePoints;
+    private Value vendor;
+    private List<EquipmentDto> points;
+    private List<EquipmentDto> filePoints;
 
     public void buildFileLink(){
         fileLink = baseLink+"/"+ folder +"/"+fileNumber;

@@ -1,10 +1,10 @@
 package com.dk_power.power_plant_java.util;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
-import com.dk_power.power_plant_java.entities2.loto.Loto;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.safe_works.Sw;
 import com.dk_power.power_plant_java.entities.permits.tickets.Ticket;
-import com.dk_power.power_plant_java.entities2.users.User;
+import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.users.UserRepo;
 import com.dk_power.power_plant_java.sevice.permits.BasePermitService;
 import com.dk_power.power_plant_java.sevice.permits.impl.LotoService;

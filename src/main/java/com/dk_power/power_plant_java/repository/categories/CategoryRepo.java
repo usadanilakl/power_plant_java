@@ -1,7 +1,11 @@
 package com.dk_power.power_plant_java.repository.categories;
 
-import com.dk_power.power_plant_java.entities2.categories.Category;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.dk_power.power_plant_java.entities.categories.Category;
+import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 
-public interface CategoryRepo extends JpaRepository<Category,Long> {
+import java.util.List;
+
+public interface CategoryRepo extends BaseRepository<Category> {
+    Category findByName(String name);
+
 }

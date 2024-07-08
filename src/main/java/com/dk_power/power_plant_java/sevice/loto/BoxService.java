@@ -1,12 +1,15 @@
 package com.dk_power.power_plant_java.sevice.loto;
 
 import com.dk_power.power_plant_java.dto.permits.BoxDto;
-import com.dk_power.power_plant_java.entities2.loto.Box;
-import com.dk_power.power_plant_java.entities2.loto.Loto;
+import com.dk_power.power_plant_java.entities.loto.Box;
+import com.dk_power.power_plant_java.entities.loto.Loto;
+import com.dk_power.power_plant_java.mappers.UniversalMapper;
+import com.dk_power.power_plant_java.repository.loto.BoxRepo;
+import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 
 import java.util.List;
 
-public interface BoxService {
+public interface BoxService extends CrudService<Box,BoxDto, BoxRepo, UniversalMapper> {
     List<Box> getAllBoxes();
     List<Box> getEmptyBoxes();
     void addNewBox();

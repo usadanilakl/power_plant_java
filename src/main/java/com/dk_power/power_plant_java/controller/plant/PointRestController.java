@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.controller.plant;
 
 import com.dk_power.power_plant_java.entities.equipment.Point;
-import com.dk_power.power_plant_java.repository.plant.PointRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

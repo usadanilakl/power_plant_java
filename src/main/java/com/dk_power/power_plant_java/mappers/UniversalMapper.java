@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.mappers;
 
+import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
@@ -8,12 +9,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class UniversalMapper {
+public class UniversalMapper implements BaseMapper{
     private final ModelMapper mapper;
 
     public UniversalMapper(ModelMapper mapper) {
         this.mapper = mapper;
     }
+
+    @Override
+    public ModelMapper getMapper() {
+        return mapper;
+    }
+
     public <T> T convert(Object objectToBeConverted, T convertedObject) {
         return mapper.map(objectToBeConverted, (Type) convertedObject.getClass());
     }

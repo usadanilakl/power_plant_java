@@ -1,7 +1,5 @@
 package com.dk_power.power_plant_java.mappers;
 
-import com.dk_power.power_plant_java.dto.permits.BasePermitDto;
-import com.dk_power.power_plant_java.entities.permits.BasePermit;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 

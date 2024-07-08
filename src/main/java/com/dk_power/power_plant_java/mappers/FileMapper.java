@@ -1,32 +1,29 @@
 package com.dk_power.power_plant_java.mappers;
 
-import com.dk_power.power_plant_java.dto.plant.SystemDto;
-import com.dk_power.power_plant_java.dto.plant.VendorDto;
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
-import com.dk_power.power_plant_java.dto.plant.files.FileTypeDto;
-import com.dk_power.power_plant_java.entities2.FileObject;
+import com.dk_power.power_plant_java.entities.FileObject;
+import lombok.AllArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 @Component
-public class FileMapper {
+@AllArgsConstructor
+public class FileMapper implements BaseMapper{
     private final UniversalMapper mapper;
-    private final PointMapper pointMapper;
+    private final EquipmentMapper equipmentMapper;
+    private ModelMapper modelMapper;
 
-    public FileMapper(UniversalMapper mapper, PointMapper pointMapper) {
-        this.mapper = mapper;
-        this.pointMapper = pointMapper;
-    }
 
     public FileDto convertToDto(FileObject file){
         FileDto fileDto = new FileDto();
         fileDto.setFileLink(file.buildFileLink());
         fileDto.setFileNumber(file.getFileNumber());
-        if(file.getPoints()!=null)fileDto.setFilePoints(file.getPoints().stream().map(pointMapper::convertToDto).toList());
-        if(file.getPoints()!=null)fileDto.setPoints(file.getPoints().stream().map(pointMapper::convertToDto).toList());
+        if(file.getPoints()!=null)fileDto.setFilePoints(file.getPoints().stream().map(equipmentMapper::convertToDto).toList());
+        if(file.getPoints()!=null)fileDto.setPoints(file.getPoints().stream().map(equipmentMapper::convertToDto).toList());
         fileDto.setId(file.getId());
-        if(file.getFileType()!=null)fileDto.setFileType(mapper.convert(file.getFileType(),new FileTypeDto()));
-        if(file.getSystem()!=null)fileDto.setSystem(mapper.convert(file.getSystem(),new SystemDto()));
-        if(file.getVendor()!=null)fileDto.setVendor(mapper.convert(file.getVendor(),new VendorDto()));
+//        if(file.getFileType()!=null)fileDto.setFileType(mapper.convert(file.getFileType(),new FileTypeDto()));
+//        if(file.getSystem()!=null)fileDto.setSystem(mapper.convert(file.getSystem(),new SystemDto()));
+//        if(file.getVendor()!=null)fileDto.setVendor(mapper.convert(file.getVendor(),new VendorDto()));
         fileDto.setFileNumber(file.getFileNumber());
         fileDto.setBaseLink(file.getBaseLink());
         fileDto.setFolder(file.getFolder());
@@ -40,5 +37,10 @@ public class FileMapper {
     public FileObject convertToEntity(FileDto fileDto){
         FileObject file = new FileObject();
         return file;
+    }
+
+    @Override
+    public ModelMapper getMapper() {
+        return modelMapper;
     }
 }

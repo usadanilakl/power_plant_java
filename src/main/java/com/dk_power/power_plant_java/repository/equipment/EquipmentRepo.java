@@ -1,8 +1,13 @@
 package com.dk_power.power_plant_java.repository.equipment;
 
-import com.dk_power.power_plant_java.entities2.categories.Category;
-import com.dk_power.power_plant_java.entities2.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface EquipmentRepo extends JpaRepository<Equipment,Long> {
+import java.util.List;
+
+public interface EquipmentRepo extends BaseRepository<Equipment> {
+    Equipment findByLabel(String lable);
+
+    List<Equipment> findByCoordinates(String coordinates);
 }

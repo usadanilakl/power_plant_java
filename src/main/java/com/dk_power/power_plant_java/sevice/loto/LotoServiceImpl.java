@@ -1,8 +1,8 @@
 package com.dk_power.power_plant_java.sevice.loto;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
-import com.dk_power.power_plant_java.entities2.equipment.LotoPoint;
-import com.dk_power.power_plant_java.entities2.loto.Loto;
+import com.dk_power.power_plant_java.entities.equipment.LotoPoint;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
@@ -60,7 +60,7 @@ public class LotoServiceImpl implements LotoService {
             for (LotoPoint p : entity.getLotoPoints()) {
                 p.addPermLoto(entity);
                 //entity.addPoint(p);
-                lotoPointService.saveEntity(p);
+                lotoPointService.save(p);
             }
         }
         else System.out.println("points are null");

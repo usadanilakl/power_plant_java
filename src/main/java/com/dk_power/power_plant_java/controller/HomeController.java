@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.controller;
 
 import com.dk_power.power_plant_java.enums.SortingGroup;
-import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
+import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

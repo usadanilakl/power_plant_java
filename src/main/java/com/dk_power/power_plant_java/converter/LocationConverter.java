@@ -1,7 +1,5 @@
 package com.dk_power.power_plant_java.converter;
 
-import com.dk_power.power_plant_java.dto.plant.LocationDto;
-import com.dk_power.power_plant_java.sevice.plant.impl.LocationServiceImpl;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.convert.converter.Converter;

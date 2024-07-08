@@ -1,17 +1,14 @@
 package com.dk_power.power_plant_java.sevice.loto;
 
 import com.dk_power.power_plant_java.dto.permits.BoxDto;
-import com.dk_power.power_plant_java.entities2.loto.Box;
-import com.dk_power.power_plant_java.entities2.loto.Loto;
+import com.dk_power.power_plant_java.entities.loto.Box;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
-import com.dk_power.power_plant_java.mappers.BaseItemMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.BoxRepo;
-import com.dk_power.power_plant_java.repository.loto.LotoRepo;
-import com.dk_power.power_plant_java.sevice.loto.BoxService;
-import com.dk_power.power_plant_java.util.Util;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,6 +20,7 @@ public class BoxServiceImpl implements BoxService {
     private final BoxRepo boxRepo;
     private final LotoService lotoService;
     private final UniversalMapper universalMapper;
+    private final SessionFactory sessionFactory;
     @Override
     public List<Box> getAllBoxes() {
         return boxRepo.findAll();
@@ -100,5 +98,30 @@ public class BoxServiceImpl implements BoxService {
         changeBoxStatus(box);
         boxRepo.save(box);
         lotoService.saveEntity(loto);
+    }
+
+    @Override
+    public Box getEntity() {
+        return new Box();
+    }
+
+    @Override
+    public BoxDto getDto() {
+        return new BoxDto();
+    }
+
+    @Override
+    public BoxRepo getRepo() {
+        return boxRepo;
+    }
+
+    @Override
+    public UniversalMapper getMapper() {
+        return universalMapper;
+    }
+
+    @Override
+    public SessionFactory getSessionFactory() {
+        return sessionFactory;
     }
 }

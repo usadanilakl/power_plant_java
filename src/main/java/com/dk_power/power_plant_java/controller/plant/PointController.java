@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.controller.plant;
 
-import com.dk_power.power_plant_java.dto.plant.PointDto;
 import com.dk_power.power_plant_java.entities.equipment.RevisedExcelPoints;
 import com.dk_power.power_plant_java.sevice.plant.impl.*;
 import org.springframework.http.ResponseEntity;

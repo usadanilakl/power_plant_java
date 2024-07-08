@@ -1,8 +1,11 @@
 package com.dk_power.power_plant_java.repository.categories;
 
-import com.dk_power.power_plant_java.entities2.categories.Category;
-import com.dk_power.power_plant_java.entities2.categories.Value;
+import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ValueRepo extends JpaRepository<Value,Long> {
+import java.util.List;
+
+public interface ValueRepo extends BaseRepository<Value> {
+    List<Value> findByName(String name);
 }

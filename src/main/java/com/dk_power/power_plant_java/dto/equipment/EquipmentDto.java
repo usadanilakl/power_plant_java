@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.dto.equipment;
 
 import com.dk_power.power_plant_java.dto.plant.*;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,11 +15,11 @@ public class EquipmentDto extends BaseDto {
     private String label;
     private String description;
     private String specificLocation;
-    private EquipmentTypeDto eqType;
+    private Value eqType;
     private List<String> files;
-    private VendorDto vendor;
-    private LocationDto location;
-    private SystemDto system;
+    private Value vendor;
+    private Value location;
+    private Value system;
     private String coordinates;
     private String originalPictureSize;
     private String mainFile;

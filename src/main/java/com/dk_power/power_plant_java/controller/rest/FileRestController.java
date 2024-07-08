@@ -1,10 +1,10 @@
 package com.dk_power.power_plant_java.controller.rest;
 
 import com.dk_power.power_plant_java.dto.plant.files.FileDto;
-import com.dk_power.power_plant_java.entities2.FileObject;
+import com.dk_power.power_plant_java.entities.FileObject;
 import com.dk_power.power_plant_java.enums.SortingGroup;
-import com.dk_power.power_plant_java.sevice.plant.FileUploaderService;
-import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
+import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
+import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import com.dk_power.power_plant_java.util.Util;
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.sevice.loto;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
-import com.dk_power.power_plant_java.entities2.loto.Loto;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 
 import java.util.List;
