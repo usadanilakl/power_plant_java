@@ -3,9 +3,10 @@ package com.dk_power.power_plant_java.repository;
 import com.dk_power.power_plant_java.entities.FileObject;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
-
+@Repository
 public interface FileRepo extends BaseRepository<FileObject> {
     @Query("SELECT DISTINCT e.vendor.name FROM FileObject e")
     List<String> getVendors();

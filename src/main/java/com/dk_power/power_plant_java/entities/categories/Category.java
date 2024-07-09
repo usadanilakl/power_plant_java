@@ -7,16 +7,15 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.envers.Audited;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
-@Entity
+
 @NoArgsConstructor
 @Getter
 @Setter
 @Audited
+@Entity
 public class Category extends BaseEntity {
 
     private String name;

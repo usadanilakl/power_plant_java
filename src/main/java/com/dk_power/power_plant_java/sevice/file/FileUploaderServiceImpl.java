@@ -19,6 +19,7 @@ import org.kohsuke.github.GitHub;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -31,16 +32,16 @@ import java.nio.file.StandardOpenOption;
 import java.util.Base64;
 
 @AllArgsConstructor
-@Data
 @Service
-
-@Configuration
-@PropertySource("classpath:messages.properties")
+@Transactional
+//@Configuration
+//@PropertySource("classpath:messages.properties")
 public class FileUploaderServiceImpl implements FileUploaderService {
 
-    private final FileRepo fileRepo;
+
     private final CategoryService categoryService;
     private final ValueService valueService;
+    private final FileRepo fileRepo;
 
 
     public String uploadFilesToLocal(FileUploader files){

@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.entities.equipment;
 
 
-import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.base_entities.BaseEntity;
 import com.dk_power.power_plant_java.entities.FileObject;
 import com.dk_power.power_plant_java.entities.categories.Value;

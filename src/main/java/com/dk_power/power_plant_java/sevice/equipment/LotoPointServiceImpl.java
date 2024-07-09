@@ -7,9 +7,11 @@ import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @AllArgsConstructor
+@Transactional
 public class LotoPointServiceImpl implements LotoPointService{
     private final LotoPointRepo lotoPointRepo;
     private final SessionFactory sessionFactory;

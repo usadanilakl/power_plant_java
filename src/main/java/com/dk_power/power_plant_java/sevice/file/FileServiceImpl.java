@@ -10,11 +10,13 @@ import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @AllArgsConstructor
+@Transactional
 public class FileServiceImpl implements FileService{
     private final FileRepo fileRepo;
     private final LotoPointService lotoPointService;

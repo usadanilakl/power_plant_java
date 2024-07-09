@@ -9,6 +9,7 @@ public interface BaseMapper {
     ModelMapper getMapper();
 
     default  <T> T convert(Object objectToBeConverted, T convertedObject) {
+        getMapper().getConfiguration().setSkipNullEnabled(true);
         return getMapper().map(objectToBeConverted, (Type) convertedObject.getClass());
     }
 }

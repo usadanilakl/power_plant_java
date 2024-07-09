@@ -7,17 +7,27 @@ import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-@AllArgsConstructor
+@Transactional
 public class CategoryServiceImpl implements CategoryService{
     private final CategoryRepo categoryRepo;
     private final UniversalMapper universalMapper;
     private final SessionFactory sessionFactory;
     private final ValueService valueService;
+
+    public CategoryServiceImpl(CategoryRepo categoryRepo, UniversalMapper universalMapper, SessionFactory sessionFactory, @Lazy ValueService valueService) {
+        this.categoryRepo = categoryRepo;
+        this.universalMapper = universalMapper;
+        this.sessionFactory = sessionFactory;
+        this.valueService = valueService;
+    }
+
     @Override
     public Category getEntity() {
         return new Category();

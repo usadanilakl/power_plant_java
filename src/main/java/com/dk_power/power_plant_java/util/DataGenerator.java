@@ -13,7 +13,7 @@ public class DataGenerator {
 //    private final LotoService lotoService;
 //    private final SwService swService;
 //    private final TicketService ticketService;
-//    private final UserRepo userRepo;
+    private final UserRepo userRepo;
 //    private final BasePermitService<Loto, LotoDto> basePermitService;
 //    public void createLoto(){
 //        Loto loto = new Loto();
@@ -42,14 +42,14 @@ public class DataGenerator {
 //        ticketService.save(loto);
 //    }
 //
-//    public void createUser(){
-//        User user = new User();
-//        user.setEmail("agorelik@jpowerusa.com");
-//        user.setName("Andrew Gorelik");
-//        user.setPassword("123");
-//        user.setRole("Operator");
-//        userRepo.save(user);
-//    }
+    public void createUser(){
+        User user = new User();
+        user.setEmail("agorelik@jpowerusa.com");
+        user.setName("Andrew Gorelik");
+        user.setPassword("123");
+        user.setRole("Ops");
+        userRepo.save(user);
+    }
 //
 //    public void resetLotoDocNumber(){
 //        Iterable<Loto> all = lotoService.getAll();

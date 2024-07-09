@@ -8,11 +8,13 @@ import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @AllArgsConstructor
+@Transactional
 public class ValueServiceImpl implements ValueService{
     private final ValueRepo valueRepo;
     private final UniversalMapper universalMapper;

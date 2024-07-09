@@ -22,7 +22,7 @@ public interface CrudService<
     M getMapper();
     SessionFactory getSessionFactory();
 
-    @PostConstruct
+//    @PostConstruct
     public default void enableFilter() {
         Session session = getSessionFactory().getCurrentSession();
         session.enableFilter("deletedFilter").setParameter("isDeleted", false);

@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.entities.base_entities.BasePermit;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
+import com.dk_power.power_plant_java.repository.base_repositories.PermitRepo;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,7 +13,7 @@ public interface PermitService
         <
         E extends BasePermit,
         D,
-        R extends BaseRepository<E>,
+        R extends PermitRepo<E>,
         M extends BaseMapper
         >
     extends CrudService<E,D,R,M>, AuditingService<E>
@@ -33,7 +34,12 @@ public interface PermitService
     }
     default E getTempPermit(){
         List<E> temps = getRepo().findByTempTrue();
-        return temps.stream().filter(e -> e.getCreatedBy().equalsIgnoreCase(getLoggedInUserName())).findAny().orElse(getEntity());
+        E entity = temps.stream().filter(e -> e.getCreatedBy().equalsIgnoreCase(getLoggedInUserName())).findAny().orElse(getEntity());
+        if(entity.getId()==null){
+            entity.setTemp(true);
+            save(entity);
+        }
+        return entity;
 
     }
     default Long generatePermitNum(){

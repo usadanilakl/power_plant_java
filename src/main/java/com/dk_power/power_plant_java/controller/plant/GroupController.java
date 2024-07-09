@@ -22,6 +22,7 @@ public class GroupController {
     @PostMapping("/create")
     public String createNewItem(@RequestParam(name="group") String group, @RequestParam(name="value") String value){
         Value newVal = valueService.saveIfNew(value, group);
+        System.out.println(newVal.getName() + ", " + newVal.getCategory().getName());
         return "redirect:/lotos/create";
     }
 }

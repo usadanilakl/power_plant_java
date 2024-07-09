@@ -4,14 +4,20 @@ import com.dk_power.power_plant_java.dto.plant.files.FileDto;
 import com.dk_power.power_plant_java.entities.FileObject;
 import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
-@AllArgsConstructor
 public class FileMapper implements BaseMapper{
     private final UniversalMapper mapper;
     private final EquipmentMapper equipmentMapper;
-    private ModelMapper modelMapper;
+    private final ModelMapper modelMapper;
+
+    public FileMapper(UniversalMapper mapper, @Lazy EquipmentMapper equipmentMapper, ModelMapper modelMapper) {
+        this.mapper = mapper;
+        this.equipmentMapper = equipmentMapper;
+        this.modelMapper = modelMapper;
+    }
 
 
     public FileDto convertToDto(FileObject file){

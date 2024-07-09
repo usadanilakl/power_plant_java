@@ -16,12 +16,14 @@ import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
 
 @Service
 @AllArgsConstructor
+@Transactional
 public class EquipmentServiceImpl implements EquipmentService{
     private final EquipmentRepo equipmentRepo;
     private final UniversalMapper universalMapper;

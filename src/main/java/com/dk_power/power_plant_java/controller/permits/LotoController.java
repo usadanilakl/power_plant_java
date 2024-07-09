@@ -42,6 +42,7 @@ public class LotoController {
     @GetMapping("/create")
     public String createNewLoto(Model model){
         Loto loto = lotoService.getTempPermit();
+        System.out.println(loto.getId());
         List<Box> boxes = boxService.getAllBoxes();
         Box box = boxService.getEmptyBox();
         Set<Value> allEqTypes = categoryService.getEqTypes().getValues();
@@ -55,6 +56,7 @@ public class LotoController {
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("loto") LotoDto data){
         lotoService.save(data);
+        System.out.println("autosave: " + data.getId());
         return "redirect:/lotos/create";
     }
     @PostMapping("/create")

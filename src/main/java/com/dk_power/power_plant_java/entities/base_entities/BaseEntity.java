@@ -25,18 +25,20 @@ import java.time.LocalDateTime;
 public class BaseEntity {
     @CreatedDate
     @Temporal(TemporalType.TIMESTAMP)
+    @Column(updatable = false)
     private LocalDateTime dateCreated;
     @LastModifiedDate
     @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime dateModified;
     @CreatedBy
+    @Column(updatable = false)
     private String createdBy;
     @LastModifiedBy
     private String modifiedBy;
     @Id
     @GeneratedValue
     private Long id;
-    private Boolean deleted;
+    private Boolean deleted = false;
 
     @Override
     public boolean equals(Object obj) {

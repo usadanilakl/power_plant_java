@@ -12,6 +12,7 @@ import org.hibernate.envers.Audited;
 @Getter
 @Setter
 @Audited
+@Table(name = "val_table")
 public class Value extends BaseEntity {
 
     private String name;

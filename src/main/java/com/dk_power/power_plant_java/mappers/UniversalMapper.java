@@ -22,6 +22,7 @@ public class UniversalMapper implements BaseMapper{
     }
 
     public <T> T convert(Object objectToBeConverted, T convertedObject) {
+        mapper.getConfiguration().setSkipNullEnabled(true);
         return mapper.map(objectToBeConverted, (Type) convertedObject.getClass());
     }
     public <T1,T2> List<T1> convertAll(List<T2> listToBeConverted, T1 convertedObject){

@@ -36,7 +36,7 @@ public class LotoPoint extends BaseEntity {
     String redTagId;
     Boolean inUse = false;
     @ManyToMany
-    @JoinTable(name = "loto_point",
+    @JoinTable(name = "loto_points",
             joinColumns = @JoinColumn(name = "loto_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
     //@JsonIgnore
