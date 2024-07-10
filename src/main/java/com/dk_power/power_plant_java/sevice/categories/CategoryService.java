@@ -18,4 +18,6 @@ public interface CategoryService extends CrudService<Category, CategoryDto, Cate
     Category getFileTypes();
     void saveValueIfNew(Value value,String name);
 
+
+
 }

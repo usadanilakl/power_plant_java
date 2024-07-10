@@ -5,7 +5,6 @@ import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository
 
 import java.util.List;
 
-public interface CategoryRepo extends BaseRepository<Category> {
-    Category findByName(String name);
+public interface CategoryRepo extends BaseCategoryValueRepo<Category> {
 
 }

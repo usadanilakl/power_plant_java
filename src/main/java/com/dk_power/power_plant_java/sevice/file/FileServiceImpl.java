@@ -40,17 +40,17 @@ public class FileServiceImpl implements FileService{
     public List<String> getSystems() {
         return fileRepo.getSystems();
     }
-//    public FileObject saveForTransfer(FileObject transfer){
-//        fileTypeService.saveForTransfer(transfer.getFileType());
-//        if(transfer.getSystem()!=null)systemService.saveForTransfer(transfer.getSystem());
-//        if(transfer.getVendor()!=null)vendorService.saveForTransfer(transfer.getVendor());
-////        if(transfer.getPoints()!=null)pointService.saveAllForTransfer(transfer.getPoints());
-////        FileObject entity = repo.findByFileNumber(transfer.getFileNumber());
-////        if(entity!=null) transfer.setId(entity.getId());
-//        transfer.setRelatedSystems(transfer.getSystems().toString());
-//        transfer.setBaseLink("uploads");
-//        return save(transfer);
-//    }
+    public FileObject saveForTransfer(FileObject transfer){
+        fileTypeService.saveForTransfer(transfer.getFileType());
+        if(transfer.getSystem()!=null)systemService.saveForTransfer(transfer.getSystem());
+        if(transfer.getVendor()!=null)vendorService.saveForTransfer(transfer.getVendor());
+//        if(transfer.getPoints()!=null)pointService.saveAllForTransfer(transfer.getPoints());
+//        FileObject entity = repo.findByFileNumber(transfer.getFileNumber());
+//        if(entity!=null) transfer.setId(entity.getId());
+        transfer.setRelatedSystems(transfer.getSystems().toString());
+        transfer.setBaseLink("uploads");
+        return save(transfer);
+    }
 
     public List<FileObject> getIfNumberContains(String pid) {
         return fileRepo.findByFileNumberContaining(pid);

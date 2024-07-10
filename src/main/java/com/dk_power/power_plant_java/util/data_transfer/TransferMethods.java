@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.FileObject;
 import com.dk_power.power_plant_java.sevice.ExcelService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
+import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -14,18 +15,18 @@ import java.util.List;
 @Component
 @AllArgsConstructor
 public class TransferMethods {
-//    private final FileServiceImpl fileService;
-//    private final EquipmentService pointService;
-//    private final ExcelService excelService;
-//    private final LotoPointService revisedExcelPointsRepo;
-//    public void transferPids(){
-//        List<FileObject> files = new JsonToPojo<FileObject>().readProductsFromFile("/pids_json_mod.js",FileObject.class);
-//        System.out.println(files.size());
-//
-//        for (FileObject file : files) {
-//            fileService.saveForTransfer(file);
-//        }
-//    }
+    private final FileService fileService;
+    private final EquipmentService pointService;
+    private final ExcelService excelService;
+    private final LotoPointService revisedExcelPointsRepo;
+    public void transferPids(){
+        List<FileObject> files = new JsonToPojo<FileObject>().readProductsFromFile("/pids_json_mod.js",FileObject.class);
+        System.out.println(files.size());
+
+        for (FileObject file : files) {
+            fileService.saveForTransfer(file);
+        }
+    }
 //
 //    public void transferPoints(){
 //        List<Point> points = new JsonToPojo<Point>().readProductsFromFile("/Equipment_mod.js", Point.class);

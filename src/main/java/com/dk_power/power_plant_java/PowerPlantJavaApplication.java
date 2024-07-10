@@ -51,7 +51,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        fileService.getAll().forEach(FileObject::buildFileLink);
 //        System.out.println("fileService.getAll().get(33) = " + fileService.getAllDtos().get(48));
 
-        //dataGenerator.createUser();
+//        dataGenerator.createUser();
 
 
     }

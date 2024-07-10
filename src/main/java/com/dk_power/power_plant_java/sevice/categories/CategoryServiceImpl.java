@@ -90,8 +90,8 @@ public class CategoryServiceImpl implements CategoryService{
     }
 
     @Override
-    public void saveValueIfNew(Value value,String name) {
-        Category cat = getCategoryByName(name);
+    public void saveValueIfNew(Value value,String category) {
+        Category cat = getCategoryByName(category);
 
         if(!cat.containsValue(value.getName())){
             cat.setValues(value);

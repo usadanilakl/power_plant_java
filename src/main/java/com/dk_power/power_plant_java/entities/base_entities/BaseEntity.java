@@ -39,6 +39,7 @@ public class BaseEntity {
     @GeneratedValue
     private Long id;
     private Boolean deleted = false;
+    private String name;
 
     @Override
     public boolean equals(Object obj) {

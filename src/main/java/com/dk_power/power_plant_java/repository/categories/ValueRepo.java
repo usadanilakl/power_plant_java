@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface ValueRepo extends BaseRepository<Value> {
-    List<Value> findByName(String name);
+public interface ValueRepo extends BaseCategoryValueRepo<Value> {
+
 }

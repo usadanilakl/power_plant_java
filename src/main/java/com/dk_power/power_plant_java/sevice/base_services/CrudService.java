@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.base_services;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseEntity;
+import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
@@ -84,5 +85,6 @@ public interface CrudService<
     default D convertToDto(E entity){
         return getMapper().convert(entity, getDto());
     }
+
 
 }

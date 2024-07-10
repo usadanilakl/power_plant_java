@@ -49,6 +49,13 @@ public class DataGenerator {
         user.setPassword("123");
         user.setRole("Ops");
         userRepo.save(user);
+
+        User user2 = new User();
+        user2.setEmail("usadanilakl@gmail.com");
+        user2.setName("Danil Klokov");
+        user2.setPassword("123");
+        user2.setRole("Admin");
+        userRepo.save(user2);
     }
 //
 //    public void resetLotoDocNumber(){
