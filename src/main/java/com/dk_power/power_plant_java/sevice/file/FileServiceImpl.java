@@ -1,11 +1,12 @@
 package com.dk_power.power_plant_java.sevice.file;
 
-import com.dk_power.power_plant_java.dto.plant.files.FileDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.FileObject;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.mappers.FileMapper;
-import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
+import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -23,6 +24,7 @@ public class FileServiceImpl implements FileService{
     private final FileMapper fileMapper;
     private final SessionFactory sessionFactory;
     private final CategoryService categoryService;
+    private final ValueService valueService;
 
 
     public List<String> getVendors() {
@@ -40,16 +42,13 @@ public class FileServiceImpl implements FileService{
     public List<String> getSystems() {
         return fileRepo.getSystems();
     }
-    public FileObject saveForTransfer(FileObject transfer){
-        fileTypeService.saveForTransfer(transfer.getFileType());
-        if(transfer.getSystem()!=null)systemService.saveForTransfer(transfer.getSystem());
-        if(transfer.getVendor()!=null)vendorService.saveForTransfer(transfer.getVendor());
-//        if(transfer.getPoints()!=null)pointService.saveAllForTransfer(transfer.getPoints());
-//        FileObject entity = repo.findByFileNumber(transfer.getFileNumber());
-//        if(entity!=null) transfer.setId(entity.getId());
-        transfer.setRelatedSystems(transfer.getSystems().toString());
-        transfer.setBaseLink("uploads");
-        return save(transfer);
+    public FileObject saveForTransfer(FileDto transfer){
+        FileObject file = convertToEntity(transfer);
+        if(file.getFileType()!=null)categoryService.saveValueIfNew(transfer.getFileType());
+        if(file.getVendor()!=null)categoryService.saveValueIfNew(file.getVendor());
+        file.setBaseLink("uploads");
+        file.buildFileLink();
+        return save(file);
     }
 
     public List<FileObject> getIfNumberContains(String pid) {

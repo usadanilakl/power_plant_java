@@ -21,7 +21,12 @@ public class Value extends BaseEntity {
     @JoinColumn(name = "category_id")
     private Category category;
     public void setCategory(Category category){
-        if(category.getValues()==null || category.getValues().isEmpty())category.setValues(this);
-        this.category = category;
+        if(category!=null){
+            this.category = category;
+            if(category.getValues()==null || category.getValues().isEmpty())
+                category.updateValues(this);
+        }
+
+
     }
 }

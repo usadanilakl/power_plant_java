@@ -22,7 +22,7 @@ public class Category extends BaseEntity {
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     private Set<Value> values = new HashSet<>();
-    public void setValues(Value value){
+    public void updateValues(Value value){
         if(values==null) values = new HashSet<>();
         if(value!=null){
             values.add(value);
@@ -30,16 +30,16 @@ public class Category extends BaseEntity {
         }
 
     }
-    public void setValues(Set<Value> values1){
+    public void updateValues(Set<Value> values1){
         for (Value v : values1) {
-            setValues(v);
+            updateValues(v);
         }
     }
 
-    public boolean containsValue(String value){
+    public boolean containsValue(String vName){
         if(values==null || values.isEmpty()) return false;
         for (Value v : values) {
-            if(v.getName().toLowerCase().trim().contains(value.toLowerCase().trim())) return true;
+            if(v.getName().toLowerCase().trim().contains(vName.toLowerCase().trim())) return true;
         }
         return false;
     }

@@ -48,7 +48,7 @@ public class Equipment extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "pid_id")
     @JsonBackReference
-    @JsonIgnore
+    //@JsonIgnore
     private FileObject mainFile;
     @Transient
     private String pid;

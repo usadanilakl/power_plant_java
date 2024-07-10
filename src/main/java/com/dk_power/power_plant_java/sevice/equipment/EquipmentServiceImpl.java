@@ -75,22 +75,14 @@ public class EquipmentServiceImpl implements EquipmentService{
                 ) transfer.setId(point.getId());
         }
 
-        Category vendors = categoryService.getVendors();
-        if(!vendors.containsValue(transfer.getVendor().getName())){
-            vendors.setValues(transfer.getVendor());
-            categoryService.save(vendors);
-        }
+        if(transfer.getVendor()!=null)valueService.saveIfNewAndBindWithCategory(transfer.getVendor().getName(), "Vendor");
+        if(transfer.getEqType()!=null)valueService.saveIfNewAndBindWithCategory(transfer.getEqType().getName(), "Equipment Type");
 
-        Category eqTypes = categoryService.getEqTypes();
-        if(!eqTypes.containsValue(transfer.getEqType().getName())){
-            eqTypes.setValues(transfer.getVendor());
-            categoryService.save(vendors);
-        }
 
         FileObject file = null;
         List<FileObject> files = fileService.getIfNumberContains(transfer.getPid());
 
-        if(files!=null && files.size()==1)  file = files.get(0);
+        if(files!=null && files.size()==1)  file = files.getFirst();
         else if(files!=null&&files.size()>1){
             for (FileObject e : files) {
                 if( e.getVendor().getName().equals(transfer.getVendor().getName())) file = e;
@@ -109,7 +101,7 @@ public class EquipmentServiceImpl implements EquipmentService{
         transfer.addFile(file);
         return save(transfer);
     }
-    public void saveAllForTransfer(List<Equipment> transers){
-        transers.forEach(this::saveForTransfer);
+    public void saveAllForTransfer(List<Equipment> transfers){
+        transfers.forEach(this::saveForTransfer);
     }
 }

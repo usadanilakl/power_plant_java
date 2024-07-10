@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.converter;
 
-import com.dk_power.power_plant_java.dto.plant.files.FileDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.context.annotation.Lazy;

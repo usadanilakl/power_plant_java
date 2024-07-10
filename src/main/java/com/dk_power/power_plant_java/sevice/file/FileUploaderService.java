@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.sevice.file;
 
-import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
+import com.dk_power.power_plant_java.dto.files.FileUploader;
 import com.dk_power.power_plant_java.entities.FileObject;
 
 import java.io.File;

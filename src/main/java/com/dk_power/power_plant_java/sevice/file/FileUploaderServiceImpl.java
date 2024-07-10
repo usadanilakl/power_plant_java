@@ -1,14 +1,12 @@
 package com.dk_power.power_plant_java.sevice.file;
 
-import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
+import com.dk_power.power_plant_java.dto.files.FileUploader;
 import com.dk_power.power_plant_java.entities.FileObject;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
-import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
 import com.dk_power.power_plant_java.util.PropertyReader;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.apache.commons.io.IOUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -16,8 +14,6 @@ import org.kohsuke.github.GHContent;
 import org.kohsuke.github.GHContentUpdateResponse;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -58,8 +54,8 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 file.transferTo(path.toFile());
 
                FileObject newFile = new FileObject();
-               newFile.setFileType(valueService.saveIfNew(files.getType(),"fileType"));
-               newFile.setVendor(valueService.saveIfNew(files.getVendor(),"vendor"));
+               newFile.setFileType(valueService.saveIfNewAndBindWithCategory(files.getType(),"File Type"));
+               newFile.setVendor(valueService.saveIfNewAndBindWithCategory(files.getVendor(),"Vendor"));
                newFile.setFileNumber(name);
                newFile.setFolder(files.getFolder());
                newFile.setBaseLink(baseLink);

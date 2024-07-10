@@ -7,4 +7,5 @@ import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 
 public interface EquipmentService extends CrudService<Equipment, EquipmentDto, EquipmentRepo, UniversalMapper> {
+    Equipment saveForTransfer(Equipment transfer);
 }

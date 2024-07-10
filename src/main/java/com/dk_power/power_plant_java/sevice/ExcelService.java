@@ -24,14 +24,9 @@ public class ExcelService {
         this.path=path;
         this.revisedExcelPointsRepo = revisedExcelPointsRepo;
         try {
-            // Open the Excel file
             excelFile = new FileInputStream(path);
-            // Access the required test data sheet
-//            workBook = new XSSFWorkbook(excelFile);
             workBook = WorkbookFactory.create(excelFile);
             workSheet = workBook.getSheet(sheetName);
-            // check if sheet is null or not. null means  sheetname was wrong
-            //Assert.assertNotNull(workSheet, "Sheet: \""+sheetName+"\" does not exist\n");
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -63,8 +58,6 @@ public class ExcelService {
 
     }
 
-    //this method will return data table as 2d array
-    //we need this format because of data provider.
     public String[][] getDataArrayWithoutFirstRow() {
 
         String[][] data = new String[rowCount()-1][columnCount()];
@@ -86,14 +79,10 @@ public class ExcelService {
         List<LinkedHashMap<String, String>> data = new ArrayList<>();
 
         for (int i = 1; i < rowCount(); i++) {
-            // get each row
             Row row = workSheet.getRow(i);
-            // create map of the row using the column and value
-            // column map key, cell value --> map bvalue
             LinkedHashMap<String, String> rowMap = new LinkedHashMap<String, String>();
             int cellNum = 0;
             try{
-                //int cellNum = 0;
                 for (Cell cell : row) {
                     if(cell == null) row.createCell(cellNum).setCellValue("no data");
                     int columnIndex = cell.getColumnIndex();

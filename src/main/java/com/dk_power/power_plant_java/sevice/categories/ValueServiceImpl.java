@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @AllArgsConstructor
@@ -46,11 +47,11 @@ public class ValueServiceImpl implements ValueService{
     }
 
     @Override
-    public Value saveIfNew(String valName, String catName) {
-        List<Value> values = valueRepo.findByName(valName);
+    public Value saveIfNewAndBindWithCategory (String valName, String catName) {
+        Category cat = categoryService.createIfNotFound(catName);
+        Set<Value> values = cat.getValues();
         Value val = null;
-        Category cat = categoryService.getCategoryByName(catName);
-        if(values!=null){
+        if(!(values==null || values.isEmpty())){
             for (Value v : values) {
                 if(cat.getName().trim().equalsIgnoreCase(catName.trim().toLowerCase())) val = v;
             }
@@ -60,7 +61,8 @@ public class ValueServiceImpl implements ValueService{
             val = new Value();
             val.setName(valName);
         }
-        categoryService.saveValueIfNew(val, cat.getName());
-        return save(val);
+        categoryService.bindCategoryAndValue(cat, val);
+        return val;
     }
+
 }

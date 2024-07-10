@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.controller;
 
-import com.dk_power.power_plant_java.dto.plant.files.FileDto;
-import com.dk_power.power_plant_java.dto.plant.files.FileUploader;
+import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.dto.files.FileUploader;
 import com.dk_power.power_plant_java.entities.FileObject;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
@@ -11,8 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
-import static org.aspectj.weaver.tools.cache.SimpleCacheFactory.path;
 
 @Controller
 @RequestMapping("/file")

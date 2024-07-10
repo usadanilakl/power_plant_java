@@ -2,7 +2,9 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.repository.FileRepo;
+import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.ExcelService;
+import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import com.dk_power.power_plant_java.util.DataGenerator;
@@ -22,10 +24,11 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 public class PowerPlantJavaApplication implements CommandLineRunner {
 //private final FileUploaderService fileUploaderService;
 //private final FileRepo fileRepo;
-//private final FileServiceImpl fileService;
-//private final TransferMethods transferMethods;
-//private final ExcelService excelService;
-    private final DataGenerator dataGenerator;
+private final FileService fileService;
+private final TransferMethods transferMethods;
+private final ExcelService excelService;
+private final DataGenerator dataGenerator;
+private final EquipmentRepo equipmentRepo;
 
 
     public static void main(String[] args) {
@@ -38,15 +41,15 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
-/***************************TransferMethods*************************************************
+/***************************TransferMethods*************************************************/
         transferMethods.transferPids();
-        System.out.println(fileService.getAll().size());
+        System.out.println(fileService.getAll().size() + " file upload completed");
 
-        transferMethods.transferPoints();
-        System.out.println("pointRepo.getAll().size() = " + pointRepo.getAll().size());
-
-        transferMethods.transferPointsFromExcel();
- ********************************************************************************/
+//        transferMethods.transferPoints();
+//        System.out.println("pointRepo.getAll().size() = " + equipmentRepo.findAll().size());
+//
+//        transferMethods.transferPointsFromExcel();
+ /********************************************************************************/
 
 //        fileService.getAll().forEach(FileObject::buildFileLink);
 //        System.out.println("fileService.getAll().get(33) = " + fileService.getAllDtos().get(48));

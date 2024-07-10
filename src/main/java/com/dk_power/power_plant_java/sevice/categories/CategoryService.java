@@ -8,8 +8,9 @@ import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 
 import java.util.List;
+import java.util.Set;
 
-public interface CategoryService extends CrudService<Category, CategoryDto, CategoryRepo, UniversalMapper> {
+public interface CategoryService extends BaseCategoryValueService<Category, CategoryDto, CategoryRepo, UniversalMapper> {
     Category getCategoryByName(String name);
     Category getVendors();
     Category getLocations();
@@ -17,6 +18,10 @@ public interface CategoryService extends CrudService<Category, CategoryDto, Cate
     Category getSystems();
     Category getFileTypes();
     void saveValueIfNew(Value value,String name);
+    void saveValueIfNew(Value value);
+    Category createIfNotFound(String name);
+    Set<Value> getValuesOfCat(String category);
+    void bindCategoryAndValue(Category cat, Value val);
 
 
 

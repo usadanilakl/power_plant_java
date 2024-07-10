@@ -12,10 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional
-public class CategoryServiceImpl implements CategoryService{
+public class CategoryServiceImpl implements CategoryService {
     private final CategoryRepo categoryRepo;
     private final UniversalMapper universalMapper;
     private final SessionFactory sessionFactory;
@@ -55,13 +56,10 @@ public class CategoryServiceImpl implements CategoryService{
 
     @Override
     public Category getCategoryByName(String name) {
-        Category cat = categoryRepo.findByName(name);
-        if(cat==null){
-            cat = new Category();
-            cat.setName(name);
-            save(cat);
-        }
-        return cat;
+        List<Category> cats = getByName(name);
+        if(cats==null || cats.isEmpty()) return null;
+        else if(cats.size() == 1) return cats.getFirst();
+        else throw new RuntimeException("2 or more categories found with name: " + name );
     }
 
     @Override
@@ -90,12 +88,43 @@ public class CategoryServiceImpl implements CategoryService{
     }
 
     @Override
-    public void saveValueIfNew(Value value,String category) {
+    public void saveValueIfNew(Value value, String category) {
         Category cat = getCategoryByName(category);
 
-        if(!cat.containsValue(value.getName())){
-            cat.setValues(value);
-            save(cat);
+        if (!cat.containsValue(value.getName())) {
+            bindCategoryAndValue(cat,value);
         }
+    }
+
+    @Override
+    public void saveValueIfNew(Value value) {
+        Category cat = value.getCategory();
+            bindCategoryAndValue(cat,value);
+    }
+
+    @Override
+    public Category createIfNotFound(String name) {
+        List<Category> entities = getByName(name);
+        if (entities == null || entities.isEmpty()) {
+            Category entity = getEntity();
+            entity.setName(name);
+            save(entity);
+            return entity;
+        }
+        if (entities.size() == 1) return entities.getFirst();
+        else throw new RuntimeException();
+    }
+
+    @Override
+    public Set<Value> getValuesOfCat(String category) {
+        return getCategoryByName(category).getValues();
+    }
+
+    @Override
+    public void bindCategoryAndValue(Category cat, Value val) {
+        cat.updateValues(val);
+        val.setCategory(cat);
+        save(cat);
+        valueService.save(val);
     }
 }

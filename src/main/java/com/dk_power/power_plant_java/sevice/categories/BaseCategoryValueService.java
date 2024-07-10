@@ -22,22 +22,6 @@ public interface BaseCategoryValueService
     default List<E> getByName(String name){
         return getRepo().findByName(name);
     }
-    default E createIfNotExists(String name) {
-        List<E> entities = getByName(name);
-        if(entities==null || entities.isEmpty()){
-            E entity = getEntity();
-            entity.setName(name);
-            save(entity);
-            return entity;
-        }
-        if(entities.size()==1) return entities.getFirst();
-        else throw new RuntimeException();
-    }
-    default E createNew(D dto){
-        E permit = getMapper().convert(dto, getEntity());
-        permit.setDocNum(generatePermitNum());
-        permit.setStatus(Status.INACTIVE);
-        permit.setTemp(false);
-        return save(permit);
-    }
+
+
 }

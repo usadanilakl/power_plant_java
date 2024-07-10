@@ -7,7 +7,10 @@ import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 
 import java.rmi.server.UnicastRemoteObject;
+import java.util.List;
 
-public interface ValueService extends CrudService<Value, ValueDto, ValueRepo, UniversalMapper> {
-    Value saveIfNew(String valName, String catName);
+public interface ValueService extends BaseCategoryValueService<Value, ValueDto, ValueRepo, UniversalMapper> {
+    Value saveIfNewAndBindWithCategory (String valName, String catName);
+
 }
+

@@ -1,8 +1,7 @@
 package com.dk_power.power_plant_java.mappers;
 
-import com.dk_power.power_plant_java.dto.plant.files.FileDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.FileObject;
-import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
