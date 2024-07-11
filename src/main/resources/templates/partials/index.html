@@ -43,6 +43,9 @@
           <a class="nav-link" href="/dev">Dev</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" href="/ex">Test</a>
+        </li>
+        <li class="nav-item">
           <div th:if="${#authorization.expression('isAuthenticated()')}">
             <form th:action="@{/logout}" method="post">
               <input class="nav-link" type="submit" value="Sign Out"/>

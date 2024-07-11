@@ -25,3 +25,8 @@ function hide(element){
     element.classList.add('hide');
 }
 
+async function loadDataIntoContainer(container,data){
+    let content = await data();
+    container.innerHTML = content;
+}
+

@@ -1,21 +1,12 @@
 package com.dk_power.power_plant_java.sevice;
 
-import com.dk_power.power_plant_java.entities.base_entities.BasePermit;
-import com.dk_power.power_plant_java.repository.base_repositories.PermitRepo;
-import com.dk_power.power_plant_java.util.Util;
+import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import lombok.Data;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 @Service
 @Data
-public class FilterService<T extends BasePermit>{
+public class FilterService<T extends BasePermitEntity>{
 //    private String lastSortingRequest;
 //    private Boolean ascending = true;
 //    private List<T> permits;

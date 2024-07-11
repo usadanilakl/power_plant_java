@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.entities.equipment;
 
 
-import com.dk_power.power_plant_java.entities.base_entities.BaseEntity;
+import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.FileObject;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -22,7 +22,7 @@ import java.util.List;
 @Setter
 @Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Equipment extends BaseEntity {
+public class Equipment extends BaseAuditEntity {
     private String name;
     private String label;
     private String description;

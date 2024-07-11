@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.entities.categories;
 
-import com.dk_power.power_plant_java.entities.base_entities.BaseEntity;
+import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +13,7 @@ import org.hibernate.envers.Audited;
 @Setter
 @Audited
 @Table(name = "val_table")
-public class Value extends BaseEntity {
+public class Value extends BaseAuditEntity {
 
     private String name;
 

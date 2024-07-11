@@ -3,7 +3,8 @@ package com.dk_power.power_plant_java.util.data_transfer;
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.sevice.ExcelService;
+import com.dk_power.power_plant_java.sevice.data_transfer.ExcelService;
+import com.dk_power.power_plant_java.sevice.data_transfer.HrsgValveService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
@@ -12,13 +13,16 @@ import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+
 @Component
 @AllArgsConstructor
 public class TransferMethods {
     private final FileService fileService;
     private final EquipmentService pointService;
     private final ExcelService excelService;
-    private final LotoPointService revisedExcelPointsRepo;
+    private final LotoPointService lotoPointService;
+    private final HrsgValveService hrsgValveService;
     public void transferPids(){
         List<FileDto> files = new JsonToPojo<FileDto>().readProductsFromFile("/pids_json_mod.js", FileDto.class);
         System.out.println(files.size());
@@ -41,13 +45,18 @@ public class TransferMethods {
         }
     }
 
-    public void transferPointsFromExcel(){
-        int i = 0;
-        List<LinkedHashMap<String, String>> excel = excelService.getDataList();
-        for (LinkedHashMap<String, String> s : excel) {
-            excelService.saveRevisedPoints(s);
-            i++;
-        }
-        System.out.println("success: "+i);
+    public void transferLotoPointsFromExcel(){
+        System.out.println("Transfer Started.");
+        System.out.println(lotoPointService.getAll().size() + " items are in db");
+        lotoPointService.transferExcelToDb();
+        System.out.println("TransferCompleted.");
+        System.out.println(lotoPointService.getAll().size() + " items are in db");
+    }
+    public void transferHrsgValvesFromExcel(){
+        System.out.println("Transfer Started.");
+        System.out.println(hrsgValveService.getAll().size() + " items are in db");
+        hrsgValveService.transferExcelToDb();
+        System.out.println("TransferCompleted.");
+        System.out.println(hrsgValveService.getAll().size() + " items are in db");
     }
 }

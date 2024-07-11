@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.entities.loto;
 
-import com.dk_power.power_plant_java.entities.base_entities.BaseEntity;
+import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.enums.Status;
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,7 +13,7 @@ import org.hibernate.envers.Audited;
 @AllArgsConstructor
 @Audited
 
-public class Box extends BaseEntity {
+public class Box extends BaseAuditEntity {
     private Integer number = 0;
     @OneToOne
     @JoinColumn(name = "loto")

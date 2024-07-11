@@ -1,11 +1,8 @@
 package com.dk_power.power_plant_java.sevice.base_services;
 
-import com.dk_power.power_plant_java.entities.base_entities.BaseEntity;
-import com.dk_power.power_plant_java.enums.Status;
+import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
-import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
-import jakarta.annotation.PostConstruct;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Sort;
@@ -13,7 +10,7 @@ import org.springframework.data.domain.Sort;
 import java.util.List;
 
 public interface CrudService<
-        E extends BaseEntity,
+        E extends BaseIdEntity,
         D,
         R extends BaseRepository<E>,
         M extends BaseMapper> {

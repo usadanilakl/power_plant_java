@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.entities.loto;
 
-import com.dk_power.power_plant_java.entities.base_entities.BasePermit;
+import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.entities.equipment.LotoPoint;
 import com.dk_power.power_plant_java.enums.PermitType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -17,7 +17,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @Audited
-public class Loto extends BasePermit {
+public class Loto extends BasePermitEntity {
     {
         this.setType(PermitType.LOTO);
     }

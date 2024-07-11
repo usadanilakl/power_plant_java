@@ -1,12 +1,9 @@
 package com.dk_power.power_plant_java;
 
 
-import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
-import com.dk_power.power_plant_java.sevice.ExcelService;
+import com.dk_power.power_plant_java.sevice.data_transfer.ExcelService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
-import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
-import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import com.dk_power.power_plant_java.util.DataGenerator;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
 import jakarta.transaction.Transactional;
@@ -42,13 +39,15 @@ private final EquipmentRepo equipmentRepo;
 
         System.err.println("=====================================================");
 /***************************TransferMethods*************************************************/
-        transferMethods.transferPids();
-        System.out.println(fileService.getAll().size() + " file upload completed");
+//        fileService.getAll().forEach(fileService::hardDelete);
+//        transferMethods.transferPids();
+//        System.out.println(fileService.getAll().size() + " file upload completed");
 
 //        transferMethods.transferPoints();
 //        System.out.println("pointRepo.getAll().size() = " + equipmentRepo.findAll().size());
 //
-//        transferMethods.transferPointsFromExcel();
+        //transferMethods.transferLotoPointsFromExcel();
+        transferMethods.transferHrsgValvesFromExcel();
  /********************************************************************************/
 
 //        fileService.getAll().forEach(FileObject::buildFileLink);

@@ -1,9 +1,8 @@
 package com.dk_power.power_plant_java.sevice.base_services;
 
-import com.dk_power.power_plant_java.entities.base_entities.BasePermit;
+import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
-import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import com.dk_power.power_plant_java.repository.base_repositories.PermitRepo;
 
 import java.time.LocalDateTime;
@@ -11,7 +10,7 @@ import java.util.List;
 
 public interface PermitService
         <
-        E extends BasePermit,
+        E extends BasePermitEntity,
         D,
         R extends PermitRepo<E>,
         M extends BaseMapper

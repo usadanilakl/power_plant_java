@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Data Transfer</title>
+</head>
+<body>
+<script src="Equipment.js"></script>
+<script src="pid_json.js"></script>
+<script>
+
+    // fetch("http://localhost:8082/points/create", {
+    //     method: 'POST',
+    //     headers: {
+    //         'X-CSRF-TOKEN': "2455qEqN2UIFbRGqDqLLLOofDG-kn0ezffiUZQIQmz3njrV077pAmXm9v3YoWnefao__FY96IVeQrHCeTJ6kVmBz_liDuYJF",
+    //         'Content-Type': 'application/json'
+    //     },
+    //     body:JSON.stringify(equipment)
+    // })
+    //     .then(()=>{
+    //         console.log("/success/");
+    //     })
+    //     .catch((error) => {
+    //         console.error('Error:', error);
+    //     })
+
+    // all.forEach(e=>{
+    //     let folder;
+    //     if(e.system.includes("Extra"))folder="Extra";
+    //     if(e.system.includes("John Cockerill"))folder="John Cockerill";
+    //     if(e.system.includes("Kiewit"))folder="Kiewit";
+    //     if(e.system.includes("Mitsubishi"))folder="Mitsubishi";
+    //     if(e.system.includes("HOLTEC"))folder="HOLTEC";
+    //     if(e.system.includes("US Water"))folder="US Water";
+    //     if(e.system.includes("Gas (Vendor)"))folder="Gas (Vendor)";
+    //     if(e.system.includes("Aux Boiler (CleaverBrooks)"))folder="Aux Boiler (CleaverBrooks)";
+    //     let obj = {
+    //         fileNumber:e.fileNumber,
+    //         pidNumber:e.pidNumber,
+    //         folder: "P&IDs/"+folder,
+    //         vendor:folder,
+    //         systems:e.system.filter(e=>typeof e === 'string'&&!e.includes("-")),
+    //         fileType:"PID",
+    //         extension: "pdf",
+    //         name:e.name
+    //     }
+
+    //         let line = document.createElement('p');
+    //         line.textContent = JSON.stringify(obj) + ",";
+    //         document.body.appendChild(line);
+    //         document.body.appendChild(document.createElement('br'));
+    //     })
+
+    equipment.forEach(e=>{
+
+        let obj = {
+            pid:e.pid.replace(".jpg",""),
+            lable:e.id,
+            vendor:e.vendor,
+            eqType:e.type,
+            originalPictureSize:JSON.stringify(e.originalSize).replace(/\"/g,"").replace(/\\/g,"").replace(/{/g,"").replace(/}/g,""),
+            coordinates:JSON.stringify(e.area).replace(/\"/g,"").replace(/\\/g,"").replace(/{/g,"").replace(/}/g,"")
+        }
+
+            let line = document.createElement('p');
+            line.textContent = JSON.stringify(obj) + ",";
+            document.body.appendChild(line);
+            document.body.appendChild(document.createElement('br'));
+        })
+        console.log(equipment.length)
+
+</script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="<http://www.thymeleaf.org>" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
+    <meta id="mode" th:content="${mode}"/>
+    <title>My Main Layout</title>
+
+    <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/my_styles/page.css">
+    <link rel="stylesheet" href="/my_styles/picture.css">
+    <link rel="stylesheet" href="/my_styles/menu.css">
+    <link rel="stylesheet" href="/my_styles/util.css">
+    <link rel="stylesheet" href="/my_styles/floating-menu.css">
+    <link rel="stylesheet" href="/my_styles/resize_style.css">
+    <link rel="stylesheet" href="/my_styles/infoWindow.css">
+    <link rel="stylesheet" href="/my_styles/NewWindowStyle.css">
+    <style>
+.areaHighlights{
+    border: 2px solid blue !important;
+    z-index: 300;
+}
+    </style>
+</head>
+<body>
+
+    <div id="all">
+
+        <div id="upper">
+            <div th:replace="~{partials/index::header}"></div>
+        </div>
+
+        <div id="middle">
+            <button id="pin-menu">Menu</button>
+            <div id="left">
+                <div id="items"></div>
+                <div id="menu-resize"></div>
+            </div>
+            <div id="right">
+                <div id="picture-container" class="view" data-file-id="">
+                    <img src="/1.jpg" usemap="#image_map" id="picture">
+                    <map name="image_map" id="map"></map>
+                </div>
+            </div>
+        </div>
+
+        <div id="lower" class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <ul >
+                        <li class="btn-list-in-line" id="fileUploadButton">Upload Files</li>
+                        <li class="btn-list-in-line" onclick="showNewUploads()">Edit New Uploads</li>
+                        <li class="btn-list-in-line"><a href="/file/upload">upload</a></li>
+                        <li class="btn-list-in-line" onclick="openNewWindow(getData)">New Window</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <div id="formContainer">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="infoWindowsContainer"></div>
+
+    </div>
+    <div id="popup" class="ignoreDk" style="z-index:1060;"></div>
+
+    <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <script>
+        let token = document.getElementById('token').getAttribute('content');
+    </script>
+    
+    <script src="/functions/util_functions/util.js"></script>
+    <script src="/functions/controllers/FileController.js"></script>
+    <script src="/functions/controllers/PointController.js"></script>
+    <script src="/functions/controllers/LotoController.js"></script>
+    <script src="/functions/service/PictureService.js"></script>
+    <script src="/functions/service/ResizerService.js"></script>
+    <script src="/functions/service/FileService.js"></script>
+    <script src="/functions/service/MasterService.js"></script>
+    <script src="/functions/service/MenuDropdownService.js"></script>
+    <script src="/functions/service/ModeService.js"></script>
+    <script src="/functions/service/InfoWindowService.js"></script>
+    <script src="/functions/service/PointService.js"></script>
+    <script src="/functions/service/LotoService.js"></script>
+    <script src="/functions/service/NewWindowService.js"></script>
+    
+    
+
+
+    <script>
+        let container = document.getElementById('items');
+        let picture = document.getElementById('picture');
+        let pictureContainer = document.getElementById('picture-container');
+        let all = document.getElementById('all');
+        let infoWindowsContainer = document.getElementById('infoWindowsContainer');
+        let mode = document.getElementById('mode').getAttribute('content');
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('fileUploadButton').addEventListener('click', async function() {
+           document.getElementById('formContainer').innerHTML = await getUploadFileForm();
+        });
+    });
+
+    getAllFiles()
+    .then(()=>getVendors())
+    .then(()=>getCategories())
+    .then(()=>{
+        console.log("Dropdown is ready to be built");
+        createDropdownItem(categories,container);
+        let arr = getFilesByVendor("Kiewit");
+        //console.log(JSON.stringify(arr[0]))
+        document.getElementById('infoFrameOld-LOTO-Points').appendChild(buildPointSearchField());
+
+        let left = document.getElementById('left');
+        left.appendChild(createModeButtons());
+
+        if(mode) setMode(mode);
+    });
+
+    pictureContainer.addEventListener('mousedown',(event)=>{
+        if(event.button===0){
+            event.preventDefault();
+            relocateHighlightsWithPicture(event);
+        }
+
+    
+});
+const zoom = zoomPicture.bind(null,picture);
+pictureContainer.addEventListener('wheel',zoom);
+document.addEventListener('mousedown',handleMouseDown);
+
+
+
+
+
+
+
+    </script>
+
+</body>
+</html>

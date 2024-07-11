@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.entities.loto;
 
 
-import com.dk_power.power_plant_java.entities.base_entities.BaseEntity;
+import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.enums.Status;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
@@ -16,7 +16,7 @@ import org.hibernate.envers.Audited;
 @Getter
 @Setter
 @Audited
-public class Lock extends BaseEntity {
+public class Lock extends BaseAuditEntity {
     private Integer number = 0;
     private Status status;
     @ManyToOne

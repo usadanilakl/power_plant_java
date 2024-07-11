@@ -31,5 +31,9 @@ public class HomeController {
     String getDev(){
         return "admin/dev";
     }
+    @GetMapping("/ex")
+    String test(){
+        return "experiment";
+    }
 
 }

@@ -3,7 +3,7 @@ package com.dk_power.power_plant_java.entities;
 
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.entities.base_entities.BaseEntity;
+import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -21,7 +21,7 @@ import java.util.List;
 @Entity
 @Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class FileObject extends BaseEntity {
+public class FileObject extends BaseAuditEntity {
 
     public FileObject(String name, Value fileType, String fileLink, Value sytem, String fileNumber, Value vendor) {
         this.name = name;

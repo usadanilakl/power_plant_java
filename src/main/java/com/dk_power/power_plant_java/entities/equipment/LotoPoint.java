@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.entities.equipment;
 
 
-import com.dk_power.power_plant_java.entities.base_entities.BaseEntity;
+import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -16,7 +16,7 @@ import java.util.List;
 @Getter
 @Setter
 @Audited
-public class LotoPoint extends BaseEntity {
+public class LotoPoint extends BaseAuditEntity {
     String unit;
     String tagged;
     String label;
