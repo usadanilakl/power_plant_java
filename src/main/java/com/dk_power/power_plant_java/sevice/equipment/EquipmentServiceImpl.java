@@ -82,7 +82,7 @@ public class EquipmentServiceImpl implements EquipmentService{
         FileObject file = null;
         List<FileObject> files = fileService.getIfNumberContains(transfer.getPid());
 
-        if(files!=null && files.size()==1)  file = files.getFirst();
+        if(files!=null && files.size()==1)  file = files.get(0);
         else if(files!=null&&files.size()>1){
             for (FileObject e : files) {
                 if( e.getVendor().getName().equals(transfer.getVendor().getName())) file = e;

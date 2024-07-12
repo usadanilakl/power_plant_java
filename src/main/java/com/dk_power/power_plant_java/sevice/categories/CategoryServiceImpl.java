@@ -58,7 +58,7 @@ public class CategoryServiceImpl implements CategoryService {
     public Category getCategoryByName(String name) {
         List<Category> cats = getByName(name);
         if(cats==null || cats.isEmpty()) return null;
-        else if(cats.size() == 1) return cats.getFirst();
+        else if(cats.size() == 1) return cats.get(0);
         else throw new RuntimeException("2 or more categories found with name: " + name );
     }
 
@@ -111,7 +111,7 @@ public class CategoryServiceImpl implements CategoryService {
             save(entity);
             return entity;
         }
-        if (entities.size() == 1) return entities.getFirst();
+        if (entities.size() == 1) return entities.get(0);
         else throw new RuntimeException();
     }
 

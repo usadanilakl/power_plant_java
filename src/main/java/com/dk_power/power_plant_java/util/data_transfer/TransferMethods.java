@@ -3,17 +3,15 @@ package com.dk_power.power_plant_java.util.data_transfer;
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.sevice.data_transfer.ExcelService;
-import com.dk_power.power_plant_java.sevice.data_transfer.HrsgValveService;
+import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
+import com.dk_power.power_plant_java.sevice.data_transfer.excel.impl.HrsgValveServiceImpl;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @Component
 @AllArgsConstructor
@@ -22,7 +20,7 @@ public class TransferMethods {
     private final EquipmentService pointService;
     private final ExcelService excelService;
     private final LotoPointService lotoPointService;
-    private final HrsgValveService hrsgValveService;
+    private final HrsgValveServiceImpl hrsgValveService;
     public void transferPids(){
         List<FileDto> files = new JsonToPojo<FileDto>().readProductsFromFile("/pids_json_mod.js", FileDto.class);
         System.out.println(files.size());

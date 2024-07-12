@@ -2,7 +2,7 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
-import com.dk_power.power_plant_java.sevice.data_transfer.ExcelService;
+import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
@@ -47,13 +47,13 @@ private final EquipmentRepo equipmentRepo;
 //        System.out.println("pointRepo.getAll().size() = " + equipmentRepo.findAll().size());
 //
         //transferMethods.transferLotoPointsFromExcel();
-        transferMethods.transferHrsgValvesFromExcel();
+        //transferMethods.transferHrsgValvesFromExcel();
  /********************************************************************************/
 
 //        fileService.getAll().forEach(FileObject::buildFileLink);
 //        System.out.println("fileService.getAll().get(33) = " + fileService.getAllDtos().get(48));
 
-//        dataGenerator.createUser();
+        //dataGenerator.createUser();
 
 
     }

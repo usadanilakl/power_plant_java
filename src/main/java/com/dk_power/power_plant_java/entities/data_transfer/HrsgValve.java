@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.data_transfer;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,17 +25,18 @@ public class HrsgValve extends BaseIdEntity {
     private String pipeMaterialIn;
     private String pipeMaterialOut;
     private String vlvMaterial;
-    private double mawpPsig;
-    private double designTempF;
-    private double mawpBarg;
-    private double designTempC;
+    private String mawpPsig;
+    private String designTempF;
+    private String mawpBarg;
+    private String designTempC;
     private String valveClassIn;
     private String valveClassOut;
     private String pipeEndIn;
     private String pipeEndOut;
+    @Column(length = 1000)
     private String remarks;
-    private double hydrotestPressurePsig;
-    private double hydrotestPressureBarg;
+    private String hydrotestPressurePsig;
+    private String hydrotestPressureBarg;
     private String hydrotestNumber;
     private String cavityOverPressureProtection;
     private String supplier;

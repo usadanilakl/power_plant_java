@@ -1,19 +1,16 @@
 package com.dk_power.power_plant_java.sevice.equipment;
 
 import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
-import com.dk_power.power_plant_java.entities.data_transfer.HrsgValve;
 import com.dk_power.power_plant_java.entities.equipment.LotoPoint;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
-import com.dk_power.power_plant_java.sevice.data_transfer.ExcelService;
-import lombok.AllArgsConstructor;
+import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -79,6 +76,7 @@ public class LotoPointServiceImpl implements LotoPointService{
             point.setSize(excelPoint.get("Size"));
             point.setElectricalCheckStatus(excelPoint.get("T"));
             point.setRedTagId(excelPoint.get("Rec ID"));
+            point.setRedTagId(excelPoint.get("Original ID"));
 
             lotoPoints.add(point);
             lotoPointRepo.save(point);
