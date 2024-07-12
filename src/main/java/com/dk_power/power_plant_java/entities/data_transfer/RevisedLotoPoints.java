@@ -12,8 +12,8 @@ import lombok.Setter;
 @NoArgsConstructor
 public class RevisedLotoPoints extends BaseIdEntity {
     private String unit;
+    private String Tag;
     private String tagged;
-    private String id;
     private String description;
     private String location;
     private String standard;

@@ -54,7 +54,7 @@ public class BypassServiceImpl implements BypassService {
     }
 
     @Override
-    public List<Bypass> transferExcelToPojo() {
+    public List<Bypass> transferExcelToDB() {
         List<Bypass> dataList = new ArrayList<>();
 
         for (Map<String, Object> map : excelService.getDataListObject()) {

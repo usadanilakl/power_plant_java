@@ -54,7 +54,7 @@ public class OldLotoPointServiceImpl implements OldLotoPointService {
     }
 
     @Override
-    public List<OldLotoPoint> transferExcelToPojo() {
+    public List<OldLotoPoint> transferExcelToDB() {
         List<OldLotoPoint> dataList = new ArrayList<>();
         List<Map<String, Object>> listOfMaps = excelService.getDataListObject();
 

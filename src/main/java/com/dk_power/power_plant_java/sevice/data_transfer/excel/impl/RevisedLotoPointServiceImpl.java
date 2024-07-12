@@ -54,7 +54,7 @@ public class RevisedLotoPointServiceImpl implements RevisedLotoPointService {
     }
 
     @Override
-    public List<RevisedLotoPoints> transferExcelToPojo() {
+    public List<RevisedLotoPoints> transferExcelToDB() {
         List<RevisedLotoPoints> dataList = new ArrayList<>();
 
         for (Map<String, String> map : excelService.getDataList()) {
@@ -62,7 +62,7 @@ public class RevisedLotoPointServiceImpl implements RevisedLotoPointService {
 
             data.setUnit(map.get("Unit"));
             data.setTagged(map.get("Tagged"));
-            data.setId(map.get("ID"));
+            data.setTag(map.get("ID"));
             data.setDescription(map.get("Description"));
             data.setLocation(map.get("Location"));
             data.setStandard(map.get("Standard"));

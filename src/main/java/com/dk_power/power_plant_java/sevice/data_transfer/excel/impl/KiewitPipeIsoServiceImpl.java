@@ -55,7 +55,7 @@ public class KiewitPipeIsoServiceImpl implements KiewitPipeIsoService {
     }
 
     @Override
-    public List<KiewitPipeIso> transferExcelToPojo() {
+    public List<KiewitPipeIso> transferExcelToDB() {
         List<KiewitPipeIso> dataList = new ArrayList<>();
 
         for (Map<String, String> map : excelService.getDataList()) {

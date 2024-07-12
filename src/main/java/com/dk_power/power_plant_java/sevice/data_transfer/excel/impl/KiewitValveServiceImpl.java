@@ -57,7 +57,7 @@ public class KiewitValveServiceImpl implements KiewitValveService {
     }
 
     @Override
-    public List<KiewitValve> transferExcelToPojo() {
+    public List<KiewitValve> transferExcelToDB() {
         List<KiewitValve> dataList = new ArrayList<>();
 
         for (Map<String, Object> map : excelService.getDataListObject()) {

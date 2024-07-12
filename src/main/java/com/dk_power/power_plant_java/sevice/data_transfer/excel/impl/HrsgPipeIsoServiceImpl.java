@@ -55,7 +55,7 @@ public class HrsgPipeIsoServiceImpl implements HrsgPipeIsoService {
     }
 
     @Override
-    public List<HrsgPipeIso> transferExcelToPojo() {
+    public List<HrsgPipeIso> transferExcelToDB() {
         List<HrsgPipeIso> dataList = new ArrayList<>();
 
         for (Map<String, Object> map : excelService.getDataListObject()) {

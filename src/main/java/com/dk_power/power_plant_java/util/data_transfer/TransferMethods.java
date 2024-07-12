@@ -43,18 +43,5 @@ public class TransferMethods {
         }
     }
 
-    public void transferLotoPointsFromExcel(){
-        System.out.println("Transfer Started.");
-        System.out.println(lotoPointService.getAll().size() + " items are in db");
-        lotoPointService.transferExcelToDb();
-        System.out.println("TransferCompleted.");
-        System.out.println(lotoPointService.getAll().size() + " items are in db");
-    }
-    public void transferHrsgValvesFromExcel(){
-        System.out.println("Transfer Started.");
-        System.out.println(hrsgValveService.getAll().size() + " items are in db");
-        hrsgValveService.transferExcelToDb();
-        System.out.println("TransferCompleted.");
-        System.out.println(hrsgValveService.getAll().size() + " items are in db");
-    }
+
 }

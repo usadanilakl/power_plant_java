@@ -53,7 +53,8 @@ public class LotoPointServiceImpl implements LotoPointService{
     public SessionFactory getSessionFactory() {
         return sessionFactory;
     }
-    public List<LotoPoint> transferExcelToDb() {
+    @Override
+    public List<LotoPoint> transferExcelToDB() {
         List<Map<String, String>> excelPoints = excelService.getDataList();
         List<LotoPoint> lotoPoints = new ArrayList<>();
 

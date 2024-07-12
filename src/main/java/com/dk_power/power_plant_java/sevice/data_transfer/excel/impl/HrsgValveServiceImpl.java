@@ -101,7 +101,7 @@ public class HrsgValveServiceImpl implements HrsgValveService {
     }
 
     @Override
-    public List<HrsgValve> transferExcelToPojo() {
+    public List<HrsgValve> transferExcelToDB() {
         List<HrsgValve> dataList = new ArrayList<>();
 
         for (Map<String, String> map : excelService.getDataList()) {

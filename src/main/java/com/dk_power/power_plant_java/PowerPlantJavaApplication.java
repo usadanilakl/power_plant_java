@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.sevice.data_transfer.TransferExcecutionServiceImpl;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
@@ -26,6 +27,7 @@ private final TransferMethods transferMethods;
 private final ExcelService excelService;
 private final DataGenerator dataGenerator;
 private final EquipmentRepo equipmentRepo;
+private final TransferExcecutionServiceImpl transferExcecutionService;
 
 
     public static void main(String[] args) {
@@ -54,6 +56,15 @@ private final EquipmentRepo equipmentRepo;
 //        System.out.println("fileService.getAll().get(33) = " + fileService.getAllDtos().get(48));
 
         //dataGenerator.createUser();
+
+//        transferExcecutionService.getHighlitsFromJson();
+//        transferExcecutionService.getHtFromJson();
+//        transferExcecutionService.getPidsFromJson();
+
+//        transferExcecutionService.transferBypassFromExcel();
+        transferExcecutionService.transferHrsgPipeFromExcel();
+
+
 
 
     }
