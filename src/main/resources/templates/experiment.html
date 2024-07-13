@@ -81,6 +81,7 @@
     <script src="/functions/controllers/FileController.js"></script>
     <script src="/functions/controllers/PointController.js"></script>
     <script src="/functions/controllers/LotoController.js"></script>
+    <script src="/functions/controllers/TransferDataController.js"></script>
     <script src="/functions/service/PictureService.js"></script>
     <script src="/functions/service/ResizerService.js"></script>
     <script src="/functions/service/FileService.js"></script>
@@ -123,6 +124,8 @@
         left.appendChild(createModeButtons());
 
         if(mode) setMode(mode);
+        getAllTransferDataFromDb();
+        // getTransferedDataFromMemory()
     });
 
     pictureContainer.addEventListener('mousedown',(event)=>{
@@ -136,6 +139,8 @@
 const zoom = zoomPicture.bind(null,picture);
 pictureContainer.addEventListener('wheel',zoom);
 document.addEventListener('mousedown',handleMouseDown);
+
+
 
 
 

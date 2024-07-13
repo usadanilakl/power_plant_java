@@ -61,32 +61,32 @@ public class KiewitPipeIsoServiceImpl implements KiewitPipeIsoService {
         for (Map<String, String> map : excelService.getDataList()) {
             KiewitPipeIso data = new KiewitPipeIso();
 
-            data.setLineNumber(Integer.valueOf(map.get("Line Number")));
+            data.setTagNumber((map.get("Line Number")));
             data.setDescription(map.get("Description"));
-            data.setSortableSize(Boolean.valueOf(map.get("Sortable Size")));
+            data.setSortableSize(map.get("Sortable Size"));
             data.setSystem(map.get("System"));
             data.setPipeSpec(map.get("Pipe Spec"));
             data.setWorkingFluid(map.get("Working Fluid"));
             data.setUnit(map.get("Unit"));
-            data.setDesignPressPsig(Double.valueOf(map.get("Design Press Psig")));
-            data.setDesignTempF(Double.valueOf(map.get("Design Temp F")));
+            data.setDesignPressPsig((map.get("Design Press Psig")));
+            data.setDesignTempF((map.get("Design Temp F")));
             data.setSchedule(map.get("Schedule"));
-            data.setMaxOpPressPsig(Double.valueOf(map.get("Max Op Press Psig")));
-            data.setNormOpPressPsig(Double.valueOf(map.get("Norm Op Press Psig")));
-            data.setMinOpPressPsig(Double.valueOf(map.get("Min Op Press Psig")));
-            data.setTestPressPsig(Double.valueOf(map.get("Test Press Psig")));
+            data.setMaxOpPressPsig((map.get("Max Op Press Psig")));
+            data.setNormOpPressPsig((map.get("Norm Op Press Psig")));
+            data.setMinOpPressPsig((map.get("Min Op Press Psig")));
+            data.setTestPressPsig((map.get("Test Press Psig")));
             data.setTestMedium(map.get("Test Medium"));
-            data.setMaxOpTempF(Double.valueOf(map.get("Max Op Temp F")));
-            data.setNormOpTempF(Double.valueOf(map.get("Norm Op Temp F")));
-            data.setMinOpTempF(Double.valueOf(map.get("Min Op Temp F")));
+            data.setMaxOpTempF((map.get("Max Op Temp F")));
+            data.setNormOpTempF((map.get("Norm Op Temp F")));
+            data.setMinOpTempF((map.get("Min Op Temp F")));
             data.setInsulationSpec(map.get("Insulation Spec"));
-            data.setInsulationThickness(Double.valueOf(map.get("Insulation Thickness")));
-            data.setHeatTraced(Boolean.valueOf(map.get("Heat Traced")));
-            data.setCathodicProtection(Boolean.valueOf(map.get("Cathodic Protection")));
+            data.setInsulationThickness((map.get("Insulation Thickness")));
+            data.setHeatTraced((map.get("Heat Traced")));
+            data.setCathodicProtection((map.get("Cathodic Protection")));
             data.setComments(map.get("Comments"));
             data.setPurchaseSpec(map.get("Purchase Spec"));
             data.setOriginalId(map.get("Original ID"));
-            data.setPAndId(map.get("P and ID"));
+            data.setPid(map.get("P and ID"));
 
             dataList.add(data);
             kiewitPipeIsoRepo.save(data);

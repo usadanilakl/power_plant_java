@@ -61,7 +61,7 @@ public class HrsgValveServiceImpl implements HrsgValveService {
         for (Map<String, Object> map : listOfMaps) {
             HrsgValve data = new HrsgValve();
 
-            data.setItemTag(map.containsKey("Item Tag") ? (String) map.get("Item Tag") : null);
+            data.setTagNumber(map.containsKey("Item Tag") ? (String) map.get("Item Tag") : null);
             data.setDesignation(map.containsKey("Designation") ? (String) map.get("Designation") : null);
             data.setInletPipeTag(map.containsKey("Inlet Pipe Tag") ? (String) map.get("Inlet Pipe Tag") : null);
             data.setOutletPipeTag(map.containsKey("Outlet Pipe Tag") ? (String) map.get("Outlet Pipe Tag") : null);
@@ -91,7 +91,7 @@ public class HrsgValveServiceImpl implements HrsgValveService {
             data.setJohnCockerillValveDrawingNumber(map.containsKey("John Cockerill Valve Drawing Number") ? (String) map.get("John Cockerill Valve Drawing Number") : null);
             data.setWbsNumber(map.containsKey("WBS Number") ? (String) map.get("WBS Number") : null);
             data.setOriginalId(map.containsKey("Original ID") ? (String) map.get("Original ID") : null);
-            data.setJohnCockerillPidNumber(map.containsKey("John Cockerill PID Number") ? (String) map.get("John Cockerill PID Number") : null);
+            data.setPid(map.containsKey("John Cockerill PID Number") ? (String) map.get("John Cockerill PID Number") : null);
 
             dataList.add(data);
             hrsgValveRepo.save(data);
@@ -107,7 +107,7 @@ public class HrsgValveServiceImpl implements HrsgValveService {
         for (Map<String, String> map : excelService.getDataList()) {
             HrsgValve data = new HrsgValve();
 
-            data.setItemTag( map.get("Item Tag"));
+            data.setTagNumber( map.get("Item Tag"));
             data.setDesignation( map.get("Designation"));
             data.setInletPipeTag( map.get("Inlet Pipe Tag"));
             data.setOutletPipeTag( map.get("Outlet Pipe Tag"));
@@ -137,7 +137,7 @@ public class HrsgValveServiceImpl implements HrsgValveService {
             data.setJohnCockerillValveDrawingNumber( map.get("John Cockerill Valve Drawing Number"));
             data.setWbsNumber( map.get("WBS Number"));
             data.setOriginalId( map.get("Original ID"));
-            data.setJohnCockerillPidNumber( map.get("John Cockerill PID Number"));
+            data.setPid( map.get("John Cockerill PID Number"));
 
             dataList.add(data);
             hrsgValveRepo.save(data);

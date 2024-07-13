@@ -12,7 +12,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class HrsgValve extends BaseIdEntity {
-    private String itemTag;
+    private String tagNumber;
     private String designation;
     private String inletPipeTag;
     private String outletPipeTag;
@@ -43,5 +43,5 @@ public class HrsgValve extends BaseIdEntity {
     private String johnCockerillValveDrawingNumber;
     private String wbsNumber;
     private String originalId;
-    private String johnCockerillPidNumber;
+    private String pid;
 }

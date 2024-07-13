@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <link rel="stylesheet" href="./static/bootstrap-5.3.3-dist/css/bootstrap.min.css">
 </head>
 <body>
+
+<script src="./static/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
 <script src="Equipment.js"></script>
 <script src="pid_json.js"></script>
 <script>
@@ -51,23 +54,23 @@
     //         document.body.appendChild(document.createElement('br'));
     //     })
 
-    equipment.forEach(e=>{
+    // equipment.forEach(e=>{
 
-        let obj = {
-            pid:e.pid.replace(".jpg",""),
-            lable:e.id,
-            vendor:e.vendor,
-            eqType:e.type,
-            originalPictureSize:JSON.stringify(e.originalSize).replace(/\"/g,"").replace(/\\/g,"").replace(/{/g,"").replace(/}/g,""),
-            coordinates:JSON.stringify(e.area).replace(/\"/g,"").replace(/\\/g,"").replace(/{/g,"").replace(/}/g,"")
-        }
+    //     let obj = {
+    //         pid:e.pid.replace(".jpg",""),
+    //         lable:e.id,
+    //         vendor:e.vendor,
+    //         eqType:e.type,
+    //         originalPictureSize:JSON.stringify(e.originalSize).replace(/\"/g,"").replace(/\\/g,"").replace(/{/g,"").replace(/}/g,""),
+    //         coordinates:JSON.stringify(e.area).replace(/\"/g,"").replace(/\\/g,"").replace(/{/g,"").replace(/}/g,"")
+    //     }
 
-            let line = document.createElement('p');
-            line.textContent = JSON.stringify(obj) + ",";
-            document.body.appendChild(line);
-            document.body.appendChild(document.createElement('br'));
-        })
-        console.log(equipment.length)
+    //         let line = document.createElement('p');
+    //         line.textContent = JSON.stringify(obj) + ",";
+    //         document.body.appendChild(line);
+    //         document.body.appendChild(document.createElement('br'));
+    //     })
+    //     console.log(equipment.length)
 
 </script>
 </body>

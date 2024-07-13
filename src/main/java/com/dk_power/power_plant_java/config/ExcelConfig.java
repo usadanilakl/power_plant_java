@@ -56,7 +56,7 @@ public class ExcelConfig {
     @Bean
     @Qualifier("KiewitPipe")
     public ExcelService beanForKiewitPipe(){
-        return new ExcelService(valvePath,kiewitPipesSheet);
+        return new ExcelService(pipePath,kiewitPipesSheet);
     }
 
     /****************************************************************************

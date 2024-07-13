@@ -63,11 +63,11 @@ public class OldLotoPointServiceImpl implements OldLotoPointService {
 
             data.setRecId((String) map.get("Rec ID"));
             data.setStatus((String) map.get("Status"));
-            data.setIsolationDeviceDescription((String) map.get("Isolation Deveice Description - 65 character limit"));
-            data.setIsolationDevicePnId((String) map.get("Isolation Device PNID - 35 character limit"));
-            data.setIsolationDeviceLocation((String) map.get("Isolation Deveice Location - 65 character limit"));
+            data.setIsoPos((String) map.get("Isolation Deveice Description - 65 character limit"));
+            data.setTagNumber((String) map.get("Isolation Device PNID - 35 character limit"));
+            data.setLocation((String) map.get("Isolation Deveice Location - 65 character limit"));
             data.setDefaultIsolatedPosition((String) map.get("Default Isolated Position - 30 character limit"));
-            data.setNormalPosition((String) map.get("Normal Position - 30 character limit"));
+            data.setNormalPos((String) map.get("Normal Position - 30 character limit"));
 
             dataList.add(data);
             oldLotoPointRepo.save(data);

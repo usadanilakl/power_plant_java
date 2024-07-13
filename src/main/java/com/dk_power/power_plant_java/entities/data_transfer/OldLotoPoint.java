@@ -13,9 +13,9 @@ import lombok.Setter;
 public class OldLotoPoint extends BaseIdEntity {
     private String recId;
     private String status;
-    private String isolationDeviceDescription;
-    private String isolationDevicePnId;
-    private String isolationDeviceLocation;
+    private String isoPos;
+    private String tagNumber;
+    private String location;
     private String defaultIsolatedPosition;
-    private String normalPosition;
+    private String normalPos;
 }

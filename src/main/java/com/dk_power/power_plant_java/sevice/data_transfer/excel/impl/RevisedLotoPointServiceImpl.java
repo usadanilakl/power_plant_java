@@ -62,7 +62,7 @@ public class RevisedLotoPointServiceImpl implements RevisedLotoPointService {
 
             data.setUnit(map.get("Unit"));
             data.setTagged(map.get("Tagged"));
-            data.setTag(map.get("ID"));
+            data.setTagNumber(map.get("ID"));
             data.setDescription(map.get("Description"));
             data.setLocation(map.get("Location"));
             data.setStandard(map.get("Standard"));
@@ -71,7 +71,7 @@ public class RevisedLotoPointServiceImpl implements RevisedLotoPointService {
             data.setExtraInfo(map.get("Extra Info"));
             data.setType(map.get("Type"));
             data.setSystem(map.get("System"));
-            data.setPAndID(map.get("P&ID"));
+            data.setPid(map.get("P&ID"));
             data.setNormalPos(map.get("Normal Pos"));
             data.setIsoPos(map.get("Iso Pos"));
             data.setFluid(map.get("Fluid"));

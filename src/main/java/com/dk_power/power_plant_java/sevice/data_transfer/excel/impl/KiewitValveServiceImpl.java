@@ -4,9 +4,7 @@ import com.dk_power.power_plant_java.dto.data_transfer.KiewitValveDto;
 import com.dk_power.power_plant_java.entities.data_transfer.KiewitValve;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.data_transfer.KiewitValveRepo;
-import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
-import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelTransferService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.KiewitValveService;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -65,8 +63,8 @@ public class KiewitValveServiceImpl implements KiewitValveService {
 
             data.setTagNumber((String) map.get("Tag Number"));
             data.setDescription((String) map.get("Description"));
-            data.setLineNumber((Integer) map.get("Line Number"));
-            data.setSizeIn((Double) map.get("Size (in)"));
+            data.setLineNumber((String) map.get("Line Number"));
+            data.setSizeIn((String) map.get("Size (in)"));
             data.setValveType((String) map.get("Valve Type"));
             data.setSystem((String) map.get("System"));
             data.setPipeSpec((String) map.get("Pipe Spec"));
@@ -74,15 +72,15 @@ public class KiewitValveServiceImpl implements KiewitValveService {
             data.setRating((String) map.get("Rating"));
             data.setEndPrep1((String) map.get("End Prep1"));
             data.setEndPrep2((String) map.get("End Prep2"));
-            data.setDesignPressPsig((Double) map.get("Design Press (psig)"));
-            data.setDesignTempF((Double) map.get("Design Temp (F)"));
+            data.setDesignPressPsig((String) map.get("Design Press (psig)"));
+            data.setDesignTempF((String) map.get("Design Temp (F)"));
             data.setValveSchedule((String) map.get("Valve Schedule"));
-            data.setInsulationThickness((Double) map.get("Insulation Thickness"));
-            data.setHeatTraced((Boolean) map.get("Heat Traced"));
+            data.setInsulationThickness((String) map.get("Insulation Thickness"));
+            data.setHeatTraced((String) map.get("Heat Traced"));
             data.setPurchaseSpec((String) map.get("Purchase Spec"));
             data.setComments((String) map.get("Comments"));
             data.setOriginalId((String) map.get("Original ID"));
-            data.setPAndId((String) map.get("P&ID"));
+            data.setPid((String) map.get("P&ID"));
 
             dataList.add(data);
             kiewitValveRepo.save(data);

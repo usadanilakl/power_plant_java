@@ -11,30 +11,30 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class KiewitPipeIso extends BaseIdEntity {
-    private int lineNumber;
+    private String tagNumber;
     private String description;
-    private boolean sortableSize;
+    private String sortableSize;
     private String system;
     private String pipeSpec;
     private String workingFluid;
     private String unit;
-    private double designPressPsig;
-    private double designTempF;
+    private String designPressPsig;
+    private String designTempF;
     private String schedule;
-    private double maxOpPressPsig;
-    private double normOpPressPsig;
-    private double minOpPressPsig;
-    private double testPressPsig;
+    private String maxOpPressPsig;
+    private String normOpPressPsig;
+    private String minOpPressPsig;
+    private String testPressPsig;
     private String testMedium;
-    private double maxOpTempF;
-    private double normOpTempF;
-    private double minOpTempF;
+    private String maxOpTempF;
+    private String normOpTempF;
+    private String minOpTempF;
     private String insulationSpec;
-    private double insulationThickness;
-    private boolean heatTraced;
-    private boolean cathodicProtection;
+    private String insulationThickness;
+    private String heatTraced;
+    private String cathodicProtection;
     private String comments;
     private String purchaseSpec;
     private String originalId;
-    private String pAndId;
+    private String pid;
 }

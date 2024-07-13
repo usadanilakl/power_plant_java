@@ -12,7 +12,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class RevisedLotoPoints extends BaseIdEntity {
     private String unit;
-    private String Tag;
+    private String tagNumber;
     private String tagged;
     private String description;
     private String location;
@@ -22,7 +22,7 @@ public class RevisedLotoPoints extends BaseIdEntity {
     private String extraInfo;
     private String type;
     private String system;
-    private String pAndID;
+    private String pid;
     private String normalPos;
     private String isoPos;
     private String fluid;

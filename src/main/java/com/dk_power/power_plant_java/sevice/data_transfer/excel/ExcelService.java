@@ -83,7 +83,7 @@ public class ExcelService {
                 for (Cell cell : row) {
                     if(cell == null) row.createCell(cellNum).setCellValue("no data");
                     int columnIndex = cell.getColumnIndex();
-                    if(cell.getCellType() != CellType.BLANK)
+                    if(cell.getCellType() != CellType.BLANK || cell.toString()!=null)
                         rowMap.put(columns.get(columnIndex), cell.toString());
                     else rowMap.put(columns.get(columnIndex), "no data");
                     cellNum++;

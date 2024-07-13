@@ -58,53 +58,56 @@ public class HrsgPipeIsoServiceImpl implements HrsgPipeIsoService {
     public List<HrsgPipeIso> transferExcelToDB() {
         List<HrsgPipeIso> dataList = new ArrayList<>();
 
-        for (Map<String, Object> map : excelService.getDataListObject()) {
+        for (Map<String, String> map : excelService.getDataList()) {
             HrsgPipeIso data = new HrsgPipeIso();
 
-            data.setRev((String) map.get("Rev"));
-            data.setItemTag((String) map.get("Item Tag"));
-            data.setLineTag((String) map.get("Line Tag"));
-            data.setDesignation((String) map.get("Designation"));
-            data.setPipeSpec((String) map.get("Pipe Spec"));
-            data.setNominalSizeInch((Double) map.get("Nominal size [Inch]"));
-            data.setOutsideDiameterInch((Double) map.get("Outside Diameter OD [inch]"));
-            data.setThicknessInch((Double) map.get("Thickness [inch]"));
-            data.setNominalSizeMm((Double) map.get("Nominal Size [mm]"));
-            data.setOutsideDiameterMm((Double) map.get("Outside Diameter OD [mm]"));
-            data.setThicknessMm((Double) map.get("Thickness [mm]"));
-            data.setSchedule((String) map.get("Schedule"));
-            data.setPipeMaterial((String) map.get("Pipe Material"));
-            data.setFluid((String) map.get("Fluid"));
-            data.setDesignPressPsig((Double) map.get("Design Press. [psig]"));
-            data.setDesignTempF((Double) map.get("Design Temp. [°F]"));
-            data.setWorkPressPsig((Double) map.get("Work. Press. [psig]"));
-            data.setWorkTempF((Double) map.get("Work. Temp. [°F]"));
-            data.setMaxWorkTempF((Double) map.get("Max working Temp. [°F]"));
-            data.setTempForInsulationF((Double) map.get("Temp. for insulation [°F]"));
-            data.setDesignPressBarg((Double) map.get("Design Press. [barg]"));
-            data.setDesignTempC((Double) map.get("Design Temp. [°C]"));
-            data.setWorkPressBarg((Double) map.get("Work. Press. [barg]"));
-            data.setWorkTempC((Double) map.get("Work. Temp. [°C]"));
-            data.setMaxWorkTempC((Double) map.get("Max working Temp. [°C]"));
-            data.setTempForInsulationC((Double) map.get("Temp. for insulation [°C]"));
-            data.setInsulationType((String) map.get("Insulation Type"));
-            data.setInsulationMaterial((String) map.get("Insulation Material"));
-            data.setInsulationThicknessInch((Double) map.get("Insulation Thickness [inch] [Note 1]"));
-            data.setInsulationThicknessMm((Double) map.get("Insulation Thickness [mm] [Note 1]"));
-            data.setHeatTracing((Boolean) map.get("Heat Tracing"));
-            data.setHydrotestCircuitNumber((String) map.get("Hydrotest Circuit Number (refer to 2080_89P02)"));
-            data.setHydrotestPressurePsig((Double) map.get("Hydrotest pressure [psig]"));
-            data.setHydrotestPressureBarg((Double) map.get("Hydrotest pressure [barg]"));
-            data.setIsometricNumber((String) map.get("Isometric Numb"));
-            data.setRemarks((String) map.get("Remarks"));
-            data.setPidNumber((String) map.get("PID Number"));
-            data.setLocationOnPid((String) map.get("Location on P&ID"));
-            data.setOriginalId((String) map.get("Original ID"));
+            data.setRev( map.get("Rev"));
+            data.setItemTagNumber( map.get("Item Tag"));
+            data.setTagNumber( map.get("Line Tag"));
+            data.setDesignation( map.get("Designation"));
+            data.setPipeSpec( map.get("Pipe Spec"));
+            data.setNominalSizeInch( map.get("Nominal size [Inch]"));
+            data.setOutsideDiameterInch( map.get("Outside Diameter OD [inch]"));
+            data.setThicknessInch( map.get("Thickness [inch]"));
+            data.setNominalSizeMm( map.get("Nominal Size [mm]"));
+            data.setOutsideDiameterMm( map.get("Outside Diameter OD [mm]"));
+            data.setThicknessMm( map.get("Thickness [mm]"));
+            data.setSchedule( map.get("Schedule"));
+            data.setPipeMaterial( map.get("Pipe Material"));
+            data.setFluid( map.get("Fluid"));
+            data.setDesignPressPsig( map.get("Design Press. [psig]"));
+            data.setDesignTempF( map.get("Design Temp. [°F]"));
+            data.setWorkPressPsig( map.get("Work. Press. [psig]"));
+            data.setWorkTempF( map.get("Work. Temp. [°F]"));
+            data.setMaxWorkTempF( map.get("Max working Temp. [°F]"));
+            data.setTempForInsulationF( map.get("Temp. for insulation [°F]"));
+            data.setDesignPressBarg( map.get("Design Press. [barg]"));
+            data.setDesignTempC( map.get("Design Temp. [°C]"));
+            data.setWorkPressBarg( map.get("Work. Press. [barg]"));
+            data.setWorkTempC( map.get("Work. Temp. [°C]"));
+            data.setMaxWorkTempC( map.get("Max working Temp. [°C]"));
+            data.setTempForInsulationC( map.get("Temp. for insulation [°C]"));
+            data.setInsulationType( map.get("Insulation Type"));
+            data.setInsulationMaterial( map.get("Insulation Material"));
+            data.setInsulationThicknessInch( map.get("Insulation Thickness [inch] [Note 1]") + " in");
+            data.setInsulationThicknessMm( map.get("Insulation Thickness [mm] [Note 1]"));
+            data.setHeatTracing(map.get("Heat Tracing"));
+            data.setHydrotestCircuitNumber( map.get("Hydrotest Circuit Number (refer to 2080_89P02)"));
+            data.setHydrotestPressurePsig( map.get("Hydrotest pressure [psig]"));
+            data.setHydrotestPressureBarg( map.get("Hydrotest pressure [barg]"));
+            data.setIsometricNumber( map.get("Isometric Numb"));
+            data.setRemarks( map.get("Remarks"));
+            data.setPid( map.get("PID Number"));
+            data.setLocationOnPid( map.get("Location on P&ID"));
+            data.setOriginalId( map.get("Original ID"));
+
+            String th = data.getThicknessInch() + "in";
+            data.setThicknessInch(th);
 
             dataList.add(data);
             hrsgPipeIsoRepo.save(data);
-        }
 
+        }
         return dataList;
     }
 }
