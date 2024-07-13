@@ -95,16 +95,16 @@ public class DataDistributionServiceImpl implements DataDistributionService{
     @Override
     public Map<String, Object> getAllTransfers() {
         Map<String,Object> all = new HashMap<>();
-        all.put("hvalves",getHrsgValves());
-        all.put("kvalves", getKiewitValves());
-        all.put("hpipes", getHrsgPipes());
-        all.put("kpipes", getKiewitPipes());
-        all.put("bypasses",getBypasses());
-        all.put("oldPoints", getOldLotoPoints());
-        all.put("points", getLotoPoints());
-        all.put("highlights", getHighlightsJson());
-        all.put("pids", getPidJsons());
-        all.put("ht", getHtJson());
+        all.put("HRSG Valves",getHrsgValves());
+        all.put("Kiewit Valves", getKiewitValves());
+        all.put("HRSG Pipes", getHrsgPipes());
+        all.put("Kiewit Pipes", getKiewitPipes());
+        all.put("Bypasses",getBypasses());
+        all.put("Old LOTO Points", getOldLotoPoints());
+        all.put("Revised LOTO Points", getLotoPoints());
+        all.put("Equipment", getHighlightsJson());
+        all.put("PIDs", getPidJsons());
+        all.put("Heat Trace", getHtJson());
         return all;
     }
 

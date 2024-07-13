@@ -31,8 +31,9 @@ public class PointController {
         return "/partials/point-info-form";
     }
 
-    @GetMapping("/")
-    public String showAllPoints(){
+    @GetMapping("/{type}")
+    public String showAllPoints(@PathVariable("type") String type, Model model){
+        model.addAttribute("type",type);
         return "/loto/show-all-points";
     }
 

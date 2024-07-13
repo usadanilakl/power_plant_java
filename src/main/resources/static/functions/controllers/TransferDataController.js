@@ -1,8 +1,12 @@
+// let transferDataTypes;
+getAllTransferDataFromDb();
+
 async function getTypesOfTransferedData(){
     const response = await fetch("/transfer-data/types");
     const data = await response.json();
-    console.log(data);
-
+    // transferDataTypes = data;
+    return data;
+    //console.log(data);
 }
 
 async function getAllTransferDataFromDb(){
@@ -10,7 +14,6 @@ async function getAllTransferDataFromDb(){
     console.log("receiving data:")
     const response = await fetch("/transfer-data/all");
     const data = await response.json();
-    console.log('hello' + JSON.stringify(data.hpipes[0]));
     const endTime = new Date().getTime();
     const duration = endTime - startTime;
     console.log('it took: '+ duration)
@@ -28,4 +31,115 @@ async function getAllTransferDataFromDb(){
 //     console.log('it took: '+ duration)
       
 // }
+
+async function getOldLotoPointsFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/old-loto-points");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    console.log(data.length)
+    return data;
+}
+
+async function getLotoPointsFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/loto-points");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    return data;
+}
+
+async function getPidsFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/pids");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    return data;
+}
+
+async function getHtFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/ht");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    return data;
+}
+
+async function getHighlightsFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/highlights");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    return data;
+}
+
+async function getHrsgValvesFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/hrsg-valves");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    return data;
+}
+
+async function getHrsgPipesFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/hrsg-pipes");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    return data;
+}
+
+async function getKiewitValvesFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/kiewit-valves");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    return data;
+}
+
+async function getKiewitPipesFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/kiewit-pipes");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    return data;
+}
+
+async function getBypassesFromDb(){
+    const startTime = new Date().getTime();
+    console.log("receiving data:")
+    const response = await fetch("/transfer-data/bypasses");
+    const data = await response.json();
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.log('it took: '+ duration)
+    return data;
+}
 
