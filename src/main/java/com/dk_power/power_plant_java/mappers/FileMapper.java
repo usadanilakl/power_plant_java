@@ -27,7 +27,7 @@ public class FileMapper implements BaseMapper{
         FileDto fileDto = new FileDto();
         fileDto.setFileLink(file.buildFileLink());
         fileDto.setFileNumber(file.getFileNumber());
-        if(file.getPoints()!=null)fileDto.setFilePoints(file.getPoints().stream().map(equipmentMapper::convertToDto).toList());
+        if(file.getPoints()!=null)fileDto.setPoints(file.getPoints().stream().map(equipmentMapper::convertToDto).toList());
         if(file.getPoints()!=null)fileDto.setPoints(file.getPoints().stream().map(equipmentMapper::convertToDto).toList());
         fileDto.setId(file.getId());
 //        if(file.getFileType()!=null)fileDto.setFileType(mapper.convert(file.getFileType(),new FileTypeDto()));

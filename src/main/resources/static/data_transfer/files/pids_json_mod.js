@@ -179,6 +179,9 @@
 {"fileNumber":"20023894-PD-034A.01.C2CR.01.01","pidNumber":"PD-034A","folder":"P&IDs/Kiewit","vendor":"Kiewit","systems":["HRH","Kiewit","U1","Steam","HRSG"],"fileType":"PID","extension":"pdf","name":" HRH Steam Header (HRSG)"},
 
 
+{"fileNumber":"20023894-PD-034B.01.C2CR.01.01","pidNumber":"PD-034B","folder":"P&IDs/Kiewit","vendor":"Kiewit","systems":["HRH","Kiewit","U2","Steam","HRSG"],"fileType":"PID","extension":"pdf","name":" HRH Steam Header (HRSG)"},
+
+
 {"fileNumber":"20023894-PD-035A.01.C2CR.01.01","pidNumber":"PD-035A","folder":"P&IDs/Kiewit","vendor":"Kiewit","systems":["HRH","Kiewit","U1","Steam","Steam Turbine"],"fileType":"PID","extension":"pdf","name":" HRH Steam Header (ST)"},
 
 

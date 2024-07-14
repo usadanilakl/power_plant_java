@@ -63,6 +63,7 @@
             <form th:object="${loto}" th:action="@{/lotos/create}" method="post" id="lotoForm">
                 <input type="hidden" th:field="*{temp}" th:value="${temp}" />
                 <input type="hidden" th:field="*{id}" th:value="${id}" />
+                <input type="hidden" th:field="*{createdBy}" th:value="${createdBy}" />
                 <div class="row">
                     <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">
                         <div class="form-inline">

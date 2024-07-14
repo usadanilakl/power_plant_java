@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="/my_styles/floating-menu.css">
     <link rel="stylesheet" href="/my_styles/resize_style.css">
     <link rel="stylesheet" href="/my_styles/infoWindow.css">
+    <link rel="stylesheet" href="/my_styles/NewWindowStyle.css">
     <style>
 .areaHighlights{
     border: 2px solid blue !important;
@@ -56,7 +57,8 @@
                     <ul >
                         <li class="btn-list-in-line" id="fileUploadButton">Upload Files</li>
                         <li class="btn-list-in-line" onclick="showNewUploads()">Edit New Uploads</li>
-                        <li class="btn-list-in-line"><a href="/file/upload">upload</a></li>
+                        <li class="btn-list-in-line"><a href="/file/upload">upload</a></li>                        
+                        <li class="btn-list-in-line" onclick="openNewWindow(getUploadFileForm)">New Window</li>
                     </ul>
                 </div>
             </div>
@@ -73,6 +75,7 @@
 
     </div>
     <div id="popup" class="ignoreDk" style="z-index:1060;"></div>
+
 
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -92,9 +95,13 @@
         let token = document.getElementById('token').getAttribute('content');
     </script>
     
+    <script src="/functions/util_functions/util.js"></script>
+
     <script src="/functions/controllers/FileController.js"></script>
     <script src="/functions/controllers/PointController.js"></script>
     <script src="/functions/controllers/LotoController.js"></script>
+    <script src="/functions/controllers/TransferDataController.js"></script>
+
     <script src="/functions/service/PictureService.js"></script>
     <script src="/functions/service/ResizerService.js"></script>
     <script src="/functions/service/FileService.js"></script>
@@ -104,7 +111,7 @@
     <script src="/functions/service/InfoWindowService.js"></script>
     <script src="/functions/service/PointService.js"></script>
     <script src="/functions/service/LotoService.js"></script>
-    <script src="/functions/util_functions/util.js"></script>
+    <script src="/functions/service/NewWindowService.js"></script>
     
 
 

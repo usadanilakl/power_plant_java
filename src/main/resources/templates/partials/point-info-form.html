@@ -3,7 +3,7 @@
     <form th:action="@{/point/update}" method="post" th:object="${point}">
         <div class="form-group">
             <label for="label">Point ID</label>
-            <input class="form-control" type="text" id="label" th:field="*{label}">
+            <input class="form-control" type="text" id="label" th:field="*{label}" th:value="${label}">
         </div>
 
         <div class="form-group">
@@ -41,10 +41,10 @@
             <input class="form-control" type="text" id="files" th:field="*{files}">
         </div>
 
-        <div class="form-group">
-            <label for="files">Related Files</label>
-            <input class="form-control" type="text" id="files" th:field="*{files}">
-        </div>
+<!--        <div class="form-group">-->
+<!--            <label for="files">Related Files</label>-->
+<!--            <input class="form-control" type="text" id="files" th:field="*{files}">-->
+<!--        </div>-->
 
         
         <input class="hide" type="text" id="coordinates" th:field="*{coordinates}">

@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.loto.Box;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
+import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.BoxService;
 import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import jakarta.transaction.Transactional;
@@ -128,10 +129,14 @@ public class LotoController {
         model.addAttribute("mode","lotoMode");
         return "testRunner";
     }
-
+private final LotoPointService lotoPointService;
     @PostMapping("/update-points")
     public String updatePoints(@RequestBody LotoDto loto){
         Loto tempLoto = lotoService.save(loto);
+        tempLoto.getLotoPoints().forEach(e->{
+            e.addLoto(tempLoto);
+            lotoPointService.save(e);
+        });
         return "redirect:/lotos/create";
     }
 

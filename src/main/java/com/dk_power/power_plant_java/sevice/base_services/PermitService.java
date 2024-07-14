@@ -32,8 +32,10 @@ public interface PermitService
         return save(permit);
     }
     default E getTempPermit(){
+        E entity = null;
         List<E> temps = getRepo().findByTempTrue();
-        E entity = temps.stream().filter(e -> e.getCreatedBy().equalsIgnoreCase(getLoggedInUserName())).findAny().orElse(getEntity());
+        if(temps!=null && temps.size()>0)entity = temps.stream().filter(e -> e.getCreatedBy().equalsIgnoreCase(getLoggedInUserName())).findAny().orElse(getEntity());
+        if(entity==null)entity=getEntity();
         if(entity.getId()==null){
             entity.setTemp(true);
             save(entity);

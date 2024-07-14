@@ -1,6 +1,7 @@
 async function getTempLoto(){
     let response = await fetch('/api-lotos/get-temp');
     let data = await response.json();
+    console.log(JSON.stringify(data))
     return data;
 }
 

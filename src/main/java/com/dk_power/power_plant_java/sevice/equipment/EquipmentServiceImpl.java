@@ -67,7 +67,9 @@ public class EquipmentServiceImpl implements EquipmentService{
                     point.getLabel()!=null &&
                     transfer.getLabel()!=null &&
                     point.getLabel().equals(transfer.getLabel())
-                ) transfer.setId(point.getId());
+                ) {
+                    transfer.setId(point.getId());
+                }
         }
 
         if(transfer.getVendor()!=null) transfer.setVendor(valueService.valueSetup("Vendor",transfer.getVendor().getName()) );
@@ -98,5 +100,10 @@ public class EquipmentServiceImpl implements EquipmentService{
     }
     public void saveAllForTransfer(List<Equipment> transfers){
         transfers.forEach(this::saveForTransfer);
+    }
+
+    @Override
+    public EquipmentDto convertToDto(Equipment entity) {
+        return getMapper().convertToDto(entity);
     }
 }

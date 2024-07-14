@@ -25,6 +25,7 @@ public class TransferExcecutionServiceImpl implements TransferExcecutionService 
     private final KiewitValveService kiewitValveService;
     private final LotoPointService lotoPointService;
     private final OldLotoPointService oldLotoPointService;
+    private final RevisedLotoPointService revisedLotoPointService;
     private final PidTransferService pidTransferService;
     private final HeatTraceTransferService heatTraceTransferService;
     private final HighlightTransferService highlightTransferService;
@@ -77,6 +78,16 @@ public class TransferExcecutionServiceImpl implements TransferExcecutionService 
         System.out.println("TransferCompleted.");
         System.out.println(oldLotoPointService.getAll().size() + " items are in db");
     }
+
+    @Override
+    public void transferRevisedLotoPointsFromExcel() {
+        System.out.println("Revised Loto Points Transfer Started.");
+        System.out.println(revisedLotoPointService.getAll().size() + " items are in db");
+        revisedLotoPointService.transferExcelToDB();
+        System.out.println("TransferCompleted.");
+        System.out.println(revisedLotoPointService.getAll().size() + " items are in db");
+    }
+
     @Value("${json.path.pids}")
     private String pidsJsonPath;// = "./src/main/resources/static/data_transfer/files/pids_json_mod.js";
     public List<PidJson> getPidsFromJson(){

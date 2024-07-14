@@ -26,9 +26,10 @@ public class BaseAuditEntity extends BaseIdEntity {
     @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime dateModified;
     @CreatedBy
-    @Column(updatable = false)
+    @Column(nullable = false)
     private String createdBy;
     @LastModifiedBy
+    @Column(nullable = false)
     private String modifiedBy;
 
 

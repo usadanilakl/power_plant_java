@@ -20,7 +20,7 @@ public abstract class BasePermitDto {
     private PermitType type;
     private Long docNum;
     private Status status;
-    //private String createdBy;
+    private String createdBy;
     private Long id;
     private Boolean temp;
     private Boolean deleted;

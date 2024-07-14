@@ -77,7 +77,14 @@ public class FileObject extends BaseAuditEntity {
         points.add(entity);
     }
 
-//    @JsonManagedReference
+    public String getFileLink() {
+        return fileLink;
+    }
+
+    public String getFileNumber() {
+        return fileNumber;
+    }
+    //    @JsonManagedReference
 //    @OneToMany(mappedBy="mainFile")
 //    private List<Point> filePoints;
 //    public void addFilePoint(Point entity) {

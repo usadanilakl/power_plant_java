@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -50,13 +51,12 @@ private final ValueService valueService;
 //        valueService.getAll().forEach(valueService::hardDelete);
 //        transferMethods.transferPids();
 //        System.out.println(fileService.getAll().size() + " file upload completed");
-
-
+//
+//
 //        transferMethods.transferPoints();
 //        System.out.println("pointRepo.getAll().size() = " + equipmentRepo.findAll().size());
 
-        //transferMethods.transferLotoPointsFromExcel();
-        //transferMethods.transferHrsgValvesFromExcel();
+
  /********************************************************************************/
 
 //        fileService.getAll().forEach(FileObject::buildFileLink);
@@ -77,8 +77,8 @@ private final ValueService valueService;
 //        transferExcecutionService.transferKiewitValveFromExcel();
 //        transferExcecutionService.transferOldLotoPointsFromExcel();
 //        transferExcecutionService.transferLotoPointsFromExcel();
-
-        //categoryService.getCategoryByName("Vendor").getValues().forEach(e-> System.out.println(e.getName()));
+//        transferExcecutionService.transferRevisedLotoPointsFromExcel();
+//        categoryService.save(new Category("System"));
 
 
     }

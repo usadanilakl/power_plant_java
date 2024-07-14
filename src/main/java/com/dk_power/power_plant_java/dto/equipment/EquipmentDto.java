@@ -25,6 +25,10 @@ public class EquipmentDto extends BaseDto {
     private String originalPictureSize;
     private String mainFile;
 
+    public void setMainFile(String mainFile) {
+        this.mainFile = mainFile;
+    }
+
     @Override
     public String toString() {
         return "PointDto{" +

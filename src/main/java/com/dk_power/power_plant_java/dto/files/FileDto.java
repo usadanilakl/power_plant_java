@@ -43,7 +43,7 @@ public class FileDto {
     private String fileNumber;
     private Value vendor;
     private List<EquipmentDto> points;
-    private List<EquipmentDto> filePoints;
+//    private List<EquipmentDto> filePoints;
 
     public void buildFileLink(){
         fileLink = baseLink+"/"+ folder +"/"+fileNumber;
@@ -85,7 +85,6 @@ public class FileDto {
                 ", fileNumber='" + fileNumber + '\'' +
                 ", vendor=" + vendor +
                 ", points=" + points +
-                ", filePoints=" + filePoints +
                 '}';
     }
 }

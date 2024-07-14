@@ -37,7 +37,7 @@ public class TransferMethods {
         for (Equipment point : points) {
             Equipment p = pointService.saveForTransfer(point);
             pointService.save(p);
-            System.out.println(++n +" " + point.getPid());
+            //System.out.println(++n +" " + point.getPid());
             //if(n==2) break;
 
         }

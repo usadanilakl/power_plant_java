@@ -17,7 +17,7 @@ function lotoModeControl(){
 
 function setUpLotoWindow(){
     let obj = revisedExcelPoints[0];
-    let ob = {label:obj.label,description:obj.description}
+    let ob = {label:obj.tagNumber,description:obj.description}
     lotoWindow = newInfoWindow("Loto");
     lotoWindow.appendChild(createTable(ob));
     lotoWindow.appendChild(updateLotoPointsButton());
@@ -79,7 +79,10 @@ function createRow(rowNum, obj){
 }
 
 function addObjectToArr(arr,obj){
-    if(!arr.find(e=>e.label===obj.label)) arr.push(obj);
+    if(!arr.find(e=>e.label===obj.label)){
+        arr.push(obj);
+        console.log("pushed: " + JSON.stringify(obj))
+    } 
 }
 
 function createRemoveButtons(){
@@ -95,7 +98,7 @@ function createRemoveButtons(){
         button.addEventListener('click',()=>{
             lotoPoints.filter(e=>!e.label.includes(label));
             tbody.innerHTML = "";
-            lotoPoints.forEach(e=>addPointToLotoWindow(e))
+            lotoPoints.forEach(e=>addPointToLotoWindow(e)) 
         });
         
     });
@@ -129,6 +132,7 @@ async function submitLotoPoints(){
     let loto = await getTempLoto();
     //Add selected poins to loto
     loto.lotoPoints = lotoPoints;
+    loto.box = null;
     //update loto on server (temp loto) and redirect to creating form
     updateTempLoto(loto,token);
     //console.log(JSON.stringify(loto))
