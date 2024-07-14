@@ -10,7 +10,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.List;
 
 public interface ValueService extends BaseCategoryValueService<Value, ValueDto, ValueRepo, UniversalMapper> {
-    Value saveIfNewAndBindWithCategory (String valName, String catName);
+    Value valueSetup(String cat, String val);
 
 }
 

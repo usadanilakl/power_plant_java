@@ -54,8 +54,8 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 file.transferTo(path.toFile());
 
                FileObject newFile = new FileObject();
-               newFile.setFileType(valueService.saveIfNewAndBindWithCategory(files.getType(),"File Type"));
-               newFile.setVendor(valueService.saveIfNewAndBindWithCategory(files.getVendor(),"Vendor"));
+               newFile.setFileType(valueService.valueSetup("File Type",files.getType()));
+               newFile.setVendor(valueService.valueSetup("Vendor",files.getVendor()));
                newFile.setFileNumber(name);
                newFile.setFolder(files.getFolder());
                newFile.setBaseLink(baseLink);

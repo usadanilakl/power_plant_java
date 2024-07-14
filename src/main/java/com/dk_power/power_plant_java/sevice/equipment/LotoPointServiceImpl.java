@@ -22,6 +22,7 @@ public class LotoPointServiceImpl implements LotoPointService{
     private final UniversalMapper universalMapper;
     private final ExcelService excelService;
 
+
     public LotoPointServiceImpl(LotoPointRepo lotoPointRepo, SessionFactory sessionFactory, UniversalMapper universalMapper, @Qualifier("LotoPoint") ExcelService excelService) {
         this.lotoPointRepo = lotoPointRepo;
         this.sessionFactory = sessionFactory;
@@ -84,4 +85,6 @@ public class LotoPointServiceImpl implements LotoPointService{
         }
         return lotoPoints;
     }
+
+
 }

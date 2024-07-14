@@ -5,7 +5,6 @@ import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
-import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -63,6 +62,13 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    public Category createIfNotFound(String name) {
+        Category entity = getCategoryByName(name);
+        if(entity==null) entity = new Category(name);
+        return entity;
+    }
+
+    @Override
     public Category getVendors() {
         return getCategoryByName("Vendor");
     }
@@ -88,43 +94,12 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public void saveValueIfNew(Value value, String category) {
-        Category cat = getCategoryByName(category);
-
-        if (!cat.containsValue(value.getName())) {
-            bindCategoryAndValue(cat,value);
-        }
-    }
-
-    @Override
-    public void saveValueIfNew(Value value) {
-        Category cat = value.getCategory();
-            bindCategoryAndValue(cat,value);
-    }
-
-    @Override
-    public Category createIfNotFound(String name) {
-        List<Category> entities = getByName(name);
-        if (entities == null || entities.isEmpty()) {
-            Category entity = getEntity();
-            entity.setName(name);
-            save(entity);
-            return entity;
-        }
-        if (entities.size() == 1) return entities.get(0);
-        else throw new RuntimeException();
-    }
-
-    @Override
     public Set<Value> getValuesOfCat(String category) {
         return getCategoryByName(category).getValues();
     }
 
-    @Override
-    public void bindCategoryAndValue(Category cat, Value val) {
-        cat.updateValues(val);
-        val.setCategory(cat);
-        save(cat);
-        valueService.save(val);
-    }
+
+
+
 }
+

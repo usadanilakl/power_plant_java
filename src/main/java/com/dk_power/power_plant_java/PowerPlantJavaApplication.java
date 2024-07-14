@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.sevice.categories.CategoryService;
+import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.TransferExcecutionServiceImpl;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
@@ -28,6 +30,8 @@ private final ExcelService excelService;
 private final DataGenerator dataGenerator;
 private final EquipmentRepo equipmentRepo;
 private final TransferExcecutionServiceImpl transferExcecutionService;
+private final CategoryService categoryService;
+private final ValueService valueService;
 
 
     public static void main(String[] args) {
@@ -42,11 +46,14 @@ private final TransferExcecutionServiceImpl transferExcecutionService;
         System.err.println("=====================================================");
 /***************************TransferMethods*************************************************/
 //        fileService.getAll().forEach(fileService::hardDelete);
+//        categoryService.getAll().forEach(categoryService::hardDelete);
+//        valueService.getAll().forEach(valueService::hardDelete);
 //        transferMethods.transferPids();
 //        System.out.println(fileService.getAll().size() + " file upload completed");
 
-//        transferMethods.transferPoints();
-//        System.out.println("pointRepo.getAll().size() = " + equipmentRepo.findAll().size());
+
+        transferMethods.transferPoints();
+        System.out.println("pointRepo.getAll().size() = " + equipmentRepo.findAll().size());
 //
         //transferMethods.transferLotoPointsFromExcel();
         //transferMethods.transferHrsgValvesFromExcel();
@@ -71,7 +78,7 @@ private final TransferExcecutionServiceImpl transferExcecutionService;
 //        transferExcecutionService.transferOldLotoPointsFromExcel();
 //        transferExcecutionService.transferLotoPointsFromExcel();
 
-
+        //categoryService.getCategoryByName("Vendor").getValues().forEach(e-> System.out.println(e.getName()));
 
 
     }

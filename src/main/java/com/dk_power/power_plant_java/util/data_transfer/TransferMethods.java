@@ -22,7 +22,7 @@ public class TransferMethods {
     private final LotoPointService lotoPointService;
     private final HrsgValveServiceImpl hrsgValveService;
     public void transferPids(){
-        List<FileDto> files = new JsonToPojo<FileDto>().readProductsFromFile("/pids_json_mod.js", FileDto.class);
+        List<FileDto> files = new JsonToPojo<FileDto>().readProductsFromFile("/static/data_transfer/files/pids_json_mod.js", FileDto.class);
         System.out.println(files.size());
 
         for (FileDto file : files) {
@@ -31,7 +31,7 @@ public class TransferMethods {
     }
 
     public void transferPoints(){
-        List<Equipment> points = new JsonToPojo<Equipment>().readProductsFromFile("/Equipment_mod.js", Equipment.class);
+        List<Equipment> points = new JsonToPojo<Equipment>().readProductsFromFile("/static/data_transfer/files/Equipment_mod.js", Equipment.class);
         System.out.println(points.size());
         int n = 0;
         for (Equipment point : points) {

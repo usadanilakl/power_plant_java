@@ -44,6 +44,7 @@
             overflow: scroll;
             border: 1px solid #000;
             width: 100%; /* Adjust width as needed */
+            z-index: 50;
         }
         table {
             width: 100%;
@@ -93,7 +94,13 @@
         else if(dataType==="RevisedLOTOPoints") arr = await getLotoPointsFromDb();
         else if(dataType==="PIDs") arr = await getPidsFromDb();
         else if(dataType==="OldLOTOPoints") arr = await getOldLotoPointsFromDb();
-        console.log(JSON.stringify(arr[0]))
+        else if(dataType==="HeatTrace") arr = await getHtFromDb();
+        else if(dataType==="Equipment") arr = await getHighlightsFromDb();
+        else if(dataType==="HRSGValves") arr = await getHrsgValvesFromDb();
+        else if(dataType==="HRSGPipes") arr = await getHrsgPipesFromDb();
+        else if(dataType==="KiewitValves") arr = await getKiewitValvesFromDb();
+        else if(dataType==="KiewitPipes") arr = await getKiewitPipesFromDb();
+        else if(dataType==="Bypasses") arr = await getBypassesFromDb();
         let table = createTableFromObjects(arr);
         tableContainer.innerHTML = "";
         tableContainer.appendChild(table);

@@ -75,8 +75,8 @@ public class EquipmentServiceImpl implements EquipmentService{
                 ) transfer.setId(point.getId());
         }
 
-        if(transfer.getVendor()!=null)valueService.saveIfNewAndBindWithCategory(transfer.getVendor().getName(), "Vendor");
-        if(transfer.getEqType()!=null)valueService.saveIfNewAndBindWithCategory(transfer.getEqType().getName(), "Equipment Type");
+        if(transfer.getVendor()!=null) transfer.setVendor(valueService.valueSetup("Vendor",transfer.getVendor().getName()) );
+        if(transfer.getEqType()!=null) transfer.setEqType(valueService.valueSetup("Equipment Type",transfer.getEqType().getName()) );
 
 
         FileObject file = null;

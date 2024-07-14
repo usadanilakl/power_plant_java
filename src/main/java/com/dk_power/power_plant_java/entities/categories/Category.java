@@ -17,30 +17,26 @@ import java.util.Set;
 @Audited
 @Entity
 public class Category extends BaseAuditEntity {
+    public Category(String name) {
+        this.name = name;
+    }
 
     private String name;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     private Set<Value> values = new HashSet<>();
-    public void updateValues(Value value){
-        if(values==null) values = new HashSet<>();
-        if(value!=null){
-            values.add(value);
-            if(value.getCategory()==null) value.setCategory(this);
-        }
 
-    }
-    public void updateValues(Set<Value> values1){
-        for (Value v : values1) {
-            updateValues(v);
-        }
-    }
-
-    public boolean containsValue(String vName){
-        if(values==null || values.isEmpty()) return false;
-        for (Value v : values) {
-            if(v.getName().toLowerCase().trim().contains(vName.toLowerCase().trim())) return true;
-        }
+    public boolean addValue(Value value){
+        if(!values.contains(value)) return values.add(value);
         return false;
     }
+    public Value getValueByName(String value){
+        if(values==null || values.isEmpty()) return null;
+        for (Value v : values) {
+            if(v.getName().trim().toLowerCase().equals(value.trim().toLowerCase())) return v;
+        }
+        return null;
+    }
+
+
 }

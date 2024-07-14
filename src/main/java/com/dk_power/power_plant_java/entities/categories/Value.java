@@ -14,19 +14,24 @@ import org.hibernate.envers.Audited;
 @Audited
 @Table(name = "val_table")
 public class Value extends BaseAuditEntity {
+    public Value(String name) {
+        this.name = name;
+    }
 
     private String name;
 
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;
-    public void setCategory(Category category){
-        if(category!=null){
-            this.category = category;
-            if(category.getValues()==null || category.getValues().isEmpty())
-                category.updateValues(this);
-        }
 
 
+
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Value other = (Value) obj;
+        return name != null ? name.equalsIgnoreCase(other.getName().trim()) : other.getName() == null;
     }
 }

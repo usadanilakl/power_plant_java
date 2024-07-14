@@ -7,15 +7,20 @@
   <style>
         .dropdown-menu {
             display: none;
+            z-index: 10000;
         }
         .dropdown-menu.show {
             display: block;
+            z-index: 100;
+        }
+        #header{
+          z-index: 100;
         }
   </style>
 </head>
 <body>
 
-<div th:fragment="header">
+<div th:fragment="header" id="header">
 
   <nav class="navbar navbar-expand-lg navbar-dark bg-black">
     <div th:if="${#authorization.expression('isAuthenticated()')}">

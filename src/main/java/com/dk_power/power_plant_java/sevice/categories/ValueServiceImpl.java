@@ -45,24 +45,20 @@ public class ValueServiceImpl implements ValueService{
     public SessionFactory getSessionFactory() {
         return sessionFactory;
     }
-
     @Override
-    public Value saveIfNewAndBindWithCategory (String valName, String catName) {
-        Category cat = categoryService.createIfNotFound(catName);
-        Set<Value> values = cat.getValues();
-        Value val = null;
-        if(!(values==null || values.isEmpty())){
-            for (Value v : values) {
-                if(cat.getName().trim().equalsIgnoreCase(catName.trim().toLowerCase())) val = v;
-            }
+    public Value valueSetup(String cat, String val){
+        Category category = categoryService.getCategoryByName(cat);
+        if(category==null) category = new Category(cat);
+        Value value = category.getValueByName(val);
+        if(value!=null) return value;
+        else{
+            value = new Value(val);
+            value.setCategory(category);
+            category.addValue(value);
+            save(value);
+            categoryService.save(category);
         }
-
-        if(val==null){
-            val = new Value();
-            val.setName(valName);
-        }
-        categoryService.bindCategoryAndValue(cat, val);
-        return val;
+        return value;
     }
 
 }

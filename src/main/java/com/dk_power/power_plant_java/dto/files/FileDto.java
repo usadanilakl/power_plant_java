@@ -40,12 +40,11 @@ public class FileDto {
 
     public void setFileType(String fileType) {
         Value value =new Value();
-        Category cat = new Category();
         value.setName(fileType);
-        cat.setName("File Type");
-        value.setCategory(cat);
-        cat.updateValues(value);
         this.fileType = value;
+    }
+    public void setFileType(Value fileType) {
+        this.fileType = fileType;
     }
 
     public void setRelatedSystems(List<String> systems) {
@@ -54,12 +53,11 @@ public class FileDto {
 
     public void setVendor(String vendor) {
         Value value =new Value();
-        Category cat = new Category();
         value.setName(vendor);
-        cat.setName("File Type");
-        value.setCategory(cat);
-        cat.updateValues(value);
         this.vendor = value;
+    }
+    public void setVendor(Value vendor) {
+        this.vendor = vendor;
     }
 
     @Override

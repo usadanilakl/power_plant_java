@@ -44,9 +44,10 @@ public class FileServiceImpl implements FileService{
     }
     public FileObject saveForTransfer(FileDto transfer){
         FileObject file = convertToEntity(transfer);
-        if(file.getFileType()!=null)categoryService.saveValueIfNew(transfer.getFileType());
-        if(file.getVendor()!=null)categoryService.saveValueIfNew(file.getVendor());
+        if(file.getFileType()!=null)file.setFileType(valueService.valueSetup("File Type",transfer.getFileType().getName()));
+        if(file.getVendor()!=null)file.setVendor(valueService.valueSetup("Vendor",file.getVendor().getName()));
         file.setBaseLink("uploads");
+        file.setExtension("jpg");
         file.buildFileLink();
         return save(file);
     }
