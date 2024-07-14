@@ -1,8 +1,8 @@
-package com.dk_power.power_plant_java.controller;
+package com.dk_power.power_plant_java.controller.file;
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileUploader;
-import com.dk_power.power_plant_java.entities.FileObject;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;

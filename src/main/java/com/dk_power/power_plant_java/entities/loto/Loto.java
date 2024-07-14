@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.entities.loto;
 
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
-import com.dk_power.power_plant_java.entities.equipment.LotoPoint;
 import com.dk_power.power_plant_java.enums.PermitType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;

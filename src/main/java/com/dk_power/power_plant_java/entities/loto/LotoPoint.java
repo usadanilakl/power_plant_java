@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.entities.equipment;
+package com.dk_power.power_plant_java.entities.loto;
 
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;

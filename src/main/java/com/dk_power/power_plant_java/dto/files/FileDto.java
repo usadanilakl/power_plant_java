@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -18,6 +19,16 @@ import java.util.List;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class FileDto {
+
+    public FileDto(Long id, String name, String fileLink, String relatedSystems, String fileNumber, Value vendor) {
+        this.id = id;
+        this.name = name;
+        this.fileLink = fileLink;
+        this.relatedSystems = relatedSystems;
+        this.fileNumber = fileNumber;
+        this.vendor = vendor;
+    }
+
     private Long id;
     private String name;
     @JsonIgnore

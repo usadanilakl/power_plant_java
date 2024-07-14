@@ -2,10 +2,9 @@ package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.entities.FileObject;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -23,8 +22,8 @@ public class EquipmentMapper implements BaseMapper{
         pointDto.setCoordinates(point.getCoordinates());
         pointDto.setId(point.getId());
         pointDto.setLabel(point.getLabel());
-        List<String> files = point.getFiles().stream().map(FileObject::getFileLink).toList();
-        pointDto.setFiles(files);
+//        List<String> files = point.getFiles().stream().map(FileObject::getFileLink).toList();
+//        pointDto.setFiles(files);
         pointDto.setMainFile(point.getMainFile().getFileLink());
         pointDto.setDescription(point.getDescription());
 //        if(point.getLocation()!=null)pointDto.setLocation(mapper.convert(point.getLocation(),new LocationDto()));

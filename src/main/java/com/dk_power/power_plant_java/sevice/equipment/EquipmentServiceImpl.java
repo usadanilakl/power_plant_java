@@ -1,17 +1,13 @@
 package com.dk_power.power_plant_java.sevice.equipment;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
-import com.dk_power.power_plant_java.entities.FileObject;
-import com.dk_power.power_plant_java.entities.categories.Category;
-import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.entities.equipment.LotoPoint;
+import com.dk_power.power_plant_java.mappers.EquipmentMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
-import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
-import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -19,14 +15,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Set;
 
 @Service
 @AllArgsConstructor
 @Transactional
 public class EquipmentServiceImpl implements EquipmentService{
     private final EquipmentRepo equipmentRepo;
-    private final UniversalMapper universalMapper;
+    private final EquipmentMapper equipmentMapper;
     private final SessionFactory sessionFactory;
     private final ValueService valueService;
     private final CategoryService categoryService;
@@ -50,8 +45,8 @@ public class EquipmentServiceImpl implements EquipmentService{
     }
 
     @Override
-    public UniversalMapper getMapper() {
-        return universalMapper;
+    public EquipmentMapper getMapper() {
+        return equipmentMapper;
     }
 
     @Override

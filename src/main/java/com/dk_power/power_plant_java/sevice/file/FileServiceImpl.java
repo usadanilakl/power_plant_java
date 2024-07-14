@@ -1,8 +1,7 @@
 package com.dk_power.power_plant_java.sevice.file;
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.entities.FileObject;
-import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
@@ -52,34 +51,33 @@ public class FileServiceImpl implements FileService{
         return save(file);
     }
 
+    @Override
+    public List<FileDto> getAllLight() {
+        return fileRepo.getAllLight();
+    }
+
     public List<FileObject> getIfNumberContains(String pid) {
         return fileRepo.findByFileNumberContaining(pid);
     }
-
     public FileObject getFileByNumber(String s) {
         return fileRepo.findByFileNumber(s);
     }
-
     @Override
     public FileObject getEntity() {
         return new FileObject();
     }
-
     @Override
     public FileDto getDto() {
         return new FileDto();
     }
-
     @Override
     public FileRepo getRepo() {
         return fileRepo;
     }
-
     @Override
     public FileMapper getMapper() {
         return fileMapper;
     }
-
     @Override
     public SessionFactory getSessionFactory() {
         return sessionFactory;

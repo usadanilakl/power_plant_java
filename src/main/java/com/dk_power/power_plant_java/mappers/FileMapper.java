@@ -1,7 +1,9 @@
 package com.dk_power.power_plant_java.mappers;
 
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.entities.FileObject;
+import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -11,11 +13,13 @@ public class FileMapper implements BaseMapper{
     private final UniversalMapper mapper;
     private final EquipmentMapper equipmentMapper;
     private final ModelMapper modelMapper;
+    private final ValueService valueService;
 
-    public FileMapper(UniversalMapper mapper, @Lazy EquipmentMapper equipmentMapper, ModelMapper modelMapper) {
+    public FileMapper(UniversalMapper mapper, @Lazy EquipmentMapper equipmentMapper, ModelMapper modelMapper, ValueService valueService) {
         this.mapper = mapper;
         this.equipmentMapper = equipmentMapper;
         this.modelMapper = modelMapper;
+        this.valueService = valueService;
     }
 
 
@@ -29,6 +33,9 @@ public class FileMapper implements BaseMapper{
 //        if(file.getFileType()!=null)fileDto.setFileType(mapper.convert(file.getFileType(),new FileTypeDto()));
 //        if(file.getSystem()!=null)fileDto.setSystem(mapper.convert(file.getSystem(),new SystemDto()));
 //        if(file.getVendor()!=null)fileDto.setVendor(mapper.convert(file.getVendor(),new VendorDto()));
+        if(file.getVendor()!=null)fileDto.setVendor(file.getVendor().getName());
+
+
         fileDto.setFileNumber(file.getFileNumber());
         fileDto.setBaseLink(file.getBaseLink());
         fileDto.setFolder(file.getFolder());

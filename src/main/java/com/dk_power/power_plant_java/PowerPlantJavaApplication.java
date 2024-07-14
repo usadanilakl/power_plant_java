@@ -52,9 +52,9 @@ private final ValueService valueService;
 //        System.out.println(fileService.getAll().size() + " file upload completed");
 
 
-        transferMethods.transferPoints();
-        System.out.println("pointRepo.getAll().size() = " + equipmentRepo.findAll().size());
-//
+//        transferMethods.transferPoints();
+//        System.out.println("pointRepo.getAll().size() = " + equipmentRepo.findAll().size());
+
         //transferMethods.transferLotoPointsFromExcel();
         //transferMethods.transferHrsgValvesFromExcel();
  /********************************************************************************/

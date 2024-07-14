@@ -39,7 +39,6 @@ async function getCategories(){
             else if(e.value.toLowerCase().includes("system"))return systems;
             else if(e.value.toLowerCase().includes("heat trace"))return heatTrace;
             else if(e.value.toLowerCase().includes("electrical"))return electircal;
-
         }
         e['dropdownFunc'] = function(event){createDropdownItem(this.getContent(e.value), event.target.parentNode);}.bind(e) 
     })
@@ -63,3 +62,16 @@ async function getVendors(){
     });
     return data;
 }
+
+
+/************************************************************
+ * 
+ * getVend
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * *********************************************************************** */
+

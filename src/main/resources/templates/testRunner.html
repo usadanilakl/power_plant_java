@@ -127,6 +127,7 @@
     .then(()=>getCategories())
     .then(()=>{
         console.log("Dropdown is ready to be built");
+        console.log(fileRepository.length + " files in array")
         createDropdownItem(categories,container);
         let arr = getFilesByVendor("Kiewit");
         //console.log(JSON.stringify(arr[0]))
@@ -136,6 +137,8 @@
         left.appendChild(createModeButtons());
 
         if(mode) setMode(mode);
+
+        
     });
 
     pictureContainer.addEventListener('mousedown',(event)=>{

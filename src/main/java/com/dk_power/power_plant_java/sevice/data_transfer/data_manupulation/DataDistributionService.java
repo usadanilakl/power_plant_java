@@ -4,7 +4,7 @@ import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
 import com.dk_power.power_plant_java.dto.data_transfer.HighilightsJson;
 import com.dk_power.power_plant_java.dto.data_transfer.PidJson;
 import com.dk_power.power_plant_java.entities.data_transfer.*;
-import com.dk_power.power_plant_java.entities.equipment.LotoPoint;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 
 import java.util.List;
 import java.util.Map;

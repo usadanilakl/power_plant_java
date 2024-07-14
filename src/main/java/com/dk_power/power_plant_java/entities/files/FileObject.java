@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.entities;
+package com.dk_power.power_plant_java.entities.files;
 
 
 import com.dk_power.power_plant_java.entities.categories.Value;

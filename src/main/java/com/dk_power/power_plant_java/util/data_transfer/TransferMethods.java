@@ -31,7 +31,7 @@ public class TransferMethods {
     }
 
     public void transferPoints(){
-        List<Equipment> points = new JsonToPojo<Equipment>().readProductsFromFile("/static/data_transfer/files/Equipment_mod.js", Equipment.class);
+        List<Equipment> points = new JsonToPojo<Equipment>().readProductsFromFile("/Equipment_mod.js", Equipment.class);
         System.out.println(points.size());
         int n = 0;
         for (Equipment point : points) {

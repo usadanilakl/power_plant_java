@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.dto.equipment;
 
-import com.dk_power.power_plant_java.dto.plant.*;
+
+import com.dk_power.power_plant_java.dto.BaseDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

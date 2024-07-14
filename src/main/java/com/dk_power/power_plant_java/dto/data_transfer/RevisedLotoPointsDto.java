@@ -14,7 +14,7 @@ import lombok.Setter;
 public class RevisedLotoPointsDto extends BaseDto {
     private String unit;
     private String tagged;
-    private String id;
+    private String label;
     private String description;
     private String location;
     private String standard;

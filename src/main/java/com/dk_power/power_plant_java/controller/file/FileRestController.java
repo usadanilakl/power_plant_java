@@ -1,7 +1,7 @@
-package com.dk_power.power_plant_java.controller.rest;
+package com.dk_power.power_plant_java.controller.file;
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.entities.FileObject;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.enums.SortingGroup;
 import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
@@ -31,13 +31,16 @@ public class FileRestController {
     private final FileUploaderService fileUploaderService;
 
     @GetMapping("/get-files")
-    public List<FileDto> getFiles() {
-        return fileService.getAllDtos("jpg");
+    public ResponseEntity<List<FileDto>> getFiles() {
+//        return ResponseEntity.ok(fileService.getAllLight()) ;
+        return ResponseEntity.ok(fileService.getAllDtos("jpg")) ;
     }
+
     @GetMapping("/get-vendors")
     public List<String> getAllVendors(){
         return fileService.getVendors();
     }
+
     @GetMapping("/get-categories")
     public List<Map<String,String>> getAllCategories(){
         return SortingGroup.getValues();

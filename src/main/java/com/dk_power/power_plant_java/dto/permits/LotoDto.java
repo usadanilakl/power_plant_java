@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.dto.permits;
 
-import com.dk_power.power_plant_java.entities.equipment.LotoPoint;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import lombok.Getter;
 import lombok.Setter;
 

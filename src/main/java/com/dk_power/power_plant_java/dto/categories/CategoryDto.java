@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.dto.categories;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,5 +16,6 @@ public class CategoryDto {
 
     private Long id;
     private String name;
+    @JsonIgnore
     private List<ValueDto> values = new ArrayList<>();
 }
