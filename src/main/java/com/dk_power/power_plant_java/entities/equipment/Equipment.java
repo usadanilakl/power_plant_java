@@ -15,6 +15,7 @@ import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @NoArgsConstructor
@@ -61,5 +62,24 @@ public class Equipment extends BaseAuditEntity {
     public void setMainFile(FileObject file){
         addFile(file);
         this.mainFile = file;
+    }
+
+    @Override
+    public String toString() {
+        return "Equipment{" +
+                "name='" + name + '\'' +
+                ", tagNumber='" + tagNumber + '\'' +
+                ", description='" + description + '\'' +
+                ", specificLocation='" + specificLocation + '\'' +
+                ", eqType=" + eqType.getName() +
+                ", files=" + files.stream().map(FileObject::getFileNumber).toList() +
+                ", vendor=" + vendor.getName() +
+//                ", location=" + location.getName() +
+//                ", system=" + system.getName() +
+                ", coordinates='" + coordinates + '\'' +
+                ", originalPictureSize='" + originalPictureSize + '\'' +
+                ", mainFile=" + mainFile.getFileNumber() +
+                ", pid='" + pid + '\'' +
+                '}';
     }
 }

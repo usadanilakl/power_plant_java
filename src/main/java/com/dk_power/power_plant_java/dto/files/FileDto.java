@@ -21,14 +21,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class FileDto {
 
-    public FileDto(Long id, String name, String fileLink, String relatedSystems, String fileNumber, ValueDto vendor) {
-        this.id = id;
-        this.name = name;
-        this.fileLink = fileLink;
-        this.relatedSystems = relatedSystems;
-        this.fileNumber = fileNumber;
-        this.vendor = vendor;
-    }
+
 
     private Long id;
     private String name;

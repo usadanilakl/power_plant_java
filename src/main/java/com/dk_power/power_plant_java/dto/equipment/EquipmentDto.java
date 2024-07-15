@@ -28,17 +28,18 @@ public class EquipmentDto extends BaseDto {
 
     @Override
     public String toString() {
-        return "PointDto{" +
-                "label='" + tagNumber + '\'' +
+        return "EquipmentDto{" +
+                "tagNumber='" + tagNumber + '\'' +
                 ", description='" + description + '\'' +
-                ", eqType=" + eqType +
+                ", specificLocation='" + specificLocation + '\'' +
+                ", eqType=" + eqType.getName() +
                 ", files=" + files +
-                ", vendor=" + vendor +
-                ", location=" + location +
-                ", system=" + system +
+                ", vendor=" + vendor.getName() +
+//                ", location=" + location.getName() +
+//                ", system=" + system.getName() +
                 ", coordinates='" + coordinates + '\'' +
                 ", originalPictureSize='" + originalPictureSize + '\'' +
-                ", mainFile=" + mainFile +
+                ", mainFile='" + mainFile + '\'' +
                 '}';
     }
 }

@@ -52,7 +52,7 @@ public class FileServiceImpl implements FileService{
     }
 
     @Override
-    public List<FileDto> getAllLight() {
+    public List<FileObject> getAllLight() {
         return fileRepo.getAllLight();
     }
 

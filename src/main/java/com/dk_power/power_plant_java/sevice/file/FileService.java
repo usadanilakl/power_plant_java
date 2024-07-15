@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface FileService extends CrudService<FileObject, FileDto, FileRepo, FileMapper> {
     FileObject saveForTransfer(FileDto transfer);
-    List<FileDto> getAllLight();
+    List<FileObject> getAllLight();
 
 
     FileObject getByFileLink(String fileLink);

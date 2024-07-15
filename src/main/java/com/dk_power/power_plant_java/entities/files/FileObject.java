@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.files;
 
 
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
@@ -28,6 +29,14 @@ public class FileObject extends BaseAuditEntity {
         this.fileType = fileType;
         this.fileLink = fileLink;
         this.system = sytem;
+        this.fileNumber = fileNumber;
+        this.vendor = vendor;
+    }
+    public FileObject(Long id, String name, String fileLink, String relatedSystems, String fileNumber, Value vendor) {
+        setId(id);
+        this.name = name;
+        this.fileLink = fileLink;
+        this.relatedSystems = relatedSystems;
         this.fileNumber = fileNumber;
         this.vendor = vendor;
     }
