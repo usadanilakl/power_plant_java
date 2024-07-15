@@ -38,5 +38,11 @@ public class Category extends BaseAuditEntity {
         return null;
     }
 
-
+    @Override
+    public String toString() {
+        return "Category{" +
+                "name='" + name + '\'' +
+                ", id=" + getId() +
+                '}';
+    }
 }

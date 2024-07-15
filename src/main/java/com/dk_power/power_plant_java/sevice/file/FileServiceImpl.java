@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.file;
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
@@ -52,7 +53,7 @@ public class FileServiceImpl implements FileService{
     }
 
     @Override
-    public List<FileObject> getAllLight() {
+    public List<FileDtoLight> getAllLight() {
         return fileRepo.getAllLight();
     }
 
@@ -86,5 +87,15 @@ public class FileServiceImpl implements FileService{
     @Override
     public SessionFactory getSessionFactory() {
         return sessionFactory;
+    }
+
+    @Override
+    public FileObject convertToEntity(FileDto dto) {
+        return fileMapper.convertToEntity(dto);
+    }
+
+    @Override
+    public FileDto convertToDto(FileObject entity) {
+        return fileMapper.convertToDto(entity);
     }
 }

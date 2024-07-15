@@ -11,4 +11,13 @@ public class ValueDto {
     private Long id;
     private String name;
     private CategoryDto group;
+
+    @Override
+    public String toString() {
+        return "ValueDto{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", group=" + group +
+                '}';
+    }
 }

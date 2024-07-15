@@ -1,9 +1,12 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.dto.categories.CategoryDto;
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
@@ -15,6 +18,7 @@ import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
+import com.dk_power.power_plant_java.util.Util;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -52,6 +56,23 @@ private final LotoPointService lotoPointService;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+
+//        Value kiewit = valueService.getEntityById(4156L);
+//        Value gas = valueService.getEntityById(4160L);
+//        for (FileObject f : fileService.getAll()) {
+//            if(f.getVendor()==null){
+//                if(f.getFileNumber().equals("94.03.48.125-PD-0001-001_ELECTRIC_HEATER")){
+//                    f.setVendor(gas);
+//                }else{
+//                    f.setVendor(kiewit);
+//                }
+//            }
+//            f.setExtension("jpg");
+//            f.buildFileLink();
+//            f.buildFolder();
+//            fileService.save(f);
+//
+//        }
 /***************************TransferMethods*************************************************/
 //        fileService.getAll().forEach(fileService::hardDelete);
 //        categoryService.getAll().forEach(categoryService::hardDelete);
@@ -107,16 +128,35 @@ private final LotoPointService lotoPointService;
 //            lotoPointService.save(e);
 //        });
 
-        System.out.println(equipmentService.getAll().get(0).getTagNumber() + " tag number");
-        Equipment equipment = equipmentService.getAll().get(0);
-        EquipmentDto dtoById = equipmentService.getDtoById(equipment.getId());
-        System.out.println(dtoById.toString());
-        System.out.println(equipmentService.getEntityById(dtoById.getId()).toString());
+        /******************************************************************************************
+         * Testing mappers
+         ******************************************************************************************/
 
-        FileObject fileObject = fileService.getAll().get(0);
-        FileDto fdtoById = fileService.getDtoById(fileObject.getId());
-        System.out.println(fdtoById.toString());
-        System.out.println(fileService.getEntityById(fdtoById.getId()).toString());
+//        System.out.println(equipmentService.getAll().get(0).getTagNumber() + " tag number");
+//        Equipment equipment = equipmentService.getAll().get(0);
+//        EquipmentDto dtoById = equipmentService.getDtoById(equipment.getId());
+//        System.out.println(dtoById.toString());
+//        System.out.println(equipmentService.getEntityById(dtoById.getId()).toString());
+//
+//        FileObject fileObject = fileService.getAll().get(120);
+//        FileDto fdtoById = fileService.getDtoById(fileObject.getId());
+//        System.out.println(fdtoById.toString());
+//        System.out.println(fileService.getEntityById(fdtoById.getId()).toString());
+
+//        Value v = valueService.getAll().get(0);
+//        Category c = v.getCategory();
+
+//        ValueDto vdto = valueService.getDtoById(v.getId());
+//        CategoryDto cdto = categoryService.getDtoById(c.getId());
+
+
+//        System.out.println(vdto);
+//        System.out.println("++++++++++++++++++++++");
+//        System.out.println(valueService.getEntityById(vdto.getId()));
+//        System.out.println("++++++++++++++++++++++");
+//        System.out.println(cdto);
+//        System.out.println("++++++++++++++++++++++");
+//        System.out.println(categoryService.getEntityById(cdto.getId()));
 
     }
 }

@@ -68,18 +68,18 @@ public class Equipment extends BaseAuditEntity {
     public String toString() {
         return "Equipment{" +
                 "name='" + name + '\'' +
-                ", tagNumber='" + tagNumber + '\'' +
-                ", description='" + description + '\'' +
-                ", specificLocation='" + specificLocation + '\'' +
-                ", eqType=" + eqType.getName() +
-                ", files=" + files.stream().map(FileObject::getFileNumber).toList() +
-                ", vendor=" + vendor.getName() +
-//                ", location=" + location.getName() +
-//                ", system=" + system.getName() +
-                ", coordinates='" + coordinates + '\'' +
-                ", originalPictureSize='" + originalPictureSize + '\'' +
-                ", mainFile=" + mainFile.getFileNumber() +
-                ", pid='" + pid + '\'' +
+                ",\n tagNumber='" + tagNumber + '\'' +
+                ",\n description='" + description + '\'' +
+                ",\n specificLocation='" + specificLocation + '\'' +
+                ",\n eqType=" + eqType+
+                ",\n files=" + files.size()+
+                ",\n vendor=" + vendor+
+                ",\n location=" + location +
+                ",\n system=" + system +
+                ",\n coordinates='" + coordinates + '\'' +
+                ",\n originalPictureSize='" + originalPictureSize + '\'' +
+                ",\n mainFile=" + mainFile.getFileNumber() +
+                ",\n pid='" + pid + '\'' +
                 '}';
     }
 }

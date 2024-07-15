@@ -34,4 +34,13 @@ public class Value extends BaseAuditEntity {
         Value other = (Value) obj;
         return name != null ? name.equalsIgnoreCase(other.getName().trim()) : other.getName() == null;
     }
+
+    @Override
+    public String toString() {
+        return "Value{" +
+                "id='" + getId() + '\'' +
+                "name='" + name + '\'' +
+                ", category=" + category +
+                '}';
+    }
 }

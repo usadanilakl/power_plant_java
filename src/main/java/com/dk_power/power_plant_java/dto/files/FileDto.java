@@ -41,8 +41,13 @@ public class FileDto {
     private String objectType;
     private String extension;
 
-    public void buildFileLink(){
-        fileLink = baseLink+"/"+ folder +"/"+fileNumber;
+    public String buildFileLink(){
+        fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+extension;
+        return fileLink;
+    }
+    public String buildFolder(){
+        folder = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName();
+        return folder;
     }
 
     public void setFileType(String fileType) {
@@ -73,17 +78,17 @@ public class FileDto {
     @Override
     public String toString() {
         return "FileDto{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", file=" + file +
-                ", fileType=" + fileType +
-                ", fileLink='" + fileLink + '\'' +
-                ", baseLink='" + baseLink + '\'' +
-                ", groupFolder='" + folder + '\'' +
-                ", system=" + system +
-                ", fileNumber='" + fileNumber + '\'' +
-                ", vendor=" + vendor +
-                ", points=" + points +
-                '}';
+                "\n\tid=" + id +
+                "\n\tname='" + name + '\'' +
+                "\n\tfileType=" + fileType +
+                "\n\tfileLink='" + fileLink + '\'' +
+                "\n\tbaseLink='" + baseLink + '\'' +
+                "\n\tfolder='" + folder + '\'' +
+                "\n\tsystem=" + system +
+                "\n\tfileNumber='" + fileNumber + '\'' +
+                "\n\tvendor=" + vendor +
+                "\n\tpoints=" + points +
+                "\n\tobjectType=" + objectType +
+                "\n}";
     }
 }

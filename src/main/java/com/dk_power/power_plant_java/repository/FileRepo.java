@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.repository;
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -18,8 +19,8 @@ public interface FileRepo extends BaseRepository<FileObject> {
     FileObject findByName(String name);
     FileObject findByFileNumber(String number);
     List<FileObject> findByFileNumberContaining(String text);
-    @Query("SELECT new FileObject(e.id,e.name,e.fileLink,e.relatedSystems,e.fileNumber,e.vendor)FROM FileObject e")
-    List<FileObject> getAllLight();
+    @Query("SELECT new com.dk_power.power_plant_java.dto.files.FileDtoLight(e.id,e.name,e.fileLink,e.relatedSystems,e.fileNumber,e.vendor)FROM FileObject e")
+    List<FileDtoLight> getAllLight();
 
     FileObject findByFileLink(String fileLink);
 }

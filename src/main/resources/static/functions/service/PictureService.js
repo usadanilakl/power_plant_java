@@ -35,9 +35,10 @@ function setAreas(areas){
             pointEditModeControl();
             fillPointInfoWindow(e.id);
             selectedArea = e;
-            let points = getExcelPointsByLabel(e.label);
+            let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
             positionInfoWindowsInline();
+            updatePointInfo();
         })
         //doubleClick(shape, e);
         map.appendChild(area);
@@ -430,6 +431,21 @@ function pointEditModeControl(){
     }
 }
 
+function convertCoordsToOriginalSize() {
+    let coords = getObjCoordOnPicture(selectedArea);
+    let w = parseInt(selectedArea.originalPictureSize.width);
+    let k = w / picture.offsetWidth;
+
+    return coords.map(e => {
+        return {
+            x: e.x * k,
+            y: e.y * k,
+            w: e.w * k,
+            h: e.h * k
+        };
+    });
+}
+
 function getNewAreaCoordinates(area){
     let coords = getObjCoordOnPicture(area);
     return {
@@ -441,4 +457,12 @@ function getNewAreaCoordinates(area){
         height:y
     }
 
+}
+
+function updatePointInfo(){
+    let newCoords = convertCoordsToOriginalSize();
+    let pointForm = document.getElementById('point-info-form');
+    let form = new FormData(pointForm);
+    form.set('coords',JSON.stringify(updatedCoords));
+    console.log(form);
 }

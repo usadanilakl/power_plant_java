@@ -29,17 +29,17 @@ public class EquipmentDto extends BaseDto {
     @Override
     public String toString() {
         return "EquipmentDto{" +
-                "tagNumber='" + tagNumber + '\'' +
-                ", description='" + description + '\'' +
-                ", specificLocation='" + specificLocation + '\'' +
-                ", eqType=" + eqType.getName() +
-                ", files=" + files +
-                ", vendor=" + vendor.getName() +
-//                ", location=" + location.getName() +
-//                ", system=" + system.getName() +
-                ", coordinates='" + coordinates + '\'' +
-                ", originalPictureSize='" + originalPictureSize + '\'' +
-                ", mainFile='" + mainFile + '\'' +
+                "\ntagNumber='" + tagNumber + '\'' +
+                ",\n description='" + description + '\'' +
+                ",\n specificLocation='" + specificLocation + '\'' +
+                ",\n eqType=" + eqType+
+                ",\n files=" + files +
+                ",\n vendor=" + vendor+
+                ",\n location=" + location+
+                ",\n system=" + system +
+                ",\n coordinates='" + coordinates + '\'' +
+                ",\n originalPictureSize='" + originalPictureSize + '\'' +
+                ",\n mainFile='" + mainFile + '\'' +
                 '}';
     }
 }

@@ -18,4 +18,12 @@ public class CategoryDto {
     private String name;
     @JsonIgnore
     private List<ValueDto> values = new ArrayList<>();
+
+    @Override
+    public String toString() {
+        return "CategoryDto{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                '}';
+    }
 }

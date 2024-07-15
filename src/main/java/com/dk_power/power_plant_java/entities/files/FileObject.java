@@ -32,14 +32,7 @@ public class FileObject extends BaseAuditEntity {
         this.fileNumber = fileNumber;
         this.vendor = vendor;
     }
-    public FileObject(Long id, String name, String fileLink, String relatedSystems, String fileNumber, Value vendor) {
-        setId(id);
-        this.name = name;
-        this.fileLink = fileLink;
-        this.relatedSystems = relatedSystems;
-        this.fileNumber = fileNumber;
-        this.vendor = vendor;
-    }
+
     public FileObject(String name) {
         this.name = name;
     }
@@ -71,12 +64,16 @@ public class FileObject extends BaseAuditEntity {
     private List<String> systems;
 
     public String buildFileLink(){
-        fileLink = baseLink+"/"+extension+"/"+folder+"/"+fileNumber+"."+extension;
+        fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+extension;
         return fileLink;
+    }
+    public String buildFolder(){
+        folder = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName();
+        return folder;
     }
     public String buildFileLink(String extention){
         this.extension = extention;
-        fileLink = baseLink+"/"+extension+"/"+folder+"/"+fileNumber+"."+extension;
+        fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+extension;
         return fileLink;
     }
 
@@ -106,17 +103,18 @@ public class FileObject extends BaseAuditEntity {
     public String toString() {
         return "FileObject{" +
                 "name='" + name + '\'' +
-                ", fileType=" + fileType +
-                ", fileLink='" + fileLink + '\'' +
-                ", baseLink='" + baseLink + '\'' +
-                ", folder='" + folder + '\'' +
-                ", system=" + system +
-                ", relatedSystems='" + relatedSystems + '\'' +
-                ", fileNumber='" + fileNumber + '\'' +
-                ", extension='" + extension + '\'' +
-                ", vendor=" + vendor +
-                ", points=" + points +
-                ", systems=" + systems +
+                ",\n\t fileType=" + fileType +
+                ",\n\t fileLink='" + fileLink + '\'' +
+                ",\n\t baseLink='" + baseLink + '\'' +
+                ",\n\t folder='" + folder + '\'' +
+                ",\n\t system=" + system +
+                ",\n\t relatedSystems='" + relatedSystems + '\'' +
+                ",\n\t fileNumber='" + fileNumber + '\'' +
+                ",\n\t extension='" + extension + '\'' +
+                ",\n\t vendor=" + vendor +
+                ",\n\t points=" + points +
+                ",\n\t systems=" + systems +
+                "\n\tobject type=" + getObjectType() +
                 '}';
     }
 }
