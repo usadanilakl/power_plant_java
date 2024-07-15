@@ -38,6 +38,8 @@ public class FileDto {
     private ValueDto vendor;
     private List<EquipmentDto> points;
 //    private List<EquipmentDto> filePoints;
+    private String objectType;
+    private String extension;
 
     public void buildFileLink(){
         fileLink = baseLink+"/"+ folder +"/"+fileNumber;
@@ -48,9 +50,15 @@ public class FileDto {
         value.setName(fileType);
         this.fileType = value;
     }
+    public void setFileType(ValueDto fileType) {
+        this.fileType = fileType;
+    }
 
     public void setRelatedSystems(List<String> systems) {
         this.relatedSystems = systems.toString();
+    }
+    public void setRelatedSystems(String systems) {
+        this.relatedSystems = systems;
     }
 
     public void setVendor(String vendor) {

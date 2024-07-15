@@ -100,4 +100,23 @@ public class FileObject extends BaseAuditEntity {
 //        if(filePoints==null) filePoints = new ArrayList<>();
 //        filePoints.add(entity);
 //    }
+
+
+    @Override
+    public String toString() {
+        return "FileObject{" +
+                "name='" + name + '\'' +
+                ", fileType=" + fileType +
+                ", fileLink='" + fileLink + '\'' +
+                ", baseLink='" + baseLink + '\'' +
+                ", folder='" + folder + '\'' +
+                ", system=" + system +
+                ", relatedSystems='" + relatedSystems + '\'' +
+                ", fileNumber='" + fileNumber + '\'' +
+                ", extension='" + extension + '\'' +
+                ", vendor=" + vendor +
+                ", points=" + points +
+                ", systems=" + systems +
+                '}';
+    }
 }

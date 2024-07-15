@@ -112,11 +112,11 @@ private final LotoPointService lotoPointService;
         EquipmentDto dtoById = equipmentService.getDtoById(equipment.getId());
         System.out.println(dtoById.toString());
         System.out.println(equipmentService.getEntityById(dtoById.getId()).toString());
-//
-//        FileObject fileObject = fileService.getAll().get(0);
-//        FileDto dtoById = fileService.getDtoById(fileObject.getId());
-//        System.out.println(dtoById.toString());
-//        System.out.println(fileService.getEntityById(dtoById.getId()).toString());
+
+        FileObject fileObject = fileService.getAll().get(0);
+        FileDto fdtoById = fileService.getDtoById(fileObject.getId());
+        System.out.println(fdtoById.toString());
+        System.out.println(fileService.getEntityById(fdtoById.getId()).toString());
 
     }
 }
