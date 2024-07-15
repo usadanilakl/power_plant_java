@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.dto.files;
 
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
@@ -20,7 +21,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class FileDto {
 
-    public FileDto(Long id, String name, String fileLink, String relatedSystems, String fileNumber, Value vendor) {
+    public FileDto(Long id, String name, String fileLink, String relatedSystems, String fileNumber, ValueDto vendor) {
         this.id = id;
         this.name = name;
         this.fileLink = fileLink;
@@ -33,15 +34,15 @@ public class FileDto {
     private String name;
     @JsonIgnore
     private MultipartFile file;
-    private Value fileType;
+    private ValueDto fileType;
     private String fileLink;
     private String baseLink;
     private String folder;
-    private Value system;
+    private ValueDto system;
     @JsonProperty("systems")
     private String relatedSystems;
     private String fileNumber;
-    private Value vendor;
+    private ValueDto vendor;
     private List<EquipmentDto> points;
 //    private List<EquipmentDto> filePoints;
 
@@ -50,12 +51,9 @@ public class FileDto {
     }
 
     public void setFileType(String fileType) {
-        Value value =new Value();
+        ValueDto value =new ValueDto();
         value.setName(fileType);
         this.fileType = value;
-    }
-    public void setFileType(Value fileType) {
-        this.fileType = fileType;
     }
 
     public void setRelatedSystems(List<String> systems) {
@@ -63,11 +61,11 @@ public class FileDto {
     }
 
     public void setVendor(String vendor) {
-        Value value =new Value();
+        ValueDto value =new ValueDto();
         value.setName(vendor);
         this.vendor = value;
     }
-    public void setVendor(Value vendor) {
+    public void setVendor(ValueDto vendor) {
         this.vendor = vendor;
     }
 

@@ -4,7 +4,6 @@ import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.mappers.EquipmentMapper;
-import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -64,9 +63,9 @@ public class EquipmentServiceImpl implements EquipmentService{
         for (Equipment point : points) {
             if(
                     point != null &&
-                    point.getLabel()!=null &&
-                    transfer.getLabel()!=null &&
-                    point.getLabel().equals(transfer.getLabel())
+                    point.getTagNumber()!=null &&
+                    transfer.getTagNumber()!=null &&
+                    point.getTagNumber().equals(transfer.getTagNumber())
                 ) {
                     transfer.setId(point.getId());
                 }

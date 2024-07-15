@@ -13,4 +13,5 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List<FileDto> getAllLight();
 
 
+    FileObject getByFileLink(String fileLink);
 }

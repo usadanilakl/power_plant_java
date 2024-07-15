@@ -1,12 +1,18 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.TransferExcecutionServiceImpl;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
+import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
+import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
@@ -29,10 +35,11 @@ private final FileService fileService;
 private final TransferMethods transferMethods;
 private final ExcelService excelService;
 private final DataGenerator dataGenerator;
-private final EquipmentRepo equipmentRepo;
+private final EquipmentService equipmentService;
 private final TransferExcecutionServiceImpl transferExcecutionService;
 private final CategoryService categoryService;
 private final ValueService valueService;
+private final LotoPointService lotoPointService;
 
 
     public static void main(String[] args) {
@@ -79,7 +86,37 @@ private final ValueService valueService;
 //        transferExcecutionService.transferLotoPointsFromExcel();
 //        transferExcecutionService.transferRevisedLotoPointsFromExcel();
 //        categoryService.save(new Category("System"));
+        /**************************************************************
+         *Adding objectType field to existing tables
+         *************************************************************/
+//        fileService.getAll().forEach(e->{
+//            e.setObjectType(e.getClass().getSimpleName());
+//            e.setModifiedBy("Danil Klokov");
+//            fileService.save(e);
+//        });
 
+//        equipmentService.getAll().forEach(e->{
+//            e.setObjectType(e.getClass().getSimpleName());
+//            e.setModifiedBy("Danil Klokov");
+//            equipmentService.save(e);
+//        });
+
+//        lotoPointService.getAll().forEach(e->{
+//            e.setObjectType(e.getClass().getSimpleName());
+//            e.setModifiedBy("Danil Klokov");
+//            lotoPointService.save(e);
+//        });
+
+        System.out.println(equipmentService.getAll().get(0).getTagNumber() + " tag number");
+        Equipment equipment = equipmentService.getAll().get(0);
+        EquipmentDto dtoById = equipmentService.getDtoById(equipment.getId());
+        System.out.println(dtoById.toString());
+        System.out.println(equipmentService.getEntityById(dtoById.getId()).toString());
+//
+//        FileObject fileObject = fileService.getAll().get(0);
+//        FileDto dtoById = fileService.getDtoById(fileObject.getId());
+//        System.out.println(dtoById.toString());
+//        System.out.println(fileService.getEntityById(dtoById.getId()).toString());
 
     }
 }

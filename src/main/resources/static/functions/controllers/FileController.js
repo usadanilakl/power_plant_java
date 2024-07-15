@@ -63,15 +63,7 @@ async function getVendors(){
     return data;
 }
 
-
-/************************************************************
- * 
- * getVend
- * 
- * 
- * 
- * 
- * 
- * 
- * *********************************************************************** */
+async function editFile(itemId){
+    console.log('/edit/itmem/'+itemId);
+}
 

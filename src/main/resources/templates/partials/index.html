@@ -101,7 +101,7 @@
     function dropdownAction(){
         var menu = document.querySelector('.dropdown-menu');
         menu.classList.toggle('show');
-        buildTableDropdown();
+        if(menu.children.length===0)buildTableDropdown();
     }
 
     async function buildTableDropdown(){
@@ -118,7 +118,7 @@
     }
 
     // dropdownButton.addEventListener('click', ()=>{
-    //   dropdownAction
+    //   dropdownAction 
     // })
     
 

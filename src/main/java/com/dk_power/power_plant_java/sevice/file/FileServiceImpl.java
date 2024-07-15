@@ -56,6 +56,11 @@ public class FileServiceImpl implements FileService{
         return fileRepo.getAllLight();
     }
 
+    @Override
+    public FileObject getByFileLink(String fileLink) {
+        return fileRepo.findByFileLink(fileLink);
+    }
+
     public List<FileObject> getIfNumberContains(String pid) {
         return fileRepo.findByFileNumberContaining(pid);
     }

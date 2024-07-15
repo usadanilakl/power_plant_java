@@ -20,4 +20,6 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileObject> findByFileNumberContaining(String text);
     @Query("SELECT new com.dk_power.power_plant_java.dto.files.FileDto(e.id,e.name,e.fileLink,e.relatedSystems,e.fileNumber,e.vendor)FROM FileObject e")
     List<FileDto> getAllLight();
+
+    FileObject findByFileLink(String fileLink);
 }

@@ -1,8 +1,7 @@
 package com.dk_power.power_plant_java.entities.base_entities;
 
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
+import com.dk_power.power_plant_java.enums.ObjectType;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,4 +23,10 @@ public class BaseIdEntity {
     private Boolean deleted = false;
     private String name;
     private String createdBy;
+//    @Enumerated(EnumType.STRING)
+//    private ObjectType objectType;
+    private String objectType;
+    {
+        objectType = this.getClass().getSimpleName();
+    }
 }

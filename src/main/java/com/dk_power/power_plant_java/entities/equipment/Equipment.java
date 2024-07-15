@@ -24,7 +24,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Equipment extends BaseAuditEntity {
     private String name;
-    private String label;
+    private String tagNumber;
     private String description;
     private String specificLocation;
     @ManyToOne

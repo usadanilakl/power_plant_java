@@ -2,7 +2,7 @@ package com.dk_power.power_plant_java.dto.equipment;
 
 
 import com.dk_power.power_plant_java.dto.BaseDto;
-import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,26 +13,23 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 public class EquipmentDto extends BaseDto {
-    private String label;
+    private String tagNumber;
     private String description;
     private String specificLocation;
-    private Value eqType;
+    private ValueDto eqType;
     private List<String> files;
-    private Value vendor;
-    private Value location;
-    private Value system;
+    private ValueDto vendor;
+    private ValueDto location;
+    private ValueDto system;
     private String coordinates;
     private String originalPictureSize;
     private String mainFile;
 
-    public void setMainFile(String mainFile) {
-        this.mainFile = mainFile;
-    }
 
     @Override
     public String toString() {
         return "PointDto{" +
-                "label='" + label + '\'' +
+                "label='" + tagNumber + '\'' +
                 ", description='" + description + '\'' +
                 ", eqType=" + eqType +
                 ", files=" + files +

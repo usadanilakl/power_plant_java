@@ -48,6 +48,12 @@ function createTableFromObjects(objects){
             createRows(tbody);
         });
     }
+    if(objects[0].id){ //this will create an extra column for edit buttons if id is present
+        let crud = document.createElement('th');
+        header.appendChild(crud);
+        crud.textContent = 'Edit/Delete'; 
+    }
+
 
     createRows(tbody);
 
@@ -75,6 +81,26 @@ function createRows(tbody){
             td.textContent = el[key];
             row.appendChild(td);
         }
+
+        if(el.id){
+            let crud = document.createElement('td');
+            row.appendChild(crud);
+            crud.classList.add('crud');
+
+            let editButton = document.createElement('button')
+            crud.appendChild(editButton);
+            editButton.classList.add('crudButton');
+            editButton.textContent = "Edit";
+
+            // let editItem = function(){console.log(JSON.stringify(el) )}
+            let editItem = function(){editFile(el.id)}
+            editButton.addEventListener('click',editItem);  
+        }
+        
+
+        
+        
+
     })
 }
 
