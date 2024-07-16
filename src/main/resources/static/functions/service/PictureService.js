@@ -38,7 +38,7 @@ function setAreas(areas){
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
             positionInfoWindowsInline();
-            updatePointInfo();
+            //  console.log(event.target)
         })
         //doubleClick(shape, e);
         map.appendChild(area);
@@ -134,6 +134,8 @@ function createHighlight(area){
     highlight.addEventListener('mousedown',(event)=>{
         event.preventDefault();
         relocateHighlightsWithPicture(event); 
+        
+        updatePointInfo(event);
     })
 
     const zoom = zoomPicture.bind(null,picture);
@@ -431,38 +433,55 @@ function pointEditModeControl(){
     }
 }
 
-function convertCoordsToOriginalSize() {
-    let coords = getObjCoordOnPicture(selectedArea);
-    let w = parseInt(selectedArea.originalPictureSize.width);
-    let k = w / picture.offsetWidth;
-
-    return coords.map(e => {
-        return {
-            x: e.x * k,
-            y: e.y * k,
-            w: e.w * k,
-            h: e.h * k
+function convertCoordsToOriginalSize(event) {
+    let coords = getObjCoordOnPicture(event.target);
+    let extractedWidth = selectedArea.originalPictureSize.split(",")[0].trim();
+    let w = parseInt(extractedWidth.substring(extractedWidth.indexOf(":")+1));
+    let k = w / picture.clientWidth;
+    // let k = w / picture.offsetWidth;
+    let result =  {
+            x: coords.x * k,
+            y: coords.y * k,
+            w: coords.w * k,
+            h: coords.h * k
         };
-    });
+    return result;
 }
 
 function getNewAreaCoordinates(area){
     let coords = getObjCoordOnPicture(area);
     return {
-        startX:x,
-        startY:y,
-        endX:x+w,
-        endY:y+h,
-        width:w,
-        height:y
+        startX:coords.x,
+        startY:coords.y,
+        endX:coords.x+w,
+        endY:coords.y+h,
+        width:coords.w,
+        height:coords.y
     }
 
 }
 
-function updatePointInfo(){
-    let newCoords = convertCoordsToOriginalSize();
+function formatCoordsForServer(coords){
+    return {
+        startX:coords.x,
+        startY:coords.y,
+        endX:coords.x + coords.w,
+        endY:coords.y + coords.h,
+        width:coords.w,
+        height:coords.y
+    }
+}
+
+function updatePointInfo(event){
+    let newCoords = convertCoordsToOriginalSize(event);
+    let updatedCoords = formatCoordsForServer(newCoords);
     let pointForm = document.getElementById('point-info-form');
-    let form = new FormData(pointForm);
-    form.set('coords',JSON.stringify(updatedCoords));
-    console.log(form);
+    let coordsInputField = document.getElementById("coordinates");
+    let oldCoords = getAreaCoordinates(coordsInputField.value).split(",");
+    console.log(JSON.stringify(oldCoords));
+    console.log(updatedCoords);
+    coordsInputField.value = JSON.stringify(updatedCoords).replace("{").replace("}");
+    // let form = new FormData(pointForm);
+    // form.set('coords',JSON.stringify(updatedCoords));
+    // console.log(form.get('coords'));
 }

@@ -105,4 +105,8 @@ public class EquipmentServiceImpl implements EquipmentService{
     public EquipmentDto convertToDto(Equipment entity) {
         return getMapper().convertToDto(entity);
     }
+    @Override
+    public Equipment convertToEntity(EquipmentDto dto) {
+        return getMapper().convertToEntity(dto);
+    }
 }

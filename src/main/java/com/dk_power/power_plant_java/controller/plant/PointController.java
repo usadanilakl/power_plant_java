@@ -38,9 +38,12 @@ public class PointController {
     }
 
     @PostMapping("/update")
-    public void updatePoint(@ModelAttribute("point") EquipmentDto point){
+    public String updatePoint(@ModelAttribute("point") EquipmentDto point){
+        System.out.println(point);
         equipmentService.save(point);
+        return "redirect:/test/";
     }
+
 
     @GetMapping("/get-revised-excel-points")
     public ResponseEntity<List<LotoPoint>> getAllRivisedPoint(){
