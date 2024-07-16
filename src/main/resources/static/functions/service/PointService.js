@@ -76,6 +76,7 @@ function excelPointDropdown(points){
 }
 
 async function fillPointInfoWindow(id){
+    console.log("point window is loading")
     let form = await getPointInfoForm(id);
     let infoFrame = document.getElementById('infoFramePoint');
     let infoContainer = document.getElementById('infoWindowPoint');
@@ -83,6 +84,10 @@ async function fillPointInfoWindow(id){
     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
     infoContainer.innerHTML = "";
     infoContainer.innerHTML = form;
+    createCategoryOptions("equipment");
+    createCategoryOptions("vendor");
+    createCategoryOptions("location");
+    createCategoryOptions("system");
 }
 
 async function fillExcelPointInfoWindow(points){
@@ -118,4 +123,4 @@ function buildPointSearchField(){
         fillExcelPointInfoWindow(points);
     });
     return div;
-}
+} 

@@ -7,7 +7,9 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Sort;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public interface CrudService<
         E extends BaseIdEntity,
@@ -81,6 +83,12 @@ public interface CrudService<
     }
     default D convertToDto(E entity){
         return getMapper().convert(entity, getDto());
+    }
+    default Collection<D> convertAllToDto(Collection<E>list){
+        return list.stream().map(this::convertToDto).toList();
+    }
+    default Collection<E> convertAllToEntity(Collection<D>list){
+        return list.stream().map(this::convertToEntity).toList();
     }
 
 

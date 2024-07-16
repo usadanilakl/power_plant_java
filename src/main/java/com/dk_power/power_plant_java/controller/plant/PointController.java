@@ -24,7 +24,7 @@ public class PointController {
     @GetMapping("/get-info-form/{id}")
     public String getInfoForm(Model model, @PathVariable("id") String id){
         model.addAttribute("vendors",categoryService.getVendors());
-        model.addAttribute("systems",categoryService.getSystems());
+        model.addAttribute("systems",categoryService.getVendors());
         model.addAttribute("locations",categoryService.getLocations());
         model.addAttribute("eqTypes",categoryService.getEqTypes());
         model.addAttribute("point",equipmentService.getDtoById(id));

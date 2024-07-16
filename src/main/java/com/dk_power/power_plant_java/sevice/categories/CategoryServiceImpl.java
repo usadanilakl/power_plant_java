@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.categories;
 
 import com.dk_power.power_plant_java.dto.categories.CategoryDto;
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
@@ -10,8 +11,12 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.apache.commons.lang3.Streams.stream;
 
 @Service
 @Transactional
@@ -69,36 +74,38 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public Category getVendors() {
-        return getCategoryByName("Vendor");
+    public Set<ValueDto> getVendors() {
+        return valueService.convertAllToDto(getCategoryByName("Vendor").getValues()) ;
     }
 
     @Override
-    public Category getLocations() {
-        return getCategoryByName("Location");
+    public Set<ValueDto> getLocations() {
+        return valueService.convertAllToDto(getCategoryByName("Location").getValues());
     }
 
     @Override
-    public Category getEqTypes() {
-        return getCategoryByName("Equipment Type");
+    public Set<ValueDto> getEqTypes() {
+        Set<Value> equipment = getCategoryByName("Equipment Type").getValues();
+        return valueService.convertAllToDto(equipment);
     }
 
     @Override
-    public Category getSystems() {
-        return getCategoryByName("System");
+    public Set<ValueDto> getSystems() {
+        Set<Value> systems = getCategoryByName("System").getValues();
+        return valueService.convertAllToDto(systems);
     }
 
     @Override
-    public Category getFileTypes() {
-        return getCategoryByName("File Type");
+    public Set<ValueDto> getFileTypes() {
+        Set<Value> fileTypes = getCategoryByName("File Type").getValues();
+        return valueService.convertAllToDto(fileTypes);
     }
 
     @Override
-    public Set<Value> getValuesOfCat(String category) {
-        return getCategoryByName(category).getValues();
+    public Set<ValueDto> getValuesOfCat(String category) {
+        Set<Value> values = getCategoryByName(category).getValues();
+        return valueService.convertAllToDto(values);
     }
-
-
 
 
 }

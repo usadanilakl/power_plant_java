@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.permits;
 
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.Box;
@@ -46,11 +47,11 @@ public class LotoController {
         System.out.println(loto.getId());
         List<Box> boxes = boxService.getAllBoxes();
         Box box = boxService.getEmptyBox();
-        Set<Value> allEqTypes = categoryService.getEqTypes().getValues();
+        Set<ValueDto> allEqTypes = categoryService.getEqTypes();
         model.addAttribute("loto", loto);
         model.addAttribute("boxes",boxes);
         model.addAttribute("emptyBox", box);
-        model.addAttribute("systems", categoryService.getSystems().getValues());
+        model.addAttribute("systems", categoryService.getSystems());
         model.addAttribute("eqTypes", allEqTypes);
         return "loto/new-loto-form2";
     }

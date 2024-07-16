@@ -65,6 +65,15 @@ public class Util {
         }
         return dto;
     }
+    public static String firstLetterToUpperCase(String sentence){
+        String res = "";
+        for (String word : sentence.split(",")) {
+            String result = word.trim().toLowerCase();
+            result = result.substring(0,1).toUpperCase()+result.substring(1);
+            res +=result+" ";
+        }
+        return res.trim();
+    }
 
 
 

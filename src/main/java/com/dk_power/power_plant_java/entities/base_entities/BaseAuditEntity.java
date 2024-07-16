@@ -29,7 +29,7 @@ public class BaseAuditEntity extends BaseIdEntity {
     @Column(nullable = false)
     private String createdBy;
     @LastModifiedBy
-    @Column(nullable = false)
+    //@Column(nullable = false)
     private String modifiedBy;
 
 

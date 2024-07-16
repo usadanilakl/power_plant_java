@@ -30,3 +30,13 @@ async function loadDataIntoContainer(container,data){
     container.innerHTML = content;
 }
 
+function firstLetterToUpperCase(sentence){
+    let res = "";
+    for (let word of sentence.split(",")) {
+        let result = word.trim().toLowerCase();
+        result = result.substring(0,1).toUpperCase()+result.substring(1);
+        res +=result+" ";
+    }
+    return res.trim();
+}
+
