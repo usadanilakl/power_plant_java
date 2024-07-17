@@ -430,6 +430,7 @@ function pointEditModeControl(){
         hideAllResizeElements();
     }else if(modes.editMode.state){
         showAllResizeElements();
+        fillPointInfoWindow(selectedArea.id);
     }
 }
 

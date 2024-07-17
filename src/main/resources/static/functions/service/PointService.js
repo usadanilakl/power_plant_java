@@ -1,3 +1,21 @@
+/****************************************************************************************************************************************************************************************
+ *                                                                      Point Flow Process
+ * On click on area:
+    * Get equipment ifo
+    * Open info window
+    * Fill info window with 3 dropdowns: Equipment, LOTO points, Related Data
+    * Each dropdown will have table/form that contains information related to the equipment:
+ * 
+ * On click on the Equipment dropdown button: 
+    * Create a form for each field of the equipment
+    * Create mode function that would enable editing
+    * Wire it to end point to update edits        
+ * 
+ ****************************************************************************************************************************************************************************************/
+
+
+
+
 function getExcelPointsByLabel(label){
     let result = [];
     revisedExcelPoints.forEach(e=>{
@@ -75,20 +93,21 @@ function excelPointDropdown(points){
     return list;
 }
 
-async function fillPointInfoWindow(id){
-    console.log("point window is loading")
-    let form = await getPointInfoForm(id);
-    let infoFrame = document.getElementById('infoFramePoint');
-    let infoContainer = document.getElementById('infoWindowPoint');
-    if(infoContainer === null) newInfoWindow("Point");
-    if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
-    infoContainer.innerHTML = "";
-    infoContainer.innerHTML = form;
-    createCategoryOptions("equipment");
-    createCategoryOptions("vendor");
-    createCategoryOptions("location");
-    createCategoryOptions("system");
-}
+// async function fillPointInfoWindow(id){ //Old Version
+//     let form = await getPointInfoForm(id);
+//     let infoFrame = document.getElementById('infoFramePoint');
+//     let infoContainer = document.getElementById('infoWindowPoint');
+//     if(infoContainer === null) newInfoWindow("Point");
+//     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
+//     infoContainer.innerHTML = "";
+//     infoContainer.innerHTML = form;
+//     createCategoryOptions("equipment");
+//     createCategoryOptions("vendor");
+//     createCategoryOptions("location");
+//     createCategoryOptions("system");
+// }
+
+
 
 async function fillExcelPointInfoWindow(points){
     let form = excelPointDropdown(points);
@@ -124,3 +143,94 @@ function buildPointSearchField(){
     });
     return div;
 } 
+
+function createEquipmentForm(){
+    let form = document.createElement('form');
+}
+
+
+/************************************************************************************************************************************ *
+ * HTML Point Form functions
+************************************************************************************************************************************ */
+
+async function fillPointInfoWindow(id){
+    let point = await getPoint(id);
+    let form = await getHtmlPointInfoForm(id);
+    let formInfo = convertToFormDto(point);
+    let infoFrame = document.getElementById('infoFramePoint');
+    let infoContainer = document.getElementById('infoWindowPoint');
+    if(infoContainer === null) newInfoWindow("Point");
+    if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
+    infoContainer.innerHTML = "";
+    infoContainer.innerHTML = form;
+    setFormValues(infoContainer,formInfo);
+    if(modes.editMode.state){
+        //removeReadOnly();
+        createSearchableDropdown("equipment");
+        createSearchableDropdown("vendor");
+        createSearchableDropdown("location");
+        createSearchableDropdown("system");
+    }
+
+}
+
+function convertToFormDto(point){
+    let formDto = {
+        tagNumber:point.tagNumber,
+        description:point.description,
+        specificLocation:point.specificLocation,
+        mainFile:point.mainFile,
+        files:point.files,
+
+    }
+
+    if (point.vendor && point.vendor.name) formDto.vendor = point.vendor.name;
+    if (point.location && point.location.name) formDto.location = point.location.name;
+    if (point.system && point.system.name) formDto.system = point.system.name;
+    if (point.eqType && point.eqType.name) formDto.eqType = point.eqType.name;
+    return formDto;
+}
+
+function setFormValues(form, values) {
+    for (const key in values) {
+        if (values.hasOwnProperty(key)) {
+            let element = form.querySelector(`[id="${key}"]`);
+            if (element.tagName.toLowerCase() === 'div') {
+                const inputInsideDiv = element.querySelector('input');
+                if (inputInsideDiv) {
+                    element = inputInsideDiv;
+                }
+            }
+            if (element) {
+                element.value = values[key];
+            }
+        }
+    }
+}
+
+async function createSearchableDropdown(category){
+    const response = await fetch('/category/get-'+category);
+    const data = await response.json();   
+    let stringData = data.map(e=>e.name); 
+    buildDropdown(category,stringData);
+}
+
+function removeReadOnly(element){
+    if(element===null) element = document.getElementById('point-info-form');
+    
+    console.log(element)
+    let inputs = element.querySelectorAll('input');
+    inputs.forEach(e=>{
+        e.removeAttribute('readonly');
+    })
+}
+
+function applyReadOnly(element){
+    if(element===null) element = document.getElementById('point-info-form');
+    let inputs = element.querySelectorAll('input');
+    inputs.forEach(e=>{
+        e.setAttribute('readonly',true);
+    })
+}
+
+

@@ -1,4 +1,5 @@
 async function setupPopup(category){
+    console.log("popup running")
     let saveButton = document.getElementById('save');
     let title = document.getElementById("exampleModalLabel");
     let modal = document.getElementById('exampleModal');

@@ -1,12 +1,11 @@
 package com.dk_power.power_plant_java.controller.plant;
 
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import lombok.AllArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -21,5 +20,9 @@ public class PointRestController {
             equipmentService.save(point);
         }
         return points;
+    }
+    @GetMapping("/get-point/{id}")
+    public ResponseEntity<EquipmentDto> getPoint(@PathVariable String id){
+        return ResponseEntity.ok(equipmentService.getDtoById(id));
     }
 }

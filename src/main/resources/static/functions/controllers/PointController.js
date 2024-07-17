@@ -12,6 +12,17 @@ async function getPointInfoForm(id){
     const data = await response.text();
     return data;
 }
+async function getPoint(id){
+    const response = await fetch('/points/get-point/'+id);
+    const data = await response.json();
+    return data;
+}
+
+async function getHtmlPointInfoForm(id){
+    const response = await fetch('/point/get-html-info-form/'+id);
+    const data = await response.text();
+    return data;
+}
 
 async function updatePoint(){
     console.log(JSON.stringify(selectedArea));

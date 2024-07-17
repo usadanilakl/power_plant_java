@@ -31,6 +31,11 @@ public class PointController {
         return "/partials/point-info-form";
     }
 
+    @GetMapping("/get-html-info-form/{id}")
+    public String getHtmlInfoForm(@PathVariable("id") String id){
+        return "/points/html-point-form";
+    }
+
     @GetMapping("/{type}")
     public String showAllPoints(@PathVariable("type") String type, Model model){
         model.addAttribute("type",type);
