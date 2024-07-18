@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 @Entity
@@ -13,6 +14,7 @@ import org.hibernate.envers.Audited;
 @Setter
 @Audited
 @Table(name = "val_table")
+@Where(clause = "deleted = false")
 public class Value extends BaseAuditEntity {
     public Value(String name) {
         this.name = name;

@@ -63,7 +63,7 @@ public class LotoPointServiceImpl implements LotoPointService{
             LotoPoint point = new LotoPoint();
             point.setUnit(excelPoint.get("Unit"));
             point.setTagged(excelPoint.get("Tagged"));
-            point.setLabel(excelPoint.get("ID"));
+            point.setTagNumber(excelPoint.get("ID"));
             point.setDescription(excelPoint.get("Description"));
             point.setLocation(excelPoint.get("Location"));
             point.setStandard(excelPoint.get("Standard"));

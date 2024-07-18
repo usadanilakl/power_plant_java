@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Searchable Dropdown</title>
+    <style>
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+        .dropdown-content div {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-content div:hover {
+            background-color: #f1f1f1;
+        }
+        .show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dropdown">
+    <input type="text" id="dropdownInput" onfocus="showOptions()" onkeyup="filterFunction()" placeholder="Search...">
+    <div id="dropdownContent" class="dropdown-content">
+        <div>Option 1</div>
+        <div>Option 2</div>
+        <div>Option 3</div>
+        <div>Option 4</div>
+    </div>
+</div>
+
+<script>
+    function filterFunction() {
+        var input, filter, div, i;
+        input = document.getElementById("dropdownInput");
+        filter = input.value.toUpperCase();
+        div = document.getElementById("dropdownContent");
+        div.classList.add("show");
+        var options = div.getElementsByTagName("div");
+        for (i = 0; i < options.length; i++) {
+            var txtValue = options[i].textContent || options[i].innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                options[i].style.display = "";
+            } else {
+                options[i].style.display = "none";
+            }
+        }
+    }
+
+    function showOptions() {
+        document.getElementById("dropdownContent").classList.add("show");
+    }
+
+    document.addEventListener('click', function(event) {
+        var isClickInside = document.getElementById('dropdownInput').contains(event.target) || document.getElementById('dropdownContent').contains(event.target);
+        if (!isClickInside) {
+            document.getElementById("dropdownContent").classList.remove("show");
+        }
+    });
+
+    document.getElementById("dropdownContent").addEventListener('click', function(event) {
+        if (event.target.tagName.toLowerCase() === 'div') {
+            document.getElementById("dropdownInput").value = event.target.textContent;
+            document.getElementById("dropdownContent").classList.remove("show");
+        }
+    });
+</script>
+
+</body>
+</html>

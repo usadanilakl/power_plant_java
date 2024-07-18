@@ -5,20 +5,19 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
+import org.hibernate.annotations.*;
 
 @MappedSuperclass
 @Getter
 @Setter
-@FilterDef(name = "deletedFilter", parameters = @ParamDef(name = "isDeleted", type = Boolean.class))
-@Filter(name = "deletedFilter", condition = "deleted = :isDeleted")
+//@FilterDef(name = "deletedFilter", parameters = @ParamDef(name = "isDeleted", type = Boolean.class))
+//@Filter(name = "deletedFilter", condition = "deleted = :isDeleted")
 @NoArgsConstructor
 public class BaseIdEntity {
 
     @Id
     @GeneratedValue
+    @Where(clause = "deleted = false")
     private Long id;
     private Boolean deleted = false;
     private String name;

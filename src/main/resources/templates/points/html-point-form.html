@@ -1,0 +1,55 @@
+<form action="/point/update" method="post" id="point-info-form">
+    <div class="form-group">
+        <label for="tagNumber">Point ID</label>
+        <input class="form-control" type="text" id="tagNumber" name="tagNumber" readonly>
+    </div>
+
+    <div class="form-group">
+        <label for="description">Point Description</label>
+        <input class="form-control" type="text" id="description" name="description" readonly>
+    </div>
+
+    <div class="form-group">
+        <label for="specificLocation">Point Description</label>
+        <input class="form-control" type="text" id="specificLocation" name="specificLocation" readonly>
+    </div>
+
+    <div class="form-group" id="equipment">
+        <label for="eqType">Equipment Type</label>
+        <input class="form-control" type="text" id="eqType" name="eqType" readonly>
+    </div>
+
+    <div class="form-group" id="vendor">
+        <label for="vend">Vendor</label>
+        <input class="form-control" type="text" id="vend" name="vend" readonly>
+    </div>
+
+    <div class="form-group" id="location">
+        <label for="locat">Location</label>
+        <input class="form-control" type="text" id="locat" name="locat" readonly>
+    </div>
+
+    <div class="form-group" id="system">
+        <label for="syst">System</label>
+        <input class="form-control" type="text" id="syst" name="syst" readonly>
+    </div>
+
+    <div class="form-group">
+        <label for="mainFile">Main File</label>
+        <input class="form-control" type="text" id="mainFile" name="mainFile" readonly>
+    </div>
+
+    <div class="form-group">
+        <label for="files">Related Files</label>
+        <input class="form-control" type="text" id="files" name="files" readonly>
+    </div>
+
+    <input class="hide" type="text" name="coordinates" id="coordinates" >
+    <input class="hide" type="text" name="id" id="id">
+    <input class="hide" type="text" name="originalPictureSize" id="originalPictureSize">
+
+
+
+    <button class="btn btn-primary btn-block" type="submit" id="pointUpdateButton">Submit</button>
+
+</form>

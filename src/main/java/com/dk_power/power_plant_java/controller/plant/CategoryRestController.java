@@ -17,6 +17,7 @@ import java.util.Set;
 public class CategoryRestController {
     private final CategoryService categoryService;
     private final ValueService valueService;
+
     @GetMapping("/get-equipment")
     public ResponseEntity<Set<ValueDto>> getValues(){
         return ResponseEntity.ok(categoryService.getEqTypes());
@@ -34,9 +35,23 @@ public class CategoryRestController {
     public ResponseEntity<Set<ValueDto>> getLocations(){
         return ResponseEntity.ok(categoryService.getLocations());
     }
-    @PostMapping("/create/{cat}/{val}")
+    @PostMapping("/{cat}/{val}")
     public ResponseEntity<Set<ValueDto>> createNewValue(@PathVariable String cat, @PathVariable String val){
         valueService.valueSetup(Util.firstLetterToUpperCase(cat),val);
+        return ResponseEntity.ok(categoryService.getValuesOfCat(Util.firstLetterToUpperCase(cat)));
+    }
+    @PutMapping("/{cat}/{val}/{newVal}")
+    public ResponseEntity<Set<ValueDto>>putValue(@PathVariable String cat, @PathVariable String val,@PathVariable String newVal){
+        Value value = valueService.valueSetup(Util.firstLetterToUpperCase(cat), val);
+        value.setName(newVal);
+        Value save = valueService.save(value);
+        System.out.println(save.getName() + " " + newVal);
+        return ResponseEntity.ok(categoryService.getValuesOfCat(Util.firstLetterToUpperCase(cat)));
+    }
+    @DeleteMapping("/{cat}/{val}")
+    public ResponseEntity<Set<ValueDto>>deleteValue(@PathVariable String cat, @PathVariable String val){
+        Value value = valueService.valueSetup(Util.firstLetterToUpperCase(cat), val);
+        valueService.softDelete(value.getId());
         return ResponseEntity.ok(categoryService.getValuesOfCat(Util.firstLetterToUpperCase(cat)));
     }
 

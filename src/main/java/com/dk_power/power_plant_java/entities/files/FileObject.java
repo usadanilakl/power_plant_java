@@ -60,6 +60,7 @@ public class FileObject extends BaseAuditEntity {
     private List<Equipment> points;
 
 
+
     @Transient
     private List<String> systems;
 

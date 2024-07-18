@@ -25,7 +25,7 @@ public class FileObjectRestController {
     private final EquipmentService equipmentService;
     private final LotoPointService lotoPointService;
 
-    @GetMapping("/table-view/get-all")
+    @GetMapping("/get-all-light")
     public ResponseEntity<List<FileDtoLight>> getAllFiles(){
         return ResponseEntity.ok(fileService.getAllLight());
     }
@@ -33,5 +33,11 @@ public class FileObjectRestController {
     public ResponseEntity<FileDto> getFile(@PathVariable("id")String id){
         return ResponseEntity.ok(fileService.getDtoById(id));
     }
+    @GetMapping("/get-by-link/{link}")
+    public ResponseEntity<FileDto> getFileByLink(@PathVariable String link){
+        FileObject byFileLink = fileService.getFileByNumber(link);
+        return ResponseEntity.ok(fileService.convertToDto(byFileLink));
+    }
+
 
 }

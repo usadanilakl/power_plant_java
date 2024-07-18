@@ -52,7 +52,7 @@ async function getAllFiles(){
         console.log(err)
     }    
 }
-getAllFiles();
+//getAllFiles();
 
 
 

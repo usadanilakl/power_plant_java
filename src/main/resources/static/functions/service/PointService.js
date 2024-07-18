@@ -144,18 +144,18 @@ function buildPointSearchField(){
     return div;
 } 
 
-function createEquipmentForm(){
-    let form = document.createElement('form');
-}
-
 
 /************************************************************************************************************************************ *
  * HTML Point Form functions
 ************************************************************************************************************************************ */
-
+function getPointFromArrById(id){
+    return file.points.find(e => e.id === id);
+}
 async function fillPointInfoWindow(id){
-    let point = await getPoint(id);
-    let form = await getHtmlPointInfoForm(id);
+    // let point = await getPoint(id);
+    // let point = getPointFromArrById(id);
+    let point = id;
+    let form = await getHtmlPointInfoForm(id.id);
     let formInfo = convertToFormDto(point);
     let infoFrame = document.getElementById('infoFramePoint');
     let infoContainer = document.getElementById('infoWindowPoint');
@@ -181,6 +181,10 @@ function convertToFormDto(point){
         specificLocation:point.specificLocation,
         mainFile:point.mainFile,
         files:point.files,
+        id:point.id,
+        coordinates:point.coordinates,
+        originalPictureSize:point.originalPictureSize
+
 
     }
 
@@ -212,7 +216,13 @@ async function createSearchableDropdown(category){
     const response = await fetch('/category/get-'+category);
     const data = await response.json();   
     let stringData = data.map(e=>e.name); 
-    buildDropdown(category,stringData);
+    buildDropdown(category,stringData,()=>setCatPopup(category, stringData));
+}
+
+let setCatPopup = async function(category,list){
+    const popup = await setupPopup(category);
+    buildDropdown("edit-existing",list, null);
+    buildDropdown("delete-existing",list, null);
 }
 
 function removeReadOnly(element){
@@ -234,3 +244,40 @@ function applyReadOnly(element){
 }
 
 
+/******************************
+ * Need to collect values from form
+ * Add then into object
+ * Update DB
+ * *************************************** */
+function collectFormValues(form) {
+    let formInfo = new FormData(form);
+    let formObj = {};
+
+    // Collect all form data except for 'select' elements
+    formInfo.forEach((value, key) => {
+        if (!form.querySelector(`[name="${key}"]`).tagName.toLowerCase() === 'select') {
+            formObj[key] = value;
+        }
+    });
+
+    // Collect all options from 'select' elements
+    form.querySelectorAll('select').forEach(select => {
+        let options = Array.from(select.options).map(option => option.value);
+        formObj[select.name] = options;
+    });
+
+    return formObj;
+}
+
+function addOptionToSelect(selectElement, optionText, optionValue) {
+    let option = document.createElement("option");
+    option.text = optionText;
+    option.value = optionValue;
+    selectElement.add(option);
+}
+
+
+/**************************************
+ * Put/Collect arrays in form using <select>
+ * Add function to add new options to select from UI that will be added to DB
+ * ***************************************** */

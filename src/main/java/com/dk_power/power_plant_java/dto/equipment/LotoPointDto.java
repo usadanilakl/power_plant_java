@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.dto.equipment;
 
+import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import lombok.Getter;
@@ -12,24 +13,25 @@ import java.util.List;
 @Getter
 @Setter
 public class LotoPointDto extends BaseAuditEntity {
-    String unit;
-    String tagged;
-    String label;
-    String description;
-    String location;
-    String standard;
-    String generalLocation;
-    String equipment;
-    String extraInfo;
-    String type;
-    String system;
-    String normalPosition;
-    String isolatedPosition;
-    String fluid;
-    String size;
-    String electricalCheckStatus;
-    String redTagId;
-    Boolean inUse = false;
-    private List<Loto> permLotos;
+    private String unit;
+    private String tagged;
+    private String tagNumber;
+    private String description;
+    private String location;
+    private String standard;
+    private String generalLocation;
+    private String equipment;
+    private String extraInfo;
+    private String type;
+    private String system;
+    private String normalPosition;
+    private String isolatedPosition;
+    private String fluid;
+    private String size;
+    private String electricalCheckStatus;
+    private String redTagId;
+    private Boolean inUse = false;
+    private List<LotoDto> lotos;
+    private List<EquipmentDto> equipmentList;
 
 }

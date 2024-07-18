@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.dto.equipment;
 
 import com.dk_power.power_plant_java.dto.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,6 +25,7 @@ public class EquipmentDto extends BaseDto {
     private String coordinates;
     private String originalPictureSize;
     private String mainFile;
+    private List<LotoPoint> lotoPoints;
 
 
     @Override

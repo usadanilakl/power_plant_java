@@ -3,10 +3,13 @@ let filesAreLoded = false;
 
 let vendors=[];
 let categories;
+let file;
 
 async function getAllFiles(){
+    let link = '/fileObjects/get-all-light';
+    // let link = '/data/get-files';
     try{
-        const data = await fetch('/data/get-files', { 
+        const data = await fetch(link, { 
         method: 'GET',
         headers:{
         //'X-CSRF-TOKEN': csrfToken,
@@ -21,6 +24,13 @@ async function getAllFiles(){
     }catch(err){
         console.log(err)
     }    
+}
+
+async function getFileFromDbByLink(link){
+    const response = fetch('/fileObjects/get-by-link/'+link);
+    const data = (await response).json();
+    file = data;
+    return data;
 }
 
 async function getUploadFileForm(){
@@ -67,3 +77,4 @@ async function editFile(itemId){
     console.log('/edit/itmem/'+itemId);
 }
 
+ 

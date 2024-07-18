@@ -13,12 +13,18 @@ function loadPictureWithAreas(src, areas){
     removeAllHighlights();
     setAreas(areas);
 }
-
 function loadPictureWithFile(file){
     picture.setAttribute('src','/'+file.fileLink);
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
     setAreas(file.points);
+}
+async function loadPictureWithLightFile(file){
+    picture.setAttribute('src','/'+file.fileLink);
+    picture.setAttribute('data-file-id', file.id);
+    removeAllHighlights();
+    fileWithPoints = await getFileFromDbByLink(file.fileNumber);
+    setAreas(fileWithPoints.points);
 }
 function setAreas(areas){
     map.innerHTML = "";
@@ -33,7 +39,7 @@ function setAreas(areas){
             removeAllHighlights();
             createHighlight(area);
             pointEditModeControl();
-            fillPointInfoWindow(e.id);
+            fillPointInfoWindow(e);
             selectedArea = e;
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);

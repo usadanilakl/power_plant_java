@@ -5,7 +5,22 @@ let postNoBody = {
         'Content-Type': 'application/json'
     }
 }
-let createValueUrl = "/category/create";
+let putNoBody = {
+    method: 'PUT',
+    headers: {
+        'X-CSRF-TOKEN': token,
+        'Content-Type': 'application/json'
+    }
+}
+let deleteNoBody = {
+    method: 'DELETE',
+    headers: {
+        'X-CSRF-TOKEN': token,
+        'Content-Type': 'application/json'
+    }
+}
+let createValueUrl = "/category";
+const getCatPopupUrl = "/cat/popup"
 
 
 
@@ -48,4 +63,41 @@ async function createNewValue(category,value){
     const data = await response.json();
     console.log(JSON.stringify(data));
     fillPointInfoWindow(selectedArea.id);
+}
+
+async function crudValue( method,category,value,newValue){
+    let operation;
+    let endpoint = createValueUrl+"/"+category+"/"+value;
+    if(newValue!==null)endpoint = endpoint+"/"+newValue;
+    if(method === "POST") operation = postNoBody; 
+    if(method === "PUT") operation = putNoBody;
+    if(method === "DELETE") operation = deleteNoBody; 
+    const response = await fetch(endpoint,operation);
+    const data = await response.json();
+    console.log(JSON.stringify(data));
+    fillPointInfoWindow(selectedArea.id);
+}
+
+// async function getCatPopup(id){
+//     const response = await fetch(getCatPopupUrl);
+//     const data = await response.text();
+//     let div = document.createElement('div');
+//     div.id = "cat-popup-container";
+//     div.innerHTML = data;
+//     div.querySelector('#popupModal'+id);
+//     return div;
+// }
+
+async function getCatPopup(id){
+    const response = await fetch(getCatPopupUrl);
+    const data = await response.text();
+    let div = document.createElement('div');
+    div.id = "cat-popup-container";
+    div.innerHTML = data;
+    let modal = div.querySelector('#popupModal');
+    if (!modal) {
+        console.error('Modal element not found.');
+    }
+    modal.id = 'popupModal-'+id
+    return div;
 }

@@ -46,7 +46,7 @@
             </div>
             <div id="right">
                 <div id="picture-container" class="view" data-file-id="">
-                    <img src="/1.jpg" usemap="#image_map" id="picture">
+                    <img src="/uploads/jpg/PID/Kiewit/20023894-PD-021A.01.C2CR.01.01.jpg" usemap="#image_map" id="picture">
                     <map name="image_map" id="map"></map>
                 </div>
             </div>
@@ -90,7 +90,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary"  id="save">Save changes</button>
+                        <!-- <button type="button" class="btn btn-primary"  id="save">Save changes</button> -->
                     </div>
                 </div>
             </div>
@@ -173,6 +173,9 @@
         left.appendChild(createModeButtons());
 
         if(mode) setMode(mode);
+
+        f = findFileByPartualNumber("20023894-PD-021A");
+        loadPictureWithLightFile(f);
 
         
     });

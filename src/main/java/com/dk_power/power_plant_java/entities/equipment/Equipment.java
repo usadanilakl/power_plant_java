@@ -4,9 +4,11 @@ package com.dk_power.power_plant_java.entities.equipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -51,6 +53,12 @@ public class Equipment extends BaseAuditEntity {
     @JsonBackReference
     //@JsonIgnore
     private FileObject mainFile;
+    @ManyToMany
+    @JoinTable(name = "eq_loto_point",
+            joinColumns = @JoinColumn(name = "eq_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "loto_point_id", referencedColumnName = "id"))
+    @JsonManagedReference
+    private List<LotoPoint> lotoPoints;
     @Transient
     private String pid;
 
@@ -59,6 +67,7 @@ public class Equipment extends BaseAuditEntity {
         if(files==null) files = new ArrayList<>();
         if(!files.contains(file)) files.add(file);
     }
+    public void addLotoPoint(LotoPoint lotoPoint){lotoPoints.add(lotoPoint);}
     public void setMainFile(FileObject file){
         addFile(file);
         this.mainFile = file;

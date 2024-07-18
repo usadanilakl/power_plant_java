@@ -30,7 +30,8 @@ function infoWindowResizer(frame, type){
     grab.setAttribute('class','move');
     grab.style.top = '0px';
     grab.setAttribute('id','infoMover'+type)
-    grab.appendChild(p);
+    // grab.appendChild(p);
+    grab.textContent=type;
     frame.querySelectorAll('.corners').forEach(e=>{
         e.classList.add(type+'infoWindowCorners');
         e.classList.remove('corners');
