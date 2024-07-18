@@ -17,6 +17,7 @@ import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Entity
@@ -58,7 +59,7 @@ public class Equipment extends BaseAuditEntity {
             joinColumns = @JoinColumn(name = "eq_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "loto_point_id", referencedColumnName = "id"))
     @JsonManagedReference
-    private List<LotoPoint> lotoPoints;
+    private Set<LotoPoint> lotoPoints;
     @Transient
     private String pid;
 

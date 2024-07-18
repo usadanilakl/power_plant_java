@@ -61,6 +61,9 @@ public interface CrudService<
     default E update(E entity){
         return getRepo().save(entity);
     }
+    default E update(String id){
+        return getRepo().save(getEntityById(id));
+    }
     default E softDelete(E entity){
         entity.setDeleted(true);
         return save(entity);

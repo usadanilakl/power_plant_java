@@ -7,6 +7,8 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 
+import java.util.stream.Collectors;
+
 @Component
 @RequiredArgsConstructor
 public class LotoPointMapper implements BaseMapper{
@@ -38,6 +40,7 @@ public class LotoPointMapper implements BaseMapper{
         if (entity.getInUse() != null) dto.setInUse(entity.getInUse());
         if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentMapper::convertToDto).toList());
         if(entity.getLotos()!=null) dto.setLotos(entity.getLotos().stream().map(lotoMapper::convertToDto).toList());
+        if (entity.getOldId() != null) dto.setOldId(entity.getOldId());
         return dto;
     }
 
@@ -64,8 +67,9 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getElectricalCheckStatus() != null) entity.setElectricalCheckStatus(dto.getElectricalCheckStatus());
         if (dto.getRedTagId() != null) entity.setRedTagId(dto.getRedTagId());
         if (dto.getInUse() != null) entity.setInUse(dto.getInUse());
-        if(dto.getEquipmentList()!=null) entity.setEquipmentList(dto.getEquipmentList().stream().map(equipmentMapper::convertToEntity).toList());
+        if(dto.getEquipmentList()!=null) entity.setEquipmentList(dto.getEquipmentList().stream().map(equipmentMapper::convertToEntity).collect(Collectors.toSet()));
         if(dto.getLotos()!=null) entity.setLotos(dto.getLotos().stream().map(lotoMapper::convertToEntity).toList());
+        if (dto.getOldId() != null) entity.setOldId(dto.getOldId());
         return entity;
     }
 

@@ -1,55 +1,65 @@
 <form action="/point/update" method="post" id="point-info-form">
     <div class="form-group">
         <label for="tagNumber">Point ID</label>
-        <input class="form-control" type="text" id="tagNumber" name="tagNumber" readonly>
+        <input class="form-control" type="text" data-object-info="tagNumber" name="tagNumber" readonly>
     </div>
 
     <div class="form-group">
         <label for="description">Point Description</label>
-        <input class="form-control" type="text" id="description" name="description" readonly>
+        <input class="form-control" type="text" data-object-info="description" name="description" >
     </div>
 
     <div class="form-group">
         <label for="specificLocation">Point Description</label>
-        <input class="form-control" type="text" id="specificLocation" name="specificLocation" readonly>
+        <input class="form-control" type="text" data-object-info="specificLocation" name="specificLocation" readonly>
     </div>
 
-    <div class="form-group" id="equipment">
+    <div class="form-group" data-sdropdown="equipment">
         <label for="eqType">Equipment Type</label>
-        <input class="form-control" type="text" id="eqType" name="eqType" readonly>
+        <input class="form-control" type="text" data-object-info="equipment" name="eqType" readonly>
     </div>
 
-    <div class="form-group" id="vendor">
+    <div class="form-group" data-sdropdown="vendor">
         <label for="vend">Vendor</label>
-        <input class="form-control" type="text" id="vend" name="vend" readonly>
+        <input class="form-control" type="text" data-object-info="vendor" name="vendor" readonly>
     </div>
 
-    <div class="form-group" id="location">
+    <div class="form-group" data-sdropdown="location">
         <label for="locat">Location</label>
-        <input class="form-control" type="text" id="locat" name="locat" readonly>
+        <input class="form-control" type="text" data-object-info="location" name="location" readonly>
     </div>
 
-    <div class="form-group" id="system">
+    <!-- <div class="form-group" data-sdropdown="system">
         <label for="syst">System</label>
-        <input class="form-control" type="text" id="syst" name="syst" readonly>
+        <input class="form-control" type="text" data-object-info="system" name="system" readonly>
+    </div> -->
+    <div class="form-group" data-sdropdown="system">
+        <div class="searchable-dropdown form-group" id="sdropdown-">
+            <label for="system-input">system</label><div class="form-control" style="display: inline-block;">
+                <input type="text" data-object-info="system" id="system-input" placeholder="Select system">
+                <button type="button">+</button>
+            </div>
+        </div>
     </div>
 
     <div class="form-group">
         <label for="mainFile">Main File</label>
-        <input class="form-control" type="text" id="mainFile" name="mainFile" readonly>
+        <input class="form-control" type="text" data-object-info="mainFile" name="mainFile" readonly>
     </div>
 
     <div class="form-group">
         <label for="files">Related Files</label>
-        <input class="form-control" type="text" id="files" name="files" readonly>
+        <input class="form-control" type="text" data-object-info="files" name="files" readonly>
     </div>
 
-    <input class="hide" type="text" name="coordinates" id="coordinates" >
-    <input class="hide" type="text" name="id" id="id">
-    <input class="hide" type="text" name="originalPictureSize" id="originalPictureSize">
+
+    <input class="hide" type="text" name="coordinates" data-object-info="coordinates" >
+    <input class="hide" type="text" name="id" data-object-info="id">
+    <input class="hide" type="text" name="originalPictureSize" data-object-info="originalPictureSize">
 
 
 
     <button class="btn btn-primary btn-block" type="submit" id="pointUpdateButton">Submit</button>
 
 </form>
+

@@ -78,7 +78,7 @@ public class LotoPointServiceImpl implements LotoPointService{
             point.setSize(excelPoint.get("Size"));
             point.setElectricalCheckStatus(excelPoint.get("T"));
             point.setRedTagId(excelPoint.get("Rec ID"));
-            point.setRedTagId(excelPoint.get("Original ID"));
+            point.setOldId(excelPoint.get("Original ID"));
 
             lotoPoints.add(point);
             lotoPointRepo.save(point);

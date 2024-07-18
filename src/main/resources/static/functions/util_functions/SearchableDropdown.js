@@ -1,8 +1,11 @@
+
 function buildDropdown(id, items, buttonAction) {
     let dropdown = document.createElement('div');
     dropdown.classList.add('searchable-dropdown');
     dropdown.classList.add('form-group');
-    let dropdownHolder = document.getElementById(id);
+    dropdown.id = "sdropdown-"
+    //let dropdownHolder = document.getElementById(id);
+    let dropdownHolder = document.querySelector(`[data-sdropdown=${id}]`)
     let oldValue;
     if(dropdownHolder.children.length>0) oldValue = dropdownHolder.querySelector('input').value;
     dropdownHolder.innerHTML="";
@@ -20,6 +23,7 @@ function buildDropdown(id, items, buttonAction) {
 
     let input = document.createElement('input');
     input.setAttribute('type', 'text');
+    input.setAttribute('data-object-info',id);
     input.id = `${id}-input`;
     input.placeholder = "Select " + id;
     if(oldValue) input.value = oldValue;
@@ -27,6 +31,7 @@ function buildDropdown(id, items, buttonAction) {
     input.addEventListener('keyup', () => filterFunction(id));
     inputWithAddButton.appendChild(input);
     inputWithAddButton.classList.add('form-control');
+    // input.classList.add('form-control');
 
     if(buttonAction){
         let addButton = document.createElement('button');
@@ -57,6 +62,39 @@ function buildDropdown(id, items, buttonAction) {
     });
 
     return dropdown;
+}
+
+function addOptionsToExistingInput(id, items, buttonAction) { //not working
+    let dropdownHolder = document.querySelector(`[data-sdropdown=${id}]`);
+    let dropdown = dropdownHolder.querySelector('.searchable-dropdown');
+    let input = dropdownHolder.querySelector('input');
+    input.id = `${id}-input`;
+    let addButton = dropdownHolder.querySelector('button');
+    let oldValue;
+
+    if(dropdownHolder.children.length>0) oldValue = input.value;
+
+    if(buttonAction){
+        addButton.addEventListener('click',buttonAction);
+    }
+
+    let options = buildOptions(id, items);
+    dropdown.appendChild(options);
+
+    // Add the event listener after appending options to the dropdown
+    document.addEventListener('click', function(event) {
+        var isClickInside = document.getElementById(`${id}-input`).contains(event.target) || document.getElementById(`${id}-options`).contains(event.target);
+        if (!isClickInside) {
+            document.getElementById(`${id}-options`).classList.remove("show");
+        }
+    });
+
+    options.addEventListener('click', function(event) {
+        if (event.target.tagName.toLowerCase() === 'div') {
+            document.getElementById(`${id}-input`).value = event.target.textContent;
+            document.getElementById(`${id}-options`).classList.remove("show");
+        }
+    });
 }
 
 function buildOptions(id, items) {

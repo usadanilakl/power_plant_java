@@ -86,6 +86,11 @@ private final LotoPointService lotoPointService;
 //        transferMethods.transferPoints();
 //        System.out.println("pointRepo.getAll().size() = " + equipmentRepo.findAll().size());
 
+//        System.out.println(lotoPointService.getAll().size());
+//        lotoPointService.getAll().forEach(lotoPointService::hardDelete);
+//        System.out.println(lotoPointService.getAll().size());
+//        lotoPointService.transferExcelToDB();
+//        System.out.println(lotoPointService.getAll().size());
 
  /********************************************************************************/
 

@@ -19,7 +19,7 @@
 function getExcelPointsByLabel(label){
     let result = [];
     revisedExcelPoints.forEach(e=>{
-        if(formatLabel(e.label).includes(formatLabel(label)) ) result.push(e);
+        if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
     })
     return result;
 }
@@ -35,10 +35,10 @@ function formatLabel(label){
 }
 
 function trimToLowerCaseRemoveDashes(label){
-        let result = label.toLowerCase();
-        result = result.trim();
-        result = result.replace(/-/g, "");
-        return result;
+    let result = label.toLowerCase();
+    result = result.trim();
+    result = result.replace(/-/g, "");
+    return result;
 }
 
 function showPointInfo(point){
@@ -74,7 +74,7 @@ function excelPointDropdown(points){
         let formContainer = document.createElement('div');
         item.appendChild(formContainer);
 
-        button.textContent = e.label;
+        button.textContent = e.tagNumber;
         button.addEventListener('click', ()=>{
             if(formContainer.children.length === 0){
                 formContainer.appendChild(showPointInfo(e));
@@ -86,12 +86,30 @@ function excelPointDropdown(points){
         buttons.appendChild(addButton);
         addButton.classList.add('addButtons');
         addButton.textContent = "ADD";
-        // if(!modes.lotoMode.status) addButton.classList.add('hide');
-        // else addButton.classList.remove('hide');
-        addButton.addEventListener('click',()=>addPointToLotoWindow(e));
+        addButton.classList.add('hide');
+
+        if(modes.lotoMode.state || modes.editMode.state){
+            addButton.classList.remove('hide');
+            const lotoModeAction = function(){
+                addPointToLotoWindow(e);
+            }
+            const editModeAction = function(){
+                addPointToEquipment(e);
+            }
+            if(modes.lotoMode.state)addButton.addEventListener('click',lotoModeAction);
+            if(modes.editMode.state)addButton.addEventListener('click',editModeAction);
+        }
+
     });
     return list;
 }
+
+function addPointToEquipment(lotoPoint){
+    console.log("adding loto point to equipment" + lotoPoint.tagNumber)
+    let oldId = lotoPoint.originalId;
+}
+
+
 
 // async function fillPointInfoWindow(id){ //Old Version
 //     let form = await getPointInfoForm(id);
@@ -151,27 +169,46 @@ function buildPointSearchField(){
 function getPointFromArrById(id){
     return file.points.find(e => e.id === id);
 }
-async function fillPointInfoWindow(id){
+async function fillPointInfoWindow(point){
+    console.log("Info Window:")
     // let point = await getPoint(id);
     // let point = getPointFromArrById(id);
-    let point = id;
-    let form = await getHtmlPointInfoForm(id.id);
-    let formInfo = convertToFormDto(point);
+    let form = await getHtmlPointInfoForm(point.id);
+    //let eqFormInfo = convertToFormDto(point);
     let infoFrame = document.getElementById('infoFramePoint');
     let infoContainer = document.getElementById('infoWindowPoint');
     if(infoContainer === null) newInfoWindow("Point");
     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
     infoContainer.innerHTML = "";
     infoContainer.innerHTML = form;
-    setFormValues(infoContainer,formInfo);
+    setFormValues(infoContainer,eqFormInfo);
     if(modes.editMode.state){
         //removeReadOnly();
         createSearchableDropdown("equipment");
         createSearchableDropdown("vendor");
         createSearchableDropdown("location");
-        createSearchableDropdown("system");
+        addSearchableDropdownToInput("system");
     }
+    //Adding LotoPoints to info Window:
+    // console.log("building loto point list: "+JSON.stringify(point.lotoPoints))
+    point.lotoPoints = [];
+    point.lotoPoints.push({unit:"Test", tagNumber:"01-test"});
+    point.lotoPoints.push({unit:"Test2", tagNumber:"02-test"});
+    infoContainer.appendChild(excelPointDropdown(point.lotoPoints))
 
+}
+
+function convertToLotoPointFormDto(p){
+    return{
+        unit:p.unit,
+        tagNumber:p.tagNumber,
+        description: p.description,
+        location: p.location,
+        specificLocation:p.specificLocation,
+        normalPosition:p.normalPosition,
+        isolatedPosition: p.isolatedPosition,
+    }
+    
 }
 
 function convertToFormDto(point){
@@ -184,29 +221,43 @@ function convertToFormDto(point){
         id:point.id,
         coordinates:point.coordinates,
         originalPictureSize:point.originalPictureSize
-
-
     }
 
     if (point.vendor && point.vendor.name) formDto.vendor = point.vendor.name;
     if (point.location && point.location.name) formDto.location = point.location.name;
     if (point.system && point.system.name) formDto.system = point.system.name;
-    if (point.eqType && point.eqType.name) formDto.eqType = point.eqType.name;
+    if (point.eqType && point.eqType.name) formDto.equipment = point.eqType.name;
+
+    if(point.lotoPoints){
+        formDto.lotoPoints = [];
+        if(point.lotoPoints.length > 0){
+            point.lotoPoints.forEach(e=>{
+            formDto.lotoPoints.push(convertToLotoPointFormDto(e))
+         })
+        }
+    }
     return formDto;
+}
+
+function updateSelectedArea(point){
+    selectedArea.tagNumber = point.tagNumber;
+    selectedArea.description = point.description;
+    selectedArea.specificLocation=point.specificLocation;
+    selectedArea.mainFile=point.mainFile;
+    selectedArea.files=point.files;
+    selectedArea.coordinates=point.coordinates;
 }
 
 function setFormValues(form, values) {
     for (const key in values) {
         if (values.hasOwnProperty(key)) {
-            let element = form.querySelector(`[id="${key}"]`);
-            if (element.tagName.toLowerCase() === 'div') {
-                const inputInsideDiv = element.querySelector('input');
-                if (inputInsideDiv) {
-                    element = inputInsideDiv;
-                }
-            }
+            let element = form.querySelector(`[data-object-info="${key}"]`);
             if (element) {
                 element.value = values[key];
+                element.addEventListener('input', (event) => {
+                    values[key] = event.target.value;
+                    console.log(JSON.stringify(values));
+                });
             }
         }
     }
@@ -217,6 +268,13 @@ async function createSearchableDropdown(category){
     const data = await response.json();   
     let stringData = data.map(e=>e.name); 
     buildDropdown(category,stringData,()=>setCatPopup(category, stringData));
+}
+
+async function addSearchableDropdownToInput(category){
+    const response = await fetch('/category/get-'+category);
+    const data = await response.json();   
+    let stringData = data.map(e=>e.name); 
+    addOptionsToExistingInput(category,stringData,()=>setCatPopup(category, stringData));
 }
 
 let setCatPopup = async function(category,list){

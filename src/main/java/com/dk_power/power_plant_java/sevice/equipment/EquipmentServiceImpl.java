@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.sevice.equipment;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.loto.Loto;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.EquipmentMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
@@ -13,7 +15,10 @@ import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @AllArgsConstructor
@@ -25,6 +30,7 @@ public class EquipmentServiceImpl implements EquipmentService{
     private final ValueService valueService;
     private final CategoryService categoryService;
     private final FileServiceImpl fileService;
+    private final LotoPointService lotoPointService;
 
 
 
@@ -108,5 +114,24 @@ public class EquipmentServiceImpl implements EquipmentService{
     @Override
     public Equipment convertToEntity(EquipmentDto dto) {
         return getMapper().convertToEntity(dto);
+    }
+
+    @Override
+    public Equipment update(Equipment entity) {
+        if(entity!=null){
+            Set<LotoPoint> savedLotoPoints = new HashSet<>();
+            for (LotoPoint lotoPoint : entity.getLotoPoints()) {
+                lotoPoint.getEquipmentList().add(entity);
+                savedLotoPoints.add(lotoPointService.save(lotoPoint));
+            }
+            entity.setLotoPoints(savedLotoPoints);
+
+        }
+        return save(entity);
+    }
+
+    @Override
+    public Equipment update(String id) {
+        return EquipmentService.super.update(id);
     }
 }

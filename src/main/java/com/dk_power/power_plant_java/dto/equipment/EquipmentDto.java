@@ -25,7 +25,7 @@ public class EquipmentDto extends BaseDto {
     private String coordinates;
     private String originalPictureSize;
     private String mainFile;
-    private List<LotoPoint> lotoPoints;
+    private List<LotoPointDto> lotoPoints;
 
 
     @Override

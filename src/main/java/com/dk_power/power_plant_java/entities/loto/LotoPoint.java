@@ -11,6 +11,7 @@ import lombok.Setter;
 import org.hibernate.envers.Audited;
 
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @NoArgsConstructor
@@ -36,6 +37,7 @@ public class LotoPoint extends BaseAuditEntity {
     private String electricalCheckStatus;
     private String redTagId;
     private Boolean inUse = false;
+    private String oldId;
     @ManyToMany
     @JoinTable(name = "loto_points",
             joinColumns = @JoinColumn(name = "loto_id", referencedColumnName = "id"),
@@ -44,7 +46,7 @@ public class LotoPoint extends BaseAuditEntity {
     private List<Loto> lotos;
     @ManyToMany(mappedBy = "lotoPoints")
     @JsonBackReference
-    private List<Equipment> equipmentList;
+    private Set<Equipment> equipmentList;
 
     public void addLoto(Loto entity) {
         lotos.add(entity);

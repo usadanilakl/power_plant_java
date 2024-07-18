@@ -5,6 +5,7 @@ let originalWidth;
 let activeHighlights = [];
 let highlatedAreas = [];
 let selectedArea;
+let eqFormInfo;
 
 /*****************************************************DISPLAY FUNCTIONS*****************************************************************/
 
@@ -41,6 +42,7 @@ function setAreas(areas){
             pointEditModeControl();
             fillPointInfoWindow(e);
             selectedArea = e;
+            eqFormInfo = convertToFormDto(e);
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
             positionInfoWindowsInline();
@@ -436,7 +438,10 @@ function pointEditModeControl(){
         hideAllResizeElements();
     }else if(modes.editMode.state){
         showAllResizeElements();
-        fillPointInfoWindow(selectedArea.id);
+        fillPointInfoWindow(selectedArea);
+        document.querySelectorAll('.addButtons').forEach(e=>{
+            e.classList.add('hide');
+        })
     }
 }
 
