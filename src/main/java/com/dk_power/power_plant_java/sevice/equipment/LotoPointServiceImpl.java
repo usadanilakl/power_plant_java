@@ -93,4 +93,14 @@ public class LotoPointServiceImpl implements LotoPointService{
     public LotoPoint getByOldId(String oldId) {
         return lotoPointRepo.findByOldId(oldId);
     }
+
+    @Override
+    public LotoPoint convertToEntity(LotoPointDto dto) {
+        return getMapper().convertToEntity(dto);
+    }
+
+    @Override
+    public LotoPointDto convertToDto(LotoPoint entity) {
+        return getMapper().convertToDto(entity);
+    }
 }

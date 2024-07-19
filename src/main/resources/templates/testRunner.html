@@ -56,10 +56,10 @@
             <div class="row">
                 <div class="col-12">
                     <ul >
-                        <li class="btn-list-in-line" id="fileUploadButton">Upload Files</li>
-                        <li class="btn-list-in-line" onclick="showNewUploads()">Edit New Uploads</li>
-                        <li class="btn-list-in-line"><a href="/file/upload">upload</a></li>                        
-                        <li class="btn-list-in-line" onclick="openNewWindow(getUploadFileForm)">New Window</li>
+                        <li class="btn-list-in-line" onclick="removeAllHighlights()">Remove Highlights</li>
+                        <li class="btn-list-in-line" onclick="highlightAll()">Highlight All</li>                      
+                        <li class="btn-list-in-line" onclick="highlightAll()">Highlight Loto Points</li>                      
+                        <li class="btn-list-in-line" onclick="openNewWindow(getUploadFileForm)">Upload Files</li>
                     </ul>
                 </div>
             </div>
@@ -169,8 +169,11 @@
         //console.log(JSON.stringify(arr[0]))
         document.getElementById('infoFrameOld-LOTO-Points').appendChild(buildPointSearchField());
 
-        let left = document.getElementById('left');
-        left.appendChild(createModeButtons());
+        let left = document.getElementById('lower').querySelector('ul');
+        let item = document.createElement('li');
+        item.appendChild(createModeButtons());
+        left.appendChild(item);
+        item.classList.add('btn-list-in-line');
 
         if(mode) setMode(mode);
 

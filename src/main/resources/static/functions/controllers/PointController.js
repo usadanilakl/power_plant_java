@@ -65,8 +65,6 @@ function findFile(path){
 
 }
 
-
-
 async function addPointToEquipment(lotoPoint){
     console.log("adding loto point to equipment" + lotoPoint.tagNumber)
     let oldId = lotoPoint.originalId;
@@ -84,6 +82,8 @@ async function addPointToEquipment(lotoPoint){
             updatedPoints.push(convertToLotoPointFormDto(e));
             });
             eqFormInfo.lotoPoints = updatedPoints;
+            fillPointInfoWindow(eqFormInfo)
+            getFileFromDbByLink(file.fileNumber)
        }console.log("Updated result: "+JSON.stringify(updatedEq))
        
     }else console.log("oldId: "+oldId + "eq id: " + eqId);
@@ -93,4 +93,4 @@ async function addPointToEquipment(lotoPoint){
 getRevisedExcelPoints();
 
 let button = document.getElementById('pointUpdateButton');
-button.addEventListener('click',updatePoint);
+button.addEventListener('click',updatePoint); 

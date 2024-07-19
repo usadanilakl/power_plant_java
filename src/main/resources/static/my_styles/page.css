@@ -60,12 +60,13 @@
 }
 
 #lower{
-    position: relative;
+    position: fixed;
     background-color: black;
     height: fit-content;
     max-height: 40%;
     width: 100%;
-    z-index: 10;
+    bottom: 0px;
+    z-index: 11;
     overflow: auto;
 }
 

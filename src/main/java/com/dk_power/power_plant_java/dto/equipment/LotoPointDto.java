@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Set;
 
 @NoArgsConstructor
 @Getter
@@ -32,7 +33,7 @@ public class LotoPointDto extends BaseAuditEntity {
     private String redTagId;
     private Boolean inUse = false;
     private List<LotoDto> lotos;
-    private List<EquipmentDto> equipmentList;
+    private Set<EquipmentDto> equipmentList;
     private String oldId;
 
 }
