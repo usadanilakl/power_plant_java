@@ -2,19 +2,25 @@ package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
-import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Controller;
 
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 public class LotoPointMapper implements BaseMapper{
     private final ModelMapper modelMapper;
     private final EquipmentMapper equipmentMapper;
     private final LotoMapper lotoMapper;
+
+    public LotoPointMapper(ModelMapper modelMapper, @Lazy EquipmentMapper equipmentMapper, LotoMapper lotoMapper) {
+        this.modelMapper = modelMapper;
+        this.equipmentMapper = equipmentMapper;
+        this.lotoMapper = lotoMapper;
+    }
+
     public LotoPointDto convertToDto(LotoPoint entity) {
         if (entity == null) {
             return null;

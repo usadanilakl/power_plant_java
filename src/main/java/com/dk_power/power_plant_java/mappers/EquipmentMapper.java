@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
+import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
@@ -20,12 +21,14 @@ public class EquipmentMapper implements BaseMapper{
     private final ValueService valueService;
     private final FileService fileService;
     private final EquipmentService equipmentService;
+    private final LotoPointService lotoPointService;
 
-    public EquipmentMapper(ModelMapper modelMapper, ValueService valueService, FileService fileService, @Lazy EquipmentService equipmentService) {
+    public EquipmentMapper(ModelMapper modelMapper, ValueService valueService, FileService fileService, @Lazy EquipmentService equipmentService, LotoPointService lotoPointService) {
         this.modelMapper = modelMapper;
         this.valueService = valueService;
         this.fileService = fileService;
         this.equipmentService = equipmentService;
+        this.lotoPointService = lotoPointService;
     }
 
 
@@ -82,6 +85,9 @@ public class EquipmentMapper implements BaseMapper{
                     .filter(Objects::nonNull)
                     .map(FileObject::getFileLink)
                     .collect(Collectors.toList()));
+        }
+        if(entity.getLotoPoints()!=null){
+            dto.setLotoPoints(entity.getLotoPoints().stream().map(lotoPointService::convertToDto).collect(Collectors.toSet()));
         }
 
         return dto;

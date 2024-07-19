@@ -2,7 +2,9 @@ package com.dk_power.power_plant_java.controller.points;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
+import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 public class PointRestController {
     private final EquipmentService equipmentService;
+    private final LotoPointService lotoPointService;
     @PostMapping("/create")
     public List<Equipment> createPoints(@RequestBody List<Equipment> points){
         for (Equipment point : points) {
@@ -30,5 +33,17 @@ public class PointRestController {
         Equipment equipment = equipmentService.convertToEntity(dto);
         Equipment update = equipmentService.update(equipment);
         return ResponseEntity.ok(equipmentService.convertToDto(update));
+    }
+
+    @PutMapping("/add-loto-point/{eq}/{point}")
+    public ResponseEntity<EquipmentDto> addLotoPointEquipment(@PathVariable String eq, @PathVariable String point){
+        System.out.println(eq + " " +point);
+        Equipment equipment = equipmentService.getEntityById(eq);
+        LotoPoint update = lotoPointService.getByOldId(point);
+        equipment.addLotoPoint(update);
+        update.addEquipment(equipment);
+        Equipment updated = equipmentService.update(equipment);
+        System.out.println(updated.getLotoPoints());
+        return ResponseEntity.ok(equipmentService.convertToDto(updated));
     }
 }

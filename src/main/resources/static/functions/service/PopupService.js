@@ -43,8 +43,8 @@ async function setupPopup(category){
     let saveButton = popup.querySelector('#save');
     let newVal = function(){
         let inputValue = document.getElementById('value-name');
-        let editValue = document.getElementById('edit-existing').querySelector('input');
-        let deleteValue = document.getElementById('delete-existing').querySelector('input');
+        let editValue = document.getElementById('edit-existing-input');
+        let deleteValue = document.getElementById('delete-existing-input');
 
         if(editValue.value!==null && editValue.value!==""){
             crudValue("PUT",category, editValue.value, inputValue.value);

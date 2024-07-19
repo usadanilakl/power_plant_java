@@ -104,10 +104,7 @@ function excelPointDropdown(points){
     return list;
 }
 
-function addPointToEquipment(lotoPoint){
-    console.log("adding loto point to equipment" + lotoPoint.tagNumber)
-    let oldId = lotoPoint.originalId;
-}
+
 
 
 
@@ -169,6 +166,7 @@ function buildPointSearchField(){
 function getPointFromArrById(id){
     return file.points.find(e => e.id === id);
 }
+
 async function fillPointInfoWindow(point){
     console.log("Info Window:")
     // let point = await getPoint(id);
@@ -183,18 +181,18 @@ async function fillPointInfoWindow(point){
     infoContainer.innerHTML = form;
     setFormValues(infoContainer,eqFormInfo);
     if(modes.editMode.state){
-        //removeReadOnly();
+        removeReadOnly(infoFrame.querySelector('form'));
         createSearchableDropdown("equipment");
         createSearchableDropdown("vendor");
         createSearchableDropdown("location");
-        addSearchableDropdownToInput("system");
+        createSearchableDropdown("system");
     }
     //Adding LotoPoints to info Window:
     // console.log("building loto point list: "+JSON.stringify(point.lotoPoints))
-    point.lotoPoints = [];
-    point.lotoPoints.push({unit:"Test", tagNumber:"01-test"});
-    point.lotoPoints.push({unit:"Test2", tagNumber:"02-test"});
-    infoContainer.appendChild(excelPointDropdown(point.lotoPoints))
+    // point.lotoPoints = [];
+    // point.lotoPoints.push({unit:"Test", tagNumber:"01-test"});
+    // point.lotoPoints.push({unit:"Test2", tagNumber:"02-test"});
+    infoContainer.appendChild(excelPointDropdown(eqFormInfo.lotoPoints))
 
 }
 
@@ -240,12 +238,17 @@ function convertToFormDto(point){
 }
 
 function updateSelectedArea(point){
-    selectedArea.tagNumber = point.tagNumber;
-    selectedArea.description = point.description;
-    selectedArea.specificLocation=point.specificLocation;
-    selectedArea.mainFile=point.mainFile;
-    selectedArea.files=point.files;
-    selectedArea.coordinates=point.coordinates;
+    if (point.tagNumber) selectedArea.tagNumber = point.tagNumber;
+    if (point.description) selectedArea.description = point.description;
+    if (point.specificLocation) selectedArea.specificLocation=point.specificLocation;
+    if (point.mainFile) selectedArea.mainFile=point.mainFile;
+    if (point.files) selectedArea.files=point.files;
+    if (point.coordinates) selectedArea.coordinates=point.coordinates;
+
+    if (point.vendor) selectedArea.vendor.name = point.vendor;
+    if (point.location) selectedArea.location.name = point.location;
+    if (point.system) selectedArea.system.name = point.system;
+    if (point.eqType) selectedArea.equipment.name = point.eqType;
 }
 
 function setFormValues(form, values) {
@@ -254,13 +257,16 @@ function setFormValues(form, values) {
             let element = form.querySelector(`[data-object-info="${key}"]`);
             if (element) {
                 element.value = values[key];
-                element.addEventListener('input', (event) => {
-                    values[key] = event.target.value;
-                    console.log(JSON.stringify(values));
+                element.addEventListener('change', (event) => {
+                    if (values.hasOwnProperty(key)) {
+                        values[key] = event.target.value;
+                        console.log(JSON.stringify(values));
+                    }
                 });
             }
         }
     }
+    // if(modes.editMode.state)removeReadOnly(form)
 }
 
 async function createSearchableDropdown(category){

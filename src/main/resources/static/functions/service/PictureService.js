@@ -40,9 +40,9 @@ function setAreas(areas){
             removeAllHighlights();
             createHighlight(area);
             pointEditModeControl();
-            fillPointInfoWindow(e);
             selectedArea = e;
             eqFormInfo = convertToFormDto(e);
+            fillPointInfoWindow(e);
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
             positionInfoWindowsInline();
@@ -436,6 +436,8 @@ function resizeNewArea(area){
 function pointEditModeControl(){
     if(modes.viewMode.state){
         hideAllResizeElements();
+        fillPointInfoWindow(selectedArea);
+        
     }else if(modes.editMode.state){
         showAllResizeElements();
         fillPointInfoWindow(selectedArea);

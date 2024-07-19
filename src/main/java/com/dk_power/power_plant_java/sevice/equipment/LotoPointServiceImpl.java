@@ -2,11 +2,13 @@ package com.dk_power.power_plant_java.sevice.equipment;
 
 import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,14 +21,14 @@ import java.util.Map;
 public class LotoPointServiceImpl implements LotoPointService{
     private final LotoPointRepo lotoPointRepo;
     private final SessionFactory sessionFactory;
-    private final UniversalMapper universalMapper;
+    private final LotoPointMapper lotoPointMapper;
     private final ExcelService excelService;
 
 
-    public LotoPointServiceImpl(LotoPointRepo lotoPointRepo, SessionFactory sessionFactory, UniversalMapper universalMapper, @Qualifier("LotoPoint") ExcelService excelService) {
+    public LotoPointServiceImpl(LotoPointRepo lotoPointRepo, SessionFactory sessionFactory, @Lazy LotoPointMapper lotoPointMapper, @Qualifier("LotoPoint") ExcelService excelService) {
         this.lotoPointRepo = lotoPointRepo;
         this.sessionFactory = sessionFactory;
-        this.universalMapper = universalMapper;
+        this.lotoPointMapper = lotoPointMapper;
         this.excelService = excelService;
     }
 
@@ -46,8 +48,8 @@ public class LotoPointServiceImpl implements LotoPointService{
     }
 
     @Override
-    public UniversalMapper getMapper() {
-        return universalMapper;
+    public LotoPointMapper getMapper() {
+        return lotoPointMapper;
     }
 
     @Override
@@ -87,4 +89,8 @@ public class LotoPointServiceImpl implements LotoPointService{
     }
 
 
+    @Override
+    public LotoPoint getByOldId(String oldId) {
+        return lotoPointRepo.findByOldId(oldId);
+    }
 }

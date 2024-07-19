@@ -58,6 +58,7 @@ function buildDropdown(id, items, buttonAction) {
         if (event.target.tagName.toLowerCase() === 'div') {
             document.getElementById(`${id}-input`).value = event.target.textContent;
             document.getElementById(`${id}-options`).classList.remove("show");
+            updateEqFormInfo(input);
         }
     });
 
@@ -69,6 +70,10 @@ function addOptionsToExistingInput(id, items, buttonAction) { //not working
     let dropdown = dropdownHolder.querySelector('.searchable-dropdown');
     let input = dropdownHolder.querySelector('input');
     input.id = `${id}-input`;
+    input.setAttribute('data-object-info',id);
+    input.addEventListener('focus', () => showOptions(id));
+    input.addEventListener('keyup', () => filterFunction(id));
+    
     let addButton = dropdownHolder.querySelector('button');
     let oldValue;
 
@@ -83,21 +88,28 @@ function addOptionsToExistingInput(id, items, buttonAction) { //not working
 
     // Add the event listener after appending options to the dropdown
     document.addEventListener('click', function(event) {
-        var isClickInside = document.getElementById(`${id}-input`).contains(event.target) || document.getElementById(`${id}-options`).contains(event.target);
-        if (!isClickInside) {
-            document.getElementById(`${id}-options`).classList.remove("show");
+        if(input){
+            var isClickInside = document.getElementById(`${id}-input`).contains(event.target) || document.getElementById(`${id}-options`).contains(event.target);
+            if (!isClickInside) {
+                document.getElementById(`${id}-options`).classList.remove("show");
+            } 
         }
+
     });
 
     options.addEventListener('click', function(event) {
         if (event.target.tagName.toLowerCase() === 'div') {
             document.getElementById(`${id}-input`).value = event.target.textContent;
             document.getElementById(`${id}-options`).classList.remove("show");
+            eqFormInfo[input.getAttribute('data-object-info')] = event.target.textContent;
+            
         }
     });
+    
 }
 
 function buildOptions(id, items) {
+    let input = document.getElementById(`${id}-input`);
     let dropdownContent = document.createElement('div');
     dropdownContent.classList.add('searchable-dropdown-content');
     dropdownContent.id = `${id}-options`;
@@ -136,4 +148,13 @@ function filterFunction(id) {
     }else{
         input.style.backgroundColor = "white"; 
     }
+    updateEqFormInfo(input);
+    
 }
+
+function updateEqFormInfo(input){
+    let key = input.getAttribute('data-object-info');
+    if(eqFormInfo.hasOwnProperty(key)) eqFormInfo[key] = input.value;
+}
+
+

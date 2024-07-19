@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -25,7 +26,7 @@ public class EquipmentDto extends BaseDto {
     private String coordinates;
     private String originalPictureSize;
     private String mainFile;
-    private List<LotoPointDto> lotoPoints;
+    private Set<LotoPointDto> lotoPoints;
 
 
     @Override
