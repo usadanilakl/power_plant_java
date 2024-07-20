@@ -18,7 +18,7 @@ public class CategoryRestController {
     private final CategoryService categoryService;
     private final ValueService valueService;
 
-    @GetMapping("/get-equipment")
+    @GetMapping("/get-eqType")
     public ResponseEntity<Set<ValueDto>> getValues(){
         return ResponseEntity.ok(categoryService.getEqTypes());
     }

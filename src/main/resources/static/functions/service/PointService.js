@@ -14,7 +14,9 @@
  ****************************************************************************************************************************************************************************************/
 
 
-
+/***********************************************************************************************************************************
+ * Excel Points and LotoPoints functions
+ *************************************************************************************************************************************/
 
 function getExcelPointsByLabel(label){
     let result = [];
@@ -130,16 +132,21 @@ function lotoPointDropdown(points){
         let addButton = document.createElement('button');
         buttons.appendChild(addButton);
         addButton.classList.add('addButtons');
-        addButton.textContent = "ADD";
+        addButton.textContent = "-";
         addButton.classList.add('hide');
 
         if(modes.editMode.state){
             
             addButton.classList.remove('hide');
             const editModeAction = function(){
-                console.log(eqFormInfo.points.length)
-                eqFormInfo.points = eqFormInfo.points.filter(e=>e.id!==e.id);
-                console.log(eqFormInfo.points.length)
+                 console.log(JSON.stringify(eqFormInfo.lotoPoints.length))
+                 let arr = [];
+                eqFormInfo.lotoPoints.forEach(el=>{
+                    if(el.tagNumber!==e.tagNumber) arr.push(el)
+                });
+            eqFormInfo.lotoPoints = arr;
+                    
+                console.log(eqFormInfo.lotoPoints.length)
             }
             addButton.addEventListener('click',editModeAction);
         }
@@ -192,20 +199,18 @@ function getPointFromArrById(id){
 }
 
 async function fillPointInfoWindow(point){
-    let form = await getHtmlPointInfoForm(point.id);
-    //let eqFormInfo = convertToFormDto(point);
+    let form = await getHtmlPointInfoForm();
     let infoFrame = document.getElementById('infoFramePoint');
     let infoContainer = document.getElementById('infoWindowPoint');
     if(infoContainer === null) newInfoWindow("Point");
     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
     infoContainer.innerHTML = "";
     infoContainer.innerHTML = form;
-    eqFormInfo = convertToFormDto(point);
-    setFormValues(infoContainer,eqFormInfo);
+    setFormValues(infoContainer,point);
 
     if(modes.editMode.state){
         removeReadOnly(infoFrame.querySelector('form'));
-        createSearchableDropdown("equipment");
+        createSearchableDropdown("eqType");
         createSearchableDropdown("vendor");
         createSearchableDropdown("location");
         createSearchableDropdown("system");
@@ -215,7 +220,7 @@ async function fillPointInfoWindow(point){
 
     let button = document.getElementById('pointUpdateButton');
     let button2 = document.getElementById('pointDeleteButton');
-    button.addEventListener('click',updatePoint); 
+    button.addEventListener('click',()=>updatePoint(point)); 
     button2.addEventListener('click',()=>deletePoint(point.id)); 
 
 }
@@ -249,7 +254,7 @@ function convertToFormDto(point){
     if (point.vendor && point.vendor.name) formDto.vendor = point.vendor.name;
     if (point.location && point.location.name) formDto.location = point.location.name;
     if (point.system && point.system.name) formDto.system = point.system.name;
-    if (point.eqType && point.eqType.name) formDto.equipment = point.eqType.name;
+    if (point.eqType && point.eqType.name) formDto.eqType = point.eqType.name;
 
     if(point.lotoPoints){
         formDto.lotoPoints = [];
@@ -263,17 +268,25 @@ function convertToFormDto(point){
 }
 
 function updateSelectedArea(point){
-    if (point.tagNumber) selectedArea.tagNumber = point.tagNumber;
-    if (point.description) selectedArea.description = point.description;
-    if (point.specificLocation) selectedArea.specificLocation=point.specificLocation;
-    if (point.mainFile) selectedArea.mainFile=point.mainFile;
-    if (point.files) selectedArea.files=point.files;
-    if (point.coordinates) selectedArea.coordinates=point.coordinates;
+    let ready = {
+        vendor:{name:"",id:null},
+        location:{name:"",id:null},
+        eqType:{name:"",id:null},
+        system:{name:"",id:null},
+    };
+    if (point.tagNumber) ready.tagNumber = point.tagNumber;
+    if (point.description) ready.description = point.description;
+    if (point.specificLocation) ready.specificLocation=point.specificLocation;
+    if (point.mainFile) ready.mainFile=point.mainFile;
+    if (point.files) ready.files=point.files;
+    if (point.coordinates) ready.coordinates=point.coordinates;
+    ready.id = point.id;
 
-    if (point.vendor) selectedArea.vendor.name = point.vendor;
-    if (point.location) selectedArea.location.name = point.location;
-    if (point.system) selectedArea.system.name = point.system;
-    if (point.eqType) selectedArea.equipment.name = point.eqType;
+    if (point.vendor) ready.vendor.name = point.vendor;
+    if (point.location) ready.location.name = point.location;
+    if (point.system) ready.system.name = point.system;
+    if (point.eqType) ready.eqType.name = point.eqType;
+    return ready;
 }
 
 function removePointFromEquipment(point){
@@ -297,6 +310,10 @@ function setFormValues(form, values) {
     // if(modes.editMode.state)removeReadOnly(form)
 }
 
+/************************************************************************************************************************************ *
+ * Form Searchable Dropdown functions
+************************************************************************************************************************************ */
+
 async function createSearchableDropdown(category){
     const response = await fetch('/category/get-'+category);
     const data = await response.json();   
@@ -319,8 +336,7 @@ let setCatPopup = async function(category,list){
 
 function removeReadOnly(element){
     if(element===null) element = document.getElementById('point-info-form');
-    
-    console.log(element)
+
     let inputs = element.querySelectorAll('input');
     inputs.forEach(e=>{
         e.removeAttribute('readonly');
@@ -336,11 +352,7 @@ function applyReadOnly(element){
 }
 
 
-/******************************
- * Need to collect values from form
- * Add then into object
- * Update DB
- * *************************************** */
+
 function collectFormValues(form) {
     let formInfo = new FormData(form);
     let formObj = {};
@@ -361,15 +373,10 @@ function collectFormValues(form) {
     return formObj;
 }
 
-function addOptionToSelect(selectElement, optionText, optionValue) {
+function addOptionToSelect(selectElement, optionText, optionValue) { //Non Searchable dropdown function
     let option = document.createElement("option");
     option.text = optionText;
     option.value = optionValue;
     selectElement.add(option);
 }
 
-
-/**************************************
- * Put/Collect arrays in form using <select>
- * Add function to add new options to select from UI that will be added to DB
- * ***************************************** */

@@ -3,7 +3,7 @@ function buildDropdown(id, items, buttonAction) {
     let dropdown = document.createElement('div');
     dropdown.classList.add('searchable-dropdown');
     dropdown.classList.add('form-group');
-    dropdown.id = "sdropdown-"
+    dropdown.id = "sdropdown-"+id;
     //let dropdownHolder = document.getElementById(id);
     let dropdownHolder = document.querySelector(`[data-sdropdown=${id}]`)
     let oldValue;
@@ -65,7 +65,7 @@ function buildDropdown(id, items, buttonAction) {
     return dropdown;
 }
 
-function addOptionsToExistingInput(id, items, buttonAction) { //not working
+function addOptionsToExistingInput(id, items, buttonAction) {
     let dropdownHolder = document.querySelector(`[data-sdropdown=${id}]`);
     let dropdown = dropdownHolder.querySelector('.searchable-dropdown');
     let input = dropdownHolder.querySelector('input');

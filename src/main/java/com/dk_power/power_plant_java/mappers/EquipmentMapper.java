@@ -128,23 +128,48 @@ public class EquipmentMapper implements BaseMapper{
         }
 
         if (source.getVendor() != null) {
-            if(source.getVendor().getId() == null){ //need to work on this
+            if(source.getVendor().getId() == null){
                 ValueDto v = valueService.getValueFromCategory("Vendor",source.getVendor().getName());
+                if(v==null) throw new RuntimeException("Vendor "+source.getVendor().getName() +" not found");
+                else entity.setVendor(valueService.convertToEntity(v));
+            }else{
+                entity.setVendor(valueService.getEntityById(source.getVendor().getId()));
             }
 
-            entity.setVendor(valueService.getEntityById(source.getVendor().getId()));
+
         }
         if (source.getMainFile() != null) {
             entity.setMainFile(fileService.getByFileLink(source.getMainFile()));
         }
         if (source.getLocation() != null) {
-            if(source.getLocation().getId()!=null)entity.setLocation(valueService.getEntityById(source.getLocation().getId()));
+            if(source.getLocation().getId() == null){
+                ValueDto v = valueService.getValueFromCategory("Location",source.getLocation().getName());
+                if(v==null) throw new RuntimeException("Location "+source.getLocation().getName() +" not found");
+                else entity.setLocation(valueService.convertToEntity(v));
+            }else{
+                entity.setLocation(valueService.getEntityById(source.getLocation().getId()));
+            }
+            //if(source.getLocation().getId()!=null)entity.setLocation(valueService.getEntityById(source.getLocation().getId()));
         }
         if (source.getEqType() != null) {
-            if(source.getEqType().getId()!=null)entity.setEqType(valueService.getEntityById(source.getEqType().getId()));
+            if(source.getEqType().getId() == null){
+                ValueDto v = valueService.getValueFromCategory("Equipment Type",source.getEqType().getName());
+                if(v==null) throw new RuntimeException("Equipment Type "+source.getEqType().getName() +" not found");
+                else entity.setEqType(valueService.convertToEntity(v));
+            }else{
+                entity.setEqType(valueService.getEntityById(source.getEqType().getId()));
+            }
+            //if(source.getEqType().getId()!=null)entity.setEqType(valueService.getEntityById(source.getEqType().getId()));
         }
         if (source.getSystem() != null) {
-            if(source.getSystem().getId()!=null)entity.setSystem(valueService.getEntityById(source.getSystem().getId()));
+
+            if(source.getEqType().getId() == null){
+                ValueDto v = valueService.getValueFromCategory("System",source.getSystem().getName());
+                if(v==null) throw new RuntimeException("System "+source.getSystem().getName() +" not found");
+                else entity.setSystem(valueService.convertToEntity(v));
+            }else{
+                entity.setSystem(valueService.getEntityById(source.getSystem().getId()));
+            }
         }
         if (source.getFiles() != null) {
             entity.setFiles(source.getFiles().stream()

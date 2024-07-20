@@ -33,15 +33,22 @@ async function getPoint(id){
     return data;
 }
 
-async function getHtmlPointInfoForm(id){
-    const response = await fetch('/point/get-html-info-form/'+id);
+async function getHtmlPointInfoForm(){
+    const response = await fetch('/point/get-html-info-form');
     const data = await response.text();
     return data;
 }
 
-async function updatePoint(){
-    console.log(JSON.stringify(selectedArea));
-    selectedArea.coordinates = getNewAreaCoorinates(selectedArea);
+async function updatePoint(obj){
+    // console.log(JSON.stringify(selectedArea));
+    // selectedArea.coordinates = getNewAreaCoorinates(selectedArea);
+    console.log(JSON.stringify(obj))
+    let newObj = updateSelectedArea(obj);
+    console.log(JSON.stringify(newObj));
+    const response = await fetch(createNewEqUrl,getPostMetaDataWithBody(newObj));
+    const data = await response.json();
+    return data;
+    
 }
 
 function findFile(path){
@@ -77,10 +84,8 @@ async function addPointToEquipment(lotoPoint){
 }
 
 async function createNewEq(obj){
-    console.log(JSON.stringify(obj))
     const response = await fetch(createNewEqUrl,getPostMetaDataWithBody(obj));
     const data = await response.json();
-    console.log(JSON.stringify(data));
     return data;
 }
 

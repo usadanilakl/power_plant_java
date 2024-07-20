@@ -5,7 +5,7 @@ let originalWidth;
 let activeHighlights = [];
 let highlatedAreas = [];
 let selectedArea;
-let eqFormInfo;
+// let eqFormInfo; //moved to global variables
 
 /*****************************************************DISPLAY FUNCTIONS*****************************************************************/
 
@@ -42,7 +42,7 @@ function setAreas(areas){
             pointEditModeControl();
             selectedArea = e;
             eqFormInfo = convertToFormDto(e);
-            fillPointInfoWindow(e);
+            fillPointInfoWindow(eqFormInfo);
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
             positionInfoWindowsInline();
@@ -311,14 +311,16 @@ coords.getObjHeight = function(){return this.mouseOnPictureEnd.y-this.mouseOnPic
 let areaInfo = {
     tagNumber:null,
     description:null,
-    location:{category:"Location",name:null,id:null},
+    location:"",//{category:"Location",name:null,id:null},
     specificLocation:null,
-    system:{category:"System",name:null,id:null},
+    system:"",//{category:"System",name:null,id:null},
     files:null,
     mainFile:null,
     coordinates:null,
     originalPictureSize:null,
-    vendor:{category:"Vendor",name:null,id:null}
+    vendor:"", //{category:"Vendor",name:null,id:null},
+    eqType:"", //{category:"Equipment Type",name:null,id:null},
+    lotoPoints:[]
 }
 
 function getPictureSize(){
@@ -414,16 +416,16 @@ async function handleMouseUp() {
     newHighlights[newHighlights.length-1].picSize = picSize;
 
     if(coords.getObjWidth() < 20 && coords.getObjHeight() < 20) removeLastHighlight();
-
+    let image = document.getElementById('picture');
     areaInfo.coordinates = areaCoordinates;
-    areaInfo.originalPictureSize = "width:"+picture.naturalWidth + ",height:"+picture.naturalHeight;
+    areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
 
     areaInfo.tagNumber = "new Area";
     areaInfo.mainFile = file.fileLink;
     areaInfo.files = [];
     areaInfo.files.push(file.fileLink);
-    if(file.vendor)areaInfo.vendor = file.vendor;
-    if(file.system)areaInfo.system = file.system;;
+    if(file.vendor)areaInfo.vendor = file.vendor.name;
+    if(file.system)areaInfo.system = file.system.name;;
 
     let area = createAreaElement(areaInfo);
     area.addEventListener('click',()=>{
@@ -438,9 +440,10 @@ async function handleMouseUp() {
     createHighlight(area);
     // console.log(JSON.stringify(areaInfo))
     // console.log(JSON.stringify(selectedArea))
-    let newEq = await createNewEq(areaInfo);
-    file.points.push(newEq);
-    fillPointInfoWindow(newEq);
+    //let newEq = await createNewEq(areaInfo);
+    //file.points.push(newEq);
+    eqFormInfo = areaInfo;
+    fillPointInfoWindow(eqFormInfo);
     
 }
 

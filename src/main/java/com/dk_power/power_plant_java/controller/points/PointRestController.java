@@ -36,6 +36,7 @@ public class PointRestController {
     }
     @PostMapping("/")
     public ResponseEntity<EquipmentDto> createEquipment(@RequestBody EquipmentDto dto){
+        System.out.println(dto);
         Equipment save = equipmentService.save(dto);
         return ResponseEntity.ok(equipmentService.convertToDto(save));
     }

@@ -34,8 +34,8 @@ public class PointController {
         return "/partials/point-info-form";
     }
 
-    @GetMapping("/get-html-info-form/{id}")
-    public String getHtmlInfoForm(@PathVariable("id") String id){
+    @GetMapping("/get-html-info-form")
+    public String getHtmlInfoForm(){
         return "/points/html-point-form";
     }
 

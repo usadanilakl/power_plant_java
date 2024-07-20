@@ -75,7 +75,7 @@ async function crudValue( method,category,value,newValue){
     const response = await fetch(endpoint,operation);
     const data = await response.json();
     console.log(JSON.stringify(data));
-    fillPointInfoWindow(selectedArea.id);
+    fillPointInfoWindow(eqFormInfo);
 }
 
 // async function getCatPopup(id){
