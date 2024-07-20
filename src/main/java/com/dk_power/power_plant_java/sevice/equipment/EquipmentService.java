@@ -7,6 +7,10 @@ import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 
+import java.util.List;
+
 public interface EquipmentService extends CrudService<Equipment, EquipmentDto, EquipmentRepo, EquipmentMapper> {
     Equipment saveForTransfer(Equipment transfer);
+
+    List<Equipment> getByTagNumber(String tag);
 }

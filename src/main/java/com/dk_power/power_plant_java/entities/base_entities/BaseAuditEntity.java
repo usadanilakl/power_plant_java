@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.entities.base_entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 @Setter
 @EntityListeners(AuditingEntityListener.class)
 @Audited
+@Where(clause = "deleted=false")
 public class BaseAuditEntity extends BaseIdEntity {
     @CreatedDate
     @Temporal(TemporalType.TIMESTAMP)

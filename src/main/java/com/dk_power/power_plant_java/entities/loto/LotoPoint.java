@@ -4,6 +4,7 @@ package com.dk_power.power_plant_java.entities.loto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,6 +39,7 @@ public class LotoPoint extends BaseAuditEntity {
     private String redTagId;
     private Boolean inUse = false;
     private String oldId;
+    
     @ManyToMany
     @JoinTable(name = "loto_points",
             joinColumns = @JoinColumn(name = "loto_id", referencedColumnName = "id"),
@@ -45,7 +47,7 @@ public class LotoPoint extends BaseAuditEntity {
     //@JsonIgnore
     private List<Loto> lotos;
     @ManyToMany(mappedBy = "lotoPoints")
-    @JsonBackReference
+    @JsonIgnore
     private Set<Equipment> equipmentList;
 
     public void addLoto(Loto entity) {

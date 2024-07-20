@@ -1,31 +1,18 @@
 let revisedExcelPoints = [];
 
-// let postNoBody = {
-//     method: 'POST',
-//     headers: {
-//         'X-CSRF-TOKEN': token,
-//         'Content-Type': 'application/json'
-//     }
-// }
-// let putNoBody = {
-//     method: 'PUT',
-//     headers: {
-//         'X-CSRF-TOKEN': token,
-//         'Content-Type': 'application/json'
-//     }
-// }
-// let deleteNoBody = {
-//     method: 'DELETE',
-//     headers: {
-//         'X-CSRF-TOKEN': token,
-//         'Content-Type': 'application/json'
-//     }
-// }
-// let createValueUrl = "/category";
-// const getCatPopupUrl = "/cat/popup"
-
-
 let addLotoPointToEqUrl = '/points/add-loto-point/' //{eqId}/{pointOldId}
+let createNewEqUrl = '/points/'
+
+function getPostMetaDataWithBody(data){
+    return{
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Content-Type': 'application/json'
+        },
+        body:JSON.stringify(data)
+    }
+}
 
 async function getRevisedExcelPoints(){
     let response = await fetch('/point/get-revised-excel-points');
@@ -89,8 +76,22 @@ async function addPointToEquipment(lotoPoint){
     }else console.log("oldId: "+oldId + "eq id: " + eqId);
 }
 
+async function createNewEq(obj){
+    console.log(JSON.stringify(obj))
+    const response = await fetch(createNewEqUrl,getPostMetaDataWithBody(obj));
+    const data = await response.json();
+    console.log(JSON.stringify(data));
+    return data;
+}
+
+async function deletePoint(id){
+    const response = await fetch(createNewEqUrl+id, deleteNoBody);
+    const data = await response.text();
+    file.points = file.points.filter(e=>e.id!==id);
+    console.log(data)
+
+}
+
 
 getRevisedExcelPoints();
 
-let button = document.getElementById('pointUpdateButton');
-button.addEventListener('click',updatePoint); 

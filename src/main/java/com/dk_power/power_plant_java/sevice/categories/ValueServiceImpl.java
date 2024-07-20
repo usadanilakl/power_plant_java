@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -59,6 +60,13 @@ public class ValueServiceImpl implements ValueService{
             categoryService.save(category);
         }
         return value;
+    }
+
+    @Override
+    public ValueDto getValueFromCategory(String cat, String val) {
+        Set<ValueDto> valuesOfCat = categoryService.getValuesOfCat(cat);
+        Optional<ValueDto> first = valuesOfCat.stream().filter(e -> e.getName().equals(val)).findFirst();
+        return  first.orElse(null);
     }
 
 }

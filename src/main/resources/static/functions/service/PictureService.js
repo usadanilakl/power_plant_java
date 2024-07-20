@@ -192,6 +192,11 @@ function highlightAll(){
         createHighlight(e);
     })
 }
+function highlightLotoPoints(){
+    file.lotoPoints.forEach(e=>{
+
+    })
+}
 function relocateHighlightsWithPicture(event){
     //let allHighlights = [...activeHighlights];
 
@@ -304,15 +309,24 @@ let coords = {}
 coords.getObjWidth = function(){return this.mouseOnPictureEnd.x-this.mouseOnPictureStart.x}.bind(coords);
 coords.getObjHeight = function(){return this.mouseOnPictureEnd.y-this.mouseOnPictureStart.y}.bind(coords);
 let areaInfo = {
-    label:"",
-    description:"",
-    mainSystem:"",
-    systems:[],
-    loto:true,
-    files:[],
-    coordinates:"",
-    originalPictureSize:"",
-    vendor:"",
+    tagNumber:null,
+    description:null,
+    location:{category:"Location",name:null,id:null},
+    specificLocation:null,
+    system:{category:"System",name:null,id:null},
+    files:null,
+    mainFile:null,
+    coordinates:null,
+    originalPictureSize:null,
+    vendor:{category:"Vendor",name:null,id:null}
+}
+
+function getPictureSize(){
+    const style = window.getComputedStyle(picture);
+    const paddingLeft = parseFloat(style.paddingLeft);
+    const paddingRight = parseFloat(style.paddingRight);
+    const picSizeWithoutPadding = picture.clientWidth - paddingLeft - paddingRight;
+    return picSizeWithoutPadding;
 }
 
 function registerMouseCoordsOnPicture(event){
@@ -350,6 +364,8 @@ function handleMouseDown(event) {
     newHighlights.push({element:shape});
     shape.addEventListener('mousedown',(event)=>{
         event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
         relocateHighlightsWithPicture(event);
     })
 
@@ -385,9 +401,14 @@ async function handleMouseUp() {
     await offsetSizing(picture);
     //await sendCoordinates();
 
-    let areaCoordinates = 'StartX:'+coords.mouseOnPictureStart.x + ',StartY:' + coords.mouseOnPictureStart.y+ ',EndX:'+ coords.mouseOnPictureEnd.x + ',EndY:' + coords.mouseOnPictureEnd.y;
+    let areaCoordinates = 'StartX:'+coords.mouseOnPictureStart.x + ',StartY:' + coords.mouseOnPictureStart.y+ ',EndX:'+ coords.mouseOnPictureEnd.x + ',EndY:' + coords.mouseOnPictureEnd.y +',width:'+ coords.getObjWidth() +',height:'+ coords.getObjHeight();
     let id = coords.mouseOnPictureStart.x + ',' + coords.mouseOnPictureStart.y+ ','+ coords.mouseOnPictureEnd.x + ',' + coords.mouseOnPictureEnd.y;
     let picSize = picture.offsetWidth;
+
+    // console.log(picSize)
+    // console.log(getPictureSize()) //same as picSize
+
+
     newHighlights[newHighlights.length-1].id = id+'h';
     newHighlights[newHighlights.length-1].element.setAttribute('id',id+'h');
     newHighlights[newHighlights.length-1].picSize = picSize;
@@ -395,7 +416,15 @@ async function handleMouseUp() {
     if(coords.getObjWidth() < 20 && coords.getObjHeight() < 20) removeLastHighlight();
 
     areaInfo.coordinates = areaCoordinates;
-    areaInfo.label = "new Area";
+    areaInfo.originalPictureSize = "width:"+picture.naturalWidth + ",height:"+picture.naturalHeight;
+
+    areaInfo.tagNumber = "new Area";
+    areaInfo.mainFile = file.fileLink;
+    areaInfo.files = [];
+    areaInfo.files.push(file.fileLink);
+    if(file.vendor)areaInfo.vendor = file.vendor;
+    if(file.system)areaInfo.system = file.system;;
+
     let area = createAreaElement(areaInfo);
     area.addEventListener('click',()=>{
         event.preventDefault();
@@ -405,7 +434,13 @@ async function handleMouseUp() {
     //doubleClick(shape, e);
     map.appendChild(area);
     resizeNewArea(area);
-
+    removeAllHighlights();
+    createHighlight(area);
+    // console.log(JSON.stringify(areaInfo))
+    // console.log(JSON.stringify(selectedArea))
+    let newEq = await createNewEq(areaInfo);
+    file.points.push(newEq);
+    fillPointInfoWindow(newEq);
     
 }
 
@@ -436,7 +471,7 @@ function resizeNewArea(area){
 function pointEditModeControl(){
     if(modes.viewMode.state){
         hideAllResizeElements();
-        fillPointInfoWindow(selectedArea);
+        if(selectedArea) fillPointInfoWindow(selectedArea);
         
     }else if(modes.editMode.state){
         showAllResizeElements();
@@ -490,10 +525,10 @@ function updatePointInfo(event){
     let newCoords = convertCoordsToOriginalSize(event);
     let updatedCoords = formatCoordsForServer(newCoords);
     let pointForm = document.getElementById('point-info-form');
-    let coordsInputField = document.getElementById("coordinates");
+    let coordsInputField = document.querySelector('[data-object-info="coordinates"]');
     let oldCoords = getAreaCoordinates(coordsInputField.value).split(",");
-    console.log(JSON.stringify(oldCoords));
-    console.log(updatedCoords);
+    // console.log(JSON.stringify(oldCoords));
+    // console.log(updatedCoords);
     coordsInputField.value = JSON.stringify(updatedCoords).replace("{").replace("}");
     // let form = new FormData(pointForm);
     // form.set('coords',JSON.stringify(updatedCoords));

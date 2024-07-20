@@ -34,6 +34,18 @@ public class PointRestController {
         Equipment update = equipmentService.update(equipment);
         return ResponseEntity.ok(equipmentService.convertToDto(update));
     }
+    @PostMapping("/")
+    public ResponseEntity<EquipmentDto> createEquipment(@RequestBody EquipmentDto dto){
+        Equipment save = equipmentService.save(dto);
+        return ResponseEntity.ok(equipmentService.convertToDto(save));
+    }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteEquipment(@PathVariable String id){
+        Equipment entity = equipmentService.getEntityById(id);
+        equipmentService.softDelete(entity);
+        System.out.println("Point: " + id +" was deleted");
+        return ResponseEntity.ok("Point: " + id +" was deleted");
+    }
 
     @PutMapping("/add-loto-point/{eq}/{point}")
     public ResponseEntity<EquipmentDto> addLotoPointEquipment(@PathVariable String eq, @PathVariable String point){

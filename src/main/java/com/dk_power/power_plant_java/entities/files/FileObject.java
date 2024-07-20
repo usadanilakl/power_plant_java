@@ -11,6 +11,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.List;
 @Entity
 @Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
+@Where(clause = "deleted=false")
 public class FileObject extends BaseAuditEntity {
 
     public FileObject(String name, Value fileType, String fileLink, Value sytem, String fileNumber, Value vendor) {

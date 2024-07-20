@@ -35,5 +35,6 @@ public class LotoPointDto extends BaseAuditEntity {
     private List<LotoDto> lotos;
     private Set<EquipmentDto> equipmentList;
     private String oldId;
+    private String objectType;
 
 }

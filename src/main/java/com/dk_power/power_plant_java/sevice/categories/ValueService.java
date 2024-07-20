@@ -11,6 +11,7 @@ import java.util.List;
 
 public interface ValueService extends BaseCategoryValueService<Value, ValueDto, ValueRepo, UniversalMapper> {
     Value valueSetup(String cat, String val);
+    ValueDto getValueFromCategory(String cat, String val);
 
 }
 

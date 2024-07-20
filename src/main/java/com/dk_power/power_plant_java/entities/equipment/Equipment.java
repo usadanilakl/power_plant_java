@@ -13,6 +13,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 @Setter
 @Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
+@Where(clause = "deleted=false")
 public class Equipment extends BaseAuditEntity {
     private String name;
     private String tagNumber;
@@ -58,7 +60,7 @@ public class Equipment extends BaseAuditEntity {
     @JoinTable(name = "eq_loto_point",
             joinColumns = @JoinColumn(name = "eq_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "loto_point_id", referencedColumnName = "id"))
-    @JsonManagedReference
+
     private Set<LotoPoint> lotoPoints;
     @Transient
     private String pid;

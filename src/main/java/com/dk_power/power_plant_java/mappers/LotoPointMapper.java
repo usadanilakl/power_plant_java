@@ -47,6 +47,7 @@ public class LotoPointMapper implements BaseMapper{
         //if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentMapper::convertToDto).collect(Collectors.toSet()));
         if(entity.getLotos()!=null) dto.setLotos(entity.getLotos().stream().map(lotoMapper::convertToDto).toList());
         if (entity.getOldId() != null) dto.setOldId(entity.getOldId());
+        if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
         return dto;
     }
 

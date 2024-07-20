@@ -1,8 +1,11 @@
 package com.dk_power.power_plant_java.mappers;
 
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
@@ -12,6 +15,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
@@ -94,7 +98,10 @@ public class EquipmentMapper implements BaseMapper{
     }
 
     public Equipment convertToEntity(EquipmentDto source) {
-        Equipment entity = equipmentService.getEntityById(source.getId());
+//        Equipment entity = Optional.of(equipmentService.getEntityById(source.getId())).orElse(new Equipment()) ;
+        Equipment entity = null;
+        if(source.getId()!=null)entity = equipmentService.getEntityById(source.getId());
+        if (entity==null) entity = new Equipment();
 
         if (source.getName() != null) {
             entity.setName(source.getName());
@@ -121,19 +128,23 @@ public class EquipmentMapper implements BaseMapper{
         }
 
         if (source.getVendor() != null) {
+            if(source.getVendor().getId() == null){ //need to work on this
+                ValueDto v = valueService.getValueFromCategory("Vendor",source.getVendor().getName());
+            }
+
             entity.setVendor(valueService.getEntityById(source.getVendor().getId()));
         }
         if (source.getMainFile() != null) {
             entity.setMainFile(fileService.getByFileLink(source.getMainFile()));
         }
         if (source.getLocation() != null) {
-            entity.setLocation(valueService.getEntityById(source.getLocation().getId()));
+            if(source.getLocation().getId()!=null)entity.setLocation(valueService.getEntityById(source.getLocation().getId()));
         }
         if (source.getEqType() != null) {
-            entity.setEqType(valueService.getEntityById(source.getEqType().getId()));
+            if(source.getEqType().getId()!=null)entity.setEqType(valueService.getEntityById(source.getEqType().getId()));
         }
         if (source.getSystem() != null) {
-            entity.setSystem(valueService.getEntityById(source.getSystem().getId()));
+            if(source.getSystem().getId()!=null)entity.setSystem(valueService.getEntityById(source.getSystem().getId()));
         }
         if (source.getFiles() != null) {
             entity.setFiles(source.getFiles().stream()

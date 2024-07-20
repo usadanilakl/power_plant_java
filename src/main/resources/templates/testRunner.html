@@ -127,11 +127,11 @@
     <script src="/functions/controllers/TransferDataController.js"></script>
 
     <script src="/functions/service/PopupService.js"></script>
+    <script src="/functions/service/MenuDropdownService.js"></script>
     <script src="/functions/service/PictureService.js"></script>
     <script src="/functions/service/ResizerService.js"></script>
     <script src="/functions/service/FileService.js"></script>
     <script src="/functions/service/MasterService.js"></script>
-    <script src="/functions/service/MenuDropdownService.js"></script>
     <script src="/functions/service/ModeService.js"></script>
     <script src="/functions/service/InfoWindowService.js"></script>
     <script src="/functions/service/PointService.js"></script>
@@ -150,13 +150,6 @@
 
 
 
-
-
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('fileUploadButton').addEventListener('click', async function() {
-           document.getElementById('formContainer').innerHTML = await getUploadFileForm();
-        });
-    });
 
     getAllFiles()
     .then(()=>getVendors())

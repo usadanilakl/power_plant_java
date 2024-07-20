@@ -26,11 +26,18 @@ async function getAllFiles(){
     }    
 }
 
-async function getFileFromDbByLink(link){
-    const response = fetch('/fileObjects/get-by-link/'+link);
-    const data = (await response).json();
-    file = data;
-    return data;
+async function getFileFromDbByLink(link) {
+    try {
+        const response = await fetch('/fileObjects/get-by-link/' + link);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        file = { ...data };
+        return data;
+    } catch (error) {
+        console.error('Error fetching file:', error);
+    }
 }
 
 async function getUploadFileForm(){
@@ -77,4 +84,24 @@ async function editFile(itemId){
     console.log('/edit/itmem/'+itemId);
 }
 
+function getVendor(vendor){
+    return fileRepository.filter(e=>e.fileNumber.includes(vendor));
+}
+
+function getFilesByVendor(vendor){
+    let result =  fileRepository.filter(e=>e!==null && e.vendor!==null && e.vendor.name.toLowerCase().includes(vendor.toLowerCase()));
+    result.forEach(e=>{
+        e['dropdownFunc'] = function(){loadPictureWithLightFile(e);} 
+        // e['dropdownFunc'] = function(){loadPictureWithFile(e);} 
+        e.value = e.fileNumber;
+    })
+    return result;
+}
+
+function getFilesBySystem(system){
+    let result =  fileRepository.filter(e=>e.systems.includes(system));
+    result.forEach(e=>{
+        e['dropdownFunc'] = loadPictureWithFile(e);
+    })
+}
   

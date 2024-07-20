@@ -103,6 +103,12 @@ public class EquipmentServiceImpl implements EquipmentService{
         transfer.addFile(file);
         return save(transfer);
     }
+
+    @Override
+    public List<Equipment> getByTagNumber(String tag) {
+        return equipmentRepo.findByTagNumber(tag);
+    }
+
     public void saveAllForTransfer(List<Equipment> transfers){
         transfers.forEach(this::saveForTransfer);
     }
@@ -125,13 +131,32 @@ public class EquipmentServiceImpl implements EquipmentService{
                 savedLotoPoints.add(lotoPointService.save(lotoPoint));
             }
             entity.setLotoPoints(savedLotoPoints);
+            FileObject mainFile = entity.getMainFile();
+            mainFile.addPoint(entity);
+            fileService.save(mainFile);
 
         }
         return save(entity);
     }
 
     @Override
+    public Equipment save(EquipmentDto dto) {
+        Equipment entity = convertToEntity(dto);
+        entity = save(entity);
+        FileObject mainFile = entity.getMainFile();
+        mainFile.addPoint(entity);
+        fileService.save(mainFile);
+        return entity;
+    }
+
+    @Override
     public Equipment update(String id) {
         return EquipmentService.super.update(id);
     }
+
+//    @Override
+//    public Equipment softDelete(Equipment entity) {
+//        FileObject mainFile = entity.getMainFile();
+//        mainFile.getPoints().stream().map(e->{if(e.getId() == entity.getId()) fileService.softDelete(e);})
+//    }
 }
