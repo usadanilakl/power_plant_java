@@ -45,7 +45,7 @@ async function updatePoint(obj){
     console.log(JSON.stringify(obj))
     let newObj = updateSelectedArea(obj);
     console.log(JSON.stringify(newObj));
-    const response = await fetch(createNewEqUrl,getPostMetaDataWithBody(newObj));
+    const response = await fetch(createNewEqUrl,getPostMetaDataWithBody(selectedArea));
     const data = await response.json();
     return data;
     

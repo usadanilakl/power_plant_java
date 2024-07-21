@@ -23,17 +23,19 @@ async function buildFormFromObject(point){
         input.value = point[e]; //assign value of given field to input field
         //input.readOnly = true; //to prevent editing (edit mode will remove it)
 
-        if(await isCategory(e)){
-            console.log(e);
+        if(hideFormFields(point, e)) input.parentElement.classList.add('hide'); //this hides all listed fields
+        let isCat = await isCategory(e);
+
+        if(isCat){            
             let cat;
-            categoryObjects.forEach(c=>{if(c.alias===e)cat=c})
+            categoryObjects.forEach(c=>{
+                if(c.alias===e)cat=c
+            });
             if(!point[e]){
                 point[e] = {id:null,
-                category:cat,
-                name:"no data"
-            };
-            console.log(JSON.stringify(point[e]))
-            console.log(JSON.stringify(cat))
+                    category:cat,
+                    name:"no data"
+                };
             } 
             
             label.textContent = point[e].category.name;
@@ -44,9 +46,20 @@ async function buildFormFromObject(point){
             input.setAttribute('data-object-id', point[e].id); //this is object id from DB for proper mapping
             input.addEventListener('focus', () => input.classList.add("show")); //to show dropdown items when input is selected
             input.addEventListener('keyup', () => filterOptions(input,options)); //to filter options as user types into input field
-
+            
             let resp = await fetch('/category/get-'+ e); //get all values of given category
             let items = await resp.json();
+            let valuesOfCat = items.map(e=>e.name);
+
+            let editButton = document.createElement('button');
+            editButton.type = 'button';
+            editButton.innerText = '+';
+            div.appendChild(editButton);
+            editButton.addEventListener('click',()=>{
+                setCatPopup(e,valuesOfCat);
+            });
+
+
             let options = buildCategoryOptions(e, items); //build options for given category
             div.appendChild(options);
 
@@ -69,19 +82,33 @@ async function buildFormFromObject(point){
                     point[e].id = opt.getAttribute('data-object-id');
                     point[e].name= opt.textContent ;//assign value from input field back to object;
                 }
+                console.log(point[e]); //print assignment
             });
         }
 
         input.addEventListener('input',(event)=>{
             let opt = event.target;
-            if(isCategory(e)){
+            if(isCat){
                 point[e].id = opt.getAttribute('data-object-id');
                 point[e].name= opt.textContent ;//assign value from input field back to object;
             }else{
                 point[e] = input.value;
             }
+            console.log(point[e]); //print assignment
         })
     }
+
+    let submitButton = document.createElement('button');
+    submitButton.type = 'button';
+    submitButton.textContent = 'Submit';
+    submitButton.addEventListener('click',()=>updatePoint(point))
+    form.appendChild(submitButton);
+
+    let deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.textContent = "Delete";
+    deleteButton.addEventListener('click',()=>deletePoint(point.id))
+    form.appendChild(deleteButton);
     return form;
 }
 
@@ -132,13 +159,29 @@ function isObject(element){
 }
 
 async function isCategory(key){
-    let aliases = await getAllCategories();
-    console.log(JSON.stringify(aliases))
-    aliases.forEach(e=>{
-        if(e===key) return true
-    })
+    // allAliases.forEach(e=>{
+    //     if(e===key) return true
+    // })
+    if(allAliases.includes(key))return true;
     return false;
 }
+
+let hiddenEquipmentFields = [
+    'id',
+    'objectType',
+    'name',
+    'coordinates',
+    'originalPictureSize',
+    'lotoPoints'
+]
+
+function hideFormFields(point, key){
+    console.log(point.objectType + " " + key)
+    if(point.objectType === "Equipment" && hiddenEquipmentFields.includes(key)) return true
+    return false;
+}
+
+
 
 
 

@@ -23,6 +23,7 @@ let createValueUrl = "/category";
 const getCatPopupUrl = "/cat/popup"
 
 let categoryObjects = [];
+let allAliases = [];
 
 
 
@@ -107,6 +108,7 @@ async function getCatPopup(id){
 async function getAllCategories(){
     const resp = await fetch('/category/');
     const data = await resp.json();
+    allAliases = data;
     return data;
 }
 

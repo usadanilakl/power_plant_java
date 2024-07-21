@@ -16,6 +16,7 @@ public class CategoryDto {
 
     private Long id;
     private String name;
+    private String alias;
     @JsonIgnore
     private List<ValueDto> values = new ArrayList<>();
 

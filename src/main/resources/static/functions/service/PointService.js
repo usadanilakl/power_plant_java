@@ -139,14 +139,14 @@ function lotoPointDropdown(points){
             
             addButton.classList.remove('hide');
             const editModeAction = function(){
-                 console.log(JSON.stringify(eqFormInfo.lotoPoints.length))
+                 console.log(JSON.stringify(selectedArea.lotoPoints.length))
                  let arr = [];
-                eqFormInfo.lotoPoints.forEach(el=>{
+                selectedArea.lotoPoints.forEach(el=>{
                     if(el.tagNumber!==e.tagNumber) arr.push(el)
                 });
-            eqFormInfo.lotoPoints = arr;
+            selectedArea.lotoPoints = arr;
                     
-                console.log(eqFormInfo.lotoPoints.length)
+                console.log(selectedArea.lotoPoints.length)
             }
             addButton.addEventListener('click',editModeAction);
         }
@@ -294,7 +294,7 @@ function updateSelectedArea(point){
 }
 
 function removePointFromEquipment(point){
-    eqFormInfo.points = eqFormInfo.points.filter(e=>e.id!==point.id);
+    selectedArea.lotoPoints = selectedArea.lotoPoints.filter(e=>e.id!==point.id);
 }
 
 function setFormValues(form, values) {
