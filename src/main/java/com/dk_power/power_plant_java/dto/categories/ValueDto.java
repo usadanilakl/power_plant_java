@@ -10,14 +10,14 @@ import lombok.Setter;
 public class ValueDto {
     private Long id;
     private String name;
-    private CategoryDto group;
+    private CategoryDto category;
 
     @Override
     public String toString() {
         return "ValueDto{" +
                 "id=" + id +
                 ", name='" + name + '\'' +
-                ", group=" + group +
+                ", group=" + category +
                 '}';
     }
 }

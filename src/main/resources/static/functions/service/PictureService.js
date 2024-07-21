@@ -42,7 +42,7 @@ function setAreas(areas){
             pointEditModeControl();
             selectedArea = e;
             eqFormInfo = convertToFormDto(e);
-            fillPointInfoWindow(eqFormInfo);
+            fillPointInfoWindow(selectedArea);
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
             positionInfoWindowsInline();

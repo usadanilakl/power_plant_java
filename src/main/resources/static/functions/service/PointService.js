@@ -198,23 +198,27 @@ function getPointFromArrById(id){
     return file.points.find(e => e.id === id);
 }
 
-async function fillPointInfoWindow(point){
-    let form = await getHtmlPointInfoForm();
+async function fillPointInfoWindow(point){//old way was eqFormInfo in setArea() in picture service
+    console.log(point)
+    let form = await buildFormFromObject(point);
+    // let form = await getHtmlPointInfoForm();//this is old way
     let infoFrame = document.getElementById('infoFramePoint');
     let infoContainer = document.getElementById('infoWindowPoint');
     if(infoContainer === null) newInfoWindow("Point");
     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
-    infoContainer.innerHTML = "";
-    infoContainer.innerHTML = form;
-    setFormValues(infoContainer,point);
 
-    if(modes.editMode.state){
-        removeReadOnly(infoFrame.querySelector('form'));
-        createSearchableDropdown("eqType");
-        createSearchableDropdown("vendor");
-        createSearchableDropdown("location");
-        createSearchableDropdown("system");
-    }
+    infoContainer.innerHTML = "";
+    infoContainer.appendChild(form);
+    // infoContainer.innerHTML = form;//this is old way
+    // setFormValues(infoContainer,point);
+
+    // if(modes.editMode.state){
+    //     removeReadOnly(infoFrame.querySelector('form'));
+    //     createSearchableDropdown("eqType");
+    //     createSearchableDropdown("vendor");
+    //     createSearchableDropdown("location");
+    //     createSearchableDropdown("system");
+    // }
 
     if(eqFormInfo.lotoPoints)infoContainer.appendChild(lotoPointDropdown(eqFormInfo.lotoPoints))
 

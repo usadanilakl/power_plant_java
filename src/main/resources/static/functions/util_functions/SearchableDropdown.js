@@ -65,7 +65,7 @@ function buildDropdown(id, items, buttonAction) {
     return dropdown;
 }
 
-function addOptionsToExistingInput(id, items, buttonAction) {
+function addOptionsToExistingInput(id, items, buttonAction) {//maybe not working
     let dropdownHolder = document.querySelector(`[data-sdropdown=${id}]`);
     let dropdown = dropdownHolder.querySelector('.searchable-dropdown');
     let input = dropdownHolder.querySelector('input');
@@ -108,7 +108,7 @@ function addOptionsToExistingInput(id, items, buttonAction) {
     
 }
 
-function buildOptions(id, items) {
+function buildOptions(id, items) { 
     let input = document.getElementById(`${id}-input`);
     let dropdownContent = document.createElement('div');
     dropdownContent.classList.add('searchable-dropdown-content');

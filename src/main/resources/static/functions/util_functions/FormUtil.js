@@ -5,10 +5,11 @@
  *  assign an event listener for each form field to auto update respective field in the object
  *************************************************************************************************************************************/
 
-function buildFormFromObject(point){
+async function buildFormFromObject(point){
     let form = document.createElement('form');
     for(let e in point){
         let div = document.createElement('div'); //input container
+        div.classList.add('searchable-dropdown');
         form.appendChild(div);
         div.classList.add('form-group'); //bootstrap styling for input container
         let label = document.createElement('label'); //input name
@@ -20,21 +21,25 @@ function buildFormFromObject(point){
         input.setAttribute('id',e);
         input.classList.add('form-control'); //bootstrap styling for input field
         input.value = point[e]; //assign value of given field to input field
-        input.readOnly = true; //to prevent editing (edit mode will remove it)
+        //input.readOnly = true; //to prevent editing (edit mode will remove it)
 
-        if(isObject(e)){
-            label.textContent = e.category.name;
-            input.value = e.name
+        if(isObject(point[e])){
+            
+            label.textContent = point[e].category.name;
+            input.value = point[e].name
 
             input.setAttribute('data-object-field', e); //this is the field name of main object, ex: point.vendor/point.eqType
-            input.setAttribute('data-object-category', e.category.name); //this is category name for display, ex: Vendor/Equipment Type
-            input.setAttribute('data-object-id', e.id); //this is object id from DB for proper mapping
+            input.setAttribute('data-object-category', point[e].category.name); //this is category name for display, ex: Vendor/Equipment Type
+            input.setAttribute('data-object-id', point[e].id); //this is object id from DB for proper mapping
             input.addEventListener('focus', () => input.classList.add("show")); //to show dropdown items when input is selected
-            input.addEventListener('keyup', () => filterFunction(input,options)); //to filter options as user types into input field
-            let options = buildOptions(id, items); //build options for given category
+            input.addEventListener('keyup', () => filterOptions(input,options)); //to filter options as user types into input field
+
+            let resp = await fetch('/category/get-'+ e); //get all values of given category
+            let items = await resp.json();
+            let options = buildCategoryOptions(e, items); //build options for given category
             div.appendChild(options);
 
-            document.addEventListener('click', function(event) {
+            document.addEventListener('click', function(event) { //this hides options if clicked away
                 if(input){
                     var isClickInside = input.contains(event.target) || options.contains(event.target);
                     if (!isClickInside) {
@@ -44,20 +49,31 @@ function buildFormFromObject(point){
         
             });
         
-            options.addEventListener('click', function(event) {
-                if (event.target.tagName.toLowerCase() === 'div') {
-                    input.value = event.target.textContent;
-                    document.getElementById(`${id}-options`).classList.remove("show");
-                    eqFormInfo[input.getAttribute('data-object-info')] = event.target.textContent;
-                    
+            options.addEventListener('click', function(event) { //this assignes value of the option to input field 
+                let opt = event.target;
+                if (opt.tagName.toLowerCase() === 'div') {
+                    input.value = opt.textContent;
+                    input.setAttribute('data-object-id',event.target.getAttribute('data-object-id'));
+                    options.classList.remove("show");
+                    point[e].id = opt.getAttribute('data-object-id');
+                    point[e].name= opt.textContent ;//assign value from input field back to object;
                 }
             });
         }
+
+        input.addEventListener('input',()=>{
+            if(isObject(point[e])){
+                point[e].id = opt.getAttribute('data-object-id');
+                point[e].name= opt.textContent ;//assign value from input field back to object;
+            }else{
+                point[e] = input.value;
+            }
+        })
     }
     return form;
 }
 
-function filterFunction(input, div) {
+function filterOptions(input, div) {
     let filter = input.value.toUpperCase();
     div.classList.add("show");
     var options = div.getElementsByTagName("div");
@@ -76,14 +92,23 @@ function filterFunction(input, div) {
     }else{
         input.style.backgroundColor = "white"; 
     }
-    updateEqFormInfo(input);
     
 }
 
-function updateEqFormInfo(input){ //need to update - this is old version.
-    let key = input.getAttribute('data-object-info');
-    if(eqFormInfo.hasOwnProperty(key)) eqFormInfo[key] = input.value;
+function buildCategoryOptions(id, items) {
+    let dropdownContent = document.createElement('div');
+    dropdownContent.classList.add('searchable-dropdown-content');
+    dropdownContent.id = `${id}-options`;
+    items.forEach(e => {
+        let option = document.createElement('div');
+        option.textContent = e.name;
+        option.setAttribute('data-object-id',e.id);
+        dropdownContent.appendChild(option);
+    });
+
+    return dropdownContent;
 }
+
 
 function isObject(element){
         if (typeof element === "object" && element !== null && !Array.isArray(element)) {
@@ -93,4 +118,6 @@ function isObject(element){
         }
     
 }
+
+
 
