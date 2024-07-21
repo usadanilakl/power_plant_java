@@ -10,6 +10,7 @@ import lombok.Setter;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -43,6 +44,7 @@ public class EquipmentDto extends BaseDto {
                 ",\n coordinates='" + coordinates + '\'' +
                 ",\n originalPictureSize='" + originalPictureSize + '\'' +
                 ",\n mainFile='" + mainFile + '\'' +
+                ",\n lotoPoints='" + lotoPoints.stream().map(LotoPointDto::getTagNumber).collect(Collectors.joining(", ")) + '\'' +
                 '}';
     }
 }

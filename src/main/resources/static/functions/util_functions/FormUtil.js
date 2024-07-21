@@ -21,7 +21,7 @@ async function buildFormFromObject(point){
         input.setAttribute('id',e);
         input.classList.add('form-control'); //bootstrap styling for input field
         input.value = point[e]; //assign value of given field to input field
-        //input.readOnly = true; //to prevent editing (edit mode will remove it)
+        input.readOnly = true; //to prevent editing (edit mode will remove it)
 
         if(hideFormFields(point, e)) input.parentElement.classList.add('hide'); //this hides all listed fields
         let isCat = await isCategory(e);
@@ -46,18 +46,34 @@ async function buildFormFromObject(point){
             input.setAttribute('data-object-id', point[e].id); //this is object id from DB for proper mapping
             input.addEventListener('focus', () => input.classList.add("show")); //to show dropdown items when input is selected
             input.addEventListener('keyup', () => filterOptions(input,options)); //to filter options as user types into input field
-            
+
             let resp = await fetch('/category/get-'+ e); //get all values of given category
             let items = await resp.json();
             let valuesOfCat = items.map(e=>e.name);
 
-            let editButton = document.createElement('button');
-            editButton.type = 'button';
-            editButton.innerText = '+';
-            div.appendChild(editButton);
-            editButton.addEventListener('click',()=>{
-                setCatPopup(e,valuesOfCat);
-            });
+            if(modes.editMode.state){
+                input.readOnly = false;
+
+                let inputWrapper = document.createElement('div');
+                inputWrapper.classList.add('input-group');
+                input.parentNode.insertBefore(inputWrapper, input);
+                inputWrapper.appendChild(input);
+
+                let buttonWrapper = document.createElement('div');
+                buttonWrapper.classList.add('input-group-append');
+                inputWrapper.appendChild(buttonWrapper);
+
+                let editButton = document.createElement('button');
+                editButton.classList.add('btn')
+                editButton.classList.add('btn-outline-secondary')
+                editButton.type = 'button';
+                editButton.innerText = '+';
+                buttonWrapper.appendChild(editButton);
+                editButton.addEventListener('click',()=>{
+                    setCatPopup(e,valuesOfCat);
+                });
+            }
+
 
 
             let options = buildCategoryOptions(e, items); //build options for given category
@@ -96,6 +112,7 @@ async function buildFormFromObject(point){
             }
             console.log(point[e]); //print assignment
         })
+        input.addEventListener('click',()=>checkClipboardAndPasteShort(input));
     }
 
     let submitButton = document.createElement('button');
@@ -176,7 +193,6 @@ let hiddenEquipmentFields = [
 ]
 
 function hideFormFields(point, key){
-    console.log(point.objectType + " " + key)
     if(point.objectType === "Equipment" && hiddenEquipmentFields.includes(key)) return true
     return false;
 }

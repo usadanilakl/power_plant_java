@@ -64,20 +64,20 @@ async function addPointToEquipment(lotoPoint){
     let oldId = lotoPoint.originalId;
     let eqId = selectedArea.id;
     let resp;
+    let updatedEq;
     if(oldId && eqId){
         let url = addLotoPointToEqUrl+eqId+"/"+oldId
        resp = await fetch(url,putNoBody);
        updatedEq = await resp.json();
        if(updatedEq && updatedEq.id){
             console.log(JSON.stringify(updatedEq))
-            selectedArea = updatedEq;
             let updatedPoints = [];
             updatedEq.lotoPoints.forEach(e=>{
             updatedPoints.push(convertToLotoPointFormDto(e));
             });
-            eqFormInfo.lotoPoints = updatedPoints;
+            selectedArea.lotoPoints = updatedPoints;
             fillPointInfoWindow(eqFormInfo)
-            getFileFromDbByLink(file.fileNumber)
+            //getFileFromDbByLink(file.fileNumber)
        }console.log("Updated result: "+JSON.stringify(updatedEq))
        
     }else console.log("oldId: "+oldId + "eq id: " + eqId);

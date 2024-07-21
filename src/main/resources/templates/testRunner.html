@@ -22,6 +22,14 @@
     border: 2px solid blue !important;
     z-index: 300;
 }
+[data-loto-point-highlight="true"]{
+    border: 2px solid rgb(255, 0, 0) !important;
+    z-index: 300;
+}
+[data-loto-point-highlight="false"]{
+    border: 2px solid rgb(13, 255, 0) !important;
+    z-index: 300;
+}
     </style>
 </head>
 <body>
@@ -58,7 +66,7 @@
                     <ul >
                         <li class="btn-list-in-line" onclick="removeAllHighlights()">Remove Highlights</li>
                         <li class="btn-list-in-line" onclick="highlightAll()">Highlight All</li>                      
-                        <li class="btn-list-in-line" onclick="highlightAll()">Highlight Loto Points</li>                      
+                        <li class="btn-list-in-line" onclick="highlightLotoPoints()">Highlight Loto Points</li>                      
                         <li class="btn-list-in-line" onclick="openNewWindow(getUploadFileForm)">Upload Files</li>
                     </ul>
                 </div>

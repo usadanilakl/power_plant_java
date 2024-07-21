@@ -77,8 +77,7 @@ async function crudValue( method,category,value,newValue){
     if(method === "DELETE") operation = deleteNoBody; 
     const response = await fetch(endpoint,operation);
     const data = await response.json();
-    console.log(JSON.stringify(data));
-    fillPointInfoWindow(eqFormInfo);
+    fillPointInfoWindow(selectedArea);
 }
 
 // async function getCatPopup(id){

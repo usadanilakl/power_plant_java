@@ -59,6 +59,7 @@ function showPointInfo(point){
         input.classList.add('form-control');
         input.value = point[e];
         input.readOnly = true;
+        input.addEventListener('click',()=>{copyToClipboard(input)})
     }
     return form;
 }
@@ -89,8 +90,6 @@ function excelPointDropdown(points){
         addButton.classList.add('addButtons');
         addButton.textContent = "ADD";
         addButton.classList.add('hide');
-
-        console.log(e.objectType + " this is the objectt ype")
 
         if(modes.lotoMode.state || modes.editMode.state){
             addButton.classList.remove('hide');
@@ -139,14 +138,10 @@ function lotoPointDropdown(points){
             
             addButton.classList.remove('hide');
             const editModeAction = function(){
-                 console.log(JSON.stringify(selectedArea.lotoPoints.length))
-                 let arr = [];
-                selectedArea.lotoPoints.forEach(el=>{
-                    if(el.tagNumber!==e.tagNumber) arr.push(el)
-                });
-            selectedArea.lotoPoints = arr;
-                    
-                console.log(selectedArea.lotoPoints.length)
+
+            console.log(JSON.stringify(selectedArea.lotoPoints))
+            removePointFromEquipment(e);
+            console.log(JSON.stringify(selectedArea.lotoPoints))
             }
             addButton.addEventListener('click',editModeAction);
         }
@@ -199,7 +194,6 @@ function getPointFromArrById(id){
 }
 
 async function fillPointInfoWindow(point){//old way was eqFormInfo in setArea() in picture service
-    console.log(point)
     let form = await buildFormFromObject(point); //this is new way
     // let form = await getHtmlPointInfoForm();//this is old way
     let infoFrame = document.getElementById('infoFramePoint');
@@ -294,7 +288,11 @@ function updateSelectedArea(point){
 }
 
 function removePointFromEquipment(point){
-    selectedArea.lotoPoints = selectedArea.lotoPoints.filter(e=>e.id!==point.id);
+    let arr = [];
+    selectedArea.lotoPoints.forEach(el=>{
+        if(el.tagNumber!==point.tagNumber) arr.push(el)
+    });
+    selectedArea.lotoPoints = arr;
 }
 
 function setFormValues(form, values) {

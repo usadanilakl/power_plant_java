@@ -6,5 +6,9 @@ import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 
+import java.util.List;
+
 public interface RevisedPointRepo extends BaseRepository<RevisedLotoPoints> {
+    List<RevisedLotoPoints> findByTagNumber(String tagNumber);
+    List<RevisedLotoPoints> findByOriginalId(String oldId);
 }

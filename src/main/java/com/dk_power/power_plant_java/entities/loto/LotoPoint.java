@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.envers.Audited;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -53,6 +54,15 @@ public class LotoPoint extends BaseAuditEntity {
     public void addLoto(Loto entity) {
         lotos.add(entity);
     }
-    public void addEquipment(Equipment equipment){equipmentList.add(equipment);}
+    public void addEquipment(Equipment equipment){
+        if(equipmentList == null) equipmentList = new HashSet<>();
+        if(equipment!=null){
+           equipmentList.add(equipment);
+        }
 
+    }
+
+    public void removeEquipment(Equipment entity) {
+        equipmentList.removeIf(e->e.getId()==entity.getId());
+    }
 }

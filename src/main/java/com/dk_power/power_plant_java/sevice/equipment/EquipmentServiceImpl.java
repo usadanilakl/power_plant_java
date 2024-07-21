@@ -138,21 +138,59 @@ public class EquipmentServiceImpl implements EquipmentService{
         }
         return save(entity);
     }
-
-    @Override
-    public Equipment save(EquipmentDto dto) {
-        Equipment entity = convertToEntity(dto);
-        entity = save(entity);
-        FileObject mainFile = entity.getMainFile();
-        mainFile.addPoint(entity);
-        fileService.save(mainFile);
-        return entity;
-    }
-
     @Override
     public Equipment update(String id) {
         return EquipmentService.super.update(id);
     }
+
+    @Override
+    public Equipment save(Equipment entity) {
+        Equipment oldEntity = getEntityById(entity.getId());
+
+        // Identify LotoPoints to be removed
+        Set<LotoPoint> existingLotoPoints = new HashSet<>(oldEntity.getLotoPoints());
+        Set<LotoPoint> updatedLotoPoints = entity.getLotoPoints();
+
+        // Find LotoPoints to remove
+        existingLotoPoints.removeAll(updatedLotoPoints);
+
+        // Remove the LotoPoints from the old entity
+        for (LotoPoint lotoPoint : existingLotoPoints) {
+            lotoPoint.removeEquipment(entity);
+            lotoPointService.save(lotoPoint);
+        }
+
+        //Save new equipment
+        Set<LotoPoint> savedLotoPoints = new HashSet<>();
+        for (LotoPoint lotoPoint : entity.getLotoPoints()) {
+            lotoPoint.addEquipment(entity);
+            savedLotoPoints.add(lotoPointService.save(lotoPoint));
+        }
+        entity.setLotoPoints(savedLotoPoints);
+
+        //Save FileObject
+        FileObject mainFile = entity.getMainFile();
+        mainFile.addPoint(entity);
+
+        //remove equipment from removed files
+        List<FileObject> filesToRemove = new ArrayList<>(oldEntity.getFiles());
+        filesToRemove.removeAll(entity.getFiles());
+        for (FileObject f : filesToRemove) {
+            f.removePoint(entity);
+            fileService.save(f);
+        }
+
+        fileService.save(mainFile);
+        return equipmentRepo.save(entity);
+    }
+
+    @Override
+    public Equipment save(EquipmentDto dto) {
+        Equipment entity = convertToEntity(dto);
+        return save(entity);
+    }
+
+
 
 //    @Override
 //    public Equipment softDelete(Equipment entity) {

@@ -17,6 +17,7 @@ import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -70,7 +71,10 @@ public class Equipment extends BaseAuditEntity {
         if(files==null) files = new ArrayList<>();
         if(!files.contains(file)) files.add(file);
     }
-    public void addLotoPoint(LotoPoint lotoPoint){lotoPoints.add(lotoPoint);}
+    public void addLotoPoint(LotoPoint lotoPoint){
+        if(lotoPoints == null) lotoPoints = new HashSet<>();
+        if(lotoPoint!=null) lotoPoints.add(lotoPoint);
+    }
     public void setMainFile(FileObject file){
         addFile(file);
         this.mainFile = file;

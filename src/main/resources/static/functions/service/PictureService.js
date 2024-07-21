@@ -70,6 +70,11 @@ function createAreaElement(area){
     newArea.setAttribute('coords', coord);
     newArea.setAttribute('shape',"rect");
 
+    if(area.lotoPoints!=null && area.lotoPoints.length>0){
+      if(area.lotoPoints[0].isolatedPosition.toLowerCase().includes('open')) newArea.setAttribute('data-loto-point-area', true); 
+      else newArea.setAttribute('data-loto-point-area', false);
+    } 
+
     //drag(newArea,pictureContainer);
     newArea.addEventListener('mousedown',(event)=>{
         event.preventDefault();
@@ -138,6 +143,9 @@ function createHighlight(area){
     highlight.style.top = position.y;
     highlight.style.left = position.x;
     highlight.style.zIndex = '1';
+        
+    if(area.getAttribute('data-loto-point-area')==='true')highlight.setAttribute('data-loto-point-highlight',true);
+    else if(area.getAttribute('data-loto-point-area')==='false')highlight.setAttribute('data-loto-point-highlight',false);
 
     highlight.addEventListener('mousedown',(event)=>{
         event.preventDefault();
@@ -193,8 +201,10 @@ function highlightAll(){
     })
 }
 function highlightLotoPoints(){
-    file.lotoPoints.forEach(e=>{
-
+    let areas = document.querySelectorAll('[data-loto-point-area]');
+    removeAllHighlights();
+    areas.forEach(e=>{
+        createHighlight(e);
     })
 }
 function relocateHighlightsWithPicture(event){
@@ -387,11 +397,16 @@ function handleMouseMove(event) {
     let highlight = newHighlights[newHighlights.length-1].element;
     highlight.style.width = (coords.mouseOnPictureEnd.x-coords.mouseOnPictureStart.x)+'px';
     highlight.style.height = (coords.mouseOnPictureEnd.y-coords.mouseOnPictureStart.y)+'px';
-    highlight.style.border = '2px solid blue';
+    // highlight.style.border = '2px solid blue';
     highlight.style.position = 'fixed';
     highlight.style.top = coords.mouseOnScreenStart.y+'px';
     highlight.style.left = coords.mouseOnScreenStart.x+'px';
     highlight.style.zIndex = '10';
+
+        
+    if(highlight.getAttribute('data-loto-point-highlight')==='true')highlight.style.border = '2px solid red';
+    else if(highlight.getAttribute('data-loto-point-highlight')==='false')highlight.style.border = '2px solid green';
+    else highlight.style.border = '2px solid blue';
 
 }
 

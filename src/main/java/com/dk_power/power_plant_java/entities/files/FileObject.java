@@ -83,7 +83,7 @@ public class FileObject extends BaseAuditEntity {
 
     public void addPoint(Equipment entity) {
         if(points==null) points = new ArrayList<>();
-        points.add(entity);
+        if(!points.contains(entity))points.add(entity);
     }
 
     public String getFileLink() {
@@ -119,5 +119,9 @@ public class FileObject extends BaseAuditEntity {
                 ",\n\t systems=" + systems +
                 "\n\tobject type=" + getObjectType() +
                 '}';
+    }
+
+    public void removePoint(Equipment entity) {
+        points.removeIf(e->e.getId()==entity.getId());
     }
 }

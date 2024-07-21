@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -176,6 +178,10 @@ public class EquipmentMapper implements BaseMapper{
                     .filter(Objects::nonNull)
                     .map(fileService::getByFileLink)
                     .collect(Collectors.toList()));
+        }
+
+        if(source.getLotoPoints()!=null){
+            entity.setLotoPoints(source.getLotoPoints().stream().map(lotoPointService::convertToEntity).collect(Collectors.toSet()));
         }
 
         return entity;

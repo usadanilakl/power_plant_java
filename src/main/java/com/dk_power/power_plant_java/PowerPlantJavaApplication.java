@@ -28,6 +28,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @SpringBootApplication
 @AllArgsConstructor
 @EnableJpaRepositories(basePackages = "com.dk_power.power_plant_java.repository")
@@ -58,22 +61,6 @@ private final LotoPointService lotoPointService;
         System.err.println("=====================================================");
 
 
-//        Value kiewit = valueService.getEntityById(4156L);
-//        Value gas = valueService.getEntityById(4160L);
-//        for (FileObject f : fileService.getAll()) {
-//            if(f.getVendor()==null){
-//                if(f.getFileNumber().equals("94.03.48.125-PD-0001-001_ELECTRIC_HEATER")){
-//                    f.setVendor(gas);
-//                }else{
-//                    f.setVendor(kiewit);
-//                }
-//            }
-//            f.setExtension("jpg");
-//            f.buildFileLink();
-//            f.buildFolder();
-//            fileService.save(f);
-//
-//        }
 /***************************TransferMethods*************************************************/
 //        fileService.getAll().forEach(fileService::hardDelete);
 //        categoryService.getAll().forEach(categoryService::hardDelete);
