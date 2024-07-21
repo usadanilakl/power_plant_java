@@ -107,6 +107,9 @@ public class CategoryServiceImpl implements CategoryService {
         return valueService.convertAllToDto(values);
     }
 
-
+    @Override
+    public CategoryDto getByAlias(String alias) {
+        return convertToDto(categoryRepo.findByAlias(alias)) ;
+    }
 }
 

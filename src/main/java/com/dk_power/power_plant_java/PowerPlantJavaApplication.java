@@ -58,7 +58,6 @@ private final LotoPointService lotoPointService;
         System.err.println("=====================================================");
 
 
-
 //        Value kiewit = valueService.getEntityById(4156L);
 //        Value gas = valueService.getEntityById(4160L);
 //        for (FileObject f : fileService.getAll()) {

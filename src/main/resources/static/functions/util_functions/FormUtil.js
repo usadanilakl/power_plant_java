@@ -23,7 +23,18 @@ async function buildFormFromObject(point){
         input.value = point[e]; //assign value of given field to input field
         //input.readOnly = true; //to prevent editing (edit mode will remove it)
 
-        if(isObject(point[e])){
+        if(await isCategory(e)){
+            console.log(e);
+            let cat;
+            categoryObjects.forEach(c=>{if(c.alias===e)cat=c})
+            if(!point[e]){
+                point[e] = {id:null,
+                category:cat,
+                name:"no data"
+            };
+            console.log(JSON.stringify(point[e]))
+            console.log(JSON.stringify(cat))
+            } 
             
             label.textContent = point[e].category.name;
             input.value = point[e].name
@@ -61,8 +72,9 @@ async function buildFormFromObject(point){
             });
         }
 
-        input.addEventListener('input',()=>{
-            if(isObject(point[e])){
+        input.addEventListener('input',(event)=>{
+            let opt = event.target;
+            if(isCategory(e)){
                 point[e].id = opt.getAttribute('data-object-id');
                 point[e].name= opt.textContent ;//assign value from input field back to object;
             }else{
@@ -117,6 +129,15 @@ function isObject(element){
             return false;
         }
     
+}
+
+async function isCategory(key){
+    let aliases = await getAllCategories();
+    console.log(JSON.stringify(aliases))
+    aliases.forEach(e=>{
+        if(e===key) return true
+    })
+    return false;
 }
 
 

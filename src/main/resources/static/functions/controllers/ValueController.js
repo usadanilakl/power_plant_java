@@ -22,6 +22,8 @@ let deleteNoBody = {
 let createValueUrl = "/category";
 const getCatPopupUrl = "/cat/popup"
 
+let categoryObjects = [];
+
 
 
 function dropdownSelection(){
@@ -100,4 +102,23 @@ async function getCatPopup(id){
     }
     modal.id = 'popupModal-'+id
     return div;
+}
+
+async function getAllCategories(){
+    const resp = await fetch('/category/');
+    const data = await resp.json();
+    return data;
+}
+
+async function getAllCategoryObjects(){
+    const resp = await fetch('/category/all');
+    const data = await resp.json();
+    categoryObjects = data;
+    return data;
+}
+
+async function getCategoryByAlias(e){
+    const resp = await fetch('/category/by-alias/'+e);
+    const data = await resp.json();
+    return data;
 }

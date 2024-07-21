@@ -200,7 +200,7 @@ function getPointFromArrById(id){
 
 async function fillPointInfoWindow(point){//old way was eqFormInfo in setArea() in picture service
     console.log(point)
-    let form = await buildFormFromObject(point);
+    let form = await buildFormFromObject(point); //this is new way
     // let form = await getHtmlPointInfoForm();//this is old way
     let infoFrame = document.getElementById('infoFramePoint');
     let infoContainer = document.getElementById('infoWindowPoint');
@@ -208,9 +208,9 @@ async function fillPointInfoWindow(point){//old way was eqFormInfo in setArea() 
     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
 
     infoContainer.innerHTML = "";
-    infoContainer.appendChild(form);
+    infoContainer.appendChild(form);//this is new way
     // infoContainer.innerHTML = form;//this is old way
-    // setFormValues(infoContainer,point);
+    setFormValues(infoContainer,point);
 
     // if(modes.editMode.state){
     //     removeReadOnly(infoFrame.querySelector('form'));
@@ -222,10 +222,10 @@ async function fillPointInfoWindow(point){//old way was eqFormInfo in setArea() 
 
     if(eqFormInfo.lotoPoints)infoContainer.appendChild(lotoPointDropdown(eqFormInfo.lotoPoints))
 
-    let button = document.getElementById('pointUpdateButton');
-    let button2 = document.getElementById('pointDeleteButton');
-    button.addEventListener('click',()=>updatePoint(point)); 
-    button2.addEventListener('click',()=>deletePoint(point.id)); 
+    // let button = document.getElementById('pointUpdateButton');
+    // let button2 = document.getElementById('pointDeleteButton');
+    // button.addEventListener('click',()=>updatePoint(point)); 
+    // button2.addEventListener('click',()=>deletePoint(point.id)); 
 
 }
 

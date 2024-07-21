@@ -22,6 +22,7 @@ public class Category extends BaseAuditEntity {
     }
 
     private String name;
+    private String alias;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     private Set<Value> values = new HashSet<>();

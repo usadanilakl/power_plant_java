@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.controller.plant;
 
+import com.dk_power.power_plant_java.dto.categories.CategoryDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -9,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Set;
 
 @RestController
@@ -54,5 +57,22 @@ public class CategoryRestController {
         valueService.softDelete(value.getId());
         return ResponseEntity.ok(categoryService.getValuesOfCat(Util.firstLetterToUpperCase(cat)));
     }
+    @GetMapping("/")
+    public ResponseEntity<List<String>> getAllCategoryAliases(){
+        return ResponseEntity.ok (categoryService.getAll().stream().map(Category::getAlias).toList());
+//        return ResponseEntity.ok (categoryService.getAll());
+    }
+    @GetMapping("/all")
+    public ResponseEntity<List<CategoryDto>> getAllCategories(){
+        return ResponseEntity.ok (categoryService.getAll().stream().map(categoryService::convertToDto).toList());
+    }
+
+    @GetMapping("/by-alias/{alias}")
+    public ResponseEntity<CategoryDto> getAllCategories(@PathVariable String alias){
+        return ResponseEntity.ok (categoryService.getByAlias(alias));
+//        return ResponseEntity.ok (categoryService.getAll());
+    }
+
+
 
 }

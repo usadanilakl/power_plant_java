@@ -20,4 +20,5 @@ public interface CategoryService extends BaseCategoryValueService<Category, Cate
     Set<ValueDto> getFileTypes();
     Set<ValueDto> getValuesOfCat(String category);
 
+    CategoryDto getByAlias(String alias);
 }
