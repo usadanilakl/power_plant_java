@@ -7,7 +7,9 @@ function buildDropdown(id, items, buttonAction) {
     //let dropdownHolder = document.getElementById(id);
     let dropdownHolder = document.querySelector(`[data-sdropdown=${id}]`)
     let oldValue;
-    if(dropdownHolder.children.length>0) oldValue = dropdownHolder.querySelector('input').value;
+    if(dropdownHolder!==null && dropdownHolder.children.length>0){
+        oldValue = dropdownHolder.querySelector('input').value;
+    } 
     dropdownHolder.innerHTML="";
     dropdownHolder.appendChild(dropdown);
 
@@ -42,8 +44,10 @@ function buildDropdown(id, items, buttonAction) {
         addButton.setAttribute('type','button')   
     }
 
-
-    let options = buildOptions(id, items);
+    let options;
+    let isObj = isObject(items[0]);
+    if(isObj) options = buildCategoryOptions(id,items);
+    else options = buildOptions(id, items);
     dropdown.appendChild(options);
 
     // Add the event listener after appending options to the dropdown
@@ -57,6 +61,7 @@ function buildDropdown(id, items, buttonAction) {
     options.addEventListener('click', function(event) {
         if (event.target.tagName.toLowerCase() === 'div') {
             document.getElementById(`${id}-input`).value = event.target.textContent;
+            if(isObj)document.getElementById(`${id}-input`).setAttribute('data-object-id', event.target.getAttribute('data-object-id'));
             document.getElementById(`${id}-options`).classList.remove("show");
             updateEqFormInfo(input);
         }
@@ -116,6 +121,20 @@ function buildOptions(id, items) {
     items.forEach(e => {
         let option = document.createElement('div');
         option.textContent = e;
+        dropdownContent.appendChild(option);
+    });
+
+    return dropdownContent;
+}
+
+function buildCategoryOptions(id, items) {
+    let dropdownContent = document.createElement('div');
+    dropdownContent.classList.add('searchable-dropdown-content');
+    dropdownContent.id = `${id}-options`;
+    items.forEach(e => {
+        let option = document.createElement('div');
+        option.textContent = e.name;
+        option.setAttribute('data-object-id',e.id);
         dropdownContent.appendChild(option);
     });
 

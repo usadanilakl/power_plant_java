@@ -15,5 +15,9 @@ public class CategoryController {
     public String getCatPopup(){
         return "/category/category-popup";
     }
+    @GetMapping("/refractor-popup")
+    public String getCatRefractorPopup(){
+        return "/category/value-refractor-popup";
+    }
 
 }

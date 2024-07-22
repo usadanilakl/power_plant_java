@@ -9,4 +9,5 @@ import java.util.List;
 public interface CategoryRepo extends BaseCategoryValueRepo<Category> {
 
     Category findByAlias(String alias);
+
 }

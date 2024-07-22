@@ -48,18 +48,18 @@ public class CategoryRestController {
     }
     @PostMapping("/{cat}/{val}")
     public ResponseEntity<Set<ValueDto>> createNewValue(@PathVariable String cat, @PathVariable String val){
-        valueService.valueSetup(Util.firstLetterToUpperCase(cat),val);
-        return ResponseEntity.ok(categoryService.getValuesOfCat(Util.firstLetterToUpperCase(cat)));
+        valueService.valueSetupWithAlias(cat,val);
+        return ResponseEntity.ok(categoryService.getVAluesOfCatWithAlias(cat));
     }
     @PutMapping("/{cat}/{val}/{newVal}")
     public ResponseEntity<Set<ValueDto>>putValue(@PathVariable String cat, @PathVariable String val,@PathVariable String newVal){
-        Value value = valueService.valueSetup(Util.firstLetterToUpperCase(cat), val);
+        Value value = valueService.valueSetupWithAlias(cat, val);
         value.setName(newVal);
         Value save = valueService.save(value);
         System.out.println(save.getName() + " " + newVal);
-        return ResponseEntity.ok(categoryService.getValuesOfCat(Util.firstLetterToUpperCase(cat)));
+        return ResponseEntity.ok(categoryService.getVAluesOfCatWithAlias(cat));
     }
-    @DeleteMapping("/{cat}/{val}")
+    @DeleteMapping("/{cat}/{val}") //this was replaced by /values/
     public ResponseEntity<Set<ValueDto>>deleteValue(@PathVariable String cat, @PathVariable String val){
         Value value = valueService.valueSetup(Util.firstLetterToUpperCase(cat), val);
         valueService.softDelete(value.getId());
@@ -77,7 +77,7 @@ public class CategoryRestController {
 
     @GetMapping("/by-alias/{alias}")
     public ResponseEntity<CategoryDto> getAllCategories(@PathVariable String alias){
-        return ResponseEntity.ok (categoryService.getByAlias(alias));
+        return ResponseEntity.ok (categoryService.convertToDto(categoryService.getByAlias(alias)));
 //        return ResponseEntity.ok (categoryService.getAll());
     }
 

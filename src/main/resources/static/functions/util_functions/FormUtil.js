@@ -26,7 +26,7 @@ async function buildFormFromObject(point){
         if(hideFormFields(point, e)) input.parentElement.classList.add('hide'); //this hides all listed fields
         let isCat = await isCategory(e);
 
-        if(isCat){            
+        if(isCat){
             let cat;
             categoryObjects.forEach(c=>{
                 if(c.alias===e)cat=c
@@ -43,13 +43,12 @@ async function buildFormFromObject(point){
 
             input.setAttribute('data-object-field', e); //this is the field name of main object, ex: point.vendor/point.eqType
             input.setAttribute('data-object-category', point[e].category.name); //this is category name for display, ex: Vendor/Equipment Type
-            input.setAttribute('data-object-id', point[e].id); //this is object id from DB for proper mapping
+            input.setAttribute('data-object-id', point[e].id); //this is category object id from DB for proper mapping
             input.addEventListener('focus', () => input.classList.add("show")); //to show dropdown items when input is selected
             input.addEventListener('keyup', () => filterOptions(input,options)); //to filter options as user types into input field
 
-            let resp = await fetch('/category/get-'+ e); //get all values of given category
-            let items = await resp.json();
-            let valuesOfCat = items.map(e=>e.name);
+            let items = await getValuesOfCategoryAlias(e); //get all values of given category
+            let valuesOfCat = items.map(e=>e.name); //used it before when dropdowns could only take string values and not objects
 
             if(modes.editMode.state){
                 input.readOnly = false;
@@ -70,7 +69,7 @@ async function buildFormFromObject(point){
                 editButton.innerText = '+';
                 buttonWrapper.appendChild(editButton);
                 editButton.addEventListener('click',()=>{
-                    setCatPopup(e,valuesOfCat);
+                    setCatPopup(e,items);
                 });
             }
 
@@ -129,6 +128,8 @@ async function buildFormFromObject(point){
     return form;
 }
 
+async function buildOptionsFromObject(){}
+
 function filterOptions(input, div) {
     let filter = input.value.toUpperCase();
     div.classList.add("show");
@@ -175,9 +176,6 @@ function isObject(element){
 }
 
 async function isCategory(key){
-    // allAliases.forEach(e=>{
-    //     if(e===key) return true
-    // })
     if(allAliases.includes(key))return true;
     return false;
 }
@@ -195,13 +193,14 @@ let hiddenLotoPointFields = [
     'id',
     'objectType',
     'name',
-    'coordinates',
-    'originalPictureSize',
-    'lotoPoints'
+    'lotos',
+    'equipmentList',
+    'oldId'
 ]
 
 function hideFormFields(point, key){
-    if(point.objectType === "Equipment" && hiddenEquipmentFields.includes(key)) return true
+    if(point.objectType === "Equipment" && hiddenEquipmentFields.includes(key)) return true;
+    if(point.objectType === "LotoPoint" && hiddenLotoPointFields.includes(key)) return true;
     return false;
 }
 

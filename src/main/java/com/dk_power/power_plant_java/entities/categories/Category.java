@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.entities.categories;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,7 +26,8 @@ public class Category extends BaseAuditEntity {
     private String name;
     private String alias;
 
-    @JsonIgnore
+//    @JsonIgnore
+    @JsonManagedReference
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     private Set<Value> values = new HashSet<>();
 

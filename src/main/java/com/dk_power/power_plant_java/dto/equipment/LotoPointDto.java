@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.dto.equipment;
 
+import com.dk_power.power_plant_java.dto.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
@@ -14,7 +15,7 @@ import java.util.Set;
 @NoArgsConstructor
 @Getter
 @Setter
-public class LotoPointDto extends BaseAuditEntity {
+public class LotoPointDto extends BaseDto {
     private String unit;
     private String tagged;
     private String tagNumber;

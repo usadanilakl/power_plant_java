@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.categories;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -12,6 +13,7 @@ import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -66,6 +68,22 @@ public class ValueServiceImpl implements ValueService{
     }
 
     @Override
+    public Value valueSetupWithAlias(String cat, String val) {
+        Category category = categoryService.getByAlias(cat);
+        if(category==null) category = new Category(cat);
+        Value value = category.getValueByName(val);
+        if(value!=null) return value;
+        else{
+            value = new Value(val);
+            value.setCategory(category);
+            category.addValue(value);
+            save(value);
+            categoryService.save(category);
+        }
+        return value;
+    }
+
+    @Override
     public ValueDto getValueFromCategory(String cat, String val) {
         Set<ValueDto> valuesOfCat = categoryService.getValuesOfCat(cat);
         Optional<ValueDto> first = valuesOfCat.stream().filter(e -> e.getName().equals(val)).findFirst();
@@ -73,15 +91,18 @@ public class ValueServiceImpl implements ValueService{
     }
 
 
-    public List<LotoPoint> deleteValue(Value entity) {
+    public List<LotoPointDto> deleteValue(Value entity) {
         List<LotoPoint> byIsoPos = lotoPointService.getByIsoPos(entity);
+        List<LotoPointDto> lotoPointDtos =(List) lotoPointService.convertAllToDto(byIsoPos);
         if(byIsoPos.isEmpty()) {
             hardDelete(entity);
-            return null;
+            return lotoPointDtos;
         }else {
-            return byIsoPos;
+            return lotoPointDtos;
         }
     }
+
+
 
     public void refractorIsoPosValue(Value old, Value _new){
         for (LotoPoint i : lotoPointService.getByIsoPos(old)) {

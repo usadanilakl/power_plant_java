@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.categories;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,7 @@ public class Value extends BaseAuditEntity {
 
     @ManyToOne
     @JoinColumn(name = "category_id")
+    @JsonBackReference
     private Category category;
 
 

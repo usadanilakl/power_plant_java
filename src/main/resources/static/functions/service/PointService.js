@@ -204,7 +204,7 @@ async function fillPointInfoWindow(point){//old way was eqFormInfo in setArea() 
     infoContainer.innerHTML = "";
     infoContainer.appendChild(form);//this is new way
     // infoContainer.innerHTML = form;//this is old way
-    setFormValues(infoContainer,point);
+    //setFormValues(infoContainer,point);
 
     // if(modes.editMode.state){
     //     removeReadOnly(infoFrame.querySelector('form'));
@@ -215,8 +215,11 @@ async function fillPointInfoWindow(point){//old way was eqFormInfo in setArea() 
     // }
 
     // if(eqFormInfo.lotoPoints)infoContainer.appendChild(lotoPointDropdown(eqFormInfo.lotoPoints));//old version
-    const list = await lotoPointDropdown(selectedArea.lotoPoints);
-    if(selectedArea.lotoPoints)infoContainer.appendChild(list);
+    
+    if(selectedArea.lotoPoints){
+        const list = await lotoPointDropdown(selectedArea.lotoPoints); 
+        infoContainer.appendChild(list);
+    } 
 
     // let button = document.getElementById('pointUpdateButton');
     // let button2 = document.getElementById('pointDeleteButton');

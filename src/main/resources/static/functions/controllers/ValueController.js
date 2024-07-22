@@ -20,12 +20,18 @@ let deleteNoBody = {
     }
 }
 let createValueUrl = "/category";
+let deleteValueUrl = "/values"
 const getCatPopupUrl = "/cat/popup"
+const getRefractorPopupUrl = "/cat/refractor-popup"
 
 let categoryObjects = [];
 let allAliases = [];
 
-
+async function getValuesOfCategoryAlias(e){
+    const resp = await fetch('/category/get-'+ e);
+    const data = await resp.json();
+    return data;
+}
 
 function dropdownSelection(){
     const dropdown = event.target;
@@ -55,7 +61,7 @@ async function createCategoryOptions(category){
         dropdown.appendChild(option);
     })
 
-    let add = document.createElement('option');
+    let add = document.createElement('option'); 
     add.value = -1;
     add.textContent = "Add New Item";
     dropdown.appendChild(add);
@@ -68,30 +74,51 @@ async function createNewValue(category,value){
     fillPointInfoWindow(selectedArea.id);
 }
 
+async function deleteWithRefactor(oldValue,newValue){
+    const url = "/values/"+oldValue+"/"+newValue;
+    const response = await fetch(url,deleteNoBody);
+    const data = await response.json();
+    console.log(JSON.stringify(data))
+}
+
 async function crudValue( method,category,value,newValue){
     let operation;
     let endpoint = createValueUrl+"/"+category+"/"+value;
     if(newValue!==null)endpoint = endpoint+"/"+newValue;
     if(method === "POST") operation = postNoBody; 
     if(method === "PUT") operation = putNoBody;
-    if(method === "DELETE") operation = deleteNoBody; 
+    if(method === "DELETE"){
+        operation = deleteNoBody; 
+        endpoint = deleteValueUrl+'/'+value
+    } 
     const response = await fetch(endpoint,operation);
     const data = await response.json();
-    fillPointInfoWindow(selectedArea);
+    console.log(JSON.stringify(data))
+    if(data.action && data.action==='reassign'){
+        setupRefractorPopup(data.categoryAlias,data.oldValue,data.list)
+    }else{
+        fillPointInfoWindow(selectedArea);
+    }
+    
 }
 
-// async function getCatPopup(id){
-//     const response = await fetch(getCatPopupUrl);
-//     const data = await response.text();
-//     let div = document.createElement('div');
-//     div.id = "cat-popup-container";
-//     div.innerHTML = data;
-//     div.querySelector('#popupModal'+id);
-//     return div;
-// }
 
 async function getCatPopup(id){
     const response = await fetch(getCatPopupUrl);
+    const data = await response.text();
+    let div = document.createElement('div');
+    div.id = "cat-popup-container";
+    div.innerHTML = data;
+    let modal = div.querySelector('#popupModal');
+    if (!modal) {
+        console.error('Modal element not found.');
+    }
+    modal.id = 'popupModal-'+id
+    return div;
+}
+
+async function getRefractorPopup(id){
+    const response = await fetch(getRefractorPopupUrl);
     const data = await response.text();
     let div = document.createElement('div');
     div.id = "cat-popup-container";

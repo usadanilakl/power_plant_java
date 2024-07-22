@@ -439,8 +439,10 @@ async function handleMouseUp() {
     areaInfo.mainFile = file.fileLink;
     areaInfo.files = [];
     areaInfo.files.push(file.fileLink);
-    if(file.vendor)areaInfo.vendor = file.vendor.name;
-    if(file.system)areaInfo.system = file.system.name;;
+    if(file.vendor)areaInfo.vendor = file.vendor;
+    if(file.system)areaInfo.system = file.system;
+    areaInfo.eqType = null;
+    areaInfo.location = null;
 
     let area = createAreaElement(areaInfo);
     area.addEventListener('click',()=>{
@@ -457,8 +459,8 @@ async function handleMouseUp() {
     // console.log(JSON.stringify(selectedArea))
     //let newEq = await createNewEq(areaInfo);
     //file.points.push(newEq);
-    eqFormInfo = areaInfo;
-    fillPointInfoWindow(eqFormInfo);
+    selectedArea = areaInfo;
+    fillPointInfoWindow(selectedArea);
     
 }
 
@@ -543,11 +545,13 @@ function updatePointInfo(event){
     let newCoords = convertCoordsToOriginalSize(event);
     let updatedCoords = formatCoordsForServer(newCoords);
     let pointForm = document.getElementById('point-info-form');
-    let coordsInputField = document.querySelector('[data-object-info="coordinates"]');
+    let coordsInputField = document.querySelector('[id="coordinates"]');
     let oldCoords = getAreaCoordinates(coordsInputField.value).split(",");
     // console.log(JSON.stringify(oldCoords));
     // console.log(updatedCoords);
-    coordsInputField.value = JSON.stringify(updatedCoords).replace("{").replace("}");
+    let result = JSON.stringify(updatedCoords).replace("{").replace("}");
+    coordsInputField.value = result;
+    selectedArea.coordinates = result;
     // let form = new FormData(pointForm);
     // form.set('coords',JSON.stringify(updatedCoords));
     // console.log(form.get('coords'));

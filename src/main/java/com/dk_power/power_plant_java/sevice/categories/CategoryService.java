@@ -23,6 +23,7 @@ public interface CategoryService extends BaseCategoryValueService<Category, Cate
     Set<ValueDto> getIsoPositions();
     void refractorIsoPosValue(String oldValue, String newValue);
     Set<ValueDto> getValuesOfCat(String category);
+    Set<ValueDto> getVAluesOfCatWithAlias(String category);
 
-    CategoryDto getByAlias(String alias);
+    Category getByAlias(String alias);
 }

@@ -147,8 +147,14 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public CategoryDto getByAlias(String alias) {
-        return convertToDto(categoryRepo.findByAlias(alias)) ;
+    public Set<ValueDto> getVAluesOfCatWithAlias(String category) {
+        Set<Value> values = getByAlias(category).getValues();
+        return valueService.convertAllToDto(values);
+    }
+
+    @Override
+    public Category getByAlias(String alias) {
+        return categoryRepo.findByAlias(alias) ;
     }
 }
 

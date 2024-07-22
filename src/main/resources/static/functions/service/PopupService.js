@@ -50,12 +50,55 @@ async function setupPopup(category){
             crudValue("PUT",category, editValue.value, inputValue.value);
         } 
         else if(deleteValue.value!==null && deleteValue.value!==""){
-           crudValue("DELETE",category, deleteValue.value, null); 
+           crudValue("DELETE",category, deleteValue.getAttribute('data-object-id'), null); 
         } 
         else{
             crudValue("POST",category, inputValue.value, null); 
         } 
 
+        myModal.hide();
+        saveButton.removeEventListener('click', newVal);
+        let footer = saveButton.closest('.modal-footer');
+        if (footer) {
+            footer.removeChild(saveButton);
+        }
+    }
+    saveButton.addEventListener('click', newVal);
+    return popupHolder;
+}
+async function setupRefractorPopup(category,oldValue,points){
+
+    //build popup for refractor content
+    let popupHolder = document.getElementById('popup');
+    let popup = await getRefractorPopup(category);
+    popupHolder.innerHTML = "";
+    popupHolder.appendChild(popup);
+    let modal = popup.querySelector('#popupModal-'+category);
+    if (!modal) {
+        console.error('Modal element not found.');
+        return;
+    }
+    let myModal = new bootstrap.Modal(modal, {});
+    myModal.show();
+
+    //build searchable dropdown and add to popup
+    let list = await getValuesOfCategoryAlias(category);
+    let dropdown = await buildDropdown("new-value",list,null);
+    let modalBody = popupHolder.querySelector('.modal-body');
+    //modalBody.appendChild(dropdown);
+
+    //build table with points
+    let table = createTableFromObjects(points);
+    let tableContainer = document.createElement('div');
+    tableContainer.appendChild(table);
+    modalBody.appendChild(tableContainer);
+    tableContainer.classList.add('table-container');
+    
+
+    let saveButton = popup.querySelector('#save');
+    let newVal = function(){
+        let inputValue = document.getElementById('new-value-input');
+        deleteWithRefactor(oldValue,inputValue.getAttribute('data-object-id')); 
         myModal.hide();
         saveButton.removeEventListener('click', newVal);
         let footer = saveButton.closest('.modal-footer');

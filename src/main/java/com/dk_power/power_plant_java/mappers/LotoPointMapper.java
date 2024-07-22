@@ -30,6 +30,7 @@ public class LotoPointMapper implements BaseMapper{
         }
         LotoPointDto dto = new LotoPointDto();
         if (entity.getUnit() != null) dto.setUnit(entity.getUnit());
+        if (entity.getId() != null) dto.setId(entity.getId());
         if (entity.getTagged() != null) dto.setTagged(entity.getTagged());
         if (entity.getTagNumber() != null) dto.setTagNumber(entity.getTagNumber());
         if (entity.getDescription() != null) dto.setDescription(entity.getDescription());
@@ -63,6 +64,7 @@ public class LotoPointMapper implements BaseMapper{
         LotoPoint entity = new LotoPoint();
         if (dto.getUnit() != null) entity.setUnit(dto.getUnit());
         if (dto.getTagged() != null) entity.setTagged(dto.getTagged());
+        if (dto.getId() != null) entity.setId(dto.getId());
         if (dto.getTagNumber() != null) entity.setTagNumber(dto.getTagNumber());
         if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
         if (dto.getIsoPos() != null) entity.setIsoPos(valueService.convertToEntity(dto.getIsoPos()));
