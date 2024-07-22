@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.categories;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
@@ -12,6 +13,8 @@ import java.util.List;
 public interface ValueService extends BaseCategoryValueService<Value, ValueDto, ValueRepo, UniversalMapper> {
     Value valueSetup(String cat, String val);
     ValueDto getValueFromCategory(String cat, String val);
+    public List<LotoPoint> deleteValue(Value entity);
+    public void refractorIsoPosValue(Value old, Value _new);
 
 }
 

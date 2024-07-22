@@ -3,8 +3,10 @@ package com.dk_power.power_plant_java.sevice.categories;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
+import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class ValueServiceImpl implements ValueService{
     private final UniversalMapper universalMapper;
     private final SessionFactory sessionFactory;
     private final CategoryService categoryService;
+    private final LotoPointService lotoPointService;
     @Override
     public Value getEntity() {
         return new Value();
@@ -69,4 +72,21 @@ public class ValueServiceImpl implements ValueService{
         return  first.orElse(null);
     }
 
+
+    public List<LotoPoint> deleteValue(Value entity) {
+        List<LotoPoint> byIsoPos = lotoPointService.getByIsoPos(entity);
+        if(byIsoPos.isEmpty()) {
+            hardDelete(entity);
+            return null;
+        }else {
+            return byIsoPos;
+        }
+    }
+
+    public void refractorIsoPosValue(Value old, Value _new){
+        for (LotoPoint i : lotoPointService.getByIsoPos(old)) {
+            i.setIsoPos(_new);
+            lotoPointService.save(i);
+        }
+    }
 }

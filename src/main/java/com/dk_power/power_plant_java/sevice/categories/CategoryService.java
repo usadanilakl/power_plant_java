@@ -18,6 +18,10 @@ public interface CategoryService extends BaseCategoryValueService<Category, Cate
     Set<ValueDto> getEqTypes();
     Set<ValueDto> getSystems();
     Set<ValueDto> getFileTypes();
+    Set<ValueDto> getNormPositions();
+    void refractorNormPosValue(String oldValue, String newValue);
+    Set<ValueDto> getIsoPositions();
+    void refractorIsoPosValue(String oldValue, String newValue);
     Set<ValueDto> getValuesOfCat(String category);
 
     CategoryDto getByAlias(String alias);

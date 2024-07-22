@@ -4,8 +4,10 @@ import com.dk_power.power_plant_java.dto.categories.CategoryDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
+import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import org.hibernate.SessionFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -25,12 +27,14 @@ public class CategoryServiceImpl implements CategoryService {
     private final UniversalMapper universalMapper;
     private final SessionFactory sessionFactory;
     private final ValueService valueService;
+    private final LotoPointService lotoPointService;
 
-    public CategoryServiceImpl(CategoryRepo categoryRepo, UniversalMapper universalMapper, SessionFactory sessionFactory, @Lazy ValueService valueService) {
+    public CategoryServiceImpl(CategoryRepo categoryRepo, UniversalMapper universalMapper, SessionFactory sessionFactory, @Lazy ValueService valueService, LotoPointService lotoPointService) {
         this.categoryRepo = categoryRepo;
         this.universalMapper = universalMapper;
         this.sessionFactory = sessionFactory;
         this.valueService = valueService;
+        this.lotoPointService = lotoPointService;
     }
 
     @Override
@@ -99,6 +103,41 @@ public class CategoryServiceImpl implements CategoryService {
     public Set<ValueDto> getFileTypes() {
         Set<Value> fileTypes = getCategoryByName("File Type").getValues();
         return valueService.convertAllToDto(fileTypes);
+    }
+
+    @Override
+    public Set<ValueDto> getNormPositions() {
+        Set<Value> normalPosition = getCategoryByName("Normal Position").getValues();
+        return valueService.convertAllToDto(normalPosition);
+
+    }
+
+    @Override
+    public void refractorNormPosValue(String oldValue, String newValue) {
+        ValueDto oldVal = valueService.getValueFromCategory("Normal Position", oldValue);
+        ValueDto newVal = valueService.getValueFromCategory("Normal Position", newValue);
+        List<LotoPoint> lotoPoints = lotoPointService.getByNormPos(valueService.convertToEntity(oldVal));
+        for (LotoPoint l : lotoPoints) {
+            l.setNormPos(valueService.convertToEntity(newVal));
+            lotoPointService.save(l);
+        }
+    }
+
+    @Override
+    public Set<ValueDto> getIsoPositions() {
+        Set<Value> isoPosition = getCategoryByName("Isolated Position").getValues();
+        return valueService.convertAllToDto(isoPosition);
+    }
+
+    @Override
+    public void refractorIsoPosValue(String oldValue, String newValue) {
+        Value oldVal = valueService.convertToEntity(valueService.getValueFromCategory("Normal Position", oldValue));
+        Value newVal = valueService.convertToEntity(valueService.getValueFromCategory("Normal Position", newValue));
+        List<LotoPoint> lotoPoints = lotoPointService.getByIsoPos(oldVal);
+        for (LotoPoint l : lotoPoints) {
+            l.setNormPos(newVal);
+            lotoPointService.save(l);
+        }
     }
 
     @Override

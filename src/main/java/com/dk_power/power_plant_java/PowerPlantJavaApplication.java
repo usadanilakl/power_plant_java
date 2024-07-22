@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -60,6 +61,18 @@ private final LotoPointService lotoPointService;
 
         System.err.println("=====================================================");
 
+//        int i = 0;
+//        List<LotoPoint> all = lotoPointService.getAll();
+//        for (LotoPoint l : all) {
+//            if(l.getIsolatedPosition() == null || l.getIsolatedPosition().trim().isEmpty()) l.setIsolatedPosition("no data");
+//            if(l.getNormalPosition() == null || l.getNormalPosition().trim().isEmpty()) l.setNormalPosition("no data");
+//            l.setIsoPos( valueService.valueSetup("Isolated Position", l.getIsolatedPosition()));
+//            l.setNormPos(valueService.valueSetup("Normal Position", l.getNormalPosition()));
+//            lotoPointService.save(l);
+////            System.out.println(i++);
+//            i++;
+//        }
+//        System.out.println("Completed LotoPoints: "+i);
 
 /***************************TransferMethods*************************************************/
 //        fileService.getAll().forEach(fileService::hardDelete);

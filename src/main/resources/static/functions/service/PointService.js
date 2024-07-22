@@ -107,8 +107,9 @@ function excelPointDropdown(points){
     return list;
 }
 
-function lotoPointDropdown(points){
+async function lotoPointDropdown(points){
     let list = document.createElement('ul');
+
     points.forEach(e=>{
         let item = document.createElement('li');
         list.appendChild(item);
@@ -121,9 +122,11 @@ function lotoPointDropdown(points){
         item.appendChild(formContainer);
 
         button.textContent = e.tagNumber;
-        button.addEventListener('click', ()=>{
+        button.addEventListener('click', async ()=>{
             if(formContainer.children.length === 0){
-                formContainer.appendChild(showPointInfo(e));
+                // formContainer.appendChild(showPointInfo(e));//old version
+                const form = await buildFormFromObject(e);
+                formContainer.appendChild(form);
             }else{
                 formContainer.innerHTML = "";
             }
@@ -138,10 +141,7 @@ function lotoPointDropdown(points){
             
             addButton.classList.remove('hide');
             const editModeAction = function(){
-
-            console.log(JSON.stringify(selectedArea.lotoPoints))
-            removePointFromEquipment(e);
-            console.log(JSON.stringify(selectedArea.lotoPoints))
+                removePointFromEquipment(e);
             }
             addButton.addEventListener('click',editModeAction);
         }
@@ -214,7 +214,9 @@ async function fillPointInfoWindow(point){//old way was eqFormInfo in setArea() 
     //     createSearchableDropdown("system");
     // }
 
-    if(eqFormInfo.lotoPoints)infoContainer.appendChild(lotoPointDropdown(eqFormInfo.lotoPoints))
+    // if(eqFormInfo.lotoPoints)infoContainer.appendChild(lotoPointDropdown(eqFormInfo.lotoPoints));//old version
+    const list = await lotoPointDropdown(selectedArea.lotoPoints);
+    if(selectedArea.lotoPoints)infoContainer.appendChild(list);
 
     // let button = document.getElementById('pointUpdateButton');
     // let button2 = document.getElementById('pointDeleteButton');

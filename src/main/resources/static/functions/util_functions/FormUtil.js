@@ -112,7 +112,7 @@ async function buildFormFromObject(point){
             }
             console.log(point[e]); //print assignment
         })
-        input.addEventListener('click',()=>checkClipboardAndPasteShort(input));
+        //input.addEventListener('click',()=>checkClipboardAndPasteShort(input)); //paste function 
     }
 
     let submitButton = document.createElement('button');
@@ -165,7 +165,6 @@ function buildCategoryOptions(id, items) {
     return dropdownContent;
 }
 
-
 function isObject(element){
         if (typeof element === "object" && element !== null && !Array.isArray(element)) {
             return true;
@@ -184,6 +183,15 @@ async function isCategory(key){
 }
 
 let hiddenEquipmentFields = [
+    'id',
+    'objectType',
+    'name',
+    'coordinates',
+    'originalPictureSize',
+    'lotoPoints'
+]
+
+let hiddenLotoPointFields = [
     'id',
     'objectType',
     'name',

@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.sevice.equipment;
 
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
@@ -92,6 +94,16 @@ public class LotoPointServiceImpl implements LotoPointService{
     @Override
     public LotoPoint getByOldId(String oldId) {
         return lotoPointRepo.findByOldId(oldId);
+    }
+
+    @Override
+    public List<LotoPoint> getByNormPos(Value oldVal) {
+        return lotoPointRepo.findByNormPos(oldVal);
+    }
+
+    @Override
+    public List<LotoPoint> getByIsoPos(Value oldVal) {
+        return lotoPointRepo.findByIsoPos(oldVal);
     }
 
     @Override
