@@ -1,11 +1,13 @@
 package com.dk_power.power_plant_java.sevice.data_transfer.excel;
 
+import com.dk_power.power_plant_java.sevice.FilePathService;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,14 +18,17 @@ public class ExcelService {
     private Sheet workSheet;
     private Workbook workBook;
     private String path;
-    private FileInputStream excelFile;
+    private InputStream excelFile;
     //private final LotoPointService revisedExcelPointsRepo;
+    private final FilePathService filePathService;
 
-    public ExcelService(@Value("${excel.path.default}") String path, @Value("${excel.sheetName.default}") String sheetName) {
+    public ExcelService(@Value("${excel.path.default}") String path, @Value("${excel.sheetName.default}") String sheetName, FilePathService filePathService) {
+        this.filePathService = filePathService;
         this.path=path;
-       // this.revisedExcelPointsRepo = revisedExcelPointsRepo;
+
+        // this.revisedExcelPointsRepo = revisedExcelPointsRepo;
         try {
-            excelFile = new FileInputStream(path);
+            excelFile = filePathService.getFileAsInputStream(this.path);
             workBook = WorkbookFactory.create(excelFile);
             workSheet = workBook.getSheet(sheetName);
 

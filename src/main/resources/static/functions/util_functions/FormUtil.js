@@ -4,7 +4,7 @@
  *  if field contains another object then create searchable dropdown for it
  *  assign an event listener for each form field to auto update respective field in the object
  *************************************************************************************************************************************/
-
+const events = ['input', 'change', 'blur'];
 async function buildFormFromObject(point){
     let form = document.createElement('form');
     for(let e in point){
@@ -101,7 +101,7 @@ async function buildFormFromObject(point){
             });
         }
 
-        input.addEventListener('input',(event)=>{
+        input.addEventListener("input",(event)=>{
             let opt = event.target;
             if(isCat){
                 point[e].id = opt.getAttribute('data-object-id');
@@ -111,11 +111,17 @@ async function buildFormFromObject(point){
             }
             console.log(point[e]); //print assignment
         })
-        input.addEventListener('click',()=>checkClipboardAndPasteShort(input)); //paste function 
+        input.addEventListener('click',async ()=>{
+            let clipBoardText = await checkClipboardAndPasteShort(input);
+            if(!isCat){
+                point[e]= clipBoardText ;
+            }
+    }); //paste function 
+        
     }
 
     
-
+    if(point.objectType==="Equipment"){
     let submitButton = document.createElement('button');
     submitButton.type = 'button';
     submitButton.textContent = 'Submit';
@@ -127,6 +133,8 @@ async function buildFormFromObject(point){
     deleteButton.textContent = "Delete";
     deleteButton.addEventListener('click',()=>deletePoint(point.id))
     form.appendChild(deleteButton);
+    }
+
     return form;
 }
 
@@ -188,7 +196,10 @@ let hiddenEquipmentFields = [
     'name',
     'coordinates',
     'originalPictureSize',
-    'lotoPoints'
+    'lotoPoints',
+    'specificLocation',
+    'files',
+    'mainFile'
 ]
 
 let hiddenLotoPointFields = [
@@ -197,7 +208,9 @@ let hiddenLotoPointFields = [
     'name',
     'lotos',
     'equipmentList',
-    'oldId'
+    'oldId',
+    'normalPosition',
+    'isolatedPosition'
 ]
 
 function hideFormFields(point, key){

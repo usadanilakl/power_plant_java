@@ -1,13 +1,17 @@
 package com.dk_power.power_plant_java.config;
 
+import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@RequiredArgsConstructor
 public class ExcelConfig {
+    private final FilePathService filePathService;
     /****************************************************************************
      * Hrsg Valve Transfer
      * ***************************************************************************/
@@ -16,7 +20,7 @@ public class ExcelConfig {
     @Bean
     @Qualifier("HrsgValve")
     public ExcelService beanForHrsgValve(){
-        return new ExcelService(valvePath,hrsgValveSheet);
+        return new ExcelService( valvePath,hrsgValveSheet,filePathService);
     }
     /****************************************************************************
      * Kiewit Valve Transfer
@@ -25,7 +29,7 @@ public class ExcelConfig {
     @Bean
     @Qualifier("KiewitValve")
     public ExcelService beanForKiewitValve(){
-        return new ExcelService(valvePath,kiewitValveSheet);
+        return new ExcelService(valvePath,kiewitValveSheet,filePathService);
     }
 
     /****************************************************************************
@@ -36,7 +40,7 @@ public class ExcelConfig {
     @Bean
     @Qualifier("LotoPoint")
     public ExcelService beanForLotoPoints(){
-        return new ExcelService(lotoPointPath,lotoPointSheet);
+        return new ExcelService(lotoPointPath,lotoPointSheet,filePathService);
     }
 
     /****************************************************************************
@@ -47,7 +51,7 @@ public class ExcelConfig {
     @Bean
     @Qualifier("HrsgPipe")
     public ExcelService beanForHrsgPipe(){
-        return new ExcelService(pipePath,hrsgPipeSheet);
+        return new ExcelService(pipePath,hrsgPipeSheet,filePathService);
     }
     /****************************************************************************
      * Kiewit Valve Transfer
@@ -56,7 +60,7 @@ public class ExcelConfig {
     @Bean
     @Qualifier("KiewitPipe")
     public ExcelService beanForKiewitPipe(){
-        return new ExcelService(pipePath,kiewitPipesSheet);
+        return new ExcelService(pipePath,kiewitPipesSheet,filePathService);
     }
 
     /****************************************************************************
@@ -67,7 +71,7 @@ public class ExcelConfig {
     @Bean
     @Qualifier("OldLotoPoint")
     public ExcelService beanForOldLotoPoints(){
-        return new ExcelService(oldLotoPointPath,oldLotoPointSheet);
+        return new ExcelService(oldLotoPointPath,oldLotoPointSheet,filePathService);
     }
 
     /****************************************************************************
@@ -78,6 +82,6 @@ public class ExcelConfig {
     @Bean
     @Qualifier("Bypass")
     public ExcelService beanForBypasses(){
-        return new ExcelService(bypassesPath,bypassesSheet);
+        return new ExcelService(bypassesPath,bypassesSheet,filePathService);
     }
 }

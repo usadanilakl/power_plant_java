@@ -181,17 +181,25 @@
         left.appendChild(item);
         item.classList.add('btn-list-in-line');
 
-        if(mode) setMode(mode);
+        
 
         f = findFileByPartualNumber("20023894-PD-021A");
         loadPictureWithLightFile(f);
 
         getAllCategoryObjects();
         getAllCategories();
+        getAllTransferDataFromDb();
+        getRevisedExcelPoints();
+        getOldExcelPoints();
+
+        
         
 
         
-    });
+    }).then(()=>{
+        console.log(JSON.stringify(file))
+       if(mode) setMode(mode); 
+    })
 
     pictureContainer.addEventListener('mousedown',(event)=>{
         if(event.button===0){

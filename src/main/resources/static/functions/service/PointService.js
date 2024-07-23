@@ -132,9 +132,6 @@ function excelPointDropdown(points){
 
         if(modes.editMode.state){
              addButton.classList.remove('hide');
-            // const lotoModeAction = function(){
-            //     addPointToLotoWindow(e);
-            // }
             const editModeAction = function(){
                 addPointToEquipment(e);
             }
@@ -178,13 +175,17 @@ async function lotoPointDropdown(points){
         addButton.textContent = "-";
         addButton.classList.add('hide');
 
-        if(modes.editMode.state){
+        if(modes.editMode.state || modes.lotoMode.state){
             
             addButton.classList.remove('hide');
+            const lotoModeAction = function(){
+                addPointToLotoWindow(e);
+            }
             const editModeAction = function(){
                 removePointFromEquipment(e);
             }
-            addButton.addEventListener('click',editModeAction);
+            if(modes.editMode.state)addButton.addEventListener('click',editModeAction);
+            if(modes.lotoMode.state)addButton.addEventListener('click',lotoModeAction);
         }
 
     });

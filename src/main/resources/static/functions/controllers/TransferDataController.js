@@ -1,5 +1,5 @@
 // let transferDataTypes;
-getAllTransferDataFromDb();
+
 
 async function getTypesOfTransferedData(){
     const response = await fetch("/transfer-data/types");
@@ -142,4 +142,5 @@ async function getBypassesFromDb(){
     // console.log('it took: '+ duration)
     return data;
 }
+
 

@@ -105,8 +105,7 @@ async function deletePoint(id){
 }
 
 
-getRevisedExcelPoints();
-getOldExcelPoints();
+
 
 /**********************************************************************************************************************8
  * Loto Point Controller

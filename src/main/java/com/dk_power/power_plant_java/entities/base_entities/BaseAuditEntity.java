@@ -44,6 +44,7 @@ public class BaseAuditEntity extends BaseIdEntity {
             return false;
         }
         BaseAuditEntity otherEntity = (BaseAuditEntity) obj;
-        return getId().equals(otherEntity.getId());
+        if(getId()!=null)return getId().equals(otherEntity.getId());
+        else return false;
     }
 }

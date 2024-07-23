@@ -14,6 +14,7 @@ import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.TransferExcecutionServiceImpl;
@@ -55,6 +56,7 @@ private final ValueService valueService;
 private final LotoPointService lotoPointService;
 private final RevisedLotoPointService revisedLotoPointService;
 private final OldLotoPointService oldLotoPointService;
+private final FilePathService filePathService;
 
 
     public static void main(String[] args) {
@@ -68,7 +70,7 @@ private final OldLotoPointService oldLotoPointService;
 
         System.err.println("=====================================================");
 
-
+//        System.out.println("filePath: " + filePathService.getFullPath("static/data_transfer/files/default.xlsx"));
 
 /***************************TransferMethods*************************************************/
 //        fileService.getAll().forEach(fileService::hardDelete);

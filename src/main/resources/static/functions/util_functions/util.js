@@ -95,15 +95,17 @@ async function checkClipboardAndPaste() {
 }
 
 async function checkClipboardAndPasteShort(inputElement) {
-
+        let value;
         if (navigator.clipboard) {
             const clipboardText = await navigator.clipboard.readText();
             if (clipboardText) {
                 inputElement.value = clipboardText;
+                value = clipboardText;
                 inputElement.select();
                 await navigator.clipboard.writeText('');
             }
         }
+        return value;
 }
 
 function isObject(item) {

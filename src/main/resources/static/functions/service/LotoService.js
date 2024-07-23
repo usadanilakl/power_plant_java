@@ -3,10 +3,8 @@ let lotoPoints = [];
 
 function lotoModeControl(){
     if(modes.lotoMode.state){
-        if(lotoWindow === null) setUpLotoWindow();
-        document.querySelectorAll('.addButtons').forEach(e=>{
-            e.classList.remove('hide');
-        })
+        if(lotoWindow === null && selectedArea) setUpLotoWindow();
+        if(selectedArea)fillPointInfoWindow(selectedArea);
     }else{
         document.querySelectorAll('.addButtons').forEach(e=>{
             e.classList.add('hide');
@@ -16,14 +14,16 @@ function lotoModeControl(){
 }
 
 function setUpLotoWindow(){
-    let obj = revisedExcelPoints[0];
-    let ob = {label:obj.tagNumber,description:obj.description}
+    // let obj = revisedLotoPoints[0];
+    // let ob = {label:obj.tagNumber,description:obj.description}
+    let ob = {label:selectedArea.tagNumber,description:selectedArea.description}
     lotoWindow = newInfoWindow("Loto");
     lotoWindow.appendChild(createTable(ob));
     lotoWindow.appendChild(updateLotoPointsButton());
 }
 
 function addPointToLotoWindow(point){
+    if(lotoWindow === null)setUpLotoWindow();
     if(modes.lotoMode.state){
         let tbody = lotoWindow.querySelector('tbody');
         let index = tbody.rows.length+1;
