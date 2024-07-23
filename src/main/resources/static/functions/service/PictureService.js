@@ -59,8 +59,8 @@ function createAreaElement(area){
     
     let coord = getAreaCoordinates(area.coordinates);
     let newArea = document.createElement('area');
-    newArea.setAttribute('alt',area.label);
-    newArea.setAttribute('title', area.label);
+    newArea.setAttribute('alt',area.tagNumber);
+    newArea.setAttribute('title', area.tagNumber);
     newArea.setAttribute('data-point-id', area.id);
     //newArea.setAttribute('href',area.label);
     newArea.setAttribute('class',"ar");
@@ -151,7 +151,7 @@ function createHighlight(area){
         event.preventDefault();
         relocateHighlightsWithPicture(event); 
         
-        updatePointInfo(event);
+        // updatePointInfo(event);
     })
 
     const zoom = zoomPicture.bind(null,picture);
@@ -169,6 +169,9 @@ function createHighlight(area){
     activeHighlights.push(highlight);
     highlatedAreas.push(area);
     initResize(highlight, true); //resizing tools setup (for editing)
+    highlight.querySelectorAll('.corners').forEach(e=>{
+        e.addEventListener('click', updatePointInfo)
+    })
     return highlight;
 }
 function getShapeCoordinates(area){

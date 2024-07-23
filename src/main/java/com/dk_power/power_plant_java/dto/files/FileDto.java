@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.dto.files;
 
+import com.dk_power.power_plant_java.dto.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
@@ -19,7 +20,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class FileDto {
+public class FileDto extends BaseDto {
 
 
 

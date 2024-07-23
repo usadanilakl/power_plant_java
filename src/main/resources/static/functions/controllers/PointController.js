@@ -1,4 +1,5 @@
 let revisedExcelPoints = [];
+let oldLotoPoints = [];
 
 let addLotoPointToEqUrl = '/points/add-loto-point/' //{eqId}/{pointOldId}
 let createNewEqUrl = '/points/'
@@ -18,6 +19,12 @@ async function getRevisedExcelPoints(){
     let response = await fetch('/point/get-revised-excel-points');
     let data = await response.json();
     revisedExcelPoints = data;
+    return data;
+}
+async function getOldExcelPoints(){
+    let response = await fetch('/point/get-old-excel-points');
+    let data = await response.json();
+    oldExcelPoints = data;
     return data;
 }
 
@@ -99,7 +106,7 @@ async function deletePoint(id){
 
 
 getRevisedExcelPoints();
-
+getOldExcelPoints();
 
 /**********************************************************************************************************************8
  * Loto Point Controller

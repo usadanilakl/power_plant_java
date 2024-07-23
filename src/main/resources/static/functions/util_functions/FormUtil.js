@@ -22,6 +22,7 @@ async function buildFormFromObject(point){
         input.classList.add('form-control'); //bootstrap styling for input field
         input.value = point[e]; //assign value of given field to input field
         input.readOnly = true; //to prevent editing (edit mode will remove it)
+        if(modes.editMode.state) input.readOnly = false;
 
         if(hideFormFields(point, e)) input.parentElement.classList.add('hide'); //this hides all listed fields
         let isCat = await isCategory(e);
@@ -51,7 +52,6 @@ async function buildFormFromObject(point){
             let valuesOfCat = items.map(e=>e.name); //used it before when dropdowns could only take string values and not objects
 
             if(modes.editMode.state){
-                input.readOnly = false;
 
                 let inputWrapper = document.createElement('div');
                 inputWrapper.classList.add('input-group');
@@ -113,6 +113,8 @@ async function buildFormFromObject(point){
         })
         //input.addEventListener('click',()=>checkClipboardAndPasteShort(input)); //paste function 
     }
+
+    
 
     let submitButton = document.createElement('button');
     submitButton.type = 'button';

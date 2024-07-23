@@ -3,10 +3,12 @@ package com.dk_power.power_plant_java.sevice.equipment;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
+import com.dk_power.power_plant_java.sevice.base_services.RefactorService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -114,5 +116,23 @@ public class LotoPointServiceImpl implements LotoPointService{
     @Override
     public LotoPointDto convertToDto(LotoPoint entity) {
         return getMapper().convertToDto(entity);
+    }
+    @Override
+    public List<LotoPoint> getByValue(Value val) {
+        List<LotoPoint> result = new ArrayList<>();
+        String cat = val.getCategory().getAlias();
+        if(cat.equals("isoPos")) result.addAll(getByIsoPos(val));
+        if(cat.equals("normPos")) result.addAll(getByNormPos(val));
+        return result;
+    }
+
+    @Override
+    public void refactor(Value old, Value _new) {
+        String cat = old.getCategory().getAlias();
+        for (LotoPoint f : getByValue(old)) {
+            if(cat.equals("isoPos"))f.setIsoPos(_new);
+            if(cat.equals("normPos"))f.setNormPos(_new);
+            save(f);
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.repository;
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +15,7 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<String> getVendors();
     @Query("SELECT e FROM FileObject e WHERE e.vendor.name=?1")
     List<FileObject> findByVendor(String vendor);
+    List<FileObject> findByVendor(Value vendor);
     @Query("SELECT DISTINCT e.system.name FROM FileObject e")
     List<String> getSystems();
     FileObject findByName(String name);
@@ -23,4 +25,9 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileDtoLight> getAllLight();
 
     FileObject findByFileLink(String fileLink);
+
+    List<FileObject> findBySystem(Value oldVal);
+
+    List<FileObject> findByFileType(Value oldVal);
 }
+

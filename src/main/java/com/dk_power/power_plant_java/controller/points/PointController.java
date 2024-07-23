@@ -1,9 +1,11 @@
 package com.dk_power.power_plant_java.controller.points;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.entities.data_transfer.OldLotoPoint;
 import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
+import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
@@ -23,6 +25,7 @@ public class PointController {
     private final EquipmentService equipmentService;
     private final LotoPointService lotoPointService;
     private final RevisedLotoPointService revisedLotoPointService;
+    private final OldLotoPointService oldLotoPointService;
 
     @GetMapping("/get-info-form/{id}")
     public String getInfoForm(Model model, @PathVariable("id") String id){
@@ -56,5 +59,10 @@ public class PointController {
     @GetMapping("/get-revised-excel-points")
     public ResponseEntity<List<RevisedLotoPoints>> getAllRivisedPoint(){
         return ResponseEntity.ok(revisedLotoPointService.getAll());
+    }
+
+    @GetMapping("/get-old-excel-points")
+    public ResponseEntity<List<OldLotoPoint>> getAllOldPoint(){
+        return ResponseEntity.ok(oldLotoPointService.getAll());
     }
 }

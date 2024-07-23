@@ -1,12 +1,14 @@
 package com.dk_power.power_plant_java.sevice.equipment;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.EquipmentMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.sevice.base_services.RefactorService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
@@ -23,7 +25,7 @@ import java.util.Set;
 @Service
 @AllArgsConstructor
 @Transactional
-public class EquipmentServiceImpl implements EquipmentService{
+public class EquipmentServiceImpl implements EquipmentService {
     private final EquipmentRepo equipmentRepo;
     private final EquipmentMapper equipmentMapper;
     private final SessionFactory sessionFactory;
@@ -188,6 +190,43 @@ public class EquipmentServiceImpl implements EquipmentService{
     public Equipment save(EquipmentDto dto) {
         Equipment entity = convertToEntity(dto);
         return save(entity);
+    }
+    @Override
+    public List<Equipment> getByVendor(Value oldVal) {
+        return equipmentRepo.findByVendor(oldVal);
+    }
+    @Override
+    public List<Equipment> getByEqType(Value oldVal) {
+        return equipmentRepo.findByEqType(oldVal);
+    }
+    @Override
+    public List<Equipment> getBySystem(Value oldVal) {
+        return equipmentRepo.findBySystem(oldVal);
+    }
+    @Override
+    public List<Equipment> getByLocation(Value oldVal) {
+        return equipmentRepo.findByLocation(oldVal);
+    }
+
+    @Override
+    public List<Equipment> getByValue(Value val) {
+        List<Equipment> result = new ArrayList<>();
+        String cat = val.getCategory().getAlias();
+        if(cat.equals("vendor")) result.addAll(getByVendor(val));
+        if(cat.equals("system")) result.addAll(getBySystem(val));
+        if(cat.equals("eqType")) result.addAll(getByEqType(val));
+        return result;
+    }
+
+    @Override
+    public void refactor(Value old, Value _new) {
+        String cat = old.getCategory().getAlias();
+        for (Equipment f : getByValue(old)) {
+            if(cat.equals("vendor"))f.setVendor(_new);
+            if(cat.equals("system"))f.setSystem(_new);
+            if(cat.equals("eqType"))f.setEqType(_new);
+            save(f);
+        }
     }
 
 

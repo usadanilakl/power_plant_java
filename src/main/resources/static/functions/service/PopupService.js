@@ -73,6 +73,7 @@ async function setupRefractorPopup(category,oldValue,points){
     let popup = await getRefractorPopup(category);
     popupHolder.innerHTML = "";
     popupHolder.appendChild(popup);
+    popupHolder.style.maxHeight ='80vh';
     let modal = popup.querySelector('#popupModal-'+category);
     if (!modal) {
         console.error('Modal element not found.');

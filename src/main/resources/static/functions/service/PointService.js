@@ -23,6 +23,16 @@ function getExcelPointsByLabel(label){
     revisedExcelPoints.forEach(e=>{
         if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
     })
+    oldExcelPoints.forEach(e=>{
+        if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
+    })
+    return result;
+}
+function getOldPointsByLabel(label){
+    let result = [];
+    oldExcelPoints.forEach(e=>{
+        if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
+    })
     return result;
 }
 
@@ -163,6 +173,9 @@ async function fillExcelPointInfoWindow(points){
 function excelPointSearch(searchValue){
     let result = [];
     revisedExcelPoints.forEach(e=>{
+        if(trimToLowerCaseRemoveDashes(e.label).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.label))) result.push(e);
+    });
+    oldExcelPoints.forEach(e=>{
         if(trimToLowerCaseRemoveDashes(e.label).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.label))) result.push(e);
     })
     return result;

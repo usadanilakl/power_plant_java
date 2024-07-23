@@ -29,7 +29,7 @@ public class EquipmentMapper implements BaseMapper{
     private final EquipmentService equipmentService;
     private final LotoPointService lotoPointService;
 
-    public EquipmentMapper(ModelMapper modelMapper, ValueService valueService, FileService fileService, @Lazy EquipmentService equipmentService, LotoPointService lotoPointService) {
+    public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService, @Lazy FileService fileService, @Lazy EquipmentService equipmentService, LotoPointService lotoPointService) {
         this.modelMapper = modelMapper;
         this.valueService = valueService;
         this.fileService = fileService;

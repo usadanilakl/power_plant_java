@@ -1,25 +1,27 @@
 package com.dk_power.power_plant_java.sevice.categories;
 
+import com.dk_power.power_plant_java.dto.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
+import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
-import lombok.AllArgsConstructor;
+import com.dk_power.power_plant_java.sevice.file.FileService;
 import org.hibernate.SessionFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Service
-@AllArgsConstructor
+//@AllArgsConstructor
 @Transactional
 public class ValueServiceImpl implements ValueService{
     private final ValueRepo valueRepo;
@@ -27,6 +29,19 @@ public class ValueServiceImpl implements ValueService{
     private final SessionFactory sessionFactory;
     private final CategoryService categoryService;
     private final LotoPointService lotoPointService;
+    private final EquipmentService equipmentService;
+    private final FileService fileService;
+
+    public ValueServiceImpl(ValueRepo valueRepo, UniversalMapper universalMapper, SessionFactory sessionFactory, CategoryService categoryService, @Lazy LotoPointService lotoPointService, @Lazy EquipmentService equipmentService, @Lazy FileService fileService) {
+        this.valueRepo = valueRepo;
+        this.universalMapper = universalMapper;
+        this.sessionFactory = sessionFactory;
+        this.categoryService = categoryService;
+        this.lotoPointService = lotoPointService;
+        this.equipmentService = equipmentService;
+        this.fileService = fileService;
+    }
+
     @Override
     public Value getEntity() {
         return new Value();
@@ -101,13 +116,35 @@ public class ValueServiceImpl implements ValueService{
             return lotoPointDtos;
         }
     }
-
-
-
     public void refractorIsoPosValue(Value old, Value _new){
         for (LotoPoint i : lotoPointService.getByIsoPos(old)) {
             i.setIsoPos(_new);
             lotoPointService.save(i);
         }
+    }
+
+    public Collection<BaseDto> delVal(Value entity) {
+        Collection<LotoPointDto> lotoPoints = lotoPointService.convertAllToDto(lotoPointService.getByValue(entity));
+        Collection<EquipmentDto> equipment = equipmentService.convertAllToDto(equipmentService.getByValue(entity));
+        Collection<FileDto> files = fileService.convertAllToDto(fileService.getByValue(entity));
+
+        List<BaseDto> all = new ArrayList<>(lotoPoints);
+        all.addAll(equipment);
+        all.addAll(files);
+
+        if(all.isEmpty()) {
+            hardDelete(entity);
+            return all;
+        }else {
+            return all;
+        }
+    }
+
+
+    @Override
+    public void refactor(Value old, Value _new) {
+        equipmentService.refactor(old,_new);
+        fileService.refactor(old,_new);
+        lotoPointService.refactor(old,_new);
     }
 }
