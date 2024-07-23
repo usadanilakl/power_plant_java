@@ -17,11 +17,32 @@
 /***********************************************************************************************************************************
  * Excel Points and LotoPoints functions
  *************************************************************************************************************************************/
+let hiddenRevisedPointFields=[
+    "name",
+    "id",
+    "objectType",
+    "originalId"
+]
+
+let hiddenOldPointFields=[
+    "name",
+    "id",
+    "objectType"
+]
+
+function hideExcelFields(point,field){
+    if(point.objectType === "OldLotoPoint" && hiddenOldPointFields.includes(field)) return true;
+    if(point.objectType === "RevisedLotoPoints" && hiddenRevisedPointFields.includes(field)) return true;
+}
+
 
 function getExcelPointsByLabel(label){
     let result = [];
     revisedExcelPoints.forEach(e=>{
-        if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
+        // if(formatLabel(e.tagNumber).includes(formatLabel(label)) ){
+        //    result.push({tagNumber:e.tagNumber, description:e.description, location:e.generalLocation, specificLocation:e.location, itemType:e.objectType, originalId:e.originalId }); 
+        // } 
+        if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e); //old version
     })
     oldExcelPoints.forEach(e=>{
         if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
@@ -63,6 +84,7 @@ function showPointInfo(point){
         div.appendChild(label);
         label.setAttribute('for',e);
         label.textContent = e;
+        if(point.objectType === "OldLotoPoint" && e==="isoPos") label.textContent = "Description";
         let input = document.createElement('input');
         div.appendChild(input);
         input.setAttribute('id',e);
@@ -70,6 +92,7 @@ function showPointInfo(point){
         input.value = point[e];
         input.readOnly = true;
         input.addEventListener('click',()=>{copyToClipboard(input)})
+        if(hideExcelFields(point,e)) div.classList.add('hide');
     }
     return form;
 }
@@ -79,6 +102,7 @@ function excelPointDropdown(points){
     points.forEach(e=>{
         let item = document.createElement('li');
         list.appendChild(item);
+
         let buttons = document.createElement('div');
         item.appendChild(buttons);
         buttons.classList.add('flex-inline');
@@ -86,6 +110,9 @@ function excelPointDropdown(points){
         buttons.appendChild(button);
         let formContainer = document.createElement('div');
         item.appendChild(formContainer);
+
+        if(e.objectType==="OldLotoPoint") button.style.backgroundColor = "red";
+        else button.style.backgroundColor = "green";
 
         button.textContent = e.tagNumber;
         button.addEventListener('click', ()=>{
@@ -95,25 +122,29 @@ function excelPointDropdown(points){
                 formContainer.innerHTML = "";
             }
         });
+
+        if(e.objectType === "RevisedLotoPoints") {
         let addButton = document.createElement('button');
         buttons.appendChild(addButton);
         addButton.classList.add('addButtons');
         addButton.textContent = "ADD";
         addButton.classList.add('hide');
 
-        if(modes.lotoMode.state || modes.editMode.state){
-            addButton.classList.remove('hide');
-            const lotoModeAction = function(){
-                addPointToLotoWindow(e);
-            }
+        if(modes.editMode.state){
+             addButton.classList.remove('hide');
+            // const lotoModeAction = function(){
+            //     addPointToLotoWindow(e);
+            // }
             const editModeAction = function(){
                 addPointToEquipment(e);
             }
             if(modes.lotoMode.state)addButton.addEventListener('click',lotoModeAction);
             if(modes.editMode.state)addButton.addEventListener('click',editModeAction);
         }
-
+    }
+        
     });
+
     return list;
 }
 

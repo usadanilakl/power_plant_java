@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.data_transfer;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

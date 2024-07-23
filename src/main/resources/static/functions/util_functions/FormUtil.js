@@ -111,7 +111,7 @@ async function buildFormFromObject(point){
             }
             console.log(point[e]); //print assignment
         })
-        //input.addEventListener('click',()=>checkClipboardAndPasteShort(input)); //paste function 
+        input.addEventListener('click',()=>checkClipboardAndPasteShort(input)); //paste function 
     }
 
     

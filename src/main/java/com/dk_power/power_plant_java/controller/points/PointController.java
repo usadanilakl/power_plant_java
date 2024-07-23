@@ -1,5 +1,7 @@
 package com.dk_power.power_plant_java.controller.points;
 
+import com.dk_power.power_plant_java.dto.data_transfer.OldLotoPointDto;
+import com.dk_power.power_plant_java.dto.data_transfer.RevisedLotoPointsDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.data_transfer.OldLotoPoint;
 import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collection;
 import java.util.List;
 
 @Controller
@@ -57,12 +60,12 @@ public class PointController {
 
 
     @GetMapping("/get-revised-excel-points")
-    public ResponseEntity<List<RevisedLotoPoints>> getAllRivisedPoint(){
-        return ResponseEntity.ok(revisedLotoPointService.getAll());
+    public ResponseEntity<Collection<RevisedLotoPointsDto>> getAllRivisedPoint(){
+        return ResponseEntity.ok(revisedLotoPointService.convertAllToDto(revisedLotoPointService.getAll()));
     }
 
     @GetMapping("/get-old-excel-points")
-    public ResponseEntity<List<OldLotoPoint>> getAllOldPoint(){
-        return ResponseEntity.ok(oldLotoPointService.getAll());
+    public ResponseEntity<Collection<OldLotoPointDto>> getAllOldPoint(){
+        return ResponseEntity.ok(oldLotoPointService.convertAllToDto(oldLotoPointService.getAll()));
     }
 }
