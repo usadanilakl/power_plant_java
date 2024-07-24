@@ -205,10 +205,10 @@ async function fillExcelPointInfoWindow(points){
 function excelPointSearch(searchValue){
     let result = [];
     revisedExcelPoints.forEach(e=>{
-        if(trimToLowerCaseRemoveDashes(e.label).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.label))) result.push(e);
+        if(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber))) result.push(e);
     });
     oldExcelPoints.forEach(e=>{
-        if(trimToLowerCaseRemoveDashes(e.label).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.label))) result.push(e);
+        if(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber))) result.push(e);
     })
     return result;
 }
