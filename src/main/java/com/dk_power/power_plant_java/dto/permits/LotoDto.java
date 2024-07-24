@@ -11,4 +11,6 @@ import java.util.List;
 public class LotoDto extends BaseLotoDto{
 
     private List<LotoPoint> lotoPoints;
+
+
 }

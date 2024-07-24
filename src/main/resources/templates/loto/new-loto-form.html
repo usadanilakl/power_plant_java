@@ -33,7 +33,6 @@
                     <div th:if="${loto.createdBy == null}">
                         <label for="created-by2">Created By</label>
                         <input type="text" id="created-by2" th:field="*{createdBy}" th:value="${#authentication.principal.name}">
-                        <p th:text="${#authentication.principal.name}"></p>
                     </div>
 <!--                    <input type="text" id="created-by" th:field="*{approvedBy}" th:value="${loto.createdBy}">-->
 <!--                    <input type="text" id="created-by" th:value="${#authentication.principal.name}">-->

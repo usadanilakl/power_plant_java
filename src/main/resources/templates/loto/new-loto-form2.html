@@ -100,7 +100,7 @@
                     <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">
                         <div class="form-inline">
                             <label for="requestor">LOTO Requiestor:</label>
-                            <input class="form-control flex-grow-1" type="text" id="requestor" placeholder="Enter requestor name">
+                            <input class="form-control flex-grow-1" th:field="*{requestor}" type="text" id="requestor" placeholder="Enter requestor name">
                         </div>
                     </div>
                     <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
@@ -115,7 +115,7 @@
                     <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 outline">
                         <div class="form-inline">
                             <label for="scope-of-work">Reason For LOTO:</label>
-                            <input class="form-control flex-grow-1" type="text" id="scope-of-work" placeholder="Enter scope of work">
+                            <input class="form-control flex-grow-1" th:field="*{workScope}" type="text" id="scope-of-work" placeholder="Enter scope of work">
                         </div>
                     </div>
                 </div>
@@ -123,7 +123,7 @@
                     <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8 col-8 outline">
                         <div class="form-inline">
                             <label for="approved-by">LOTO Approved by:</label>
-                            <input class="form-control flex-grow-1" type="text" id="approved-by" placeholder="Enter Control Authority name">
+                            <input class="form-control flex-grow-1" th:value="${#authentication.principal.name}" type="text" id="approved-by" placeholder="Enter Control Authority name">
                         </div>
                     </div>
                     <div class="col-xl-4 col-lg-4 col-md-4 col-sm-4 col-4 outline">
@@ -404,7 +404,7 @@
                                 <td class="outline text-center">
                                     <p style="margin: 0;" th:text="${p.description}"></p>
                                     <p style="margin: 0;" th:text="${p.location}"></p>
-                                    <p style="margin: 0;" th:text="${p.label}"></p></td>
+                                    <p style="margin: 0;" th:text="${p.tagNumber}"></p></td>
                                 <td class="outline text-center" th:text="${p.isolatedPosition}"></td>
                                 <td class="outline text-center">DK</td>
                                 <td class="outline text-center">AG</td>

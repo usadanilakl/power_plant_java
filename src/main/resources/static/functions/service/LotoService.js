@@ -16,7 +16,7 @@ function lotoModeControl(){
 function setUpLotoWindow(){
     // let obj = revisedLotoPoints[0];
     // let ob = {label:obj.tagNumber,description:obj.description}
-    let ob = {label:selectedArea.tagNumber,description:selectedArea.description}
+    let ob = {tagNumber:selectedArea.tagNumber,description:selectedArea.description,id:selectedArea.id}
     lotoWindow = newInfoWindow("Loto");
     lotoWindow.appendChild(createTable(ob));
     lotoWindow.appendChild(updateLotoPointsButton());
@@ -79,7 +79,7 @@ function createRow(rowNum, obj){
 }
 
 function addObjectToArr(arr,obj){
-    if(!arr.find(e=>e.label===obj.label)){
+    if(!arr.find(e=>e.tagNumber===obj.tagNumber)){
         arr.push(obj);
         console.log("pushed: " + JSON.stringify(obj))
     } 
