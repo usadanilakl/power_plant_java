@@ -13,11 +13,11 @@ public class CategoryController {
     private final CategoryService categoryService;
     @GetMapping("/popup")
     public String getCatPopup(){
-        return "/category/category-popup";
+        return "category/category-popup";
     }
     @GetMapping("/refractor-popup")
     public String getCatRefractorPopup(){
-        return "/category/value-refractor-popup";
+        return "category/value-refractor-popup";
     }
 
 }

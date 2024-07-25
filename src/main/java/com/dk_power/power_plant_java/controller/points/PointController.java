@@ -48,7 +48,7 @@ public class PointController {
     @GetMapping("/{type}")
     public String showAllPoints(@PathVariable("type") String type, Model model){
         model.addAttribute("type",type);
-        return "/points/show-all-points";
+        return "points/show-all-points";
     }
 
     @PostMapping("/update")
