@@ -88,29 +88,6 @@ public class Util {
         }
         return res.trim();
     }
-    public static String decryptPEMKey(String pemFilePath, String password){
-        try (PEMParser pemParser = new PEMParser(new FileReader(pemFilePath))) {
-            Object object = pemParser.readObject();
-            if (object instanceof PKCS8EncryptedPrivateKeyInfo) {
-                PKCS8EncryptedPrivateKeyInfo encryptedPrivateKeyInfo = (PKCS8EncryptedPrivateKeyInfo) object;
-                InputDecryptorProvider decryptorProvider = new JceOpenSSLPKCS8DecryptorProviderBuilder()
-                        .build(password.toCharArray());
-                PrivateKey privateKey = new JcaPEMKeyConverter().getPrivateKey(encryptedPrivateKeyInfo.decryptPrivateKeyInfo(decryptorProvider));
-                KeyPair keyPair = new KeyPair(null, privateKey);
-
-                // Convert the private key to a string
-                StringWriter stringWriter = new StringWriter();
-                try (JcaPEMWriter pemWriter = new JcaPEMWriter(stringWriter)) {
-                    pemWriter.writeObject(privateKey);
-                }
-                return stringWriter.toString();
-            } else {
-                throw new IllegalArgumentException("The provided file does not contain an encrypted private key.");
-            }
-        } catch (OperatorCreationException | PKCSException | IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
 
 
