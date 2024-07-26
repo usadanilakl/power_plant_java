@@ -122,6 +122,15 @@
             <version>5.1.0</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/com.github.eliux/megacmd4j -->
+        <dependency>
+            <groupId>com.github.eliux</groupId>
+            <artifactId>megacmd4j</artifactId>
+            <version>1.6.11</version>
+        </dependency>
+
+
+
 
 
 

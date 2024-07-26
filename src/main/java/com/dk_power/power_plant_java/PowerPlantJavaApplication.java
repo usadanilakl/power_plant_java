@@ -7,7 +7,6 @@ import com.dk_power.power_plant_java.dto.data_transfer.RevisedLotoPointsDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
-import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.data_transfer.OldLotoPoint;
 import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
@@ -27,8 +26,13 @@ import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
 import com.dk_power.power_plant_java.util.Util;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
+import io.github.eliux.mega.Mega;
+import io.github.eliux.mega.MegaSession;
+import io.github.eliux.mega.auth.MegaAuthCredentials;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -39,7 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SpringBootApplication
-@AllArgsConstructor
+@RequiredArgsConstructor
 @EnableJpaRepositories(basePackages = "com.dk_power.power_plant_java.repository")
 @EntityScan(basePackages = "com.dk_power.power_plant_java.entities")
 public class PowerPlantJavaApplication implements CommandLineRunner {
@@ -57,18 +61,28 @@ private final LotoPointService lotoPointService;
 private final RevisedLotoPointService revisedLotoPointService;
 private final OldLotoPointService oldLotoPointService;
 private final FilePathService filePathService;
+//private final MegaSession megaSession;
 
 
     public static void main(String[] args) {
         SpringApplication.run(PowerPlantJavaApplication.class, args);
 
     }
+    @Value("${mega.username}")
+    private String username;
+
+    @Value("${mega.password}")
+    private String password;
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+        MegaSession megaSession = Mega.login(new MegaAuthCredentials(username, password));
+        megaSession.uploadFile("C:/Users/usada/OneDrive/Desktop", "megacmd4j/")
+                .createRemotePathIfNotPresent()
+                .run();
 
 //        System.out.println("filePath: " + filePathService.getFullPath("static/data_transfer/files/default.xlsx"));
 
