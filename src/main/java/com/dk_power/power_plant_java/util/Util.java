@@ -1,11 +1,25 @@
 package com.dk_power.power_plant_java.util;
 
 import lombok.Data;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
+import org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
+import org.bouncycastle.operator.InputDecryptorProvider;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
+import org.bouncycastle.pkcs.PKCSException;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
 
 import java.beans.PropertyDescriptor;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
+import java.security.KeyPair;
+import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -73,6 +87,29 @@ public class Util {
             res +=result+" ";
         }
         return res.trim();
+    }
+    public static String decryptPEMKey(String pemFilePath, String password){
+        try (PEMParser pemParser = new PEMParser(new FileReader(pemFilePath))) {
+            Object object = pemParser.readObject();
+            if (object instanceof PKCS8EncryptedPrivateKeyInfo) {
+                PKCS8EncryptedPrivateKeyInfo encryptedPrivateKeyInfo = (PKCS8EncryptedPrivateKeyInfo) object;
+                InputDecryptorProvider decryptorProvider = new JceOpenSSLPKCS8DecryptorProviderBuilder()
+                        .build(password.toCharArray());
+                PrivateKey privateKey = new JcaPEMKeyConverter().getPrivateKey(encryptedPrivateKeyInfo.decryptPrivateKeyInfo(decryptorProvider));
+                KeyPair keyPair = new KeyPair(null, privateKey);
+
+                // Convert the private key to a string
+                StringWriter stringWriter = new StringWriter();
+                try (JcaPEMWriter pemWriter = new JcaPEMWriter(stringWriter)) {
+                    pemWriter.writeObject(privateKey);
+                }
+                return stringWriter.toString();
+            } else {
+                throw new IllegalArgumentException("The provided file does not contain an encrypted private key.");
+            }
+        } catch (OperatorCreationException | PKCSException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 

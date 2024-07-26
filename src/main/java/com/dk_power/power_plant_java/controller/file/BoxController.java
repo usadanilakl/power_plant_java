@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.controller.file;
 
-import com.box.sdk.BoxAPIConnection;
+import com.box.sdk.BoxDeveloperEditionAPIConnection;
 import com.box.sdk.BoxFile;
 import com.box.sdk.BoxFolder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,9 +9,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.annotation.RegisteredOAuth2AuthorizedClient;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,18 +20,16 @@ import java.io.InputStream;
 @RequestMapping("/box")
 public class BoxController {
 
-    private final OAuth2AuthorizedClientService authorizedClientService;
+    private final BoxDeveloperEditionAPIConnection boxAPIConnection;
 
     @Autowired
-    public BoxController(OAuth2AuthorizedClientService authorizedClientService) {
-        this.authorizedClientService = authorizedClientService;
+    public BoxController(BoxDeveloperEditionAPIConnection boxAPIConnection) {
+        this.boxAPIConnection = boxAPIConnection;
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, @RegisteredOAuth2AuthorizedClient("box") OAuth2AuthorizedClient authorizedClient) throws IOException {
-        BoxAPIConnection api = new BoxAPIConnection(authorizedClient.getAccessToken().getTokenValue());
-
-        BoxFolder rootFolder = BoxFolder.getRootFolder(api);
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
+        BoxFolder rootFolder = BoxFolder.getRootFolder(boxAPIConnection);
         BoxFile.Info newFileInfo;
         try (InputStream stream = file.getInputStream()) {
             newFileInfo = rootFolder.uploadFile(stream, file.getOriginalFilename());
@@ -44,10 +39,8 @@ public class BoxController {
     }
 
     @GetMapping("/download")
-    public ResponseEntity<Resource> downloadFile(@RequestParam("fileId") String fileId, @RegisteredOAuth2AuthorizedClient("box") OAuth2AuthorizedClient authorizedClient) throws IOException {
-        BoxAPIConnection api = new BoxAPIConnection(authorizedClient.getAccessToken().getTokenValue());
-
-        BoxFile file = new BoxFile(api, fileId);
+    public ResponseEntity<Resource> downloadFile(@RequestParam("fileId") String fileId) throws IOException {
+        BoxFile file = new BoxFile(boxAPIConnection, fileId);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         file.download(outputStream);
 
