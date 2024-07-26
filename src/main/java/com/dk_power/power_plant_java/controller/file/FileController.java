@@ -28,6 +28,10 @@ public class FileController {
         model.addAttribute("vendors", categoryService.getVendors());
         return "admin/upload";
     }
+    @GetMapping("/box")
+    public String uploadPage(){
+        return "file/box";
+    }
     @PostMapping("/upload")
     public String submitFiles(@ModelAttribute("files") FileUploader files, Model model){
         //String message = fileUploaderService.uploadFilesToGitHub(files,"uploads");

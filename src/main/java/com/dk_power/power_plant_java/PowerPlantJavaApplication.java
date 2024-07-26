@@ -26,9 +26,6 @@ import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
 import com.dk_power.power_plant_java.util.Util;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
-import io.github.eliux.mega.Mega;
-import io.github.eliux.mega.MegaSession;
-import io.github.eliux.mega.auth.MegaAuthCredentials;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
@@ -79,12 +76,6 @@ private final FilePathService filePathService;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
-        MegaSession megaSession = Mega.login(new MegaAuthCredentials(username, password));
-        megaSession.uploadFile("C:/Users/usada/OneDrive/Desktop", "megacmd4j/")
-                .createRemotePathIfNotPresent()
-                .run();
-
-//        System.out.println("filePath: " + filePathService.getFullPath("static/data_transfer/files/default.xlsx"));
 
 /***************************TransferMethods*************************************************/
 //        fileService.getAll().forEach(fileService::hardDelete);

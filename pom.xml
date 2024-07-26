@@ -65,14 +65,14 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.boot</groupId>-->
-<!--            <artifactId>spring-boot-starter-oauth2-client</artifactId>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.boot</groupId>-->
-<!--            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
 
 
         <dependency>
@@ -122,12 +122,13 @@
             <version>5.1.0</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/com.github.eliux/megacmd4j -->
+        <!-- https://mvnrepository.com/artifact/com.box/box-java-sdk -->
         <dependency>
-            <groupId>com.github.eliux</groupId>
-            <artifactId>megacmd4j</artifactId>
-            <version>1.6.11</version>
+            <groupId>com.box</groupId>
+            <artifactId>box-java-sdk</artifactId>
+            <version>4.11.1</version>
         </dependency>
+
 
 
 
