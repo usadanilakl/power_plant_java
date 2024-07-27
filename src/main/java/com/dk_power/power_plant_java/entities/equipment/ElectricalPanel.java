@@ -11,5 +11,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class ElectricalPanel extends BaseIdEntity {
+    //private Equipment equipment;
 
 }
