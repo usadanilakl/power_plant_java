@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.dto.data_transfer;
 
-import com.dk_power.power_plant_java.dto.BaseDto;
+import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

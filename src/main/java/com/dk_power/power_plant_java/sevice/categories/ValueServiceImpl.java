@@ -1,9 +1,9 @@
 package com.dk_power.power_plant_java.sevice.categories;
 
-import com.dk_power.power_plant_java.dto.BaseDto;
+import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
-import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;

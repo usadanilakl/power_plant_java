@@ -1,7 +1,9 @@
 package com.dk_power.power_plant_java.entities.equipment;
 
+import com.dk_power.power_plant_java.entities.base_entities.BaseEquipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,24 +15,29 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class HeatTrace extends BaseIdEntity {
-    private Boolean isInUse;
-    private String breaker;
-    private String tagNumber;
-    private String panel;
-    private String htt;
-    private String line;
-    private String pid;
+public class HeatTrace extends BaseEquipment {
+    @ManyToOne
+    @JoinColumn(name = "breaker_id")
+    @JsonManagedReference
+    private HtBreaker breaker;
+    @ManyToMany
+    @JoinTable(
+            name = "ht_equipment",
+            joinColumns = @JoinColumn(name = "ht_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "eq_id", referencedColumnName = "id")
+    )
+    @JsonManagedReference
+    private List<Equipment> equipmentList;
     @ManyToOne
     @JoinColumn(name = "iso_id")
-    private FileObject isoLink;
+    private FileObject htIso;
+    @JsonManagedReference
     @ManyToMany
     @JoinTable(
             name = "ht_pid",
             joinColumns = @JoinColumn(name = "ht_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "pid_id", referencedColumnName = "id")
     )
-    private List<FileObject> pdLink;
-    private String location;
+    private List<FileObject> pid;
 
 }

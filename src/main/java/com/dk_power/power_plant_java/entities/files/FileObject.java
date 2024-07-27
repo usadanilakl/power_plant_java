@@ -5,6 +5,8 @@ import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
+import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -60,6 +62,9 @@ public class FileObject extends BaseAuditEntity {
             inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
     @JsonManagedReference
     private List<Equipment> points;
+    @JsonBackReference
+    @ManyToMany(mappedBy = "pid")
+    private List<HeatTrace> heatTrace;
 
 
 

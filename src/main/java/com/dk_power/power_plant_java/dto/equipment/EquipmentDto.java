@@ -1,9 +1,9 @@
 package com.dk_power.power_plant_java.dto.equipment;
 
 
-import com.dk_power.power_plant_java.dto.BaseDto;
+import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

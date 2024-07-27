@@ -1,9 +1,7 @@
 package com.dk_power.power_plant_java.controller.category;
 
-import com.dk_power.power_plant_java.dto.BaseDto;
-import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
+import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController

@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.dto;
+package com.dk_power.power_plant_java.dto.base_dtos;
 
 import lombok.Getter;
 import lombok.Setter;

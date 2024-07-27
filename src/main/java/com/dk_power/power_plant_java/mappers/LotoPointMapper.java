@@ -1,13 +1,11 @@
 package com.dk_power.power_plant_java.mappers;
 
-import com.dk_power.power_plant_java.dto.equipment.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
-
-import java.util.stream.Collectors;
 
 @Component
 //@RequiredArgsConstructor

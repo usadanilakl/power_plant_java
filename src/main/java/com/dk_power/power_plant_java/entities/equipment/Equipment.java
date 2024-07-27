@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.entities.equipment;
 
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
+import com.dk_power.power_plant_java.entities.base_entities.BaseEquipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -29,10 +30,10 @@ import java.util.stream.Collectors;
 @Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Where(clause = "deleted=false")
-public class Equipment extends BaseAuditEntity {
-    private String name;
-    private String tagNumber;
-    private String description;
+public class Equipment extends BaseEquipment {
+    //private String name;
+//    private String tagNumber;
+//    private String description;
     private String specificLocation;
     @ManyToOne
     @JoinColumn(name="eq_type_id")
@@ -63,6 +64,9 @@ public class Equipment extends BaseAuditEntity {
             inverseJoinColumns = @JoinColumn(name = "loto_point_id", referencedColumnName = "id"))
 
     private Set<LotoPoint> lotoPoints;
+    @ManyToMany(mappedBy = "equipmentList")
+    @JsonBackReference
+    private List<HeatTrace> heatTraceList;
     @Transient
     private String pid;
 
@@ -83,9 +87,9 @@ public class Equipment extends BaseAuditEntity {
     @Override
     public String toString() {
         return "Equipment{" +
-                "name='" + name + '\'' +
-                ",\n tagNumber='" + tagNumber + '\'' +
-                ",\n description='" + description + '\'' +
+                "name='" + getName() + '\'' +
+                ",\n tagNumber='" + getTagNumber() + '\'' +
+                ",\n description='" + getDescription() + '\'' +
                 ",\n specificLocation='" + specificLocation + '\'' +
                 ",\n eqType=" + eqType+
                 ",\n files=" + files.size()+
