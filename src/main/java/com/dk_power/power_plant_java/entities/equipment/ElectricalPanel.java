@@ -10,7 +10,6 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class HtOriginal extends BaseIdEntity {
-    private Boolean isInUse;
+public class ElectricalPanel extends BaseIdEntity {
 
 }
