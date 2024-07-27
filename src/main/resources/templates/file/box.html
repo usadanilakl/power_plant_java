@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="<http://www.thymeleaf.org>" xmlns="http://www.w3.org/1999/html">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
     <title>File Upload</title>
 </head>
 <body>
@@ -12,10 +13,15 @@
         <input type="file" id="file" name="file" required>
         <button type="submit">Upload</button>
     </form>
+    <button>Test</button>
 
     <p id="responseMessage"></p>
 
     <script>
+        let token = document.getElementById('token').getAttribute('content');
+        // async function test(){
+        //     const response = await
+        // }
         document.getElementById('uploadForm').addEventListener('submit', async function (event) {
             event.preventDefault();
 
@@ -24,8 +30,9 @@
             formData.append('file', fileInput.files[0]);
 
             try {
-                const response = await fetch('/box/upload', {
+                const response = await fetch('/onedrive/upload', {
                     method: 'POST',
+                    headers: {'X-CSRF-TOKEN': token},
                     body: formData,
                 });
 

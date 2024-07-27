@@ -28,7 +28,7 @@ public class FileController {
         model.addAttribute("vendors", categoryService.getVendors());
         return "admin/upload";
     }
-    @GetMapping("/box")
+    @GetMapping("/onedrive")
     public String uploadPage(){
         return "file/box";
     }

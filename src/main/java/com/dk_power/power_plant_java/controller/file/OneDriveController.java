@@ -5,8 +5,13 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
+import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,18 +21,28 @@ import java.io.IOException;
 @RequestMapping("/onedrive")
 public class OneDriveController {
 
-    private final OAuth2AuthorizedClientService authorizedClientService;
+    private final OAuth2AuthorizedClientManager authorizedClientManager;
     private final RestTemplate restTemplate;
 
     @Autowired
-    public OneDriveController(OAuth2AuthorizedClientService authorizedClientService, RestTemplateBuilder restTemplateBuilder) {
-        this.authorizedClientService = authorizedClientService;
+    public OneDriveController(ClientRegistrationRepository clientRegistrationRepository,
+                              OAuth2AuthorizedClientRepository authorizedClientRepository,
+                              RestTemplateBuilder restTemplateBuilder) {
+        this.authorizedClientManager = new DefaultOAuth2AuthorizedClientManager(
+                clientRegistrationRepository, authorizedClientRepository);
         this.restTemplate = restTemplateBuilder.build();
     }
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
-        OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient("6bd25e8f-d516-4e6d-a957-2c6058e54a97", "application");
+        OAuth2AuthorizeRequest authorizeRequest = OAuth2AuthorizeRequest.withClientRegistrationId("onedrive")
+                .principal("application")
+                .build();
+        OAuth2AuthorizedClient authorizedClient = authorizedClientManager.authorize(authorizeRequest);
+        if (authorizedClient == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authorization failed");
+        }
+
         String uploadUrl = "https://graph.microsoft.com/v1.0/me/drive/root:/" + file.getOriginalFilename() + ":/content";
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(authorizedClient.getAccessToken().getTokenValue());
@@ -41,7 +56,14 @@ public class OneDriveController {
 
     @GetMapping("/download")
     public ResponseEntity<Resource> downloadFile(@RequestParam("filename") String filename) {
-        OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient("onedrive", "application");
+        OAuth2AuthorizeRequest authorizeRequest = OAuth2AuthorizeRequest.withClientRegistrationId("onedrive")
+                .principal("application")
+                .build();
+        OAuth2AuthorizedClient authorizedClient = authorizedClientManager.authorize(authorizeRequest);
+        if (authorizedClient == null) {
+            System.out.println("Authorization failed");;
+        }
+
         String downloadUrl = "https://graph.microsoft.com/v1.0/me/drive/root:/" + filename + ":/content";
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(authorizedClient.getAccessToken().getTokenValue());
