@@ -65,11 +65,7 @@ private final FilePathService filePathService;
         SpringApplication.run(PowerPlantJavaApplication.class, args);
 
     }
-    @Value("${mega.username}")
-    private String username;
 
-    @Value("${mega.password}")
-    private String password;
 
     @Override
     @Transactional

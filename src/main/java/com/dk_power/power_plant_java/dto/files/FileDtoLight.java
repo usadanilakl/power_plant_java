@@ -23,6 +23,7 @@ public class FileDtoLight {
     }
     private Long id;
     private String name, fileLink,fileNumber,relatedSystems;
+    private String objectType = "FileObject";
     private ValueDto vendor;
 
 

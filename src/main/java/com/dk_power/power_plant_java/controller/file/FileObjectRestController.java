@@ -27,6 +27,10 @@ public class FileObjectRestController {
 
     @GetMapping("/get-all-light")
     public ResponseEntity<List<FileDtoLight>> getAllFiles(){
+//        for (FileDtoLight fileDtoLight : fileService.getAllLight()) {
+//            fileDtoLight.get
+//        }
+
         return ResponseEntity.ok(fileService.getAllLight());
     }
     @GetMapping("/table-view/get/{id}")
