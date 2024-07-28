@@ -26,7 +26,7 @@ public class EquipmentMapper implements BaseMapper{
     private final LotoPointService lotoPointService;
     private final HeatTraceService heatTraceService;
 
-    public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService, @Lazy FileService fileService, @Lazy EquipmentService equipmentService, LotoPointService lotoPointService, HeatTraceService heatTraceService) {
+    public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService, @Lazy FileService fileService, @Lazy EquipmentService equipmentService, @Lazy LotoPointService lotoPointService, @Lazy HeatTraceService heatTraceService) {
         this.modelMapper = modelMapper;
         this.valueService = valueService;
         this.fileService = fileService;

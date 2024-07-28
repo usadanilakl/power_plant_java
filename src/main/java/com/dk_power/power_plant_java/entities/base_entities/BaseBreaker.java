@@ -12,21 +12,35 @@ import org.apache.poi.ss.formula.functions.T;
 import java.util.List;
 
 @MappedSuperclass
-@Setter
+//@Setter
 @Getter
 @NoArgsConstructor
 public class BaseBreaker extends BaseIdEntity{
 
-    private BaseElectricalPanel panel;
+    //private BaseElectricalPanel panel;
+    private String brNumber;
     private String tagNumber;
-    private List equipmentList;
 
-    public <E extends BaseEquipment> void setEquipmentList(List<E> equipmentList) {
-        this.equipmentList = equipmentList;
+//    public void setPanel(BaseElectricalPanel panel) {
+//        this.panel = panel;
+//    }
+
+    public void setBrNumber(String brNumber) {
+        this.brNumber = brNumber;
     }
-    public void addEquipment(BaseEquipment equipment){
-        if(equipment!=null){
-            if(!equipmentList.contains(equipment)) equipmentList.add(equipment);
-        }
+
+    public void setTagNumber(String tagNumber) {
+        this.tagNumber = tagNumber;
     }
+
+//    private List equipmentList;
+
+//    public <E extends BaseEquipment> void buildEquipmentList(List<E> equipmentList) {
+//        this.equipmentList = equipmentList;
+//    }
+//    public void addEquipment(BaseEquipment equipment){
+//        if(equipment!=null){
+//            if(!equipmentList.contains(equipment)) equipmentList.add(equipment);
+//        }
+//    }
 }

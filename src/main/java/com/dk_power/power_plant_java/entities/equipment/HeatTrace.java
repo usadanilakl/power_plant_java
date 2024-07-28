@@ -8,18 +8,25 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.envers.Audited;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
+@Audited
 public class HeatTrace extends BaseEquipment {
+    /***********************************Breaker*********************************************/
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "breaker_id")
     @JsonManagedReference
     private HtBreaker breaker;
+    /***************************************************************************************/
+
+    /************************************Equipment***************************************************/
     @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(
             name = "ht_equipment",
@@ -28,9 +35,15 @@ public class HeatTrace extends BaseEquipment {
     )
     @JsonManagedReference
     private List<Equipment> equipmentList;
+    /***************************************************************************************/
+
+    /***************************************Isometric Drawing************************************************/
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "iso_id")
     private FileObject htIso;
+    /***************************************************************************************/
+
+    /****************************************P&ID***********************************************/
     @JsonManagedReference
     @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(
@@ -38,6 +51,23 @@ public class HeatTrace extends BaseEquipment {
             joinColumns = @JoinColumn(name = "ht_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "pid_id", referencedColumnName = "id")
     )
-    private List<FileObject> pid;
+    private List<FileObject> pid = new ArrayList<>();
+    /***************************************************************************************/
 
+    private String tempEquipment;
+    private String tempPids;
+    private String tempIso;
+
+    public void setTempEquipment(String name){
+        if(tempEquipment==null) tempEquipment = name;
+        else tempEquipment += tempEquipment+","+name;
+    }
+    public void setTempPids(String name){
+        if(tempPids==null) tempPids = name;
+        else tempPids += tempPids+","+name;
+    }
+    public void setTempIso(String name){
+        if(tempIso==null) tempIso = name;
+        else tempIso += tempIso+","+name;
+    }
 }

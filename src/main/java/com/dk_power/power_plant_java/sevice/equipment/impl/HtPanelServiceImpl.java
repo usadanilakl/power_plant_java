@@ -46,4 +46,9 @@ public class HtPanelServiceImpl implements HtPanelService {
     public SessionFactory getSessionFactory() {
         return sessionFactory;
     }
+
+    @Override
+    public HtPanel getByTagNumber(String panel) {
+        return htPanelRepo.findByTagNumber(panel);
+    }
 }

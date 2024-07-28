@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.mappers;
 import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
+import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.equipment.HtBreakerService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import org.modelmapper.ModelMapper;
@@ -14,12 +15,14 @@ public class HeatTraceMapper implements BaseMapper{
     private final ModelMapper modelMapper;
     private final HtBreakerService htBreakerService;
     private final EquipmentService equipmentService;
+    private final HeatTraceService heatTraceService;
     private final FileService fileService;
 
-    public HeatTraceMapper(ModelMapper modelMapper, HtBreakerService htBreakerService, @Lazy EquipmentService equipmentService, @Lazy FileService fileService) {
+    public HeatTraceMapper(ModelMapper modelMapper, @Lazy HtBreakerService htBreakerService, @Lazy EquipmentService equipmentService, @Lazy HeatTraceService heatTraceService, @Lazy FileService fileService) {
         this.modelMapper = modelMapper;
         this.htBreakerService = htBreakerService;
         this.equipmentService = equipmentService;
+        this.heatTraceService = heatTraceService;
         this.fileService = fileService;
     }
 
@@ -43,9 +46,12 @@ public class HeatTraceMapper implements BaseMapper{
         }
         return null;
     }
-    public HeatTrace convertToDto(HeatTraceDto dto){
+    public HeatTrace convertToEntity(HeatTraceDto dto){
         if(dto!=null){
-            HeatTrace entity = new HeatTrace();
+            HeatTrace entity = null;
+            if(dto.getId()==null) entity = new HeatTrace();
+            else entity = heatTraceService.getEntityById(dto.getId());
+
             if(dto.getId()!=null) entity.setId(dto.getId());
             if(dto.getTagNumber()!=null) entity.setTagNumber(dto.getTagNumber());
             if(dto.getDescription()!=null) entity.setDescription(dto.getDescription());
@@ -54,6 +60,7 @@ public class HeatTraceMapper implements BaseMapper{
             if(dto.getHtIso()!=null) entity.setHtIso(fileService.convertToEntity(dto.getHtIso()));
             if(dto.getPid()!=null) entity.setPid(dto.getPid().stream().map(fileService::convertToEntity).toList());
             if(dto.getEquipmentList()!=null) entity.setEquipmentList(dto.getEquipmentList().stream().map(equipmentService::convertToEntity).toList());
+
             return entity;
         }
         return null;

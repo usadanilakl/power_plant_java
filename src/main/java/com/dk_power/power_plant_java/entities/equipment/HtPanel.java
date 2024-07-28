@@ -7,13 +7,18 @@ import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.hibernate.envers.RelationTargetAuditMode.NOT_AUDITED;
+
 @Entity
 @Setter
 @Getter
 @NoArgsConstructor
+@Audited(targetAuditMode = NOT_AUDITED)
 public class HtPanel extends BaseElectricalPanel {
     @OneToMany(mappedBy = "panel")
     @JsonBackReference

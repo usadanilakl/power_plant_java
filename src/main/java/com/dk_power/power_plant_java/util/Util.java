@@ -75,6 +75,13 @@ public class Util {
         }
         return res.trim();
     }
+    public static String lettersAndNumbersOnly(String input){
+        String output = "";
+        for (Character c : input.toCharArray()) {
+            if(Character.isLetter(c) || Character.isDigit(c)) output += c;
+        }
+        return output;
+    }
 
 
 

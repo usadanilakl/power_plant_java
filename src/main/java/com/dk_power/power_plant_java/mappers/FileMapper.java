@@ -20,7 +20,7 @@ public class FileMapper implements BaseMapper{
     private final FileService fileService;
     private final HeatTraceService heatTraceService;
 
-    public FileMapper(UniversalMapper mapper, @Lazy EquipmentMapper equipmentMapper, @Lazy  EquipmentService equipmentService, ModelMapper modelMapper, ValueService valueService, @Lazy FileService fileService, HeatTraceService heatTraceService) {
+    public FileMapper(UniversalMapper mapper, @Lazy EquipmentMapper equipmentMapper, @Lazy  EquipmentService equipmentService, ModelMapper modelMapper, ValueService valueService, @Lazy FileService fileService, @Lazy HeatTraceService heatTraceService) {
         this.mapper = mapper;
         this.equipmentMapper = equipmentMapper;
         this.equipmentService = equipmentService;

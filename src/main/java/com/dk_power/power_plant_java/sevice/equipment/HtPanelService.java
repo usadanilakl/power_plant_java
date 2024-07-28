@@ -7,4 +7,5 @@ import com.dk_power.power_plant_java.repository.equipment.HtPanelRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 
 public interface HtPanelService extends CrudService<HtPanel, HtPanelDto, HtPanelRepo, HtPanelMapper> {
+    HtPanel getByTagNumber(String panel);
 }

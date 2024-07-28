@@ -1,14 +1,20 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
+import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
+import com.dk_power.power_plant_java.entities.equipment.HtPanel;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
+import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.DataDistributionService;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.TransferExcecutionServiceImpl;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
+import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
+import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
 import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
@@ -20,6 +26,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
+import java.util.List;
 
 @SpringBootApplication
 @RequiredArgsConstructor
@@ -34,12 +42,15 @@ private final ExcelService excelService;
 private final DataGenerator dataGenerator;
 private final EquipmentService equipmentService;
 private final TransferExcecutionServiceImpl transferExcecutionService;
+private final DataDistributionService dataDistributionService;
 private final CategoryService categoryService;
 private final ValueService valueService;
 private final LotoPointService lotoPointService;
 private final RevisedLotoPointService revisedLotoPointService;
 private final OldLotoPointService oldLotoPointService;
 private final FilePathService filePathService;
+private final HeatTraceService heatTraceService;
+private final HtPanelService htPanelService;
 //private final MegaSession megaSession;
 
 
@@ -54,6 +65,8 @@ private final FilePathService filePathService;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+
+
 
 /***************************TransferMethods*************************************************/
 //        fileService.getAll().forEach(fileService::hardDelete);
