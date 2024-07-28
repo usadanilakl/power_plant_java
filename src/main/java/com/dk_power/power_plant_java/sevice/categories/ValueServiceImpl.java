@@ -11,7 +11,7 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
-import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import org.hibernate.SessionFactory;
 import org.springframework.context.annotation.Lazy;

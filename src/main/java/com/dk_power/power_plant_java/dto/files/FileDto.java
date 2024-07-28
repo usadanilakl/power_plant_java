@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.dto.files;
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -38,6 +39,7 @@ public class FileDto extends BaseDto {
 //    private List<EquipmentDto> filePoints;
     private String objectType;
     private String extension;
+    private List<HeatTraceDto> heatTraceList;
 
     public String buildFileLink(){
         fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+extension;

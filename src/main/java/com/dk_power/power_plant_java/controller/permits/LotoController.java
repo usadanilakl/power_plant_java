@@ -2,12 +2,11 @@ package com.dk_power.power_plant_java.controller.permits;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
-import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.Box;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
-import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.BoxService;
 import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import jakarta.transaction.Transactional;
@@ -17,7 +16,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @AllArgsConstructor

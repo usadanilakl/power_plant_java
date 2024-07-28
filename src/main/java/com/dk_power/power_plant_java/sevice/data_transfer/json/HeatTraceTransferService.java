@@ -13,7 +13,6 @@ public class HeatTraceTransferService implements JsonToPojoService<HeatTraceJson
     public FilePathService getFilePathService() {
         return filePathService;
     }
-
     @Override
     public HeatTraceJson getEntity() {
         return new HeatTraceJson();

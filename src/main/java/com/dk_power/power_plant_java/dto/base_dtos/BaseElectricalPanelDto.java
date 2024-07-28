@@ -8,4 +8,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class BaseElectricalPanelDto extends BaseDto{
+    private String location;
+    private String tagNubmer;
 }

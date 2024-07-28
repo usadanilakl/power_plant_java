@@ -3,14 +3,11 @@ package com.dk_power.power_plant_java.controller.points;
 import com.dk_power.power_plant_java.dto.data_transfer.OldLotoPointDto;
 import com.dk_power.power_plant_java.dto.data_transfer.RevisedLotoPointsDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
-import com.dk_power.power_plant_java.entities.data_transfer.OldLotoPoint;
-import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
-import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -18,7 +15,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
-import java.util.List;
 
 @Controller
 @RequestMapping("/point")

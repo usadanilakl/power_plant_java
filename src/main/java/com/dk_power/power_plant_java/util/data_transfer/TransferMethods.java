@@ -6,7 +6,7 @@ import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.impl.HrsgValveServiceImpl;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
-import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;

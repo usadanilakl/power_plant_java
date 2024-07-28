@@ -2,8 +2,6 @@ package com.dk_power.power_plant_java.converter.loto;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
-import com.dk_power.power_plant_java.sevice.equipment.EquipmentServiceImpl;
-import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.convert.converter.Converter;

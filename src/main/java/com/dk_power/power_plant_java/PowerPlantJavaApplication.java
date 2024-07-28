@@ -1,18 +1,6 @@
 package com.dk_power.power_plant_java;
 
 
-import com.dk_power.power_plant_java.dto.categories.CategoryDto;
-import com.dk_power.power_plant_java.dto.categories.ValueDto;
-import com.dk_power.power_plant_java.dto.data_transfer.RevisedLotoPointsDto;
-import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
-import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.entities.categories.Category;
-import com.dk_power.power_plant_java.entities.data_transfer.OldLotoPoint;
-import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
-import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.entities.files.FileObject;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
-import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -21,23 +9,17 @@ import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
-import com.dk_power.power_plant_java.sevice.equipment.LotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
-import com.dk_power.power_plant_java.util.Util;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @SpringBootApplication
 @RequiredArgsConstructor
