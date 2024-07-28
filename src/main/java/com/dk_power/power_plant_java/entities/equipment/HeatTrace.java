@@ -16,11 +16,11 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 public class HeatTrace extends BaseEquipment {
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "breaker_id")
     @JsonManagedReference
     private HtBreaker breaker;
-    @ManyToMany
+    @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(
             name = "ht_equipment",
             joinColumns = @JoinColumn(name = "ht_id", referencedColumnName = "id"),
@@ -28,11 +28,11 @@ public class HeatTrace extends BaseEquipment {
     )
     @JsonManagedReference
     private List<Equipment> equipmentList;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "iso_id")
     private FileObject htIso;
     @JsonManagedReference
-    @ManyToMany
+    @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(
             name = "ht_pid",
             joinColumns = @JoinColumn(name = "ht_id", referencedColumnName = "id"),

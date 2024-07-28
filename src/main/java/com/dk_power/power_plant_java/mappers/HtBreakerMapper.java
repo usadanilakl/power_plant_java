@@ -29,7 +29,7 @@ public class HtBreakerMapper implements BaseMapper{
             if(entity.getName()!=null) dto.setName(entity.getName());
             if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
             if(entity.getPanel()!=null) dto.setPanel(htPanelService.convertToDto(entity.getPanel()));
-            if(entity.getEquipment()!=null) dto.setEquipment(entity.getEquipment().stream().map(heatTraceService::convertToDto).toList());
+            if(entity.getEquipmentList()!=null) dto.setEquipment(entity.getEquipmentList().stream().map(heatTraceService::convertToDto).toList());
             return dto;
         }
         return null;
@@ -41,7 +41,7 @@ public class HtBreakerMapper implements BaseMapper{
             if(dto.getId()!=null) entity.setId(dto.getId());
             if(dto.getName()!=null) entity.setName(dto.getName());
             if(dto.getPanel()!=null) entity.setPanel(htPanelService.convertToEntity(dto.getPanel()));
-            if(dto.getEquipment()!=null) entity.setEquipment(dto.getEquipment().stream().map(heatTraceService::convertToEntity).toList());
+            if(dto.getEquipment()!=null) entity.setEquipmentList(dto.getEquipment().stream().map(heatTraceService::convertToEntity).toList());
             return entity;
         }
         return null;
