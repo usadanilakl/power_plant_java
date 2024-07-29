@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.sevice.equipment.EqBreakerService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import org.modelmapper.ModelMapper;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,7 +17,7 @@ public class EqBreakerMapper implements BaseMapper {
     private final EqBreakerService eqBreakerService;
     private final EquipmentService equipmentService;
 
-    public EqBreakerMapper(EqBreakerService eqBreakerService, EquipmentService equipmentService) {
+    public EqBreakerMapper(@Lazy EqBreakerService eqBreakerService, @Lazy EquipmentService equipmentService) {
         this.eqBreakerService = eqBreakerService;
         this.equipmentService = equipmentService;
     }

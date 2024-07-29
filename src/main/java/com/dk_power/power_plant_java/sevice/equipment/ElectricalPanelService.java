@@ -11,4 +11,5 @@ import java.awt.*;
 
 public interface ElectricalPanelService extends CrudService<ElectricalPanel, ElectricalPanelDto, ElectricalPanelRepo, ElectricalPanelMapper> {
     ElectricalPanel getByTagNumber(String panel);
+    void transferToDB();
 }
