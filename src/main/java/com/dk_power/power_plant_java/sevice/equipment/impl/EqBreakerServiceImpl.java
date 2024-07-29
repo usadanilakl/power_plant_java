@@ -4,11 +4,13 @@ import com.dk_power.power_plant_java.dto.equipment.EqBreakerDto;
 import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
 import com.dk_power.power_plant_java.entities.equipment.ElectricalPanel;
 import com.dk_power.power_plant_java.entities.equipment.EqBreaker;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.mappers.equipment.EqBreakerMapper;
 import com.dk_power.power_plant_java.repository.equipment.EqBreakerRepo;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import com.dk_power.power_plant_java.sevice.equipment.EqBreakerService;
+import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.util.Util;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
@@ -25,14 +27,16 @@ public class EqBreakerServiceImpl implements EqBreakerService {
     private final SessionFactory sessionFactory;
     private final RevisedLotoPointService revisedLotoPointService;
     private final ElectricalPanelService electricalPanelService;
+    private final EquipmentService equipmentService;
 
 
-    public EqBreakerServiceImpl(EqBreakerMapper eqBreakerMapper, EqBreakerRepo eqBreakerRepo, SessionFactory sessionFactory, RevisedLotoPointService revisedLotoPointService, ElectricalPanelService electricalPanelService) {
+    public EqBreakerServiceImpl(EqBreakerMapper eqBreakerMapper, EqBreakerRepo eqBreakerRepo, SessionFactory sessionFactory, RevisedLotoPointService revisedLotoPointService, ElectricalPanelService electricalPanelService, EquipmentService equipmentService) {
         this.eqBreakerMapper = eqBreakerMapper;
         this.eqBreakerRepo = eqBreakerRepo;
         this.sessionFactory = sessionFactory;
         this.revisedLotoPointService = revisedLotoPointService;
         this.electricalPanelService = electricalPanelService;
+        this.equipmentService = equipmentService;
     }
 
     @Override
@@ -77,14 +81,15 @@ public class EqBreakerServiceImpl implements EqBreakerService {
         for (ElectricalPanel panel : panels) {
             List<RevisedLotoPoints> revisedLotoPoints = breakers.stream().filter(b -> Util.lettersAndNumbersOnly(b.getLocation()).contains(Util.lettersAndNumbersOnly(panel.getTagNumber()))).toList();
             for (RevisedLotoPoints rp : revisedLotoPoints) {
+                List<Equipment> eqt = equipmentService.getByTagNumber(rp.getTagNumber().trim());
                 EqBreaker b = new EqBreaker();
                 b.setPanel(panel);
                 b.setDescription(rp.getDescription());
                 b.setTagNumber(rp.getTagNumber());
                 b.setBrNumber(rp.getLocation().replace(panel.getTagNumber(),""));
-                b.setEquipmentList();
+                b.setEquipmentList(eqt);
+                save(b);
             }
-            panel.setEqBreakers();
         }
         //set breaker
         //set equipment
