@@ -6415,3 +6415,12 @@ java.sql.SQLClientInfoException: Client info name 'ApplicationName' not supporte
 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
 	at java.base/java.lang.Thread.run(Thread.java:833)
+2024-07-29 17:04:00.966114-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "create table electrical_table (id bigint not null, created_by varchar(255), deleted boolean, name varchar(255), object_type varchar(255), breaker_location varchar(255), breaker_type varchar(255), bus varchar(255), category varchar(255), old_id varchar(255), tag_number varchar(255), [*]user varchar(255), primary key (id))"; expected "identifier"; SQL statement:
+create table electrical_table (id bigint not null, created_by varchar(255), deleted boolean, name varchar(255), object_type varchar(255), breaker_location varchar(255), breaker_type varchar(255), bus varchar(255), category varchar(255), old_id varchar(255), tag_number varchar(255), user varchar(255), primary key (id)) [42001-224]
+2024-07-29 17:06:01.131523-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "create table electrical_table (id bigint not null, created_by varchar(255), deleted boolean, name varchar(255), object_type varchar(255), breaker_location varchar(255), breaker_type varchar(255), bus varchar(255), category varchar(255), old_id varchar(255), tag_number varchar(255), [*]user varchar(255), primary key (id))"; expected "identifier"; SQL statement:
+create table electrical_table (id bigint not null, created_by varchar(255), deleted boolean, name varchar(255), object_type varchar(255), breaker_location varchar(255), breaker_type varchar(255), bus varchar(255), category varchar(255), old_id varchar(255), tag_number varchar(255), user varchar(255), primary key (id)) [42001-224]
+2024-07-29 17:06:12.312369-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select et1_0.id,et1_0.breaker_location,et1_0.breaker_type,et1_0.bus,et1_0.category,et1_0.created_by,et1_0.deleted,et1_0.name,et1_0.object_type,et1_0.old_id,et1_0.tag_number,et1_0.[*]user from electrical_table et1_0"; expected "identifier"; SQL statement:
+select et1_0.id,et1_0.breaker_location,et1_0.breaker_type,et1_0.bus,et1_0.category,et1_0.created_by,et1_0.deleted,et1_0.name,et1_0.object_type,et1_0.old_id,et1_0.tag_number,et1_0.user from electrical_table et1_0 [42001-224]

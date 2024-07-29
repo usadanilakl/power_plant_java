@@ -84,4 +84,16 @@ public class ExcelConfig {
     public ExcelService beanForBypasses(){
         return new ExcelService(bypassesPath,bypassesSheet,filePathService);
     }
+
+    /****************************************************************************
+     * Electrial Table Transfer
+     * ***************************************************************************/
+    @Value("${excel.path.elTable}") String elTablePath;
+    @Value("${excel.sheetName.elTable}") String elTableSheet;
+    @Bean
+    @Qualifier("elTable")
+    public ExcelService beanForElTable(){
+        return new ExcelService(elTablePath,elTableSheet,filePathService);
+    }
+
 }

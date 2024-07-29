@@ -29,6 +29,7 @@ public class TransferExcecutionServiceImpl implements TransferExcecutionService 
     private final PidTransferService pidTransferService;
     private final HeatTraceTransferService heatTraceTransferService;
     private final HighlightTransferService highlightTransferService;
+    private final ElectricalTableService electricalTableService;
     public void transferBypassFromExcel(){
         System.out.println("Bypass Transfer Started.");
         System.out.println(bypassService.getAll().size() + " items are in db");
@@ -86,6 +87,15 @@ public class TransferExcecutionServiceImpl implements TransferExcecutionService 
         revisedLotoPointService.transferExcelToDB();
         System.out.println("TransferCompleted.");
         System.out.println(revisedLotoPointService.getAll().size() + " items are in db");
+    }
+
+    @Override
+    public void transferElTableFromExcel() {
+        System.out.println("Electrical Table Transfer Started.");
+        System.out.println(electricalTableService.getAll().size() + " items are in db");
+        electricalTableService.transferExcelToDB();
+        System.out.println("TransferCompleted.");
+        System.out.println(electricalTableService.getAll().size() + " items are in db");
     }
 
     @Value("${json.path.pids}")

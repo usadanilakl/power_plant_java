@@ -15,6 +15,7 @@ public interface TransferExcecutionService {
     void transferLotoPointsFromExcel();
     void transferOldLotoPointsFromExcel();
     void transferRevisedLotoPointsFromExcel();
+    void transferElTableFromExcel();
     List<PidJson> getPidsFromJson();
     List<HeatTraceJson> getHtFromJson();
     List<HighilightsJson> getHighlitsFromJson();
