@@ -46,7 +46,7 @@ public class FileMapper implements BaseMapper{
         if(file.getVendor()!=null)fileDto.setVendor(valueService.getDtoById(file.getVendor().getId()));
         if(file.getRelatedSystems()!=null) fileDto.setRelatedSystems(file.getRelatedSystems());
         if(file.getPoints()!=null) fileDto.setPoints(file.getPoints().stream().map(e->equipmentService.getDtoById(e.getId())).toList());
-        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
+//        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
 
         return fileDto;
     }
@@ -70,7 +70,7 @@ public class FileMapper implements BaseMapper{
         if(fileDto.getExtension()!=null) file.setExtension(fileDto.getExtension());
         if(fileDto.getRelatedSystems()!=null) file.setRelatedSystems(fileDto.getRelatedSystems());
         if(fileDto.getName()!=null) file.setName(fileDto.getName());
-        if(fileDto.getHeatTraceList()!=null) file.setHeatTrace(fileDto.getHeatTraceList().stream().map(heatTraceService::convertToEntity).toList());
+//        if(fileDto.getHeatTraceList()!=null) file.setHeatTrace(fileDto.getHeatTraceList().stream().map(heatTraceService::convertToEntity).toList());
 
         return file;
     }
