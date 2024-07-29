@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import com.dk_power.power_plant_java.sevice.equipment.EqBreakerService;
 import org.modelmapper.ModelMapper;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.awt.*;
@@ -18,7 +19,7 @@ public class ElectricalPanelMapper implements BaseMapper {
     private final ElectricalPanelService electricalPanelService;
     private final EqBreakerService eqBreakerService;
 
-    public ElectricalPanelMapper(ModelMapper modelMapper, ElectricalPanelService electricalPanelService, EqBreakerService eqBreakerService) {
+    public ElectricalPanelMapper(ModelMapper modelMapper, @Lazy ElectricalPanelService electricalPanelService, EqBreakerService eqBreakerService) {
         this.modelMapper = modelMapper;
         this.electricalPanelService = electricalPanelService;
         this.eqBreakerService = eqBreakerService;

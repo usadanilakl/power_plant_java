@@ -67,6 +67,9 @@ public class Equipment extends BaseEquipment {
     @ManyToMany(mappedBy = "equipmentList")
     @JsonBackReference
     private List<HeatTrace> heatTraceList;
+    @ManyToMany(mappedBy = "equipmentList")
+    @JsonBackReference
+    private List<EqBreaker> breakers;
     @Transient
     private String pid;
 

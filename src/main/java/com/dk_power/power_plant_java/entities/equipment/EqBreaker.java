@@ -26,8 +26,13 @@ public class EqBreaker extends BaseBreaker {
     @JsonManagedReference
     private ElectricalPanel panel;
 
-    @OneToMany(mappedBy = "breaker")
-    @JsonBackReference
+    @ManyToMany(cascade = CascadeType.ALL)
+    @JsonManagedReference
+    @JoinTable(
+            name = "breaker_eq",
+            joinColumns = @JoinColumn(name = "br_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "eq_id", referencedColumnName = "id")
+    )
     private List<Equipment> equipmentList = new ArrayList<>();
 
     private String description;

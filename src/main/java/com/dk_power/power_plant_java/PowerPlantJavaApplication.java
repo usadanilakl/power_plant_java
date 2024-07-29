@@ -13,6 +13,7 @@ import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.Tran
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
+import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
@@ -52,7 +53,7 @@ private final OldLotoPointService oldLotoPointService;
 private final FilePathService filePathService;
 private final HeatTraceService heatTraceService;
 private final HtPanelService htPanelService;
-//private final MegaSession megaSession;
+private final ElectricalPanelService electricalPanelService;
 
 
     public static void main(String[] args) {
@@ -66,6 +67,10 @@ private final HtPanelService htPanelService;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+
+        System.out.println("electricalPanelService.getAll().size() = " + electricalPanelService.getAll().size());
+        electricalPanelService.transferToDB();
+        System.out.println("electricalPanelService.getAll().size() = " + electricalPanelService.getAll().size());
 
 
         List<HeatTrace> heatTrace = fileService.getEntityById(5372L).getHeatTrace();
