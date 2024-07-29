@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
+import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.dk_power.power_plant_java.entities.equipment.HtPanel;
 import com.dk_power.power_plant_java.sevice.FilePathService;
@@ -67,6 +68,10 @@ private final HtPanelService htPanelService;
         System.err.println("=====================================================");
 
 
+        List<HeatTrace> heatTrace = fileService.getEntityById(5372L).getHeatTrace();
+        HeatTraceDto heatTraceDto = heatTraceService.convertToDto(heatTrace.get(3));
+        System.out.println("heatTraceDto.getBreaker().getPanel().getTagNubmer() = " + heatTraceDto.getBreaker().getPanel().getTagNubmer());
+        System.out.println("heatTraceService.convertToEntity(heatTraceDto).getPid().get(0).getFileNumber() = " + heatTraceService.convertToEntity(heatTraceDto).getPid().get(0).getFileNumber());
 
 /***************************TransferMethods*************************************************/
 //        fileService.getAll().forEach(fileService::hardDelete);

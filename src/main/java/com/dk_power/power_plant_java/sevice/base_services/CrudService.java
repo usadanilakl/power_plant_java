@@ -15,7 +15,7 @@ public interface CrudService<
         E extends BaseIdEntity,
         D,
         R extends BaseRepository<E>,
-        M extends BaseMapper> {
+        M extends BaseMapper<E,D>> {
     E getEntity();
     D getDto();
     R getRepo();
@@ -33,7 +33,8 @@ public interface CrudService<
     default List<E> getAllSorted(String column){
         return getRepo().findAll(Sort.by(column));
     }
-    default List<D> getAllDtos(){return getAll().stream().map(e->getMapper().convert(e,getDto())).toList();}
+//    default List<D> getAllDtos(){return getAll().stream().map(e->getMapper().convert(e,getDto())).toList();}
+//    List<D> getAllDtos();
     default E getEntityById(Long id){
         return getRepo().findById(id).orElse(null);
     }
@@ -82,10 +83,12 @@ public interface CrudService<
         return getRepo().findByDeletedTrue();
     }
     default E convertToEntity(D dto){
-        return getMapper().convert(dto, getEntity());
+       if(getMapper().convert(dto, getEntity())!=null) return getMapper().convert(dto, getEntity());
+       else return getMapper().convertToEntity(dto);
     }
     default D convertToDto(E entity){
-        return getMapper().convert(entity, getDto());
+        if(getMapper().convert(entity, getDto())!=null)return getMapper().convert(entity, getDto());
+        else return getMapper().convertToDto(entity);
     }
     default Collection<D> convertAllToDto(Collection<E>list){
         return list.stream().map(this::convertToDto).toList();

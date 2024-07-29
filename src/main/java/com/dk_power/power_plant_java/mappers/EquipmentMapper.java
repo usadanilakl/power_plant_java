@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
 
 @Component
 //@RequiredArgsConstructor
-public class EquipmentMapper implements BaseMapper{
+public class EquipmentMapper implements BaseMapper<Equipment,EquipmentDto>{
     private final ModelMapper modelMapper;
     private final ValueService valueService;
     private final FileService fileService;
@@ -187,8 +188,13 @@ public class EquipmentMapper implements BaseMapper{
         return entity;
     }
 
-@Override
-public ModelMapper getMapper() {
-return modelMapper;
-}
+    @Override
+    public <T> T convert(Object objectToBeConverted, T convertedObject) {
+        return null;
+    }
+
+//@Override
+//public ModelMapper getMapper() {
+//return modelMapper;
+//}
 }

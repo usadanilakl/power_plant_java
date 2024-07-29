@@ -6,30 +6,24 @@ import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.equipment.HtBreakerService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
-import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
-public class HeatTraceMapper implements BaseMapper{
-    private final ModelMapper modelMapper;
+public class HeatTraceMapper implements BaseMapper<HeatTrace,HeatTraceDto>{
+
     private final HtBreakerService htBreakerService;
     private final EquipmentService equipmentService;
     private final HeatTraceService heatTraceService;
     private final FileService fileService;
 
-    public HeatTraceMapper(ModelMapper modelMapper, @Lazy HtBreakerService htBreakerService, @Lazy EquipmentService equipmentService, @Lazy HeatTraceService heatTraceService, @Lazy FileService fileService) {
-        this.modelMapper = modelMapper;
+    public HeatTraceMapper( @Lazy HtBreakerService htBreakerService, @Lazy EquipmentService equipmentService, @Lazy HeatTraceService heatTraceService, @Lazy FileService fileService) {
         this.htBreakerService = htBreakerService;
         this.equipmentService = equipmentService;
         this.heatTraceService = heatTraceService;
         this.fileService = fileService;
     }
 
-    @Override
-    public ModelMapper getMapper() {
-        return modelMapper;
-    }
     public HeatTraceDto convertToDto(HeatTrace entity){
         if(entity!=null){
             HeatTraceDto dto = new HeatTraceDto();
@@ -63,6 +57,11 @@ public class HeatTraceMapper implements BaseMapper{
 
             return entity;
         }
+        return null;
+    }
+
+    @Override
+    public <T> T convert(Object objectToBeConverted, T convertedObject) {
         return null;
     }
 }
