@@ -11,12 +11,12 @@ import java.util.List;
 //@Setter
 @NoArgsConstructor
 public class HtBreakerDto extends BaseBreakerDto {
-    private List<HeatTraceDto> equipmentList;
+    private List<EquipmentDto> equipmentList;
     private HtPanelDto panel;
 
     @Override
     public <D extends BaseEquipmentDto> void setEquipmentList(List<D> list) {
-        equipmentList = (List<HeatTraceDto>)list;
+        equipmentList = (List<EquipmentDto>)list;
     }
 
     public void setPanel(HtPanelDto panel) {

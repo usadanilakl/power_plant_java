@@ -2,7 +2,7 @@ package com.dk_power.power_plant_java.sevice.equipment.impl;
 
 import com.dk_power.power_plant_java.dto.equipment.HtBreakerDto;
 import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
-import com.dk_power.power_plant_java.mappers.HtBreakerMapper;
+import com.dk_power.power_plant_java.mappers.equipment.HtBreakerMapper;
 import com.dk_power.power_plant_java.repository.equipment.HtBreakerRepo;
 import com.dk_power.power_plant_java.sevice.equipment.HtBreakerService;
 import org.hibernate.SessionFactory;

@@ -41,22 +41,22 @@ public class FileObject extends BaseAuditEntity {
         this.name = name;
     }
     private String name;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "file_type_id")
     private Value fileType;
     private String fileLink;
     private String baseLink;
     private String folder;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "system_id")
     private Value system;
     private String relatedSystems;
     private String fileNumber;
     private String extension;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "vendor_id")
     private Value vendor;
-    @ManyToMany
+    @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(name = "file_point",
             joinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))

@@ -5,7 +5,7 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
-import com.dk_power.power_plant_java.mappers.EquipmentMapper;
+import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;

@@ -7,7 +7,7 @@ import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
 import com.dk_power.power_plant_java.entities.equipment.HtPanel;
 import com.dk_power.power_plant_java.entities.files.FileObject;
-import com.dk_power.power_plant_java.mappers.HeatTraceMapper;
+import com.dk_power.power_plant_java.mappers.equipment.HeatTraceMapper;
 import com.dk_power.power_plant_java.repository.equipment.HeatTraceRepo;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.DataDistributionService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;

@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.dto.equipment;
 
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
+import com.dk_power.power_plant_java.dto.base_dtos.BaseEquipmentDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @NoArgsConstructor
-public class EquipmentDto extends BaseDto {
+public class EquipmentDto extends BaseEquipmentDto {
     private String tagNumber;
     private String description;
     private String specificLocation;

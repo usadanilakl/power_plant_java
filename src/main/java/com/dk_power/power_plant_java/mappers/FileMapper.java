@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;

@@ -35,30 +35,30 @@ public class Equipment extends BaseEquipment {
 //    private String tagNumber;
 //    private String description;
     private String specificLocation;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name="eq_type_id")
     private Value eqType;
     @ManyToMany(mappedBy = "points")
     //@JsonBackReference
     @JsonIgnore
     private List<FileObject> files;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "vendor_id")
     private Value vendor;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "location_id")
     private Value location;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "system_id")
     private Value system;
     private String coordinates;
     private String originalPictureSize;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "pid_id")
     @JsonBackReference
     //@JsonIgnore
     private FileObject mainFile;
-    @ManyToMany
+    @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(name = "eq_loto_point",
             joinColumns = @JoinColumn(name = "eq_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "loto_point_id", referencedColumnName = "id"))

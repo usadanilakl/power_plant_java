@@ -2,7 +2,7 @@ package com.dk_power.power_plant_java.sevice.equipment.impl;
 
 import com.dk_power.power_plant_java.dto.equipment.HtPanelDto;
 import com.dk_power.power_plant_java.entities.equipment.HtPanel;
-import com.dk_power.power_plant_java.mappers.HtPanelMapper;
+import com.dk_power.power_plant_java.mappers.equipment.HtPanelMapper;
 import com.dk_power.power_plant_java.repository.equipment.HtPanelRepo;
 import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
 import org.hibernate.SessionFactory;
