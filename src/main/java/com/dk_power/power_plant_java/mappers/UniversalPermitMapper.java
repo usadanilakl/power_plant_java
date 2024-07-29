@@ -2,7 +2,7 @@ package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
-import org.apache.poi.ss.formula.functions.T;
+import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
@@ -11,21 +11,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class UniversalMapper implements BaseMapper<BaseIdEntity, BaseDto> {
+public class UniversalPermitMapper implements BaseMapper<BasePermitEntity, BaseDto> {
     private final ModelMapper mapper;
 
-    public UniversalMapper(ModelMapper mapper) {
+    public UniversalPermitMapper(ModelMapper mapper) {
         this.mapper = mapper;
     }
 
 
     @Override
-    public BaseDto convertToDto(BaseIdEntity entity) {
+    public BaseDto convertToDto(BasePermitEntity entity) {
         return null;
     }
 
     @Override
-    public BaseIdEntity convertToEntity(BaseDto dto) {
+    public BasePermitEntity convertToEntity(BaseDto dto) {
         return null;
     }
 

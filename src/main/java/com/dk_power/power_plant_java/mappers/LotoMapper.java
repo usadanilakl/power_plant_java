@@ -8,17 +8,17 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class LotoMapper implements BaseMapper{
-    private final ModelMapper mapper;
-    @Override
-    public ModelMapper getMapper() {
-        return mapper;
-    }
+public class LotoMapper implements BaseMapper<Loto,LotoDto>{
 
     public LotoDto convertToDto(Loto loto){
         return null;
     }
     public Loto convertToEntity(LotoDto lotoDto){
+        return null;
+    }
+
+    @Override
+    public <T> T convert(Object objectToBeConverted, T convertedObject) {
         return null;
     }
 }

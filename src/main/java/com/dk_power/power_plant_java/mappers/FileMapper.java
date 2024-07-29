@@ -11,18 +11,15 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
-public class FileMapper implements BaseMapper{
-    private final UniversalMapper mapper;
-    private final EquipmentMapper equipmentMapper;
+public class FileMapper implements BaseMapper<FileObject,FileDto>{
+
     private final EquipmentService equipmentService;
     private final ModelMapper modelMapper;
     private final ValueService valueService;
     private final FileService fileService;
     private final HeatTraceService heatTraceService;
 
-    public FileMapper(UniversalMapper mapper, @Lazy EquipmentMapper equipmentMapper, @Lazy  EquipmentService equipmentService, ModelMapper modelMapper, ValueService valueService, @Lazy FileService fileService, @Lazy HeatTraceService heatTraceService) {
-        this.mapper = mapper;
-        this.equipmentMapper = equipmentMapper;
+    public FileMapper( @Lazy  EquipmentService equipmentService, ModelMapper modelMapper, ValueService valueService, @Lazy FileService fileService, @Lazy HeatTraceService heatTraceService) {
         this.equipmentService = equipmentService;
         this.modelMapper = modelMapper;
         this.valueService = valueService;
@@ -76,7 +73,8 @@ public class FileMapper implements BaseMapper{
     }
 
     @Override
-    public ModelMapper getMapper() {
-        return modelMapper;
+    public <T> T convert(Object objectToBeConverted, T convertedObject) {
+        return null;
     }
+
 }

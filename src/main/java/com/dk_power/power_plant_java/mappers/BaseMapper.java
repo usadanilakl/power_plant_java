@@ -6,11 +6,9 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Type;
 
-public interface BaseMapper {
-    ModelMapper getMapper();
+public interface BaseMapper <E,D>{
+    D convertToDto(E entity);
+    E convertToEntity(D dto);
+    <T> T convert(Object objectToBeConverted, T convertedObject);
 
-    default  <T> T convert(Object objectToBeConverted, T convertedObject) {
-        getMapper().getConfiguration().setSkipNullEnabled(true);
-        return getMapper().map(objectToBeConverted, (Type) convertedObject.getClass());
-    }
 }

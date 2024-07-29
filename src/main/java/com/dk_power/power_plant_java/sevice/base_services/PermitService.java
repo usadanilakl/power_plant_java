@@ -13,7 +13,7 @@ public interface PermitService
         E extends BasePermitEntity,
         D,
         R extends PermitRepo<E>,
-        M extends BaseMapper
+        M extends BaseMapper<E,D>
         >
     extends CrudService<E,D,R,M>, AuditingService<E>
 

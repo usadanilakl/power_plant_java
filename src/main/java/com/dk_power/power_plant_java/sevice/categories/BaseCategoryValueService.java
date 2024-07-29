@@ -17,7 +17,7 @@ public interface BaseCategoryValueService
         E extends BaseAuditEntity,
         D,
         R extends BaseCategoryValueRepo<E>,
-        M extends BaseMapper
+        M extends BaseMapper<E,D>
         >
     extends CrudService<E,D,R,M>
 {

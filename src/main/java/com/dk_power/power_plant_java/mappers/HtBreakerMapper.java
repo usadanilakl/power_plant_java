@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
-public class HtBreakerMapper implements BaseMapper{
+public class HtBreakerMapper implements BaseMapper<HtBreaker,HtBreakerDto>{
     private final HeatTraceService heatTraceService;
     private final HtPanelService htPanelService;
     private final HtBreakerService htBreakerService;
@@ -21,10 +21,7 @@ public class HtBreakerMapper implements BaseMapper{
         this.htBreakerService = htBreakerService;
     }
 
-    @Override
-    public ModelMapper getMapper() {
-        return null;
-    }
+
     public HtBreakerDto convertToDto(HtBreaker entity){
         if(entity!=null){
             HtBreakerDto dto = new HtBreakerDto();
@@ -50,6 +47,11 @@ public class HtBreakerMapper implements BaseMapper{
             if(dto.getEquipmentList()!=null) entity.setEquipmentList(dto.getEquipmentList().stream().map(heatTraceService::convertToEntity).toList());
             return entity;
         }
+        return null;
+    }
+
+    @Override
+    public <T> T convert(Object objectToBeConverted, T convertedObject) {
         return null;
     }
 }
