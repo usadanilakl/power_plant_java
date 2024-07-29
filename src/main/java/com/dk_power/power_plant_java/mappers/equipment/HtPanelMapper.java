@@ -10,21 +10,15 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
-public class HtPanelMapper implements BaseMapper {
-    private final ModelMapper modelMapper;
+public class HtPanelMapper implements BaseMapper<HtPanel,HtPanelDto> {
     private final HtPanelService htPanelService;
     private final HtBreakerService htBreakerService;
 
-    public HtPanelMapper(ModelMapper modelMapper, @Lazy HtPanelService htPanelService, @Lazy HtBreakerService htBreakerService) {
-        this.modelMapper = modelMapper;
+    public HtPanelMapper( @Lazy HtPanelService htPanelService, @Lazy HtBreakerService htBreakerService) {
         this.htPanelService = htPanelService;
         this.htBreakerService = htBreakerService;
     }
 
-    @Override
-    public ModelMapper getMapper() {
-        return modelMapper;
-    }
     public HtPanelDto convertToDto(HtPanel entity){
         if(entity!=null){
             HtPanelDto dto = new HtPanelDto();
@@ -54,6 +48,11 @@ public class HtPanelMapper implements BaseMapper {
 
             return entity;
         }
+        return null;
+    }
+
+    @Override
+    public <T> T convert(Object objectToBeConverted, T convertedObject) {
         return null;
     }
 }

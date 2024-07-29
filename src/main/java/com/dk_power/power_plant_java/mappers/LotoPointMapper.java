@@ -4,25 +4,19 @@ import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
-import org.modelmapper.ModelMapper;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
 //@RequiredArgsConstructor
-public class LotoPointMapper implements BaseMapper{
-    private final ModelMapper modelMapper;
-    private final EquipmentMapper equipmentMapper;
+public class LotoPointMapper implements BaseMapper<LotoPoint,LotoPointDto>{
+
     private final LotoMapper lotoMapper;
     private final ValueService valueService;
 
-    public LotoPointMapper(ModelMapper modelMapper, @Lazy EquipmentMapper equipmentMapper, LotoMapper lotoMapper, ValueService valueService) {
-        this.modelMapper = modelMapper;
-        this.equipmentMapper = equipmentMapper;
+    public LotoPointMapper(LotoMapper lotoMapper, ValueService valueService) {
         this.lotoMapper = lotoMapper;
         this.valueService = valueService;
     }
-
     public LotoPointDto convertToDto(LotoPoint entity) {
         if (entity == null) {
             return null;
@@ -89,7 +83,9 @@ public class LotoPointMapper implements BaseMapper{
     }
 
     @Override
-    public ModelMapper getMapper() {
-        return modelMapper;
+    public <T> T convert(Object objectToBeConverted, T convertedObject) {
+        return null;
     }
+
+
 }
