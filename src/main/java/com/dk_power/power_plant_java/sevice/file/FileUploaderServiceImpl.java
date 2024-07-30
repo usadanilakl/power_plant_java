@@ -197,6 +197,14 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         File[] folders = directory.listFiles(File::isDirectory);
         return new File[0];
     }
+
+    @Override
+    public File[] getListOfFiles(String path) {
+        File directory = new File(path);
+        File[] files = directory.listFiles(File::isFile);
+        return files;
+    }
+
     @Override
     public void deleteFile(String filePath) {
         Path path = Paths.get(filePath);

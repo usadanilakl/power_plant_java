@@ -13,6 +13,7 @@ void PdfToJpgConverter();
 void PdfToJpgConverter(String path);
 FileObject initialSave(String number, String link);
 File[] getListOfFolders(String path);
+File[] getListOfFiles(String path);
 void deleteFile(String path);
 
 }
