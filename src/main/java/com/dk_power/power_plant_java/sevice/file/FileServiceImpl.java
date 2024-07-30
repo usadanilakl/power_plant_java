@@ -10,10 +10,12 @@ import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import lombok.AllArgsConstructor;
+import lombok.val;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +29,7 @@ public class FileServiceImpl implements FileService {
     private final SessionFactory sessionFactory;
     private final CategoryService categoryService;
     private final ValueService valueService;
+    private final FileUploaderService fileUploaderService;
 
 
     public List<String> getVendors() {
@@ -35,6 +38,47 @@ public class FileServiceImpl implements FileService {
     public List<FileObject> getFilesByVendor(String value) {
         return fileRepo.findByVendor(value);
     }
+
+    @Override
+    public void createFileObjectsFromFolder(String path, String type, String extension, String vendor) {
+        File[] listOfFiles = fileUploaderService.getListOfFiles(path);
+        for (File file : listOfFiles) {
+            FileObject f = getFileByNumber(file.getName());
+            if(f==null){
+                f = new FileObject();
+                f.setBaseLink("uploads");
+                f.setExtension(extension);
+                f.setFileType(valueService.valueSetup("FileType",type));
+                f.setVendor(valueService.valueSetup("Vendor",vendor));
+                f.setFileNumber(file.getName().replace(extension,""));
+                save(f);
+            }else{
+                throw new RuntimeException("File with this name already exists");
+            }
+        }
+    }
+
+    @Override
+    public void createFileObjectsFromFolder(String path, String type, String extension, String vendor, String system) {
+        File[] listOfFiles = fileUploaderService.getListOfFiles(path);
+        for (File file : listOfFiles) {
+            FileObject f = getFileByNumber(file.getName());
+            if(f==null){
+                f = new FileObject();
+                f.setBaseLink("uploads");
+                f.setExtension(extension);
+                f.setFileType(valueService.valueSetup("FileType",type));
+                f.setVendor(valueService.valueSetup("Vendor",vendor));
+                f.setSystem(valueService.valueSetup("System",system));
+                f.setRelatedSystems(system);
+                f.setFileNumber(file.getName());
+                save(f);
+            }else{
+                throw new RuntimeException("File with this name already exists");
+            }
+        }
+    }
+
     public List<FileDto> getAllDtos(String ext) {
         return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
     }

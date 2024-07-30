@@ -72,9 +72,21 @@ private final ElectricalTableService electricalTableService;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
-        System.out.println("eqBreakerService.getAll().size() = " + eqBreakerService.getAll().size());
-        eqBreakerService.transerToDb2();
-        System.out.println("eqBreakerService.getAll().size() = " + eqBreakerService.getAll().size());
+
+/******************************************************************************************************************************************
+ *  Creating File Objects from files in a folder
+ ****************************************************************************************************************************************/
+//        System.out.println("fileService.getAllLight().size() = " + fileService.getAllLight().size());
+//        fileService.createFileObjectsFromFolder(
+//                "C:\\Users\\usada\\IdeaProjects\\power_plant_java\\src\\main\\resources\\static\\uploads\\jpg\\Panel Pictures\\Kiewit",
+//                "Panel Pictures",
+//                "jpg",
+//                "Kiewit",
+//                "Electrical"
+//
+//        );
+//        System.out.println("fileService.getAllLight().size() = " + fileService.getAllLight().size());
+
 
 //        System.out.println("equipmentService.getAll().size() = " + eqBreakerService.getAll().size());
 //        eqBreakerService.transferToDb();

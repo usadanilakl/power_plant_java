@@ -28,4 +28,7 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List<String> getVendors();
     List<String> getSystems();
     List<FileObject> getFilesByVendor(String value);
+
+    void createFileObjectsFromFolder(String path, String type, String extension, String vendor);
+    void createFileObjectsFromFolder(String path, String type, String extension, String vendor,String system);
 }

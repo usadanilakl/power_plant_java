@@ -106,6 +106,10 @@ public class FileObject extends BaseAuditEntity {
 //        filePoints.add(entity);
 //    }
 
+    public void setRelatedSystems(String system){
+        if(relatedSystems==null)relatedSystems = system;
+        else relatedSystems+=system;
+    }
 
     @Override
     public String toString() {
