@@ -1,12 +1,14 @@
 package com.dk_power.power_plant_java.sevice.equipment.impl;
 
 import com.dk_power.power_plant_java.dto.equipment.EqBreakerDto;
+import com.dk_power.power_plant_java.entities.data_transfer.ElectricalTable;
 import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
 import com.dk_power.power_plant_java.entities.equipment.ElectricalPanel;
 import com.dk_power.power_plant_java.entities.equipment.EqBreaker;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.mappers.equipment.EqBreakerMapper;
 import com.dk_power.power_plant_java.repository.equipment.EqBreakerRepo;
+import com.dk_power.power_plant_java.sevice.data_transfer.excel.ElectricalTableService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import com.dk_power.power_plant_java.sevice.equipment.EqBreakerService;
@@ -29,15 +31,17 @@ public class EqBreakerServiceImpl implements EqBreakerService {
     private final RevisedLotoPointService revisedLotoPointService;
     private final ElectricalPanelService electricalPanelService;
     private final EquipmentService equipmentService;
+    private final ElectricalTableService electricalTableService;
 
 
-    public EqBreakerServiceImpl(@Lazy EqBreakerMapper eqBreakerMapper, EqBreakerRepo eqBreakerRepo, SessionFactory sessionFactory, RevisedLotoPointService revisedLotoPointService, @Lazy ElectricalPanelService electricalPanelService, @Lazy EquipmentService equipmentService) {
+    public EqBreakerServiceImpl(@Lazy EqBreakerMapper eqBreakerMapper, EqBreakerRepo eqBreakerRepo, SessionFactory sessionFactory, RevisedLotoPointService revisedLotoPointService, @Lazy ElectricalPanelService electricalPanelService, @Lazy EquipmentService equipmentService, @Lazy ElectricalTableService electricalTableService) {
         this.eqBreakerMapper = eqBreakerMapper;
         this.eqBreakerRepo = eqBreakerRepo;
         this.sessionFactory = sessionFactory;
         this.revisedLotoPointService = revisedLotoPointService;
         this.electricalPanelService = electricalPanelService;
         this.equipmentService = equipmentService;
+        this.electricalTableService = electricalTableService;
     }
 
     @Override
@@ -108,5 +112,41 @@ public class EqBreakerServiceImpl implements EqBreakerService {
         }
         //set breaker
         //set equipment
+    }
+
+    @Override
+    public void transerToDb2() {
+        List<ElectricalTable> list = electricalTableService.getAll().stream().filter(e ->
+                e.getBreakerType().toLowerCase().contains("molded") ||
+                e.getBreakerType().toLowerCase().contains("rack") ||
+                e.getBreakerType().toLowerCase().contains("fues")
+        ).toList();
+
+
+        for (ElectricalTable e : list) {
+            ElectricalPanel panel = electricalPanelService.getByTagNumber(e.getBus().trim());
+            if(panel==null){
+                panel = new ElectricalPanel();
+                panel.setTagNumber(e.getBus().trim());
+                panel.setVoltage(e.getBreakerType());
+                electricalPanelService.save(panel);
+            }
+
+            EqBreaker breaker = panel.getEqBreakers().stream().filter(b->b.getTagNumber().trim().equalsIgnoreCase(e.getTagNumber().trim())).findFirst().orElse(null);
+            if(breaker==null){
+                List<Equipment> eqt = equipmentService.getAll()
+                        .stream()
+                        .filter(el->Util.lettersAndNumbersOnly(el.getTagNumber()).equalsIgnoreCase(Util.lettersAndNumbersOnly(e.getTagNumber())))
+                        .toList();
+                breaker = new EqBreaker();
+                breaker.setPanel(panel);
+                breaker.setDescription(e.getPowerUser());
+                breaker.setTagNumber(e.getTagNumber().trim());
+                breaker.setBrType(e.getBreakerType());
+                breaker.setBrNumber(e.getBreakerLocation());
+                breaker.setEquipmentList(eqt);
+                save(breaker);
+            }
+        }
     }
 }

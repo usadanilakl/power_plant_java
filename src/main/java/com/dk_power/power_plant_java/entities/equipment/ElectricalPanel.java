@@ -31,4 +31,5 @@ public class ElectricalPanel extends BaseElectricalPanel {
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "pic_id")
     private FileObject panelSchedulePic;
+    private String voltage;
 }

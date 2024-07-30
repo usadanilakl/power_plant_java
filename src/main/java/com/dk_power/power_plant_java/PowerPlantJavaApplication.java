@@ -72,10 +72,9 @@ private final ElectricalTableService electricalTableService;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
-        for (ElectricalTable e : electricalTableService.getAll()) {
-            if(e.getBus()==null && e.getTagNumber()==null && e.getBreakerLocation()==null) electricalTableService.hardDelete(e);
-        }
-        System.out.println("electricalTableService.getAll().size() = " + electricalTableService.getAll().size());
+        System.out.println("eqBreakerService.getAll().size() = " + eqBreakerService.getAll().size());
+        eqBreakerService.transerToDb2();
+        System.out.println("eqBreakerService.getAll().size() = " + eqBreakerService.getAll().size());
 
 //        System.out.println("equipmentService.getAll().size() = " + eqBreakerService.getAll().size());
 //        eqBreakerService.transferToDb();

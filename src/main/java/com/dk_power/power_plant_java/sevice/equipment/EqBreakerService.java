@@ -8,4 +8,5 @@ import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 
 public interface EqBreakerService extends CrudService<EqBreaker, EqBreakerDto, EqBreakerRepo, EqBreakerMapper> {
     void transferToDb();
+    void transerToDb2();
 }

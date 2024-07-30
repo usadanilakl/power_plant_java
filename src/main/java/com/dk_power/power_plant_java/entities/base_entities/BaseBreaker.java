@@ -12,7 +12,7 @@ import org.apache.poi.ss.formula.functions.T;
 import java.util.List;
 
 @MappedSuperclass
-//@Setter
+@Setter
 @Getter
 @NoArgsConstructor
 public class BaseBreaker extends BaseIdEntity{
@@ -20,18 +20,19 @@ public class BaseBreaker extends BaseIdEntity{
     //private BaseElectricalPanel panel;
     private String brNumber;
     private String tagNumber;
+    private String brType;
 
 //    public void setPanel(BaseElectricalPanel panel) {
 //        this.panel = panel;
 //    }
 
-    public void setBrNumber(String brNumber) {
-        this.brNumber = brNumber;
-    }
-
-    public void setTagNumber(String tagNumber) {
-        this.tagNumber = tagNumber;
-    }
+//    public void setBrNumber(String brNumber) {
+//        this.brNumber = brNumber;
+//    }
+//
+//    public void setTagNumber(String tagNumber) {
+//        this.tagNumber = tagNumber;
+//    }
 
 //    private List equipmentList;
 
