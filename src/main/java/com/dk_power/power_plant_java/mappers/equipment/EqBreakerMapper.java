@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.equipment.HtBreakerDto;
 import com.dk_power.power_plant_java.entities.equipment.EqBreaker;
 import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import com.dk_power.power_plant_java.sevice.equipment.EqBreakerService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import org.modelmapper.ModelMapper;
@@ -16,16 +17,20 @@ public class EqBreakerMapper implements BaseMapper {
 
     private final EqBreakerService eqBreakerService;
     private final EquipmentService equipmentService;
+    private final ModelMapper modelMapper;
+    private final ElectricalPanelService electricalPanelService;
 
-    public EqBreakerMapper(@Lazy EqBreakerService eqBreakerService, @Lazy EquipmentService equipmentService) {
+    public EqBreakerMapper(@Lazy EqBreakerService eqBreakerService, @Lazy EquipmentService equipmentService, ModelMapper modelMapper, ElectricalPanelService electricalPanelService) {
         this.eqBreakerService = eqBreakerService;
         this.equipmentService = equipmentService;
+        this.modelMapper = modelMapper;
+        this.electricalPanelService = electricalPanelService;
     }
 
 
     @Override
     public ModelMapper getMapper() {
-        return null;
+        return modelMapper;
     }
     public EqBreakerDto convertToDto(EqBreaker entity){
         if(entity!=null){
@@ -34,8 +39,21 @@ public class EqBreakerMapper implements BaseMapper {
             if(entity.getId()!=null) dto.setId(entity.getId());
             if(entity.getName()!=null) dto.setName(entity.getName());
             if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
-//            if(entity.getPanel()!=null) dto.setPanel(htPanelService.convertToDto(entity.getPanel()));
+            if(entity.getPanel()!=null) dto.setPanel(electricalPanelService.getMapper().convertToDtoLight(entity.getPanel()));
             if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
+            return dto;
+        }
+        return null;
+    }
+    public EqBreakerDto convertToDtoLight(EqBreaker entity){
+        if(entity!=null){
+            EqBreakerDto dto = new EqBreakerDto();
+            if(entity.getTagNumber()!=null) dto.setTagNumber(entity.getTagNumber());
+            if(entity.getId()!=null) dto.setId(entity.getId());
+            if(entity.getName()!=null) dto.setName(entity.getName());
+            if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
+            if(entity.getPanel()!=null) dto.setPanel(electricalPanelService.convertToDto(entity.getPanel()));
+//            if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
             return dto;
         }
         return null;
@@ -48,8 +66,8 @@ public class EqBreakerMapper implements BaseMapper {
 
             if(dto.getTagNumber()!=null) entity.setTagNumber(dto.getTagNumber());
             if(dto.getName()!=null) entity.setName(dto.getName());
-//            if(dto.getPanel()!=null) entity.setPanel(htPanelService.convertToEntity(dto.getPanel()));
-            if(dto.getEquipmentList()!=null) entity.setEquipmentList(dto.getEquipmentList().stream().map(equipmentService::convertToEntity).toList());
+            if(dto.getPanel()!=null) entity.setPanel(electricalPanelService.convertToEntity(dto.getPanel()));
+            //if(dto.getEquipmentList()!=null) entity.setEquipmentList(dto.getEquipmentList().stream().map(equipmentService::convertToEntity).toList());
             return entity;
         }
         return null;

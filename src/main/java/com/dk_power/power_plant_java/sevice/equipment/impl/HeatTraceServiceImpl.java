@@ -72,6 +72,15 @@ public class HeatTraceServiceImpl implements HeatTraceService {
         return sessionFactory;
     }
 
+    @Override
+    public HeatTrace convertToEntity(HeatTraceDto dto) {
+        return getMapper().convertToEntity(dto);
+    }
+
+    @Override
+    public HeatTraceDto convertToDto(HeatTrace entity) {
+        return getMapper().convertToDto(entity);
+    }
 
     @Override
     public void transferToDb() {

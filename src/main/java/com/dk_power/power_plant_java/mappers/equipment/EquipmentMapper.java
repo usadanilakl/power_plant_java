@@ -26,14 +26,16 @@ public class EquipmentMapper implements BaseMapper {
     private final EquipmentService equipmentService;
     private final LotoPointService lotoPointService;
     private final HeatTraceService heatTraceService;
+    private final HeatTraceMapper heatTraceMapper;
 
-    public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService, @Lazy FileService fileService, @Lazy EquipmentService equipmentService, @Lazy LotoPointService lotoPointService, @Lazy HeatTraceService heatTraceService) {
+    public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService, @Lazy FileService fileService, @Lazy EquipmentService equipmentService, @Lazy LotoPointService lotoPointService, @Lazy HeatTraceService heatTraceService, HeatTraceMapper heatTraceMapper) {
         this.modelMapper = modelMapper;
         this.valueService = valueService;
         this.fileService = fileService;
         this.equipmentService = equipmentService;
         this.lotoPointService = lotoPointService;
         this.heatTraceService = heatTraceService;
+        this.heatTraceMapper = heatTraceMapper;
     }
 
 
@@ -94,7 +96,7 @@ public class EquipmentMapper implements BaseMapper {
         if(entity.getLotoPoints()!=null){
             dto.setLotoPoints(entity.getLotoPoints().stream().map(lotoPointService::convertToDto).collect(Collectors.toSet()));
         }
-        if(entity.getHeatTraceList()!=null) dto.setHeatTraceList(entity.getHeatTraceList().stream().map(heatTraceService::convertToDto).toList());
+        if(entity.getHeatTraceList()!=null) dto.setHeatTraceList(entity.getHeatTraceList().stream().map(heatTraceMapper::convertToDtoLight).toList());
 
         return dto;
     }

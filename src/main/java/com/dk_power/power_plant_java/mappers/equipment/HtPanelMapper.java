@@ -40,6 +40,21 @@ public class HtPanelMapper implements BaseMapper {
         }
         return null;
     }
+    public HtPanelDto convertToDtoLight(HtPanel entity){
+        if(entity!=null){
+            HtPanelDto dto = new HtPanelDto();
+
+            if(entity.getId()!=null) dto.setId(entity.getId());
+            //if(entity.getHtBreakers()!=null) dto.setHtBreakers(entity.getHtBreakers().stream().map(htBreakerService::convertToDto).toList());
+            if(entity.getName()!=null) dto.setName(entity.getName());
+            if(entity.getLocation()!=null) dto.setLocation(entity.getLocation());
+            if(entity.getTagNumber()!=null) dto.setTagNubmer(entity.getTagNumber());
+            if(entity.getObjectType()!=null)dto.setObjectType(entity.getObjectType());
+
+            return dto;
+        }
+        return null;
+    }
     public HtPanel convertToEntity(HtPanelDto dto){
         if(dto!=null){
             HtPanel entity = null;
@@ -56,4 +71,6 @@ public class HtPanelMapper implements BaseMapper {
         }
         return null;
     }
+
+
 }

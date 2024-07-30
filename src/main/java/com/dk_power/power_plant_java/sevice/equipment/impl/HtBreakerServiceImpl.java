@@ -46,4 +46,14 @@ public class HtBreakerServiceImpl implements HtBreakerService {
     public SessionFactory getSessionFactory() {
         return sessionFactory;
     }
+
+    @Override
+    public HtBreaker convertToEntity(HtBreakerDto dto) {
+        return getMapper().convertToEntity(dto);
+    }
+
+    @Override
+    public HtBreakerDto convertToDto(HtBreaker entity) {
+        return getMapper().convertToDto(entity);
+    }
 }

@@ -2,11 +2,14 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
+import com.dk_power.power_plant_java.dto.equipment.HtBreakerDto;
+import com.dk_power.power_plant_java.dto.equipment.HtPanelDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseElectricalPanel;
 import com.dk_power.power_plant_java.entities.data_transfer.ElectricalTable;
 import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
 import com.dk_power.power_plant_java.entities.equipment.ElectricalPanel;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
+import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
 import com.dk_power.power_plant_java.entities.equipment.HtPanel;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
@@ -57,6 +60,7 @@ private final FilePathService filePathService;
 private final HeatTraceService heatTraceService;
 private final HtPanelService htPanelService;
 private final ElectricalPanelService electricalPanelService;
+private final HtBreakerService htBreakerService;
 private final EqBreakerService eqBreakerService;
 private final ElectricalTableService electricalTableService;
 
@@ -72,6 +76,14 @@ private final ElectricalTableService electricalTableService;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+
+        HtBreaker htBreaker = htPanelService.getAll().get(0).getHtBreakers().get(0);
+        System.out.println("htBreaker.getPanel().getHtBreakers().size() = " + htBreaker.getPanel().getHtBreakers().size());
+        HtBreakerDto brDto = htBreakerService.getDtoById(htBreaker.getId());
+        System.out.println(brDto.getPanel().getTagNubmer() + brDto.getPanel().getLocation());
+        HtBreaker entityById = htBreakerService.getEntityById(brDto.getId());
+        System.out.println("entityById.getPanel().getHtBreakers().size() = " + entityById.getPanel().getHtBreakers().size());
+
 
 /******************************************************************************************************************************************
  *  Creating File Objects from files in a folder

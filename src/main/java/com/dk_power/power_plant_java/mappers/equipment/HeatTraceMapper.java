@@ -18,13 +18,15 @@ public class HeatTraceMapper implements BaseMapper {
     private final EquipmentService equipmentService;
     private final HeatTraceService heatTraceService;
     private final FileService fileService;
+    private final HtBreakerMapper htBreakerMapper;
 
-    public HeatTraceMapper(ModelMapper modelMapper, @Lazy HtBreakerService htBreakerService, @Lazy EquipmentService equipmentService, @Lazy HeatTraceService heatTraceService, @Lazy FileService fileService) {
+    public HeatTraceMapper(ModelMapper modelMapper, @Lazy HtBreakerService htBreakerService, @Lazy EquipmentService equipmentService, @Lazy HeatTraceService heatTraceService, @Lazy FileService fileService, HtBreakerMapper htBreakerMapper) {
         this.modelMapper = modelMapper;
         this.htBreakerService = htBreakerService;
         this.equipmentService = equipmentService;
         this.heatTraceService = heatTraceService;
         this.fileService = fileService;
+        this.htBreakerMapper = htBreakerMapper;
     }
 
     @Override
@@ -37,12 +39,28 @@ public class HeatTraceMapper implements BaseMapper {
             if(entity.getId()!=null) dto.setId(entity.getId());
             if(entity.getTagNumber()!=null) dto.setTagNumber(entity.getTagNumber());
             if(entity.getDescription()!=null) dto.setDescription(entity.getDescription());
-            if(entity.getBreaker()!=null) dto.setBreaker(htBreakerService.convertToDto(entity.getBreaker()));
+            if(entity.getBreaker()!=null) dto.setBreaker(htBreakerMapper.convertToDtoLight(entity.getBreaker()));
             if(entity.getName()!=null) dto.setName(entity.getName());
             if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
             if(entity.getHtIso()!=null) dto.setHtIso(fileService.convertToDto(entity.getHtIso()));
             if(entity.getPid()!=null) dto.setPid(entity.getPid().stream().map(fileService::convertToDto).toList());
             if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
+            return dto;
+        }
+        return null;
+    }
+    public HeatTraceDto convertToDtoLight(HeatTrace entity){
+        if(entity!=null){
+            HeatTraceDto dto = new HeatTraceDto();
+            if(entity.getId()!=null) dto.setId(entity.getId());
+            if(entity.getTagNumber()!=null) dto.setTagNumber(entity.getTagNumber());
+            if(entity.getDescription()!=null) dto.setDescription(entity.getDescription());
+            if(entity.getBreaker()!=null) dto.setBreaker(htBreakerMapper.convertToDtoLight(entity.getBreaker()));
+            if(entity.getName()!=null) dto.setName(entity.getName());
+            if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
+            if(entity.getHtIso()!=null) dto.setHtIso(fileService.convertToDto(entity.getHtIso()));
+            if(entity.getPid()!=null) dto.setPid(entity.getPid().stream().map(fileService::convertToDto).toList());
+//            if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
             return dto;
         }
         return null;

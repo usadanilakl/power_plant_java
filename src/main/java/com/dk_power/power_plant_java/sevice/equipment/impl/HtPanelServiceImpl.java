@@ -51,4 +51,14 @@ public class HtPanelServiceImpl implements HtPanelService {
     public HtPanel getByTagNumber(String panel) {
         return htPanelRepo.findByTagNumber(panel);
     }
+
+    @Override
+    public HtPanel convertToEntity(HtPanelDto dto) {
+        return getMapper().convertToEntity(dto);
+    }
+
+    @Override
+    public HtPanelDto convertToDto(HtPanel entity) {
+        return getMapper().convertToDto(entity);
+    }
 }

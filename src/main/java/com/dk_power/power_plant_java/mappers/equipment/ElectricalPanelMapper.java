@@ -45,6 +45,21 @@ public class ElectricalPanelMapper implements BaseMapper {
         }
         return null;
     }
+    public ElectricalPanelDto convertToDtoLight(ElectricalPanel entity){
+        if(entity!=null){
+            ElectricalPanelDto dto = new ElectricalPanelDto();
+
+            if(entity.getId()!=null) dto.setId(entity.getId());
+//            if(entity.getEqBreakers()!=null) dto.setEqBreakers(entity.getEqBreakers().stream().map(eqBreakerService::convertToDto).toList());
+            if(entity.getName()!=null) dto.setName(entity.getName());
+            if(entity.getLocation()!=null) dto.setLocation(entity.getLocation());
+            if(entity.getTagNumber()!=null) dto.setTagNubmer(entity.getTagNumber());
+            if(entity.getObjectType()!=null)dto.setObjectType(entity.getObjectType());
+
+            return dto;
+        }
+        return null;
+    }
     public ElectricalPanel convertToEntity(ElectricalPanelDto dto){
         if(dto!=null){
             ElectricalPanel entity = null;
