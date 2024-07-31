@@ -51,6 +51,26 @@ public class FileMapper implements BaseMapper{
 
         return fileDto;
     }
+
+    public FileDto convertToDtoLight(FileObject file){
+        FileDto fileDto = new FileDto();
+        fileDto.setFileLink(file.buildFileLink());
+        fileDto.setFileNumber(file.getFileNumber());
+        fileDto.setFolder(file.getFolder());
+        fileDto.setBaseLink(file.getBaseLink());
+        fileDto.setExtension(file.getExtension());
+        if(file.getName()!=null) fileDto.setName(file.getName());
+        if(file.getObjectType()!=null) fileDto.setObjectType(file.getObjectType());
+        fileDto.setId(file.getId());
+        if(file.getFileType()!=null)fileDto.setFileType(valueService.getDtoById(file.getFileType().getId()));
+        if(file.getSystem()!=null)fileDto.setSystem(valueService.getDtoById(file.getSystem().getId()));
+        if(file.getVendor()!=null)fileDto.setVendor(valueService.getDtoById(file.getVendor().getId()));
+        if(file.getRelatedSystems()!=null) fileDto.setRelatedSystems(file.getRelatedSystems());
+//        if(file.getPoints()!=null) fileDto.setPoints(file.getPoints().stream().map(e->equipmentService.getDtoById(e.getId())).toList());
+//        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
+
+        return fileDto;
+    }
     public FileDto convertToDto(FileObject file, String extension){
         FileDto fileDto = convertToDto(file);
         fileDto.setFileLink(file.buildFileLink(extension));

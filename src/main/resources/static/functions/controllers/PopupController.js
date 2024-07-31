@@ -6,3 +6,11 @@ async function getPopup(){
     document.body.appendChild(popup);
     return data;
 }
+
+async function getFormPopUp(){
+    const response = await fetch("/popup/form");
+    const data = await response.text();
+    let popup = document.createElement('div');
+    popup.innerHTML = data;
+    return popup;
+}

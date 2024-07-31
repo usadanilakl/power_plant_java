@@ -1,28 +1,4 @@
-// async function setupPopup(category){
-//     let popupHolder = document.getElementById('popup')
-//     let popup = await getCatPopup(category);
-//     popupHolder.innerHTML = "";
-//     popupHolder.appendChild(popup);
-//     let newVal = function(){
-//         createNewValue(category,inputValue.value);
-//         console.log("Saved")
-//         myModal.hide();
-//         saveButton.removeEventListener('click',newVal);
-//         footer.removeChild(saveButton);
-//     }
-//     let saveButton = popup.querySelector('#save');
-//     saveButton.addEventListener('click',newVal);
-//     let title = popup.querySelector("#popupModalLabel");
-//     let modal = popup.querySelector('#popupModal'+category);
-//     let myModal = new bootstrap.Modal(modal, {});
-//     myModal.show();
-//     title.textContent = "Create New "+category;
-//     let inputValue = document.getElementById('value-name');
 
-      
-      
-
-// }
 
 async function setupPopup(category){
     let popupHolder = document.getElementById('popup');
@@ -110,3 +86,5 @@ async function setupRefractorPopup(category,oldValue,points){
     saveButton.addEventListener('click', newVal);
     return popupHolder;
 }
+
+

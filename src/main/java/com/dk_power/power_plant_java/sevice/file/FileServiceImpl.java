@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -77,6 +79,46 @@ public class FileServiceImpl implements FileService {
                 throw new RuntimeException("File with this name already exists");
             }
         }
+    }
+
+    @Override
+    public void createNewFile(FileDto file) {
+        if(getFileByNumber(file.getFileNumber())==null){
+            String name = file.getFile().getOriginalFilename();
+            String baseLink = "/src/main/resources/static/";
+            String folder = baseLink+file.getFolder()+"/";
+            String baseDir = System.getProperty("user.dir") + folder;
+            Path path = Paths.get(baseDir + name);
+            try {
+                Files.createDirectories(path.getParent());
+                file.getFile().transferTo(path.toFile());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            save(file);
+        }else{
+            throw new RuntimeException("File with name: " + file.getFileNumber() + " already exists");
+        }
+
+
+    }
+
+    @Override
+    public void updateFile(FileDto file) {
+        FileObject oldFile = getEntityById(file.getId());
+        Path oldPath = Paths.get(System.getProperty("user.dir")+"/"+oldFile.getFileLink());
+        oldFile.setFileNumber(oldFile.getFileNumber()+"deleted");
+        Path newPath = Paths.get(System.getProperty("user.dir") + "/" + oldFile.getFileLink());
+        //as an option, create oldFiles field in FileObject entity and concatenate file names that are deleted
+
+        try {
+            Files.move(oldPath, newPath, StandardCopyOption.REPLACE_EXISTING);
+            createNewFile(file);
+        } catch (IOException e) {
+            // Handle the exception
+            e.printStackTrace();
+        }
+
     }
 
     public List<FileDto> getAllDtos(String ext) {

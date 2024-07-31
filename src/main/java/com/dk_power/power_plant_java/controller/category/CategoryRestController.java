@@ -46,6 +46,10 @@ public class CategoryRestController {
     public ResponseEntity<Set<ValueDto>> getNormPositions(){
         return ResponseEntity.ok(categoryService.getNormPositions());
     }
+    @GetMapping("/get-fileType")
+    public ResponseEntity<Set<ValueDto>> getFileTypes(){
+        return ResponseEntity.ok(categoryService.getFileTypes());
+    }
     @PostMapping("/{cat}/{val}")
     public ResponseEntity<Set<ValueDto>> createNewValue(@PathVariable String cat, @PathVariable String val){
         valueService.valueSetupWithAlias(cat,val);

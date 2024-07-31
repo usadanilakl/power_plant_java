@@ -5,6 +5,17 @@ let vendors=[];
 let categories;
 let file;
 
+function filePutWithBody(data){
+    return{
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Content-Type': 'application/json'
+        },
+        body:JSON.stringify(data)
+    }
+}
+
 async function getAllFiles(){
     let link = '/fileObjects/get-all-light';
     // let link = '/data/get-files';
@@ -103,5 +114,11 @@ function getFilesBySystem(system){
     result.forEach(e=>{
         e['dropdownFunc'] = loadPictureWithFile(e);
     })
+}
+
+async function submitFile(file){
+    const resp = await fetch('/file-api/',filePutWithBody(file));
+    const data = await resp.text();
+
 }
   

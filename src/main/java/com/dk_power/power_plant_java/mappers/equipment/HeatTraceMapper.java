@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.mappers.equipment;
 import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.equipment.HtBreakerService;
@@ -19,14 +20,16 @@ public class HeatTraceMapper implements BaseMapper {
     private final HeatTraceService heatTraceService;
     private final FileService fileService;
     private final HtBreakerMapper htBreakerMapper;
+    private final FileMapper fileMapper;
 
-    public HeatTraceMapper(ModelMapper modelMapper, @Lazy HtBreakerService htBreakerService, @Lazy EquipmentService equipmentService, @Lazy HeatTraceService heatTraceService, @Lazy FileService fileService, HtBreakerMapper htBreakerMapper) {
+    public HeatTraceMapper(ModelMapper modelMapper, @Lazy HtBreakerService htBreakerService, @Lazy EquipmentService equipmentService, @Lazy HeatTraceService heatTraceService, @Lazy FileService fileService, HtBreakerMapper htBreakerMapper, @Lazy FileMapper fileMapper) {
         this.modelMapper = modelMapper;
         this.htBreakerService = htBreakerService;
         this.equipmentService = equipmentService;
         this.heatTraceService = heatTraceService;
         this.fileService = fileService;
         this.htBreakerMapper = htBreakerMapper;
+        this.fileMapper = fileMapper;
     }
 
     @Override
@@ -43,7 +46,7 @@ public class HeatTraceMapper implements BaseMapper {
             if(entity.getName()!=null) dto.setName(entity.getName());
             if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
             if(entity.getHtIso()!=null) dto.setHtIso(fileService.convertToDto(entity.getHtIso()));
-            if(entity.getPid()!=null) dto.setPid(entity.getPid().stream().map(fileService::convertToDto).toList());
+            if(entity.getPid()!=null) dto.setPid(entity.getPid().stream().map(fileMapper::convertToDtoLight).toList());
             if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
             return dto;
         }
@@ -59,7 +62,7 @@ public class HeatTraceMapper implements BaseMapper {
             if(entity.getName()!=null) dto.setName(entity.getName());
             if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
             if(entity.getHtIso()!=null) dto.setHtIso(fileService.convertToDto(entity.getHtIso()));
-            if(entity.getPid()!=null) dto.setPid(entity.getPid().stream().map(fileService::convertToDto).toList());
+            if(entity.getPid()!=null) dto.setPid(entity.getPid().stream().map(fileMapper::convertToDtoLight).toList());
 //            if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
             return dto;
         }
