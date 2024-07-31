@@ -30,7 +30,7 @@ async function setInputs(object){
         let assignValue = ()=> object[key] = input.value;
         let pasteFromClipboard = async ()=>{
             let clipBoardText = await checkClipboardAndPasteShort(input);
-            point[e]= clipBoardText ;
+            object[key]= clipBoardText ;
         }
         input.addEventListener("input",assignValue) //assing value back to object on input event
         input.addEventListener('click',pasteFromClipboard); //paste function 

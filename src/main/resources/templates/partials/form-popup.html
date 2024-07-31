@@ -1,3 +1,18 @@
+<style>
+  .modal-dialog {
+max-width: 500px; /* Adjust this value as needed */
+max-height: 80vh; /* Adjust this value as needed */
+}
+
+.modal-content {
+height: 100%;
+}
+
+.modal-body {
+max-height: calc(80vh - 120px); /* Adjust this value based on modal-header and modal-footer height */
+overflow-y: auto;
+}
+ </style>
 <!-- Modal -->
 <div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" aria-hidden="true" style="z-index:1060;">
     <div class="modal-dialog" role="document">
