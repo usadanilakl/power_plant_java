@@ -74,19 +74,12 @@ async function addPointToEquipment(lotoPoint){
     let updatedEq;
     if(oldId && eqId){
         let url = addLotoPointToEqUrl+eqId+"/"+oldId
-       resp = await fetch(url,putNoBody);
-       updatedEq = await resp.json();
-       if(updatedEq && updatedEq.id){
-            console.log(JSON.stringify(updatedEq))
-            let updatedPoints = [];
-            updatedEq.lotoPoints.forEach(e=>{
-            updatedPoints.push(convertToLotoPointFormDto(e));
-            });
-            selectedArea.lotoPoints = updatedPoints;
-            fillPointInfoWindow(eqFormInfo)
-            //getFileFromDbByLink(file.fileNumber)
-       }console.log("Updated result: "+JSON.stringify(updatedEq))
-       
+        resp = await fetch(url,putNoBody);
+        updatedEq = await resp.json();
+        if(updatedEq && updatedEq.id){
+        selectedArea.lotoPoints = updatedEq.lotoPoints;
+        fillPointInfoWindow(selectedArea)
+        }
     }else console.log("oldId: "+oldId + "eq id: " + eqId);
 }
 

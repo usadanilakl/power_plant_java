@@ -65,6 +65,7 @@ public class FileObject extends BaseAuditEntity {
     @JsonBackReference
     @ManyToMany(mappedBy = "pid")
     private List<HeatTrace> heatTrace;
+    private Boolean completed;
 
 
 

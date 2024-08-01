@@ -15,4 +15,8 @@ public class PopUpController {
     public String getHtmlPopUp(){
         return "partials/popup-for-html";
     }
+    @GetMapping("/form")
+    public String getformPopUp(){
+        return "partials/form-popup";
+    }
 }

@@ -4,7 +4,6 @@ package com.dk_power.power_plant_java.entities.loto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -26,7 +25,7 @@ public class LotoPoint extends BaseAuditEntity {
     private String tagged;
     private String tagNumber;
     private String description;
-    private String location;
+    private String specificLocation;
     private String standard;
     private String generalLocation;
     private String equipment;

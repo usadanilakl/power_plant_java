@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class FileDtoLight {
-    public FileDtoLight(Long id, String name, String fileLink, String relatedSystems, String fileNumber, Value vendor) {
+    public FileDtoLight(Long id, String name, String fileLink, String relatedSystems, String fileNumber, Value vendor, Value fileType) {
         this.id =id;
         this.name = name;
         this.fileLink = fileLink;
@@ -20,11 +20,16 @@ public class FileDtoLight {
         v.setId(vendor.getId());
         v.setName(vendor.getName());
         this.vendor = v;
+        ValueDto f = new ValueDto();
+        f.setId(fileType.getId());
+        f.setName(fileType.getName());
+        this.fileType = f;
     }
     private Long id;
     private String name, fileLink,fileNumber,relatedSystems;
     private String objectType = "FileObject";
     private ValueDto vendor;
+    private ValueDto fileType;
 
 
 }

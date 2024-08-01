@@ -47,6 +47,7 @@
                 <div id="menu-layers">
                     <div id="controls">
                         <button onclick="toggleFileButtonContent()">Toggle Name</button>
+                        <button onclick="fileFormSetup()">Edit File</button>
                     </div>
                     <div id="items">
                         <!-- <ul>
@@ -135,6 +136,7 @@
     <script src="/functions/util_functions/util.js"></script>
     <script src="/functions/util_functions/SearchableDropdown.js"></script>
     <script src="/functions/util_functions/FormUtil.js"></script>
+    <script src="/functions/util_functions/FormBuilder.js"></script>
 
     <script src="/functions/controllers/PopupController.js"></script>
     <script src="/functions/controllers/ValueController.js"></script>
@@ -166,6 +168,7 @@
         let all = document.getElementById('all');
         let infoWindowsContainer = document.getElementById('infoWindowsContainer');
         let mode = document.getElementById('mode').getAttribute('content');
+        let popups = [];
 
 
 
@@ -194,16 +197,21 @@
 
         getAllCategoryObjects();
         getAllCategories();
-        getAllTransferDataFromDb();
+        // getAllTransferDataFromDb();
         getRevisedExcelPoints();
         getOldExcelPoints();
+        getHrsgValvesFromDb();
+        getKiewitValvesFromDb();
+        getBypassesFromDb();
 
         
         
-
+ 
         
     }).then(()=>{
-        console.log(JSON.stringify(file))
+        console.log(JSON.stringify(hrsgValves))
+        // console.log(JSON.stringify(allTransferData))
+        // console.log(JSON.stringify(allTransferData))
        if(mode) setMode(mode); 
     })
 

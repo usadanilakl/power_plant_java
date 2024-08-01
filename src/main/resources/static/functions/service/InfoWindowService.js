@@ -47,6 +47,4 @@ function positionInfoWindowsInline(){
     }
 }
 
-newInfoWindow("Point",true);
-newInfoWindow("Old-LOTO-Points",true);
-document.getElementById('infoWindowOld-LOTO-Points').appendChild(buildPointSearchField());
+

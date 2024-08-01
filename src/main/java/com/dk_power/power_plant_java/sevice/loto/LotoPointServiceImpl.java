@@ -6,7 +6,6 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
-import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
@@ -68,7 +67,7 @@ public class LotoPointServiceImpl implements LotoPointService {
             point.setTagged(excelPoint.get("Tagged"));
             point.setTagNumber(excelPoint.get("ID"));
             point.setDescription(excelPoint.get("Description"));
-            point.setLocation(excelPoint.get("Location"));
+            point.setSpecificLocation(excelPoint.get("Location"));
             point.setStandard(excelPoint.get("Standard"));
             point.setGeneralLocation(excelPoint.get("GENERAL LOCATION"));
             point.setEquipment(excelPoint.get("Equipment"));

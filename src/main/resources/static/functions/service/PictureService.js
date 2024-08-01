@@ -2,7 +2,7 @@
 //let map = document.getElementById("map");
 let oldWidth;
 let originalWidth;
-let activeHighlights = [];
+let activeHighlights = []; 
 let highlatedAreas = [];
 let selectedArea;
 // let eqFormInfo; //moved to global variables
@@ -45,7 +45,7 @@ function setAreas(areas){
             fillPointInfoWindow(selectedArea);
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
-            positionInfoWindowsInline();
+            //positionInfoWindowsInline();
             //  console.log(event.target)
         })
         //doubleClick(shape, e);

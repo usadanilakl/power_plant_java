@@ -64,4 +64,10 @@ public class PointController {
     public ResponseEntity<Collection<OldLotoPointDto>> getAllOldPoint(){
         return ResponseEntity.ok(oldLotoPointService.convertAllToDto(oldLotoPointService.getAll()));
     }
+
+    @GetMapping("/edit-points")
+    public String getAddPoints(Model model){
+        model.addAttribute("mode","editMode");
+        return "pointEditor";
+    }
 }

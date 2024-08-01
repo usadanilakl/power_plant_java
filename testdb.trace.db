@@ -6529,3 +6529,6 @@ java.sql.SQLClientInfoException: Client info name 'ApplicationName' not supporte
 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
 	at java.base/java.lang.Thread.run(Thread.java:833)
+2024-07-31 18:57:02.984278-05:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT * FROM LOTO_POINT WHERE TAG_NUMBER = 'VCHR170'-[*]"; SQL statement:
+SELECT * FROM LOTO_POINT WHERE TAG_NUMBER = 'VCHR170'- [42000-224]

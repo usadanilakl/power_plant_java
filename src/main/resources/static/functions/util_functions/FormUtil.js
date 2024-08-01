@@ -29,9 +29,7 @@ async function buildFormFromObject(point){
 
         if(isCat){
             let cat;
-            categoryObjects.forEach(c=>{
-                if(c.alias===e)cat=c
-            });
+            categoryObjects.forEach(c=>{if(c.alias===e)cat=c}); 
             if(!point[e]){
                 point[e] = {id:null,
                     category:cat,
@@ -111,6 +109,7 @@ async function buildFormFromObject(point){
             }
             console.log(point[e]); //print assignment
         })
+        
         input.addEventListener('click',async ()=>{
             let clipBoardText = await checkClipboardAndPasteShort(input);
             if(!isCat){
@@ -166,6 +165,7 @@ function buildCategoryOptions(id, items) {
     let dropdownContent = document.createElement('div');
     dropdownContent.classList.add('searchable-dropdown-content');
     dropdownContent.id = `${id}-options`;
+    console.log(items)
     items.forEach(e => {
         let option = document.createElement('div');
         option.textContent = e.name;
