@@ -1,8 +1,7 @@
 package com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation;
 
-import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
-import com.dk_power.power_plant_java.dto.data_transfer.HighilightsJson;
-import com.dk_power.power_plant_java.dto.data_transfer.PidJson;
+import com.dk_power.power_plant_java.dto.data_transfer.*;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.data_transfer.*;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.*;
@@ -114,6 +113,40 @@ public class DataDistributionServiceImpl implements DataDistributionService{
         return result;
     }
 
+    @Override
+    public List<BypassDto> getBypassesDto() {
+        return bypassService.getAllDtos();
+    }
+
+    @Override
+    public List<HrsgPipeIsoDto> getHrsgPipesDto() {
+        return hrsgPipeIsoService.getAllDtos();
+    }
+
+    @Override
+    public List<HrsgValveDto> getHrsgValvesDto() {
+        return hrsgValveService.getAllDtos();
+    }
+
+    @Override
+    public List<KiewitPipeIsoDto> getKiewitPipesDto() {
+        return kiewitPipeIsoService.getAllDtos();
+    }
+
+    @Override
+    public List<KiewitValveDto> getKiewitValvesDto() {
+        return kiewitValveService.getAllDtos();
+    }
+
+    @Override
+    public List<LotoPointDto> getLotoPointsDto() {
+        return lotoPointService.getAllDtos();
+    }
+
+    @Override
+    public List<OldLotoPointDto> getOldLotoPointsDto() {
+        return oldLotoPointService.getAllDtos();
+    }
 
 
 }

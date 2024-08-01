@@ -5,6 +5,10 @@ let vendors=[];
 let categories;
 let file;
 
+let completedPid = [];
+let incompletePid = [];
+
+
 function filePutWithBody(data){
     return{
         method: 'POST',
@@ -100,7 +104,7 @@ function getVendor(vendor){
 }
 
 function getFilesByVendor(vendor){
-    let result =  fileRepository.filter(e=>e!==null && e.vendor!==null && e.vendor.name.toLowerCase().includes(vendor.toLowerCase()));
+    let result =  fileRepository.filter(e=>e!==null && e.vendor!==null && e.vendor.name.toLowerCase().includes(vendor.toLowerCase()) && e.fileType.name==='PID');
     result.forEach(e=>{
         e['dropdownFunc'] = function(){loadPictureWithLightFile(e);} 
         // e['dropdownFunc'] = function(){loadPictureWithFile(e);} 
@@ -121,4 +125,22 @@ async function submitFile(file){
     const data = await resp.text();
 
 }
+
+async function getCompletedFiles(){
+    const resp = await fetch('/file-api/completed');
+    const data = await resp.json();
+    completedPid = data;
+}
+
+async function getIncompleteFiles(){
+    const resp = await fetch('/file-api/incomplete');
+    const data = await resp.json();
+    incompletePid = data;
+}
+
+async function updateFileStatus(id,status){
+    const resp = await fetch('/file-api/'+id+'/'+status,putNoBody);
+    const data = await resp.json();
+}
+
   

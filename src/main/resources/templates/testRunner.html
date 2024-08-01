@@ -197,16 +197,21 @@
 
         getAllCategoryObjects();
         getAllCategories();
-        getAllTransferDataFromDb();
+        // getAllTransferDataFromDb();
         getRevisedExcelPoints();
         getOldExcelPoints();
+        getHrsgValvesFromDb();
+        getKiewitValvesFromDb();
+        getBypassesFromDb();
 
         
         
-
+ 
         
     }).then(()=>{
-        console.log(JSON.stringify(file))
+        console.log(JSON.stringify(hrsgValves))
+        // console.log(JSON.stringify(allTransferData))
+        // console.log(JSON.stringify(allTransferData))
        if(mode) setMode(mode); 
     })
 

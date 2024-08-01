@@ -12,6 +12,13 @@ let putNoBody = {
         'Content-Type': 'application/json'
     }
 }
+let patchNoBody = {
+    method: 'PATCH',
+    headers: {
+        'X-CSRF-TOKEN': token,
+        'Content-Type': 'application/json'
+    }
+}
 let deleteNoBody = {
     method: 'DELETE',
     headers: {

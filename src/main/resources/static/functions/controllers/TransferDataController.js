@@ -1,4 +1,8 @@
 // let transferDataTypes;
+//let allTransferData = [];
+let kiewitValves = [];
+let hrsgValves = [];
+let bypasses = [];
 
 
 async function getTypesOfTransferedData(){
@@ -11,9 +15,10 @@ async function getTypesOfTransferedData(){
 
 async function getAllTransferDataFromDb(){
     const startTime = new Date().getTime();
-    // console.log("receiving data:")
+    console.log("receiving data: getAllFromDb")
     const response = await fetch("/transfer-data/all");
     const data = await response.json();
+    allTransferData = data;
     const endTime = new Date().getTime();
     const duration = endTime - startTime;
     // console.log('it took: '+ duration)
@@ -93,6 +98,7 @@ async function getHrsgValvesFromDb(){
     // console.log("receiving data:")
     const response = await fetch("/transfer-data/hrsg-valves");
     const data = await response.json();
+    hrsgValves = data;
     const endTime = new Date().getTime();
     const duration = endTime - startTime;
     // console.log('it took: '+ duration)
@@ -115,6 +121,7 @@ async function getKiewitValvesFromDb(){
     // console.log("receiving data:")
     const response = await fetch("/transfer-data/kiewit-valves");
     const data = await response.json();
+    kiewitValves = data;
     const endTime = new Date().getTime();
     const duration = endTime - startTime;
     // console.log('it took: '+ duration)
@@ -137,6 +144,7 @@ async function getBypassesFromDb(){
     // console.log("receiving data:")
     const response = await fetch("/transfer-data/bypasses");
     const data = await response.json();
+    bypasses = data;
     const endTime = new Date().getTime();
     const duration = endTime - startTime;
     // console.log('it took: '+ duration)

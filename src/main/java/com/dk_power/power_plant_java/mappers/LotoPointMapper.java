@@ -35,7 +35,7 @@ public class LotoPointMapper implements BaseMapper{
         if (entity.getDescription() != null) dto.setDescription(entity.getDescription());
         if (entity.getIsoPos() != null) dto.setIsoPos(valueService.convertToDto(entity.getIsoPos()));
         if (entity.getNormPos() != null) dto.setNormPos(valueService.convertToDto(entity.getNormPos()));
-//        if (entity.getLocation() != null) dto.setLocation(entity.getLocation());
+        if (entity.getSpecificLocation() != null) dto.setSpecificLocation(entity.getSpecificLocation());
         if (entity.getStandard() != null) dto.setStandard(entity.getStandard());
 //        if (entity.getGeneralLocation() != null) dto.setGeneralLocation(entity.getGeneralLocation());
 //        if (entity.getEquipment() != null) dto.setEquipment(entity.getEquipment());
@@ -50,7 +50,7 @@ public class LotoPointMapper implements BaseMapper{
 //        if (entity.getRedTagId() != null) dto.setRedTagId(entity.getRedTagId());
 //        if (entity.getInUse() != null) dto.setInUse(entity.getInUse());
         //if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentMapper::convertToDto).collect(Collectors.toSet()));
-        if(entity.getLotos()!=null) dto.setLotos(entity.getLotos().stream().map(lotoMapper::convertToDto).toList());
+//        if(entity.getLotos()!=null) dto.setLotos(entity.getLotos().stream().map(lotoMapper::convertToDto).toList());
         if (entity.getOldId() != null) dto.setOldId(entity.getOldId());
         if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
         return dto;
@@ -68,7 +68,7 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
         if (dto.getIsoPos() != null) entity.setIsoPos(valueService.convertToEntity(dto.getIsoPos()));
         if (dto.getNormPos() != null) entity.setNormPos(valueService.convertToEntity(dto.getNormPos()));
-//        if (dto.getLocation() != null) entity.setLocation(dto.getLocation());
+        if (dto.getSpecificLocation() != null) entity.setSpecificLocation(dto.getSpecificLocation());
         if (dto.getStandard() != null) entity.setStandard(dto.getStandard());
 //        if (dto.getGeneralLocation() != null) entity.setGeneralLocation(dto.getGeneralLocation());
 //        if (dto.getEquipment() != null) entity.setEquipment(dto.getEquipment());
@@ -83,7 +83,7 @@ public class LotoPointMapper implements BaseMapper{
 //        if (dto.getRedTagId() != null) entity.setRedTagId(dto.getRedTagId());
 //        if (dto.getInUse() != null) entity.setInUse(dto.getInUse());
         //if(dto.getEquipmentList()!=null) entity.setEquipmentList(dto.getEquipmentList().stream().map(equipmentMapper::convertToEntity).collect(Collectors.toSet()));
-        if(dto.getLotos()!=null) entity.setLotos(dto.getLotos().stream().map(lotoMapper::convertToEntity).toList());
+//        if(dto.getLotos()!=null) entity.setLotos(dto.getLotos().stream().map(lotoMapper::convertToEntity).toList());
         if (dto.getOldId() != null) entity.setOldId(dto.getOldId());
         return entity;
     }

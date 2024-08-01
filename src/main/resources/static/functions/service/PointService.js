@@ -3,13 +3,20 @@
  * On click on area:
     * Get equipment ifo
     * Open info window
-    * Fill info window with 3 dropdowns: Equipment, LOTO points, Related Data
-    * Each dropdown will have table/form that contains information related to the equipment:
+    * Fill info window with equipment info, a dropdown for each loto point that would expand and collaps on click
  * 
- * On click on the Equipment dropdown button: 
-    * Create a form for each field of the equipment
-    * Create mode function that would enable editing
-    * Wire it to end point to update edits        
+ * Old Loto Point Info:
+    *Create a button that would open infowindow with old loto points
+    *By default show related points to currently selected equipment
+    *Add search function to the info window
+
+ * Edit mode:
+    * When enabled, add control buttons to revised loto points to be able to add loto point to the equipment
+    * Add control buttons for category dropdowns to edit categories
+    * Remove read only from fields
+ *
+ * Updating DB:
+    *
  * 
  ****************************************************************************************************************************************************************************************/
 
@@ -39,12 +46,18 @@ function hideExcelFields(point,field){
 function getExcelPointsByLabel(label){
     let result = [];
     revisedExcelPoints.forEach(e=>{
-        // if(formatLabel(e.tagNumber).includes(formatLabel(label)) ){
-        //    result.push({tagNumber:e.tagNumber, description:e.description, location:e.generalLocation, specificLocation:e.location, itemType:e.objectType, originalId:e.originalId }); 
-        // } 
         if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e); //old version
     })
     oldExcelPoints.forEach(e=>{
+        if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
+    })
+    hrsgValves.forEach(e=>{
+        if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
+    })
+    kiewitValves.forEach(e=>{
+        if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
+    })
+    bypasses.forEach(e=>{
         if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
     })
     return result;
@@ -112,7 +125,8 @@ function excelPointDropdown(points){
         item.appendChild(formContainer);
 
         if(e.objectType==="OldLotoPoint") button.style.backgroundColor = "red";
-        else button.style.backgroundColor = "green";
+        else if(e.objectType==="RevisedLotoPoints") button.style.backgroundColor = "green";
+        else button.style.backgroundColor = "blue";
 
         button.textContent = e.tagNumber;
         button.addEventListener('click', ()=>{
@@ -135,7 +149,7 @@ function excelPointDropdown(points){
             const editModeAction = function(){
                 addPointToEquipment(e);
             }
-            if(modes.lotoMode.state)addButton.addEventListener('click',lotoModeAction);
+            //if(modes.lotoMode.state)addButton.addEventListener('click',lotoModeAction);
             if(modes.editMode.state)addButton.addEventListener('click',editModeAction);
         }
     }
@@ -208,6 +222,15 @@ function excelPointSearch(searchValue){
         if(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber))) result.push(e);
     });
     oldExcelPoints.forEach(e=>{
+        if(e.tagNumber!==""&&(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber)))) result.push(e);
+    })
+    hrsgValves.forEach(e=>{
+        if(e&&(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber)))) result.push(e);
+    })
+    kiewitValves.forEach(e=>{
+        if(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber))) result.push(e);
+    })
+    bypasses.forEach(e=>{
         if(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber))) result.push(e);
     })
     return result;
@@ -238,39 +261,20 @@ function getPointFromArrById(id){
     return file.points.find(e => e.id === id);
 }
 
-async function fillPointInfoWindow(point){//old way was eqFormInfo in setArea() in picture service
-    let form = await buildFormFromObject(point); //this is new way
-    // let form = await getHtmlPointInfoForm();//this is old way
+async function fillPointInfoWindow(point){
+    let form = await buildFormFromObject(point); 
     let infoFrame = document.getElementById('infoFramePoint');
     let infoContainer = document.getElementById('infoWindowPoint');
     if(infoContainer === null) newInfoWindow("Point");
     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
 
     infoContainer.innerHTML = "";
-    infoContainer.appendChild(form);//this is new way
-    // infoContainer.innerHTML = form;//this is old way
-    //setFormValues(infoContainer,point);
-
-    // if(modes.editMode.state){
-    //     removeReadOnly(infoFrame.querySelector('form'));
-    //     createSearchableDropdown("eqType");
-    //     createSearchableDropdown("vendor");
-    //     createSearchableDropdown("location");
-    //     createSearchableDropdown("system");
-    // }
-
-    // if(eqFormInfo.lotoPoints)infoContainer.appendChild(lotoPointDropdown(eqFormInfo.lotoPoints));//old version
+    infoContainer.appendChild(form);
     
     if(selectedArea.lotoPoints){
         const list = await lotoPointDropdown(selectedArea.lotoPoints); 
         infoContainer.appendChild(list);
     } 
-
-    // let button = document.getElementById('pointUpdateButton');
-    // let button2 = document.getElementById('pointDeleteButton');
-    // button.addEventListener('click',()=>updatePoint(point)); 
-    // button2.addEventListener('click',()=>deletePoint(point.id)); 
-
 }
 
 function convertToLotoPointFormDto(p){

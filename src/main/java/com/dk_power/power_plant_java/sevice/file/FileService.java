@@ -34,4 +34,6 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     void createNewFile(FileDto file);
     void updateFile(FileDto file);
 
+    List <FileDtoLight> getCompletedPids();
+    List <FileDtoLight> getIncompletePids();
 }

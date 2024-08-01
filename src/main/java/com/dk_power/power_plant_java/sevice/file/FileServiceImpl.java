@@ -121,6 +121,16 @@ public class FileServiceImpl implements FileService {
 
     }
 
+    @Override
+    public List<FileDtoLight> getCompletedPids() {
+        return fileRepo.getAllCompletedLight();
+    }
+
+    @Override
+    public List<FileDtoLight> getIncompletePids() {
+        return fileRepo.getAllIncompleteLight();
+    }
+
     public List<FileDto> getAllDtos(String ext) {
         return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
     }

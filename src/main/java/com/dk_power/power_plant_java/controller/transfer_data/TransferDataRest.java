@@ -1,8 +1,6 @@
 package com.dk_power.power_plant_java.controller.transfer_data;
 
-import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
-import com.dk_power.power_plant_java.dto.data_transfer.HighilightsJson;
-import com.dk_power.power_plant_java.dto.data_transfer.PidJson;
+import com.dk_power.power_plant_java.dto.data_transfer.*;
 import com.dk_power.power_plant_java.entities.data_transfer.*;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.DataDistributionService;
@@ -54,24 +52,24 @@ public class TransferDataRest {
         return ResponseEntity.ok(dataDistributionService.getHighlightsJson());
     }
     @GetMapping("/hrsg-valves")
-    public ResponseEntity<List<HrsgValve>> getHrsgValves(){
-        return ResponseEntity.ok(dataDistributionService.getHrsgValves());
+    public ResponseEntity<List<HrsgValveDto>> getHrsgValves(){
+        return ResponseEntity.ok(dataDistributionService.getHrsgValvesDto());
     }
     @GetMapping("/hrsg-pipes")
     public ResponseEntity<List<HrsgPipeIso>> getHrsgPipies(){
         return ResponseEntity.ok(dataDistributionService.getHrsgPipes());
     }
     @GetMapping("/kiewit-valves")
-    public ResponseEntity<List<KiewitValve>> getKiewitValves(){
-        return ResponseEntity.ok(dataDistributionService.getKiewitValves());
+    public ResponseEntity<List<KiewitValveDto>> getKiewitValves(){
+        return ResponseEntity.ok(dataDistributionService.getKiewitValvesDto());
     }
     @GetMapping("/kiewit-pipes")
     public ResponseEntity<List<KiewitPipeIso>> getKiewitPipies(){
         return ResponseEntity.ok(dataDistributionService.getKiewitPipes());
     }
     @GetMapping("/bypasses")
-    public ResponseEntity<List<Bypass>> getBypass(){
-        return ResponseEntity.ok(dataDistributionService.getBypasses());
+    public ResponseEntity<List<BypassDto>> getBypass(){
+        return ResponseEntity.ok(dataDistributionService.getBypassesDto());
     }
 
 }

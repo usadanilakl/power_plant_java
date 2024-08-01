@@ -20,7 +20,7 @@ public class LotoPointDto extends BaseDto {
     private String description;
     private ValueDto isoPos;
     private ValueDto normPos;
-//    private String location;
+    private String specificLocation;
     private String standard;
 //    private String generalLocation;
 //    private String equipment;

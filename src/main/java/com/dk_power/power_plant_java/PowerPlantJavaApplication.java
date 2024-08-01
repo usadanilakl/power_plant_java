@@ -78,13 +78,7 @@ private final ElectricalTableService electricalTableService;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
-        Category fileType = categoryService.getCategoryByName("File Type");
-        categoryService.getValuesOfCat("FileType").forEach(e->{
-//            Value value = valueService.convertToEntity(e);
-//            value.setCategory(fileType);
-//            valueService.save(value);
-            System.out.println(e);
-        });
+
 
 
 /******************************************************************************************************************************************

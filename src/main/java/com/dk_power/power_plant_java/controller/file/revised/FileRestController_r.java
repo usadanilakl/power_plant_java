@@ -1,8 +1,10 @@
 package com.dk_power.power_plant_java.controller.file.revised;
 
+import com.azure.core.annotation.Patch;
 import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,17 @@ public class FileRestController_r {
             throw new RuntimeException("File now found");
         }
     }
+    @PutMapping("/{id}/{status}")
+    public ResponseEntity<FileDto> pathcFile(@PathVariable String id, @PathVariable String status){
+        if(fileService.getEntityById(id)!=null) {
+            Boolean stat = !status.equalsIgnoreCase("false");
+            FileObject entityById = fileService.getEntityById(id);
+            entityById.setCompleted(stat);
+            return ResponseEntity.ok(fileService.convertToDto(fileService.save(entityById)));
+        }else{
+            throw new RuntimeException("File not found");
+        }
+    }
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteHt(@PathVariable String id){
         if(fileService.getEntityById(id)!=null) {
@@ -44,5 +57,14 @@ public class FileRestController_r {
         }else{
             throw new RuntimeException("Equipment now found");
         }
+    }
+    @GetMapping("/completed")
+    public ResponseEntity<List<FileDtoLight>> getCompletedPids(){
+        return ResponseEntity.ok(fileService.getCompletedPids());
+    }
+    @GetMapping("/incomplete")
+    public ResponseEntity<List<FileDtoLight>> getIncompletePids(){
+
+        return ResponseEntity.ok(fileService.getIncompletePids());
     }
 }
