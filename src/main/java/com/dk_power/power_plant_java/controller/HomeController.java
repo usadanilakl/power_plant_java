@@ -15,8 +15,20 @@ public class HomeController {
     String getHome(Model model){
         model.addAttribute("files", fileService.getAll());
         model.addAttribute("sortingGroups", SortingGroup.values());
-        return "testRunner";
+        return "home";
 //        return "layouts/main-template";
+    }
+    @GetMapping("/view")
+    String getView(){
+        return "testRunner";
+    }
+    @GetMapping("/edit")
+    String getEdit(){
+        return "pointEditor";
+    }
+    @GetMapping("/edit-bulk")
+    String getEditBulk(){
+        return "bulkPointEditor";
     }
     @GetMapping("/admin")
     String getAdmin(){

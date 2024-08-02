@@ -180,7 +180,9 @@
     getIncompleteFiles()
     .then(()=>getVendors())
     .then(()=>getCategories())
-    .then(()=>{
+    .then(async ()=>{
+        await getAllCategories();
+        await getAllValuesOfEachCategory();
         newInfoWindow("Point",false);
         newInfoWindow("Old-LOTO-Points",false);
         document.getElementById('infoWindowOld-LOTO-Points').appendChild(buildPointSearchField());
@@ -190,14 +192,13 @@
         loadPictureWithLightFile(incompletePid[0]);
 
         getAllCategoryObjects();
-        getAllCategories();
         getRevisedExcelPoints();
         getOldExcelPoints();
         getHrsgValvesFromDb();
         getKiewitValvesFromDb();
         getBypassesFromDb();
         getCompletedFiles();
-        getAllValuesOfEachCategory()
+        
 
         let left = document.getElementById('lower').querySelector('ul');
         let item = document.createElement('li');
@@ -206,9 +207,12 @@
         item.classList.add('btn-list-in-line');
         item.classList.add('hide');
         
-    }).then(()=>{
+    }).then(async ()=>{
         completedPid = completedPid.filter(e=>e.vendor.name==="Kiewit");
        if(mode) setMode(mode); 
+    }).then(()=>{
+        console.log(JSON.stringify(allAliases));
+        console.log(JSON.stringify(valuesByCategory));
     })
 
     pictureContainer.addEventListener('mousedown',(event)=>{

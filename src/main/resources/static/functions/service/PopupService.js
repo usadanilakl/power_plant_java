@@ -87,4 +87,12 @@ async function setupRefractorPopup(category,oldValue,points){
     return popupHolder;
 }
 
+async function displayMessagePopup(message){
+    let popup = await getMessagePopUp();
+    let modal = popup.querySelector('#message-modal')
+    let myModal = new bootstrap.Modal(modal, {});
+    popup.querySelector('#insert-message').textContent = message;
+    myModal.show();
+}
+
 

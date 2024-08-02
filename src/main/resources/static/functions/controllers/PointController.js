@@ -49,9 +49,13 @@ async function getHtmlPointInfoForm(){
 async function updatePoint(obj){
     // console.log(JSON.stringify(selectedArea));
     // selectedArea.coordinates = getNewAreaCoorinates(selectedArea);
-    console.log(JSON.stringify(obj))
-    let newObj = updateSelectedArea(obj);
-    console.log(JSON.stringify(newObj));
+    //let newObj = updateSelectedArea(obj);
+    let message = equipmentFormValidation(obj);
+    console.log(message);
+    if(message!==null){
+        displayMessagePopup(message);
+        return;
+    }
     const response = await fetch(createNewEqUrl,getPostMetaDataWithBody(selectedArea));
     const data = await response.json();
     return data;
@@ -78,7 +82,7 @@ async function addPointToEquipment(lotoPoint){
         updatedEq = await resp.json();
         if(updatedEq && updatedEq.id){
         selectedArea.lotoPoints = updatedEq.lotoPoints;
-        fillPointInfoWindow(selectedArea)
+        fillPointInfoWindow(selectedArea);
         }
     }else console.log("oldId: "+oldId + "eq id: " + eqId);
 }

@@ -33,6 +33,7 @@ const getRefractorPopupUrl = "/cat/refractor-popup"
 
 let categoryObjects = [];
 let allAliases = [];
+let valuesByCategory = {};
 
 async function getValuesOfCategoryAlias(e){
     const resp = await fetch('/category/get-'+ e);
@@ -141,7 +142,7 @@ async function getRefractorPopup(id){
 async function getAllCategories(){
     const resp = await fetch('/category/');
     const data = await resp.json();
-    allAliases = data;
+    allAliases = [...data];
     return data;
 }
 
@@ -156,4 +157,10 @@ async function getCategoryByAlias(e){
     const resp = await fetch('/category/by-alias/'+e);
     const data = await resp.json();
     return data;
+}
+
+async function getAllValuesOfEachCategory(){
+    for(let a of allAliases){
+        valuesByCategory[a] = await getValuesOfCategoryAlias(a);
+    }
 }

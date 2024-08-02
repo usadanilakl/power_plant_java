@@ -14,3 +14,11 @@ async function getFormPopUp(){
     popup.innerHTML = data;
     return popup;
 }
+
+async function getMessagePopUp(){
+    const response = await fetch("/popup/message");
+    const data = await response.text();
+    let popup = document.createElement('div');
+    popup.innerHTML = data;
+    return popup;
+}

@@ -19,4 +19,8 @@ public class PopUpController {
     public String getformPopUp(){
         return "partials/form-popup";
     }
+    @GetMapping("/message")
+    public String getMessagePopUp(){
+        return "partials/message-popup";
+    }
 }

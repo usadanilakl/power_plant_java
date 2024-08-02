@@ -440,3 +440,13 @@ function addOptionToSelect(selectElement, optionText, optionValue) { //Non Searc
     selectElement.add(option);
 }
 
+function equipmentFormValidation(eq){
+    if(eq.description === null || eq.description.trim()==="") return "Fill out description";
+    if(eq.tagNumber === null || eq.tagNumber.trim()==="") return "Fill out tagNumber";
+    if(validateCategory("vendor", eq.vendor.name)) return validateCategory("vendor", eq.vendor.name);
+    if(validateCategory("eqType", eq.eqType.name))return validateCategory("eqType", eq.eqType.name);
+    if(validateCategory("location", eq.location.name))return validateCategory("location", eq.location.name);
+    if(validateCategory("system", eq.system.name))return validateCategory("system", eq.system.name);
+    return null;
+}
+

@@ -13,7 +13,7 @@ function isValue(item) {
 }
 
 function validateCategory(category, value){
-    let values = valuesByCategory[category];
+    let values = valuesByCategory[category].map(e=>e.name);
     if(!values.includes(value)) return category + " doesn't include " + value + " create new value or select existing one";
     else return null;
 }

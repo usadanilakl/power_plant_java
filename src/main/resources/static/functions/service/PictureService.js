@@ -39,7 +39,7 @@ function setAreas(areas){
             event.preventDefault();
             removeAllHighlights();
             createHighlight(area);
-            pointEditModeControl();
+            pointEditModeControl(); 
             selectedArea = e;
             eqFormInfo = convertToFormDto(e);
             fillPointInfoWindow(selectedArea);
