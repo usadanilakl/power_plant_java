@@ -7,10 +7,16 @@
 //Set text: Change "VALUE NAME" to "_____________" (underscore is an input field)
 //display items returned from server by delete end point. 
 
-function fillValueRefractorWindow(){
-    
-}
 
 function isValue(item) {
     return item && typeof item === 'object' && !Array.isArray(item) && item.objectType === "Value";
 }
+
+function validateCategory(category, value){
+    let values = valuesByCategory[category];
+    if(!values.includes(value)) return category + " doesn't include " + value + " create new value or select existing one";
+    else return null;
+}
+
+
+

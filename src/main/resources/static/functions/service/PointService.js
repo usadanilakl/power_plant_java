@@ -174,6 +174,7 @@ async function lotoPointDropdown(points){
         item.appendChild(formContainer);
 
         button.textContent = e.tagNumber;
+        button.type = 'button';
         button.addEventListener('click', async ()=>{
             if(formContainer.children.length === 0){
                 // formContainer.appendChild(showPointInfo(e));//old version
@@ -184,9 +185,10 @@ async function lotoPointDropdown(points){
             }
         });
         let addButton = document.createElement('button');
+        addButton.type = "button";
         buttons.appendChild(addButton);
         addButton.classList.add('addButtons');
-        addButton.textContent = "-";
+        addButton.textContent = "--";
         addButton.classList.add('hide');
 
         if(modes.editMode.state || modes.lotoMode.state){
@@ -273,7 +275,8 @@ async function fillPointInfoWindow(point){
     
     if(selectedArea.lotoPoints){
         const list = await lotoPointDropdown(selectedArea.lotoPoints); 
-        infoContainer.appendChild(list);
+        // infoContainer.appendChild(list);
+        document.getElementById('loto-point-container').appendChild(list);
     } 
 }
 

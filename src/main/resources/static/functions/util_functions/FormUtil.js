@@ -121,17 +121,37 @@ async function buildFormFromObject(point){
 
     
     if(point.objectType==="Equipment"){
-    let submitButton = document.createElement('button');
-    submitButton.type = 'button';
-    submitButton.textContent = 'Submit';
-    submitButton.addEventListener('click',()=>updatePoint(point))
-    form.appendChild(submitButton);
 
-    let deleteButton = document.createElement('button');
-    deleteButton.type = 'button';
-    deleteButton.textContent = "Delete";
-    deleteButton.addEventListener('click',()=>deletePoint(point.id))
-    form.appendChild(deleteButton);
+        let lotoPointContainer = document.createElement('div');
+        lotoPointContainer.id = 'loto-point-container';
+        form.appendChild(lotoPointContainer);
+
+        let submitButton = document.createElement('button');
+        submitButton.id = 'eq-submit-button';
+        submitButton.type = 'button';
+        submitButton.classList.add('btn');
+        submitButton.classList.add('btn-success');
+        submitButton.textContent = 'Submit';
+        submitButton.addEventListener('click',()=>{
+            updatePoint(point);
+            changeSubmitButtonToGreen(submitButton);
+        })
+        form.appendChild(submitButton);
+        // document.getElementById('infoWindowPoint').appendChild(submitButton);
+
+        let deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.classList.add('btn');
+        deleteButton.classList.add('btn-danger');
+        deleteButton.textContent = "Delete";
+        deleteButton.addEventListener('click',()=>deletePoint(point.id))
+        form.appendChild(deleteButton);
+        // document.getElementById('infoWindowPoint').appendChild(deleteButton);
+        getDataFromForm(form,oldFormData);
+        getDataFromForm(form,newFormData);
+        form.addEventListener('click',()=>{
+            setTimeout(()=>{if(changeDetector(form)) changeSubmitButtonToRed(submitButton)},300);
+        });
     }
 
     return form;
@@ -219,6 +239,52 @@ function hideFormFields(point, key){
     return false;
 }
 
+function changeSubmitButtonToRed(b){
+    b.classList.remove('btn-success');
+    b.classList.add('btn-danger');    
+}
+function changeSubmitButtonToGreen(b){
+    b.classList.remove('btn-danger');
+    b.classList.add('btn-success');    
+}
+
+let oldFormData = {};
+let newFormData = {};
+
+function changeDetector(form){
+    getDataFromForm(form, newFormData);
+    console.log(newFormData.description);
+    console.log(oldFormData.description);
+    let isChanged = false;
+    if(Object.keys(oldFormData).length>0){
+        isChanged = !compareObjects(oldFormData, newFormData);
+    }
+    oldFormData = {...newFormData};
+    return isChanged;
+}
+
+function getDataFromForm(form,obj){
+    const inputs = form.querySelectorAll('input');
+    inputs.forEach(e=>obj[e.id]=e.value)
+}
+
+function compareObjects(obj1, obj2) {
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) {
+        return false;
+    }
+
+    return keys1.every(key => {
+        const val1 = obj1[key];
+        const val2 = obj2[key];
+        if (typeof val1 === 'object' && typeof val2 === 'object') {
+            return compareObjects(val1, val2); // Recursively compare nested objects
+        }
+        return val1 === val2;
+    });
+}
 
 
 

@@ -146,7 +146,7 @@
     <script src="/functions/controllers/FileController.js"></script>
     <script src="/functions/controllers/PointController.js"></script>
     <script src="/functions/controllers/LotoController.js"></script>
-    <script src="/functions/controllers/TransferDataController.js"></script>
+    <script src="/functions/controllers/TransferDataController.js"></script> 
 
     <script src="/functions/service/PopupService.js"></script>
     <script src="/functions/service/MenuDropdownService.js"></script>
@@ -197,6 +197,7 @@
         getKiewitValvesFromDb();
         getBypassesFromDb();
         getCompletedFiles();
+        getAllValuesOfEachCategory()
 
         let left = document.getElementById('lower').querySelector('ul');
         let item = document.createElement('li');
