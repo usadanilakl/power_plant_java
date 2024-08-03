@@ -220,10 +220,10 @@ function createHighlight(area){
     let rename = document.createElement('button');
 
     accept.classList.add('highlight-control-accept');
-    rename.classList.add('highlight-control-buttons');
+    rename.classList.add('highlight-control-rename');
     highlightInfo.classList.add('highlightInfo');
-    accept.textContent = "+";
-    rename.textContent = "X";
+    accept.textContent = "Accept";
+    rename.textContent = "Rename";
     controls.classList.add('highlight-controls')
 
     controls.appendChild(accept);

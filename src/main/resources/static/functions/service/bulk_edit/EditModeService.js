@@ -38,3 +38,7 @@ function createModeButtons(){
     return dropdown;
 }
 
+function accept(){
+    
+}
+

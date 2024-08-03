@@ -27,15 +27,15 @@
     position: absolute;
     bottom:100%;
     background-color: white;
-    width: 100%;
-    min-height: 10%;
+    width: fit-content;
+    /* min-height: 10%; */
     border: 2px solid blue;
     
-    overflow: hidden;
+    /* overflow: hidden; */
 }
 .highlightInput{
-    width: 100%;
-    overflow: hidden;
+    width: fit-content;
+    /* overflow: hidden; */
 }
 .responsive-text {
     /*font-size: 1vw;  Adjusts font size relative to viewport width */
@@ -44,18 +44,11 @@
     white-space: nowrap; /* Prevents text wrapping */
     overflow: hidden; /* Ensures no overflow */
 }
-/* .highlight-control-buttons{
-    position: absolute;
-    left:100%;
-    z-index: 1000;
-} */
 .highlight-control-accept{
-    width: 20px;
-    height: 20px;
-    /* background-image: url("/background/buttons/checkmark.png");
-    background-position: center;
-    background-size: contain; */
     background-color: green;
+}
+.highlight-control-rename{
+    background-color: rgb(189, 7, 7);
 }
 .highlight-controls{
     position: absolute;
