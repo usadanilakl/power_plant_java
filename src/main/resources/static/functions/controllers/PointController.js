@@ -3,6 +3,7 @@ let oldLotoPoints = [];
 
 let addLotoPointToEqUrl = '/points/add-loto-point/' //{eqId}/{pointOldId}
 let createNewEqUrl = '/points/'
+let updateTagUrl = '/points/tag'
 
 function getPostMetaDataWithBody(data){
     return{
@@ -102,6 +103,21 @@ async function deletePoint(id){
 }
 
 
+/**********************************************************************************************************************8
+ * Field By Field
+ ***********************************************************************************************************************/
+async function updateEqTagNumber(){
+    let message = tagValidation(selectedArea.tagNumber);
+    console.log(message);
+    if(message!==null){
+        displayMessagePopup(message);
+        return;
+    }
+    const response = await fetch(updateTagUrl,getPostMetaDataWithBody(selectedArea));
+    const data = await response.json();
+    return data;
+    
+}
 
 
 /**********************************************************************************************************************8

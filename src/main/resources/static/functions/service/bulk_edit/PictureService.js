@@ -207,27 +207,34 @@ function createHighlight(area){
     activeHighlights.push(highlight);
     highlatedAreas.push(area);
     initResize(highlight, true); //resizing tools setup (for editing)
+    const updateCoords = ()=>updatePointInfo(highlight);
     highlight.querySelectorAll('.corners').forEach(e=>{
-        e.addEventListener('click', updatePointInfo)
+        e.addEventListener('click', updateCoords)
     })
 
     let highlightInfo = document.createElement('div');
     let controls = document.createElement('div');
     let accept = document.createElement('button');
     let rename = document.createElement('button');
+    let remove = document.createElement('button');
 
     accept.classList.add('highlight-control-accept');
     rename.classList.add('highlight-control-rename');
+    remove.classList.add('highlight-control-remove');
     highlightInfo.classList.add('highlightInfo');
     accept.textContent = "Accept";
     rename.textContent = "Rename";
+    remove.textContent = "Remove";
     controls.classList.add('highlight-controls')
 
     controls.appendChild(accept);
     controls.appendChild(rename);
+    controls.appendChild(remove);
     highlight.appendChild(controls);
 
     accept.addEventListener('click',()=>acceptPoint(highlight))
+    remove.addEventListener('click',()=>removePoint(highlight))
+
 
     highlight.appendChild(highlightInfo);
     if(selectedArea && selectedArea.lotoPoints){
@@ -554,14 +561,13 @@ async function handleMouseUp() {
 }
 
 async function offsetSizing(picture){
+    const coefficientX = originalWidth/picture.offsetWidth;
 
-const coefficientX = originalWidth/picture.offsetWidth;
-
-coords.mouseOnPictureStart.x = Math.floor(coords.mouseOnPictureStart.x*coefficientX);
-coords.mouseOnPictureStart.y = Math.floor(coords.mouseOnPictureStart.y*coefficientX);
-coords.mouseOnPictureEnd.x = Math.floor(coords.mouseOnPictureEnd.x*coefficientX);
-coords.mouseOnPictureEnd.y = Math.floor(coords.mouseOnPictureEnd.y*coefficientX);
-}
+    coords.mouseOnPictureStart.x = Math.floor(coords.mouseOnPictureStart.x*coefficientX);
+    coords.mouseOnPictureStart.y = Math.floor(coords.mouseOnPictureStart.y*coefficientX);
+    coords.mouseOnPictureEnd.x = Math.floor(coords.mouseOnPictureEnd.x*coefficientX);
+    coords.mouseOnPictureEnd.y = Math.floor(coords.mouseOnPictureEnd.y*coefficientX);
+    }
 
 function removeLastHighlight(){
     let i = newHighlights.length-1;
@@ -591,8 +597,8 @@ function pointEditModeControl(){
     }
 }
 
-function convertCoordsToOriginalSize(event) {
-    let coords = getObjCoordOnPicture(event.target);
+function convertCoordsToOriginalSize(highlight) {
+    let coords = getObjCoordOnPicture(highlight);
     let extractedWidth = selectedArea.originalPictureSize.split(",")[0].trim();
     let w = parseInt(extractedWidth.substring(extractedWidth.indexOf(":")+1));
     let k = w / picture.clientWidth;
@@ -630,20 +636,13 @@ function formatCoordsForServer(coords){
     }
 }
 
-function updatePointInfo(event){
-    let newCoords = convertCoordsToOriginalSize(event);
+function updatePointInfo(highlight){
+    let newCoords = convertCoordsToOriginalSize(highlight);
     let updatedCoords = formatCoordsForServer(newCoords);
-    let pointForm = document.getElementById('point-info-form');
-    let coordsInputField = document.querySelector('[id="coordinates"]');
-    let oldCoords = getAreaCoordinates(coordsInputField.value).split(",");
-    // console.log(JSON.stringify(oldCoords));
-    // console.log(updatedCoords);
-    let result = JSON.stringify(updatedCoords).replace("{").replace("}");
-    coordsInputField.value = result;
+    let oldCoords = selectedArea.coordinates;
+    let result = JSON.stringify(updatedCoords);
+    result = result.replace("{","").replace("}","");
     selectedArea.coordinates = result;
-    // let form = new FormData(pointForm);
-    // form.set('coords',JSON.stringify(updatedCoords));
-    // console.log(form.get('coords'));
 }
 
 

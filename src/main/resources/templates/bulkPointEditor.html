@@ -25,7 +25,7 @@
 }
 .highlightInfo{
     position: absolute;
-    bottom:100%;
+    top:100%;
     background-color: white;
     width: fit-content;
     /* min-height: 10%; */
@@ -47,14 +47,17 @@
 .highlight-control-accept{
     background-color: green;
 }
-.highlight-control-rename{
+.highlight-control-remove{
     background-color: rgb(189, 7, 7);
+}
+.highlight-control-rename{
+    background-color: rgb(189, 168, 7);
 }
 .highlight-controls{
     position: absolute;
     display: flex;
     flex-direction: column;
-    left:100%;
+    right:100%;
     z-index: 900;
     border: 2px solid blue;
 }
@@ -239,7 +242,7 @@
 });
 const zoom = zoomPicture.bind(null,picture);
 pictureContainer.addEventListener('wheel',zoom);
-//document.addEventListener('mousedown',handleMouseDown);
+document.addEventListener('mousedown',handleMouseDown);
 
 
 let currentFileIndex = 0;

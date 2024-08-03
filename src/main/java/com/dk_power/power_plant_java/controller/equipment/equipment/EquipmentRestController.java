@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.equipment.equipment;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,5 +42,12 @@ public class EquipmentRestController {
         }else{
             throw new RuntimeException("Equipment now found");
         }
+    }
+    @PatchMapping("/tag/{id}/{tag}")
+    public ResponseEntity<String> updateTag(@PathVariable String id, @PathVariable String tag){
+        Equipment entity = equipmentService.getEntityById(id);
+        entity.setTagNumber(tag);
+        equipmentService.save(entity);
+        return ResponseEntity.ok("Tag Number was successfully updated");
     }
 }
