@@ -2,7 +2,7 @@
 let editModes = {
     lotoPoint:{state:false,name:"Loto Point Assignment"},
     eqDescription:{state:false,name:"Equipment Description"},
-    eqTagNumber:{state:false,name:"Tag Number"},
+    eqTagNumber:{state:true,name:"Tag Number"},
     eqVendor:{state:false,name:"Equipment Vendor"},
     eqLocation:{state:false,name:"General Location"},
     specificLocation:{state:false,name:"Specific Location"},
@@ -20,7 +20,7 @@ function setEditMode(mode){
         editModes[m].state = false
     }
     editModes[mode].state = true;
-    dropdown.value = mode;
+    //dropdown.value = mode;
 }
 
 function createModeButtons(){

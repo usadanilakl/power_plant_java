@@ -40,12 +40,12 @@ function setAreas(areas){
         let area = createAreaElement(e);
         area.addEventListener('click',()=>{
             event.preventDefault();
-            //removeAllHighlights();
-            let highlight = createHighlight(area);
-            pointEditModeControl(); 
             selectedArea = e;
             selectedAres.push(selectedArea);
-            selectedBundle.push({"area":area,"eq":e,"highlight":highlight})
+            //removeAllHighlights();
+            let highlight = createHighlight(area);
+            selectedBundle.push({"area":area,"eq":e,"highlight":highlight});
+            pointEditModeControl(); 
             console.log(selectedBundle.length)
             //fillPointInfoWindow(selectedArea);
             let points = getExcelPointsByLabel(e.tagNumber);
@@ -128,8 +128,13 @@ function resizeHighlights(){
         e.style.width = getShapeCoordinates(area).w;
         e.style.height = getShapeCoordinates(area).h;
 
-        let info = e.querySelector('.highlightInfo');
-        info.style.width = info.offsetWidth * currentSizeCoefficient + "px";
+        // let info = e.querySelector('.highlightInfo');
+        // info.style.width = info.offsetWidth * currentSizeCoefficient + "px";
+        // info.style.height = 'auto';
+
+        // let infput = info.querySelector('input');
+        // infput.style.width = info.offsetWidth * currentSizeCoefficient + "px";
+        // infput.style.height = 'auto';
     })
 }
 
@@ -170,13 +175,34 @@ function createHighlight(area){
         selectedBundle = selectedBundle.filter(e=>e.highlight.id!==highlight.id)
         document.getElementById('all').removeChild(highlight);
         selectedArea = selectedBundle[selectedBundle.length-1].eq;
+        fillExcelPointInfoWindow(getExcelPointsByLabel(selectedArea.tagNumber));
     }
 
     const dClick = doubleClickArea.bind(null,highlight);
     highlight.addEventListener('click',dClick);
+
+    const highlightDbClick = ()=>{
+        let counter = 0;
+        const clickCounter = (event) => {
+            if(event.target.classList.contains('highlightInfo') || event.target.tagName === "INPUT") return
+            counter++;
+            if (counter === 1) {
+                setTimeout(() => {
+                    if (counter === 1) {
+                        highlightOneClickFunction();
+                    } else if (counter > 1) {
+                       console.log('double click');
+                    }
+                    counter = 0; // reset counter
+                }, 300);
+            }
+        };
+        highlight.addEventListener('click', clickCounter);
+    }
     setTimeout(()=>{
         highlight.removeEventListener('click',dClick);
-        dbClick(highlight,()=>highlightOneClickFunction(), ()=>console.log("highlight db click"));
+        // dbClick(highlight,()=>highlightOneClickFunction(), ()=>console.log("highlight db click"));
+        highlightDbClick();
     },300)
 
     
@@ -189,12 +215,28 @@ function createHighlight(area){
     })
 
     let highlightInfo = document.createElement('div');
-    let text = document.createElement('p');
+    let input = document.createElement('input');
     highlightInfo.classList.add('highlightInfo');
-    text.classList.add('responsive-text');
-    text.textContent = "Information";
-    highlightInfo.appendChild(text);
+    input.classList.add('hihglihgtInput');
+    // input.value = "Information"
+    // highlightInfo.appendChild(input);
     highlight.appendChild(highlightInfo);
+    if(selectedArea && selectedArea.lotoPoints){
+        if(editModes.lotoPoint.state){
+            selectedArea.lotoPoints.forEach(e=>{
+                let text = document.createElement('p');
+                text.classList.add('responsive-text')
+                text.textContent =  e.tagNumber;
+                highlightInfo.appendChild(text); 
+            }) 
+        }else if(editModes.eqTagNumber.state){
+            let text = document.createElement('p');
+            text.classList.add('responsive-text')
+            text.textContent =  selectedArea.tagNumber;
+            highlightInfo.appendChild(text);            
+        }  
+    }
+    
 
 
     return highlight;

@@ -25,12 +25,24 @@
 }
 .highlightInfo{
     position: absolute;
-    top:0px;
-    right: 100%;
+    bottom:100%;
     background-color: white;
+    width: 100%;
+    min-height: 10%;
+    border: 2px solid blue;
+    
+    overflow: hidden;
+}
+.highlightInput{
+    width: 100%;
+    overflow: hidden;
 }
 .responsive-text {
-    font-size: 1.5em; /* Relative to the parent element */
+    /*font-size: 1vw;  Adjusts font size relative to viewport width */
+    /* font-size: 15px; */
+    width: fit-content; /* Ensures the text fits within the parent */
+    white-space: nowrap; /* Prevents text wrapping */
+    overflow: hidden; /* Ensures no overflow */
 }
 [data-loto-point-highlight="true"]{
     border: 2px solid rgb(255, 0, 0) !important;
@@ -174,6 +186,7 @@
     .then(()=>getVendors())
     .then(()=>getCategories())
     .then(async ()=>{
+        setEditMode("eqTagNumber");
         await getAllCategories();
         await getAllValuesOfEachCategory();
         // newInfoWindow("Point",false);
@@ -209,6 +222,8 @@
     })
 
     pictureContainer.addEventListener('mousedown',(event)=>{
+        if(event.target.tagName === "INPUT") return
+
         if(event.button===0){
             event.preventDefault();
             relocateHighlightsWithPicture(event);
@@ -218,7 +233,7 @@
 });
 const zoom = zoomPicture.bind(null,picture);
 pictureContainer.addEventListener('wheel',zoom);
-document.addEventListener('mousedown',handleMouseDown);
+//document.addEventListener('mousedown',handleMouseDown);
 
 
 let currentFileIndex = 0;
