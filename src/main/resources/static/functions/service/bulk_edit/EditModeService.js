@@ -38,7 +38,24 @@ function createModeButtons(){
     return dropdown;
 }
 
-function accept(){
-    
+function acceptPoint(highlight){
+    let info = highlight.querySelector('.highlightInfo');
+    let controls = highlight.querySelector('.highlight-controls');
+    controls.innerHTML = '';
+    info.innerHTML = "";
+    //initResize(highlight, false);
+}
+function removePoint(highlight){
+    activeHighlights = activeHighlights.filter(e=>e.id!==highlight.id)
+    selectedBundle = selectedBundle.filter(e=>e.highlight.id!==highlight.id)
+    document.getElementById('all').removeChild(highlight);
+    selectedArea = selectedBundle[selectedBundle.length-1].eq;
+    fillExcelPointInfoWindow(getExcelPointsByLabel(selectedArea.tagNumber));
+}
+
+function setEditType(){
+    if(editModes.eqTagNumber.state){
+        //hideAllResizeElements();
+    }
 }
 

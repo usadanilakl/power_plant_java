@@ -45,7 +45,8 @@ function setAreas(areas){
             //removeAllHighlights();
             let highlight = createHighlight(area);
             selectedBundle.push({"area":area,"eq":e,"highlight":highlight});
-            pointEditModeControl(); 
+            pointEditModeControl();
+            setEditType();
             console.log(selectedBundle.length)
             //fillPointInfoWindow(selectedArea);
             let points = getExcelPointsByLabel(e.tagNumber);
@@ -171,11 +172,7 @@ function createHighlight(area){
     highlight.addEventListener('wheel',zoom);
 
     function highlightOneClickFunction(){
-        activeHighlights = activeHighlights.filter(e=>e.id!==highlight.id)
-        selectedBundle = selectedBundle.filter(e=>e.highlight.id!==highlight.id)
-        document.getElementById('all').removeChild(highlight);
-        selectedArea = selectedBundle[selectedBundle.length-1].eq;
-        fillExcelPointInfoWindow(getExcelPointsByLabel(selectedArea.tagNumber));
+        console.log("one click on highlight")
     }
 
     const dClick = doubleClickArea.bind(null,highlight);
@@ -184,7 +181,7 @@ function createHighlight(area){
     const highlightDbClick = ()=>{
         let counter = 0;
         const clickCounter = (event) => {
-            if(event.target.classList.contains('highlightInfo') || event.target.tagName === "INPUT") return
+            if(event.target.classList.contains('highlightInfo') || event.target.tagName === "BUTTON") return
             counter++;
             if (counter === 1) {
                 setTimeout(() => {
@@ -229,6 +226,8 @@ function createHighlight(area){
     controls.appendChild(accept);
     controls.appendChild(rename);
     highlight.appendChild(controls);
+
+    accept.addEventListener('click',()=>acceptPoint(highlight))
 
     highlight.appendChild(highlightInfo);
     if(selectedArea && selectedArea.lotoPoints){
@@ -646,3 +645,7 @@ function updatePointInfo(event){
     // form.set('coords',JSON.stringify(updatedCoords));
     // console.log(form.get('coords'));
 }
+
+
+
+
