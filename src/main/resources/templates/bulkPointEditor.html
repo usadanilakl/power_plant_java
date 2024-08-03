@@ -44,6 +44,27 @@
     white-space: nowrap; /* Prevents text wrapping */
     overflow: hidden; /* Ensures no overflow */
 }
+/* .highlight-control-buttons{
+    position: absolute;
+    left:100%;
+    z-index: 1000;
+} */
+.highlight-control-accept{
+    width: 20px;
+    height: 20px;
+    /* background-image: url("/background/buttons/checkmark.png");
+    background-position: center;
+    background-size: contain; */
+    background-color: green;
+}
+.highlight-controls{
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    left:100%;
+    z-index: 900;
+    border: 2px solid blue;
+}
 [data-loto-point-highlight="true"]{
     border: 2px solid rgb(255, 0, 0) !important;
     z-index: 300;
@@ -94,6 +115,7 @@
                 <div class="col-12">
                     <ul >
                         <li class="btn-list-in-line" onclick="removeAllHighlights()">Step 1: Select all loto points</li>
+                        <li class="btn-list-in-line"><input type="text" placeholder="Input Eq Description"></li>
                         <li class="btn-list-in-line" onclick="removeAllHighlights()">Submit Selected Points</li>
                     </ul>
                     <ul >
@@ -124,16 +146,7 @@
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
-    <!-- <script src="/functions/dev_functions/Page.js"></script>
-    <script src="/functions/dev_functions/Picture.js"></script>
-    <script src="/functions/dev_functions/Editing.js"></script>
-    <script src="/functions/dev_functions/Http.js"></script>
-    <script src="/functions/FileFunctions.js"></script>
-    <script src="/functions/display_functions/PopUpForGroups.js"></script>
-    <script src="/functions/display_functions/PopUpForHtml.js"></script>
-    <script src="/functions/display_functions/DisplayPicture.js"></script>
-    <script src="/functions/display_functions/FileDropdown.js"></script>
-    <script src="/functions/util_functions/util.js"></script> -->
+
 
     <script>
         let token = document.getElementById('token').getAttribute('content');

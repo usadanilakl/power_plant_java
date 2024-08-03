@@ -215,11 +215,21 @@ function createHighlight(area){
     })
 
     let highlightInfo = document.createElement('div');
-    let input = document.createElement('input');
+    let controls = document.createElement('div');
+    let accept = document.createElement('button');
+    let rename = document.createElement('button');
+
+    accept.classList.add('highlight-control-accept');
+    rename.classList.add('highlight-control-buttons');
     highlightInfo.classList.add('highlightInfo');
-    input.classList.add('hihglihgtInput');
-    // input.value = "Information"
-    // highlightInfo.appendChild(input);
+    accept.textContent = "+";
+    rename.textContent = "X";
+    controls.classList.add('highlight-controls')
+
+    controls.appendChild(accept);
+    controls.appendChild(rename);
+    highlight.appendChild(controls);
+
     highlight.appendChild(highlightInfo);
     if(selectedArea && selectedArea.lotoPoints){
         if(editModes.lotoPoint.state){
