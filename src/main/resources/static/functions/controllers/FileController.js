@@ -22,19 +22,13 @@ function filePutWithBody(data){
 
 async function getAllFiles(){
     let link = '/fileObjects/get-all-light';
-    // let link = '/data/get-files';
     try{
-        const data = await fetch(link, { 
-        method: 'GET',
-        headers:{
-        //'X-CSRF-TOKEN': csrfToken,
-        'Content-Type': 'application/json'
-        } 
-    }); 
-    fileRepository = await data.json();
-    fileRepository.array.forEach(element => {
-        element['value'] = element.fileNumber;
-    });
+        const resp = await fetch(link); 
+        const data = await resp.json();
+        fileRepository = [...data];
+        fileRepository.forEach(element => {
+            element['value'] = element.fileNumber;
+        });
     filesAreLoded = true;
     }catch(err){
         console.log(err)

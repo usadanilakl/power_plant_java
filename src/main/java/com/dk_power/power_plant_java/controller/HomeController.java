@@ -23,11 +23,13 @@ public class HomeController {
         return "testRunner";
     }
     @GetMapping("/edit")
-    String getEdit(){
+    String getEdit(Model model){
+        model.addAttribute("mode","editMode");
         return "pointEditor";
     }
     @GetMapping("/edit-bulk")
-    String getEditBulk(){
+    String getEditBulk(Model model){
+        model.addAttribute("mode","editMode");
         return "bulkPointEditor";
     }
     @GetMapping("/admin")

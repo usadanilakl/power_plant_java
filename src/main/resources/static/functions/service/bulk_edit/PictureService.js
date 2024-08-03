@@ -4,7 +4,10 @@ let oldWidth;
 let originalWidth;
 let activeHighlights = []; 
 let highlatedAreas = [];
+let selectedAres = [];
 let selectedArea;
+let selectedBundle = [];
+let currentSizeCoefficient;
 // let eqFormInfo; //moved to global variables
 
 /*****************************************************DISPLAY FUNCTIONS*****************************************************************/
@@ -27,7 +30,7 @@ async function loadPictureWithLightFile(file){
     fileWithPoints = await getFileFromDbByLink(file.fileNumber);
     setAreas(fileWithPoints.points);
 }
-function setAreas(areas){ 
+function setAreas(areas){
     map.innerHTML = "";
     removeAllHighlights();
     let n = 1;
@@ -38,9 +41,12 @@ function setAreas(areas){
         area.addEventListener('click',()=>{
             event.preventDefault();
             //removeAllHighlights();
-            createHighlight(area);
+            let highlight = createHighlight(area);
             pointEditModeControl(); 
             selectedArea = e;
+            selectedAres.push(selectedArea);
+            selectedBundle.push({"area":area,"eq":e,"highlight":highlight})
+            console.log(selectedBundle.length)
             //fillPointInfoWindow(selectedArea);
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
@@ -52,6 +58,7 @@ function setAreas(areas){
     });
     resizeAreas();
     //highlightAll()
+    
     
 }
 function createAreaElement(area){
@@ -97,6 +104,7 @@ function resizeAreas(){
     const rect = picture.getBoundingClientRect();
     const width = rect.width;
     const coefficient = width/oldWidth;
+    currentSizeCoefficient = coefficient;
     let allAreas = document.querySelectorAll(".ar");
 
     allAreas.forEach(e=>{
@@ -115,17 +123,15 @@ function resizeHighlights(){
     let allHighlites = document.querySelectorAll('.areaHighlights');
     allHighlites.forEach(e=>{
         let area = document.getElementById(e.getAttribute('id').slice(0,-1));
-       e.style.top = getShapeCoordinates(area).y; 
-       e.style.left = getShapeCoordinates(area).x;
-       e.style.width = getShapeCoordinates(area).w;
-       e.style.height = getShapeCoordinates(area).h;
-       //console.log(JSON.stringify(getShapeCoordinates(area)));
+        e.style.top = getShapeCoordinates(area).y;
+        e.style.left = getShapeCoordinates(area).x;
+        e.style.width = getShapeCoordinates(area).w;
+        e.style.height = getShapeCoordinates(area).h;
 
-       //console.log(parseFloat((e.style.top.replace('px',''))-picture.offsetTop)*coefficient + picture.offsetTop+ 'px');
+        let info = e.querySelector('.highlightInfo');
+        info.style.width = info.offsetWidth * currentSizeCoefficient + "px";
     })
 }
-
-
 
 function createHighlight(area){
     let position = getShapeCoordinates(area);
@@ -161,7 +167,9 @@ function createHighlight(area){
 
     function highlightOneClickFunction(){
         activeHighlights = activeHighlights.filter(e=>e.id!==highlight.id)
+        selectedBundle = selectedBundle.filter(e=>e.highlight.id!==highlight.id)
         document.getElementById('all').removeChild(highlight);
+        selectedArea = selectedBundle[selectedBundle.length-1].eq;
     }
 
     const dClick = doubleClickArea.bind(null,highlight);
@@ -179,7 +187,20 @@ function createHighlight(area){
     highlight.querySelectorAll('.corners').forEach(e=>{
         e.addEventListener('click', updatePointInfo)
     })
+
+    let highlightInfo = document.createElement('div');
+    let text = document.createElement('p');
+    highlightInfo.classList.add('highlightInfo');
+    text.classList.add('responsive-text');
+    text.textContent = "Information";
+    highlightInfo.appendChild(text);
+    highlight.appendChild(highlightInfo);
+
+
     return highlight;
+}
+function highlightModeControl(){
+
 }
 function getShapeCoordinates(area){
     let coords = area.getAttribute('coords').split(",");
@@ -327,7 +348,7 @@ function zoomPicture(){
         resizeHighlights(); 
         //resizeManualHighlites(); 
     
-    }
+}
 
 /************************************************************EDIT FUNCTIONS****************************************************************************/
 

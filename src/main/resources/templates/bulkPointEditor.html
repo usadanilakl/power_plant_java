@@ -23,6 +23,15 @@
     border: 2px solid blue !important;
     z-index: 300;
 }
+.highlightInfo{
+    position: absolute;
+    top:0px;
+    right: 100%;
+    background-color: white;
+}
+.responsive-text {
+    font-size: 1.5em; /* Relative to the parent element */
+}
 [data-loto-point-highlight="true"]{
     border: 2px solid rgb(255, 0, 0) !important;
     z-index: 300;
@@ -134,6 +143,7 @@
     <script src="/functions/service/PopupService.js"></script>
     <script src="/functions/service/MenuDropdownService.js"></script>
     <script src="/functions/service/bulk_edit/PictureService.js"></script>
+    <script src="/functions/service/bulk_edit/EditModeService.js"></script>
     <script src="/functions/service/ResizerService.js"></script>
     <script src="/functions/service/FileService.js"></script>
     <script src="/functions/service/MasterService.js"></script>
@@ -258,6 +268,7 @@ function getCurrent(){
     if(currentFileIndex>-1)return incompletePid[currentFileIndex];
     else return completedPid[completedPid.length+currentFileIndex];
 }
+
 
 
 
