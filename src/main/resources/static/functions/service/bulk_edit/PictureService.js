@@ -77,7 +77,7 @@ function createAreaElement(area){
     newArea.setAttribute('coords', coord);
     newArea.setAttribute('shape',"rect");
 
-    if(area.lotoPoints!=null && area.lotoPoints.length>0){
+    if(area.lotoPoints!=null && area.lotoPoints.length>0 && area.lotoPoints[0].isolatedPosition){
       if(area.lotoPoints[0].isolatedPosition.toLowerCase().includes('open')) newArea.setAttribute('data-loto-point-area', true); 
       else newArea.setAttribute('data-loto-point-area', false);
     } 
@@ -223,6 +223,13 @@ function createHighlight(area){
 
     fillHighlightInfo(highlight);
     highlightEditControls(highlight);
+
+    
+    let closeHlButton = document.createElement('button');
+    closeHlButton.classList.add('highlight-control-close');
+    closeHlButton.textContent = " X";
+    closeHlButton.addEventListener('click',()=>removePoint(highlight));
+    highlight.appendChild(closeHlButton);
     
 
     return highlight;
@@ -496,7 +503,11 @@ async function handleMouseUp() {
     newHighlights[newHighlights.length-1].element.setAttribute('id',id+'h');
     newHighlights[newHighlights.length-1].picSize = picSize;
 
-    if(coords.getObjWidth() < 20 && coords.getObjHeight() < 20) removeLastHighlight();
+    if(coords.getObjWidth() < 20 && coords.getObjHeight() < 20){
+        removeLastHighlight();
+        document.removeEventListener('mousedown',handleMouseDown);
+        return;
+    }
     let image = document.getElementById('picture');
     areaInfo.coordinates = areaCoordinates;
     areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
@@ -530,6 +541,7 @@ async function handleMouseUp() {
     
     //fillPointInfoWindow(selectedArea);
     selectedArea.isNew = true;
+    removeLastHighlight();
     document.removeEventListener('mousedown',handleMouseDown);
     
 }

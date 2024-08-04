@@ -22,3 +22,11 @@ async function getMessagePopUp(){
     popup.innerHTML = data;
     return popup;
 }
+
+async function getEqDeletePopUp(){
+    const response = await fetch("/popup/eq-delete");
+    const data = await response.text();
+    let popup = document.createElement('div');
+    popup.innerHTML = data;
+    return popup;
+}

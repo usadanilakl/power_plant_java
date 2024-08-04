@@ -21,6 +21,10 @@ public class LotoPointRestController {
     public ResponseEntity<LotoPointDto> getLotoPointByOldId(@PathVariable String oldId){
         return ResponseEntity.ok(lotoPointService.convertToDto(lotoPointService.getByOldId(oldId)));
     }
+    @GetMapping("/empty")
+    public ResponseEntity<LotoPointDto> getEmptyLotoPointDto(){
+        return ResponseEntity.ok(new LotoPointDto());
+    }
 
 
 }

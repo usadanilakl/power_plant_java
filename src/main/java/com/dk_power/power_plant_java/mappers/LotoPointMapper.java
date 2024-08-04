@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
+import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -15,12 +16,14 @@ public class LotoPointMapper implements BaseMapper{
     private final EquipmentMapper equipmentMapper;
     private final LotoMapper lotoMapper;
     private final ValueService valueService;
+    private final LotoPointService lotoPointService;
 
-    public LotoPointMapper(ModelMapper modelMapper, @Lazy EquipmentMapper equipmentMapper, LotoMapper lotoMapper, ValueService valueService) {
+    public LotoPointMapper(ModelMapper modelMapper, @Lazy EquipmentMapper equipmentMapper, LotoMapper lotoMapper, ValueService valueService, @Lazy LotoPointService lotoPointService) {
         this.modelMapper = modelMapper;
         this.equipmentMapper = equipmentMapper;
         this.lotoMapper = lotoMapper;
         this.valueService = valueService;
+        this.lotoPointService = lotoPointService;
     }
 
     public LotoPointDto convertToDto(LotoPoint entity) {
@@ -60,10 +63,11 @@ public class LotoPointMapper implements BaseMapper{
         if (dto == null) {
             return null;
         }
-        LotoPoint entity = new LotoPoint();
+        LotoPoint entity = null;
+        if(dto.getId()==null) entity = new LotoPoint();
+        else entity = lotoPointService.getEntityById(dto.getId());
         if (dto.getUnit() != null) entity.setUnit(dto.getUnit());
         if (dto.getTagged() != null) entity.setTagged(dto.getTagged());
-        if (dto.getId() != null) entity.setId(dto.getId());
         if (dto.getTagNumber() != null) entity.setTagNumber(dto.getTagNumber());
         if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
         if (dto.getIsoPos() != null) entity.setIsoPos(valueService.convertToEntity(dto.getIsoPos()));

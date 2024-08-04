@@ -38,9 +38,12 @@ public class Equipment extends BaseEquipment {
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name="eq_type_id")
     private Value eqType;
-    @ManyToMany(mappedBy = "points")
-    //@JsonBackReference
-    @JsonIgnore
+//    @ManyToMany(mappedBy = "points")
+//    @JsonIgnore
+@ManyToMany(cascade = CascadeType.ALL)
+@JoinTable(name = "file_point",
+        joinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"),
+        inverseJoinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"))
     private List<FileObject> files;
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "vendor_id")

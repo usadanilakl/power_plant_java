@@ -42,6 +42,7 @@ async function setupPopup(category){
     saveButton.addEventListener('click', newVal);
     return popupHolder;
 }
+
 async function setupRefractorPopup(category,oldValue,points){
 
     //build popup for refractor content
@@ -93,6 +94,19 @@ async function displayMessagePopup(message){
     let myModal = new bootstrap.Modal(modal, {});
     popup.querySelector('#insert-message').textContent = message;
     myModal.show();
+}
+
+async function showDeleteEqPopup(highlight){
+    let eq = selectedBundle.find(e=>e.highlight.id === highlight.id).eq;
+    let popup = await getEqDeletePopUp();
+    let modal = popup.querySelector('#eq-delete-modal')
+    let myModal = new bootstrap.Modal(modal, {});
+    popup.querySelector('#insert-message').textContent = "Delete " + eq.tagNumber + "?";
+    let deleteButton = popup.querySelector('#submit-delete-button');
+    deleteButton.addEventListener('click', async ()=>await deletePoint(eq.id));
+    myModal.show();
+    
+    
 }
 
 

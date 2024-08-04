@@ -216,7 +216,20 @@ async function fillExcelPointInfoWindow(points){
     if(infoContainer === null) newInfoWindow("Old-LOTO-Points");
     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
     infoContainer.innerHTML = "";
+    buildPointSearchField();
     infoContainer.appendChild(form);
+
+    let newLPcontainer = document.createElement('div');
+    let newLPtag = document.createElement('input');
+    let newLotoPointButton = document.createElement('button');
+    newLotoPointButton.type = 'button';
+    newLotoPointButton.textContent = "Add New"
+    newLotoPointButton.addEventListener('click',()=>createNewLotoPoint(newLPtag.value));
+    newLPcontainer.appendChild(newLPtag);
+    newLPcontainer.appendChild(newLotoPointButton);
+
+    newLPcontainer.style.display = 'inline';
+    infoContainer.appendChild(newLPcontainer);
 }
 
 function excelPointSearch(searchValue){
@@ -255,6 +268,12 @@ function buildPointSearchField(){
     });
     return div;
 } 
+
+async function createNewLotoPoint(tag){
+    let newLotoPoint = await getEmptyLotoPoint();
+    newLotoPoint.tagNumber = tag;
+    addLotoPoint(newLotoPoint);
+}
 
 
 /************************************************************************************************************************************ *

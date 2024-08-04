@@ -23,4 +23,8 @@ public class PopUpController {
     public String getMessagePopUp(){
         return "partials/message-popup";
     }
+    @GetMapping("/eq-delete")
+    public String getEqDeletePopUp(){
+        return "partials/eq-delete-popup";
+    }
 }

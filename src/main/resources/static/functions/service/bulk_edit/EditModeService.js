@@ -102,7 +102,7 @@ function highlightEditControls(highlight){
 
     accept.textContent = "Accept";
     rename.textContent = "Rename";
-    remove.textContent = "Uncheck";
+    remove.textContent = "Delete";
     
     controls.appendChild(accept);
     controls.appendChild(rename);
@@ -110,7 +110,7 @@ function highlightEditControls(highlight){
     highlight.appendChild(controls);
 
     accept.addEventListener('click',()=>acceptPoint(highlight))
-    remove.addEventListener('click',()=>removePoint(highlight))
+    remove.addEventListener('click',()=>showDeleteEqPopup(highlight))
     rename.addEventListener('click',()=>renamePoint(highlight))
 }
 
@@ -151,5 +151,7 @@ function removeLotoPoint(id){
     selectedArea.lotoPoints = selectedArea.lotoPoints.filter(e=>e.id!==id);
     return buildLotoPointList(selectedArea.lotoPoints);
 }
+
+
 
 

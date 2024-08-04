@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -56,10 +57,12 @@ public class FileObject extends BaseAuditEntity {
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "vendor_id")
     private Value vendor;
-    @ManyToMany(cascade = CascadeType.ALL)
-    @JoinTable(name = "file_point",
-            joinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
+//    @ManyToMany(cascade = CascadeType.ALL)
+//    @JoinTable(name = "file_point",
+//            joinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"),
+//            inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
+    @ManyToMany(mappedBy = "files")
+    @JsonIgnore
     @JsonManagedReference
     private List<Equipment> points;
     @JsonBackReference
