@@ -2,12 +2,22 @@ let revisedExcelPoints = [];
 let oldLotoPoints = [];
 
 let addLotoPointToEqUrl = '/points/add-loto-point/' //{eqId}/{pointOldId}
-let createNewEqUrl = '/points/'
-let updateTagUrl = '/points/tag'
+let baseEqUrl = '/points/';
+let baseEqApiUrl = '/eq-api/';
 
 function getPostMetaDataWithBody(data){
     return{
         method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Content-Type': 'application/json'
+        },
+        body:JSON.stringify(data)
+    }
+}
+function getPatchMetaDataWithBody(data){
+    return{
+        method: 'PATCH',
         headers: {
             'X-CSRF-TOKEN': token,
             'Content-Type': 'application/json'
@@ -57,7 +67,7 @@ async function updatePoint(obj){
         displayMessagePopup(message);
         return;
     }
-    const response = await fetch(createNewEqUrl,getPostMetaDataWithBody(selectedArea));
+    const response = await fetch(baseEqUrl,getPostMetaDataWithBody(selectedArea));
     const data = await response.json();
     return data;
     
@@ -89,13 +99,13 @@ async function addPointToEquipment(lotoPoint){
 }
 
 async function createNewEq(obj){
-    const response = await fetch(createNewEqUrl,getPostMetaDataWithBody(obj));
+    const response = await fetch(baseEqUrl,getPostMetaDataWithBody(obj));
     const data = await response.json();
     return data;
 }
 
 async function deletePoint(id){
-    const response = await fetch(createNewEqUrl+id, deleteNoBody);
+    const response = await fetch(baseEqUrl+id, deleteNoBody);
     const data = await response.text();
     file.points = file.points.filter(e=>e.id!==id);
     console.log(data)
@@ -108,14 +118,30 @@ async function deletePoint(id){
  ***********************************************************************************************************************/
 async function updateEqTagNumber(){
     let message = tagValidation(selectedArea.tagNumber);
-    console.log(message);
     if(message!==null){
+        console.log(message);
         displayMessagePopup(message);
         return;
     }
-    const response = await fetch(updateTagUrl,getPostMetaDataWithBody(selectedArea));
-    const data = await response.json();
-    return data;
+
+    let emptyEqObj = {};
+    for(let key in selectedArea){
+        emptyEqObj[key] = null;
+    }
+    emptyEqObj.tagNumber = selectedArea.tagNumber;
+    emptyEqObj.coordinates = selectedArea.coordinates;
+    emptyEqObj.lotoPoints = [...selectedArea.lotoPoints];
+
+    if(selectedArea.isNew){
+        console.log(JSON.stringify(selectedArea))
+        return await createNewEq(selectedArea);
+    }else{
+        emptyEqObj.id = selectedArea.id;
+        const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
+        const data = await response.text();
+        return data;
+    }
+
     
 }
 

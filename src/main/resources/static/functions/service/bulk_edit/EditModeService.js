@@ -41,9 +41,10 @@ function createModeButtons(){
 function acceptPoint(highlight){
     let info = highlight.querySelector('.highlightInfo');
     let controls = highlight.querySelector('.highlight-controls');
-    controls.innerHTML = '';
+    highlight.removeChild(controls);
     info.innerHTML = "";
     //initResize(highlight, false);
+    updateEqTagNumber();
 }
 function removePoint(highlight){
     activeHighlights = activeHighlights.filter(e=>e.id!==highlight.id)
@@ -53,9 +54,102 @@ function removePoint(highlight){
     fillExcelPointInfoWindow(getExcelPointsByLabel(selectedArea.tagNumber));
 }
 
+function renamePoint(highlight){
+    let text = highlight.querySelector('.responsive-text');
+    let input = document.getElementById('value-editor-input');
+    if(input.value){
+        selectedArea.tagNumber = input.value;
+        text.textContent = input.value;
+    }
+}
+
 function setEditType(){
     if(editModes.eqTagNumber.state){
         //hideAllResizeElements();
     }
 }
+
+function fillHighlightInfo(highlight){
+    let highlightInfo = highlight.querySelector('.highlightInfo');
+    if(selectedArea && selectedArea.lotoPoints){
+        if(editModes.lotoPoint.state){
+            selectedArea.lotoPoints.forEach(e=>{
+                let text = document.createElement('p');
+                text.classList.add('responsive-text')
+                text.textContent =  e.tagNumber;
+                highlightInfo.appendChild(text);
+            })
+        }else if(editModes.eqTagNumber.state){
+            let text = document.createElement('p');
+            text.classList.add('responsive-text')
+            text.textContent =  selectedArea.tagNumber;
+            highlightInfo.appendChild(text);
+            buildLotoPointList(selectedArea.lotoPoints, highlight);
+        }
+    }
+}
+
+function highlightEditControls(highlight){
+    let controls = document.createElement('div');
+    let accept = document.createElement('button');
+    let rename = document.createElement('button');
+    let remove = document.createElement('button');
+
+    controls.classList.add('highlight-controls')
+    accept.classList.add('highlight-control-accept');
+    rename.classList.add('highlight-control-rename');
+    remove.classList.add('highlight-control-remove');
+
+    accept.textContent = "Accept";
+    rename.textContent = "Rename";
+    remove.textContent = "Uncheck";
+    
+    controls.appendChild(accept);
+    controls.appendChild(rename);
+    controls.appendChild(remove);
+    highlight.appendChild(controls);
+
+    accept.addEventListener('click',()=>acceptPoint(highlight))
+    remove.addEventListener('click',()=>removePoint(highlight))
+    rename.addEventListener('click',()=>renamePoint(highlight))
+}
+
+function buildLotoPointList(points, highlight){
+    let lotoPoints = document.createElement('div');
+    lotoPoints.classList.add('highlihgt-loto-points');
+    points.forEach(e=>{
+        let buttonContainer = document.createElement('div');
+        let point = document.createElement('button');
+        let control = document.createElement('button');
+
+        buttonContainer.classList.add('loto-point-box');
+
+        buttonContainer.appendChild(point);
+        buttonContainer.appendChild(control);
+
+        point.textContent = e.tagNumber;
+        control.textContent = "X";
+
+        control.addEventListener('click',()=> removeLotoPoint(e.id))
+        lotoPoints.appendChild(buttonContainer);
+    })
+    if(!highlight) highlight = selectedBundle.find(el=>el.eq.id===selectedArea.id).highlight;
+    let info = highlight.querySelector('.highlightInfo');
+    let pointContainer = info.querySelector('.highlihgt-loto-points');
+    if(pointContainer) info.removeChild(pointContainer);
+    info.appendChild(lotoPoints);
+    return lotoPoints;
+}
+
+function addLotoPoint(point){
+    if(!selectedArea.lotoPoints) selectedArea.lotoPoints = [];
+    selectedArea.lotoPoints.push(point);
+    return buildLotoPointList(selectedArea.lotoPoints);
+}
+
+function removeLotoPoint(id){
+    selectedArea.lotoPoints = selectedArea.lotoPoints.filter(e=>e.id!==id);
+    return buildLotoPointList(selectedArea.lotoPoints);
+}
+
 

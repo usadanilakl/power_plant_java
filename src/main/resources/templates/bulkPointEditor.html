@@ -33,10 +33,6 @@
     
     /* overflow: hidden; */
 }
-.highlightInput{
-    width: fit-content;
-    /* overflow: hidden; */
-}
 .responsive-text {
     /*font-size: 1vw;  Adjusts font size relative to viewport width */
     /* font-size: 15px; */
@@ -61,6 +57,13 @@
     z-index: 900;
     border: 2px solid blue;
 }
+.loto-point-box{
+    width: fit-content;
+    display: flex;
+    flex-direction: row;
+    white-space: nowrap;
+}
+
 [data-loto-point-highlight="true"]{
     border: 2px solid rgb(255, 0, 0) !important;
     z-index: 300;
@@ -111,18 +114,19 @@
                 <div class="col-12">
                     <ul >
                         <li class="btn-list-in-line" onclick="removeAllHighlights()">Step 1: Select all loto points</li>
-                        <li class="btn-list-in-line"><input type="text" placeholder="Input Eq Description"></li>
+                        <li class="btn-list-in-line"><input type="text" placeholder="Input Eq Tag Number" id="value-editor-input"></li>
+                        <li class="btn-list-in-line" onclick="createNewHighlight()">Highlight New Equipment</li>
                         <li class="btn-list-in-line" onclick="removeAllHighlights()">Submit Selected Points</li>
                     </ul>
-                    <ul >
+                    <!-- <ul >
                         <li class="btn-list-in-line" onclick="removeAllHighlights()">Remove Highlights</li>
                         <li class="btn-list-in-line" onclick="highlightAll()">Highlight All</li>
                         <li class="btn-list-in-line" onclick="highlightLotoPoints()">Highlight Loto Points</li>
                         <li class="btn btn-danger" onclick="toggleCurrentPidCompletedStatus()" id="pid-complete-status-button">Mark as Completed</li>
                         <li class="btn-list-in-line" onclick="goToPreviousPid()">Previous PID</li>
                         <li class="btn-list-in-line" onclick="goToNextPid()">Next PID</li>
-                        <!-- <li class="btn-list-in-line" onclick="openNewWindow(getUploadFileForm)">Upload Files</li> -->
-                    </ul>
+                        <li class="btn-list-in-line" onclick="openNewWindow(getUploadFileForm)">Upload Files</li>
+                    </ul> -->
                 </div>
             </div>
             <div class="row">
@@ -158,9 +162,11 @@
     <script src="/functions/controllers/ValueController.js"></script>
     <script src="/functions/controllers/FileController.js"></script>
     <script src="/functions/controllers/PointController.js"></script>
+    <script src="/functions/controllers/LotoPointController.js"></script>
     <script src="/functions/controllers/LotoController.js"></script>
     <script src="/functions/controllers/TransferDataController.js"></script> 
 
+    <script src="/functions/service/ValidationService.js"></script>
     <script src="/functions/service/PopupService.js"></script>
     <script src="/functions/service/MenuDropdownService.js"></script>
     <script src="/functions/service/bulk_edit/PictureService.js"></script>
@@ -242,7 +248,7 @@
 });
 const zoom = zoomPicture.bind(null,picture);
 pictureContainer.addEventListener('wheel',zoom);
-document.addEventListener('mousedown',handleMouseDown);
+// document.addEventListener('mousedown',handleMouseDown); //this enables drawing new highlights
 
 
 let currentFileIndex = 0;

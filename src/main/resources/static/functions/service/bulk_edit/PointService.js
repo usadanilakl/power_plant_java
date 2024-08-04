@@ -146,8 +146,9 @@ function excelPointDropdown(points){
 
         if(modes.editMode.state){
              addButton.classList.remove('hide');
-            const editModeAction = function(){
-                addPointToEquipment(e);
+            const editModeAction = async function(){
+                let lotoPoint = await getLotoPointByOldId(e.originalId);
+                addLotoPoint(lotoPoint);
             }
             //if(modes.lotoMode.state)addButton.addEventListener('click',lotoModeAction);
             if(modes.editMode.state)addButton.addEventListener('click',editModeAction);

@@ -188,7 +188,12 @@ function createHighlight(area){
                     if (counter === 1) {
                         highlightOneClickFunction();
                     } else if (counter > 1) {
-                       console.log('double click');
+                        // console.log('double click');
+                        selectedArea = selectedBundle.find(e=>e.highlight.id===highlight.id).eq;
+                        fillHighlightInfo(highlight);
+                        highlightEditControls(highlight);
+                        let points = getExcelPointsByLabel(selectedArea.tagNumber);
+                        fillExcelPointInfoWindow(points);
                     }
                     counter = 0; // reset counter
                 }, 300);
@@ -213,47 +218,12 @@ function createHighlight(area){
     })
 
     let highlightInfo = document.createElement('div');
-    let controls = document.createElement('div');
-    let accept = document.createElement('button');
-    let rename = document.createElement('button');
-    let remove = document.createElement('button');
-
-    accept.classList.add('highlight-control-accept');
-    rename.classList.add('highlight-control-rename');
-    remove.classList.add('highlight-control-remove');
     highlightInfo.classList.add('highlightInfo');
-    accept.textContent = "Accept";
-    rename.textContent = "Rename";
-    remove.textContent = "Remove";
-    controls.classList.add('highlight-controls')
-
-    controls.appendChild(accept);
-    controls.appendChild(rename);
-    controls.appendChild(remove);
-    highlight.appendChild(controls);
-
-    accept.addEventListener('click',()=>acceptPoint(highlight))
-    remove.addEventListener('click',()=>removePoint(highlight))
-
-
     highlight.appendChild(highlightInfo);
-    if(selectedArea && selectedArea.lotoPoints){
-        if(editModes.lotoPoint.state){
-            selectedArea.lotoPoints.forEach(e=>{
-                let text = document.createElement('p');
-                text.classList.add('responsive-text')
-                text.textContent =  e.tagNumber;
-                highlightInfo.appendChild(text); 
-            }) 
-        }else if(editModes.eqTagNumber.state){
-            let text = document.createElement('p');
-            text.classList.add('responsive-text')
-            text.textContent =  selectedArea.tagNumber;
-            highlightInfo.appendChild(text);            
-        }  
-    }
-    
 
+    fillHighlightInfo(highlight);
+    highlightEditControls(highlight);
+    
 
     return highlight;
 }
@@ -535,28 +505,32 @@ async function handleMouseUp() {
     areaInfo.mainFile = file.fileLink;
     areaInfo.files = [];
     areaInfo.files.push(file.fileLink);
-    if(file.vendor)areaInfo.vendor = file.vendor;
-    if(file.system)areaInfo.system = file.system;
+    if(file.vendor && file.vendor!=="")areaInfo.vendor = file.vendor;
+    if(file.system && file.system!=="")areaInfo.system = file.system;
+    else areaInfo.system = null;
     areaInfo.eqType = null;
     areaInfo.location = null;
 
-    let area = createAreaElement(areaInfo);
+    selectedArea = areaInfo;
+    let area = createAreaElement(selectedArea);
     area.addEventListener('click',()=>{
         event.preventDefault();
         removeAllHighlights();
         createHighlight(area);
     })
     //doubleClick(shape, e);
+
     map.appendChild(area);
     resizeNewArea(area);
-    removeAllHighlights();
     createHighlight(area);
     // console.log(JSON.stringify(areaInfo))
     // console.log(JSON.stringify(selectedArea))
     //let newEq = await createNewEq(areaInfo);
     //file.points.push(newEq);
-    selectedArea = areaInfo;
+    
     //fillPointInfoWindow(selectedArea);
+    selectedArea.isNew = true;
+    document.removeEventListener('mousedown',handleMouseDown);
     
 }
 
@@ -643,6 +617,10 @@ function updatePointInfo(highlight){
     let result = JSON.stringify(updatedCoords);
     result = result.replace("{","").replace("}","");
     selectedArea.coordinates = result;
+}
+
+function createNewHighlight(){
+    document.addEventListener('mousedown',handleMouseDown);
 }
 
 

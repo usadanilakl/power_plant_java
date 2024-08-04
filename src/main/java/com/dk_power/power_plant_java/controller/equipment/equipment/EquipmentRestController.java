@@ -43,11 +43,14 @@ public class EquipmentRestController {
             throw new RuntimeException("Equipment now found");
         }
     }
-    @PatchMapping("/tag/{id}/{tag}")
-    public ResponseEntity<String> updateTag(@PathVariable String id, @PathVariable String tag){
-        Equipment entity = equipmentService.getEntityById(id);
-        entity.setTagNumber(tag);
-        equipmentService.save(entity);
+    @PatchMapping("/")
+    public ResponseEntity<String> updateTag(@RequestBody EquipmentDto eq){
+        Equipment entity = equipmentService.getEntityById(eq.getId());
+        if(entity!=null){
+            equipmentService.save(eq);
+            System.out.println("saved: " + eq.getId());
+        }
+
         return ResponseEntity.ok("Tag Number was successfully updated");
     }
 }
