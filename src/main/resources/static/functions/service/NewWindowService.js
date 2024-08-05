@@ -94,6 +94,88 @@ function openNewWindow(getData){
     // return newWindow;
 }
 
+function getEmptyWindow(header){
+
+    console.log('creating a new window')
+    let all = document.getElementById('all');
+    let newWindow = document.createElement('div');
+    newWindow.classList.add('newWindow');
+    newWindow.setAttribute('id','windowNo'+ windowId++);
+    //all.appendChild(newWindow);
+
+    let close = document.createElement('button');
+    close.classList.add('closeWindow');
+    newWindow.appendChild(close);
+    close.textContent = "X";
+
+    let luc = document.createElement('div');
+    luc.classList.add('lucWindow');
+    newWindow.appendChild(luc);
+
+    let ruc = document.createElement('div');
+    ruc.classList.add('rucWindow');
+    newWindow.appendChild(ruc);
+
+    let lbc = document.createElement('div');
+    lbc.classList.add('lbcWindow');
+    newWindow.appendChild(lbc);
+
+    let rbc = document.createElement('div')
+    rbc.classList.add('rbcWindow');
+    newWindow.appendChild(rbc);
+
+    let move = document.createElement('div')
+    move.classList.add('moveWindow');
+    newWindow.appendChild(move);
+
+    let pidText = document.createElement('p');
+    move.appendChild(pidText);
+    pidText.setAttribute('id','pidText'+ newWindow.getAttribute('id'));
+    pidText.setAttribute('class','pidTextWindow');
+    pidText.textContent = header;
+
+    pidText.addEventListener('mouseover',(event)=>{event.preventDefault()})
+
+    close.addEventListener('click', ()=>{
+        all.removeChild(newWindow);
+    })
+    
+    rbc.addEventListener('mousedown',()=>{
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        resizeRBC(event,newWindow);
+    });
+    
+    lbc.addEventListener('mousedown',()=>{
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        resizeLBC(event,newWindow);
+    });
+    
+    ruc.addEventListener('mousedown',()=>{
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        resizeRUC(event,newWindow);
+    });
+    
+    luc.addEventListener('mousedown',()=>{
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        resizeLUC(event,newWindow);
+    });
+
+    move.addEventListener('mousedown',()=>{
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        relocate(event,newWindow);
+        bringOnTop(newWindow);
+    });
+
+    newWindow.addEventListener('click',()=>{bringOnTop(newWindow)});
+
+    return newWindow;
+}
+
 function bringOnTop(element){
     zIndexOfWindows++;
     element.style.zIndex=zIndexOfWindows+'';

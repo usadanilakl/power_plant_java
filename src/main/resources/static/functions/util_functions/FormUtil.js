@@ -22,6 +22,7 @@ async function buildFormFromObject(point){
         input.setAttribute('id',e);
         input.classList.add('form-control'); //bootstrap styling for input field
         input.value = point[e]; //assign value of given field to input field
+        input.style.width = '100%';
         input.readOnly = true; //to prevent editing (edit mode will remove it)
         if(modes.editMode.state) input.readOnly = false;
 

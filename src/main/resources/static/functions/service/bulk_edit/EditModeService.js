@@ -82,14 +82,24 @@ function fillHighlightInfo(highlight){
     let highlightInfo = highlight.querySelector('.highlightInfo');
     if(selectedArea){
         if(editModes.eqDescription.state){
-            let text = document.createElement('p');
-            text.classList.add('responsive-text')
             if(!selectedArea.description || selectedArea.description.trim()==="") selectedArea.description = selectedArea.lotoPoints[0].description;
-            text.textContent =  selectedArea.description;
-            highlightInfo.appendChild(text);
+            let allInfoWindow = getEmptyWindow(selectedArea.tagNumber);
+            allInfoWindow.appendChild(fillLotoPointInfo(selectedArea))
             selectedArea.lotoPoints.forEach(e=>{
-                highlight.appendChild(fillLotoPointInfo(e))
-            })
+                allInfoWindow.appendChild(fillLotoPointInfo(e))
+            });
+
+            document.getElementById('all').appendChild(allInfoWindow);
+            // allInfoWindow.style
+
+            // let text = document.createElement('p');
+            // text.classList.add('responsive-text')
+            
+            // text.textContent =  selectedArea.description;
+            // highlightInfo.appendChild(text);
+            // selectedArea.lotoPoints.forEach(e=>{
+            //     highlight.appendChild(fillLotoPointInfo(e))
+            // })
 
         }else if(editModes.eqTagNumber.state){
             let text = document.createElement('p');
@@ -292,11 +302,15 @@ function renameLotoPoint(highlight){
 
 function fillLotoPointInfo(point){
     let lotoPointInfo = document.createElement('div');
+    let controls = lpEditControls(point);
     let text = document.createElement('p');
-    text.textContent = point.tagNumber;
-    lotoPointInfo.appendChild(text);
-    text.classList.add('responsive-text')
-    lotoPointInfo.appendChild(lpEditControls(point));
+
+    text.textContent = point.description;
+    text.classList.add('responsive-text');
+    controls.classList.add('lotoPointInfo');
+
+    controls.appendChild(text);
+    lotoPointInfo.appendChild(controls);
     return lotoPointInfo;
 }
 

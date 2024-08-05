@@ -1,6 +1,7 @@
 .searchable-dropdown {
     position: relative;
     display: inline-block;
+    width: 100%;
 }
 .searchable-dropdown-content {
     display: none;

@@ -23,9 +23,21 @@
     border: 2px solid blue !important;
     z-index: 300;
 }
+
 .highlightInfo{
     position: absolute;
     top:100%;
+    background-color: white;
+    width: fit-content;
+    /* min-height: 10%; */
+    border: 2px solid blue;
+    z-index: 2;
+    
+    /* overflow: hidden; */
+}
+.lotoPointInfo{
+    position: relative;
+    /* top:100%; */
     background-color: white;
     width: fit-content;
     /* min-height: 10%; */
@@ -64,13 +76,14 @@
     border: 2px solid blue;
 }
 .loto-point-controls{
-    position: absolute;
+    position: relative;
     display: flex;
     flex-direction: column;
-    right:100%;
-    top:100%;
+    /* right:100%;
+    top:100%; */
     z-index: 900;
     border: 2px solid blue;
+    margin:15px;
 }
 .loto-point-box{
     width: fit-content;
