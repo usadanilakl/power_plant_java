@@ -87,7 +87,9 @@ function fillHighlightInfo(highlight){
             if(!selectedArea.description || selectedArea.description.trim()==="") selectedArea.description = selectedArea.lotoPoints[0].description;
             text.textContent =  selectedArea.description;
             highlightInfo.appendChild(text);
-            
+            selectedArea.lotoPoints.forEach(e=>{
+                highlight.appendChild(fillLotoPointInfo(e))
+            })
 
         }else if(editModes.eqTagNumber.state){
             let text = document.createElement('p');
@@ -165,6 +167,162 @@ function removeLotoPoint(id){
     selectedArea.lotoPoints = selectedArea.lotoPoints.filter(e=>e.id!==id);
     return buildLotoPointList(selectedArea.lotoPoints);
 }
+
+function showInsturctions(){
+    let instrWind = newWindow();
+    let img = document.createElement('img');
+    img.src = '';
+    instrWind.appendChild(img);
+}
+
+async function moveToNextStep(){
+    if(editModes.eqTagNumber.state){
+       let updatedFile = await updateFileEditStep("eqDescription");
+        loadPictureWithLightFile(updatedFile);
+    }
+    if(editModes.eqDescription.state){}
+    if(editModes.eqTagNumber.state){}
+}
+
+function buildEditStepControls(){
+    console.log("building edit controls for the page")
+    let list = document.getElementById('bulk-edit-controls');
+    list.innerHTML = "";
+    if(editModes.eqTagNumber.state){
+        let li1 = document.createElement('li');
+        let li2 = document.createElement('li');
+        let li3 = document.createElement('li');
+        let li4 = document.createElement('li');
+        let inp = document.createElement('input');
+
+        li1.classList.add("btn")
+        li1.classList.add("btn-outline-light")
+        li2.classList.add("btn")
+        li2.classList.add("btn-outline-light")
+        li3.classList.add("btn")
+        li3.classList.add("btn-outline-light")
+        li4.classList.add("btn")
+        li4.classList.add("btn-outline-light")
+
+        inp.type = 'text';
+        inp.placeholder = "Type here for changes";
+        inp.id = "value-editor-input";
+
+        li1.addEventListener('click',()=>showInsturctions());
+        li3.addEventListener('click',()=>createNewHighlight());
+        li4.addEventListener('click',()=>moveToNextStep());
+
+        li1.textContent = "Step 1: Select all loto points (click for details)";
+        li3.textContent = "Highlight New Equipment";
+        li4.textContent = "Submit Selected Points";
+
+        li2.appendChild(inp);
+        list.appendChild(li1);
+        list.appendChild(li2);
+        list.appendChild(li3);
+        list.appendChild(li4);
+    }
+    else if(editModes.eqDescription.state){
+        let li1 = document.createElement('li');
+        let li2 = document.createElement('li');
+        let li3 = document.createElement('li');
+        let li4 = document.createElement('li');
+        let inp = document.createElement('input');
+
+        li1.classList.add("btn")
+        li1.classList.add("btn-outline-light")
+        li2.classList.add("btn")
+        li2.classList.add("btn-outline-light")
+        li3.classList.add("btn")
+        li3.classList.add("btn-outline-light")
+        li4.classList.add("btn")
+        li4.classList.add("btn-outline-light")
+
+        inp.type = 'text';
+        inp.placeholder = "Type here for changes";
+        inp.id = "value-editor-input";
+
+        li1.addEventListener('click',()=>showInsturctions());
+        // li3.addEventListener('click',()=>createNewHighlight());
+        li4.addEventListener('click',()=>moveToNextStep());
+
+        li1.textContent = "Step 2: Edit Equipment Description (click for details)";
+        li3.textContent = "";
+        li4.textContent = "Next Step";
+
+        li2.appendChild(inp);
+        list.appendChild(li1);
+        list.appendChild(li2);
+        list.appendChild(li4);
+    }
+    else if(editModes.eqTagNumber.state){
+
+    }
+}
+
+/***************************************************************************************************************
+ * Loto Point Controls
+ ****************************************************************************************************************/
+
+function acceptLotoPoint(highlight){
+    selectedArea = selectedBundle.find(e=>e.highlight.id === highlight.id).eq;
+    let info = highlight.querySelector('.highlightInfo');
+    let controls = highlight.querySelector('.highlight-controls');
+    highlight.removeChild(controls);
+    info.innerHTML = "";
+    highlight.querySelectorAll('.corners').forEach(e=>e.classList.add('hide'));
+
+    if(editModes.eqTagNumber.state)updateEqTagNumber();
+    if(editModes.eqDescription.state){
+        updateEqDescription();
+        document.getElementById('all').removeChild(highlight);
+    }
+}
+
+function renameLotoPoint(highlight){
+    selectedArea = selectedBundle.find(e=>e.highlight.id === highlight.id).eq;
+    let text = highlight.querySelector('.responsive-text');
+    let input = document.getElementById('value-editor-input');
+    if(input.value){
+        if(editModes.eqTagNumber.state)selectedArea.tagNumber = input.value;
+        if(editModes.eqDescription.state)selectedArea.description = input.value;
+        text.textContent = input.value;
+    }
+}
+
+function fillLotoPointInfo(point){
+    let lotoPointInfo = document.createElement('div');
+    let text = document.createElement('p');
+    text.textContent = point.tagNumber;
+    lotoPointInfo.appendChild(text);
+    text.classList.add('responsive-text')
+    lotoPointInfo.appendChild(lpEditControls(point));
+    return lotoPointInfo;
+}
+
+function lpEditControls(point){
+    let controls = document.createElement('div');
+    let accept = document.createElement('button');
+    let rename = document.createElement('button');
+
+    controls.setAttribute('name','loto-point-ctrl');
+
+    controls.classList.add('loto-point-controls')
+    accept.classList.add('highlight-control-accept');
+    rename.classList.add('highlight-control-rename');
+
+    accept.textContent = "Accept";
+    rename.textContent = "Rename";
+    
+    controls.appendChild(accept);
+    controls.appendChild(rename);
+
+    accept.addEventListener('click',()=>acceptLotoPoint(point))
+    rename.addEventListener('click',()=>renameLotoPoint(point))
+
+    return controls;
+}
+
 
 
 

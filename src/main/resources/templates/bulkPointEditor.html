@@ -63,6 +63,15 @@
     z-index: 900;
     border: 2px solid blue;
 }
+.loto-point-controls{
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    right:100%;
+    top:100%;
+    z-index: 900;
+    border: 2px solid blue;
+}
 .loto-point-box{
     width: fit-content;
     display: flex;
@@ -94,7 +103,7 @@
                 <div id="menu-layers">
                     <div id="controls">
                         <button onclick="toggleFileButtonContent()">Toggle Name</button>
-                        <button onclick="fileFormSetup()">Edit File</button>
+                        <!-- <button onclick="fileFormSetup()">Edit File</button> -->
                     </div>
                     <div id="items">
                         <!-- <ul>
@@ -118,10 +127,10 @@
         <div id="lower" class="container-fluid">
             <div class="row">
                 <div class="col-12">
-                    <ul >
-                        <li class="btn btn-outline-light" onclick="removeAllHighlights()">Step 1: Select all loto points</li>
-                        <li class="btn btn-outline-light"><input type="text" placeholder="Input Eq Tag Number" id="value-editor-input"></li>
-                        <li class="btn btn-outline-light" onclick="createNewHighlight()">Highlight New Equipment</li>
+                    <ul id="bulk-edit-controls">
+                        <li class="btn btn-outline-light" onclick="removeAllHighlights()" name="step">Step 1: Select all loto points (click for details)</li>
+                        <li class="btn btn-outline-light"><input type="text" placeholder="Type here for changes" id="value-editor-input"></li>
+                        <li class="btn btn-outline-light" onclick="createNewHighlight()" name="">Highlight New Equipment</li>
                         <li class="btn btn-outline-light" onclick="removeAllHighlights()">Submit Selected Points</li>
                     </ul>
                     <!-- <ul >
@@ -207,7 +216,6 @@
     .then(()=>getVendors())
     .then(()=>getCategories())
     .then(async ()=>{
-        setEditMode("eqDescription");
         await getAllCategories();
         await getAllValuesOfEachCategory();
         // newInfoWindow("Point",false);
@@ -216,6 +224,7 @@
         // positionInfoWindowsInline();
 
         incompletePid = incompletePid.filter(e=>e.vendor.name==="Kiewit");
+        //setEditMode(incompletePid[0].bulkEditStep); //it is in loadPictureWithLightFile now
         loadPictureWithLightFile(incompletePid[0]);
 
         getAllCategoryObjects();

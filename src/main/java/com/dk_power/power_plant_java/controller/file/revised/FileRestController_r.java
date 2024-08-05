@@ -35,7 +35,7 @@ public class FileRestController_r {
         if(fileService.getEntityById(eq.getId())!=null) {
             return ResponseEntity.ok(fileService.convertToDto(fileService.save(eq)));
         }else{
-            throw new RuntimeException("File now found");
+            throw new RuntimeException("File not found");
         }
     }
     @PutMapping("/{id}/{status}")
@@ -49,13 +49,21 @@ public class FileRestController_r {
             throw new RuntimeException("File not found");
         }
     }
+    @PatchMapping("/")
+    public ResponseEntity<FileDto> updateFilePartualy(@RequestBody FileDto eq){
+        if(fileService.getEntityById(eq.getId())!=null) {
+            return ResponseEntity.ok(fileService.convertToDto(fileService.save(eq)));
+        }else{
+            throw new RuntimeException("File not found");
+        }
+    }
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteHt(@PathVariable String id){
         if(fileService.getEntityById(id)!=null) {
             fileService.softDelete(id);
             return ResponseEntity.ok("Item was deleted successfully");
         }else{
-            throw new RuntimeException("Equipment now found");
+            throw new RuntimeException("Equipment not found");
         }
     }
     @GetMapping("/completed")

@@ -40,6 +40,7 @@ public class FileDto extends BaseDto {
     private String objectType;
     private String extension;
     private List<HeatTraceDto> heatTraceList;
+    private String bulkEditStep;
 
     public String buildFileLink(){
         fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+extension;

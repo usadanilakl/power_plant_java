@@ -69,6 +69,7 @@ public class FileObject extends BaseAuditEntity {
     @ManyToMany(mappedBy = "pid")
     private List<HeatTrace> heatTrace;
     private Boolean completed;
+    private String bulkEditStep = "eqTagNumber";
 
 
 

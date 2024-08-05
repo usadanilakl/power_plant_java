@@ -31,6 +31,8 @@ async function loadPictureWithLightFile(file){
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
     fileWithPoints = await getFileFromDbByLink(file.fileNumber);
+    setEditMode(fileWithPoints.bulkEditStep);
+    buildEditStepControls();
     setAreas(fileWithPoints.points);
 }
 
@@ -288,7 +290,6 @@ async function highlightLotoPoints(){
     removeAllHighlights();
     for(let e of areas){
         selectedArea = fileWithPoints.points.find(el=>el.id===parseInt(e.getAttribute('data-point-id')));
-        console.log(selectedArea.description)
         if(editModes.eqDescription.state && selectedArea.description && selectedArea.description.trim()!==""){
             continue;
         }else{

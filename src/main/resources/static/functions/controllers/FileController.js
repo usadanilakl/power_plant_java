@@ -8,10 +8,22 @@ let file;
 let completedPid = [];
 let incompletePid = [];
 
+let baseFileApiUrl = "/file-api/";
+
 
 function filePutWithBody(data){
     return{
         method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Content-Type': 'application/json'
+        },
+        body:JSON.stringify(data)
+    }
+}
+function filePatchWithBody(data){
+    return{
+        method: 'PATCH',
         headers: {
             'X-CSRF-TOKEN': token,
             'Content-Type': 'application/json'
@@ -137,4 +149,12 @@ async function updateFileStatus(id,status){
     const data = await resp.json();
 }
 
-  
+async function updateFileEditStep(step){
+    let empty = {};
+    empty.id = fileWithPoints.id;
+    empty.bulkEditStep = step;
+
+    const resp = await fetch(baseFileApiUrl,filePatchWithBody(empty));
+    const data = await resp.json();
+    return data;
+}
