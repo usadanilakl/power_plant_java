@@ -18,6 +18,7 @@ async function setInputs(object){
         
         label.for = 'input-'+key;
         label.textContent = key;
+        label.style.color = "white";
 
         input.id = 'input-'+key;
         input.classList.add('form-control');

@@ -96,7 +96,8 @@ function showPointInfo(point){
         let label = document.createElement('label');
         div.appendChild(label);
         label.setAttribute('for',e);
-        label.textContent = e;
+        label.textContent = e;        
+        label.style.color = "white";
         if(point.objectType === "OldLotoPoint" && e==="isoPos") label.textContent = "Description";
         let input = document.createElement('input');
         div.appendChild(input);
@@ -216,7 +217,7 @@ async function fillExcelPointInfoWindow(points){
     if(infoContainer === null) newInfoWindow("Old-LOTO-Points");
     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
     infoContainer.innerHTML = "";
-    buildPointSearchField();
+    infoContainer.appendChild(buildPointSearchField());
     infoContainer.appendChild(form);
 
     let newLPcontainer = document.createElement('div');

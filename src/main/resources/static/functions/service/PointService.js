@@ -97,6 +97,7 @@ function showPointInfo(point){
         div.appendChild(label);
         label.setAttribute('for',e);
         label.textContent = e;
+        label.style.color = "white";
         if(point.objectType === "OldLotoPoint" && e==="isoPos") label.textContent = "Description";
         let input = document.createElement('input');
         div.appendChild(input);

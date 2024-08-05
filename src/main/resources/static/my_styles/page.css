@@ -11,6 +11,7 @@
     bottom:0;
     left:0;
     right:0;
+    background-color: black;
 }
 
 #upper{
@@ -35,16 +36,21 @@
     position: relative;
     left:0;
     z-index: 10;
+    padding:0px;
 }
 
 #left{
     position: relative;
     width:fit-content;
-    min-width: 70px;
-    background-color: rgb(71, 23, 116);
+    min-width: 150px;
+    background-image: url("/background/page/transmissionLine3.jpeg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     height: 100%;
     z-index: 10;
     overflow:auto;
+    padding:0px;
 }
 
 #right{
@@ -55,7 +61,10 @@
     bottom:0;
     left:0;
     right:0;
-    background-color: rgb(106, 126, 126);
+    background-image: url("/background/page/fireGlowTurbine.jpeg");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
     z-index: 1;
 }
 

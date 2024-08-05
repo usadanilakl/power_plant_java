@@ -13,6 +13,7 @@ async function buildFormFromObject(point){
         form.appendChild(div);
         div.classList.add('form-group'); //bootstrap styling for input container
         let label = document.createElement('label'); //input name
+        label.style.color = "white";
         div.appendChild(label);
         label.setAttribute('for',e);//connect label and input
         label.textContent = e;

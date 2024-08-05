@@ -37,6 +37,17 @@ ul {
     flex-direction: row;
 }
 
+.custom-btn-bw {
+    background-color: black;
+    color: white;
+    border: 2px solid white;
+}
+
+.custom-btn-bw:hover {
+    background-color: white;
+    color: black;
+}
+
 /*button, #buttons li, #file-input{*/
 /*    !* display: inline-block; *!*/
 /*    padding: 10px 20px;*/

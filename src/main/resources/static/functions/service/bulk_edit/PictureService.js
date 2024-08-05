@@ -8,6 +8,7 @@ let selectedAres = [];
 let selectedArea;
 let selectedBundle = [];
 let currentSizeCoefficient;
+let fileWithPoints;
 // let eqFormInfo; //moved to global variables
 
 /*****************************************************DISPLAY FUNCTIONS*****************************************************************/
@@ -17,12 +18,14 @@ function loadPictureWithAreas(src, areas){
     removeAllHighlights();
     setAreas(areas);
 }
+
 function loadPictureWithFile(file){
     picture.setAttribute('src','/'+file.fileLink);
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
     setAreas(file.points);
 }
+
 async function loadPictureWithLightFile(file){
     picture.setAttribute('src','/'+file.fileLink);
     picture.setAttribute('data-file-id', file.id);
@@ -30,6 +33,7 @@ async function loadPictureWithLightFile(file){
     fileWithPoints = await getFileFromDbByLink(file.fileNumber);
     setAreas(fileWithPoints.points);
 }
+
 function setAreas(areas){
     map.innerHTML = "";
     removeAllHighlights();
@@ -42,26 +46,24 @@ function setAreas(areas){
             event.preventDefault();
             selectedArea = e;
             selectedAres.push(selectedArea);
-            //removeAllHighlights();
             let highlight = createHighlight(area);
             selectedBundle.push({"area":area,"eq":e,"highlight":highlight});
             pointEditModeControl();
             setEditType();
-            console.log(selectedBundle.length)
-            //fillPointInfoWindow(selectedArea);
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
-            //positionInfoWindowsInline();
-            //  console.log(event.target)
+            highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
         })
         //doubleClick(shape, e);
         map.appendChild(area);
     });
     resizeAreas();
     //highlightAll()
+    highlightLotoPoints();
     
     
 }
+
 function createAreaElement(area){
     
     let coord = getAreaCoordinates(area.coordinates);
@@ -90,6 +92,7 @@ function createAreaElement(area){
 
     return newArea;
 }
+
 function getAreaCoordinates(coord){
     let arr = coord.split(",");
     let result = 
@@ -100,6 +103,7 @@ function getAreaCoordinates(coord){
 
     return result;
 }
+
 function resizeAreas(){
     
     const rect = picture.getBoundingClientRect();
@@ -119,6 +123,7 @@ function resizeAreas(){
     //resizeHighlite();
     oldWidth = width; 
 }
+
 function resizeHighlights(){
     
     let allHighlites = document.querySelectorAll('.areaHighlights');
@@ -191,7 +196,7 @@ function createHighlight(area){
                         // console.log('double click');
                         selectedArea = selectedBundle.find(e=>e.highlight.id===highlight.id).eq;
                         fillHighlightInfo(highlight);
-                        highlightEditControls(highlight);
+                        highlightEditControls(highlight,true);
                         let points = getExcelPointsByLabel(selectedArea.tagNumber);
                         fillExcelPointInfoWindow(points);
                     }
@@ -219,6 +224,7 @@ function createHighlight(area){
 
     let highlightInfo = document.createElement('div');
     highlightInfo.classList.add('highlightInfo');
+    // highlightInfo.setAttribute('name','highlight-ctrl');
     highlight.appendChild(highlightInfo);
 
     fillHighlightInfo(highlight);
@@ -228,15 +234,14 @@ function createHighlight(area){
     let closeHlButton = document.createElement('button');
     closeHlButton.classList.add('highlight-control-close');
     closeHlButton.textContent = " X";
+    closeHlButton.name = 'highlight-ctrl';
     closeHlButton.addEventListener('click',()=>removePoint(highlight));
     highlight.appendChild(closeHlButton);
     
 
     return highlight;
 }
-function highlightModeControl(){
 
-}
 function getShapeCoordinates(area){
     let coords = area.getAttribute('coords').split(",");
     let width = (coords[2]-coords[0])+'px'; 
@@ -245,6 +250,7 @@ function getShapeCoordinates(area){
     let x = parseFloat(coords[0])+picture.offsetLeft + "px";
     return {w:width, h:height, y:y, x:x};
 }
+
 function getOriginalPictureSizes(originalPictureSize){
     let arr = originalPictureSize.split(",");
     let w = arr[0].substring(arr[0].indexOf(":")+1);
@@ -252,6 +258,7 @@ function getOriginalPictureSizes(originalPictureSize){
     originalWidth = w;
     return {w:w,h:h}
 }
+
 function removeAllHighlights(){
     document.querySelectorAll('.areaHighlights').forEach(e=>{
         document.getElementById('all').removeChild(e);
@@ -259,6 +266,7 @@ function removeAllHighlights(){
         highlatedAreas = [];
     })
 }
+
 function removeHighlightById(id){
     let h = document.getElementById('id');
         document.getElementById('all').removeChild(h);
@@ -266,6 +274,7 @@ function removeHighlightById(id){
         // highlatedAreas = [];
     
 }
+
 function highlightAll(){
     let areas = document.querySelectorAll('.ar');
     removeAllHighlights();
@@ -273,13 +282,30 @@ function highlightAll(){
         createHighlight(e);
     })
 }
-function highlightLotoPoints(){
+
+async function highlightLotoPoints(){
     let areas = document.querySelectorAll('[data-loto-point-area]');
     removeAllHighlights();
-    areas.forEach(e=>{
-        createHighlight(e);
-    })
+    for(let e of areas){
+        selectedArea = fileWithPoints.points.find(el=>el.id===parseInt(e.getAttribute('data-point-id')));
+        console.log(selectedArea.description)
+        if(editModes.eqDescription.state && selectedArea.description && selectedArea.description.trim()!==""){
+            continue;
+        }else{
+        selectedAres.push(selectedArea);
+        let hl = createHighlight(e);
+        selectedBundle.push({"area":e,"eq":selectedArea,"highlight":hl});
+        pointEditModeControl();
+        // if(editModes.eqTagNumber.state){
+            let controls = hl.querySelectorAll('[name=highlight-ctrl]')
+            controls.forEach(e=>hl.removeChild(e));
+            let info = hl.querySelector('.highlightInfo');
+            info.innerHTML = "";
+        // }
+        }
+    }
 }
+
 function relocateHighlightsWithPicture(event){
     //let allHighlights = [...activeHighlights];
 
@@ -318,19 +344,23 @@ function relocateHighlightsWithPicture(event){
 
 
 }
+
 function doubleClickArea(element){
     if(modes.viewMode.state) jumpToFile(element.getAttribute('name'))
     else if(modes.editMode.state) console.log('editing'+element.getAttribute('name'))
 }
+
 function jumpToFile(fileNumber, area){
    // if(area.getAttribute('class').includes('connector')){
         let file = findFileByPartualNumber(fileNumber)
         loadPictureWithAreas("/uploads/jpg/P&IDs/Kiewit/"+file.fileNumber+".jpg", file.points)
     //}
 }
+
 function findFileByPartualNumber(fileNumber){
     return fileRepository.find(e=>e.fileNumber.includes(fileNumber));
 }
+
 function zoomPicture(){
 
     let size = picture.getBoundingClientRect();
@@ -575,7 +605,7 @@ function pointEditModeControl(){
         //if(selectedArea) fillPointInfoWindow(selectedArea);
         
     }else if(modes.editMode.state){
-        showAllResizeElements();
+        // showAllResizeElements();
         //fillPointInfoWindow(selectedArea);
         document.querySelectorAll('.addButtons').forEach(e=>{
             e.classList.add('hide');

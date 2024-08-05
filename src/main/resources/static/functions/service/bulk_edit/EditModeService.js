@@ -39,13 +39,20 @@ function createModeButtons(){
 }
 
 function acceptPoint(highlight){
+    selectedArea = selectedBundle.find(e=>e.highlight.id === highlight.id).eq;
     let info = highlight.querySelector('.highlightInfo');
     let controls = highlight.querySelector('.highlight-controls');
     highlight.removeChild(controls);
     info.innerHTML = "";
-    //initResize(highlight, false);
-    updateEqTagNumber();
+    highlight.querySelectorAll('.corners').forEach(e=>e.classList.add('hide'));
+
+    if(editModes.eqTagNumber.state)updateEqTagNumber();
+    if(editModes.eqDescription.state){
+        updateEqDescription();
+        document.getElementById('all').removeChild(highlight);
+    }
 }
+
 function removePoint(highlight){
     activeHighlights = activeHighlights.filter(e=>e.id!==highlight.id)
     selectedBundle = selectedBundle.filter(e=>e.highlight.id!==highlight.id)
@@ -55,10 +62,12 @@ function removePoint(highlight){
 }
 
 function renamePoint(highlight){
+    selectedArea = selectedBundle.find(e=>e.highlight.id === highlight.id).eq;
     let text = highlight.querySelector('.responsive-text');
     let input = document.getElementById('value-editor-input');
     if(input.value){
-        selectedArea.tagNumber = input.value;
+        if(editModes.eqTagNumber.state)selectedArea.tagNumber = input.value;
+        if(editModes.eqDescription.state)selectedArea.description = input.value;
         text.textContent = input.value;
     }
 }
@@ -71,14 +80,15 @@ function setEditType(){
 
 function fillHighlightInfo(highlight){
     let highlightInfo = highlight.querySelector('.highlightInfo');
-    if(selectedArea && selectedArea.lotoPoints){
-        if(editModes.lotoPoint.state){
-            selectedArea.lotoPoints.forEach(e=>{
-                let text = document.createElement('p');
-                text.classList.add('responsive-text')
-                text.textContent =  e.tagNumber;
-                highlightInfo.appendChild(text);
-            })
+    if(selectedArea){
+        if(editModes.eqDescription.state){
+            let text = document.createElement('p');
+            text.classList.add('responsive-text')
+            if(!selectedArea.description || selectedArea.description.trim()==="") selectedArea.description = selectedArea.lotoPoints[0].description;
+            text.textContent =  selectedArea.description;
+            highlightInfo.appendChild(text);
+            
+
         }else if(editModes.eqTagNumber.state){
             let text = document.createElement('p');
             text.classList.add('responsive-text')
@@ -89,11 +99,13 @@ function fillHighlightInfo(highlight){
     }
 }
 
-function highlightEditControls(highlight){
+function highlightEditControls(highlight,resize){
     let controls = document.createElement('div');
     let accept = document.createElement('button');
     let rename = document.createElement('button');
     let remove = document.createElement('button');
+
+    controls.setAttribute('name','highlight-ctrl');
 
     controls.classList.add('highlight-controls')
     accept.classList.add('highlight-control-accept');
@@ -112,6 +124,8 @@ function highlightEditControls(highlight){
     accept.addEventListener('click',()=>acceptPoint(highlight))
     remove.addEventListener('click',()=>showDeleteEqPopup(highlight))
     rename.addEventListener('click',()=>renamePoint(highlight))
+
+    if(resize)highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
 }
 
 function buildLotoPointList(points, highlight){

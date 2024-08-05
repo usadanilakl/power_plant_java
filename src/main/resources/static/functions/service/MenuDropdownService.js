@@ -12,7 +12,7 @@
         }
         button.addEventListener('click',dropdownAction);
         button.classList.add('btn'); //style link to look like button
-        button.classList.add('btn-warning'); //style link to look like button
+        button.classList.add('custom-btn-bw'); //style link to look like button
         button.textContent = e.value; //text of the button
 
         if(e.objectType){

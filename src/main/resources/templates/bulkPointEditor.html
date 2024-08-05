@@ -30,6 +30,7 @@
     width: fit-content;
     /* min-height: 10%; */
     border: 2px solid blue;
+    z-index: 2;
     
     /* overflow: hidden; */
 }
@@ -118,10 +119,10 @@
             <div class="row">
                 <div class="col-12">
                     <ul >
-                        <li class="btn-list-in-line" onclick="removeAllHighlights()">Step 1: Select all loto points</li>
-                        <li class="btn-list-in-line"><input type="text" placeholder="Input Eq Tag Number" id="value-editor-input"></li>
-                        <li class="btn-list-in-line" onclick="createNewHighlight()">Highlight New Equipment</li>
-                        <li class="btn-list-in-line" onclick="removeAllHighlights()">Submit Selected Points</li>
+                        <li class="btn btn-outline-light" onclick="removeAllHighlights()">Step 1: Select all loto points</li>
+                        <li class="btn btn-outline-light"><input type="text" placeholder="Input Eq Tag Number" id="value-editor-input"></li>
+                        <li class="btn btn-outline-light" onclick="createNewHighlight()">Highlight New Equipment</li>
+                        <li class="btn btn-outline-light" onclick="removeAllHighlights()">Submit Selected Points</li>
                     </ul>
                     <!-- <ul >
                         <li class="btn-list-in-line" onclick="removeAllHighlights()">Remove Highlights</li>
@@ -206,7 +207,7 @@
     .then(()=>getVendors())
     .then(()=>getCategories())
     .then(async ()=>{
-        setEditMode("eqTagNumber");
+        setEditMode("eqDescription");
         await getAllCategories();
         await getAllValuesOfEachCategory();
         // newInfoWindow("Point",false);

@@ -141,7 +141,26 @@ async function updateEqTagNumber(){
         const data = await response.text();
         return data;
     }
+}
 
+async function updateEqDescription(){
+    let message = tagValidation(selectedArea.description);
+    if(message!==null){
+        console.log(message);
+        displayMessagePopup(message);
+        return;
+    }
+
+    let emptyEqObj = {};
+    for(let key in selectedArea){
+        emptyEqObj[key] = null;
+    }
+    
+    emptyEqObj.description = selectedArea.description;
+    emptyEqObj.id = selectedArea.id;
+    const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
+    const data = await response.text();
+    return data;
     
 }
 
