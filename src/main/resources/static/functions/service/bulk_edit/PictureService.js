@@ -60,8 +60,7 @@ function setAreas(areas){
         map.appendChild(area);
     });
     resizeAreas();
-    //highlightAll()
-    highlightLotoPoints();
+    highlighter();
     
     
 }
@@ -146,7 +145,7 @@ function resizeHighlights(){
     })
 }
 
-function createHighlight(area){
+function createHighlight(area,withControls){
     let position = getShapeCoordinates(area);
     let coords = area.getAttribute('coords').split(",");
     let highlight = document.createElement('div');
@@ -224,21 +223,25 @@ function createHighlight(area){
         e.addEventListener('click', updateCoords)
     })
 
-    let highlightInfo = document.createElement('div');
-    highlightInfo.classList.add('highlightInfo');
-    // highlightInfo.setAttribute('name','highlight-ctrl');
-    highlight.appendChild(highlightInfo);
+    if(withControls){
+        let highlightInfo = document.createElement('div');
+        highlightInfo.classList.add('highlightInfo');
+        // highlightInfo.setAttribute('name','highlight-ctrl');
+        highlight.appendChild(highlightInfo);
 
-    fillHighlightInfo(highlight);
-    highlightEditControls(highlight);
+        fillHighlightInfo(highlight);
+        highlightEditControls(highlight);
 
-    
-    let closeHlButton = document.createElement('button');
-    closeHlButton.classList.add('highlight-control-close');
-    closeHlButton.textContent = " X";
-    closeHlButton.name = 'highlight-ctrl';
-    closeHlButton.addEventListener('click',()=>removePoint(highlight));
-    highlight.appendChild(closeHlButton);
+        
+        let closeHlButton = document.createElement('button');
+        closeHlButton.classList.add('highlight-control-close');
+        closeHlButton.textContent = " X";
+        closeHlButton.name = 'highlight-ctrl';
+        closeHlButton.addEventListener('click',()=>removePoint(highlight));
+        highlight.appendChild(closeHlButton);
+    }
+
+
     
 
     return highlight;

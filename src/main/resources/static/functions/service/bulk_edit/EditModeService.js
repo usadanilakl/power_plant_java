@@ -343,8 +343,63 @@ function lpEditControls(point){
  * Get all light completed files
  * Filter Kiewit only
  * Get first item from incomplete array use its link to get full file
+ * Set edit mode before loading file using file bulkEditStep field
+ * Load picture
+ * Set Areas for each point
+ * Depending on edit step set up highlights
+ * On click on area or dobule click on highligh open edit info menu
+ * Menu provides controls to edit and accept data
+ * On accept - close info menu and handle point highlight (depending on editing mode)
+ * 
+ * Multiple info menues can be open - to track which point is beaing updated using highlight id to get assosiated point from selectedBundle
+ * 
+ */
+
+/**
+ * New flow: 
+ * Get all light incomplete files
+ * Get all light completed files
+ * Filter Kiewit only
+ * Get first item from incomplete array use its link to get full file
+ * Set edit mode before loading file using file bulkEditStep field
+ * Load picture
+ * Set Areas for each point
+ * 
+ * Different:
+ * Depending on edit step, set up highlights - create different logic for each step and combine it itno one method that selects correct method
+ * On click on area or dobule click on highligh open edit info menu - as a new window
+ * Menu provides controls to edit and accept data
+ * On accept - close info menu and handle point highlight (depending on editing mode)
+ * 
+ * Multiple info menues can be open - to track which point is beaing updated using highlight id to get assosiated point from selectedBundle
  * 
  */
 
 
+/*
+Highlighter selects certain points (all loto points for example)
+Builds a bundle of: area, highlight, point
+Adds items into arrays: selectedAreas, selectedBundles
+It needs to be able to build highlight without controls and info menu
+ */
+function highlighter(){ // this will go into setAreas
+    if(editModes.eqTagNumber.state) highlightForEqTagNumber();
+    if(editModes.eqDescription.state) highlightForEqDescription();
+}
+
+function highlightForEqDescription(){
+    let areas = document.querySelectorAll('[data-loto-point-area]');
+    removeAllHighlights();
+    for(let e of areas){
+        selectedArea = fileWithPoints.points.find(el=>el.id===parseInt(e.getAttribute('data-point-id')));
+        if(editModes.eqDescription.state && selectedArea.description && selectedArea.description.trim()!==""){
+            continue;
+        }else{
+        selectedAres.push(selectedArea);
+        let hl = createHighlight(e); // need to add parameter to chose if controls needs to be built
+        selectedBundle.push({"area":e,"eq":selectedArea,"highlight":hl});
+        pointEditModeControl();
+        }
+    }
+}
 
