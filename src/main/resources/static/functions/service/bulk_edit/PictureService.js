@@ -48,7 +48,7 @@ function setAreas(areas){
             event.preventDefault();
             selectedArea = e;
             selectedAres.push(selectedArea);
-            let highlight = createHighlight(area);
+            let highlight = createHighlight(area,true);
             selectedBundle.push({"area":area,"eq":e,"highlight":highlight});
             pointEditModeControl();
             setEditType();
@@ -197,7 +197,7 @@ function createHighlight(area,withControls){
                         // console.log('double click');
                         selectedArea = selectedBundle.find(e=>e.highlight.id===highlight.id).eq;
                         fillHighlightInfo(highlight);
-                        highlightEditControls(highlight,true);
+                        //highlightEditControls(highlight,true);
                         let points = getExcelPointsByLabel(selectedArea.tagNumber);
                         fillExcelPointInfoWindow(points);
                     }

@@ -84,6 +84,12 @@ function fillHighlightInfo(highlight){
         if(editModes.eqDescription.state){
             if(!selectedArea.description || selectedArea.description.trim()==="") selectedArea.description = selectedArea.lotoPoints[0].description;
             let allInfoWindow = getEmptyWindow(selectedArea.tagNumber);
+            allInfoWindow.style.width = 'fit-content';
+            allInfoWindow.style.height = 'fit-content';
+
+            allInfoWindow.style.left = highlight.offsetLeft + 'px';
+            allInfoWindow.style.top = highlight.offsetTop+highlight.offsetHeight+ 'px';
+
             allInfoWindow.appendChild(fillLotoPointInfo(selectedArea))
             selectedArea.lotoPoints.forEach(e=>{
                 allInfoWindow.appendChild(fillLotoPointInfo(e))
@@ -398,7 +404,6 @@ function highlightForEqDescription(){
         selectedAres.push(selectedArea);
         let hl = createHighlight(e); // need to add parameter to chose if controls needs to be built
         selectedBundle.push({"area":e,"eq":selectedArea,"highlight":hl});
-        pointEditModeControl();
         }
     }
 }
