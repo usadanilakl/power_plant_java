@@ -337,7 +337,14 @@ function lpEditControls(point){
     return controls;
 }
 
-
+/**
+ * Current flow: 
+ * Get all light incomplete files
+ * Get all light completed files
+ * Filter Kiewit only
+ * Get first item from incomplete array use its link to get full file
+ * 
+ */
 
 
 
