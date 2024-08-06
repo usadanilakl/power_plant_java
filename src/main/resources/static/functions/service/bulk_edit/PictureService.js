@@ -11,6 +11,11 @@ let currentSizeCoefficient;
 let fileWithPoints;
 // let eqFormInfo; //moved to global variables
 
+function getPointByIdFromCurrentFile(id){
+    id = parseInt(id);
+    return fileWithPoints.points.find(e=>e.id===id);
+}
+
 /*****************************************************DISPLAY FUNCTIONS*****************************************************************/
 
 function loadPictureWithAreas(src, areas){
@@ -39,7 +44,6 @@ async function loadPictureWithLightFile(file){
 function setAreas(areas){
     map.innerHTML = "";
     removeAllHighlights();
-    let n = 1;
 
     areas.forEach(e=>{
         oldWidth = getOriginalPictureSizes(e.originalPictureSize).w;
@@ -50,7 +54,7 @@ function setAreas(areas){
             selectedAres.push(selectedArea);
             let highlight = createHighlight(area,true);
             selectedBundle.push({"area":area,"eq":e,"highlight":highlight});
-            pointEditModeControl();
+            // pointEditModeControl();
             setEditType();
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
@@ -146,9 +150,12 @@ function resizeHighlights(){
 }
 
 function createHighlight(area,withControls){
+    const pointId = area.getAttribute('data-point-id');
+    const point = fileWithPoints.points.find(e=>e.id===pointId);
     let position = getShapeCoordinates(area);
     let coords = area.getAttribute('coords').split(",");
     let highlight = document.createElement('div');
+    highlight.setAttribute('data-point-id', pointId);
     highlight.setAttribute('id', area.getAttribute('id') + "h");
     highlight.setAttribute('class','areaHighlights');
     //if(area.classList.contains('connector'))highlight.classList.add('connector')
@@ -194,12 +201,11 @@ function createHighlight(area,withControls){
                     if (counter === 1) {
                         highlightOneClickFunction();
                     } else if (counter > 1) {
-                        // console.log('double click');
                         selectedArea = selectedBundle.find(e=>e.highlight.id===highlight.id).eq;
                         fillHighlightInfo(highlight);
-                        //highlightEditControls(highlight,true);
                         let points = getExcelPointsByLabel(selectedArea.tagNumber);
                         fillExcelPointInfoWindow(points);
+                        if(editModes.eqTagNumber.state)highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
                     }
                     counter = 0; // reset counter
                 }, 300);
@@ -230,7 +236,7 @@ function createHighlight(area,withControls){
         highlight.appendChild(highlightInfo);
 
         fillHighlightInfo(highlight);
-        highlightEditControls(highlight);
+        //highlightEditControls(highlight);
 
         
         let closeHlButton = document.createElement('button');
@@ -557,6 +563,9 @@ async function handleMouseUp() {
     areaInfo.location = null;
 
     selectedArea = areaInfo;
+    selectedArea.isNew = true;
+    selectedArea.id = "new";
+    fileWithPoints.points.push(selectedArea);
     let area = createAreaElement(selectedArea);
     area.addEventListener('click',()=>{
         event.preventDefault();
@@ -567,14 +576,13 @@ async function handleMouseUp() {
 
     map.appendChild(area);
     resizeNewArea(area);
-    createHighlight(area);
+    createHighlight(area,true);
     // console.log(JSON.stringify(areaInfo))
     // console.log(JSON.stringify(selectedArea))
     //let newEq = await createNewEq(areaInfo);
     //file.points.push(newEq);
     
     //fillPointInfoWindow(selectedArea);
-    selectedArea.isNew = true;
     removeLastHighlight();
     document.removeEventListener('mousedown',handleMouseDown);
     

@@ -111,7 +111,7 @@ function showPointInfo(point){
     return form; 
 }
 
-function excelPointDropdown(points){
+function excelPointDropdown(points,equipment){
     let list = document.createElement('ul');
     points.forEach(e=>{
         let item = document.createElement('li');
@@ -139,22 +139,19 @@ function excelPointDropdown(points){
         });
 
         if(e.objectType === "RevisedLotoPoints") {
-        let addButton = document.createElement('button');
-        buttons.appendChild(addButton);
-        addButton.classList.add('addButtons');
-        addButton.textContent = "ADD";
-        addButton.classList.add('hide');
+            let addButton = document.createElement('button');
+            buttons.appendChild(addButton);
+            addButton.classList.add('addButtons');
+            addButton.textContent = "ADD";
+            addButton.classList.add('hide');
 
-        if(modes.editMode.state){
-             addButton.classList.remove('hide');
             const editModeAction = async function(){
                 let lotoPoint = await getLotoPointByOldId(e.originalId);
                 addLotoPoint(lotoPoint);
             }
-            //if(modes.lotoMode.state)addButton.addEventListener('click',lotoModeAction);
-            if(modes.editMode.state)addButton.addEventListener('click',editModeAction);
+            addButton.addEventListener('click',editModeAction);
+        
         }
-    }
         
     });
 
@@ -210,8 +207,8 @@ async function lotoPointDropdown(points){
     return list;
 }
 
-async function fillExcelPointInfoWindow(points){
-    let form = excelPointDropdown(points);
+async function fillExcelPointInfoWindow(points,eq){
+    let form = excelPointDropdown(points,eq);
     let infoFrame = document.getElementById('infoFrameOld-LOTO-Points');
     let infoContainer = document.getElementById('infoWindowOld-LOTO-Points');
     if(infoContainer === null) newInfoWindow("Old-LOTO-Points");

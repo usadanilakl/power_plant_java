@@ -116,8 +116,8 @@ async function deletePoint(id){
 /**********************************************************************************************************************8
  * Field By Field
  ***********************************************************************************************************************/
-async function updateEqTagNumber(){
-    let message = tagValidation(selectedArea.tagNumber);
+async function updateEqTagNumber(point){
+    let message = tagValidation(point.tagNumber);
     if(message!==null){
         console.log(message);
         displayMessagePopup(message);
@@ -125,26 +125,24 @@ async function updateEqTagNumber(){
     }
 
     let emptyEqObj = {};
-    for(let key in selectedArea){
-        emptyEqObj[key] = null;
-    }
-    emptyEqObj.tagNumber = selectedArea.tagNumber;
-    emptyEqObj.coordinates = selectedArea.coordinates;
-    emptyEqObj.lotoPoints = [...selectedArea.lotoPoints];
+    emptyEqObj.tagNumber = point.tagNumber;
+    emptyEqObj.coordinates = point.coordinates;
+    emptyEqObj.lotoPoints = [...point.lotoPoints];
 
-    if(selectedArea.isNew){
-        console.log(JSON.stringify(selectedArea))
-        return await createNewEq(selectedArea);
+    if(point.isNew){
+        point.id=null;
+        console.log(JSON.stringify(point))
+        return await createNewEq(point);
     }else{
-        emptyEqObj.id = selectedArea.id;
+        emptyEqObj.id = point.id;
         const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
         const data = await response.text();
         return data;
     }
 }
 
-async function updateEqDescription(){
-    let message = tagValidation(selectedArea.description);
+async function updateEqDescription(point){
+    let message = tagValidation(point.description);
     if(message!==null){
         console.log(message);
         displayMessagePopup(message);
@@ -152,12 +150,10 @@ async function updateEqDescription(){
     }
 
     let emptyEqObj = {};
-    for(let key in selectedArea){
-        emptyEqObj[key] = null;
-    }
     
-    emptyEqObj.description = selectedArea.description;
-    emptyEqObj.id = selectedArea.id;
+    emptyEqObj.description = point.description;
+    emptyEqObj.id = point.id;
+    emptyEqObj.lotoPoints = [... point.lotoPoints]
     const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
     const data = await response.text();
     return data;

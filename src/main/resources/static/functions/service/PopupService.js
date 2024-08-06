@@ -96,8 +96,8 @@ async function displayMessagePopup(message){
     myModal.show();
 }
 
-async function showDeleteEqPopup(highlight){
-    let eq = selectedBundle.find(e=>e.highlight.id === highlight.id).eq;
+async function showDeleteEqPopup(eq){
+    //let eq = getPointByIdFromCurrentFile(highlight.getAttribute('data-point-id'));
     let popup = await getEqDeletePopUp();
     let modal = popup.querySelector('#eq-delete-modal')
     let myModal = new bootstrap.Modal(modal, {});

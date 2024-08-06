@@ -48,9 +48,10 @@ public class EquipmentRestController {
         Equipment entity = equipmentService.getEntityById(eq.getId());
         if(entity!=null){
             equipmentService.save(eq);
-            System.out.println("saved: " + eq.getId());
+            System.out.println("saved: " + eq.getId() + ", " + eq.getTagNumber());
+            return ResponseEntity.ok("Tag Number was successfully updated");
         }
+        else return ResponseEntity.ok("Equipment wasn't found");
 
-        return ResponseEntity.ok("Tag Number was successfully updated");
     }
 }

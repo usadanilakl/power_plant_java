@@ -11,3 +11,12 @@ async function getEmptyLotoPoint(){
     const data = await resp.json();
     return data;
 }
+
+async function updateLotoPointDescription(point){
+    let empty = {};
+    empty.id = point.id;
+    empty.description = point.description;
+    const resp = await fetch(baseLotoPointUrl, getPatchMetaDataWithBody(empty));
+    const data = await resp.text();
+    return data;
+}
