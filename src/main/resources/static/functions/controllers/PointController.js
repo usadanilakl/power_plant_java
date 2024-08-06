@@ -160,6 +160,25 @@ async function updateEqDescription(point){
     
 }
 
+async function updateEqLocation(point){
+    let message = locationValidation(point.location);
+    if(message!==null){
+        console.log(message);
+        displayMessagePopup(message);
+        return;
+    }
+
+    let emptyEqObj = {};
+    
+    emptyEqObj.location = point.location;
+    emptyEqObj.id = point.id;
+    emptyEqObj.lotoPoints = [... point.lotoPoints]
+    const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
+    const data = await response.text();
+    return data;
+    
+}
+
 
 /**********************************************************************************************************************8
  * Loto Point Controller

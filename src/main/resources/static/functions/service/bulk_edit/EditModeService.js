@@ -51,6 +51,10 @@ function acceptPoint(highlight){
         updateEqDescription();
         document.getElementById('all').removeChild(highlight);
     }
+    if(editModes.eqLocation.state){
+        updateEqLocation();
+        document.getElementById('all').removeChild(highlight);
+    }
 }
 
 function removePoint(highlight){
@@ -82,7 +86,7 @@ function fillHighlightInfo(highlight){
     let point = getPointByIdFromCurrentFile(highlight.getAttribute('data-point-id'));
     if(!point && selectedArea.isNew) point = selectedArea;
     if(point){
-        if(editModes.eqDescription.state){
+        if(editModes.eqDescription.state || editModes.eqLocation.state){
             if(!point.description || point.description.trim()==="") point.description = point.lotoPoints[0].description;
             const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
             if(currentWindow) all.removeChild(currentWindow);
@@ -223,8 +227,23 @@ async function moveToNextStep(){
        let updatedFile = await updateFileEditStep("eqDescription");
         loadPictureWithLightFile(updatedFile);
     }
-    if(editModes.eqDescription.state){}
+    if(editModes.eqDescription.state){
+        let updatedFile = await updateFileEditStep("eqLocation");
+        loadPictureWithLightFile(updatedFile);
+    }
     if(editModes.eqTagNumber.state){}
+}
+
+async function moveToPreviousStep(){
+     if(editModes.eqDescription.state){
+         let updatedFile = await updateFileEditStep("eqTagNumber");
+         loadPictureWithLightFile(updatedFile);
+     }
+     if(editModes.eqLocation.state){
+        let updatedFile = await updateFileEditStep("eqDescription");
+        loadPictureWithLightFile(updatedFile);
+
+     }
 }
 
 function buildEditStepControls(){
@@ -308,8 +327,53 @@ function buildEditStepControls(){
         list.appendChild(li2);
         list.appendChild(li4);
     }
-    else if(editModes.eqTagNumber.state){
+    else if(editModes.eqLocation.state){
+        let li1 = document.createElement('li');
+        let li2 = document.createElement('li');
+        let li3 = document.createElement('li');
+        let li4 = document.createElement('li');
+        let inp = document.createElement('input');
+        let pasteButton = document.createElement('button');
+        let sdropdown = document.createElement('input');
 
+        li1.classList.add("btn")
+        li1.classList.add("btn-outline-light")
+        // li2.classList.add("btn")
+        // li2.classList.add("btn-outline-light")
+        li3.classList.add("btn")
+        li3.classList.add("btn-outline-light")
+        li4.classList.add("btn")
+        li4.classList.add("btn-outline-light")
+        pasteButton.classList.add("btn")
+        pasteButton.classList.add("btn-outline-light")
+
+        inp.type = 'text';
+        inp.placeholder = "Type Specific Location";
+        inp.id = "value-editor-input";
+        inp.style.width = 'auto';
+        li2.style.width = 'auto';
+        li2.style.display='inline';
+        sdropdown.type='text';
+        sdropdown.placeholder = "Choose General Location"
+        sdropdown.setAttribute('data-sdropdown','location');
+
+        li1.addEventListener('click',()=>showInsturctions());
+        // li3.addEventListener('click',()=>createNewHighlight());
+        li4.addEventListener('click',()=>moveToNextStep());
+
+        li1.textContent = "Step 3: Edit Equipment Location (click for details)";
+        li4.textContent = "Next Step";
+        pasteButton.textContent = "P"
+
+        li2.appendChild(inp);
+        li2.appendChild(pasteButton);
+        li3.appendChild(sdropdown)
+        list.appendChild(li1);
+        list.appendChild(li3);
+        list.appendChild(li2);
+        list.appendChild(li4);
+
+        buildDropdown("location", ["one","two","three"])
     }
 }
 
@@ -356,6 +420,10 @@ function fillLotoPointInfo(point){
     lotoPointInfo.classList.add('point-info-block');
     if(editModes.eqDescription.state)text.textContent = point.description;
     else if(editModes.eqTagNumber.state)text.textContent = point.tagNumber;
+    else if(editModes.eqLocation.state){
+        if(point.objectType==="Equipment" && point.location && point.location.name)text.textContent = point.location.name;
+        else text.textContent = point.specificLocation;
+    }
     text.classList.add('responsive-text');
     text.id = 'point-info-text-'+point.id;
     controls.classList.add('lotoPointInfo');
@@ -409,6 +477,7 @@ function lpEditControls(point){
 function addResizeControls(highlight){
     highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
 }
+
 function removeResizeAndDisableLpConnection(highlight){
     highlight.querySelectorAll('.corners').forEach(e=>e.classList.add('hide'));
     document.querySelectorAll('.addButtons').forEach(e=>e.classList.add('hide'));
@@ -464,6 +533,7 @@ It needs to be able to build highlight without controls and info menu
 function highlighter(){ // this will go into setAreas
     if(editModes.eqTagNumber.state) highlightForEqTagNumber();
     if(editModes.eqDescription.state) highlightForEqDescription();
+    if(editModes.eqLocation.state) highlightForLocation();
 }
 
 function highlightForEqDescription(){
@@ -491,4 +561,14 @@ function highlightForEqTagNumber(){
         selectedBundle.push({"area":e,"eq":selectedArea,"highlight":hl});
     }
 }
+
+function highlightForLocation(){
+
+}
+
+/**
+ * Function to switch to location step
+ * Logic to highligh points and keep track of completed ones
+ * On click on area - show point location and its loto points
+ */
 
