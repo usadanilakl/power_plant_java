@@ -26,6 +26,7 @@ function buildDropdown(id, items, buttonAction) {
     let input = document.createElement('input');
     input.setAttribute('type', 'text');
     input.setAttribute('data-object-info',id);
+    input.autocomplete = 'off';
     input.id = `${id}-input`;
     input.placeholder = "Select " + id;
     if(oldValue) input.value = oldValue;

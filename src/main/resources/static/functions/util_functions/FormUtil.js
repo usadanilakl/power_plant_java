@@ -24,6 +24,8 @@ async function buildFormFromObject(point){
         input.value = point[e]; //assign value of given field to input field
         input.style.width = '100%';
         input.readOnly = true; //to prevent editing (edit mode will remove it)
+        input.autocomplete = 'off';
+        
         if(modes.editMode.state) input.readOnly = false;
 
         if(hideFormFields(point, e)) input.parentElement.classList.add('hide'); //this hides all listed fields
@@ -45,6 +47,7 @@ async function buildFormFromObject(point){
             input.setAttribute('data-object-field', e); //this is the field name of main object, ex: point.vendor/point.eqType
             input.setAttribute('data-object-category', point[e].category.name); //this is category name for display, ex: Vendor/Equipment Type
             input.setAttribute('data-object-id', point[e].id); //this is category object id from DB for proper mapping
+            input.autocomplete = 'off';
             input.addEventListener('focus', () => input.classList.add("show")); //to show dropdown items when input is selected
             input.addEventListener('keyup', () => filterOptions(input,options)); //to filter options as user types into input field
 

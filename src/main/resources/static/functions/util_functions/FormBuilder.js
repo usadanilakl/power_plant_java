@@ -24,6 +24,7 @@ async function setInputs(object){
         input.classList.add('form-control');
         input.name = 'fields';
         input.value = object[key];
+        input.autocomplete = 'off';
 
         inputContainer.appendChild(label);
         inputContainer.appendChild(input);
@@ -62,8 +63,10 @@ async function setDropdowns(form, object){
             input.setAttribute('data-object-field', key); //this is the field name of main object, ex: point.vendor/point.eqType
             input.setAttribute('data-object-category', object[key].category.name); //this is category name for display, ex: Vendor/Equipment Type
             input.setAttribute('data-object-id', object[key].id); //this is category object id from DB for proper mapping
+            input.autocomplete = 'off';
             input.addEventListener('focus', () => input.classList.add("show")); //to show dropdown items when input is selected
             input.addEventListener('keyup', () => filterOptions(input,options)); //to filter options as user types into input field
+            
 
             let items = await getValuesOfCategoryAlias(key); //get all values of given category
             let options = buildCategoryOptions(key, items); //build options for given category

@@ -269,6 +269,7 @@ function buildEditStepControls(){
         inp.placeholder = "Type here for changes";
         inp.id = "value-editor-input";
         inp.style.width = 'auto';
+        inp.autocomplete = 'off';
 
         li1.addEventListener('click',()=>showInsturctions());
         li3.addEventListener('click',()=>createNewHighlight());
@@ -307,6 +308,7 @@ function buildEditStepControls(){
         inp.placeholder = "Type here for changes";
         inp.id = "value-editor-input";
         inp.style.width = 'auto';
+        inp.autocomplete = 'off';
         li2.style.width = 'auto';
         li2.style.display='inline';
 
@@ -360,6 +362,9 @@ function buildEditStepControls(){
         li5.textContent = 'Enable Bulk Edit';
         li5.id = 'bulk-edit-enabler'
         sdropdown.id = 'select-input-editor';
+
+        inp.autocomplete = 'off';
+        sdropdown.autocomplete = 'off';
 
         li1.addEventListener('click',()=>showInsturctions());
         li3.addEventListener('click',()=>moveToPreviousStep());
@@ -711,7 +716,7 @@ function enableBulkEdit(){
     let enable = document.getElementById('bulk-edit-enabler');
     enable.textContent = "Submit Selected Points";
     enable.removeEventListener('click', enableBulkEdit);
-    enable.addEventListener('click',submitBulkEdit)
+    enable.addEventListener('click',submitBulkEdit);
 }
 
 function submitBulkEdit(){
@@ -736,8 +741,12 @@ function addPointToArray(event){
         bulkEditArray.push(point);
         console.log(bulkEditArray.length)
     }
-    
+}
 
+function removePointFromBulkArray(highligh){
+    let point = getPointByIdFromCurrentFile(highligh.getAttribute('data-point-id'));
+    bulkEditArray=bulkEditArray.filter(e=>e.id!==point.id);
+    console.log(bulkEditArray.length)
 }
 
 

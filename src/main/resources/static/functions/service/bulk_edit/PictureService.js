@@ -235,7 +235,7 @@ function createHighlight(area,withControls){
         // highlightInfo.setAttribute('name','highlight-ctrl');
         highlight.appendChild(highlightInfo);
 
-        fillHighlightInfo(highlight);
+        if(!bulkEditEnabled)fillHighlightInfo(highlight);
         //highlightEditControls(highlight);
 
         
@@ -243,7 +243,10 @@ function createHighlight(area,withControls){
         closeHlButton.classList.add('highlight-control-close');
         closeHlButton.textContent = " X";
         closeHlButton.name = 'highlight-ctrl';
-        closeHlButton.addEventListener('click',()=>removePoint(highlight));
+        closeHlButton.addEventListener('click',()=>{
+            removePoint(highlight);
+            if(bulkEditEnabled) removePointFromBulkArray(highlight);
+    });
         highlight.appendChild(closeHlButton);
     }
 

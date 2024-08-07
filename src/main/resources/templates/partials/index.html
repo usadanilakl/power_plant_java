@@ -16,13 +16,16 @@
         #header{
           z-index: 100;
         }
+        #navbarNav{
+          z-index: 11;
+        }
   </style>
 </head>
 <body>
 
 <div th:fragment="header" id="header">
 
-  <nav class="navbar navbar-expand-lg navbar-dark bg-black">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-black" style="z-index: 11;">
     <div th:if="${#authorization.expression('isAuthenticated()')}">
     <a class="navbar-brand" href="#" th:text="${#authentication.principal.name} +', Welcome to Jackson Generation'"></a>
     </div>
