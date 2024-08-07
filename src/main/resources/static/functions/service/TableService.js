@@ -8,7 +8,8 @@ let rows = [];
                 <thead class="sticky-top">
  */
 
-function createTableFromObjects(objects){
+function createTableFromObjects(objects, ignoreFields){
+    console.log(JSON.stringify(ignoreFields))
     filteredArray = objects;
     console.log(filteredArray.length);
     let table = document.createElement('table');
@@ -28,6 +29,7 @@ function createTableFromObjects(objects){
     table.appendChild(tbody);
 
     for(let e in objects[0]){
+        if(ignoreFields && ignoreFields.includes(e)) continue;
         let th = document.createElement('th');
         header.appendChild(th);
         let search = document.createElement('input');
@@ -55,12 +57,12 @@ function createTableFromObjects(objects){
     }
 
 
-    createRows(tbody);
+    createRows(tbody,ignoreFields);
 
     return table;
 }
 
-function createRows(tbody){
+function createRows(tbody,ignoreFields){
     let i = 1;
     rows = [];
     filteredArray.forEach(el=>{
@@ -77,8 +79,12 @@ function createRows(tbody){
         indexData.classList.add('idexData');
 
         for(let key in el){
+            if(ignoreFields && ignoreFields.includes(key)) continue;
             let td = document.createElement('td');
-            td.textContent = el[key];
+            if(el[key] && el[key].name){
+                td.textContent = el[key].name
+            } 
+            else td.textContent = el[key];
             row.appendChild(td);
         }
 

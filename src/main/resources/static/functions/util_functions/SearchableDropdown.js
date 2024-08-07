@@ -29,7 +29,10 @@ function buildDropdown(id, items, buttonAction) {
     input.id = `${id}-input`;
     input.placeholder = "Select " + id;
     if(oldValue) input.value = oldValue;
-    input.addEventListener('focus', () => showOptions(id));
+    input.addEventListener('focus', (event) =>{
+        document.addEventListener('click', detectClickOutsideOfDropdown);
+        showOptions(id,event);  
+    }); 
     input.addEventListener('keyup', () => filterFunction(id));
     inputWithAddButton.appendChild(input);
     inputWithAddButton.classList.add('form-control');
@@ -41,29 +44,36 @@ function buildDropdown(id, items, buttonAction) {
         inputWithAddButton.appendChild(addButton);
 
         addButton.addEventListener('click',buttonAction);
-        addButton.setAttribute('type','button')   
+        addButton.setAttribute('type','button')
     }
 
     let options;
     let isObj = isObject(items[0]);
     if(isObj) options = buildCategoryOptions(id,items);
     else options = buildOptions(id, items);
+    options.style.zIndex = '1070';
     dropdown.appendChild(options);
 
-    // Add the event listener after appending options to the dropdown
-    document.addEventListener('click', function(event) {
-        var isClickInside = document.getElementById(`${id}-input`).contains(event.target) || document.getElementById(`${id}-options`).contains(event.target);
+    let detectClickOutsideOfDropdown = function(event) {
+        console.log("input is " + input.id)
+        var isClickInside;
+        if(input && options) isClickInside = input.contains(event.target) || options.contains(event.target);
         if (!isClickInside) {
             document.getElementById(`${id}-options`).classList.remove("show");
+            document.removeEventListener('click',detectClickOutsideOfDropdown)
         }
-    });
+        
+    }
+
+    // Add the event listener after appending options to the dropdown
+    document.addEventListener('click', detectClickOutsideOfDropdown);
 
     options.addEventListener('click', function(event) {
         if (event.target.tagName.toLowerCase() === 'div') {
             document.getElementById(`${id}-input`).value = event.target.textContent;
             if(isObj)document.getElementById(`${id}-input`).setAttribute('data-object-id', event.target.getAttribute('data-object-id'));
             document.getElementById(`${id}-options`).classList.remove("show");
-            updateEqFormInfo(input);
+            //updateEqFormInfo(input);
         }
     });
 
@@ -141,8 +151,25 @@ function buildCategoryOptions(id, items) {
     return dropdownContent;
 }
 
-function showOptions(id) {
-    document.getElementById(`${id}-options`).classList.add("show");
+function showOptions(id,event) {
+    let toggleElement = document.getElementById(`${id}-options`)
+    let buttonRect = document.getElementById(id+'-input').getBoundingClientRect();
+    toggleElement.classList.add("show");
+    // const elementRect = toggleElement.getBoundingClientRect();
+
+    // // Calculate the space below the button
+    // const spaceBelow = window.innerHeight - buttonRect.bottom;
+
+    // // Check if there is enough space below to show the element
+    // if (spaceBelow < elementRect.height) {
+    //     // Not enough space below, show above the button
+    //     toggleElement.style.position = 'absolute';
+    //     toggleElement.style.top = (buttonRect.top + elementRect.height) + 'px';
+    // } else {
+    //     // Enough space below, show below the button
+    //     toggleElement.style.position = 'absolute';
+    //     toggleElement.style.top = buttonRect.bottom + 'px';
+    // }
 }
 
 function filterFunction(id) {

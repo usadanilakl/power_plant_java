@@ -47,8 +47,9 @@ public class EquipmentRestController {
     public ResponseEntity<String> updateTag(@RequestBody EquipmentDto eq){
         Equipment entity = equipmentService.getEntityById(eq.getId());
         if(entity!=null){
-            equipmentService.save(eq);
-            System.out.println("saved: " + eq.getId() + ", " + eq.getTagNumber());
+            Equipment saved = equipmentService.save(eq);
+            System.out.println("saved: " + eq.getId() + ", " + saved.getTagNumber());
+            System.out.println(saved.getLocation());
             return ResponseEntity.ok("Tag Number was successfully updated");
         }
         else return ResponseEntity.ok("Equipment wasn't found");

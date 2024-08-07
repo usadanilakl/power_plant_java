@@ -111,6 +111,7 @@ async function crudValue( method,category,value,newValue){
 }
 
 
+
 async function getCatPopup(id){
     const response = await fetch(getCatPopupUrl);
     const data = await response.text();

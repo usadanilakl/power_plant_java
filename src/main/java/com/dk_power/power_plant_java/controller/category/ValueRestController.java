@@ -29,6 +29,7 @@ public class ValueRestController {
     }
     @DeleteMapping("/{oldId}/{newId}")
     public ResponseEntity<Object> deleteValueWithRefactor(@PathVariable String oldId,@PathVariable String newId){
+        System.out.println(oldId + newId);
         valueService.refactor(valueService.getEntityById(oldId),valueService.getEntityById(newId));
         Collection<BaseDto> baseDtos = valueService.delVal(valueService.getEntityById(oldId));
         String resp = (baseDtos.isEmpty())? "Success" : "Failed";

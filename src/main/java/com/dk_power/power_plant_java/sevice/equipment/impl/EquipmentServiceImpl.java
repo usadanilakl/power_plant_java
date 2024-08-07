@@ -215,6 +215,7 @@ public class EquipmentServiceImpl implements EquipmentService {
         if(cat.equals("vendor")) result.addAll(getByVendor(val));
         if(cat.equals("system")) result.addAll(getBySystem(val));
         if(cat.equals("eqType")) result.addAll(getByEqType(val));
+        if(cat.equals("location")) result.addAll(getByLocation(val));
         return result;
     }
 
@@ -225,6 +226,7 @@ public class EquipmentServiceImpl implements EquipmentService {
             if(cat.equals("vendor"))f.setVendor(_new);
             if(cat.equals("system"))f.setSystem(_new);
             if(cat.equals("eqType"))f.setEqType(_new);
+            if(cat.equals("location"))f.setLocation(_new);
             save(f);
         }
     }

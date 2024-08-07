@@ -207,10 +207,7 @@ function isObject(element){
     
 }
 
-async function isCategory(key){
-    if(allAliases.includes(key))return true;
-    return false;
-}
+
 
 let hiddenEquipmentFields = [
     'id',

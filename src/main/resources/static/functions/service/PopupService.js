@@ -50,8 +50,11 @@ async function setupRefractorPopup(category,oldValue,points){
     let popup = await getRefractorPopup(category);
     popupHolder.innerHTML = "";
     popupHolder.appendChild(popup);
-    popupHolder.style.maxHeight ='80vh';
     let modal = popup.querySelector('#popupModal-'+category);
+    let mb = modal.querySelector('.modal-body');
+    mb.style.maxHeight = '80vh';
+    mb.style.maxWidth = '100%';
+    mb.style.overflow = 'scroll';
     if (!modal) {
         console.error('Modal element not found.');
         return;
@@ -61,12 +64,23 @@ async function setupRefractorPopup(category,oldValue,points){
 
     //build searchable dropdown and add to popup
     let list = await getValuesOfCategoryAlias(category);
-    let dropdown = await buildDropdown("new-value",list,null);
+    buildDropdown("new-value",list,null);
     let modalBody = popupHolder.querySelector('.modal-body');
     //modalBody.appendChild(dropdown);
 
     //build table with points
-    let table = createTableFromObjects(points);
+    let hide = [
+        'id',
+        'objectType',
+        'name',
+        'coordinates',
+        'originalPictureSize',
+        'lotoPoints',
+        'specificLocation',
+        'files',
+        'mainFile'
+    ]
+    let table = createTableFromObjects(points, hide);
     let tableContainer = document.createElement('div');
     tableContainer.appendChild(table);
     modalBody.appendChild(tableContainer);

@@ -159,7 +159,6 @@ function highlightEditControls(highlight,resize){
     if(resize)highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
 }
 
-
 function buildLotoPointList(eq){
     let lotoPoints = document.getElementById('loto-points-'+eq.id);
     if(lotoPoints){lotoPoints.innerHTML = "";}
@@ -242,7 +241,6 @@ async function moveToPreviousStep(){
      if(editModes.eqLocation.state){
         let updatedFile = await updateFileEditStep("eqDescription");
         loadPictureWithLightFile(updatedFile);
-
      }
 }
 
@@ -313,11 +311,11 @@ function buildEditStepControls(){
         li2.style.display='inline';
 
         li1.addEventListener('click',()=>showInsturctions());
-        // li3.addEventListener('click',()=>createNewHighlight());
+        li3.addEventListener('click',()=>moveToPreviousStep());
         li4.addEventListener('click',()=>moveToNextStep());
 
         li1.textContent = "Step 2: Edit Equipment Description (click for details)";
-        li3.textContent = "";
+        li3.textContent = "Previous Step";
         li4.textContent = "Next Step";
         pasteButton.textContent = "P"
 
@@ -325,6 +323,7 @@ function buildEditStepControls(){
         li2.appendChild(pasteButton);
         list.appendChild(li1);
         list.appendChild(li2);
+        list.appendChild(li3);
         list.appendChild(li4);
     }
     else if(editModes.eqLocation.state){
@@ -332,6 +331,7 @@ function buildEditStepControls(){
         let li2 = document.createElement('li');
         let li3 = document.createElement('li');
         let li4 = document.createElement('li');
+        let li5 = document.createElement('li');
         let inp = document.createElement('input');
         let pasteButton = document.createElement('button');
         let sdropdown = document.createElement('input');
@@ -344,6 +344,8 @@ function buildEditStepControls(){
         li3.classList.add("btn-outline-light")
         li4.classList.add("btn")
         li4.classList.add("btn-outline-light")
+        li5.classList.add("btn")
+        li5.classList.add("btn-outline-light")
         pasteButton.classList.add("btn")
         pasteButton.classList.add("btn-outline-light")
 
@@ -355,26 +357,118 @@ function buildEditStepControls(){
         li2.style.display='inline';
         sdropdown.type='text';
         sdropdown.placeholder = "Choose General Location"
-        sdropdown.setAttribute('data-sdropdown','location');
+        li5.textContent = 'Enable Bulk Edit';
+        li5.id = 'bulk-edit-enabler'
+        sdropdown.id = 'select-input-editor';
 
         li1.addEventListener('click',()=>showInsturctions());
-        // li3.addEventListener('click',()=>createNewHighlight());
+        li3.addEventListener('click',()=>moveToPreviousStep());
         li4.addEventListener('click',()=>moveToNextStep());
+        li5.addEventListener('click',enableBulkEdit);
 
         li1.textContent = "Step 3: Edit Equipment Location (click for details)";
+        li3.textContent = "Previous Step"
         li4.textContent = "Next Step";
         pasteButton.textContent = "P"
 
         li2.appendChild(inp);
         li2.appendChild(pasteButton);
-        li3.appendChild(sdropdown)
+        // li5.appendChild(sdropdown)
         list.appendChild(li1);
         list.appendChild(li3);
         list.appendChild(li2);
         list.appendChild(li4);
+        list.appendChild(li5);
 
-        buildDropdown("location", ["one","two","three"])
+        // buildDropdown("location", ["one","two","three"]);
+        // //make dropdown apear on top:
+        // let options = li5.querySelector("#location-options");
+        // options.parentNode.removeChild(options);
+        // document.getElementById('lower').appendChild(options);
+        // options.style.position = 'absolute';
+        // // options.style.top =li5.offsetTop-options.offsetHeight+"px";
+        // options.style.bottom = '100%';
+        // options.style.left = li5.offsetLeft+'px';
+
+        buildCategorySelector("location");
     }
+}
+
+async function buildCategorySelector(catAlias){
+    let cat = categoryObjects.find(c=>c.alias===catAlias);
+    let catWindow = getEmptyWindow(cat.name);
+    let box = document.createElement('div');
+    let values = await getValuesOfCategoryAlias(catAlias);
+    let search = document.createElement('input');
+    let optionsBlock = buildOptions();
+    let createButton = document.createElement('button');
+
+    catWindow.style.height = '40%';
+    catWindow.style.width = '35%';
+    catWindow.removeChild(catWindow.querySelector('.closeWindow'));
+
+    box.style.position = 'absolute';
+    box.style.top = '50px';
+    box.style.width = '100%';
+
+    createButton.classList.add('custom-btn-bg');
+    createButton.textContent = "Create New " + cat.name;
+
+    search.id = 'select-input-editor';
+    search.style.width = '100%';
+    search.placeholder = 'Type To Filter List'
+
+    search.addEventListener('input',filter);
+    createButton.addEventListener('click', ()=>setCatPopup(catAlias, values))
+
+    box.appendChild(search);
+    box.appendChild(optionsBlock);
+    box.appendChild(createButton);
+    catWindow.appendChild(box);
+    all.appendChild(catWindow);
+
+    function filter() {
+        let filter = search.value.toUpperCase();
+        var options = optionsBlock.getElementsByTagName("div");
+        let hidden = 0;
+        for (let i = 0; i < options.length; i++) {
+            var txtValue = options[i].textContent || options[i].innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                options[i].style.display = "";
+            } else {
+                options[i].style.display = "none";
+                hidden++;
+            }
+        }
+        if(search.value!==null && search.value!=="" && hidden === options.length){
+            search.style.backgroundColor = "red";
+        }else{
+            search.style.backgroundColor = "white"; 
+        }
+        
+    }
+    function buildOptions() {
+        let dropdownContent = document.createElement('div');
+        dropdownContent.style.width = '100%';
+        // dropdownContent.classList.add('searchable-dropdown-content');
+        values.forEach(e => {
+            let option = document.createElement('div');
+            option.textContent = e.name;
+            option.setAttribute('data-object-id',e.id);
+            dropdownContent.appendChild(option);
+            option.classList.add('custom-btn-bw');
+            option.style.width = '100%';
+            option.style.whiteSpace = 'nowrap';
+            option.addEventListener('click',()=>{
+                search.value = option.textContent;
+                search.setAttribute('data-object-id',option.getAttribute('data-object-id'));
+        })
+        });
+    
+        return dropdownContent;
+    }
+
+
 }
 
 /***************************************************************************************************************
@@ -399,15 +493,31 @@ function acceptLotoPoint(point){
         all.removeChild(highlight);
     
     }
+    if(editModes.eqLocation.state){
+        updateEqLocation(point);
+        all.removeChild(currentWindow);
+        all.removeChild(highlight);
+    
+    }
 }
 
 function renameLotoPoint(point){
-    const input = document.getElementById('value-editor-input');
+    let input = document.getElementById('value-editor-input');
     const text = document.getElementById('point-info-text-'+point.id);
+    const selectInput = document.getElementById('select-input-editor');
+    if(editModes.eqLocation.state && point.objectType === "Equipment") input = selectInput;
     if(input.value){
         if(editModes.eqTagNumber.state)point.tagNumber = input.value;
         if(editModes.eqDescription.state)point.description = input.value;
+        if(editModes.eqLocation.state){
+            if(point.objectType === "Equipment"){
+                point.location = {};
+                point.location.id = selectInput.getAttribute('data-object-id');
+            }
+            else point.specificLocation = input.value;
+        }
         text.textContent = input.value;
+
     }
 }
 
@@ -563,12 +673,72 @@ function highlightForEqTagNumber(){
 }
 
 function highlightForLocation(){
-
+    let areas = document.querySelectorAll('[data-loto-point-area]');
+    removeAllHighlights();
+    for(let e of areas){
+        selectedArea = fileWithPoints.points.find(el=>el.id===parseInt(e.getAttribute('data-point-id')));
+        if(editModes.eqLocation.state && selectedArea.location && selectedArea.location.name && selectedArea.location.name.trim()!==""){
+            continue;
+        }else{
+        selectedAres.push(selectedArea);
+        let hl = createHighlight(e); // need to add parameter to chose if controls needs to be built
+        selectedBundle.push({"area":e,"eq":selectedArea,"highlight":hl});
+        }
+    }
 }
 
 /**
- * Function to switch to location step
- * Logic to highligh points and keep track of completed ones
- * On click on area - show point location and its loto points
+ * Bulk Edit Function:
+ * Enable select 
+ * Remove all highlights
+ * Higlight multiple points
+ * Add all points to array
+ * Select value 
+ * Assign new value to all points in array on submit
+ * Save in DB
  */
+
+let bulkEditArray = [];
+let bulkEditEnabled = false;
+
+function enableBulkEdit(){
+    removeAllHighlights();
+    bulkEditEnabled = true;
+    let allLotoHighlights = document.querySelectorAll('[data-loto-point-area]');
+    allLotoHighlights.forEach(e=>{
+        e.addEventListener('click',addPointToArray);
+    });
+    let enable = document.getElementById('bulk-edit-enabler');
+    enable.textContent = "Submit Selected Points";
+    enable.removeEventListener('click', enableBulkEdit);
+    enable.addEventListener('click',submitBulkEdit)
+}
+
+function submitBulkEdit(){
+    let categoryAlias;
+    if(editModes.eqLocation.state)categoryAlias='location'
+    let value = document.getElementById('select-input-editor').getAttribute('data-object-id')
+    bulkEditEnabled = false;
+    document.querySelectorAll('[data-loto-point-area]').forEach(e=>{
+        e.removeEventListener('click',addPointToArray);
+    });
+
+    bulkEditArray.forEach(e=>{
+        e[categoryAlias] = {};
+        e[categoryAlias].id = value;
+        updateEqLocation(e);
+    })
+}
+
+function addPointToArray(event){
+    if(event.target.classList.contains('ar')){
+        let point = getPointByIdFromCurrentFile(event.target.getAttribute('data-point-id'));
+        bulkEditArray.push(point);
+        console.log(bulkEditArray.length)
+    }
+    
+
+}
+
+
 
