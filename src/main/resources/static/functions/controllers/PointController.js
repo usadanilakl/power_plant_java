@@ -15,6 +15,7 @@ function getPostMetaDataWithBody(data){
         body:JSON.stringify(data)
     }
 }
+
 function getPatchMetaDataWithBody(data){
     return{
         method: 'PATCH',
@@ -32,6 +33,7 @@ async function getRevisedExcelPoints(){
     revisedExcelPoints = data;
     return data;
 }
+
 async function getOldExcelPoints(){
     let response = await fetch('/point/get-old-excel-points');
     let data = await response.json();
@@ -173,6 +175,138 @@ async function updateEqLocation(point){
     emptyEqObj.location = point.location;
     emptyEqObj.id = point.id;
     emptyEqObj.lotoPoints = [... point.lotoPoints]
+    const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
+    const data = await response.text();
+    return data;
+    
+}
+
+async function updateIsoPos(point,directOnly){
+    let directLotoPoint = point.lotoPoints.find(e=>e.tagNumber===point.tagNumber);
+    if(directOnly){
+        let message = isoPosValidation(directLotoPoint.isoPos);
+        if(message!==null){
+            console.log(message);
+            displayMessagePopup(message);
+            return;
+        }
+    }else{
+        point.lotoPoints.forEach(e=>{
+            let message = isoPosValidation(e.isoPos);
+            if(message!==null){
+                console.log(message);
+                displayMessagePopup(message);
+                return;
+            }
+        })
+    }
+
+
+    let emptyEqObj = {};
+    
+    emptyEqObj.id = point.id;
+    emptyEqObj.lotoPoints = [... point.lotoPoints]
+    console.log(JSON.stringify(emptyEqObj.lotoPoints[0]))
+    const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
+    const data = await response.text();
+    return data;
+    
+}
+
+async function updateNormPos(point,directOnly){
+    let directLotoPoint = point.lotoPoints.find(e=>e.tagNumber===point.tagNumber);
+    if(directOnly){
+        let message = normPosValidation(directLotoPoint.normPos);
+        if(message!==null){
+            console.log(message);
+            displayMessagePopup(message);
+            return;
+        }
+    }else{
+        point.lotoPoints.forEach(e=>{
+            let message = normPosValidation(e.normPos);
+            if(message!==null){
+                console.log(message);
+                displayMessagePopup(message);
+                return;
+            }
+        })
+    }
+
+
+    let emptyEqObj = {};
+    
+    emptyEqObj.id = point.id;
+    emptyEqObj.lotoPoints = [... point.lotoPoints]
+    console.log(JSON.stringify(emptyEqObj.lotoPoints[0]))
+    const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
+    const data = await response.text();
+    return data;
+    
+}
+
+async function updateNormPos(point,directOnly){
+    let directLotoPoint = point.lotoPoints.find(e=>e.tagNumber===point.tagNumber);
+    if(directOnly){
+        let message = normPosValidation(directLotoPoint.normPos);
+        if(message!==null){
+            console.log(message);
+            displayMessagePopup(message);
+            return;
+        }
+    }else{
+        point.lotoPoints.forEach(e=>{
+            let message = normPosValidation(e.normPos);
+            if(message!==null){
+                console.log(message);
+                displayMessagePopup(message);
+                return;
+            }
+        })
+    }
+
+
+    let emptyEqObj = {};
+    
+    emptyEqObj.id = point.id;
+    emptyEqObj.lotoPoints = [... point.lotoPoints]
+    const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
+    const data = await response.text();
+    return data;
+    
+}
+
+async function updateSystem(point){
+    let message = systemValidation(point.system);
+    if(message!==null){
+        console.log(message);
+        displayMessagePopup(message);
+        return;
+    }
+
+    let emptyEqObj = {};
+    
+    emptyEqObj.system = point.system;
+    emptyEqObj.id = point.id;
+    console.log(JSON.stringify(emptyEqObj))
+    const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
+    const data = await response.text();
+    return data;
+    
+}
+
+async function updateEqType(point){
+    let message = eqTypeValidation(point.eqType);
+    if(message!==null){
+        console.log(message);
+        displayMessagePopup(message);
+        return;
+    }
+
+    let emptyEqObj = {};
+    
+    emptyEqObj.eqType = point.eqType;
+    emptyEqObj.id = point.id;
     const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(emptyEqObj));
     const data = await response.text();
     return data;

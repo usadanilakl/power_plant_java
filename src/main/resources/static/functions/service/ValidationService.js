@@ -6,3 +6,19 @@ function tagValidation(tag){
 function locationValidation(location){
     return null;
 }
+
+function isoPosValidation(isoPos){
+    return null;
+}
+
+function normPosValidation(normPos){
+    return null;
+}
+
+function systemValidation(system){
+    return null;
+}
+
+function eqTypeValidation(eqType){
+    return null;
+}

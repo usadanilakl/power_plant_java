@@ -105,7 +105,14 @@ async function crudValue( method,category,value,newValue){
     if(data.action && data.action==='reassign'){
         setupRefractorPopup(data.categoryAlias,data.oldValue,data.list)
     }else{
-        fillPointInfoWindow(selectedArea);
+        let search = document.getElementById('select-input-editor');
+        if(document.getElementById('infoFramePoint'))fillPointInfoWindow(selectedArea);
+        else if(search){
+            let w = search.closest('.newWindow');
+            w.parentNode.removeChild(w);
+            if(editModes.eqLocation.state)buildCategorySelector('location');
+            if(editModes.lotoPointPosition.state)buildCategorySelector('isoPos');
+        }
     }
     
 }

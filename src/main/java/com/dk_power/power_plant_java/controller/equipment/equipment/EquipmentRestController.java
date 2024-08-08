@@ -45,11 +45,13 @@ public class EquipmentRestController {
     }
     @PatchMapping("/")
     public ResponseEntity<String> updateTag(@RequestBody EquipmentDto eq){
+
+        System.out.println(eq.getSystem());
         Equipment entity = equipmentService.getEntityById(eq.getId());
         if(entity!=null){
             Equipment saved = equipmentService.save(eq);
             System.out.println("saved: " + eq.getId() + ", " + saved.getTagNumber());
-            System.out.println(saved.getLocation());
+            saved.getLotoPoints().forEach(e-> System.out.println(e.getNormPos()));
             return ResponseEntity.ok("Tag Number was successfully updated");
         }
         else return ResponseEntity.ok("Equipment wasn't found");

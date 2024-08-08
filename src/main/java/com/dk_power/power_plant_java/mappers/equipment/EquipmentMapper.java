@@ -167,7 +167,7 @@ public class EquipmentMapper implements BaseMapper {
         }
         if (source.getSystem() != null) {
 
-            if(source.getEqType().getId() == null){
+            if(source.getSystem().getId() == null){
                 ValueDto v = valueService.getValueFromCategory("System",source.getSystem().getName());
                 if(v==null) throw new RuntimeException("System "+source.getSystem().getName() +" not found");
                 else entity.setSystem(valueService.convertToEntity(v));

@@ -125,9 +125,12 @@ function excelPointDropdown(points){
         let formContainer = document.createElement('div');
         item.appendChild(formContainer);
 
-        if(e.objectType==="OldLotoPoint") button.style.backgroundColor = "red";
-        else if(e.objectType==="RevisedLotoPoints") button.style.backgroundColor = "green";
-        else button.style.backgroundColor = "blue";
+        // if(e.objectType==="OldLotoPoint") button.style.backgroundColor = "red";
+        // else if(e.objectType==="RevisedLotoPoints") button.style.backgroundColor = "green";
+        // else button.style.backgroundColor = "blue";
+        if(e.objectType==="OldLotoPoint") button.classList.add('red');
+        else if(e.objectType==="RevisedLotoPoints") button.classList.add('lime');
+        else button.classList.add('blue');
 
         button.textContent = e.tagNumber;
         button.addEventListener('click', ()=>{
@@ -142,6 +145,7 @@ function excelPointDropdown(points){
         let addButton = document.createElement('button');
         buttons.appendChild(addButton);
         addButton.classList.add('addButtons');
+        addButton.classList.add('yellow');
         addButton.textContent = "ADD";
         addButton.classList.add('hide');
 
