@@ -122,6 +122,12 @@ async function pasteFromClipboardWithoutClearing(inputElement) {
     return value;
 }
 
+async function saveInClipboard(text) {
+    if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+    }
+}
+
 function isObject(item) {
     return item && typeof item === 'object' && !Array.isArray(item);
 }

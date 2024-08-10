@@ -5,6 +5,7 @@ let originalWidth;
 let activeHighlights = []; 
 let highlatedAreas = [];
 let selectedArea;
+let isGettingText = true;
 // let eqFormInfo; //moved to global variables
 
 /*****************************************************DISPLAY FUNCTIONS*****************************************************************/
@@ -457,13 +458,19 @@ async function handleMouseUp() {
     map.appendChild(area);
     resizeNewArea(area);
     removeAllHighlights();
-    createHighlight(area);
+    if(!isGettingText)createHighlight(area);
     // console.log(JSON.stringify(areaInfo))
     // console.log(JSON.stringify(selectedArea))
     //let newEq = await createNewEq(areaInfo);
     //file.points.push(newEq);
     selectedArea = areaInfo;
     fillPointInfoWindow(selectedArea);
+
+    if(isGettingText){
+        let text = await getText(selectedArea.coordinates);
+        saveInClipboard(text);
+
+    }
     
 }
 

@@ -23,6 +23,7 @@ import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
+import com.dk_power.power_plant_java.sevice.image.OCRService;
 import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
@@ -35,6 +36,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -65,6 +67,7 @@ private final ElectricalPanelService electricalPanelService;
 private final HtBreakerService htBreakerService;
 private final EqBreakerService eqBreakerService;
 private final ElectricalTableService electricalTableService;
+private final OCRService ocrService;
 
 
     public static void main(String[] args) {
@@ -81,11 +84,7 @@ private final ElectricalTableService electricalTableService;
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
-//        fileService.getAll().forEach(e->{
-//            e.setBaseLink("uploads");
-//            e.buildFileLink();
-//            fileService.save(e);
-//        });
+
 
 /******************************************************************************************************************************************
  *  Creating File Objects from files in a folder
