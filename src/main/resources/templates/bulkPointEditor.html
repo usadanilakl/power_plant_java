@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="/my_styles/infoWindow.css">
     <link rel="stylesheet" href="/my_styles/NewWindowStyle.css">
     <link rel="stylesheet" href="/my_styles/table.css">
+    <link rel="stylesheet" href="/my_styles/glow-buttons.css">
     <style>
 .areaHighlights{
     border: 2px solid blue !important;
@@ -151,7 +152,7 @@
                 <div class="col-12">
                     <ul id="bulk-edit-controls">
                         <li class="btn btn-outline-light" onclick="removeAllHighlights()" name="step">Step 1: Select all loto points (click for details)</li>
-                        <li class="btn btn-outline-light"><input type="text" placeholder="Type here for changes" id="value-editor-input"></li>
+                        <li class="btn btn-outline-light"><input type="text" placeholder="Type here for changes" id="value-editor-input"><button onclick="pasteFromClipboardWithoutClearing(document.getElementById('value-editor-input'))">P</button></li>
                         <li class="btn btn-outline-light" onclick="createNewHighlight()" name="">Highlight New Equipment</li>
                         <li class="btn btn-outline-light" onclick="removeAllHighlights()">Submit Selected Points</li>
                     </ul>

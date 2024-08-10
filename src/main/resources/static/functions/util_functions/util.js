@@ -107,6 +107,20 @@ async function checkClipboardAndPasteShort(inputElement) {
         }
         return value;
 }
+async function pasteFromClipboardWithoutClearing(inputElement) {
+    let value;
+    if (navigator.clipboard) {
+        const clipboardText = await navigator.clipboard.readText();
+        if (clipboardText) {
+            console.log("pasting value")
+            inputElement.value = clipboardText;
+            value = clipboardText;
+            // inputElement.select();
+            // await navigator.clipboard.writeText('');
+        }
+    }
+    return value;
+}
 
 function isObject(item) {
     return item && typeof item === 'object' && !Array.isArray(item);

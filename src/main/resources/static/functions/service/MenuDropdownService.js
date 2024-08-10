@@ -14,6 +14,7 @@
         button.classList.add('btn'); //style link to look like button
         button.classList.add('custom-btn-bw'); //style link to look like button
         button.textContent = e.value; //text of the button
+        button.style.width = '100%';
 
         if(e.objectType){
             button.setAttribute('data-object-type',e.objectType);

@@ -98,14 +98,17 @@ function fillHighlightInfo(highlight){
 
             allInfoWindow.style.left = highlight.offsetLeft + 'px';
             allInfoWindow.style.top = highlight.offsetTop+highlight.offsetHeight+ 'px';
+            document.getElementById('all').appendChild(allInfoWindow);
 
             allInfoWindow.appendChild(fillLotoPointInfo(point))
             point.lotoPoints.forEach(e=>{
                 allInfoWindow.appendChild(fillLotoPointInfo(e))
             });
 
-            document.getElementById('all').appendChild(allInfoWindow);
-
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
 
         }
         else if(editModes.eqTagNumber.state){
@@ -125,9 +128,22 @@ function fillHighlightInfo(highlight){
             allInfoWindow.style.top = highlight.offsetTop+highlight.offsetHeight+ 'px';
 
             allInfoWindow.appendChild(fillLotoPointInfo(point))
-            allInfoWindow.appendChild(buildLotoPointList(point));
+            let lotoPointBox = document.createElement('div');
+            let lotoBoxHeader = document.createElement('p');
+            allInfoWindow.appendChild(lotoPointBox);
+            lotoPointBox.appendChild(lotoBoxHeader);
+            lotoPointBox.appendChild(buildLotoPointList(point));
+
+            lotoBoxHeader.classList.add('headerText');
+            lotoBoxHeader.textContent = 'Assosiated LOTO points';
+            lotoPointBox.style.backgroundColor = 'grey';
 
             document.getElementById('all').appendChild(allInfoWindow);
+            
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.eqLocation.state){
             //if(!point.location || !point.location.name || point.location.name.trim()==="") point.description = point.lotoPoints[0].description;
@@ -147,6 +163,11 @@ function fillHighlightInfo(highlight){
             });
 
             document.getElementById('all').appendChild(allInfoWindow);
+            
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.lotoPointPosition.state){
             const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
@@ -165,6 +186,10 @@ function fillHighlightInfo(highlight){
             });
 
             document.getElementById('all').appendChild(allInfoWindow);
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.lotoPointNormPosition.state){
             const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
@@ -183,6 +208,10 @@ function fillHighlightInfo(highlight){
             });
 
             document.getElementById('all').appendChild(allInfoWindow);
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.system.state){
             const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
@@ -198,6 +227,10 @@ function fillHighlightInfo(highlight){
             allInfoWindow.appendChild(fillLotoPointInfo(point))
 
             document.getElementById('all').appendChild(allInfoWindow);
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.eqType.state){
             const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
@@ -213,6 +246,10 @@ function fillHighlightInfo(highlight){
             allInfoWindow.appendChild(fillLotoPointInfo(point))
 
             document.getElementById('all').appendChild(allInfoWindow);
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
     }
 }
@@ -309,6 +346,7 @@ function showInsturctions(){
 }
 
 async function moveToNextStep(){
+    document.querySelectorAll('.newWindow').forEach(e=>e.parentNode.removeChild(e));
     if(editModes.eqTagNumber.state){
        let updatedFile = await updateFileEditStep("eqDescription");
         loadPictureWithLightFile(updatedFile);
@@ -340,6 +378,7 @@ async function moveToNextStep(){
 }
 
 async function moveToPreviousStep(){
+    document.querySelectorAll('.newWindow').forEach(e=>e.parentNode.removeChild(e));
      if(editModes.eqDescription.state){
          let updatedFile = await updateFileEditStep("eqTagNumber");
          loadPictureWithLightFile(updatedFile);
@@ -377,6 +416,7 @@ function buildEditStepControls(){
         let li3 = document.createElement('li');
         let li4 = document.createElement('li');
         let inp = document.createElement('input');
+        let pasteButton = document.createElement('button');
 
         li1.classList.add("btn")
         li1.classList.add("btn-outline-light")
@@ -386,6 +426,8 @@ function buildEditStepControls(){
         li3.classList.add("btn-outline-light")
         li4.classList.add("btn")
         li4.classList.add("btn-outline-light")
+        pasteButton.classList.add("btn")
+        pasteButton.classList.add("btn-outline-light")
 
         inp.type = 'text';
         inp.placeholder = "Type here for changes";
@@ -396,12 +438,17 @@ function buildEditStepControls(){
         li1.addEventListener('click',()=>showInsturctions());
         li3.addEventListener('click',()=>createNewHighlight());
         li4.addEventListener('click',()=>moveToNextStep());
+        pasteButton.addEventListener('click',async()=>{
+            await pasteFromClipboardWithoutClearing(inp);
+        });
 
         li1.textContent = "Step 1: Select all loto points (click for details)";
         li3.textContent = "Highlight New Equipment";
         li4.textContent = "Submit Selected Points";
+        pasteButton.textContent = "P"
 
         li2.appendChild(inp);
+        li2.appendChild(pasteButton);
         list.appendChild(li1);
         list.appendChild(li2);
         list.appendChild(li3);
@@ -429,7 +476,7 @@ function buildEditStepControls(){
         inp.type = 'text';
         inp.placeholder = "Type here for changes";
         inp.id = "value-editor-input";
-        inp.style.width = 'auto';
+        inp.style.width = '400px';
         inp.autocomplete = 'off';
         li2.style.width = 'auto';
         li2.style.display='inline';
@@ -437,6 +484,9 @@ function buildEditStepControls(){
         li1.addEventListener('click',()=>showInsturctions());
         li3.addEventListener('click',()=>moveToPreviousStep());
         li4.addEventListener('click',()=>moveToNextStep());
+        pasteButton.addEventListener('click',async()=>{
+            await pasteFromClipboardWithoutClearing(inp);
+        });
 
         li1.textContent = "Step 2: Edit Equipment Description (click for details)";
         li3.textContent = "Previous Step";
@@ -476,7 +526,7 @@ function buildEditStepControls(){
         inp.type = 'text';
         inp.placeholder = "Type Specific Location";
         inp.id = "value-editor-input";
-        inp.style.width = 'auto';
+        inp.style.width = '400px';
         li2.style.width = 'auto';
         li2.style.display='inline';
         sdropdown.type='text';
@@ -492,6 +542,9 @@ function buildEditStepControls(){
         li3.addEventListener('click',()=>moveToPreviousStep());
         li4.addEventListener('click',()=>moveToNextStep());
         li5.addEventListener('click',enableBulkEdit);
+        pasteButton.addEventListener('click',async()=>{
+            await pasteFromClipboardWithoutClearing(inp);
+        });
 
         li1.textContent = "Step 3: Edit Equipment Location (click for details)";
         li3.textContent = "Previous Step"
@@ -660,7 +713,10 @@ function buildEditStepControls(){
 
         li1.addEventListener('click',()=>showInsturctions());
         li3.addEventListener('click',()=>moveToPreviousStep());
-        li4.addEventListener('click',()=>moveToNextStep());
+        li4.addEventListener('click',async()=>{
+            await updateFileStatus(file.id,true);
+            location.reload(forceReload);
+        } );
         li5.addEventListener('click',enableBulkEdit);
 
         li1.textContent = "Step 7: Edit Equipment Type (click for details)";

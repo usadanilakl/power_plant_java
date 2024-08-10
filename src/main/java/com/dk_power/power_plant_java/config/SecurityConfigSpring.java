@@ -24,7 +24,8 @@ public class SecurityConfigSpring {
                                 "/interact.js-main/**",
                                 "/my_styles/**",
                                 "/uploads**",
-                                "/h2-console/**"
+                                "/h2-console/**",
+                                "/background/**"
                         ).permitAll()
                         //.requestMatchers("/**").hasRole("Admin")
                         .anyRequest().authenticated()

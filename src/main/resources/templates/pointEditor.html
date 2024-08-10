@@ -242,19 +242,24 @@ function switchPid(i){
     }
 }
 function goToNextPid(){
-    let f = switchPid(++currentFileIndex);
+    ++currentFileIndex;
+    console.log(currentFileIndex)
+    let f = switchPid(currentFileIndex);
     changeStatusButtonColor(f.completed);
 }
 function goToPreviousPid(){
-    let f = switchPid(--currentFileIndex);
+    --currentFileIndex;
+    console.log(currentFileIndex)
+    let f = switchPid(currentFileIndex);
     changeStatusButtonColor(f.completed);
 }
 
 function toggleCurrentPidCompletedStatus(){
     let currentFile = getCurrent();
+    console.log(currentFile.fileNumber)
     let status = false;
     console.log(JSON.stringify(currentFile))
-    if(!currentFile.completed) status = true;
+    if(currentFileIndex>-1) status = true;
     currentFile.completed = status;
     updateFileStatus(currentFile.id,status);
     changeStatusButtonColor(status);

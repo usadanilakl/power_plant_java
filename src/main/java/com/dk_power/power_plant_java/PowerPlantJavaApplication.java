@@ -79,7 +79,13 @@ private final ElectricalTableService electricalTableService;
 
         System.err.println("=====================================================");
 
+        System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
+//        fileService.getAll().forEach(e->{
+//            e.setBaseLink("uploads");
+//            e.buildFileLink();
+//            fileService.save(e);
+//        });
 
 /******************************************************************************************************************************************
  *  Creating File Objects from files in a folder

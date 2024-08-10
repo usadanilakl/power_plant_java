@@ -41,7 +41,9 @@ public class FileRestController_r {
     @PutMapping("/{id}/{status}")
     public ResponseEntity<FileDto> pathcFile(@PathVariable String id, @PathVariable String status){
         if(fileService.getEntityById(id)!=null) {
+            System.out.println(id+ " " + status);
             Boolean stat = !status.equalsIgnoreCase("false");
+            System.out.println(stat);
             FileObject entityById = fileService.getEntityById(id);
             entityById.setCompleted(stat);
             return ResponseEntity.ok(fileService.convertToDto(fileService.save(entityById)));
