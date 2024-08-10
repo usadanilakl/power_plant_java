@@ -25,6 +25,7 @@ public class OCRService {
             Tesseract tesseract = new Tesseract();
             tesseract.setDatapath("tessdata"); // Path to tessdata directory
             tesseract.setLanguage("eng"); // Specify the language
+            tesseract.setPageSegMode(6); // Set PSM for vertical text (PSM 5 or 6)
 
             // Perform OCR on the image
             String result = tesseract.doOCR(bufferedImage);

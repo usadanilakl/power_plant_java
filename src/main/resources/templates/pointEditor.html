@@ -72,7 +72,7 @@
         <div id="lower" class="container-fluid">
             <div class="row">
                 <div class="col-12">
-                    <ul >
+                    <ul id="point-editor-menu">
                         <li class="btn-list-in-line" onclick="removeAllHighlights()">Remove Highlights</li>
                         <li class="btn-list-in-line" onclick="highlightAll()">Highlight All</li>
                         <li class="btn-list-in-line" onclick="highlightLotoPoints()">Highlight Loto Points</li>
@@ -148,6 +148,7 @@
     <script src="/functions/controllers/PointController.js"></script>
     <script src="/functions/controllers/LotoController.js"></script>
     <script src="/functions/controllers/TransferDataController.js"></script> 
+    <script src="/functions/controllers/ImageController.js"></script> 
 
     <script src="/functions/service/PopupService.js"></script>
     <script src="/functions/service/MenuDropdownService.js"></script>
@@ -211,6 +212,7 @@
     }).then(async ()=>{
         completedPid = completedPid.filter(e=>e.vendor.name==="Kiewit");
        if(mode) setMode(mode); 
+       document.getElementById('point-editor-menu').appendChild(document.createElement('li').appendChild(getTextButton()));
     }).then(()=>{
         console.log(JSON.stringify(allAliases));
         console.log(JSON.stringify(valuesByCategory));

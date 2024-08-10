@@ -77,4 +77,9 @@ public class FileRestController_r {
 
         return ResponseEntity.ok(fileService.getIncompletePids());
     }
+
+    @GetMapping("/verify/{id}")
+    public void verify(@PathVariable String id){
+        fileService.verifyPid(id);
+    }
 }

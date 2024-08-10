@@ -36,4 +36,6 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
 
     List <FileDtoLight> getCompletedPids();
     List <FileDtoLight> getIncompletePids();
+
+    void verifyPid(String pid);
 }

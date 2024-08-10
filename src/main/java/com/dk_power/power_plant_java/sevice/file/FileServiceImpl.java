@@ -131,6 +131,21 @@ public class FileServiceImpl implements FileService {
         return fileRepo.getAllIncompleteLight();
     }
 
+    @Override
+    public void verifyPid(String pid) {
+            FileObject fileObject = getEntityById(pid);
+            fileObject.getPoints().forEach(e->{
+                try {
+                    System.out.println(e.getTagNumber());
+                    System.out.println(e.getLotoPoints().stream().map(el->el.getTagNumber()).toList());
+                    System.out.println(e.getLocation().getName());
+                    System.out.println(e.getSystem().getName());
+                    System.out.println("==================================================================");
+                }catch (Exception ex){
+                }
+            });
+    }
+
     public List<FileDto> getAllDtos(String ext) {
         return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
     }

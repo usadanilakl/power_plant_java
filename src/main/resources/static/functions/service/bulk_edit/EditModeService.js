@@ -453,6 +453,7 @@ function buildEditStepControls(){
         list.appendChild(li2);
         list.appendChild(li3);
         list.appendChild(li4);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
     }
     else if(editModes.eqDescription.state){
         let li1 = document.createElement('li');
@@ -499,6 +500,7 @@ function buildEditStepControls(){
         list.appendChild(li2);
         list.appendChild(li3);
         list.appendChild(li4);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
     }
     else if(editModes.eqLocation.state){
         let li1 = document.createElement('li');
@@ -559,6 +561,7 @@ function buildEditStepControls(){
         list.appendChild(li2);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
         // buildDropdown("location", ["one","two","three"]);
         // //make dropdown apear on top:
@@ -608,6 +611,7 @@ function buildEditStepControls(){
         list.appendChild(li3);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
         buildCategorySelector("isoPos");
     }
@@ -647,6 +651,7 @@ function buildEditStepControls(){
         list.appendChild(li3);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
         buildCategorySelector("normPos");
     }
@@ -686,6 +691,7 @@ function buildEditStepControls(){
         list.appendChild(li2);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
         buildCategorySelector("system");
     }
@@ -695,6 +701,7 @@ function buildEditStepControls(){
         let li3 = document.createElement('li');
         let li4 = document.createElement('li');
         let li5 = document.createElement('li');
+        let li6 = document.createElement('li');
 
         li1.classList.add("btn")
         li1.classList.add("btn-outline-light")
@@ -706,10 +713,14 @@ function buildEditStepControls(){
         li4.classList.add("btn-outline-light")
         li5.classList.add("btn")
         li5.classList.add("btn-outline-light")
+        li6.classList.add("btn")
+        li6.classList.add("btn-outline-light")
 
 
         li5.textContent = 'Enable Bulk Edit';
         li5.id = 'bulk-edit-enabler'
+
+        li6.textContent = 'Check Points';
 
         li1.addEventListener('click',()=>showInsturctions());
         li3.addEventListener('click',()=>moveToPreviousStep());
@@ -719,15 +730,21 @@ function buildEditStepControls(){
         } );
         li5.addEventListener('click',enableBulkEdit);
 
+        li6.addEventListener('click', async ()=>{
+            fetch('/file-api/verify/'+file.id);
+        })
+
         li1.textContent = "Step 7: Edit Equipment Type (click for details)";
         li3.textContent = "Previous Step"
-        li4.textContent = "Next Step";
+        li4.textContent = "Complete";
 
         list.appendChild(li1);
         list.appendChild(li3);
         list.appendChild(li2);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
+        list.appendChild(li6);
 
         buildCategorySelector("eqType");
     }

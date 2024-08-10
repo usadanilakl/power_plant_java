@@ -13,6 +13,7 @@ import com.dk_power.power_plant_java.entities.equipment.ElectricalPanel;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
 import com.dk_power.power_plant_java.entities.equipment.HtPanel;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -84,7 +85,19 @@ private final OCRService ocrService;
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
-
+//        FileObject fileObject = fileService.getIfNumberContains("PD-021A").get(0);
+//        fileObject.getPoints().forEach(e->{
+//            try {
+//                System.out.println(e.getTagNumber());
+//                System.out.println(e.getLotoPoints().stream().map(el->el.getTagNumber()).toList());
+//                System.out.println(e.getLocation().getName());
+//                System.out.println(e.getSystem().getName());
+//                System.out.println("==================================================================");
+//            }catch (Exception ex){
+//
+//            }
+//
+//        });
 
 /******************************************************************************************************************************************
  *  Creating File Objects from files in a folder

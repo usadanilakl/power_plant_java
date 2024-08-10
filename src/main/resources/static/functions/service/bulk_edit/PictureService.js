@@ -9,6 +9,7 @@ let selectedArea;
 let selectedBundle = [];
 let currentSizeCoefficient;
 let fileWithPoints;
+let isGettingText = false;
 // let eqFormInfo; //moved to global variables
 
 function getPointByIdFromCurrentFile(id){
@@ -561,43 +562,51 @@ async function handleMouseUp() {
         document.removeEventListener('mousedown',handleMouseDown);
         return;
     }
-    let image = document.getElementById('picture');
-    areaInfo.coordinates = areaCoordinates;
-    areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
 
-    areaInfo.tagNumber = "new Area";
-    areaInfo.mainFile = file.fileLink;
-    areaInfo.files = [];
-    areaInfo.files.push(file.fileLink);
-    if(file.vendor && file.vendor!=="")areaInfo.vendor = file.vendor;
-    if(file.system && file.system!=="")areaInfo.system = file.system;
-    else areaInfo.system = null;
-    areaInfo.eqType = null;
-    areaInfo.location = null;
-
-    selectedArea = areaInfo;
-    selectedArea.isNew = true;
-    selectedArea.id = "new";
-    fileWithPoints.points.push(selectedArea);
-    let area = createAreaElement(selectedArea);
-    area.addEventListener('click',()=>{
-        event.preventDefault();
-        removeAllHighlights();
-        createHighlight(area);
-    })
-    //doubleClick(shape, e);
-
-    map.appendChild(area);
-    resizeNewArea(area);
-    createHighlight(area,true);
-    // console.log(JSON.stringify(areaInfo))
-    // console.log(JSON.stringify(selectedArea))
-    //let newEq = await createNewEq(areaInfo);
-    //file.points.push(newEq);
     
-    //fillPointInfoWindow(selectedArea);
-    removeLastHighlight();
-    document.removeEventListener('mousedown',handleMouseDown);
+
+    if(coords.getObjWidth() > 20 && coords.getObjHeight() > 20){
+        let image = document.getElementById('picture');
+        areaInfo.coordinates = areaCoordinates;
+        areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
+    
+        areaInfo.tagNumber = "new Area";
+        areaInfo.mainFile = file.fileLink;
+        areaInfo.files = [];
+        areaInfo.files.push(file.fileLink);
+        if(file.vendor && file.vendor!=="")areaInfo.vendor = file.vendor;
+        if(file.system && file.system!=="")areaInfo.system = file.system;
+        else areaInfo.system = null;
+        areaInfo.eqType = null;
+        areaInfo.location = null;
+    
+        selectedArea = areaInfo;
+        selectedArea.isNew = true;
+        selectedArea.id = "new";
+        fileWithPoints.points.push(selectedArea);
+
+
+        if(!isGettingText){
+            let area = createAreaElement(selectedArea);
+            area.addEventListener('click',()=>{
+                event.preventDefault();
+                removeAllHighlights();
+                createHighlight(area);
+            })
+
+            map.appendChild(area);
+            resizeNewArea(area);
+            createHighlight(area,true);
+            removeLastHighlight();
+            document.removeEventListener('mousedown',handleMouseDown);
+        }else{
+            let text = await getText(areaInfo.coordinates);
+            saveInClipboard(text);
+            removeLastHighlight();
+        }
+    } else{
+        removeLastHighlight();
+    }
     
 }
 
@@ -690,6 +699,29 @@ function createNewHighlight(){
     document.addEventListener('mousedown',handleMouseDown);
 }
 
+function getTextToggle(){
+    if(isGettingText) isGettingText = false;
+    else isGettingText = true;
+}
 
+function getTextButton(){
+    let btn = document.createElement('button');
+    btn.textContent = "Enable Get Text";
+    btn.classList.add('btn');
+    btn.classList.add('btn-outline-light');
+    btn.addEventListener('click',()=>{
+        getTextToggle();
+        if(isGettingText){
+            document.addEventListener('mousedown',handleMouseDown);
+            btn.textContent = "Disable Get Text";
+        } 
+        else{
+            document.removeEventListener('mousedown',handleMouseDown);
+            btn.textContent = "Enable Get Text";
+        } 
+    } );
+    return btn;
+
+}
 
 

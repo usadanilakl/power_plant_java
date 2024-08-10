@@ -5,7 +5,7 @@ let originalWidth;
 let activeHighlights = []; 
 let highlatedAreas = [];
 let selectedArea;
-let isGettingText = true;
+let isGettingText = false;
 // let eqFormInfo; //moved to global variables
 
 /*****************************************************DISPLAY FUNCTIONS*****************************************************************/
@@ -434,43 +434,47 @@ async function handleMouseUp() {
     newHighlights[newHighlights.length-1].element.setAttribute('id',id+'h');
     newHighlights[newHighlights.length-1].picSize = picSize;
 
-    if(coords.getObjWidth() < 20 && coords.getObjHeight() < 20) removeLastHighlight();
-    let image = document.getElementById('picture');
-    areaInfo.coordinates = areaCoordinates;
-    areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
+    if(coords.getObjWidth() > 20 && coords.getObjHeight() > 20){
+        let image = document.getElementById('picture');
+        areaInfo.coordinates = areaCoordinates;
+        areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
 
-    areaInfo.tagNumber = "new Area";
-    areaInfo.mainFile = file.fileLink;
-    areaInfo.files = [];
-    areaInfo.files.push(file.fileLink);
-    if(file.vendor)areaInfo.vendor = file.vendor;
-    if(file.system)areaInfo.system = file.system;
-    areaInfo.eqType = null;
-    areaInfo.location = null;
+        areaInfo.tagNumber = "new Area";
+        areaInfo.mainFile = file.fileLink;
+        areaInfo.files = [];
+        areaInfo.files.push(file.fileLink);
+        if(file.vendor)areaInfo.vendor = file.vendor;
+        if(file.system)areaInfo.system = file.system;
+        areaInfo.eqType = null;
+        areaInfo.location = null;
 
-    let area = createAreaElement(areaInfo);
-    area.addEventListener('click',()=>{
-        event.preventDefault();
-        removeAllHighlights();
-        createHighlight(area);
-    })
-    //doubleClick(shape, e);
-    map.appendChild(area);
-    resizeNewArea(area);
-    removeAllHighlights();
-    if(!isGettingText)createHighlight(area);
-    // console.log(JSON.stringify(areaInfo))
-    // console.log(JSON.stringify(selectedArea))
-    //let newEq = await createNewEq(areaInfo);
-    //file.points.push(newEq);
-    selectedArea = areaInfo;
-    fillPointInfoWindow(selectedArea);
-
-    if(isGettingText){
-        let text = await getText(selectedArea.coordinates);
-        saveInClipboard(text);
-
+        if(!isGettingText){
+            let area = createAreaElement(areaInfo);
+            area.addEventListener('click',()=>{
+                event.preventDefault();
+                removeAllHighlights();
+                createHighlight(area);
+            })
+            //doubleClick(shape, e);
+            map.appendChild(area);
+            resizeNewArea(area);
+            removeAllHighlights();
+            createHighlight(area);
+            // console.log(JSON.stringify(areaInfo))
+            // console.log(JSON.stringify(selectedArea))
+            //let newEq = await createNewEq(areaInfo);
+            //file.points.push(newEq);
+            selectedArea = areaInfo;
+            fillPointInfoWindow(selectedArea);        
+        }else{
+            let text = await getText(areaInfo.coordinates);
+            saveInClipboard(text);
+            removeLastHighlight();
+        }
+    } else{
+        removeLastHighlight();
     }
+
     
 }
 
@@ -565,4 +569,23 @@ function updatePointInfo(event){
     // let form = new FormData(pointForm);
     // form.set('coords',JSON.stringify(updatedCoords));
     // console.log(form.get('coords'));
+}
+
+function getTextToggle(){
+    if(isGettingText) isGettingText = false;
+    else isGettingText = true;
+}
+
+function getTextButton(){
+    let btn = document.createElement('button');
+    btn.textContent = "Enable Get Text";
+    btn.classList.add('btn');
+    btn.classList.add('btn-outline-light');
+    btn.addEventListener('click',()=>{
+        getTextToggle();
+        if(isGettingText) btn.textContent = "Disable Get Text";
+        else btn.textContent = "Enable Get Text"
+    } );
+    return btn;
+
 }
