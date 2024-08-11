@@ -318,6 +318,7 @@ function enableLotoPointConnection(equipment){
     // fillExcelPointInfoWindow(points,equipment);
     selectedArea=equipment;
     document.querySelectorAll('.addButtons').forEach(e=>e.classList.remove('hide'));
+    document.getElementById('newLPControls').classList.remove('hide');
 
 }
 

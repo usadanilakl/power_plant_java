@@ -213,26 +213,33 @@ async function lotoPointDropdown(points){
 }
 
 async function fillExcelPointInfoWindow(points,eq){
-    let form = excelPointDropdown(points,eq);
-    let infoFrame = document.getElementById('infoFrameOld-LOTO-Points');
-    let infoContainer = document.getElementById('infoWindowOld-LOTO-Points');
-    if(infoContainer === null) newInfoWindow("Old-LOTO-Points");
-    if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
-    infoContainer.innerHTML = "";
-    infoContainer.appendChild(buildPointSearchField());
-    infoContainer.appendChild(form);
+        if(infoContainer === null) newInfoWindow("Old-LOTO-Points");
+        if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
+        infoContainer.innerHTML = "";
+        infoContainer.appendChild(buildPointSearchField()); 
+           
+    if(points){
+        let form = excelPointDropdown(points,eq);
+        let infoFrame = document.getElementById('infoFrameOld-LOTO-Points');
+        let infoContainer = document.getElementById('infoWindowOld-LOTO-Points');
+        infoContainer.appendChild(form);        
+    }
+
 
     let newLPcontainer = document.createElement('div');
     let newLPtag = document.createElement('input');
     let newLotoPointButton = document.createElement('button');
+    newLPcontainer.id = 'newLPControls';
     newLotoPointButton.type = 'button';
-    newLotoPointButton.textContent = "Add New"
+    newLotoPointButton.textContent = "Add New";
     newLotoPointButton.addEventListener('click',()=>createNewLotoPoint(newLPtag.value));
     newLPcontainer.appendChild(newLPtag);
     newLPcontainer.appendChild(newLotoPointButton);
 
     newLPcontainer.style.display = 'inline';
     infoContainer.appendChild(newLPcontainer);
+
+    newLPcontainer.classList.add('hide');
 }
 
 function excelPointSearch(searchValue){
