@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import com.dk_power.power_plant_java.sevice.base_services.RefactorService;
 
 import java.util.List;
+import java.util.Map;
 
 public interface FileService extends CrudService<FileObject, FileDto, FileRepo, FileMapper>, RefactorService {
     FileObject saveForTransfer(FileDto transfer);
@@ -37,5 +38,5 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List <FileDtoLight> getCompletedPids();
     List <FileDtoLight> getIncompletePids();
 
-    void verifyPid(String pid);
+    List<Map<String, String>> verifyPid(String pid);
 }

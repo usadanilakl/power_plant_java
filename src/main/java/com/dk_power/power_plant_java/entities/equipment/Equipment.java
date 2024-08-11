@@ -73,6 +73,13 @@ public class Equipment extends BaseEquipment {
     @ManyToMany(mappedBy = "equipmentList")
     @JsonBackReference
     private List<EqBreaker> breakers;
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JsonManagedReference
+    @JoinColumn(name = "eq_highlight")
+    private Highlight highlight;
+
+
+
     @Transient
     private String pid;
 

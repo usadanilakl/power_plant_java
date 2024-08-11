@@ -19,7 +19,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @AllArgsConstructor
@@ -132,18 +134,32 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public void verifyPid(String pid) {
+    public List<Map<String, String>> verifyPid(String pid) {
             FileObject fileObject = getEntityById(pid);
+            List<Map<String,String>> list = new ArrayList<>();
             fileObject.getPoints().forEach(e->{
+
+                Map<String,String> map = new HashMap<>();
                 try {
-                    System.out.println(e.getTagNumber());
-                    System.out.println(e.getLotoPoints().stream().map(el->el.getTagNumber()).toList());
-                    System.out.println(e.getLocation().getName());
-                    System.out.println(e.getSystem().getName());
-                    System.out.println("==================================================================");
+//                    System.out.println(e.getTagNumber());
+//                    System.out.println(e.getLotoPoints().stream().map(el->el.getTagNumber()).toList());
+//                    System.out.println(e.getLocation().getName());
+//                    System.out.println(e.getSystem().getName());
+//                    System.out.println("==================================================================");
+                    map.put("Description","*******************************"+e.getDescription()+"***********************************");
+                    map.put("Eq",e.getTagNumber()+", "+e.getLocation().getName() +", "+e.getSystem().getName()+", "+e.getEqType().getName());
+                    e.getLotoPoints().forEach(el->{
+                        map.put("LP", el.getTagNumber()+", "+el.getSpecificLocation()+", "+el.getIsoPos().getName()+"/"+el.getNormPos().getName()+", "+el.getDescription());
+                    });
+                    System.out.println(map.get("Description"));
+                    System.out.println(map.get("Eq"));
+                    System.out.println(map.get("LP"));
+                    list.add(map);
                 }catch (Exception ex){
                 }
             });
+
+            return list;
     }
 
     public List<FileDto> getAllDtos(String ext) {

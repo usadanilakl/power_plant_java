@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/file-api")
@@ -79,7 +80,7 @@ public class FileRestController_r {
     }
 
     @GetMapping("/verify/{id}")
-    public void verify(@PathVariable String id){
-        fileService.verifyPid(id);
+    public ResponseEntity<List<Map<String,String>>> verify(@PathVariable String id){
+        return ResponseEntity.ok(fileService.verifyPid(id)) ;
     }
 }

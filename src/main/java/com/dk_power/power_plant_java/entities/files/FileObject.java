@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
+import com.dk_power.power_plant_java.entities.equipment.Highlight;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -42,34 +43,43 @@ public class FileObject extends BaseAuditEntity {
         this.name = name;
     }
     private String name;
+
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "file_type_id")
     private Value fileType;
+
     private String fileLink;
     private String baseLink;
     private String folder;
+
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "system_id")
     private Value system;
+
     private String relatedSystems;
     private String fileNumber;
     private String extension;
+
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "vendor_id")
     private Value vendor;
-//    @ManyToMany(cascade = CascadeType.ALL)
-//    @JoinTable(name = "file_point",
-//            joinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"),
-//            inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
+
     @ManyToMany(mappedBy = "files")
     @JsonIgnore
     @JsonManagedReference
     private List<Equipment> points;
+
     @JsonBackReference
     @ManyToMany(mappedBy = "pid")
     private List<HeatTrace> heatTrace;
+
+    @OneToMany(mappedBy = "file")
+    @JsonBackReference
+    private List<Highlight> highlights;
+
     private Boolean completed;
     private String bulkEditStep = "eqTagNumber";
+
 
 
 

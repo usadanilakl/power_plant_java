@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
 import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -67,6 +68,8 @@ private final HtBreakerService htBreakerService;
 private final EqBreakerService eqBreakerService;
 private final ElectricalTableService electricalTableService;
 private final OCRService ocrService;
+private final HighlightService highlightService;
+private final EquipmentRepo equipmentRepo;
 
 
     public static void main(String[] args) {
@@ -83,38 +86,20 @@ private final OCRService ocrService;
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
-
-        List<Equipment> byTagNumber = equipmentService.getByTagNumber("01-VHRS935F");
-        LotoPoint lotoPoint = byTagNumber.get(0).getLotoPoints().stream().toList().get(0);
-        System.out.println(lotoPoint.getTagNumber());
-        System.out.println(lotoPoint.getNormPos());
-        System.out.println(lotoPoint.getIsoPos());
-        System.out.println(lotoPoint.getDescription());
-        System.out.println(lotoPoint.getIsolatedPosition());
-        System.out.println(lotoPoint.getNormalPosition());
-
-        List<Equipment> byTagNumber2 = equipmentService.getByTagNumber("01-VHHS820");
-        LotoPoint lotoPoint2 = byTagNumber2.get(0).getLotoPoints().stream().toList().get(0);
-        System.out.println(lotoPoint2.getTagNumber());
-        System.out.println(lotoPoint2.getNormPos());
-        System.out.println(lotoPoint2.getIsoPos());
-        System.out.println(lotoPoint2.getDescription());
-        System.out.println(lotoPoint2.getIsolatedPosition());
-        System.out.println(lotoPoint2.getNormalPosition());
-
-//        FileObject fileObject = fileService.getIfNumberContains("PD-021A").get(0);
-//        fileObject.getPoints().forEach(e->{
-//            try {
+//        equipmentService.getAll().forEach(highlightService::transferEqToHighlights);
+//        equipmentService.getAll().forEach(e->{
+//            String[] split = e.getCoordinates().split(",");
+//            if(split[0].substring(split[0].indexOf(":")+1).equals("null")){
+//                System.out.println(e.getId());
 //                System.out.println(e.getTagNumber());
-//                System.out.println(e.getLotoPoints().stream().map(el->el.getTagNumber()).toList());
-//                System.out.println(e.getLocation().getName());
-//                System.out.println(e.getSystem().getName());
-//                System.out.println("==================================================================");
-//            }catch (Exception ex){
-//
+//                System.out.println(e.getMainFile().getFileNumber());
 //            }
-//
 //        });
+//        equipmentService.hardDelete(equipmentService.getEntityById(26399L));
+
+//        List<String> duplicateTagNumbers = equipmentRepo.findDuplicateTagNumbers();
+//        duplicateTagNumbers.forEach(System.out::println);
+
 
 /******************************************************************************************************************************************
  *  Creating File Objects from files in a folder

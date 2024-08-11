@@ -822,7 +822,37 @@ function buildEditStepControls(){
         li5.addEventListener('click',enableBulkEdit);
 
         li6.addEventListener('click', async ()=>{
-            fetch('/file-api/verify/'+file.id);
+            let resp = await fetch('/file-api/verify/'+file.id);
+            let points = await resp.json();
+            let w = document.getElementById('verification-window');
+            if(w) all.removeChild(w);
+            let newWind = getEmptyWindow();
+            all.appendChild(newWind);
+            newWind.id = 'verification-window';
+            let l = document.createElement('ul');
+            newWind.appendChild(l);
+            l.style.backgroundColor = 'white'
+            l.style.position = 'absolute';
+            l.style.top = '30px';
+            newWind.style.width = '80%';
+            newWind.style.height = '80%';
+            points.forEach(e=>{
+                let it1 = document.createElement('li');
+                let it2 = document.createElement('li');
+                let it3 = document.createElement('li');
+
+                it1.textContent = e.Description;
+                it2.textContent = 'Eq: ' + e.Eq;
+                it3.textContent = 'LP: ' + e.LP;
+
+                l.appendChild(it1);
+                l.appendChild(it2);
+                l.appendChild(it3);
+            });
+
+
+            
+
         })
 
         li1.textContent = "Step 7: Edit Equipment Type (click for details)";
