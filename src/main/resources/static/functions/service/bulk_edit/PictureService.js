@@ -495,26 +495,28 @@ function getObjCoordOnPicture(object){
 }
 
 function handleMouseDown(event) {
+    
+
     if(event.button===2){
+        document.addEventListener('contextmenu',removeContextMenu);
+        let shape = document.createElement('div');
+        shape.setAttribute('class', 'areaHighlights');
+        all.appendChild(shape);
+        newHighlights.push({element:shape});
+        shape.addEventListener('mousedown',(event)=>{
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            event.stopPropagation();
+            relocateHighlightsWithPicture(event);
+        })
 
-    let shape = document.createElement('div');
-    shape.setAttribute('class', 'areaHighlights');
-    all.appendChild(shape);
-    newHighlights.push({element:shape});
-    shape.addEventListener('mousedown',(event)=>{
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        relocateHighlightsWithPicture(event);
-    })
+        coords.picture = getPictureCoordsOnScreen();
+        coords.mouseOnScreenStart = registerMouseCoordsOnScreen(event);
+        coords.mouseOnPictureStart = registerMouseCoordsOnPicture(event);
 
-    coords.picture = getPictureCoordsOnScreen();
-    coords.mouseOnScreenStart = registerMouseCoordsOnScreen(event);
-    coords.mouseOnPictureStart = registerMouseCoordsOnPicture(event);
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup',handleMouseUp);    
-}
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup',handleMouseUp);    
+    }
 }
   
 function handleMouseMove(event) {
@@ -607,6 +609,10 @@ async function handleMouseUp() {
     } else{
         removeLastHighlight();
     }
+
+    setTimeout(()=>{
+        document.removeEventListener('contextmenu',removeContextMenu);
+    },300)
     
 }
 
@@ -723,5 +729,33 @@ function getTextButton(){
     return btn;
 
 }
+
+function removeContextMenu(event){
+    event.preventDefault();
+}
+
+function setAreaAsLotoPoint(highlight){
+    let point = getPointByIdFromCurrentFile(highlight.getAttribute('data-point-id'));
+    let areaId = highlight.id.slice(0,-1);
+    console.log(areaId)
+    let area = document.getElementById(areaId);
+    let directLotoPoint;
+    if(point.lotoPoints!=null && point.lotoPoints.length>0){
+        directLotoPoint = point.lotoPoints.find(e=>e.tagNumber===point.tagNumber);
+        if(!directLotoPoint) directLotoPoint = point.lotoPoints[0];
+        if(directLotoPoint.isoPos && directLotoPoint.isoPos.name && directLotoPoint.isoPos.name.toLowerCase().includes('open')){
+            area.setAttribute('data-loto-point-area', true);
+        }
+        else if(directLotoPoint.isoPos && directLotoPoint.isoPos.name && directLotoPoint.isoPos.name.toLowerCase().includes('closed')){
+            area.setAttribute('data-loto-point-area', false);
+        }
+        else area.setAttribute('data-loto-point-area', '');
+    }
+    return area;
+}
+
+// document.addEventListener('contextmenu',removeContextMenu);
+
+// document.removeEventListener('contextmenu',removeContextMenu);
 
 

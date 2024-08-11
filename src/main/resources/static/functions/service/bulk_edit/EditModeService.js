@@ -844,7 +844,10 @@ function acceptLotoPoint(point){
     if(editModes.eqTagNumber.state){
         updateEqTagNumber(point);
         removeResizeAndDisableLpConnection(highlight);
-        all.removeChild(document.querySelector(`div.newWindow[data-point-id='${point.id}']`))
+        let area = setAreaAsLotoPoint(highlight);
+        all.removeChild(highlight);
+        all.removeChild(document.querySelector(`div.newWindow[data-point-id='${point.id}']`));
+        createHighlight(area)
     }
     if(editModes.eqDescription.state){
         updateEqDescription(point);

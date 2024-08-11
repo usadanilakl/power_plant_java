@@ -243,9 +243,10 @@
     .then(async ()=>{
         await getAllCategories();
         await getAllValuesOfEachCategory();
-        // newInfoWindow("Point",false);
-        newInfoWindow("Old-LOTO-Points",false);
-        document.getElementById('infoWindowOld-LOTO-Points').appendChild(buildPointSearchField());
+        let oldLotoInfoWindow = newInfoWindow("Old-LOTO-Points",false);
+        // oldLotoInfoWindow.appendChild(buildPointSearchField());
+        fillExcelPointInfoWindow();
+
         // positionInfoWindowsInline();
 
         incompletePid = incompletePid.filter(e=>e.vendor.name==="Kiewit");
