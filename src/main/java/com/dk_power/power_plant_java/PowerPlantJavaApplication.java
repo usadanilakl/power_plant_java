@@ -9,11 +9,9 @@ import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.data_transfer.ElectricalTable;
 import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
-import com.dk_power.power_plant_java.entities.equipment.ElectricalPanel;
-import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
-import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
-import com.dk_power.power_plant_java.entities.equipment.HtPanel;
+import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -84,6 +82,25 @@ private final OCRService ocrService;
         System.err.println("=====================================================");
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
+
+
+        List<Equipment> byTagNumber = equipmentService.getByTagNumber("01-VHRS935F");
+        LotoPoint lotoPoint = byTagNumber.get(0).getLotoPoints().stream().toList().get(0);
+        System.out.println(lotoPoint.getTagNumber());
+        System.out.println(lotoPoint.getNormPos());
+        System.out.println(lotoPoint.getIsoPos());
+        System.out.println(lotoPoint.getDescription());
+        System.out.println(lotoPoint.getIsolatedPosition());
+        System.out.println(lotoPoint.getNormalPosition());
+
+        List<Equipment> byTagNumber2 = equipmentService.getByTagNumber("01-VHHS820");
+        LotoPoint lotoPoint2 = byTagNumber2.get(0).getLotoPoints().stream().toList().get(0);
+        System.out.println(lotoPoint2.getTagNumber());
+        System.out.println(lotoPoint2.getNormPos());
+        System.out.println(lotoPoint2.getIsoPos());
+        System.out.println(lotoPoint2.getDescription());
+        System.out.println(lotoPoint2.getIsolatedPosition());
+        System.out.println(lotoPoint2.getNormalPosition());
 
 //        FileObject fileObject = fileService.getIfNumberContains("PD-021A").get(0);
 //        fileObject.getPoints().forEach(e->{

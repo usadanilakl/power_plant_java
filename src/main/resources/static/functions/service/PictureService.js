@@ -71,9 +71,22 @@ function createAreaElement(area){
     newArea.setAttribute('coords', coord);
     newArea.setAttribute('shape',"rect");
 
+    // if(area.lotoPoints!=null && area.lotoPoints.length>0){
+    //   if(area.lotoPoints[0].isolatedPosition.toLowerCase().includes('open')) newArea.setAttribute('data-loto-point-area', true); 
+    //   else newArea.setAttribute('data-loto-point-area', false);
+    // } 
+
+    let directLotoPoint;
     if(area.lotoPoints!=null && area.lotoPoints.length>0){
-      if(area.lotoPoints[0].isolatedPosition.toLowerCase().includes('open')) newArea.setAttribute('data-loto-point-area', true); 
-      else newArea.setAttribute('data-loto-point-area', false);
+        directLotoPoint = area.lotoPoints.find(e=>e.tagNumber===area.tagNumber);
+        if(!directLotoPoint) directLotoPoint = area.lotoPoints[0];
+        if(directLotoPoint.isoPos && directLotoPoint.isoPos.name && directLotoPoint.isoPos.name.toLowerCase().includes('open')){
+            newArea.setAttribute('data-loto-point-area', true);
+        }
+        else if(directLotoPoint.isoPos && directLotoPoint.isoPos.name && directLotoPoint.isoPos.name.toLowerCase().includes('closed')){
+            newArea.setAttribute('data-loto-point-area', false);
+        }
+        else newArea.setAttribute('data-loto-point-area', '');
     } 
 
     //drag(newArea,pictureContainer);
