@@ -1,4 +1,5 @@
-.green {
+
+.smallBtn {
     padding: 5px 10px;
     font-size: 16px;
     font-weight: bold;
@@ -9,8 +10,12 @@
     cursor: auto;
     position: relative;
     transition: all 0.3s ease;
-    box-shadow: 0 0 1px greenyellow, 0 0 20px greenyellow, 0 0 10px greenyellow;
     margin: 2px;
+    background-color: black;
+    cursor: pointer;
+}
+.green {
+    box-shadow: 0 0 1px greenyellow, 0 0 20px greenyellow, 0 0 10px greenyellow;
 }
 
 .green:hover {
@@ -19,18 +24,7 @@
 }
 
 .blue {
-    padding: 5px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #fff;
-    background: none;
-    border: 1px solid aliceblue;
-    border-radius: 5px;
-    cursor: auto;
-    position: relative;
-    transition: all 0.3s ease;
     box-shadow: 0 0 1px skyblue, 0 0 20px skyblue, 0 0 10px skyblue;
-    margin: 2px;
 }
 
 .blue:hover {
@@ -39,18 +33,7 @@
 }
 
 .yellow {
-    padding: 5px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #fff;
-    background: none;
-    border: 1px solid aliceblue;
-    border-radius: 5px;
-    cursor: auto;
-    position: relative;
-    transition: all 0.3s ease;
     box-shadow: 0 0 1px yellow, 0 0 20px yellow, 0 0 10px yellow;
-    margin: 2px;
 }
 
 .yellow:hover {
@@ -60,18 +43,7 @@
 
 
 .red {
-    padding: 5px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #fff;
-    background: none;
-    border: 1px solid aliceblue;
-    border-radius: 5px;
-    cursor: auto;
-    position: relative;
-    transition: all 0.3s ease;
     box-shadow: 0 0 1px red, 0 0 20px red, 0 0 10px red;
-    margin: 2px;
 }
 
 .red:hover {
@@ -80,18 +52,7 @@
 }
 
 .aqua {
-    padding: 5px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #fff;
-    background: none;
-    border: 1px solid aliceblue;
-    border-radius: 5px;
-    cursor: auto;
-    position: relative;
-    transition: all 0.3s ease;
     box-shadow: 0 0 1px aqua, 0 0 20px aqua, 0 0 10px aqua;
-    margin: 2px;
 }
 
 .aqua:hover {
@@ -100,18 +61,7 @@
 }
 
 .purple {
-    padding: 5px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #fff;
-    background: none;
-    border: 1px solid aliceblue;
-    border-radius: 5px;
-    cursor: auto;
-    position: relative;
-    transition: all 0.3s ease;
     box-shadow: 0 0 1px purple, 0 0 20px purple, 0 0 10px purple;
-    margin: 2px;
 }
 
 .purple:hover {
@@ -120,18 +70,7 @@
 }
 
 .orange {
-    padding: 5px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #fff;
-    background: none;
-    border: 1px solid aliceblue;
-    border-radius: 5px;
-    cursor: auto;
-    position: relative;
-    transition: all 0.3s ease;
     box-shadow: 0 0 1px orange, 0 0 20px orange, 0 0 10px orange;
-    margin: 2px;
 }
 
 .orange:hover {
@@ -140,18 +79,7 @@
 }
 
 .lime {
-    padding: 5px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #fff;
-    background: none;
-    border: 1px solid aliceblue;
-    border-radius: 5px;
-    cursor: auto;
-    position: relative;
-    transition: all 0.3s ease;
     box-shadow: 0 0 1px lime, 0 0 20px lime, 0 0 10px lime;
-    margin: 2px;
 }
 
 .lime:hover {
@@ -160,18 +88,7 @@
 }
 
 .teal {
-    padding: 5px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #fff;
-    background: none;
-    border: 1px solid aliceblue;
-    border-radius: 5px;
-    cursor: auto;
-    position: relative;
-    transition: all 0.3s ease;
     box-shadow: 0 0 1px teal, 0 0 20px teal, 0 0 10px teal;
-    margin: 2px;
 }
 
 .teal:hover {

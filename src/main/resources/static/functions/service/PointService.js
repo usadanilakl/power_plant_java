@@ -128,9 +128,18 @@ function excelPointDropdown(points){
         // if(e.objectType==="OldLotoPoint") button.style.backgroundColor = "red";
         // else if(e.objectType==="RevisedLotoPoints") button.style.backgroundColor = "green";
         // else button.style.backgroundColor = "blue";
-        if(e.objectType==="OldLotoPoint") button.classList.add('red');
-        else if(e.objectType==="RevisedLotoPoints") button.classList.add('lime');
-        else button.classList.add('blue');
+        if(e.objectType==="OldLotoPoint"){
+            button.classList.add('smallBtn');
+            button.classList.add('red');
+        } 
+        else if(e.objectType==="RevisedLotoPoints"){
+            button.classList.add('smallBtn');
+            button.classList.add('lime');
+        } 
+        else{
+            button.classList.add('blue');
+            button.classList.add('smallBtn');
+        } 
 
         button.textContent = e.tagNumber;
         button.addEventListener('click', ()=>{
@@ -146,6 +155,7 @@ function excelPointDropdown(points){
         buttons.appendChild(addButton);
         addButton.classList.add('addButtons');
         addButton.classList.add('yellow');
+        addButton.classList.add('smallBtn');
         addButton.textContent = "ADD";
         addButton.classList.add('hide');
 

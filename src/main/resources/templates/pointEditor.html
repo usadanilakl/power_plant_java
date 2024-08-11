@@ -191,7 +191,7 @@
         positionInfoWindowsInline();
 
         incompletePid = incompletePid.filter(e=>e.vendor.name==="Kiewit");
-        loadPictureWithLightFile(incompletePid[0]);
+        incompletePid.forEach(e=>e.completed = 'false')
 
         getAllCategoryObjects();
         getRevisedExcelPoints();
@@ -199,7 +199,7 @@
         getHrsgValvesFromDb();
         getKiewitValvesFromDb();
         getBypassesFromDb();
-        getCompletedFiles();
+        await getCompletedFiles();
         
 
         let left = document.getElementById('lower').querySelector('ul');
@@ -211,11 +211,13 @@
         
     }).then(async ()=>{
         completedPid = completedPid.filter(e=>e.vendor.name==="Kiewit");
+        completedPid.forEach(e=>e.completed = 'true')
+
        if(mode) setMode(mode); 
        document.getElementById('point-editor-menu').appendChild(document.createElement('li').appendChild(getTextButton()));
     }).then(()=>{
-        console.log(JSON.stringify(allAliases));
-        console.log(JSON.stringify(valuesByCategory));
+
+        loadPictureWithLightFile(incompletePid[0]);
     })
 
     pictureContainer.addEventListener('mousedown',(event)=>{
@@ -248,35 +250,36 @@ function goToNextPid(){
     console.log(currentFileIndex)
     let f = switchPid(currentFileIndex);
     changeStatusButtonColor(f.completed);
+    console.log(JSON.stringify(f))
 }
 function goToPreviousPid(){
     --currentFileIndex;
     console.log(currentFileIndex)
     let f = switchPid(currentFileIndex);
-    changeStatusButtonColor(f.completed);
+    changeStatusButtonColor(f.completed);    
+    console.log(JSON.stringify(f))
 }
 
-function toggleCurrentPidCompletedStatus(){
+async function toggleCurrentPidCompletedStatus(){
     let currentFile = getCurrent();
-    console.log(currentFile.fileNumber)
-    let status = false;
+    if(currentFile.completed===true) currentFile.completed=false;
+    else currentFile.completed = true;
+    await updateFileStatus(currentFile.id,currentFile.completed);
+    changeStatusButtonColor(currentFile.completed);
     console.log(JSON.stringify(currentFile))
-    if(currentFileIndex>-1) status = true;
-    currentFile.completed = status;
-    updateFileStatus(currentFile.id,status);
-    changeStatusButtonColor(status);
+
 }
 
 function changeStatusButtonColor(status){
-    if(currentFileIndex<0){
-        completeButton.textContent = "Mark as Incomplete";
-        completeButton.classList.remove('btn-danger');
-        completeButton.classList.add('btn-success');
-    }else{
-        completeButton.textContent = "Mark as Completed";
-        completeButton.classList.remove('btn-success');
-        completeButton.classList.add('btn-danger');
-    }
+    if(status){
+            completeButton.textContent = "Mark as Incomplete";
+            completeButton.classList.remove('btn-danger');
+            completeButton.classList.add('btn-success');
+        }else{
+            completeButton.textContent = "Mark as Completed";
+            completeButton.classList.remove('btn-success');
+            completeButton.classList.add('btn-danger');
+        }
 }
 
 function getCurrent(){
