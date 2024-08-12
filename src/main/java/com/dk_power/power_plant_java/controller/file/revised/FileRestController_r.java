@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.file.revised;
 
 import com.azure.core.annotation.Patch;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -77,6 +79,10 @@ public class FileRestController_r {
     public ResponseEntity<List<FileDtoLight>> getIncompletePids(){
 
         return ResponseEntity.ok(fileService.getIncompletePids());
+    }
+    @GetMapping("/skip")
+    public ResponseEntity<List<FileDto>> getSkippedPids(){
+        return ResponseEntity.ok(fileService.getSkipped());
     }
 
     @GetMapping("/verify/{id}")

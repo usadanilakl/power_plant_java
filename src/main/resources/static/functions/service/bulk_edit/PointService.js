@@ -115,6 +115,7 @@ function excelPointDropdown(points,equipment){
     let list = document.createElement('ul');
     points.forEach(e=>{
         let item = document.createElement('li');
+        item.style.width = '100%'
         list.appendChild(item);
 
         let buttons = document.createElement('div');
@@ -142,7 +143,7 @@ function excelPointDropdown(points,equipment){
             button.classList.add('smallBtn');
         } 
 
-        button.textContent = e.tagNumber;
+        button.textContent = e.tagNumber + " - " + e.description;
         button.addEventListener('click', ()=>{
             if(formContainer.children.length === 0){
                 formContainer.appendChild(showPointInfo(e));
@@ -256,7 +257,13 @@ async function fillExcelPointInfoWindow(points,eq){
 function excelPointSearch(searchValue){
     let result = [];
     revisedExcelPoints.forEach(e=>{
-        if(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber))) result.push(e);
+        if(
+            trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || 
+            trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber)) ||
+            trimToLowerCaseRemoveDashes(e.description).includes(trimToLowerCaseRemoveDashes(searchValue)) ||
+            trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.description))
+            // e.description.toLowerCase().indexOf(searchValue.toLowerCase)>-1
+        ) result.push(e);
     });
     oldExcelPoints.forEach(e=>{
         if(e.tagNumber!==""&&(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber)))) result.push(e);

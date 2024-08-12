@@ -285,6 +285,7 @@ function highlightEditControls(highlight,resize){
 
 function buildLotoPointList(eq){
     let lotoPoints = document.getElementById('loto-points-'+eq.id);
+    let input = document.getElementById('value-editor-input');
     if(lotoPoints){lotoPoints.innerHTML = "";}
     else{
         lotoPoints = document.createElement('div');
@@ -298,16 +299,20 @@ function buildLotoPointList(eq){
         let buttonContainer = document.createElement('div');
         let point = document.createElement('button');
         let control = document.createElement('button');
+        let rename = document.createElement('button');
 
         buttonContainer.classList.add('loto-point-box');
 
         buttonContainer.appendChild(point);
+        buttonContainer.appendChild(rename);
         buttonContainer.appendChild(control);
 
         point.textContent = e.tagNumber;
         control.textContent = "X";
+        rename.textContent = "Rename";
 
         control.addEventListener('click',()=> removeLotoPoint(e.id,eq))
+        rename.addEventListener('click',()=>e.tagNumber=input.value)
         lotoPoints.appendChild(buttonContainer);
     })
     return lotoPoints;
@@ -426,6 +431,7 @@ function buildEditStepControls(){
     let steps = document.createElement('ul');
     let stepButton = document.createElement('li');
 
+    stepButton.id = 'stepButton'
     stepButton.classList.add('btn');
     stepButton.classList.add('btn-outline-light');
     stepButton.addEventListener('click',()=>stepOptionBox.classList.toggle('hide'));
@@ -869,6 +875,126 @@ function buildEditStepControls(){
 
         buildCategorySelector("eqType");
     }
+
+    let skipButton = document.createElement('li');
+    let getSkippedButton = document.createElement('li');
+    let getCompletedButton = document.createElement('li');
+    let getIncompleteButton = document.createElement('li');
+
+    skipButton.classList.add('btn');
+    skipButton.classList.add('btn-secondary');
+    getSkippedButton.classList.add('btn');
+    getSkippedButton.classList.add('btn-secondary');
+    getCompletedButton.classList.add('btn');
+    getCompletedButton.classList.add('btn-secondary');
+    getIncompleteButton.classList.add('btn');
+    getIncompleteButton.classList.add('btn-secondary');
+
+    skipButton.textContent = "Skip PID";
+    getSkippedButton.textContent = "Get Skipped PIDs";
+    getCompletedButton.textContent = "Get Completed PIDs";
+    getIncompleteButton.textContent = "Get Incomplete PIDs";
+
+    skipButton.addEventListener('click',async ()=>{
+        await updateFileStatus(file.id,true);
+        await updateFileEditStep("skip");
+        location.reload();
+    });
+    getSkippedButton.addEventListener('click',async ()=>{
+        let w = document.querySelector('[data-file-window="skipped"]');
+        if(w) all.removeChild(w);
+        let newWind = getEmptyWindow("Skipped Files");
+        let box = document.createElement('div');
+        let l = document.createElement('ul');
+
+        newWind.setAttribute('data-file-window','skipped');
+
+        box.style.position = 'absolute';
+        box.style.top = "35px";
+
+        let skippedFiles = await getSkippedFiles();
+
+        skippedFiles.forEach(e=>{
+            let f = document.createElement('li');
+            f.classList.add('smallBtn');
+            f.classList.add('yellow');
+            f.textContent = e.fileNumber
+            f.addEventListener('click',async ()=>{
+                await updateFileEditStep("eqTagNumber");
+                await updateFileStatus(e.id,false);
+                location.reload();
+            })
+            l.appendChild(f)
+        })
+
+        box.appendChild(l);
+        newWind.appendChild(box);
+        all.appendChild(newWind);
+    });
+
+    getCompletedButton.addEventListener('click',async ()=>{
+        let w = document.querySelector('[data-file-window="completed"]');
+        if(w) all.removeChild(w);
+        let newWind = getEmptyWindow("Skipped Files");
+        let box = document.createElement('div');
+        let l = document.createElement('ul');
+
+        newWind.setAttribute('data-file-window','skipped');
+
+        box.style.position = 'absolute';
+        box.style.top = "35px";
+
+        completedPid.forEach(e=>{
+            let f = document.createElement('li');
+            f.classList.add('smallBtn');
+            f.classList.add('yellow');
+            f.textContent = e.fileNumber
+            f.addEventListener('click',async ()=>{
+                await updateFileEditStep("eqTagNumber");
+                await updateFileStatus(e.id,false);
+                location.reload();
+            })
+            l.appendChild(f)
+        })
+
+        box.appendChild(l);
+        newWind.appendChild(box);
+        all.appendChild(newWind);
+    });
+
+    getIncompleteButton.addEventListener('click',()=>{
+        let w = document.querySelector('[data-file-window="incomplete"]');
+        if(w) all.removeChild(w);
+        let newWind = getEmptyWindow("Skipped Files");
+        let box = document.createElement('div');
+        let l = document.createElement('ul');
+
+        newWind.setAttribute('data-file-window','incomplete');
+
+        box.style.position = 'absolute';
+        box.style.top = "35px";
+
+        incompletePid.forEach(e=>{
+            let f = document.createElement('li');
+            f.classList.add('smallBtn');
+            f.classList.add('yellow');
+            f.textContent = e.fileNumber
+            f.addEventListener('click',async ()=>{
+                //location.reload();
+                loadPictureWithLightFile(e);
+            })
+            l.appendChild(f)
+        })
+
+        box.appendChild(l);
+        newWind.appendChild(box);
+        all.appendChild(newWind);
+    })
+
+    list.appendChild(skipButton);
+    list.appendChild(getSkippedButton);
+    list.appendChild(getCompletedButton);
+    list.appendChild(getIncompleteButton);
 }
 
 async function buildCategorySelector(catAlias){
@@ -1090,7 +1216,7 @@ function lpEditControls(point){
     accept.classList.add('highlight-control-accept');
     rename.classList.add('highlight-control-rename');
 
-    if(point.objectType) name.textContent = point.objectType + ' - ' + point.tagNumber;
+    if(point.objectType) name.textContent = point.objectType + ' - ' + point.tagNumber+ '/' + (point.description ?point.description : "");
     accept.textContent = "Accept";
     rename.textContent = "Rename";
     
@@ -1246,7 +1372,7 @@ function highlightMultipleLotoPointEq(){
         selectedBundle.push({"area":e,"eq":selectedArea,"highlight":hl});
     }
 
-    let instButton = document.getElementById('instructionButton');
+    let instButton = document.getElementById('stepButton');
     instButton.textContent = 'Verify Equipment with multiple Loto Points'
     let nextButton = document.getElementById('next-step-button');
     nextButton.removeEventListener('click',highlightMultipleLotoPointEq);
@@ -1309,8 +1435,10 @@ function highlightForEqType(){
 
 let bulkEditArray = [];
 let bulkEditEnabled = false;
+let matchLpLocation = false;
 
 function enableBulkEdit(){
+    matchLpLocation = false;
     removeAllHighlights();
     bulkEditArray = [];
     bulkEditEnabled = true;
@@ -1322,6 +1450,7 @@ function enableBulkEdit(){
     enable.textContent = "Submit Selected Points";
     enable.removeEventListener('click', enableBulkEdit);
     enable.addEventListener('click',submitBulkEdit);
+    bulkEditControlBuilder();
 }
 
 async function submitBulkEdit(){
@@ -1332,7 +1461,8 @@ async function submitBulkEdit(){
     if(editModes.system.state)categoryAlias='system';
     if(editModes.eqType.state)categoryAlias='eqType';
 
-    let value = document.getElementById('select-input-editor').getAttribute('data-object-id')
+    let value = document.getElementById('select-input-editor').getAttribute('data-object-id');
+    let text = document.getElementById('select-input-editor').value;
     bulkEditEnabled = false;
     document.querySelectorAll('[data-loto-point-area]').forEach(e=>{
         e.removeEventListener('click',addPointToArray);
@@ -1342,6 +1472,11 @@ async function submitBulkEdit(){
         if(editModes.eqLocation.state){
             e[categoryAlias] = {};
             e[categoryAlias].id = value;
+            if(matchLpLocation === true){
+                e.lotoPoints.forEach(p=>{
+                    p.specificLocation=text
+            });
+            }
             await updateEqLocation(e);
         }
         if(editModes.lotoPointPosition.state){
@@ -1370,6 +1505,8 @@ async function submitBulkEdit(){
         }
     }
     loadPictureWithLightFile(file);
+    let w = document.querySelector('[data-bulk-edit="controls-window"]');
+    if(w) all.removeChild(w);
 }
 
 function addPointToArray(event){
@@ -1384,6 +1521,60 @@ function removePointFromBulkArray(highligh){
     let point = getPointByIdFromCurrentFile(highligh.getAttribute('data-point-id'));
     bulkEditArray=bulkEditArray.filter(e=>e.id!==point.id);
     console.log(bulkEditArray.length)
+}
+
+function bulkEditControlBuilder(){
+    let w = document.querySelector('[data-bulk-edit="controls-window"]');
+    if(w) all.removeChild(w);
+    let newWind = getEmptyWindow();
+    newWind.setAttribute('data-bulk-edit', 'controls-window');
+    newWind.style.width = '20%';
+
+    let controlsBox = document.createElement('div');
+    let label = document.createElement('label');
+    let check = document.createElement('input');
+    let selectAllButton = document.createElement('button');
+    let unselectAllButton = document.createElement('button');
+    
+    controlsBox.style.position = 'absolute';
+    controlsBox.style.top = '35px';
+    controlsBox.style.backgroundColor = 'white';
+
+    label.for = 'matchLocations';
+    label.textContent = "Match LP location with Eq"
+    check.id = 'matchLocations';
+    check.type = 'checkbox';
+    check.addEventListener('change', () => {
+        matchLpLocation = check.checked;  // Update the boolean variable
+        console.log(matchLpLocation)
+    });
+
+    selectAllButton.textContent = 'Select All';
+    unselectAllButton.textContent = "Unselect All";
+    selectAllButton.addEventListener('click',selectAllForBulkEdit);
+    unselectAllButton.addEventListener('click',unselectAllForBulkEdit);
+
+    controlsBox.appendChild(label);
+    controlsBox.appendChild(check);
+    controlsBox.appendChild(selectAllButton);
+    controlsBox.appendChild(unselectAllButton);
+    newWind.appendChild(controlsBox);
+    all.appendChild(newWind);
+}
+
+function selectAllForBulkEdit(){
+    bulkEditArray = [];
+    let areas = document.querySelectorAll('[data-loto-point-area]');
+    areas.forEach(e=>{
+        let point = fileWithPoints.points.find(el=>el.id===parseInt(e.getAttribute('data-point-id')));
+        bulkEditArray.push(point);
+        createHighlight(e,true)
+    })
+}
+
+function unselectAllForBulkEdit(){
+    bulkEditArray = [];
+    removeAllHighlights();
 }
 
 

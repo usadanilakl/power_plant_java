@@ -18,10 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @AllArgsConstructor
@@ -160,6 +157,11 @@ public class FileServiceImpl implements FileService {
             });
 
             return list;
+    }
+
+    @Override
+    public List<FileDto> getSkipped() {
+        return fileRepo.findByBulkEditStep("skip").stream().map(this::convertToDto).toList();
     }
 
     public List<FileDto> getAllDtos(String ext) {
