@@ -843,17 +843,26 @@ function buildEditStepControls(){
             newWind.style.width = '80%';
             newWind.style.height = '80%';
             points.forEach(e=>{
-                let it1 = document.createElement('li');
-                let it2 = document.createElement('li');
-                let it3 = document.createElement('li');
 
-                it1.textContent = e.Description;
-                it2.textContent = 'Eq: ' + e.Eq;
-                it3.textContent = 'LP: ' + e.LP;
+                for(let key in e){
+                    let ite = document.createElement('li');
+                    ite.textContent = key + ': ' + e[key];
+                    l.appendChild(ite);
+                }
 
-                l.appendChild(it1);
-                l.appendChild(it2);
-                l.appendChild(it3);
+
+
+                // let it1 = document.createElement('li');
+                // let it2 = document.createElement('li');
+                // let it3 = document.createElement('li');
+
+                // it1.textContent = e.Description;
+                // it2.textContent = 'Eq: ' + e.Eq;
+                // it3.textContent = 'LP: ' + e.LP;
+
+                // l.appendChild(it1);
+                // l.appendChild(it2);
+                // l.appendChild(it3);
             });
 
 
@@ -918,7 +927,7 @@ function buildEditStepControls(){
             let f = document.createElement('li');
             f.classList.add('smallBtn');
             f.classList.add('yellow');
-            f.textContent = e.fileNumber
+            f.textContent = e.fileNumber + ' - ' + (e.name?e.name:"")
             f.addEventListener('click',async ()=>{
                 await updateFileEditStep("eqTagNumber");
                 await updateFileStatus(e.id,false);
@@ -948,7 +957,7 @@ function buildEditStepControls(){
             let f = document.createElement('li');
             f.classList.add('smallBtn');
             f.classList.add('yellow');
-            f.textContent = e.fileNumber
+            f.textContent = e.fileNumber + ' - ' + (e.name?e.name:"")
             f.addEventListener('click',async ()=>{
                 await updateFileEditStep("eqTagNumber");
                 await updateFileStatus(e.id,false);
@@ -978,7 +987,7 @@ function buildEditStepControls(){
             let f = document.createElement('li');
             f.classList.add('smallBtn');
             f.classList.add('yellow');
-            f.textContent = e.fileNumber
+            f.textContent = e.fileNumber + ' - ' + (e.name?e.name:"")
             f.addEventListener('click',async ()=>{
                 //location.reload();
                 loadPictureWithLightFile(e);
@@ -1539,6 +1548,8 @@ function bulkEditControlBuilder(){
     controlsBox.style.position = 'absolute';
     controlsBox.style.top = '35px';
     controlsBox.style.backgroundColor = 'white';
+    controlsBox.style.display = 'flex';
+    controlsBox.style.flexDirection = 'column';
 
     label.for = 'matchLocations';
     label.textContent = "Match LP location with Eq"

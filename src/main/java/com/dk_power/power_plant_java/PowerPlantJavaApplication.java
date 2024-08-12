@@ -87,14 +87,14 @@ private final EquipmentRepo equipmentRepo;
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
 //        equipmentService.getAll().forEach(highlightService::transferEqToHighlights);
-        equipmentService.getAll().forEach(e->{
-            String[] split = e.getCoordinates().split(",");
-            if(split[0].substring(split[0].indexOf(":")+1).equals("null")){
-                System.out.println(e.getId());
-                System.out.println(e.getTagNumber());
-                System.out.println(e.getMainFile().getFileNumber());
-            }
-        });
+//        equipmentService.getAll().forEach(e->{
+//            String[] split = e.getCoordinates().split(",");
+//            if(split[0].substring(split[0].indexOf(":")+1).equals("null")){
+//                System.out.println(e.getId());
+//                System.out.println(e.getTagNumber());
+//                System.out.println(e.getMainFile().getFileNumber());
+//            }
+//        });
 //        equipmentService.hardDelete(equipmentService.getEntityById(26399L));
 
 //        List<String> duplicateTagNumbers = equipmentRepo.findDuplicateTagNumbers();
