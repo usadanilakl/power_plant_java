@@ -88,17 +88,34 @@ private final EquipmentRepo equipmentRepo;
 
 //        equipmentService.getAll().forEach(highlightService::transferEqToHighlights);
 //        equipmentService.getAll().forEach(e->{
-//            String[] split = e.getCoordinates().split(",");
-//            if(split[0].substring(split[0].indexOf(":")+1).equals("null")){
-//                System.out.println(e.getId());
-//                System.out.println(e.getTagNumber());
-//                System.out.println(e.getMainFile().getFileNumber());
-//            }
+//            if(e.getCoordinates().contains("undefined"))e.setCoordinates(e.getCoordinates().replace("undefined",""));
+//            if(e.getMainFile()==null) equipmentService.hardDelete(e);// System.out.println(e.getTagNumber());
+//            equipmentService.save(e);
+//
 //        });
-//        equipmentService.hardDelete(equipmentService.getEntityById(26399L));
-
+//        System.out.println("equipmentService.getAll().size() = " + equipmentService.getAll().size());
+//        System.out.println("highlightService.getAll().size() = " + highlightService.getAll().size());
+//        System.out.println("Completed");
+////        equipmentService.hardDelete(equipmentService.getEntityById(26399L));
+//
 //        List<String> duplicateTagNumbers = equipmentRepo.findDuplicateTagNumbers();
+//        List<String> uniqueTagNumbers = equipmentRepo.findUniqueTagNumbers();
+//        System.out.println("duplicateTagNumbers.size() = " + duplicateTagNumbers.size());
+//        System.out.println("uniqueTagNumbers.size() = " + uniqueTagNumbers.size());
+
 //        duplicateTagNumbers.forEach(System.out::println);
+//        int n = 0;
+//        for(String e : duplicateTagNumbers){
+//
+//            try{
+//                equipmentService.combineDuplicates(e);
+//                System.out.println("++++++++++++++++++++++++++++++++++++++++++++++++++++");
+//            }catch (NullPointerException ex){
+//                n++;
+//            }
+//
+//        }
+//        System.out.println(n);
 
 
 /******************************************************************************************************************************************

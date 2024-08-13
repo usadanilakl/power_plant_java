@@ -17,6 +17,7 @@ import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.xml.stream.Location;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -104,6 +105,28 @@ public class EquipmentServiceImpl implements EquipmentService {
         transfer.setMainFile(file);
         transfer.addFile(file);
         return save(transfer);
+    }
+
+    @Override
+    public void combineDuplicates(String tagNumber) {
+        List<Equipment> byTagNumber = equipmentRepo.findByTagNumber(tagNumber);
+        String descr = "";
+        String loc = "";
+        for(Equipment e:byTagNumber){
+//            if(e.getDescription()!=null) System.out.println(e.getDescription());
+//            if(e.getEqType()!=null) System.out.println(e.getEqType().getId());
+//            if(e.getSystem()!=null) System.out.println(e.getSystem().getId());
+//            if(e.getSpecificLocation()!=null) System.out.println(e.getSpecificLocation());
+            if(e.getLocation()!=null) loc +=e.getLocation().getId()+", ";
+            descr += e.getDescription()+",";
+
+        }
+
+        System.out.println(descr);
+        System.out.println(loc);
+
+
+
     }
 
     @Override

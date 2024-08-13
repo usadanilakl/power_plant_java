@@ -83,7 +83,7 @@ function setEditType(){
     }
 }
 
-function fillHighlightInfo(highlight){
+async function fillHighlightInfo(highlight){
     let point = getPointByIdFromCurrentFile(highlight.getAttribute('data-point-id'));
     if(!point && selectedArea.isNew) point = selectedArea;
     if(point){
@@ -132,7 +132,7 @@ function fillHighlightInfo(highlight){
             let lotoBoxHeader = document.createElement('p');
             allInfoWindow.appendChild(lotoPointBox);
             lotoPointBox.appendChild(lotoBoxHeader);
-            lotoPointBox.appendChild(buildLotoPointList(point));
+            lotoPointBox.appendChild(await buildLotoPointList(point));
 
             lotoBoxHeader.classList.add('headerText');
             lotoBoxHeader.textContent = 'Assosiated LOTO points';
@@ -283,9 +283,11 @@ function highlightEditControls(highlight,resize){
     if(resize)highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
 }
 
-function buildLotoPointList(eq){
+async function buildLotoPointList(eq){
     let lotoPoints = document.getElementById('loto-points-'+eq.id);
     let input = document.getElementById('value-editor-input');
+    if(eq.lotoPoints===null || eq.lotoPoints.length===0) eq.lotoPoints = await getLotoPointsByTag(eq.tagNumber);
+
     if(lotoPoints){lotoPoints.innerHTML = "";}
     else{
         lotoPoints = document.createElement('div');
@@ -1173,7 +1175,7 @@ function renameLotoPoint(point){
             point.eqType = {};
             point.eqType.id = input.getAttribute('data-object-id');
         }
-        text.textContent = input.value;
+        text.value = input.value;
 
     }
 }
@@ -1181,27 +1183,29 @@ function renameLotoPoint(point){
 function fillLotoPointInfo(point){
     let lotoPointInfo = document.createElement('div');
     let controls = lpEditControls(point);
-    let text = document.createElement('p');
+    let text = document.createElement('input');
+    text.readOnly = true;
+    text.style.width = '100%'
 
     lotoPointInfo.id = 'point-info-'+point.id;
     lotoPointInfo.classList.add('point-info-block');
-    if(editModes.eqDescription.state)text.textContent = point.description;
-    else if(editModes.eqTagNumber.state)text.textContent = point.tagNumber;
+    if(editModes.eqDescription.state)text.value = point.description;
+    else if(editModes.eqTagNumber.state)text.value = point.tagNumber;
     else if(editModes.eqLocation.state){
-        if(point.objectType==="Equipment" && point.location && point.location.name)text.textContent = point.location.name;
-        else text.textContent = point.specificLocation;
+        if(point.objectType==="Equipment" && point.location && point.location.name)text.value = point.location.name;
+        else text.value = point.specificLocation;
     }
     else if(editModes.lotoPointPosition.state){
-        if(point.isoPos && point.isoPos.name) text.textContent = point.isoPos.name;
+        if(point.isoPos && point.isoPos.name) text.value = point.isoPos.name;
     }
     else if(editModes.lotoPointNormPosition.state){
-        if(point.normPos && point.normPos.name) text.textContent = point.normPos.name;
+        if(point.normPos && point.normPos.name) text.value = point.normPos.name;
     }
     else if(editModes.system.state){
-        if(point.system && point.system.name) text.textContent = point.system.name;
+        if(point.system && point.system.name) text.value = point.system.name;
     }
     else if(editModes.eqType.state){
-        if(point.eqType && point.eqType.name) text.textContent = point.eqType.name;
+        if(point.eqType && point.eqType.name) text.value = point.eqType.name;
     }
     text.classList.add('responsive-text');
     text.id = 'point-info-text-'+point.id;

@@ -19,4 +19,6 @@ public interface LotoPointService extends ExcelTransferService<LotoPoint, LotoPo
 
     List<LotoPoint> getByIsoPos(Value oldVal);
     List<LotoPoint> getByValue(Value val);
+
+    List<LotoPointDto> getByTagNumber(String tag);
 }
