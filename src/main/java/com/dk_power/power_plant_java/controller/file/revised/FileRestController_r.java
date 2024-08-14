@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
+import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FileRestController_r {
     private final FileService fileService;
+    private final FileUploaderService fileUploaderService;
     @GetMapping("/")
     public ResponseEntity<List<FileDtoLight>> getAllLightFiles(){
         return ResponseEntity.ok(fileService.getAllLight());
@@ -88,5 +90,13 @@ public class FileRestController_r {
     @GetMapping("/verify/{id}")
     public ResponseEntity<List<Map<String,String>>> verify(@PathVariable String id){
         return ResponseEntity.ok(fileService.verifyPid(id)) ;
+    }
+
+    @GetMapping("/convert/{id}")
+    public ResponseEntity<String> convertPdfToJpegAndSave(@PathVariable String id){
+        FileObject entityById = fileService.getEntityById(id);
+        String pdfLink = entityById.buildFileLink("pdf");
+        fileUploaderService.PdfToJpgConverter(pdfLink);
+        return ResponseEntity.ok("Success");
     }
 }

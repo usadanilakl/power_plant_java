@@ -1095,6 +1095,10 @@ async function buildCategorySelector(catAlias){
 /***************************************************************************************************************
  * Loto Point Controls
  ****************************************************************************************************************/
+function bindInputWithPoint(point,key){
+    let input = document.querySelector(`[data-bind-point-id='${point.id}']`);
+    point[key] = input.value;
+}
 
 function acceptLotoPoint(point){
     const highlight = document.querySelector(`div.areaHighlights[data-point-id='${point.id}']`);
@@ -1104,6 +1108,7 @@ function acceptLotoPoint(point){
     if(resize) resize.forEach(e=>e.classList.add('hide'));
 
     if(editModes.eqTagNumber.state){
+        bindInputWithPoint(point,'tagNumber');
         updateEqTagNumber(point);
         removeResizeAndDisableLpConnection(highlight);
         let area = setAreaAsLotoPoint(highlight);
@@ -1112,11 +1117,14 @@ function acceptLotoPoint(point){
         createHighlight(area)
     }
     if(editModes.eqDescription.state){
+        bindInputWithPoint(point,'description');
+        point.lotoPoints.forEach(p=>bindInputWithPoint(p,'description'));
         updateEqDescription(point);
         all.removeChild(currentWindow);
         all.removeChild(highlight);
     }
     if(editModes.eqLocation.state){
+        point.lotoPoints.forEach(p=>bindInputWithPoint(p,'specificLocation'));
         updateEqLocation(point);
         all.removeChild(currentWindow);
         all.removeChild(highlight);
@@ -1186,25 +1194,39 @@ function fillLotoPointInfo(point){
     let text = document.createElement('input');
     text.readOnly = true;
     text.style.width = '100%'
+    text.setAttribute('data-bind-point-id',point.id)
 
     lotoPointInfo.id = 'point-info-'+point.id;
     lotoPointInfo.classList.add('point-info-block');
-    if(editModes.eqDescription.state)text.value = point.description;
-    else if(editModes.eqTagNumber.state)text.value = point.tagNumber;
+    if(editModes.eqDescription.state){
+        text.value = point.description;
+        text.readOnly = false;
+    } 
+    else if(editModes.eqTagNumber.state){
+        text.readOnly = false;
+        text.value = point.tagNumber;
+    }
     else if(editModes.eqLocation.state){
         if(point.objectType==="Equipment" && point.location && point.location.name)text.value = point.location.name;
-        else text.value = point.specificLocation;
+        else{
+            text.readOnly = false;
+            text.value = point.specificLocation;
+        }
     }
     else if(editModes.lotoPointPosition.state){
+        text.readOnly = true;
         if(point.isoPos && point.isoPos.name) text.value = point.isoPos.name;
     }
     else if(editModes.lotoPointNormPosition.state){
+        text.readOnly = true;
         if(point.normPos && point.normPos.name) text.value = point.normPos.name;
     }
     else if(editModes.system.state){
+        text.readOnly = true;
         if(point.system && point.system.name) text.value = point.system.name;
     }
     else if(editModes.eqType.state){
+        text.readOnly = true;
         if(point.eqType && point.eqType.name) text.value = point.eqType.name;
     }
     text.classList.add('responsive-text');

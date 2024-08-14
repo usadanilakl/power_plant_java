@@ -10,6 +10,17 @@ let incompletePid = [];
 
 let baseFileApiUrl = "/file-api/";
 
+function getPostMetaDataWithStringBody(data){
+    return{
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Content-Type': 'application/json'
+        },
+        body:data
+    }
+}
+
 
 function filePutWithBody(data){
     return{
@@ -164,5 +175,11 @@ async function updateFileEditStep(step, id){
 async function getSkippedFiles(){
     const resp = await fetch(baseFileApiUrl+'skip')
     const data = await resp.json();
+    return data;
+}
+
+async function getPdfAndConvertToJpg(id){
+    const resp = await fetch(baseFileApiUrl+'convert/'+id);
+    const data = await resp.text();
     return data;
 }

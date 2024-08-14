@@ -84,7 +84,11 @@ private final EquipmentRepo equipmentRepo;
 
         System.err.println("=====================================================");
 
-        System.out.println("App is Ready: open browser and type: http://localhost:8082");
+//        System.out.println("App is Ready: open browser and type: http://localhost:8082");
+//        fileService.getAll().forEach(e->{
+//            e.buildFileLink("jpg");
+//            fileService.save(e);
+//        });
 
 //        equipmentService.getAll().forEach(highlightService::transferEqToHighlights);
 //        equipmentService.getAll().forEach(e->{
