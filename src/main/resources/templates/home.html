@@ -3,21 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connection Test</title>
+    <title>Home</title>
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/my_styles/home.css">
+    <link rel="stylesheet" href="/my_styles/glow-buttons.css">
+    <style>
+
+        html{
+            width: 100%;
+            height: 100%; 
+        }
+        li{
+            margin: 20px;
+        }
+        a{
+            white-space: 'nowrap';
+            font-size: 18px;
+        }
+    </style>
 </head>
 <body>
 
-<div th:replace="~{partials/index::header}"></div>
-<div class="container">
-    <div class="row">
-        <div class="col-md-12">
-            <h1>HOME, SWEET HOME</h1>
+    <div id="main">
+        <div th:replace="~{partials/index::header}"></div>
+
+        <div id="homeBackground" class="container">
+            <ul class="menu">
+                <li><a id=pointsInBulk class="red" href ="/edit-bulk">Edit Points in bulk</a></li>
+                <li><a  id=pointByPoint class="orange" href ="/edit">Edit Point by Point</a></li>                  
+                <li><a  id=viewPIDs class="purple" href ="/view">View PIDs</a></li>
+            </ul> 
         </div>
-    </div>
-</div>
 
 
-<script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+
+<script src="./bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
 </body>
 </html>

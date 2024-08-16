@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.dto.permits;
 
-import com.dk_power.power_plant_java.entities.permits.lotos.BaseLoto;
-import com.dk_power.power_plant_java.entities.permits.lotos.Box;
+import com.dk_power.power_plant_java.entities.loto.Box;
 import com.dk_power.power_plant_java.enums.PermitType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

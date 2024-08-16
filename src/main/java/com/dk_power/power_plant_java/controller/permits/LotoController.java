@@ -1,19 +1,14 @@
 package com.dk_power.power_plant_java.controller.permits;
 
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
-import com.dk_power.power_plant_java.dto.permits.TempLotoDto;
-import com.dk_power.power_plant_java.entities.permits.lotos.Box;
-import com.dk_power.power_plant_java.entities.permits.lotos.Loto;
-import com.dk_power.power_plant_java.entities.permits.lotos.TempLoto;
-import com.dk_power.power_plant_java.entities.plant.EquipmentType;
-import com.dk_power.power_plant_java.entities.plant.Syst;
+import com.dk_power.power_plant_java.entities.loto.Box;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
-import com.dk_power.power_plant_java.repository.plant.EquipmentTypeRepo;
-import com.dk_power.power_plant_java.sevice.permits.BoxService;
-import com.dk_power.power_plant_java.sevice.permits.impl.LotoService;
-import com.dk_power.power_plant_java.sevice.permits.impl.TempLotoService;
-import com.dk_power.power_plant_java.sevice.plant.GroupService;
-import com.dk_power.power_plant_java.util.Util;
+import com.dk_power.power_plant_java.sevice.categories.CategoryService;
+import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.BoxService;
+import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -21,7 +16,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 @AllArgsConstructor
 @Controller
@@ -30,14 +25,11 @@ import java.util.Map;
 public class LotoController {
     private final LotoService lotoService;
     private final BoxService boxService;
-    private final TempLotoService tempLotoService;
-    private final GroupService<Syst> systemService;
-    private final GroupService<EquipmentType> equipmentTypeGroupServiceService;
-    private final EquipmentTypeRepo equipmentTypeRepo;
+    private final CategoryService categoryService;
 
     @GetMapping("/")
     public String showAllLotots(Model model){
-        model.addAttribute("lotos", lotoService.getLastFilteredList());
+        model.addAttribute("lotos", lotoService.getAll());
         model.addAttribute("statuses", Status.values());
         return "loto/show-all-lotos";
     }
@@ -49,38 +41,37 @@ public class LotoController {
     }
     @GetMapping("/create")
     public String createNewLoto(Model model){
-        TempLoto loto = tempLotoService.getTempPermit();
+        Loto loto = lotoService.getTempPermit();
+        System.out.println(loto.getId());
         List<Box> boxes = boxService.getAllBoxes();
         Box box = boxService.getEmptyBox();
-        List<EquipmentType> allEqTypes = equipmentTypeGroupServiceService.getAll();
+        Set<ValueDto> allEqTypes = categoryService.getEqTypes();
         model.addAttribute("loto", loto);
         model.addAttribute("boxes",boxes);
         model.addAttribute("emptyBox", box);
-        model.addAttribute("systems", systemService.getAll());
+        model.addAttribute("systems", categoryService.getSystems());
         model.addAttribute("eqTypes", allEqTypes);
         return "loto/new-loto-form2";
     }
     @PostMapping("/autosave")
     public String autosaveLoto(@ModelAttribute("loto") LotoDto data){
-        TempLoto loto = tempLotoService.getTempPermit();
-        loto.copy(data);
-        tempLotoService.saveTempLoto(loto);
+        lotoService.save(data);
+        System.out.println("autosave: " + data.getId());
         return "redirect:/lotos/create";
     }
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute("loto") LotoDto tempLoto){
-        Loto loto = lotoService.createNew(tempLoto, Loto.class);
+        Loto loto = lotoService.createNew(tempLoto);
         Box box = null;
         if(loto.getBox()==null || loto.getBox().getNumber()==0) box = boxService.assignLoto(loto);
         if (box==null) return "redirect:/lotos/create";
-        lotoService.filterNew(loto);
-        tempLotoService.resetFields();
+        lotoService.resetFields();
         return "redirect:/lotos/";
     }
 
     @GetMapping("/edit/{id}")
     public String editLoto(@PathVariable("id") String id, Model model){
-        Loto loto = lotoService.getById(Long.parseLong(id));
+        Loto loto = lotoService.getEntityById(Long.parseLong(id));
         List<Box> boxes = boxService.getAllBoxes();
         model.addAttribute("loto",loto);
         model.addAttribute("boxes", boxes);
@@ -89,12 +80,11 @@ public class LotoController {
     @PostMapping("/edit")
     public String updateLoto(@ModelAttribute LotoDto loto){
         Box box = boxService.getBoxById(loto.getBox().getId());
-        Loto entity = lotoService.convertToEntity(loto,Loto.class);
+        Loto entity = lotoService.convertToEntity(loto);
         entity.setBox(box);
         box.setLoto(entity);
         boxService.saveBox(box);
         lotoService.save(entity);
-        lotoService.filterNew(entity);
         return "redirect:/lotos/";
     }
     @PostMapping("/status/{id}")
@@ -103,30 +93,29 @@ public class LotoController {
         Status stat = Status.valueOf(status.toUpperCase());
         Loto loto = lotoService.changeStatus(lotoId,stat);
         lotoService.save(loto);
-        lotoService.filterNew(loto);
         return "redirect:/lotos/";
     }
-    @GetMapping("/sort")
-    public String sortByColumn(@RequestParam(name="column")String column, Model model){
-        List<Loto> lotos = lotoService.sortTable(column);
-        model.addAttribute("lotos", lotos);
-        model.addAttribute("statuses", Status.values());
+//    @GetMapping("/sort")
+//    public String sortByColumn(@RequestParam(name="column")String column, Model model){
+//        List<Loto> lotos = lotoService.sortTable(column);
+//        model.addAttribute("lotos", lotos);
+//        model.addAttribute("statuses", Status.values());
+//
+//        return "loto/show-all-lotos";
+//    }
+//    @PostMapping("/filter")
+//    public String filterByColumn(@RequestBody Map<String, String> payload, Model model){
+//        List<Loto> l = lotoService.filterTable(payload);
+//        model.addAttribute("lotos", l);
+//        return "loto/show-all-lotos";
+//    }
 
-        return "loto/show-all-lotos";
-    }
-    @PostMapping("/filter")
-    public String filterByColumn(@RequestBody Map<String, String> payload, Model model){
-        List<Loto> l = lotoService.filterTable(payload);
-        model.addAttribute("lotos", l);
-        return "loto/show-all-lotos";
-    }
-
-    @GetMapping("/sort-history")
-    public String sortHistoryByColumn(@RequestParam(name="column")String column, Model model){
-        List<Loto> lotos = lotoService.sortTable(column);
-        model.addAttribute("lotos", lotos);
-        return "loto/show-all-lotos";
-    }
+//    @GetMapping("/sort-history")
+//    public String sortHistoryByColumn(@RequestParam(name="column")String column, Model model){
+//        List<Loto> lotos = lotoService.sortTable(column);
+//        model.addAttribute("lotos", lotos);
+//        return "loto/show-all-lotos";
+//    }
 
     @PostMapping("/add-box")
     public String addNewBox(){
@@ -139,16 +128,21 @@ public class LotoController {
         model.addAttribute("mode","lotoMode");
         return "testRunner";
     }
-
+private final LotoPointService lotoPointService;
     @PostMapping("/update-points")
-    public String updatePoints(@RequestBody TempLotoDto loto){
-        TempLoto tempLoto = tempLotoService.saveTempLotoDto(loto);
+    public String updatePoints(@RequestBody LotoDto loto){
+        System.out.println(loto.getLotoPoints().get(0));
+        Loto tempLoto = lotoService.save(loto);
+        tempLoto.getLotoPoints().forEach(e->{
+            e.addLoto(tempLoto);
+            lotoPointService.save(e);
+        });
         return "redirect:/lotos/create";
     }
 
     @PostMapping("/save-temp")
-    public String saveTempLoto(@ModelAttribute("loto") TempLotoDto lotoDto){
-        TempLoto tempLoto = tempLotoService.saveTempLotoDto(lotoDto);
+    public String saveTempLoto(@ModelAttribute("loto") LotoDto lotoDto){
+        Loto tempLoto = lotoService.save(lotoDto);
         return "redirect:/lotos/add-points";
     }
 

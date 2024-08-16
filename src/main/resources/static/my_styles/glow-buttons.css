@@ -1,0 +1,180 @@
+.green {
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    cursor: auto;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 1px greenyellow, 0 0 20px greenyellow, 0 0 10px greenyellow;
+    margin: 2px;
+}
+
+.green:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px greenyellow, 0 0 20px greenyellow, 0 0 60px greenyellow;
+}
+
+.blue {
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    cursor: auto;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 1px skyblue, 0 0 20px skyblue, 0 0 10px skyblue;
+    margin: 2px;
+}
+
+.blue:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px skyblue, 0 0 20px skyblue, 0 0 60px skyblue;
+}
+
+.yellow {
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    cursor: auto;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 1px yellow, 0 0 20px yellow, 0 0 10px yellow;
+    margin: 2px;
+}
+
+.yellow:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px yellow, 0 0 20px yellow, 0 0 60px yellow;
+}
+
+
+.red {
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    cursor: auto;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 1px red, 0 0 20px red, 0 0 10px red;
+    margin: 2px;
+}
+
+.red:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px red, 0 0 20px red, 0 0 60px red;
+}
+
+.aqua {
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    cursor: auto;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 1px aqua, 0 0 20px aqua, 0 0 10px aqua;
+    margin: 2px;
+}
+
+.aqua:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px aqua, 0 0 20px aqua, 0 0 60px aqua;
+}
+
+.purple {
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    cursor: auto;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 1px purple, 0 0 20px purple, 0 0 10px purple;
+    margin: 2px;
+}
+
+.purple:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px purple, 0 0 20px purple, 0 0 60px purple;
+}
+
+.orange {
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    cursor: auto;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 1px orange, 0 0 20px orange, 0 0 10px orange;
+    margin: 2px;
+}
+
+.orange:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px orange, 0 0 20px orange, 0 0 60px orange;
+}
+
+.lime {
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    cursor: auto;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 1px lime, 0 0 20px lime, 0 0 10px lime;
+    margin: 2px;
+}
+
+.lime:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px lime, 0 0 20px lime, 0 0 60px lime;
+}
+
+.teal {
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: none;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    cursor: auto;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 1px teal, 0 0 20px teal, 0 0 10px teal;
+    margin: 2px;
+}
+
+.teal:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px teal, 0 0 20px teal, 0 0 60px teal;
+}

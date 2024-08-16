@@ -12,8 +12,16 @@
         }
         button.addEventListener('click',dropdownAction);
         button.classList.add('btn'); //style link to look like button
-        button.classList.add('btn-warning'); //style link to look like button
+        button.classList.add('custom-btn-bw'); //style link to look like button
         button.textContent = e.value; //text of the button
+
+        if(e.objectType){
+            button.setAttribute('data-object-type',e.objectType);
+            if(e.objectType === "FileObject"){
+                button.setAttribute('data-file-name',e.name);
+                button.setAttribute('data-file-number',e.fileNumber);
+            }
+        }
 
         item.appendChild(button);
         list.appendChild(item);
@@ -24,3 +32,14 @@
 
     
  }
+
+ function toggleButtonContent(button, options){
+    let index;
+    options.forEach(e=>{
+        if(e===button.textContent)return
+        index++;
+    })
+    button.textContent = options[index]
+ }
+ 
+ 

@@ -1,28 +1,18 @@
 
-
-
-function getVendor(vendor){
-    return fileRepository.filter(e=>e.fileNumber.includes(vendor));
-}
-function getFilesByVendor(vendor){
-    let result =  fileRepository.filter(e=>e!==null && e.vendor!==null && e.vendor.name.toLowerCase().includes(vendor.toLowerCase()));
-    result.forEach(e=>{
-        e['dropdownFunc'] = function(){loadPictureWithFile(e);} 
-        e.value = e.fileNumber;
-    })
-    return result;
-}
-function getFilesBySystem(system){
-    let result =  fileRepository.filter(e=>e.systems.includes(system));
-    result.forEach(e=>{
-        e['dropdownFunc'] = loadPictureWithFile(e);
-    })
+function toggleFileButtonContent(){
+   let buttons = document.querySelectorAll('[data-object-type="FileObject"]');
+   buttons.forEach(e=>{
+      if(e.textContent===e.getAttribute('data-file-name')) e.textContent = e.getAttribute('data-file-number');
+      else e.textContent = e.getAttribute('data-file-name');
+   })
 }
 
-
-
-
-
-
-
-
+async function fileFormSetup(){
+   const popup = await getFormPopUp();
+   const fileForm = await buildFormForEachField(file,async()=>submitFile(file),null);
+   document.body.appendChild(popup);
+   popup.querySelector('#insert-html').appendChild(fileForm);
+   let myModal = new bootstrap.Modal(document.getElementById('formModal'), {});
+   myModal.show();
+   popups.push(fileFormSetup)
+}

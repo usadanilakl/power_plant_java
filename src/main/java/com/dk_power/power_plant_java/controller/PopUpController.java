@@ -15,4 +15,16 @@ public class PopUpController {
     public String getHtmlPopUp(){
         return "partials/popup-for-html";
     }
+    @GetMapping("/form")
+    public String getformPopUp(){
+        return "partials/form-popup";
+    }
+    @GetMapping("/message")
+    public String getMessagePopUp(){
+        return "partials/message-popup";
+    }
+    @GetMapping("/eq-delete")
+    public String getEqDeletePopUp(){
+        return "partials/eq-delete-popup";
+    }
 }

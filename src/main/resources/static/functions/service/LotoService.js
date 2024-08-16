@@ -3,10 +3,8 @@ let lotoPoints = [];
 
 function lotoModeControl(){
     if(modes.lotoMode.state){
-        if(lotoWindow === null) setUpLotoWindow();
-        document.querySelectorAll('.addButtons').forEach(e=>{
-            e.classList.remove('hide');
-        })
+        if(lotoWindow === null && selectedArea) setUpLotoWindow();
+        if(selectedArea)fillPointInfoWindow(selectedArea);
     }else{
         document.querySelectorAll('.addButtons').forEach(e=>{
             e.classList.add('hide');
@@ -16,14 +14,16 @@ function lotoModeControl(){
 }
 
 function setUpLotoWindow(){
-    let obj = revisedExcelPoints[0];
-    let ob = {label:obj.label,description:obj.description}
+    // let obj = revisedLotoPoints[0];
+    // let ob = {label:obj.tagNumber,description:obj.description}
+    let ob = {tagNumber:selectedArea.tagNumber,description:selectedArea.description,id:selectedArea.id}
     lotoWindow = newInfoWindow("Loto");
     lotoWindow.appendChild(createTable(ob));
     lotoWindow.appendChild(updateLotoPointsButton());
 }
 
 function addPointToLotoWindow(point){
+    if(lotoWindow === null)setUpLotoWindow();
     if(modes.lotoMode.state){
         let tbody = lotoWindow.querySelector('tbody');
         let index = tbody.rows.length+1;
@@ -79,7 +79,10 @@ function createRow(rowNum, obj){
 }
 
 function addObjectToArr(arr,obj){
-    if(!arr.find(e=>e.label===obj.label)) arr.push(obj);
+    if(!arr.find(e=>e.tagNumber===obj.tagNumber)){
+        arr.push(obj);
+        console.log("pushed: " + JSON.stringify(obj))
+    } 
 }
 
 function createRemoveButtons(){
@@ -95,7 +98,7 @@ function createRemoveButtons(){
         button.addEventListener('click',()=>{
             lotoPoints.filter(e=>!e.label.includes(label));
             tbody.innerHTML = "";
-            lotoPoints.forEach(e=>addPointToLotoWindow(e))
+            lotoPoints.forEach(e=>addPointToLotoWindow(e)) 
         });
         
     });
@@ -129,6 +132,7 @@ async function submitLotoPoints(){
     let loto = await getTempLoto();
     //Add selected poins to loto
     loto.lotoPoints = lotoPoints;
+    loto.box = null;
     //update loto on server (temp loto) and redirect to creating form
     updateTempLoto(loto,token);
     //console.log(JSON.stringify(loto))

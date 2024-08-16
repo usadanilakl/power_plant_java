@@ -1,0 +1,19 @@
+.table-container {
+    width: 100%;
+    overflow: auto;
+}
+
+.table-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-container th, .table-container td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.table-container th {
+    background-color: #f2f2f2;
+    text-align: left;
+}

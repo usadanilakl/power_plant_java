@@ -1,0 +1,118 @@
+.newWindow{
+    position: absolute;
+    bottom:10px;
+    right:10px;
+    border: 3px solid aliceblue;
+    background-color: black;
+    background-image: url("/background/new_window/newWindow.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 22;
+    min-width: 100px;
+    min-height: 100px;
+    overflow: scroll;
+    max-width: 80%;
+    max-height: 80%;
+    width: 20%;
+    height: 20%;
+
+    display: flex;
+    flex-direction: column;
+    
+  }
+
+  #lotoWindow{
+    overflow: auto;
+  }
+
+.closeWindow{
+    position: absolute;
+    right: 12px;
+    top:0px;
+    z-index: 23;
+  }
+
+.lucWindow{
+    position: absolute;
+    top:0;
+    left:0;
+    width: 10px;
+    height: 10px;
+    z-index: 23;
+    background-color: rgb(0, 0, 0);
+    cursor: nwse-resize;
+}
+
+.rucWindow{
+    position: absolute;
+    top:0;
+    right:0;
+    width: 10px;
+    height: 10px;
+    z-index: 23;
+    background-color: rgb(0, 0, 0);
+    cursor: nesw-resize;
+}
+
+.lbcWindow{
+    position: absolute;
+    bottom:0;
+    left:0;
+    width: 10px;
+    height: 10px;
+    z-index: 23;
+    background-color: rgb(0, 0, 0);
+    cursor: nesw-resize;
+}
+
+.rbcWindow{
+    position: absolute;
+    bottom:0;
+    right:0;
+    width: 10px;
+    height: 10px;
+    z-index: 23;
+    background-color: rgb(0, 0, 0);
+    cursor: nwse-resize;
+}
+
+.moveWindow{
+    position: absolute;
+    top:0;
+    width: 100%;
+    height: 22px;
+    z-index: 22;
+    background-color: rgb(83, 79, 79);
+}
+
+.imgWindow {
+    width: 100%;
+    height: auto;
+    overflow: hidden;
+    position: relative;
+    /* transition: transform 0.3s ease-in-out; */
+    /* transition: width 0.3s ease-in-out, height 0.3s ease-in-out; */
+    z-index: 2;
+  }
+
+  .arNewWindow{
+    z-index: 2;
+  }
+
+  .pidTextWindow{
+    position: relative;
+    top: 0;
+    left: 10;
+    /* bottom: 0;
+    right: 0; */
+    margin: auto;
+    color: aliceblue;
+
+  }
+  
+  .bringOnTopWindow{
+    z-index: 1000;
+  }
+
+

@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.converter;
 
-import com.dk_power.power_plant_java.dto.plant.files.FileDto;
-import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
+import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.convert.converter.Converter;
@@ -21,6 +21,6 @@ public class FileConverter implements Converter<String, FileDto> {
         if (source == null || source.equals("")) {
             return null;
         }
-        return fileService.getDtoById(Long.parseLong(source),FileDto.class);
+        return fileService.getDtoById(Long.parseLong(source));
     }
 }

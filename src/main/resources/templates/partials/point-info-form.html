@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html xmlns:th="<http://www.thymeleaf.org>">
-    <form th:action="@{/point/update}" method="post" th:object="${point}">
+    <form th:action="@{/point/update}" method="post" th:object="${point}" id="point-info-form">
         <div class="form-group">
             <label for="label">Point ID</label>
-            <input class="form-control" type="text" id="label" th:field="*{label}">
+            <input class="form-control" type="text" id="label" th:field="*{tagNumber}" th:value="${tagNumber}">
         </div>
 
         <div class="form-group">
@@ -13,22 +13,38 @@
 
         <div class="form-group">
             <label for="eqType">Equipment Type</label>
-            <input class="form-control" type="text" id="eqType" th:field="*{eqType}">
+            <input class="form-control" type="text" id="eqType" th:field="*{eqType}" th:value="vendor.name" readonly>
+        </div>
+        <div class="form-group" id="equipment-container">
+            <label for="equipment">Change Equpment to:</label>
+            <select id="equipment" onchange="dropdownSelection()"></select>
         </div>
 
         <div class="form-group">
-            <label for="vendor">Vendor</label>
-            <input class="form-control" type="text" id="vendor" th:field="*{vendor}">
+            <label for="vend">Vendor</label>
+            <input class="form-control" type="text" id="vend" th:field="*{vendor}" th:value="vendor.name" readonly>
+        </div>
+        <div class="form-group">
+            <label for="vendor">Change Vendor to:</label>
+            <select id="vendor" onchange="dropdownSelection()"></select>
         </div>
 
         <div class="form-group">
-            <label for="location">Point Location</label>
-            <input class="form-control" type="text" id="location" th:field="*{location}">
+            <label for="loc">Location</label>
+            <input class="form-control" type="text" id="loc" th:field="*{location}" th:value="location.name" readonly>
+        </div>
+        <div class="form-group">
+            <label for="location">Change Location to:</label>
+            <select id="location" onchange="dropdownSelection()"></select>
         </div>
 
         <div class="form-group">
-            <label for="system">Main System</label>
-            <input class="form-control" type="text" id="system" th:field="*{system}">
+            <label for="syst">System</label>
+            <input class="form-control" type="text" id="syst" th:field="*{system}" th:value="system.name" readonly>
+        </div>
+        <div class="form-group">
+            <label for="system">System:</label>
+            <select id="system" onchange="dropdownSelection()"></select>
         </div>
 
         <div class="form-group">
@@ -41,32 +57,17 @@
             <input class="form-control" type="text" id="files" th:field="*{files}">
         </div>
 
-        <div class="form-group">
-            <label for="files">Related Files</label>
-            <input class="form-control" type="text" id="files" th:field="*{files}">
-        </div>
+<!--        <div class="form-group">-->
+<!--            <label for="files">Related Files</label>-->
+<!--            <input class="form-control" type="text" id="files" th:field="*{files}">-->
+<!--        </div>-->
 
         
-        <input class="hide" type="text" id="coordinates" th:field="*{coordinates}">
+        <input class="hide" type="text" name="coords" id="coordinates" th:field="*{coordinates}">
+        <input class="hide" type="text" name="coords" id="equipmentId" th:field="*{id}">
+        <input class="hide" type="text" name="originalPictureSize" id="originalPictureSize" th:field="*{originalPictureSize}">
 
         <button class="btn btn-primary btn-block" type="submit" id="pointUpdateButton">Submit</button>
 
     </form>
-    <script>
-        /********************************************************
-         *  private String label;
-            private String description;
-            private EquipmentTypeDto eqType;
-            private List<String> files;
-            private VendorDto vendor;
-            private LocationDto location;
-            private SystemDto system;
-            private String coordinates;
-            private String originalPictureSize;
-            private String mainFile;
-         * 
-         * 
-         * 
-         * *****************************************************************/
-    </script>
 </html>

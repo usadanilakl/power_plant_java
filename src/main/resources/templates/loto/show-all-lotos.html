@@ -17,6 +17,9 @@
         .full-width{
             width:100%;
         }
+        #loto-table-container{
+            z-index: 50;
+        }
     </style>
 </head>
 <body>
@@ -25,8 +28,8 @@
 <div th:replace="~{partials/index::header}"></div>
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-12">
-            <table class="table table-dark">
+        <div class="col-md-12" id="loto-table-container">
+            <table class="table table-dark" id="loto-table">
                 <thead class="sticky-top">
                 <button onclick="buildFilters()">Filter</button>
                 <tr class="">

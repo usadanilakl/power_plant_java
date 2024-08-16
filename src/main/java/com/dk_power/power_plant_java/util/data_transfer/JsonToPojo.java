@@ -1,12 +1,7 @@
 package com.dk_power.power_plant_java.util.data_transfer;
 
-import com.dk_power.power_plant_java.entities.plant.Point;
-import com.dk_power.power_plant_java.entities.plant.files.FileObject;
-import com.dk_power.power_plant_java.sevice.plant.impl.FileServiceImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
