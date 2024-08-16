@@ -72,7 +72,7 @@
         <div id="lower" class="container-fluid">
             <div class="row">
                 <div class="col-12">
-                    <ul >
+                    <ul id="point-editor-menu">
                         <li class="btn-list-in-line" onclick="removeAllHighlights()">Remove Highlights</li>
                         <li class="btn-list-in-line" onclick="highlightAll()">Highlight All</li>
                         <li class="btn-list-in-line" onclick="highlightLotoPoints()">Highlight Loto Points</li>
@@ -148,6 +148,7 @@
     <script src="/functions/controllers/PointController.js"></script>
     <script src="/functions/controllers/LotoController.js"></script>
     <script src="/functions/controllers/TransferDataController.js"></script> 
+    <script src="/functions/controllers/ImageController.js"></script> 
 
     <script src="/functions/service/PopupService.js"></script>
     <script src="/functions/service/MenuDropdownService.js"></script>
@@ -190,7 +191,7 @@
         positionInfoWindowsInline();
 
         incompletePid = incompletePid.filter(e=>e.vendor.name==="Kiewit");
-        loadPictureWithLightFile(incompletePid[0]);
+        incompletePid.forEach(e=>e.completed = 'false')
 
         getAllCategoryObjects();
         getRevisedExcelPoints();
@@ -198,7 +199,7 @@
         getHrsgValvesFromDb();
         getKiewitValvesFromDb();
         getBypassesFromDb();
-        getCompletedFiles();
+        await getCompletedFiles();
         
 
         let left = document.getElementById('lower').querySelector('ul');
@@ -210,10 +211,13 @@
         
     }).then(async ()=>{
         completedPid = completedPid.filter(e=>e.vendor.name==="Kiewit");
+        completedPid.forEach(e=>e.completed = 'true')
+
        if(mode) setMode(mode); 
+       document.getElementById('point-editor-menu').appendChild(document.createElement('li').appendChild(getTextButton()));
     }).then(()=>{
-        console.log(JSON.stringify(allAliases));
-        console.log(JSON.stringify(valuesByCategory));
+
+        loadPictureWithLightFile(incompletePid[0]);
     })
 
     pictureContainer.addEventListener('mousedown',(event)=>{
@@ -242,34 +246,40 @@ function switchPid(i){
     }
 }
 function goToNextPid(){
-    let f = switchPid(++currentFileIndex);
+    ++currentFileIndex;
+    console.log(currentFileIndex)
+    let f = switchPid(currentFileIndex);
     changeStatusButtonColor(f.completed);
+    console.log(JSON.stringify(f))
 }
 function goToPreviousPid(){
-    let f = switchPid(--currentFileIndex);
-    changeStatusButtonColor(f.completed);
+    --currentFileIndex;
+    console.log(currentFileIndex)
+    let f = switchPid(currentFileIndex);
+    changeStatusButtonColor(f.completed);    
+    console.log(JSON.stringify(f))
 }
 
-function toggleCurrentPidCompletedStatus(){
+async function toggleCurrentPidCompletedStatus(){
     let currentFile = getCurrent();
-    let status = false;
+    if(currentFile.completed===true) currentFile.completed=false;
+    else currentFile.completed = true;
+    await updateFileStatus(currentFile.id,currentFile.completed);
+    changeStatusButtonColor(currentFile.completed);
     console.log(JSON.stringify(currentFile))
-    if(!currentFile.completed) status = true;
-    currentFile.completed = status;
-    updateFileStatus(currentFile.id,status);
-    changeStatusButtonColor(status);
+
 }
 
 function changeStatusButtonColor(status){
-    if(currentFileIndex<0){
-        completeButton.textContent = "Mark as Incomplete";
-        completeButton.classList.remove('btn-danger');
-        completeButton.classList.add('btn-success');
-    }else{
-        completeButton.textContent = "Mark as Completed";
-        completeButton.classList.remove('btn-success');
-        completeButton.classList.add('btn-danger');
-    }
+    if(status){
+            completeButton.textContent = "Mark as Incomplete";
+            completeButton.classList.remove('btn-danger');
+            completeButton.classList.add('btn-success');
+        }else{
+            completeButton.textContent = "Mark as Completed";
+            completeButton.classList.remove('btn-success');
+            completeButton.classList.add('btn-danger');
+        }
 }
 
 function getCurrent(){

@@ -9,6 +9,7 @@ let selectedArea;
 let selectedBundle = [];
 let currentSizeCoefficient;
 let fileWithPoints;
+let isGettingText = false;
 // let eqFormInfo; //moved to global variables
 
 function getPointByIdFromCurrentFile(id){
@@ -26,6 +27,11 @@ function loadPictureWithAreas(src, areas){
 
 function loadPictureWithFile(file){
     picture.setAttribute('src','/'+file.fileLink);
+    picture.onerror = async function() {
+        console.log('Image not found. Running fallback function.');
+        await getPdfAndConvertToJpg(file.id);
+        picture.setAttribute('src','/'+file.fileLink)
+    };
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
     setAreas(file.points);
@@ -33,6 +39,11 @@ function loadPictureWithFile(file){
 
 async function loadPictureWithLightFile(file){
     picture.setAttribute('src','/'+file.fileLink);
+    picture.onerror = async function() {
+        console.log('Image not found. Running fallback function.');
+        await getPdfAndConvertToJpg(file.id);
+        picture.setAttribute('src','/'+file.fileLink)
+    };
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
     fileWithPoints = await getFileFromDbByLink(file.fileNumber);
@@ -494,26 +505,28 @@ function getObjCoordOnPicture(object){
 }
 
 function handleMouseDown(event) {
+    
+
     if(event.button===2){
+        document.addEventListener('contextmenu',removeContextMenu);
+        let shape = document.createElement('div');
+        shape.setAttribute('class', 'areaHighlights');
+        all.appendChild(shape);
+        newHighlights.push({element:shape});
+        shape.addEventListener('mousedown',(event)=>{
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            event.stopPropagation();
+            relocateHighlightsWithPicture(event);
+        })
 
-    let shape = document.createElement('div');
-    shape.setAttribute('class', 'areaHighlights');
-    all.appendChild(shape);
-    newHighlights.push({element:shape});
-    shape.addEventListener('mousedown',(event)=>{
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        relocateHighlightsWithPicture(event);
-    })
+        coords.picture = getPictureCoordsOnScreen();
+        coords.mouseOnScreenStart = registerMouseCoordsOnScreen(event);
+        coords.mouseOnPictureStart = registerMouseCoordsOnPicture(event);
 
-    coords.picture = getPictureCoordsOnScreen();
-    coords.mouseOnScreenStart = registerMouseCoordsOnScreen(event);
-    coords.mouseOnPictureStart = registerMouseCoordsOnPicture(event);
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup',handleMouseUp);    
-}
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup',handleMouseUp);    
+    }
 }
   
 function handleMouseMove(event) {
@@ -561,43 +574,55 @@ async function handleMouseUp() {
         document.removeEventListener('mousedown',handleMouseDown);
         return;
     }
-    let image = document.getElementById('picture');
-    areaInfo.coordinates = areaCoordinates;
-    areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
 
-    areaInfo.tagNumber = "new Area";
-    areaInfo.mainFile = file.fileLink;
-    areaInfo.files = [];
-    areaInfo.files.push(file.fileLink);
-    if(file.vendor && file.vendor!=="")areaInfo.vendor = file.vendor;
-    if(file.system && file.system!=="")areaInfo.system = file.system;
-    else areaInfo.system = null;
-    areaInfo.eqType = null;
-    areaInfo.location = null;
-
-    selectedArea = areaInfo;
-    selectedArea.isNew = true;
-    selectedArea.id = "new";
-    fileWithPoints.points.push(selectedArea);
-    let area = createAreaElement(selectedArea);
-    area.addEventListener('click',()=>{
-        event.preventDefault();
-        removeAllHighlights();
-        createHighlight(area);
-    })
-    //doubleClick(shape, e);
-
-    map.appendChild(area);
-    resizeNewArea(area);
-    createHighlight(area,true);
-    // console.log(JSON.stringify(areaInfo))
-    // console.log(JSON.stringify(selectedArea))
-    //let newEq = await createNewEq(areaInfo);
-    //file.points.push(newEq);
     
-    //fillPointInfoWindow(selectedArea);
-    removeLastHighlight();
-    document.removeEventListener('mousedown',handleMouseDown);
+
+    if(coords.getObjWidth() > 20 && coords.getObjHeight() > 20){
+        let image = document.getElementById('picture');
+        areaInfo.coordinates = areaCoordinates;
+        areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
+    
+        areaInfo.tagNumber = "new Area";
+        areaInfo.mainFile = file.fileLink;
+        areaInfo.files = [];
+        areaInfo.files.push(file.fileLink);
+        if(file.vendor && file.vendor!=="")areaInfo.vendor = file.vendor;
+        if(file.system && file.system!=="")areaInfo.system = file.system;
+        else areaInfo.system = null;
+        areaInfo.eqType = null;
+        areaInfo.location = null;
+    
+        selectedArea = areaInfo;
+        selectedArea.isNew = true;
+        selectedArea.id = "new";
+        fileWithPoints.points.push(selectedArea);
+
+
+        if(!isGettingText){
+            let area = createAreaElement(selectedArea);
+            area.addEventListener('click',()=>{
+                event.preventDefault();
+                removeAllHighlights();
+                createHighlight(area);
+            })
+
+            map.appendChild(area);
+            resizeNewArea(area);
+            createHighlight(area,true);
+            removeLastHighlight();
+            document.removeEventListener('mousedown',handleMouseDown);
+        }else{
+            let text = await getText(areaInfo.coordinates);
+            saveInClipboard(text);
+            removeLastHighlight();
+        }
+    } else{
+        removeLastHighlight();
+    }
+
+    setTimeout(()=>{
+        document.removeEventListener('contextmenu',removeContextMenu);
+    },300)
     
 }
 
@@ -690,6 +715,57 @@ function createNewHighlight(){
     document.addEventListener('mousedown',handleMouseDown);
 }
 
+function getTextToggle(){
+    if(isGettingText) isGettingText = false;
+    else isGettingText = true;
+}
 
+function getTextButton(){
+    let btn = document.createElement('button');
+    btn.textContent = "Enable Get Text";
+    btn.classList.add('btn');
+    btn.classList.add('btn-outline-light');
+    btn.addEventListener('click',()=>{
+        getTextToggle();
+        if(isGettingText){
+            document.addEventListener('mousedown',handleMouseDown);
+            btn.textContent = "Disable Get Text";
+        } 
+        else{
+            document.removeEventListener('mousedown',handleMouseDown);
+            btn.textContent = "Enable Get Text";
+        } 
+    } );
+    return btn;
+
+}
+
+function removeContextMenu(event){
+    event.preventDefault();
+}
+
+function setAreaAsLotoPoint(highlight){
+    let point = getPointByIdFromCurrentFile(highlight.getAttribute('data-point-id'));
+    let areaId = highlight.id.slice(0,-1);
+    console.log(areaId)
+    let area = document.getElementById(areaId);
+    let directLotoPoint;
+    if(point.lotoPoints!=null && point.lotoPoints.length>0){
+        directLotoPoint = point.lotoPoints.find(e=>e.tagNumber===point.tagNumber);
+        if(!directLotoPoint) directLotoPoint = point.lotoPoints[0];
+        if(directLotoPoint.isoPos && directLotoPoint.isoPos.name && directLotoPoint.isoPos.name.toLowerCase().includes('open')){
+            area.setAttribute('data-loto-point-area', true);
+        }
+        else if(directLotoPoint.isoPos && directLotoPoint.isoPos.name && directLotoPoint.isoPos.name.toLowerCase().includes('closed')){
+            area.setAttribute('data-loto-point-area', false);
+        }
+        else area.setAttribute('data-loto-point-area', '');
+    }
+    return area;
+}
+
+// document.addEventListener('contextmenu',removeContextMenu);
+
+// document.removeEventListener('contextmenu',removeContextMenu);
 
 

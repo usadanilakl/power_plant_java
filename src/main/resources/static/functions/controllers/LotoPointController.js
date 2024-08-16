@@ -20,3 +20,9 @@ async function updateLotoPointDescription(point){
     const data = await resp.text();
     return data;
 }
+
+async function getLotoPointsByTag(tag){
+    const resp = await fetch(baseLotoPointUrl+'tag/'+tag);
+    const data = await resp.json();
+    return data;
+}

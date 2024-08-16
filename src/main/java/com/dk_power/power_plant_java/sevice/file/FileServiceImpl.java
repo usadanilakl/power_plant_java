@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
@@ -18,8 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 @AllArgsConstructor
@@ -129,6 +129,41 @@ public class FileServiceImpl implements FileService {
     @Override
     public List<FileDtoLight> getIncompletePids() {
         return fileRepo.getAllIncompleteLight();
+    }
+
+    @Override
+    public List<Map<String, String>> verifyPid(String pid) {
+            FileObject fileObject = getEntityById(pid);
+            List<Map<String,String>> list = new ArrayList<>();
+            fileObject.getPoints().forEach(e->{
+
+                Map<String,String> map = new HashMap<>();
+                try {
+//                    System.out.println(e.getTagNumber());
+//                    System.out.println(e.getLotoPoints().stream().map(el->el.getTagNumber()).toList());
+//                    System.out.println(e.getLocation().getName());
+//                    System.out.println(e.getSystem().getName());
+//                    System.out.println("==================================================================");
+                    map.put("Description","*******************************"+e.getDescription()+"***********************************");
+                    map.put("Eq",e.getTagNumber()+", "+e.getLocation().getName() +", "+e.getSystem().getName()+", "+e.getEqType().getName());
+                    System.out.println(map.get("Description"));
+                    System.out.println(map.get("Eq"));
+                    int n = 1;
+                    for(LotoPoint el : e.getLotoPoints()){
+                        map.put("LP-"+(n++), el.getTagNumber()+", "+el.getSpecificLocation()+", "+el.getIsoPos().getName()+"/"+el.getNormPos().getName()+", "+el.getDescription());
+                        System.out.println(map.get("LP-"+(n-1)));
+                    }
+                    list.add(map);
+                }catch (Exception ex){
+                }
+            });
+
+            return list;
+    }
+
+    @Override
+    public List<FileDto> getSkipped() {
+        return fileRepo.findByBulkEditStep("skip").stream().map(this::convertToDto).toList();
     }
 
     public List<FileDto> getAllDtos(String ext) {

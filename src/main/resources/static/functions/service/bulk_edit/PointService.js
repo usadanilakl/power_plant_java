@@ -115,6 +115,7 @@ function excelPointDropdown(points,equipment){
     let list = document.createElement('ul');
     points.forEach(e=>{
         let item = document.createElement('li');
+        item.style.width = '100%'
         list.appendChild(item);
 
         let buttons = document.createElement('div');
@@ -125,11 +126,24 @@ function excelPointDropdown(points,equipment){
         let formContainer = document.createElement('div');
         item.appendChild(formContainer);
 
-        if(e.objectType==="OldLotoPoint") button.style.backgroundColor = "red";
-        else if(e.objectType==="RevisedLotoPoints") button.style.backgroundColor = "green";
-        else button.style.backgroundColor = "blue";
+        // if(e.objectType==="OldLotoPoint") button.style.backgroundColor = "red";
+        // else if(e.objectType==="RevisedLotoPoints") button.style.backgroundColor = "green";
+        // else button.style.backgroundColor = "blue";
+        
+        if(e.objectType==="OldLotoPoint"){
+            button.classList.add('smallBtn');
+            button.classList.add('red');
+        } 
+        else if(e.objectType==="RevisedLotoPoints"){
+            button.classList.add('smallBtn');
+            button.classList.add('lime');
+        } 
+        else{
+            button.classList.add('blue');
+            button.classList.add('smallBtn');
+        } 
 
-        button.textContent = e.tagNumber;
+        button.textContent = e.tagNumber + " - " + e.description;
         button.addEventListener('click', ()=>{
             if(formContainer.children.length === 0){
                 formContainer.appendChild(showPointInfo(e));
@@ -142,6 +156,8 @@ function excelPointDropdown(points,equipment){
             let addButton = document.createElement('button');
             buttons.appendChild(addButton);
             addButton.classList.add('addButtons');
+            addButton.classList.add('yellow');
+            addButton.classList.add('smallBtn');
             addButton.textContent = "ADD";
             addButton.classList.add('hide');
 
@@ -208,32 +224,46 @@ async function lotoPointDropdown(points){
 }
 
 async function fillExcelPointInfoWindow(points,eq){
-    let form = excelPointDropdown(points,eq);
-    let infoFrame = document.getElementById('infoFrameOld-LOTO-Points');
-    let infoContainer = document.getElementById('infoWindowOld-LOTO-Points');
+    let infoFrame = document.getElementById('infoFrameOld-LOTO-Points'); 
+    let infoContainer = document.getElementById('infoWindowOld-LOTO-Points');   
     if(infoContainer === null) newInfoWindow("Old-LOTO-Points");
     if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
     infoContainer.innerHTML = "";
-    infoContainer.appendChild(buildPointSearchField());
-    infoContainer.appendChild(form);
+    infoContainer.appendChild(buildPointSearchField()); 
+
+    if(points){
+        let form = excelPointDropdown(points,eq);
+        infoContainer.appendChild(form);        
+    }
+
 
     let newLPcontainer = document.createElement('div');
     let newLPtag = document.createElement('input');
     let newLotoPointButton = document.createElement('button');
+    newLPcontainer.id = 'newLPControls';
     newLotoPointButton.type = 'button';
-    newLotoPointButton.textContent = "Add New"
+    newLotoPointButton.textContent = "Add New";
+    newLPtag.placeholder = "New Tag Number"
     newLotoPointButton.addEventListener('click',()=>createNewLotoPoint(newLPtag.value));
     newLPcontainer.appendChild(newLPtag);
     newLPcontainer.appendChild(newLotoPointButton);
 
     newLPcontainer.style.display = 'inline';
     infoContainer.appendChild(newLPcontainer);
+
+    newLPcontainer.classList.add('hide');
 }
 
 function excelPointSearch(searchValue){
     let result = [];
     revisedExcelPoints.forEach(e=>{
-        if(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber))) result.push(e);
+        if(
+            trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || 
+            trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber)) ||
+            trimToLowerCaseRemoveDashes(e.description).includes(trimToLowerCaseRemoveDashes(searchValue)) ||
+            trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.description))
+            // e.description.toLowerCase().indexOf(searchValue.toLowerCase)>-1
+        ) result.push(e);
     });
     oldExcelPoints.forEach(e=>{
         if(e.tagNumber!==""&&(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber)))) result.push(e);

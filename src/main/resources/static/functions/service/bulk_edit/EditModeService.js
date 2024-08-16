@@ -83,7 +83,7 @@ function setEditType(){
     }
 }
 
-function fillHighlightInfo(highlight){
+async function fillHighlightInfo(highlight){
     let point = getPointByIdFromCurrentFile(highlight.getAttribute('data-point-id'));
     if(!point && selectedArea.isNew) point = selectedArea;
     if(point){
@@ -98,14 +98,17 @@ function fillHighlightInfo(highlight){
 
             allInfoWindow.style.left = highlight.offsetLeft + 'px';
             allInfoWindow.style.top = highlight.offsetTop+highlight.offsetHeight+ 'px';
+            document.getElementById('all').appendChild(allInfoWindow);
 
             allInfoWindow.appendChild(fillLotoPointInfo(point))
             point.lotoPoints.forEach(e=>{
                 allInfoWindow.appendChild(fillLotoPointInfo(e))
             });
 
-            document.getElementById('all').appendChild(allInfoWindow);
-
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
 
         }
         else if(editModes.eqTagNumber.state){
@@ -125,9 +128,22 @@ function fillHighlightInfo(highlight){
             allInfoWindow.style.top = highlight.offsetTop+highlight.offsetHeight+ 'px';
 
             allInfoWindow.appendChild(fillLotoPointInfo(point))
-            allInfoWindow.appendChild(buildLotoPointList(point));
+            let lotoPointBox = document.createElement('div');
+            let lotoBoxHeader = document.createElement('p');
+            allInfoWindow.appendChild(lotoPointBox);
+            lotoPointBox.appendChild(lotoBoxHeader);
+            lotoPointBox.appendChild(await buildLotoPointList(point));
+
+            lotoBoxHeader.classList.add('headerText');
+            lotoBoxHeader.textContent = 'Assosiated LOTO points';
+            lotoPointBox.style.backgroundColor = 'grey';
 
             document.getElementById('all').appendChild(allInfoWindow);
+            
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.eqLocation.state){
             //if(!point.location || !point.location.name || point.location.name.trim()==="") point.description = point.lotoPoints[0].description;
@@ -147,6 +163,11 @@ function fillHighlightInfo(highlight){
             });
 
             document.getElementById('all').appendChild(allInfoWindow);
+            
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.lotoPointPosition.state){
             const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
@@ -165,6 +186,10 @@ function fillHighlightInfo(highlight){
             });
 
             document.getElementById('all').appendChild(allInfoWindow);
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.lotoPointNormPosition.state){
             const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
@@ -183,6 +208,10 @@ function fillHighlightInfo(highlight){
             });
 
             document.getElementById('all').appendChild(allInfoWindow);
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.system.state){
             const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
@@ -198,6 +227,10 @@ function fillHighlightInfo(highlight){
             allInfoWindow.appendChild(fillLotoPointInfo(point))
 
             document.getElementById('all').appendChild(allInfoWindow);
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
         else if(editModes.eqType.state){
             const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
@@ -213,6 +246,10 @@ function fillHighlightInfo(highlight){
             allInfoWindow.appendChild(fillLotoPointInfo(point))
 
             document.getElementById('all').appendChild(allInfoWindow);
+            if(allInfoWindow.offsetTop+allInfoWindow.offsetHeight>window.innerHeight){
+                allInfoWindow.style.left = highlight.offsetLeft+highlight.offsetWidth + 'px';
+                allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
+            }
         }
     }
 }
@@ -246,8 +283,11 @@ function highlightEditControls(highlight,resize){
     if(resize)highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
 }
 
-function buildLotoPointList(eq){
+async function buildLotoPointList(eq){
     let lotoPoints = document.getElementById('loto-points-'+eq.id);
+    let input = document.getElementById('value-editor-input');
+    if(eq.lotoPoints===null || eq.lotoPoints.length===0) eq.lotoPoints = await getLotoPointsByTag(eq.tagNumber);
+
     if(lotoPoints){lotoPoints.innerHTML = "";}
     else{
         lotoPoints = document.createElement('div');
@@ -261,16 +301,20 @@ function buildLotoPointList(eq){
         let buttonContainer = document.createElement('div');
         let point = document.createElement('button');
         let control = document.createElement('button');
+        let rename = document.createElement('button');
 
         buttonContainer.classList.add('loto-point-box');
 
         buttonContainer.appendChild(point);
+        buttonContainer.appendChild(rename);
         buttonContainer.appendChild(control);
 
         point.textContent = e.tagNumber;
         control.textContent = "X";
+        rename.textContent = "Rename";
 
         control.addEventListener('click',()=> removeLotoPoint(e.id,eq))
+        rename.addEventListener('click',()=>e.tagNumber=input.value)
         lotoPoints.appendChild(buttonContainer);
     })
     return lotoPoints;
@@ -281,6 +325,7 @@ function enableLotoPointConnection(equipment){
     // fillExcelPointInfoWindow(points,equipment);
     selectedArea=equipment;
     document.querySelectorAll('.addButtons').forEach(e=>e.classList.remove('hide'));
+    document.getElementById('newLPControls').classList.remove('hide');
 
 }
 
@@ -309,6 +354,7 @@ function showInsturctions(){
 }
 
 async function moveToNextStep(){
+    document.querySelectorAll('.newWindow').forEach(e=>e.parentNode.removeChild(e));
     if(editModes.eqTagNumber.state){
        let updatedFile = await updateFileEditStep("eqDescription");
         loadPictureWithLightFile(updatedFile);
@@ -340,6 +386,7 @@ async function moveToNextStep(){
 }
 
 async function moveToPreviousStep(){
+    document.querySelectorAll('.newWindow').forEach(e=>e.parentNode.removeChild(e));
      if(editModes.eqDescription.state){
          let updatedFile = await updateFileEditStep("eqTagNumber");
          loadPictureWithLightFile(updatedFile);
@@ -366,17 +413,103 @@ async function moveToPreviousStep(){
      }
 }
 
+async function moveToStepByName(step){
+    document.querySelectorAll('.newWindow').forEach(e=>e.parentNode.removeChild(e));
+
+    let updatedFile = await updateFileEditStep(step);
+    loadPictureWithLightFile(updatedFile);
+}
+
 function buildEditStepControls(){
     console.log("building edit controls for the page")
     let list = document.getElementById('bulk-edit-controls');
+    let box = document.getElementById('step-option-box')
+
     list.style.display='inline';
     list.innerHTML = "";
+    if(box)all.removeChild(box);
+
+    let stepOptionBox = document.createElement('div');
+    let steps = document.createElement('ul');
+    let stepButton = document.createElement('li');
+
+    stepButton.id = 'stepButton'
+    stepButton.classList.add('btn');
+    stepButton.classList.add('btn-outline-light');
+    stepButton.addEventListener('click',()=>stepOptionBox.classList.toggle('hide'));
+    
+    list.appendChild(stepButton);
+
+    stepOptionBox.appendChild(steps);
+    stepOptionBox.id = 'step-option-box';
+    stepOptionBox.backgroundColor = 'black';
+    stepOptionBox.style.display = 'flex';
+    stepOptionBox.style.flexDirection = 'column';
+    stepOptionBox.style.position = 'absolute';
+    stepOptionBox.style.left = stepButton.offsetLeft + 'px';
+    all.appendChild(stepOptionBox);
+
+    for(let i = 1; i<8; i++){
+        let item = document.createElement('li');
+        item.classList.add('smallBtn');
+        item.classList.add("purple");
+        item.name = 'step'+i;
+        if(i===1){
+            item.textContent = "Step 1 Select LOTO Points";
+            item.id = "eqTagNumber";
+            item.addEventListener('click',()=>{moveToStepByName("eqTagNumber")});
+        }
+        if(i===2){
+            item.textContent = "Step 2 Edit Description";
+            item.id = "eqDescription";
+            item.addEventListener('click',()=>{moveToStepByName("eqDescription")});
+        }
+        if(i===3){
+            item.textContent = "Step 3 Edit Location";
+            item.id = "eqLocation";
+            item.addEventListener('click',()=>{moveToStepByName("eqLocation")});
+        }
+        if(i===4){
+            item.textContent = "Step 4 Edit Isolated Position";
+            item.id = "lotoPointPosition";
+            item.addEventListener('click',()=>{moveToStepByName("lotoPointPosition")});
+        }
+        if(i===5){
+            item.textContent = "Step 5 Edit Normal Position";
+            item.id = "lotoPointNormPosition";
+            item.addEventListener('click',()=>{moveToStepByName("lotoPointNormPosition")});
+        }
+        if(i===6){
+            item.textContent = "Step 6 Edit System";
+            item.id = "system";
+            item.addEventListener('click',()=>{moveToStepByName("system")});
+        }
+        if(i===7){
+            item.textContent = "Step 7 Edit Equipment Type";
+            item.id = "eqType";
+            item.addEventListener('click',()=>{
+                moveToStepByName("eqType");
+            });
+        }
+        steps.appendChild(item);
+    }
+
+    let stepButtonRect = stepButton.getBoundingClientRect();
+    stepOptionBox.style.top = stepButtonRect.top-stepOptionBox.offsetHeight-60 + 'px';
+    stepOptionBox.style.zIndex = '3';
+    console.log(window.innerHeight);
+    console.log(stepOptionBox.offsetHeight);
+    
+    stepOptionBox.classList.add("hide");
+
     if(editModes.eqTagNumber.state){
+        stepButton.textContent = "Step 1 Select LOTO Points";
         let li1 = document.createElement('li');
         let li2 = document.createElement('li');
         let li3 = document.createElement('li');
         let li4 = document.createElement('li');
         let inp = document.createElement('input');
+        let pasteButton = document.createElement('button');
 
         li1.classList.add("btn")
         li1.classList.add("btn-outline-light")
@@ -386,6 +519,8 @@ function buildEditStepControls(){
         li3.classList.add("btn-outline-light")
         li4.classList.add("btn")
         li4.classList.add("btn-outline-light")
+        pasteButton.classList.add("btn")
+        pasteButton.classList.add("btn-outline-light")
 
         inp.type = 'text';
         inp.placeholder = "Type here for changes";
@@ -396,18 +531,25 @@ function buildEditStepControls(){
         li1.addEventListener('click',()=>showInsturctions());
         li3.addEventListener('click',()=>createNewHighlight());
         li4.addEventListener('click',()=>moveToNextStep());
+        pasteButton.addEventListener('click',async()=>{
+            await pasteFromClipboardWithoutClearing(inp);
+        });
 
         li1.textContent = "Step 1: Select all loto points (click for details)";
         li3.textContent = "Highlight New Equipment";
         li4.textContent = "Submit Selected Points";
+        pasteButton.textContent = "P"
 
         li2.appendChild(inp);
-        list.appendChild(li1);
+        li2.appendChild(pasteButton);
+        // list.appendChild(li1);
         list.appendChild(li2);
         list.appendChild(li3);
         list.appendChild(li4);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
     }
     else if(editModes.eqDescription.state){
+        stepButton.textContent = "Step 2 Edit Description";
         let li1 = document.createElement('li');
         let li2 = document.createElement('li');
         let li3 = document.createElement('li');
@@ -429,7 +571,7 @@ function buildEditStepControls(){
         inp.type = 'text';
         inp.placeholder = "Type here for changes";
         inp.id = "value-editor-input";
-        inp.style.width = 'auto';
+        inp.style.width = '400px';
         inp.autocomplete = 'off';
         li2.style.width = 'auto';
         li2.style.display='inline';
@@ -437,6 +579,9 @@ function buildEditStepControls(){
         li1.addEventListener('click',()=>showInsturctions());
         li3.addEventListener('click',()=>moveToPreviousStep());
         li4.addEventListener('click',()=>moveToNextStep());
+        pasteButton.addEventListener('click',async()=>{
+            await pasteFromClipboardWithoutClearing(inp);
+        });
 
         li1.textContent = "Step 2: Edit Equipment Description (click for details)";
         li3.textContent = "Previous Step";
@@ -445,12 +590,14 @@ function buildEditStepControls(){
 
         li2.appendChild(inp);
         li2.appendChild(pasteButton);
-        list.appendChild(li1);
+        // list.appendChild(li1);
         list.appendChild(li2);
         list.appendChild(li3);
         list.appendChild(li4);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
     }
     else if(editModes.eqLocation.state){
+        stepButton.textContent = "Step 3 Edit Location";
         let li1 = document.createElement('li');
         let li2 = document.createElement('li');
         let li3 = document.createElement('li');
@@ -476,7 +623,7 @@ function buildEditStepControls(){
         inp.type = 'text';
         inp.placeholder = "Type Specific Location";
         inp.id = "value-editor-input";
-        inp.style.width = 'auto';
+        inp.style.width = '400px';
         li2.style.width = 'auto';
         li2.style.display='inline';
         sdropdown.type='text';
@@ -492,6 +639,9 @@ function buildEditStepControls(){
         li3.addEventListener('click',()=>moveToPreviousStep());
         li4.addEventListener('click',()=>moveToNextStep());
         li5.addEventListener('click',enableBulkEdit);
+        pasteButton.addEventListener('click',async()=>{
+            await pasteFromClipboardWithoutClearing(inp);
+        });
 
         li1.textContent = "Step 3: Edit Equipment Location (click for details)";
         li3.textContent = "Previous Step"
@@ -501,11 +651,12 @@ function buildEditStepControls(){
         li2.appendChild(inp);
         li2.appendChild(pasteButton);
         // li5.appendChild(sdropdown)
-        list.appendChild(li1);
+        // list.appendChild(li1);
         list.appendChild(li3);
         list.appendChild(li2);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
         // buildDropdown("location", ["one","two","three"]);
         // //make dropdown apear on top:
@@ -520,6 +671,7 @@ function buildEditStepControls(){
         buildCategorySelector("location");
     }
     else if(editModes.lotoPointPosition.state){
+        stepButton.textContent = "Step 4 Edit Isolated Position";
         let li1 = document.createElement('li');
         let li2 = document.createElement('li');
         let li3 = document.createElement('li');
@@ -551,14 +703,16 @@ function buildEditStepControls(){
         li4.textContent = "Next Step";
         li4.id='next-step-button';
 
-        list.appendChild(li1);
+        // list.appendChild(li1);
         list.appendChild(li3);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
         buildCategorySelector("isoPos");
     }
     else if(editModes.lotoPointNormPosition.state){
+        stepButton.textContent = "Step 5 Edit Normal Position";
         let li1 = document.createElement('li');
         let li2 = document.createElement('li');
         let li3 = document.createElement('li');
@@ -590,14 +744,16 @@ function buildEditStepControls(){
         li4.textContent = "Next Step";
         li4.id='next-step-button';
 
-        list.appendChild(li1);
+        // list.appendChild(li1);
         list.appendChild(li3);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
         buildCategorySelector("normPos");
     }
     else if(editModes.system.state){
+        stepButton.textContent = "Step 6 Edit System";
         let li1 = document.createElement('li');
         let li2 = document.createElement('li');
         let li3 = document.createElement('li');
@@ -628,20 +784,23 @@ function buildEditStepControls(){
         li3.textContent = "Previous Step"
         li4.textContent = "Next Step";
 
-        list.appendChild(li1);
+        // list.appendChild(li1);
         list.appendChild(li3);
         list.appendChild(li2);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
         buildCategorySelector("system");
     }
     else if(editModes.eqType.state){
+        stepButton.textContent = "Step 7 Edit Equipment Type";
         let li1 = document.createElement('li');
         let li2 = document.createElement('li');
         let li3 = document.createElement('li');
         let li4 = document.createElement('li');
         let li5 = document.createElement('li');
+        let li6 = document.createElement('li');
 
         li1.classList.add("btn")
         li1.classList.add("btn-outline-light")
@@ -653,33 +812,210 @@ function buildEditStepControls(){
         li4.classList.add("btn-outline-light")
         li5.classList.add("btn")
         li5.classList.add("btn-outline-light")
+        li6.classList.add("btn")
+        li6.classList.add("btn-outline-light")
 
 
         li5.textContent = 'Enable Bulk Edit';
         li5.id = 'bulk-edit-enabler'
 
+        li6.textContent = 'Check Points';
+
         li1.addEventListener('click',()=>showInsturctions());
         li3.addEventListener('click',()=>moveToPreviousStep());
-        li4.addEventListener('click',()=>moveToNextStep());
+        li4.addEventListener('click',async()=>{
+            await updateFileStatus(file.id,true);
+            location.reload();
+        } );
         li5.addEventListener('click',enableBulkEdit);
+
+        li6.addEventListener('click', async ()=>{
+            let resp = await fetch('/file-api/verify/'+file.id);
+            let points = await resp.json();
+            let w = document.getElementById('verification-window');
+            if(w) all.removeChild(w);
+            let newWind = getEmptyWindow();
+            all.appendChild(newWind);
+            newWind.id = 'verification-window';
+            let l = document.createElement('ul');
+            newWind.appendChild(l);
+            l.style.backgroundColor = 'white'
+            l.style.position = 'absolute';
+            l.style.top = '30px';
+            newWind.style.width = '80%';
+            newWind.style.height = '80%';
+            points.forEach(e=>{
+
+                for(let key in e){
+                    let ite = document.createElement('li');
+                    ite.textContent = key + ': ' + e[key];
+                    l.appendChild(ite);
+                }
+
+
+
+                // let it1 = document.createElement('li');
+                // let it2 = document.createElement('li');
+                // let it3 = document.createElement('li');
+
+                // it1.textContent = e.Description;
+                // it2.textContent = 'Eq: ' + e.Eq;
+                // it3.textContent = 'LP: ' + e.LP;
+
+                // l.appendChild(it1);
+                // l.appendChild(it2);
+                // l.appendChild(it3);
+            });
+
+
+            
+
+        })
 
         li1.textContent = "Step 7: Edit Equipment Type (click for details)";
         li3.textContent = "Previous Step"
-        li4.textContent = "Next Step";
+        li4.textContent = "Complete PID";
 
-        list.appendChild(li1);
+        // list.appendChild(li1);
         list.appendChild(li3);
         list.appendChild(li2);
         list.appendChild(li4);
         list.appendChild(li5);
+        list.appendChild(document.createElement('li').appendChild(getTextButton()));
+        list.appendChild(li6);
 
         buildCategorySelector("eqType");
     }
+
+    let skipButton = document.createElement('li');
+    let getSkippedButton = document.createElement('li');
+    let getCompletedButton = document.createElement('li');
+    let getIncompleteButton = document.createElement('li');
+
+    skipButton.classList.add('btn');
+    skipButton.classList.add('btn-secondary');
+    getSkippedButton.classList.add('btn');
+    getSkippedButton.classList.add('btn-secondary');
+    getCompletedButton.classList.add('btn');
+    getCompletedButton.classList.add('btn-secondary');
+    getIncompleteButton.classList.add('btn');
+    getIncompleteButton.classList.add('btn-secondary');
+
+    skipButton.textContent = "Skip PID";
+    getSkippedButton.textContent = "Get Skipped PIDs";
+    getCompletedButton.textContent = "Get Completed PIDs";
+    getIncompleteButton.textContent = "Get Incomplete PIDs";
+
+    skipButton.addEventListener('click',async ()=>{
+        await updateFileStatus(file.id,true);
+        await updateFileEditStep("skip");
+        location.reload();
+    });
+    getSkippedButton.addEventListener('click',async ()=>{
+        let w = document.querySelector('[data-file-window="skipped"]');
+        if(w) all.removeChild(w);
+        let newWind = getEmptyWindow("Skipped Files");
+        let box = document.createElement('div');
+        let l = document.createElement('ul');
+
+        newWind.setAttribute('data-file-window','skipped');
+
+        box.style.position = 'absolute';
+        box.style.top = "35px";
+
+        let skippedFiles = await getSkippedFiles();
+
+        skippedFiles.forEach(e=>{
+            let f = document.createElement('li');
+            f.classList.add('smallBtn');
+            f.classList.add('yellow');
+            f.textContent = e.fileNumber + ' - ' + (e.name?e.name:"")
+            f.addEventListener('click',async ()=>{
+                await updateFileEditStep("eqTagNumber");
+                await updateFileStatus(e.id,false);
+                location.reload();
+            })
+            l.appendChild(f)
+        })
+
+        box.appendChild(l);
+        newWind.appendChild(box);
+        all.appendChild(newWind);
+    });
+
+    getCompletedButton.addEventListener('click',async ()=>{
+        let w = document.querySelector('[data-file-window="completed"]');
+        if(w) all.removeChild(w);
+        let newWind = getEmptyWindow("Skipped Files");
+        let box = document.createElement('div');
+        let l = document.createElement('ul');
+
+        newWind.setAttribute('data-file-window','skipped');
+
+        box.style.position = 'absolute';
+        box.style.top = "35px";
+
+        completedPid.forEach(e=>{
+            let f = document.createElement('li');
+            f.classList.add('smallBtn');
+            f.classList.add('yellow');
+            f.textContent = e.fileNumber + ' - ' + (e.name?e.name:"")
+            f.addEventListener('click',async ()=>{
+                await updateFileEditStep("eqTagNumber");
+                await updateFileStatus(e.id,false);
+                location.reload();
+            })
+            l.appendChild(f)
+        })
+
+        box.appendChild(l);
+        newWind.appendChild(box);
+        all.appendChild(newWind);
+    });
+
+    getIncompleteButton.addEventListener('click',()=>{
+        let w = document.querySelector('[data-file-window="incomplete"]');
+        if(w) all.removeChild(w);
+        let newWind = getEmptyWindow("Skipped Files");
+        let box = document.createElement('div');
+        let l = document.createElement('ul');
+
+        newWind.setAttribute('data-file-window','incomplete');
+
+        box.style.position = 'absolute';
+        box.style.top = "35px";
+
+        incompletePid.forEach(e=>{
+            let f = document.createElement('li');
+            f.classList.add('smallBtn');
+            f.classList.add('yellow');
+            f.textContent = e.fileNumber + ' - ' + (e.name?e.name:"")
+            f.addEventListener('click',async ()=>{
+                //location.reload();
+                loadPictureWithLightFile(e);
+            })
+            l.appendChild(f)
+        })
+
+        box.appendChild(l);
+        newWind.appendChild(box);
+        all.appendChild(newWind);
+    })
+
+    list.appendChild(skipButton);
+    list.appendChild(getSkippedButton);
+    list.appendChild(getCompletedButton);
+    list.appendChild(getIncompleteButton);
 }
 
 async function buildCategorySelector(catAlias){
     let cat = categoryObjects.find(c=>c.alias===catAlias);
-    let catWindow = getEmptyWindow(cat.name);
+    let catWindow = document.querySelector(`[data-category-window='${cat.alias}'`);
+    if(catWindow){
+        all.removeChild(catWindow);
+    }
+    catWindow = getEmptyWindow(cat.name);
+    catWindow.setAttribute('data-category-window',cat.alias)
     let box = document.createElement('div');
     let values = await getValuesOfCategoryAlias(catAlias);
     let search = document.createElement('input');
@@ -759,6 +1095,10 @@ async function buildCategorySelector(catAlias){
 /***************************************************************************************************************
  * Loto Point Controls
  ****************************************************************************************************************/
+function bindInputWithPoint(point,key){
+    let input = document.querySelector(`[data-bind-point-id='${point.id}']`);
+    point[key] = input.value;
+}
 
 function acceptLotoPoint(point){
     const highlight = document.querySelector(`div.areaHighlights[data-point-id='${point.id}']`);
@@ -768,16 +1108,23 @@ function acceptLotoPoint(point){
     if(resize) resize.forEach(e=>e.classList.add('hide'));
 
     if(editModes.eqTagNumber.state){
+        bindInputWithPoint(point,'tagNumber');
         updateEqTagNumber(point);
         removeResizeAndDisableLpConnection(highlight);
-        all.removeChild(document.querySelector(`div.newWindow[data-point-id='${point.id}']`))
+        let area = setAreaAsLotoPoint(highlight);
+        all.removeChild(highlight);
+        all.removeChild(document.querySelector(`div.newWindow[data-point-id='${point.id}']`));
+        createHighlight(area)
     }
     if(editModes.eqDescription.state){
+        bindInputWithPoint(point,'description');
+        point.lotoPoints.forEach(p=>bindInputWithPoint(p,'description'));
         updateEqDescription(point);
         all.removeChild(currentWindow);
         all.removeChild(highlight);
     }
     if(editModes.eqLocation.state){
+        point.lotoPoints.forEach(p=>bindInputWithPoint(p,'specificLocation'));
         updateEqLocation(point);
         all.removeChild(currentWindow);
         all.removeChild(highlight);
@@ -836,7 +1183,7 @@ function renameLotoPoint(point){
             point.eqType = {};
             point.eqType.id = input.getAttribute('data-object-id');
         }
-        text.textContent = input.value;
+        text.value = input.value;
 
     }
 }
@@ -844,27 +1191,43 @@ function renameLotoPoint(point){
 function fillLotoPointInfo(point){
     let lotoPointInfo = document.createElement('div');
     let controls = lpEditControls(point);
-    let text = document.createElement('p');
+    let text = document.createElement('input');
+    text.readOnly = true;
+    text.style.width = '100%'
+    text.setAttribute('data-bind-point-id',point.id)
 
     lotoPointInfo.id = 'point-info-'+point.id;
     lotoPointInfo.classList.add('point-info-block');
-    if(editModes.eqDescription.state)text.textContent = point.description;
-    else if(editModes.eqTagNumber.state)text.textContent = point.tagNumber;
+    if(editModes.eqDescription.state){
+        text.value = point.description;
+        text.readOnly = false;
+    } 
+    else if(editModes.eqTagNumber.state){
+        text.readOnly = false;
+        text.value = point.tagNumber;
+    }
     else if(editModes.eqLocation.state){
-        if(point.objectType==="Equipment" && point.location && point.location.name)text.textContent = point.location.name;
-        else text.textContent = point.specificLocation;
+        if(point.objectType==="Equipment" && point.location && point.location.name)text.value = point.location.name;
+        else{
+            text.readOnly = false;
+            text.value = point.specificLocation;
+        }
     }
     else if(editModes.lotoPointPosition.state){
-        if(point.isoPos && point.isoPos.name) text.textContent = point.isoPos.name;
+        text.readOnly = true;
+        if(point.isoPos && point.isoPos.name) text.value = point.isoPos.name;
     }
     else if(editModes.lotoPointNormPosition.state){
-        if(point.normPos && point.normPos.name) text.textContent = point.normPos.name;
+        text.readOnly = true;
+        if(point.normPos && point.normPos.name) text.value = point.normPos.name;
     }
     else if(editModes.system.state){
-        if(point.system && point.system.name) text.textContent = point.system.name;
+        text.readOnly = true;
+        if(point.system && point.system.name) text.value = point.system.name;
     }
     else if(editModes.eqType.state){
-        if(point.eqType && point.eqType.name) text.textContent = point.eqType.name;
+        text.readOnly = true;
+        if(point.eqType && point.eqType.name) text.value = point.eqType.name;
     }
     text.classList.add('responsive-text');
     text.id = 'point-info-text-'+point.id;
@@ -888,7 +1251,7 @@ function lpEditControls(point){
     accept.classList.add('highlight-control-accept');
     rename.classList.add('highlight-control-rename');
 
-    if(point.objectType) name.textContent = point.objectType + ' - ' + point.tagNumber;
+    if(point.objectType) name.textContent = point.objectType + ' - ' + point.tagNumber+ '/' + (point.description ?point.description : "");
     accept.textContent = "Accept";
     rename.textContent = "Rename";
     
@@ -1044,7 +1407,7 @@ function highlightMultipleLotoPointEq(){
         selectedBundle.push({"area":e,"eq":selectedArea,"highlight":hl});
     }
 
-    let instButton = document.getElementById('instructionButton');
+    let instButton = document.getElementById('stepButton');
     instButton.textContent = 'Verify Equipment with multiple Loto Points'
     let nextButton = document.getElementById('next-step-button');
     nextButton.removeEventListener('click',highlightMultipleLotoPointEq);
@@ -1107,9 +1470,12 @@ function highlightForEqType(){
 
 let bulkEditArray = [];
 let bulkEditEnabled = false;
+let matchLpLocation = false;
 
 function enableBulkEdit(){
+    matchLpLocation = false;
     removeAllHighlights();
+    bulkEditArray = [];
     bulkEditEnabled = true;
     let allLotoHighlights = document.querySelectorAll('[data-loto-point-area]');
     allLotoHighlights.forEach(e=>{
@@ -1119,9 +1485,10 @@ function enableBulkEdit(){
     enable.textContent = "Submit Selected Points";
     enable.removeEventListener('click', enableBulkEdit);
     enable.addEventListener('click',submitBulkEdit);
+    bulkEditControlBuilder();
 }
 
-function submitBulkEdit(){
+async function submitBulkEdit(){
     let categoryAlias;
     if(editModes.eqLocation.state)categoryAlias='location';
     if(editModes.lotoPointPosition.state)categoryAlias='isoPos';
@@ -1129,44 +1496,52 @@ function submitBulkEdit(){
     if(editModes.system.state)categoryAlias='system';
     if(editModes.eqType.state)categoryAlias='eqType';
 
-    let value = document.getElementById('select-input-editor').getAttribute('data-object-id')
+    let value = document.getElementById('select-input-editor').getAttribute('data-object-id');
+    let text = document.getElementById('select-input-editor').value;
     bulkEditEnabled = false;
     document.querySelectorAll('[data-loto-point-area]').forEach(e=>{
         e.removeEventListener('click',addPointToArray);
     });
 
-    bulkEditArray.forEach(e=>{
+    for(let e of bulkEditArray){
         if(editModes.eqLocation.state){
             e[categoryAlias] = {};
             e[categoryAlias].id = value;
-            updateEqLocation(e);
+            if(matchLpLocation === true){
+                e.lotoPoints.forEach(p=>{
+                    p.specificLocation=text
+            });
+            }
+            await updateEqLocation(e);
         }
         if(editModes.lotoPointPosition.state){
             let lp = e.lotoPoints.find(el=>el.tagNumber===e.tagNumber);
             lp.isoPos={};
             lp.isoPos.id=value;
             console.log(value)
-            updateIsoPos(e,true);
+            await updateIsoPos(e,true);
         }
         if(editModes.lotoPointNormPosition.state){
             let lp = e.lotoPoints.find(el=>el.tagNumber===e.tagNumber);
             lp.normPos={};
             lp.normPos.id=value;
             console.log(value)
-            updateNormPos(e,true);
+            await updateNormPos(e,true);
         }
         if(editModes.system.state){
             e[categoryAlias] = {};
             e[categoryAlias].id = value;
-            updateSystem(e);
+            await updateSystem(e);
         }
         if(editModes.eqType.state){
             e[categoryAlias] = {};
             e[categoryAlias].id = value;
-            updateEqType(e);
+            await updateEqType(e);
         }
-    })
+    }
     loadPictureWithLightFile(file);
+    let w = document.querySelector('[data-bulk-edit="controls-window"]');
+    if(w) all.removeChild(w);
 }
 
 function addPointToArray(event){
@@ -1181,6 +1556,62 @@ function removePointFromBulkArray(highligh){
     let point = getPointByIdFromCurrentFile(highligh.getAttribute('data-point-id'));
     bulkEditArray=bulkEditArray.filter(e=>e.id!==point.id);
     console.log(bulkEditArray.length)
+}
+
+function bulkEditControlBuilder(){
+    let w = document.querySelector('[data-bulk-edit="controls-window"]');
+    if(w) all.removeChild(w);
+    let newWind = getEmptyWindow();
+    newWind.setAttribute('data-bulk-edit', 'controls-window');
+    newWind.style.width = '20%';
+
+    let controlsBox = document.createElement('div');
+    let label = document.createElement('label');
+    let check = document.createElement('input');
+    let selectAllButton = document.createElement('button');
+    let unselectAllButton = document.createElement('button');
+    
+    controlsBox.style.position = 'absolute';
+    controlsBox.style.top = '35px';
+    controlsBox.style.backgroundColor = 'white';
+    controlsBox.style.display = 'flex';
+    controlsBox.style.flexDirection = 'column';
+
+    label.for = 'matchLocations';
+    label.textContent = "Match LP location with Eq"
+    check.id = 'matchLocations';
+    check.type = 'checkbox';
+    check.addEventListener('change', () => {
+        matchLpLocation = check.checked;  // Update the boolean variable
+        console.log(matchLpLocation)
+    });
+
+    selectAllButton.textContent = 'Select All';
+    unselectAllButton.textContent = "Unselect All";
+    selectAllButton.addEventListener('click',selectAllForBulkEdit);
+    unselectAllButton.addEventListener('click',unselectAllForBulkEdit);
+
+    controlsBox.appendChild(label);
+    controlsBox.appendChild(check);
+    controlsBox.appendChild(selectAllButton);
+    controlsBox.appendChild(unselectAllButton);
+    newWind.appendChild(controlsBox);
+    all.appendChild(newWind);
+}
+
+function selectAllForBulkEdit(){
+    bulkEditArray = [];
+    let areas = document.querySelectorAll('[data-loto-point-area]');
+    areas.forEach(e=>{
+        let point = fileWithPoints.points.find(el=>el.id===parseInt(e.getAttribute('data-point-id')));
+        bulkEditArray.push(point);
+        createHighlight(e,true)
+    })
+}
+
+function unselectAllForBulkEdit(){
+    bulkEditArray = [];
+    removeAllHighlights();
 }
 
 

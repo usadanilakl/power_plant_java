@@ -4,11 +4,23 @@ let filesAreLoded = false;
 let vendors=[];
 let categories;
 let file;
+let lightFile;
 
 let completedPid = [];
 let incompletePid = [];
 
 let baseFileApiUrl = "/file-api/";
+
+function getPostMetaDataWithStringBody(data){
+    return{
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Content-Type': 'application/json'
+        },
+        body:data
+    }
+}
 
 
 function filePutWithBody(data){
@@ -145,16 +157,30 @@ async function getIncompleteFiles(){
 }
 
 async function updateFileStatus(id,status){
+    await updateFileEditStep('eqTagNumber',id);
     const resp = await fetch('/file-api/'+id+'/'+status,putNoBody);
     const data = await resp.json();
 }
 
-async function updateFileEditStep(step){
+async function updateFileEditStep(step, id){
     let empty = {};
     empty.id = fileWithPoints.id;
+    if(id)empty.id = id;
     empty.bulkEditStep = step;
 
     const resp = await fetch(baseFileApiUrl,filePatchWithBody(empty));
     const data = await resp.json();
+    return data;
+}
+
+async function getSkippedFiles(){
+    const resp = await fetch(baseFileApiUrl+'skip')
+    const data = await resp.json();
+    return data;
+}
+
+async function getPdfAndConvertToJpg(id){
+    const resp = await fetch(baseFileApiUrl+'convert/'+id);
+    const data = await resp.text();
     return data;
 }

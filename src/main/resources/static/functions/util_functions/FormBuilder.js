@@ -56,12 +56,12 @@ async function setDropdowns(form, object){
         if(allAliases.includes(key)){
             container.classList.add('searchable-dropdown');
             let cat = categoryObjects.find(c=>c.alias===key)
-            if(!object[key]) object[key] = {id:null,category:cat,name:"no data"};
-            label.textContent = object[key].category.name;
+            if(!object[key]) object[key] = {id:null,category:key,name:"no data"};
+            label.textContent = object[key].name;
             
             input.value = object[key].name
             input.setAttribute('data-object-field', key); //this is the field name of main object, ex: point.vendor/point.eqType
-            input.setAttribute('data-object-category', object[key].category.name); //this is category name for display, ex: Vendor/Equipment Type
+            input.setAttribute('data-object-category', key); //this is category name for display, ex: Vendor/Equipment Type
             input.setAttribute('data-object-id', object[key].id); //this is category object id from DB for proper mapping
             input.autocomplete = 'off';
             input.addEventListener('focus', () => input.classList.add("show")); //to show dropdown items when input is selected

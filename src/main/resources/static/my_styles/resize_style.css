@@ -50,7 +50,11 @@
     height: 10px;
     z-index: 30;
     background-color: rgb(0, 0, 0);
-    cursor: nwse-resize;
+    cursor: grab;
+}
+
+.grab:active{
+    cursor: grabbing;
 }
 
 .mresize{

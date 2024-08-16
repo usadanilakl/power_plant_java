@@ -9,10 +9,10 @@ import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.data_transfer.ElectricalTable;
 import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
-import com.dk_power.power_plant_java.entities.equipment.ElectricalPanel;
-import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
-import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
-import com.dk_power.power_plant_java.entities.equipment.HtPanel;
+import com.dk_power.power_plant_java.entities.equipment.*;
+import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -23,6 +23,7 @@ import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
+import com.dk_power.power_plant_java.sevice.image.OCRService;
 import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
@@ -35,6 +36,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -65,6 +67,9 @@ private final ElectricalPanelService electricalPanelService;
 private final HtBreakerService htBreakerService;
 private final EqBreakerService eqBreakerService;
 private final ElectricalTableService electricalTableService;
+private final OCRService ocrService;
+private final HighlightService highlightService;
+private final EquipmentRepo equipmentRepo;
 
 
     public static void main(String[] args) {
@@ -79,6 +84,46 @@ private final ElectricalTableService electricalTableService;
 
         System.err.println("=====================================================");
 
+        System.out.println("App is Ready: open browser and type: http://localhost:8082");
+//        fileService.getAll().forEach(e->{
+//            e.buildFileLink("jpg");
+//            fileService.save(e);
+//        });
+
+        FileObject entityById = fileService.getEntityById(5256l);
+//        entityById.buildFileLink("jpg");
+//        fileService.save(entityById);
+
+//        equipmentService.getAll().forEach(highlightService::transferEqToHighlights);
+//        equipmentService.getAll().forEach(e->{
+//            if(e.getCoordinates().contains("undefined"))e.setCoordinates(e.getCoordinates().replace("undefined",""));
+//            if(e.getMainFile()==null) equipmentService.hardDelete(e);// System.out.println(e.getTagNumber());
+//            equipmentService.save(e);
+//
+//        });
+//        System.out.println("equipmentService.getAll().size() = " + equipmentService.getAll().size());
+//        System.out.println("highlightService.getAll().size() = " + highlightService.getAll().size());
+//        System.out.println("Completed");
+////        equipmentService.hardDelete(equipmentService.getEntityById(26399L));
+//
+//        List<String> duplicateTagNumbers = equipmentRepo.findDuplicateTagNumbers();
+//        List<String> uniqueTagNumbers = equipmentRepo.findUniqueTagNumbers();
+//        System.out.println("duplicateTagNumbers.size() = " + duplicateTagNumbers.size());
+//        System.out.println("uniqueTagNumbers.size() = " + uniqueTagNumbers.size());
+
+//        duplicateTagNumbers.forEach(System.out::println);
+//        int n = 0;
+//        for(String e : duplicateTagNumbers){
+//
+//            try{
+//                equipmentService.combineDuplicates(e);
+//                System.out.println("++++++++++++++++++++++++++++++++++++++++++++++++++++");
+//            }catch (NullPointerException ex){
+//                n++;
+//            }
+//
+//        }
+//        System.out.println(n);
 
 
 /******************************************************************************************************************************************
