@@ -15,34 +15,9 @@
 
 
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script type="module" src="/functions/Main.js"></script>
 <script>
-    function createHtmlElement(value) {
-    // Create the main div with Bootstrap classes
-    const div = document.createElement('div');
-    div.className = 'container mt-3';
 
-    // Create the paragraph
-    const paragraph = document.createElement('p');
-    paragraph.className = 'mb-1';
-    paragraph.textContent = `The value ${value.name} is used by the items in the table. Change ${value.name} to `;
-
-    // Create the input field
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'form-control d-inline-block';
-    input.style.width = 'auto';
-
-    // Append the paragraph and input to the main div
-    div.appendChild(paragraph);
-    div.appendChild(input);
-
-    return div;
-}
-
-// Example usage:
-const value = { name: 'exampleName' };
-document.body.appendChild(createHtmlElement(value));
 </script>
 
 
