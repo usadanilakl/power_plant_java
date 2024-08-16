@@ -4,6 +4,7 @@ let filesAreLoded = false;
 let vendors=[];
 let categories;
 let file;
+let lightFile;
 
 let completedPid = [];
 let incompletePid = [];

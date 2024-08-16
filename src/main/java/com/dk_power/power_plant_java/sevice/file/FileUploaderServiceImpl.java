@@ -154,9 +154,9 @@ public class FileUploaderServiceImpl implements FileUploaderService {
     }
     public void PdfToJpgConverter(String pathToFile) {
         try {
-            String sourceDir = pathToFile; // Pdf files are read from this folder
+            String sourceDir = pathToFile.replaceAll("jpg","pdf"); // Pdf files are read from this folder
 //            String destinationDir = "uploads/"; // converted images from pdf would be saved here
-            String destinationDir = pathToFile.replaceAll("pdf","jpg"); // converted images from pdf would be saved here
+            String destinationDir = pathToFile; // converted images from pdf would be saved here
 
             File sourceFile = new File(sourceDir);
             File destinationFile = new File(destinationDir);
@@ -171,7 +171,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 int numberOfPages = document.getNumberOfPages();
 
                 for (int i = 0; i < numberOfPages; ++i) {
-                    BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 500);
+                    BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 300);
                     ImageIO.write(bim, "jpg", new File(destinationDir));
                 }
 

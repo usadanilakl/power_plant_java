@@ -27,6 +27,11 @@ function loadPictureWithAreas(src, areas){
 
 function loadPictureWithFile(file){
     picture.setAttribute('src','/'+file.fileLink);
+    picture.onerror = async function() {
+        console.log('Image not found. Running fallback function.');
+        await getPdfAndConvertToJpg(file.id);
+        picture.setAttribute('src','/'+file.fileLink)
+    };
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
     setAreas(file.points);
@@ -34,6 +39,11 @@ function loadPictureWithFile(file){
 
 async function loadPictureWithLightFile(file){
     picture.setAttribute('src','/'+file.fileLink);
+    picture.onerror = async function() {
+        console.log('Image not found. Running fallback function.');
+        await getPdfAndConvertToJpg(file.id);
+        picture.setAttribute('src','/'+file.fileLink)
+    };
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
     fileWithPoints = await getFileFromDbByLink(file.fileNumber);

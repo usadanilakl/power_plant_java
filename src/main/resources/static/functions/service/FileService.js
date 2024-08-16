@@ -9,7 +9,7 @@ function toggleFileButtonContent(){
 
 async function fileFormSetup(){
    const popup = await getFormPopUp();
-   const fileForm = await buildFormForEachField(file,async()=>submitFile(file),null);
+   const fileForm = await buildFormForEachField(lightFile,async()=>submitFile(file),null);
    document.body.appendChild(popup);
    popup.querySelector('#insert-html').appendChild(fileForm);
    let myModal = new bootstrap.Modal(document.getElementById('formModal'), {});

@@ -95,8 +95,8 @@ public class FileRestController_r {
     @GetMapping("/convert/{id}")
     public ResponseEntity<String> convertPdfToJpegAndSave(@PathVariable String id){
         FileObject entityById = fileService.getEntityById(id);
-        String pdfLink = entityById.buildFileLink("pdf");
-        fileUploaderService.PdfToJpgConverter(pdfLink);
+//        String pdfLink = entityById.buildFileLink("pdf");
+        fileUploaderService.PdfToJpgConverter(entityById.getFileLink());
         return ResponseEntity.ok("Success");
     }
 }
