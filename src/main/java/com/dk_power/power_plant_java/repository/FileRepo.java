@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.repository;
 
-import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.files.FileObject;
@@ -34,5 +33,7 @@ public interface FileRepo extends BaseRepository<FileObject> {
 
     List<FileObject> findByFileType(Value oldVal);
     List<FileObject> findByBulkEditStep(String step);
+    @Query("SELECT f.relatedSystems FROM FileObject f WHERE f.fileType.name = 'PID'")
+    List<String> findUniqueRelatedSystems();
 }
 

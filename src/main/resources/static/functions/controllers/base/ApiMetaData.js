@@ -19,5 +19,15 @@ class ApiMetaData{
             }
         }
     }
+    static patchOptions(data){
+        return{
+            method: 'PATCH',
+            headers: {
+                'X-CSRF-TOKEN': GlobalVariables.token,
+                'Content-Type': 'application/json'
+            },
+            body:data
+        }
+    }
 }
 export default ApiMetaData;

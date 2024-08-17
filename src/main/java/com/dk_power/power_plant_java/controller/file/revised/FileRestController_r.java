@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.enums.SortingGroup;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/file-api")
@@ -98,5 +100,24 @@ public class FileRestController_r {
 //        String pdfLink = entityById.buildFileLink("pdf");
         fileUploaderService.PdfToJpgConverter(entityById.getFileLink());
         return ResponseEntity.ok("Success");
+    }
+    @GetMapping("/get-by-number/{number}")
+    public ResponseEntity<FileDto> getFileByLink(@PathVariable String number){
+        FileObject byFileLink = fileService.getFileByNumber(number);
+        return ResponseEntity.ok(fileService.convertToDto(byFileLink));
+    }
+    @GetMapping("/get-vendors")
+    public List<String> getAllVendors(){
+        return fileService.getVendors();
+    }
+
+    @GetMapping("/get-systems")
+    public Set<String> getAllSystems(){
+        return fileService.getPidRelatedSystems();
+    }
+
+    @GetMapping("/get-categories")
+    public List<Map<String,String>> getAllCategories(){
+        return SortingGroup.getValues();
     }
 }

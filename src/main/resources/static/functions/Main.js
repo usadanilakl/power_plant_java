@@ -8,8 +8,13 @@ class Main{
         console.log("Main is running")
         GlobalVariables.token = document.getElementById('token').getAttribute('content');
         let files = await this.fileService.setFiles();
-        console.log(files.length);
-        console.log(JSON.stringify(files[0]))
+
+        let menu = this.fileService.setFileDropdownMenu();
+        // console.log(menu);
+        // document.body.appendChild(menu);
+
+
+
     }
 
     

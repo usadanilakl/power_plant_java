@@ -11,7 +11,6 @@ import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import lombok.AllArgsConstructor;
-import lombok.val;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -164,6 +163,17 @@ public class FileServiceImpl implements FileService {
     @Override
     public List<FileDto> getSkipped() {
         return fileRepo.findByBulkEditStep("skip").stream().map(this::convertToDto).toList();
+    }
+
+    @Override
+    public Set<String> getPidRelatedSystems() {
+        Set<String> result = new HashSet<>();
+        List<String> systems = fileRepo.findUniqueRelatedSystems();
+        for (String s : systems) {
+            result.addAll(Arrays.asList(s.split(",")));
+        }
+
+        return result;
     }
 
     public List<FileDto> getAllDtos(String ext) {

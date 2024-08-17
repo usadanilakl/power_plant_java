@@ -10,11 +10,28 @@ class FileController extends Controller{
     static SKIPPED_URL = FileController.BASE_URL+'/skip';
     static VERIFY_URL = FileController.BASE_URL+'/verify';
     static CONVERT_URL = FileController.BASE_URL+'/convert';
+    static FILE_CATEGORIES_URL = FileController.BASE_URL+"/get-categories";
+    static FILE_VENDORS_URL = FileController.BASE_URL+"/get-vendors";
+    static FILE_SYSTEMS_URL = FileController.BASE_URL+"/get-systems";
+    static FILE_BY_NUMBER_URL = FileController.BASE_URL+'/get-by-number';
 
     async getAllFiles(){
-        console.log("This is the url: " +FileController.CRUD_URL)
-        return await super.request(FileController.CRUD_URL,ApiMetaData.getOptions)
+        return await super.request(FileController.CRUD_URL,ApiMetaData.getOptions())
     }
+
+    async patchFile(file){
+        return await super.request(FileController.CRUD_URL,ApiMetaData.patchOptions(JSON.stringify(file)))
+    }
+
+    async getFile(id){
+        return await super.request(FileController.CRUD_URL+id,ApiMetaData.getOptions())
+    }
+    async getFileCategories(){return await super.request(FileController.FILE_CATEGORIES_URL,ApiMetaData.getOptions);}
+    async getFileVendors(){return await super.request(FileController.FILE_VENDORS_URL,ApiMetaData.getOptions);}
+    async getFilesystems(){return await super.request(FileController.FILE_SYSTEMS_URL,ApiMetaData.getOptions);}
+    async getFileFromDbByNumber(number){return await super.request(FileController.FILE_BY_NUMBER_URL+'/'+number, ApiMetaData.getOptions);}
+    
+
 
 }
 export default FileController;
