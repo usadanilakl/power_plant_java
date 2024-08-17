@@ -29,5 +29,22 @@ class ApiMetaData{
             body:data
         }
     }
+    static putOptions(data){
+        if(data)return{
+            method: 'PUT',
+            headers: {
+                'X-CSRF-TOKEN': GlobalVariables.token,
+                'Content-Type': 'application/json'
+            },
+            body:data
+        }
+        else return{
+            method: 'PUT',
+            headers: {
+                'X-CSRF-TOKEN': GlobalVariables.token,
+                'Content-Type': 'application/json'
+            }
+        }
+    }
 }
 export default ApiMetaData;

@@ -3,6 +3,8 @@ class FileRepo{
     static FILE_CATEGORIES = [];
     static FILE_VENDORS = [];
     static FILE_SYSTEMS = [];
+    static LIGHT_FILE = {};
+    static FILE_WITH_POINTS = {};
 
     static getFilesByVendor(vendor, fileType){
         if(fileType)return FileRepo.ALL_FILES.filter(e=>e!==null && e.vendor!==null && e.vendor.name.toLowerCase().includes(vendor.toLowerCase()) && e.fileType.name==='PID');

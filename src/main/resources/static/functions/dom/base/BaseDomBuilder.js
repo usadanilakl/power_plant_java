@@ -21,7 +21,7 @@ class BaseDomBuilder{
         //Set click action for the item
         if(actions){
             actions.forEach(a=>{
-               i.addEventListener('click',a); 
+                i.addEventListener('click',a); 
             })
             
         }
