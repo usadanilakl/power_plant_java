@@ -1,5 +1,5 @@
 import FileController from "../../controllers/file/FileController.js";
-import FileMenu from "../../dom/menus/FileMenu.js";
+import FileMenu from "../../dom/file/FileMenu.js";
 import FileRepo from "../../repository/FileRepo.js";
 
 class FileService{
