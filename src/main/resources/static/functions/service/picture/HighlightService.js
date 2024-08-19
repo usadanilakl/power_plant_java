@@ -34,7 +34,7 @@ class HighlightService{
     }
 
     static createHighlight(area){
-        let highlight = EqHighlightDom.createHighlight(area);
+        let highlight = EqHighlightDom.buildHighlight(area);
         HighlightService.setUpHighlight(highlight);
     }
 

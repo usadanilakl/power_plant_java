@@ -11,6 +11,8 @@ class Main{
         GlobalVariables.PICTURE_CONTAINER = document.getElementById('picture-container');
         GlobalVariables.PICTURE = document.getElementById('picture');
         GlobalVariables.MAP = document.getElementById('map');
+        GlobalVariables.LEFT =document.getElementById('left');
+        
 
         await FileService.setFiles();
         await FileService.setFileCategories();

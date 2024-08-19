@@ -1,3 +1,5 @@
+import EqRepo from "../../repository/EqRepo.js";
+
 class CoordinateCalculator{
     static serverStringToAreaString(coord){
         let arr = coord.split(",");
@@ -21,7 +23,7 @@ class CoordinateCalculator{
         let arr = originalPictureSize.split(",");
         let w = arr[0].substring(arr[0].indexOf(":")+1);
         let h = arr[1].substring(arr[1].indexOf(":")+1);
-        originalWidth = w;
+        EqRepo.OLD_WIDTH = w;
         return {w:w,h:h}
     }
 }

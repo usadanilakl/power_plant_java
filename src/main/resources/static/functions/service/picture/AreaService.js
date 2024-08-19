@@ -26,8 +26,8 @@ class AreaService{
     }
 
     static setUpArea(eq){
-        let action = AreaService.areaClickFunction.bind(null,eq);
         let area = EqHighlightDom.buildArea(eq);
+        let action = AreaService.areaClickFunction.bind(null,area);
         area.addEventListener('click',action);
         return area;
     }
@@ -39,7 +39,7 @@ class AreaService{
         eqList.forEach(e=>{
             EqRepo.OLD_WIDTH = CoordinateCalculator.originalPictureSizeStringToWh(e.originalPictureSize).w;
             let area = AreaService.setUpArea(e);
-            GlobalVariables.map.appendChild(area);
+            GlobalVariables.MAP.appendChild(area);
         });
         ResizeRelocate.resizeAreas();
     }

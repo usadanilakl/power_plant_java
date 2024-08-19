@@ -1,9 +1,13 @@
 import FileController from "../../controllers/file/FileController.js";
 import FileMenu from "../../dom/file/FileMenu.js";
+import GlobalVariables from "../../global/GlobalVariables.js";
+import EqRepo from "../../repository/EqRepo.js";
 import FileRepo from "../../repository/FileRepo.js";
+import AreaService from "../picture/AreaService.js";
+import HighlightService from "../picture/HighlightService.js";
 
 class FileService{
-    fileController = new FileController();
+    static fileController = new FileController();
     static fileMenu = new FileMenu();
 /**************************************************************************************************************
  *Server Data Handling
@@ -17,7 +21,7 @@ class FileService{
  *************************************************************************************************************/
 
     static async setFiles(){
-        FileRepo.ALL_FILES = await this.fileController.getAllFiles();
+        FileRepo.ALL_FILES = await FileService.fileController.getAllFiles();
         return FileRepo.ALL_FILES;
     }
     static async setFileCategories(){
@@ -116,8 +120,8 @@ class FileService{
         return result;
     }
 
-    setFileDropdownMenu(){
-        FileService.fileMenu.dropdownMenu(FileService.setUpCategories(),[{'data-file-id':'id'}],['custom-class'],document.body);
+    static setFileDropdownMenu(){
+        FileService.fileMenu.dropdownMenu(FileService.setUpCategories(),[{'data-file-id':'id'}],['custom-class'],GlobalVariables.LEFT);
     }
 
     static toggleFileButtonContent(){
@@ -137,13 +141,13 @@ class FileService{
         picture.setAttribute('src','/'+file.fileLink);
         picture.onerror = async function() {
             console.log('Image not found. Running fallback function.');
-            await getPdfAndConvertToJpg(file.id);
+            // await FileService.getPdfAndConvertToJpg(file.id);
             picture.setAttribute('src','/'+file.fileLink)
         };
         picture.setAttribute('data-file-id', file.id);
-        removeAllHighlights();
-        FileRepo.FILE_WITH_POINTS = await getFileFromDbByLink(file.fileNumber);
-        setAreas(fileWithPoints.points);
+        HighlightService.removeAllHighlights();
+        FileRepo.FILE_WITH_POINTS = await FileService.fileController.getFileFromDbByNumber(file.fileNumber);
+        AreaService.setAreas(EqRepo.getEqList());
     }
 
 }
