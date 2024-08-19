@@ -52,8 +52,8 @@ class ResizeRelocate{
         
             picture.style.left = `${newPictureX}px`;
             picture.style.top = `${newPictureY}px`;
-            resizeAreas(); 
-            resizeHighlights(); 
+            ResizeRelocate.resizeAreas(); 
+            ResizeRelocate.resizeHighlights(); 
             //resizeManualHighlites(); 
         
     }

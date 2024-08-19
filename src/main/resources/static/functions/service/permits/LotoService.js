@@ -1,4 +1,6 @@
+import EqRepo from "../../repository/EqRepo";
 import ModeService from "../mode/ModeService";
+import NewWindowService from "../windows/NewWindowService";
 
 class LotoService{
     static lotoWindow = null;
@@ -6,8 +8,8 @@ class LotoService{
     
     static lotoModeControl(){
         if(ModeService.modes.lotoMode.state){
-            if(LotoService.lotoWindow === null && selectedArea) setUpLotoWindow();
-            if(selectedArea)fillPointInfoWindow(selectedArea);
+            if(LotoService.lotoWindow === null && EqRepo.SELECTED_EQ) LotoService.setUpLotoWindow();
+            if(EqRepo.SELECTED_EQ)fillPointInfoWindow(EqRepo.SELECTED_EQ);
         }else{
             document.querySelectorAll('.addButtons').forEach(e=>{
                 e.classList.add('hide');
@@ -20,7 +22,7 @@ class LotoService{
         // let obj = revisedLotoPoints[0];
         // let ob = {label:obj.tagNumber,description:obj.description}
         let ob = {tagNumber:selectedArea.tagNumber,description:selectedArea.description,id:selectedArea.id}
-        lotoWindow = newInfoWindow("Loto");
+        lotoWindow = NewWindowService.newInfoWindow("Loto");
         lotoWindow.appendChild(createTable(ob));
         lotoWindow.appendChild(updateLotoPointsButton());
     }

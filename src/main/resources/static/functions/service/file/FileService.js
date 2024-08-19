@@ -55,7 +55,7 @@ class FileService{
                 let list = event.target.querySelector('ul');
                 event.stopPropagation();
                 if(list!=null) event.target.removeChild(list);
-                else FileService.fileMenu.dropdownMenu(e.getContent(e.value),[],[], event.target);
+                else FileService.fileMenu.dropdownMenu(e.getContent(e.value),[],['smallBtn','blue'], event.target);
             }.bind(e) 
         })
         result.forEach(e=>e.itemText = e.value)
@@ -75,7 +75,7 @@ class FileService{
                 let list = event.target.querySelector('ul');
                 event.stopPropagation();
                 if(list!=null) event.target.removeChild(list);
-                else FileService.fileMenu.dropdownMenu(this.getContent(),[{'data-file-name':'name'},{'data-file-number':'fileNumber'},{'data-object-type':'objectType'}],[], event.target);
+                else FileService.fileMenu.dropdownMenu(this.getContent(),[{'data-file-name':'name'},{'data-file-number':'fileNumber'},{'data-object-type':'objectType'}],['smallBtn','blue'], event.target);
             }.bind(i);
             vendors.push(i);
         });
@@ -95,7 +95,7 @@ class FileService{
                 let list = event.target.querySelector('ul');
                 event.stopPropagation();
                 if(list!=null) event.target.removeChild(list);
-                else FileService.fileMenu.dropdownMenu(this.getContent(),[{'data-file-name':'name'},{'data-file-number':'fileNumber'},{'data-object-type':'objectType'}],[], event.target);
+                else FileService.fileMenu.dropdownMenu(this.getContent(),[{'data-file-name':'name'},{'data-file-number':'fileNumber'},{'data-object-type':'objectType'}],['smallBtn','blue'], event.target);
             }.bind(i);
             systems.push(i);
         });
@@ -105,7 +105,10 @@ class FileService{
     static setUpFilesByVendor(vendor){
         let result =  FileRepo.getFilesByVendor(vendor,'PID');
         result.forEach(e=>{
-            e['dropdownFunc'] = function(){FileService.loadPictureWithLightFile(e);} 
+            e['dropdownFunc'] = function(){
+                event.stopPropagation();
+                FileService.loadPictureWithLightFile(e);
+            } 
             e.itemText = e.fileNumber;
         })
         return result;
@@ -114,14 +117,17 @@ class FileService{
     static setUpFilesBySystem(system){
         let result =  FileRepo.ALL_FILES.filter(e=>e.relatedSystems.includes(system));
         result.forEach(e=>{
-            e['dropdownFunc'] = function(){FileService.loadPictureWithLightFile(e);} 
+            e['dropdownFunc'] = function(){
+                event.stopPropagation();
+                FileService.loadPictureWithLightFile(e);
+            } 
             e.itemText = e.fileNumber;
         })
         return result;
     }
 
     static setFileDropdownMenu(){
-        FileService.fileMenu.dropdownMenu(FileService.setUpCategories(),[{'data-file-id':'id'}],['custom-class'],GlobalVariables.LEFT);
+        FileService.fileMenu.dropdownMenu(FileService.setUpCategories(),[{'data-file-id':'id'}],['smallBtn','green'],GlobalVariables.LEFT);
     }
 
     static toggleFileButtonContent(){
@@ -147,7 +153,8 @@ class FileService{
         picture.setAttribute('data-file-id', file.id);
         HighlightService.removeAllHighlights();
         FileRepo.FILE_WITH_POINTS = await FileService.fileController.getFileFromDbByNumber(file.fileNumber);
-        AreaService.setAreas(EqRepo.getEqList());
+        EqRepo.EQ_LIST = FileRepo.FILE_WITH_POINTS.points;
+        AreaService.setAreas(EqRepo.EQ_LIST);
     }
 
 }

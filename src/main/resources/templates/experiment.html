@@ -97,7 +97,7 @@
 
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
     <script type="module" src="/functions/Main.js"></script>
-<script>
+<script type="module">
 
     let container = document.getElementById('items');
     let picture = document.getElementById('picture');
@@ -107,17 +107,7 @@
     let mode = document.getElementById('mode').getAttribute('content');
     let popups = [];
 
-    pictureContainer.addEventListener('mousedown',(event)=>{
-        if(event.button===0){
-            event.preventDefault();
-            relocateHighlightsWithPicture(event);
-        }
 
-    
-});
-const zoom = zoomPicture.bind(null,picture);
-pictureContainer.addEventListener('wheel',zoom);
-document.addEventListener('mousedown',handleMouseDown);
 </script>
 
 

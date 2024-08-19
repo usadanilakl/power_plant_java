@@ -2,6 +2,8 @@ import GlobalVariables from './global/GlobalVariables.js';
 import EqRepo from './repository/EqRepo.js';
 import FileService from './service/file/FileService.js';
 import AreaService from './service/picture/AreaService.js';
+import HighlightService from './service/picture/HighlightService.js';
+import ResizeRelocate from './service/picture/ResizeRelocate.js';
 
 class Main{
     
@@ -26,7 +28,18 @@ class Main{
             FileService.toggleFileButtonContent();
         });
 
-        AreaService.setAreas(EqRepo.getEqList());
+        AreaService.setAreas(EqRepo.EQ_LIST);
+
+        GlobalVariables.PICTURE_CONTAINER.addEventListener('mousedown',(event)=>{
+            if(event.button===0){
+                event.preventDefault();
+                HighlightService.relocateHighlightsWithPicture(event);
+            }
+        });
+
+        // const zoom = ResizeRelocate.zoomPicture.bind(null,picture);
+        // pictureContainer.addEventListener('wheel',zoom);
+        // document.addEventListener('mousedown',HighlightService. handleMouseDown);
 
 
 

@@ -14,6 +14,10 @@ class NewWindowService{
         return NewWindowDom.getEmptyWindow(header);
     }
 
+    static newInfoWindow(name){
+
+    }
+
 }
 export default NewWindowService;
 
