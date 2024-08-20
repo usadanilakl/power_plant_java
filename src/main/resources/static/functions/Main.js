@@ -10,6 +10,7 @@ class Main{
     async init(){
         console.log("Main is running")
         GlobalVariables.token = document.getElementById('token').getAttribute('content');
+        GlobalVariables.ALL = document.getElementById('all');
         GlobalVariables.PICTURE_CONTAINER = document.getElementById('picture-container');
         GlobalVariables.PICTURE = document.getElementById('picture');
         GlobalVariables.MAP = document.getElementById('map');
@@ -28,18 +29,9 @@ class Main{
             FileService.toggleFileButtonContent();
         });
 
-        AreaService.setAreas(EqRepo.EQ_LIST);
+        
 
-        GlobalVariables.PICTURE_CONTAINER.addEventListener('mousedown',(event)=>{
-            if(event.button===0){
-                event.preventDefault();
-                HighlightService.relocateHighlightsWithPicture(event);
-            }
-        });
-
-        // const zoom = ResizeRelocate.zoomPicture.bind(null,picture);
-        // pictureContainer.addEventListener('wheel',zoom);
-        // document.addEventListener('mousedown',HighlightService. handleMouseDown);
+        console.log("Main is done")
 
 
 
@@ -52,5 +44,17 @@ class Main{
 document.addEventListener('DOMContentLoaded',async (event)=>{
 
 await new Main().init();
+    console.log('then')
+    // AreaService.setAreas(EqRepo.EQ_LIST);
+    GlobalVariables.PICTURE_CONTAINER.addEventListener('mousedown',(event)=>{
+        if(event.button===0){
+            event.preventDefault();
+            console.log('mouse down')
+            ResizeRelocate.relocateHighlightsWithPicture(event);
+        }
+    });
 
- })
+    const zoom = ResizeRelocate.zoomPicture.bind(null,picture);
+    GlobalVariables.PICTURE_CONTAINER.addEventListener('wheel',zoom);
+    document.addEventListener('mousedown',HighlightService.handleMouseDown);
+});

@@ -1,5 +1,5 @@
 import GlobalVariables from "../../global/GlobalVariables.js";
-import NewWindowService from "../../service/windows/NewWindowService.js";
+import NewWindowService from "../../service/dom/NewWindowService.js";
 
 class NewWindowDom{
 

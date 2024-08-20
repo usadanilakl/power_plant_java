@@ -354,36 +354,36 @@ class ResizeRelocate{
     }
     
     static initResize(elementContainer, hide){
-        createResizeElements(elementContainer, hide);
+        ResizeRelocate.createResizeElements(elementContainer, hide);
     
         elementContainer.querySelector('.rbc').addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            resizeRBC(event,elementContainer);
+            ResizeRelocate.resizeRBC(event,elementContainer);
         });
     
         elementContainer.querySelector('.lbc').addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            resizeLBC(event,elementContainer);
+            ResizeRelocate.resizeLBC(event,elementContainer);
         });
     
         elementContainer.querySelector('.ruc').addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            resizeRUC(event,elementContainer);
+            ResizeRelocate.resizeRUC(event,elementContainer);
         });
     
         elementContainer.querySelector('.luc').addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            resizeLUC(event,elementContainer);
+            ResizeRelocate.resizeLUC(event,elementContainer);
         });
     
         elementContainer.querySelector('.grab').addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            relocate(event,elementContainer);
+            ResizeRelocate.relocate(event,elementContainer);
         });
     }
     
@@ -468,7 +468,7 @@ class ResizeRelocate{
     
         infoMover.addEventListener('mousedown',()=>{
             event.preventDefault();
-            relocate(event,info);
+            ResizeRelocate.relocate(event,info);
         });
     }
     

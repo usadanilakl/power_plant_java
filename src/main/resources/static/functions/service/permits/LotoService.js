@@ -1,6 +1,6 @@
-import EqRepo from "../../repository/EqRepo";
-import ModeService from "../mode/ModeService";
-import NewWindowService from "../windows/NewWindowService";
+import EqRepo from "../../repository/EqRepo.js";
+import ModeService from "../mode/ModeService.js";
+import NewWindowService from "../dom/NewWindowService.js";
 
 class LotoService{
     static lotoWindow = null;
