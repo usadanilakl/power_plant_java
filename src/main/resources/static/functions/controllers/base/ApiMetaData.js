@@ -46,5 +46,22 @@ class ApiMetaData{
             }
         }
     }
+    static deleteOptions(data){
+        if(data)return{
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': GlobalVariables.token,
+                'Content-Type': 'application/json'
+            },
+            body:data
+        }
+        else return{
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': GlobalVariables.token,
+                'Content-Type': 'application/json'
+            }
+        }
+    }
 }
 export default ApiMetaData;
