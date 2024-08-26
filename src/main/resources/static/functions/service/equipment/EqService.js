@@ -1,4 +1,6 @@
 import EqRepo from "../../repository/EqRepo.js";
+import FormService from "../dom/FormService.js";
+import NewWindowService from "../dom/NewWindowService.js";
 import ModeService from "../mode/ModeService.js";
 import LotoService from "../permits/LotoService.js";
 import ResizeRelocate from "../picture/ResizeRelocate.js";
@@ -20,20 +22,19 @@ class EqService extends BaseEqService{
     }
 
     static async fillPointInfoWindow(point){
-        let form = await buildFormFromObject(point); 
-        let infoFrame = document.getElementById('infoFramePoint');
-        let infoContainer = document.getElementById('infoWindowPoint');
-        if(infoContainer === null) newInfoWindow("Point");
-        if(infoFrame.classList.contains('hide')) infoFrame.classList.remove('hide');
-    
-        infoContainer.innerHTML = "";
-        infoContainer.appendChild(form);
+        let w = document.getElementById('point-info-window');
+        if(w) w.parentElement.removeChild(w);
+
+        let form = await FormService.buildFormFromObject(point); 
+        let infoFrame = NewWindowService.getNewWindow("Point");
+        infoFrame.setAttribute('data-window-type','point-info-window');
+        infoFrame.appendChild(form);
         
-        if(selectedArea.lotoPoints){
-            const list = await LotoService.lotoPointDropdown(selectedArea.lotoPoints); 
-            // infoContainer.appendChild(list);
-            document.getElementById('loto-point-container').appendChild(list);
-        } 
+        // if(selectedArea.lotoPoints){
+        //     const list = await LotoService.lotoPointDropdown(selectedArea.lotoPoints); 
+        //     // infoContainer.appendChild(list);
+        //     document.getElementById('loto-point-container').appendChild(list);
+        // } 
     }
 
 }

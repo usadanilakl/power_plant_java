@@ -3,37 +3,36 @@ import FileMenu from "../../dom/file/FileMenu.js";
 import GlobalVariables from "../../global/GlobalVariables.js";
 import EqRepo from "../../repository/EqRepo.js";
 import FileRepo from "../../repository/FileRepo.js";
+import DomBuilderService from "../dom/DomBuilderService.js";
 import AreaService from "../picture/AreaService.js";
 import HighlightService from "../picture/HighlightService.js";
 
 class FileService{
-    static fileController = new FileController();
-    static fileMenu = new FileMenu();
 /**************************************************************************************************************
  *Server Data Handling
  *************************************************************************************************************/
 
- static async getFile(id){return this.fileController.getFile(id);}
- static async updateFile(file){return this.fileController.patchFile(file);}
+ static async getFile(id){return FileController.getFile(id);}
+ static async updateFile(file){return FileController.patchFile(file);}
 
 /**************************************************************************************************************
  *Set file data in memory
  *************************************************************************************************************/
 
     static async setFiles(){
-        FileRepo.ALL_FILES = await FileService.fileController.getAllFiles();
+        FileRepo.ALL_FILES = await FileController.getAllFiles();
         return FileRepo.ALL_FILES;
     }
     static async setFileCategories(){
-        FileRepo.FILE_CATEGORIES = await this.fileController.getFileCategories();
+        FileRepo.FILE_CATEGORIES = await FileController.getFileCategories();
         return FileRepo.FILE_CATEGORIES;
     }
     static async setFileVendors(){
-        FileRepo.FILE_VENDORS = await this.fileController.getFileVendors();
+        FileRepo.FILE_VENDORS = await FileController.getFileVendors();
         return FileRepo.FILE_VENDORS;
     }
     static async setFileSystems(){
-        FileRepo.FILE_SYSTEMS = await this.fileController.getFileSystems();
+        FileRepo.FILE_SYSTEMS = await FileController.getFileSystems();
         return FileRepo.FILE_SYSTEMS;
     }
 
@@ -55,7 +54,7 @@ class FileService{
                 let list = event.target.querySelector('ul');
                 event.stopPropagation();
                 if(list!=null) event.target.removeChild(list);
-                else FileService.fileMenu.dropdownMenu(e.getContent(e.value),[],['smallBtn','blue'], event.target);
+                else FileMenu.dropdownMenu(e.getContent(e.value),[],['smallBtn','blue-no-hover'], event.target);
             }.bind(e) 
         })
         result.forEach(e=>e.itemText = e.value)
@@ -75,7 +74,7 @@ class FileService{
                 let list = event.target.querySelector('ul');
                 event.stopPropagation();
                 if(list!=null) event.target.removeChild(list);
-                else FileService.fileMenu.dropdownMenu(this.getContent(),[{'data-file-name':'name'},{'data-file-number':'fileNumber'},{'data-object-type':'objectType'}],['smallBtn','blue'], event.target);
+                else FileMenu.dropdownMenu(this.getContent(),[{'data-file-name':'name'},{'data-file-number':'fileNumber'},{'data-object-type':'objectType'}],['smallBtn','yellow-no-hover'], event.target);
             }.bind(i);
             vendors.push(i);
         });
@@ -95,7 +94,7 @@ class FileService{
                 let list = event.target.querySelector('ul');
                 event.stopPropagation();
                 if(list!=null) event.target.removeChild(list);
-                else FileService.fileMenu.dropdownMenu(this.getContent(),[{'data-file-name':'name'},{'data-file-number':'fileNumber'},{'data-object-type':'objectType'}],['smallBtn','blue'], event.target);
+                else FileMenu.dropdownMenu(this.getContent(),[{'data-file-name':'name'},{'data-file-number':'fileNumber'},{'data-object-type':'objectType'}],['smallBtn','blue-no-hover'], event.target);
             }.bind(i);
             systems.push(i);
         });
@@ -127,7 +126,7 @@ class FileService{
     }
 
     static setFileDropdownMenu(){
-        FileService.fileMenu.dropdownMenu(FileService.setUpCategories(),[{'data-file-id':'id'}],['smallBtn','green'],GlobalVariables.LEFT);
+        FileMenu.dropdownMenu(FileService.setUpCategories(),[{'data-file-id':'id'}],['smallBtn','green-no-hover'],GlobalVariables.LEFT);
     }
 
     static toggleFileButtonContent(){
@@ -152,7 +151,7 @@ class FileService{
         };
         picture.setAttribute('data-file-id', file.id);
         HighlightService.removeAllHighlights();
-        FileRepo.FILE_WITH_POINTS = await FileService.fileController.getFileFromDbByNumber(file.fileNumber);
+        FileRepo.FILE_WITH_POINTS = await FileController.getFileFromDbByNumber(file.fileNumber);
         EqRepo.EQ_LIST = FileRepo.FILE_WITH_POINTS.points;
         AreaService.setAreas(EqRepo.EQ_LIST);
     }

@@ -8,7 +8,7 @@ class NewWindowDom{
 
         let newWindow = document.createElement('div');
         newWindow.classList.add('newWindow');
-        newWindow.setAttribute('id','windowNo'+ windowId++);
+        newWindow.setAttribute('id','windowNo'+ NewWindowService.windowId++);
         GlobalVariables.ALL.appendChild(newWindow);
         
         let close = document.createElement('button');

@@ -16,61 +16,61 @@ class FileController extends Controller{
     static FILE_SYSTEMS_URL = FileController.BASE_URL+"/get-systems";
     static FILE_BY_NUMBER_URL = FileController.BASE_URL+'/get-by-number';
 
-    async getAllFiles(){
+    static async getAllFiles(){
         return await super.request(FileController.CRUD_URL,ApiMetaData.getOptions())
     }
 
-    async patchFile(file){
+    static async patchFile(file){
         return await super.request(FileController.CRUD_URL,ApiMetaData.patchOptions(JSON.stringify(file)))
     }
 
-    async getFile(id){
+    static async getFile(id){
         return await super.request(FileController.CRUD_URL+id,ApiMetaData.getOptions())
     }
 
-    async getFileCategories(){
+    static async getFileCategories(){
         return await super.request(FileController.FILE_CATEGORIES_URL,ApiMetaData.getOptions);
     }
 
-    async getFileVendors(){
+    static async getFileVendors(){
         return await super.request(FileController.FILE_VENDORS_URL,ApiMetaData.getOptions);
     }
 
-    async getFileSystems(){
+    static async getFileSystems(){
         return await super.request(FileController.FILE_SYSTEMS_URL,ApiMetaData.getOptions);
     }
 
-    async getFileFromDbByNumber(number){
+    static async getFileFromDbByNumber(number){
         return await super.request(FileController.FILE_BY_NUMBER_URL+'/'+number, ApiMetaData.getOptions());
     }
     
-    async getCompletedFiles(){
+    static async getCompletedFiles(){
         return await super.request(FileController.COMPLETED_FILES_URL,ApiMetaData.getOptions());
     }
     
-    async getIncompleteFiles(){
+    static async getIncompleteFiles(){
         return await super.request(FileController.INCOMPLETE_FILES_URL,ApiMetaData.getOptions());
     }
     
-    async updateFileStatus(id,status){
-        await this.updateFileEditStep('eqTagNumber',id);
+    static async updateFileStatus(id,status){
+        await FileController.updateFileEditStep('eqTagNumber',id);
         return await super.request(FileController.BASE_URL+'/'+id+'/'+status,ApiMetaData.putOptions());
     }
     
-    async updateFileEditStep(step, id){
+    static async updateFileEditStep(step, id){
         let empty = {};
         empty.id = FileRepo.FILE_WITH_POINTS.id;
         if(id)empty.id = id;
         empty.bulkEditStep = step;
 
-        return await this.patchFile(empty);
+        return await FileController.patchFile(empty);
     }
     
-    async getSkippedFiles(){
+    static async getSkippedFiles(){
         return await super.request(FileController.CRUD_URL+'skip',ApiMetaData.getOptions());
     }
     
-    async getPdfAndConvertToJpg(id){
+    static async getPdfAndConvertToJpg(id){
         return await super.request(FileController.CRUD_URL+'convert/'+id,ApiMetaData.getOptions());
     }
     

@@ -59,6 +59,17 @@ ul {
     color: black;
 }
 
+.white-text{
+    color:white;
+}
+
+.centered-element {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
 /*button, #buttons li, #file-input{*/
 /*    !* display: inline-block; *!*/
 /*    padding: 10px 20px;*/

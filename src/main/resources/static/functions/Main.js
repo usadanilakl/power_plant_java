@@ -1,5 +1,9 @@
 import GlobalVariables from './global/GlobalVariables.js';
+import CategoryRepo from './repository/CategoryRepo.js';
 import EqRepo from './repository/EqRepo.js';
+import FileRepo from './repository/FileRepo.js';
+import CategoryService from './service/category/CategoryService.js';
+import DomBuilderService from './service/dom/DomBuilderService.js';
 import FileService from './service/file/FileService.js';
 import AreaService from './service/picture/AreaService.js';
 import HighlightService from './service/picture/HighlightService.js';
@@ -15,12 +19,17 @@ class Main{
         GlobalVariables.PICTURE = document.getElementById('picture');
         GlobalVariables.MAP = document.getElementById('map');
         GlobalVariables.LEFT =document.getElementById('left');
+        GlobalVariables.RIGHT =document.getElementById('right');
+        GlobalVariables.LOWER =document.getElementById('lower');
         
 
         await FileService.setFiles();
         await FileService.setFileCategories();
         await FileService.setFileVendors();
         await FileService.setFileSystems();
+
+        await CategoryService.setCategoryAliases();
+        await CategoryService.setCategoryObjects();
 
         FileService.setFileDropdownMenu();
 
@@ -57,4 +66,10 @@ await new Main().init();
     const zoom = ResizeRelocate.zoomPicture.bind(null,picture);
     GlobalVariables.PICTURE_CONTAINER.addEventListener('wheel',zoom);
     document.addEventListener('mousedown',HighlightService.handleMouseDown);
+
+    console.log(JSON.stringify(CategoryRepo.ALIASES));
+
+    // let object = EqRepo.EQ_LIST.find(f=>f.eqType.name === "Manual Valve");
+    // GlobalVariables.LEFT.appendChild(await DomBuilderService.buildInputDdropdown('Create Item',['hello', 'good buy', 'salem'],'create-item'));
+
 });

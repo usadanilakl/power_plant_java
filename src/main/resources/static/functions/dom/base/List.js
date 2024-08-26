@@ -1,7 +1,7 @@
 import BaseDomBuilder from "./BaseDomBuilder.js";
 
 class List extends BaseDomBuilder{
-    item(object,attributes,styles,actions){
+    static item(object,attributes,styles,actions){
         let i = super.createElement('li', attributes, styles, actions)
         i.textContent = object.itemText;
 
@@ -14,7 +14,7 @@ class List extends BaseDomBuilder{
         return i;
     }
 
-    list(attributes,styles){
+    static list(attributes,styles){
         let l = super.createElement('ul',attributes,styles,null)
         return l;
     }

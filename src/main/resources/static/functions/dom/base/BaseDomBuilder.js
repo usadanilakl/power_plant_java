@@ -1,5 +1,5 @@
 class BaseDomBuilder{
-    createElement(element,attributes,styles,actions){
+    static createElement(element,attributes,styles,actions){
         let i = document.createElement(element);
 
         //Set attirbutes for the item        
@@ -27,9 +27,12 @@ class BaseDomBuilder{
         }
         return i;
     }
+    static createElementWithSettings(set){
+        return BaseDomBuilder.createElement(set.element, set.attributes, set.styles, set.actions);
+    }
 
-    createContainer(attributes, styles){
-        let c = this.createElement('div', attributes, styles, null)
+    static createContainer(attributes, styles){
+        let c = BaseDomBuilder.createElement('div', attributes, styles, null)
     }
 }
 export default BaseDomBuilder;

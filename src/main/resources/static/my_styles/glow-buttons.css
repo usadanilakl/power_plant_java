@@ -18,6 +18,10 @@
     box-shadow: 0 0 1px greenyellow, 0 0 20px greenyellow, 0 0 10px greenyellow;
 }
 
+.green-no-nover {
+    box-shadow: 0 0 1px greenyellow, 0 0 20px greenyellow, 0 0 10px greenyellow;
+}
+
 .green:hover {
     transform: scale(1.1);
     box-shadow: 0 0 10px greenyellow, 0 0 20px greenyellow, 0 0 60px greenyellow;
@@ -27,12 +31,20 @@
     box-shadow: 0 0 1px skyblue, 0 0 20px skyblue, 0 0 10px skyblue;
 }
 
+.blue-no-hover {
+    box-shadow: 0 0 1px skyblue, 0 0 20px skyblue, 0 0 10px skyblue;
+}
+
 .blue:hover {
     transform: scale(1.1);
     box-shadow: 0 0 10px skyblue, 0 0 20px skyblue, 0 0 60px skyblue;
 }
 
 .yellow {
+    box-shadow: 0 0 1px yellow, 0 0 20px yellow, 0 0 10px yellow;
+}
+
+.yellow-no-hover {
     box-shadow: 0 0 1px yellow, 0 0 20px yellow, 0 0 10px yellow;
 }
 
