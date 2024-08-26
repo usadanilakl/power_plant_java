@@ -6,7 +6,7 @@ class DomBuilderService{
     static buildList(attributes,styles){return List.list(attributes,styles);}
     static buildItem(obj,attributes,styles,actions){return List.item(obj,attributes,styles,actions);}
     static buildInputWithLabelAndControls(labelText,placeholderText,id){return Input.buildInputWithLabelAndControls(labelText,placeholderText,id)}
-    static buildCatInputDropdownWithControls(object,key){return Dropdown.buildCatInputDropdown(object,key);}
+    static async buildCatInputDropdownWithControls(object,key){return await Dropdown.buildCatInputDropdown(object,key);}
     static buildInputDdropdown(header, items, id){return Dropdown.buildInputDropdown(header, items, id)}
 }
 export default DomBuilderService;

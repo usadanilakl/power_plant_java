@@ -19,6 +19,7 @@ class AreaService{
         HighlightService.createHighlight(area);
         EqService.eqEditModeControl(); 
         EqRepo.SELECTED_EQ = EqRepo.getEqById(area.getAttribute('data-point-id'));
+        // EqRepo.SELECTED_EQ = EqRepo.EQ_LIST.find(e=>e.id+''===area.getAttribute('data-point-id'))
         EqService.fillPointInfoWindow(EqRepo.SELECTED_EQ);
         // let points = EqService.getExcelPointsByLabel(AreaRepo.SELECTED_AREA.tagNumber);
         // EqService.fillExcelPointInfoWindow(points);

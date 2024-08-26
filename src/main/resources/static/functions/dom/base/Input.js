@@ -51,6 +51,10 @@ class Input extends BaseDomBuilder{
         copyBtn.textContent = 'C';
         pasteBtn.textContent = 'P';
 
+        button.type = 'button';
+        copyBtn.type = 'button';
+        pasteBtn.type = 'button';
+
         button.classList.add('util-button');
         button.classList.add('smallBtn');
         button.classList.add('blue-no-hover');

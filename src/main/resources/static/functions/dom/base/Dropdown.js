@@ -44,7 +44,7 @@ class Dropdown extends BaseDomBuilder{
 
         input.classList.add('searchable-dropdown');
         input.setAttribute('data-object-field', key); //this is the field name of main object, ex: point.vendor/point.eqType
-        input.setAttribute('data-object-category', object[key].category.name); //this is category name for display, ex: Vendor/Equipment Type
+        input.setAttribute('data-object-category', key); //this is category name for display, ex: Vendor/Equipment Type
         input.setAttribute('data-object-id', object[key].id); //this is category object id from DB for proper mapping
         
         input.autocomplete = 'off';

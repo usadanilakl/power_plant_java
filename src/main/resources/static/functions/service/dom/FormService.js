@@ -48,7 +48,7 @@ class FormService{
             let label;
             let utilButton;
 
-            if(isCat)div = DomBuilderService.buildCatInputDropdownWithControls(point,e); 
+            if(isCat)div = await DomBuilderService.buildCatInputDropdownWithControls(point,e); 
             else div = DomBuilderService.buildInputWithLabelAndControls(e,'Type...',e);
 
             input = div.querySelector('input');
@@ -57,7 +57,7 @@ class FormService{
             form.appendChild(div);
             input.readOnly = true;
             
-            if(!point[e].name) input.value = point[e]; //assign value of given field to input field
+            if(point[e] && !point[e].name) input.value = point[e]; //assign value of given field to input field
             if(ModeService.MODES.editMode.state) input.readOnly = false;
             if(FormService.hideFormFields(point, e)) input.parentElement.classList.add('hide'); //this hides all listed fields
             
@@ -65,7 +65,7 @@ class FormService{
                 let cat = CategoryRepo.OBJECTS.find(c=>c.alias===e);
                 if(!point[e]) point[e] = {id:null,category:cat,name:"no data"};
                 input.value = point[e].name
-                if(ModeService.MODES.editMode.state) editButton.addEventListener('click',()=>CategoryPopup.setPopup(point,e));
+                if(ModeService.MODES.editMode.state || true) utilButton.addEventListener('click',()=>CategoryPopup.setPopup(e,point,e));
             }
     
         
@@ -103,8 +103,8 @@ class FormService{
             // });
         }
     
-        return form;
     }
+    return form;
 }
     
     static filterOptions(input, div) {
@@ -157,8 +157,8 @@ class FormService{
     
     
     static hideFormFields(point, key){
-        if(point.objectType === "Equipment" && hiddenEquipmentFields.includes(key)) return true;
-        if(point.objectType === "LotoPoint" && hiddenLotoPointFields.includes(key)) return true;
+        if(point.objectType === "Equipment" && FormService.hiddenEquipmentFields.includes(key)) return true;
+        if(point.objectType === "LotoPoint" && FormService.hiddenLotoPointFields.includes(key)) return true;
         return false;
     }
     
@@ -174,14 +174,12 @@ class FormService{
     
     
     static changeDetector(form){
-        getDataFromForm(form, newFormData);
-        console.log(newFormData.description);
-        console.log(oldFormData.description);
+        FormService.getDataFromForm(form, FormService.newFormData);
         let isChanged = false;
         if(Object.keys(oldFormData).length>0){
-            isChanged = !compareObjects(oldFormData, newFormData);
+            isChanged = !FormService.compareObjects(FormService.oldFormData, FormService.newFormData);
         }
-        oldFormData = {...newFormData};
+        FormService.oldFormData = {...FormService.newFormData};
         return isChanged;
     }
     
@@ -202,7 +200,7 @@ class FormService{
             const val1 = obj1[key];
             const val2 = obj2[key];
             if (typeof val1 === 'object' && typeof val2 === 'object') {
-                return compareObjects(val1, val2); // Recursively compare nested objects
+                return FormService.compareObjects(val1, val2); // Recursively compare nested objects
             }
             return val1 === val2;
         });

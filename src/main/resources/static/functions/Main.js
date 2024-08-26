@@ -70,6 +70,9 @@ await new Main().init();
     console.log(JSON.stringify(CategoryRepo.ALIASES));
 
     // let object = EqRepo.EQ_LIST.find(f=>f.eqType.name === "Manual Valve");
+    // console.log(JSON.stringify(object));
+    // let ob = EqRepo.EQ_LIST.find(e=>e.id===object.id)
+    // console.log(ob===object)
     // GlobalVariables.LEFT.appendChild(await DomBuilderService.buildInputDdropdown('Create Item',['hello', 'good buy', 'salem'],'create-item'));
 
 });

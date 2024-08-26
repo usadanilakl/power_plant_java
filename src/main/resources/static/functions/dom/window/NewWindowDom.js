@@ -1,5 +1,6 @@
 import GlobalVariables from "../../global/GlobalVariables.js";
 import NewWindowService from "../../service/dom/NewWindowService.js";
+import ResizeRelocate from "../../service/picture/ResizeRelocate.js";
 
 class NewWindowDom{
 
@@ -49,31 +50,31 @@ class NewWindowDom{
         rbc.addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            resizeRBC(event,newWindow);
+            ResizeRelocate.resizeRBC(event,newWindow);
         });
         
         lbc.addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            resizeLBC(event,newWindow);
+            ResizeRelocate.resizeLBC(event,newWindow);
         });
         
         ruc.addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            resizeRUC(event,newWindow);
+            ResizeRelocate.resizeRUC(event,newWindow);
         });
         
         luc.addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            resizeLUC(event,newWindow);
+            ResizeRelocate.resizeLUC(event,newWindow);
         });
 
         move.addEventListener('mousedown',()=>{
             event.preventDefault();
             event.stopImmediatePropagation();
-            relocate(event,newWindow);
+            ResizeRelocate.relocate(event,newWindow);
             NewWindowService.bringOnTop(newWindow);
         });
 
