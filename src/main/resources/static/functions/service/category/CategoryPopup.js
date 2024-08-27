@@ -15,9 +15,16 @@ class CategoryPopup{
 
         editValueInput.querySelector('label').textContent = "Existing Item to Edit";
         editValueInput.querySelector('input').placeholder = "Select "+object[key].category.name+" to Edit";
+        editValueInput.querySelector('input').setAttribute('data-input-type','edit');
+
         deleteValueInput.querySelector('label').textContent = "Existing Item to Delete";
         deleteValueInput.querySelector('input').placeholder = "Select "+object[key].category.name+" to Delete";
+        deleteValueInput.querySelector('input').setAttribute('data-input-type','delete');
+
         newValueInput.querySelector('input').placeholder = "Type New "+object[key].category.name+' Name';
+        newValueInput.querySelector('input').setAttribute('data-input-type','new');
+
+
 
         newValueInput.classList.add('rounded-corner-container');
         editValueInput.classList.add('rounded-corner-container');

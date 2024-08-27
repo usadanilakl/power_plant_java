@@ -21,20 +21,22 @@ class CategoryService{
         return false;
     }
 
-    static editValue(){
-        // let inputValue = document.getElementById('value-name');
-        // let editValue = document.getElementById('edit-existing-input');
-        // let deleteValue = document.getElementById('delete-existing-input');
+    static async editValue(popup){
+        let newValue = popup.querySelector('[data-input-type="new"]');
+        let editValue = popup.querySelector('[data-input-type="edit"]');
+        let deleteValue = popup.querySelector('[data-input-type="delete"]');
 
-        // if(editValue.value!==null && editValue.value!==""){
-        //     crudValue("PUT",category, editValue.value, inputValue.value);
-        // } 
-        // else if(deleteValue.value!==null && deleteValue.value!==""){
-        //    crudValue("DELETE",category, deleteValue.getAttribute('data-object-id'), null); 
-        // } 
-        // else{
-        //     crudValue("POST",category, inputValue.value, null); 
-        // } 
+        let response;
+
+        if(editValue.value!==null && editValue.value!==""){
+            response = CategoryController.updateValue();
+        } 
+        else if(deleteValue.value!==null && deleteValue.value!==""){
+            response = CategoryController.deleteValueById(deleteValue.getAttribute('data-object-id')); 
+        } 
+        else{
+            response = CategoryController.createNewValue()
+        } 
     }
 }
 export default CategoryService;
