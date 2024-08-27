@@ -1,3 +1,4 @@
+import CategoryRepo from "../../repository/CategoryRepo.js";
 import CategoryService from "../../service/category/CategoryService.js";
 import BaseDomBuilder from "./BaseDomBuilder.js";
 import Input from "./Input.js";
@@ -35,16 +36,18 @@ class Dropdown extends BaseDomBuilder{
     }
 
     static async buildCatInputDropdown(object, key){
-        let container = Input.buildInputWithLabelAndControls(object.name,"Type->Select");
+        let container = Input.buildInputWithLabelAndControls(object.name,"Type/Select");
         const input = container.querySelector('input');
         const items = await CategoryService.getValuesOfCategoryAlias(key);
         const options = Dropdown.buildDropdownOptionsFromObject(key,items);
+        let cat = CategoryRepo.OBJECTS.find(c=>c.alias===key);
+        if(!object[key]) object[key] = {id:null,category:cat};
 
         container.appendChild(options);
 
         input.classList.add('searchable-dropdown');
         input.setAttribute('data-object-field', key); //this is the field name of main object, ex: point.vendor/point.eqType
-        input.setAttribute('data-object-category', key); //this is category name for display, ex: Vendor/Equipment Type
+        input.setAttribute('data-object-category', cat.name); //this is category name for display, ex: Vendor/Equipment Type
         input.setAttribute('data-object-id', object[key].id); //this is category object id from DB for proper mapping
         
         input.autocomplete = 'off';

@@ -2,7 +2,6 @@
 class Controller{
     static async request(url,metadata,responseType){
         try {
-            console.log("This is the url: " +url)
             const response = await fetch(url, metadata);
         
             if (!response.ok) {

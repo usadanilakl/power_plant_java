@@ -57,15 +57,15 @@ class Input extends BaseDomBuilder{
 
         button.classList.add('util-button');
         button.classList.add('smallBtn');
-        button.classList.add('blue-no-hover');
+        button.classList.add('green');
 
         copyBtn.classList.add('copy-button');
         copyBtn.classList.add('smallBtn');
-        copyBtn.classList.add('blue-no-hover');
+        copyBtn.classList.add('blue');
 
         pasteBtn.classList.add('paste-button');
         pasteBtn.classList.add('smallBtn');
-        pasteBtn.classList.add('blue-no-hover');
+        pasteBtn.classList.add('red');
 
         copyBtn.addEventListener('click',()=>UtilService.copyToClipboard(input));
         pasteBtn.addEventListener('click',()=>UtilService.pasteFromClipboardWithoutClearing(input));

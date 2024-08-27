@@ -13,7 +13,15 @@
     margin: 2px;
     background-color: black;
     cursor: pointer;
+    width: fit-content;
 }
+
+.last-clicked{
+    color:darkred;
+    transform: translateX(10px);
+    transition: transform 0.3s ease;
+}
+
 .green {
     box-shadow: 0 0 1px greenyellow, 0 0 20px greenyellow, 0 0 10px greenyellow;
 }

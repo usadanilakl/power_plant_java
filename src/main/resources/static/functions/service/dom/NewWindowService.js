@@ -10,8 +10,12 @@ class NewWindowService{
         element.style.zIndex=NewWindowService.zIndexOfWindows+'';
     }
 
-    static getNewWindow(header){
-        return NewWindowDom.getEmptyWindow(header);
+    static getNewWindow(header,all){
+        return NewWindowDom.getEmptyWindow(header,all);
+    }
+
+    static getPopupWindow(header,all){
+        return NewWindowDom.getEmptyWithdowWithCover(header,all);
     }
 
     static newInfoWindow(name){

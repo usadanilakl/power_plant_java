@@ -56,16 +56,21 @@ class FormService{
             utilButton = div.querySelector('.util-button');
             form.appendChild(div);
             input.readOnly = true;
+            input.parentElement.style.width = '100%';
+            label.classList.add('white-text');
+            div.classList.add('rounded-corner-container');
+
             
             if(point[e] && !point[e].name) input.value = point[e]; //assign value of given field to input field
             if(ModeService.MODES.editMode.state) input.readOnly = false;
-            if(FormService.hideFormFields(point, e)) input.parentElement.classList.add('hide'); //this hides all listed fields
+            if(FormService.hideFormFields(point, e)) input.parentElement.parentElement.classList.add('hide'); //this hides all listed fields
             
             if(isCat){
                 let cat = CategoryRepo.OBJECTS.find(c=>c.alias===e);
                 if(!point[e]) point[e] = {id:null,category:cat,name:"no data"};
                 input.value = point[e].name
                 if(ModeService.MODES.editMode.state || true) utilButton.addEventListener('click',()=>CategoryPopup.setPopup(e,point,e));
+                label.textContent = cat.name;
             }
     
         

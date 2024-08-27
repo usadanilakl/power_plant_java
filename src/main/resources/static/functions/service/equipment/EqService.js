@@ -22,13 +22,15 @@ class EqService extends BaseEqService{
     }
 
     static async fillPointInfoWindow(point){
-        let w = document.getElementById('point-info-window');
+        let w = document.querySelector('[data-window-type="point-info-window"]');
         if(w) w.parentElement.removeChild(w);
 
         let form = await FormService.buildFormFromObject(point); 
-        let infoFrame = NewWindowService.getNewWindow("Point");
+        let infoFrame = NewWindowService.getNewWindow("Point",true);
         infoFrame.setAttribute('data-window-type','point-info-window');
         infoFrame.appendChild(form);
+        infoFrame.style.height = 'fit-content';
+        infoFrame.style.width = 'fit-content';
         
         // if(selectedArea.lotoPoints){
         //     const list = await LotoService.lotoPointDropdown(selectedArea.lotoPoints); 

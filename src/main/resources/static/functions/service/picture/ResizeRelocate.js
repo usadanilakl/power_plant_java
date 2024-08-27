@@ -125,8 +125,10 @@ class ResizeRelocate{
     
     }
 
-    static resizeWidth(event, element){
+    static resizeWidthRight(event, element){
         let size ={
+        elX : element.offsetLeft,
+        elY : element.offsetTop,           
         startX : 0,
         startY : 0,
         oldWitdth:0,
@@ -145,10 +147,49 @@ class ResizeRelocate{
         event.preventDefault();
         let change = event.clientX-size.startX;
         element.style.width = size.oldWitdth+change + 'px';
+        element.style.top = size.elY + 'px';
+        element.style.left = size.elX + 'px';
         //console.log(element.offsetWidth)
     }
         document.addEventListener('mousemove',handleMouseMove);
         document.addEventListener('mouseup',handleMouseUp);
+    
+    }
+
+    static resizeWidthLeft(event, element){
+        let screen = document.getElementById('all');
+        let size ={
+        startX : event.clientX,
+        startY : event.clientY,
+        oldWitdth:element.offsetWidth,
+        oldHeight:element.offsetHeight,
+        elLeft : element.offsetLeft,
+        elTop : element.offsetTop,
+        elRight : screen.offsetWidth - element.offsetWidth - element.offsetLeft,
+        elBottom : screen.offsetHeight - element.offsetHeight - element.offsetTop,
+        } 
+    
+        //console.log(size.elRight);
+    
+    const handleMouseUp = () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        }
+    
+    const handleMouseMove = (event)=>{
+        event.preventDefault();
+        let changeX = event.clientX-size.startX;
+        let changeY = event.clientY-size.startY;
+        element.style.left = '';
+        element.style.top = size.elTop + 'px';
+        element.style.right = size.elRight + 'px';
+        element.style.width = size.oldWitdth-changeX + 'px';
+        // element.style.height = size.oldHeight+changeY + 'px';
+    
+        //console.log(element.offsetWidth)
+    }
+        document.addEventListener('mousemove',handleMouseMove);
+        document.addEventListener('mouseup',handleMouseUp);
+    
     
     }
     

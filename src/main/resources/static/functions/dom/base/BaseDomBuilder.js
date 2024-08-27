@@ -32,7 +32,7 @@ class BaseDomBuilder{
     }
 
     static createContainer(attributes, styles){
-        let c = BaseDomBuilder.createElement('div', attributes, styles, null)
+        return BaseDomBuilder.createElement('div', attributes, styles, null)
     }
 }
 export default BaseDomBuilder;

@@ -69,6 +69,18 @@ ul {
     left: 50%;
     transform: translate(-50%, -50%);
   }
+  .rounded-corner-container {
+    background-color: black;
+    border-radius: 10px;
+    padding: 2px;
+    margin: 5px;
+  }
+
+  .full-width-container-right{
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+  }
 
 /*button, #buttons li, #file-input{*/
 /*    !* display: inline-block; *!*/

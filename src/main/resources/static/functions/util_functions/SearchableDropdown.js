@@ -204,4 +204,3 @@ function updateEqFormInfo(input){
     if(eqFormInfo.hasOwnProperty(key)) eqFormInfo[key] = input.value;
 }
 
-
