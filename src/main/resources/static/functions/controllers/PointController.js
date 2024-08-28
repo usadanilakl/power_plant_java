@@ -1,5 +1,6 @@
 let revisedExcelPoints = [];
-let oldLotoPoints = [];
+let oldExcelPoints = [];
+let currentLotoPoints = [];
 
 let addLotoPointToEqUrl = '/points/add-loto-point/' //{eqId}/{pointOldId}
 let baseEqUrl = '/points/';
@@ -30,6 +31,17 @@ function getPatchMetaDataWithBody(data){
 async function getRevisedExcelPoints(){
     let response = await fetch('/point/get-revised-excel-points');
     let data = await response.json();
+    
+    console.log(JSON.stringify(data[0]))
+    revisedExcelPoints = data;
+    return data;
+}
+
+async function getCurrentLotoPoints(){
+    console.log("running current loto points")
+    let response = await fetch('/loto-points-api/');
+    let data = await response.json();
+    console.log(JSON.stringify(data))
     revisedExcelPoints = data;
     return data;
 }

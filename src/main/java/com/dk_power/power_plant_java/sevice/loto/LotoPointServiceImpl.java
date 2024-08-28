@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.loto;
 
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
@@ -125,6 +126,11 @@ public class LotoPointServiceImpl implements LotoPointService {
     @Override
     public List<LotoPointDto> getByTagNumber(String tag) {
         return lotoPointRepo.findByTagNumber(tag).stream().map(this::convertToDto).toList();
+    }
+
+    @Override
+    public List<LotoPointDtoLight> getAllLight() {
+        return lotoPointRepo.getAllLight();
     }
 
     @Override

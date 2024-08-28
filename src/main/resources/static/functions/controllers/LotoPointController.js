@@ -6,6 +6,12 @@ async function getLotoPointByOldId(oldId){
     return data;
 }
 
+async function getLotoPointById(id){
+  const resp = await fetch(baseLotoPointUrl+'/'+id);
+  const data = await resp.json();
+  return data;
+}
+
 async function getEmptyLotoPoint(){
     const resp = await fetch(baseLotoPointUrl+'empty');
     const data = await resp.json();

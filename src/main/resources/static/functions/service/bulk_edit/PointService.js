@@ -42,7 +42,6 @@ function hideExcelFields(point,field){
     if(point.objectType === "RevisedLotoPoints" && hiddenRevisedPointFields.includes(field)) return true;
 }
 
-
 function getExcelPointsByLabel(label){
     let result = [];
     revisedExcelPoints.forEach(e=>{
@@ -62,6 +61,7 @@ function getExcelPointsByLabel(label){
     })
     return result;
 }
+
 function getOldPointsByLabel(label){
     let result = [];
     oldExcelPoints.forEach(e=>{
@@ -134,7 +134,7 @@ function excelPointDropdown(points,equipment){
             button.classList.add('smallBtn');
             button.classList.add('red');
         } 
-        else if(e.objectType==="RevisedLotoPoints"){
+        else if(e.objectType==="RevisedLotoPoints" || e.objectType==="LotoPoint"){
             button.classList.add('smallBtn');
             button.classList.add('lime');
         } 
@@ -152,7 +152,7 @@ function excelPointDropdown(points,equipment){
             }
         });
 
-        if(e.objectType === "RevisedLotoPoints") {
+        if(e.objectType === "RevisedLotoPoints" || e.objectType==="LotoPoint") {
             let addButton = document.createElement('button');
             buttons.appendChild(addButton);
             addButton.classList.add('addButtons');
@@ -162,7 +162,8 @@ function excelPointDropdown(points,equipment){
             addButton.classList.add('hide');
 
             const editModeAction = async function(){
-                let lotoPoint = await getLotoPointByOldId(e.originalId);
+                let lotoPoint = await getLotoPointById(e.id);
+                // let lotoPoint = await getLotoPointByOldId(e.originalId);
                 addLotoPoint(lotoPoint);
             }
             addButton.addEventListener('click',editModeAction);
@@ -257,6 +258,7 @@ async function fillExcelPointInfoWindow(points,eq){
 function excelPointSearch(searchValue){
     let result = [];
     revisedExcelPoints.forEach(e=>{
+        if(e.tagNumber && e.description)
         if(
             trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || 
             trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber)) ||

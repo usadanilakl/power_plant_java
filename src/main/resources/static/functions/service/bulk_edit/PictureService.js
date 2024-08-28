@@ -71,6 +71,9 @@ function setAreas(areas){
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
             highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
+            
+            console.log(revisedExcelPoints.length);
+            console.log(JSON.stringify(revisedExcelPoints[0]));
         })
         //doubleClick(shape, e);
         map.appendChild(area);

@@ -1,4 +1,3 @@
-// let transferDataTypes;
 //let allTransferData = [];
 let kiewitValves = [];
 let hrsgValves = [];

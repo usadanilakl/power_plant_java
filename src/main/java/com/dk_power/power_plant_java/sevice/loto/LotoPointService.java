@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.loto;
 
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
@@ -21,4 +22,7 @@ public interface LotoPointService extends ExcelTransferService<LotoPoint, LotoPo
     List<LotoPoint> getByValue(Value val);
 
     List<LotoPointDto> getByTagNumber(String tag);
+
+    List<LotoPointDtoLight> getAllLight();
+
 }

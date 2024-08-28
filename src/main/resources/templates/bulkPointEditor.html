@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="<http://www.thymeleaf.org>" xmlns="http://www.w3.org/1999/html">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -191,7 +191,7 @@
         let token = document.getElementById('token').getAttribute('content');
     </script>
     
-    <script src="/functions/globla/PointVariables.js"></script>
+    <!-- <script src="/functions/globla/PointVariables.js"></script> -->
     <script src="/functions/util_functions/util.js"></script>
     <script src="/functions/util_functions/SearchableDropdown.js"></script>
     <script src="/functions/util_functions/FormUtil.js"></script>
@@ -256,13 +256,15 @@
         loadPictureWithLightFile(incompletePid[0]);
 
         getAllCategoryObjects();
-        getRevisedExcelPoints();
+        // getRevisedExcelPoints();
+        getCurrentLotoPoints();
         getOldExcelPoints();
         getHrsgValvesFromDb();
         getKiewitValvesFromDb();
         getBypassesFromDb();
         getCompletedFiles();
-        
+
+
 
         let left = document.getElementById('lower').querySelector('ul');
         let item = document.createElement('li');
@@ -277,6 +279,7 @@
     }).then(()=>{
         // console.log(JSON.stringify(allAliases));
         // console.log(JSON.stringify(valuesByCategory));
+
     })
 
     pictureContainer.addEventListener('mousedown',(event)=>{

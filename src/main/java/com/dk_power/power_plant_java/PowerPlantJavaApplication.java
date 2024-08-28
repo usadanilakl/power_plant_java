@@ -4,6 +4,7 @@ package com.dk_power.power_plant_java;
 import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
 import com.dk_power.power_plant_java.dto.equipment.HtBreakerDto;
 import com.dk_power.power_plant_java.dto.equipment.HtPanelDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseElectricalPanel;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
