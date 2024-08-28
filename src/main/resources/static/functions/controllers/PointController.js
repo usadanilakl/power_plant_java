@@ -65,6 +65,12 @@ async function getPoint(id){
     return data;
 }
 
+async function getPointByTag(tag){
+    const response = await fetch('/points/get-point-by-tag/'+tag);
+    const data = await response.json();
+    return data;
+}
+
 async function getHtmlPointInfoForm(){
     const response = await fetch('/point/get-html-info-form');
     const data = await response.text();
@@ -133,6 +139,12 @@ async function deletePoint(id){
 /**********************************************************************************************************************8
  * Field By Field
  ***********************************************************************************************************************/
+async function updateEqAllFields(point){
+    const response = await fetch(baseEqApiUrl,getPatchMetaDataWithBody(point));
+    const data = await response.text();
+    return data;
+}
+
 async function updateEqTagNumber(point){
     let message = tagValidation(point.tagNumber);
     if(message!==null){

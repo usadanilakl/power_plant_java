@@ -1100,7 +1100,7 @@ function bindInputWithPoint(point,key){
     point[key] = input.value;
 }
 
-function acceptLotoPoint(point){
+async function acceptLotoPoint(point){
     const highlight = document.querySelector(`div.areaHighlights[data-point-id='${point.id}']`);
     const currentWindow = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
 
@@ -1109,7 +1109,30 @@ function acceptLotoPoint(point){
 
     if(editModes.eqTagNumber.state){
         bindInputWithPoint(point,'tagNumber');
-        updateEqTagNumber(point);
+        let pointsByTag = await getPointByTag(point.tagNumber);
+        if(!pointsByTag===null || pointsByTag.length>0){
+            point.location = pointsByTag[0].location;
+            point.system = pointsByTag[0].system;
+            point.eqType = pointsByTag[0].eqType;
+            point.description = pointsByTag[0].description;
+            let joinedLotoPoints = [];
+            // if(pointsByTag[0].lotoPoints){
+            //     pointsByTag[0].lotoPoints.forEach(e=>{if(!joinedLotoPoints.includes(e)) joinedLotoPoints.push(e)}); 
+            // }
+            // if(point.lotoPoints){
+            //     point.lotoPoints.forEach(e=>{if(!joinedLotoPoints.includes(e)) joinedLotoPoints.push(e)});
+            // } 
+
+            // pointsByTag[0].lotoPoints = joinedLotoPoints;
+            // point.lotoPoints = joinedLotoPoints;
+
+            // updateEqAllFields(pointsByTag[0]);
+            updateEqAllFields(point);
+            
+        }else{
+          updateEqTagNumber(point);  
+        }
+        
         removeResizeAndDisableLpConnection(highlight);
         let area = setAreaAsLotoPoint(highlight);
         all.removeChild(highlight);

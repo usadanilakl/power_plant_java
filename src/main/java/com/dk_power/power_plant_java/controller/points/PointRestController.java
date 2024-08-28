@@ -28,6 +28,10 @@ public class PointRestController {
     public ResponseEntity<EquipmentDto> getPoint(@PathVariable String id){
         return ResponseEntity.ok(equipmentService.getDtoById(id));
     }
+    @GetMapping("/get-point-by-tag/{tag}")
+    public ResponseEntity<List<EquipmentDto>> getPointByTag(@PathVariable String tag){
+        return ResponseEntity.ok(equipmentService.getByTagNumber(tag).stream().map(equipmentService::convertToDto).toList());
+    }
     @PatchMapping("/")
     public ResponseEntity<EquipmentDto> updateEquipment(@PathVariable String id, @RequestBody EquipmentDto dto){
         Equipment equipment = equipmentService.convertToEntity(dto);
