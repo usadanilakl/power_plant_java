@@ -596,26 +596,31 @@ async function handleMouseUp() {
         selectedArea = areaInfo;
         selectedArea.isNew = true;
         selectedArea.id = "new";
-        fileWithPoints.points.push(selectedArea);
 
 
         if(!isGettingText){
+            removeLastHighlight();
             let text = await getText(areaInfo.coordinates);
             saveInClipboard(text);
             selectedArea.tagNumber = text;
-            let points = getExcelPointsByLabel(selectedArea.tagNumber);
+            let points = getExcelPointsByLabel(text);
             fillExcelPointInfoWindow(points);
-            let area = createAreaElement(selectedArea);
+
+            let newEq = await createNewEq(selectedArea);
+            selectedArea = newEq;
+
+            let area = createAreaElement(newEq);
             area.addEventListener('click',()=>{
                 event.preventDefault();
-                removeAllHighlights();
-                createHighlight(area);
+                createHighlight(area,true);
             })
 
             map.appendChild(area);
             resizeNewArea(area);
-            createHighlight(area,true);
-            removeLastHighlight();
+            fileWithPoints.points.push(selectedArea);
+            let highlight = createHighlight(area,true);
+            highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
+            selectedBundle.push({"area":area,"eq":selectedArea,"highlight":highlight});
             //document.removeEventListener('mousedown',handleMouseDown);
         }else{
             let text = await getText(areaInfo.coordinates);

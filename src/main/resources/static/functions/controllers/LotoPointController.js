@@ -22,7 +22,15 @@ async function updateLotoPointDescription(point){
 }
 
 async function getLotoPointsByTag(tag){
-    const resp = await fetch(baseLotoPointUrl+'tag/'+tag);
-    const data = await resp.json();
-    return data;
+    try {
+        const resp = await fetch(baseLotoPointUrl + 'tag/' + tag);
+        if (!resp.ok) {
+          throw new Error('HTTP error! status: ' + resp.status);
+        }
+        const data = await resp.json();
+        return data;
+      } catch (error) {
+        console.error('Error:', error);
+        return [];
+      }
 }

@@ -101,8 +101,11 @@ async function addPointToEquipment(lotoPoint){
 }
 
 async function createNewEq(obj){
+    console.log(obj.id);
+    obj.id=null;
     const response = await fetch(baseEqUrl,getPostMetaDataWithBody(obj));
     const data = await response.json();
+    console.log(data.id)
     return data;
 }
 
