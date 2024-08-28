@@ -1113,7 +1113,8 @@ function acceptLotoPoint(point){
         removeResizeAndDisableLpConnection(highlight);
         let area = setAreaAsLotoPoint(highlight);
         all.removeChild(highlight);
-        all.removeChild(document.querySelector(`div.newWindow[data-point-id='${point.id}']`));
+        if(point.id)all.removeChild(document.querySelector(`div.newWindow[data-point-id='${point.id}']`));
+        else all.removeChild(document.querySelector(`div.newWindow[data-point-id='new']`));
         createHighlight(area)
     }
     if(editModes.eqDescription.state){

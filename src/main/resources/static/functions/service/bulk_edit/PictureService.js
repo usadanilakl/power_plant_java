@@ -10,6 +10,7 @@ let selectedBundle = [];
 let currentSizeCoefficient;
 let fileWithPoints;
 let isGettingText = false;
+let highlightIsEnabled = false;
 // let eqFormInfo; //moved to global variables
 
 function getPointByIdFromCurrentFile(id){
@@ -222,7 +223,7 @@ function createHighlight(area,withControls){
                     if (counter === 1) {
                         highlightOneClickFunction();
                     } else if (counter > 1) {
-                        selectedArea = selectedBundle.find(e=>e.highlight.id===highlight.id).eq;
+                        if(!selectedArea.isNew)selectedArea = selectedBundle.find(e=>e.highlight.id===highlight.id).eq;
                         fillHighlightInfo(highlight);
                         let points = getExcelPointsByLabel(selectedArea.tagNumber);
                         fillExcelPointInfoWindow(points);
@@ -599,6 +600,11 @@ async function handleMouseUp() {
 
 
         if(!isGettingText){
+            let text = await getText(areaInfo.coordinates);
+            saveInClipboard(text);
+            selectedArea.tagNumber = text;
+            let points = getExcelPointsByLabel(selectedArea.tagNumber);
+            fillExcelPointInfoWindow(points);
             let area = createAreaElement(selectedArea);
             area.addEventListener('click',()=>{
                 event.preventDefault();
@@ -610,7 +616,7 @@ async function handleMouseUp() {
             resizeNewArea(area);
             createHighlight(area,true);
             removeLastHighlight();
-            document.removeEventListener('mousedown',handleMouseDown);
+            //document.removeEventListener('mousedown',handleMouseDown);
         }else{
             let text = await getText(areaInfo.coordinates);
             saveInClipboard(text);
@@ -712,7 +718,15 @@ function updatePointInfo(highlight){
 }
 
 function createNewHighlight(){
-    document.addEventListener('mousedown',handleMouseDown);
+    if(highlightIsEnabled===false){
+        document.addEventListener('mousedown',handleMouseDown);
+        highlightIsEnabled = true;
+    }
+    else if(highlightIsEnabled===true){
+        document.addEventListener('mousedown',handleMouseDown);
+        highlightIsEnabled = false;
+    }
+        
 }
 
 function getTextToggle(){
@@ -745,9 +759,10 @@ function removeContextMenu(event){
 }
 
 function setAreaAsLotoPoint(highlight){
-    let point = getPointByIdFromCurrentFile(highlight.getAttribute('data-point-id'));
+    let point;
+    if(selectedArea.isNew) point = selectedArea;
+    else point = getPointByIdFromCurrentFile(highlight.getAttribute('data-point-id'));
     let areaId = highlight.id.slice(0,-1);
-    console.log(areaId)
     let area = document.getElementById(areaId);
     let directLotoPoint;
     if(point.lotoPoints!=null && point.lotoPoints.length>0){
