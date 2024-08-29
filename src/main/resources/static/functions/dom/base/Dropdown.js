@@ -90,6 +90,57 @@ class Dropdown extends BaseDomBuilder{
         return container;
     }
 
+    static async buildCatInputDropdownFromCatObj(object){
+        let container = Input.buildInputWithLabelAndControls(object.name,"Type/Select");
+        const input = container.querySelector('input');
+        const items = await CategoryService.getValuesOfCategoryAlias(object.alias);
+        const options = Dropdown.buildDropdownOptionsFromObject(object.alias,items);
+
+        container.appendChild(options);
+
+        input.classList.add('searchable-dropdown');
+        input.setAttribute('data-object-id', object.id);
+        
+        input.autocomplete = 'off';
+        input.addEventListener('focus', () => options.classList.add("show")); //to show dropdown items when input is selected
+        input.addEventListener('keyup', () => Dropdown.filterOptions(input,options)); //to filter options as user types into input field
+
+
+        document.addEventListener('click', function(event) { //this hides options if clicked away
+            var isClickInside = input.contains(event.target) || options.contains(event.target);
+            if (!isClickInside) {
+                options.classList.remove("show");
+            }
+        });
+    
+        options.addEventListener('click', function(event) { //this assignes value of the option to input field 
+            let opt = event.target;
+            if (opt.tagName.toLowerCase() === 'div') {
+                input.value = opt.textContent;
+                input.setAttribute('data-object-id',event.target.getAttribute('data-object-id'));
+                options.classList.remove("show");
+                object[key].id = opt.getAttribute('data-object-id');
+                object[key].name= opt.textContent ;//assign value from input field back to object;
+            }
+        });
+    
+
+        input.addEventListener("input",(event)=>{
+            let opt = event.target;
+            let isCat = true;
+            if(isCat){
+                object[key].id = opt.getAttribute('data-object-id');
+                object[key].name= opt.textContent ;//assign value from input field back to object;
+            }else{
+                object[key] = input.value;
+            }
+        })
+
+        
+
+        return container;
+    }
+
     static buildDropdownOptionsFromObject(id, items) {
         let dropdownContent = document.createElement('div');
         dropdownContent.classList.add('searchable-dropdown-content');

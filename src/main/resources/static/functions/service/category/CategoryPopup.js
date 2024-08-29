@@ -1,3 +1,4 @@
+import CategoryController from "../../controllers/category/CategoryController.js";
 import GlobalVariables from "../../global/GlobalVariables.js";
 import DomBuilderService from "../dom/DomBuilderService.js";
 import NewWindowService from "../dom/NewWindowService.js";
@@ -10,8 +11,7 @@ class CategoryPopup{
         const newValueInput = DomBuilderService.buildInputWithLabelAndControls("New Item Name:")
         const editValueInput = await DomBuilderService.buildCatInputDropdownWithControls(object,key);
         const deleteValueInput = await DomBuilderService.buildCatInputDropdownWithControls(object,key);
-        const submitButton = DomBuilderService.createElement('button',[],['smallBtn','red'],[CategoryService.editValue()])
-        const buttonWrapper = DomBuilderService.createContainer([],['full-width-container-right'])
+        const buttonWrapper = DomBuilderService.createContainer([],['full-width-container-right']);
 
         editValueInput.querySelector('label').textContent = "Existing Item to Edit";
         editValueInput.querySelector('input').placeholder = "Select "+object[key].category.name+" to Edit";
@@ -30,16 +30,18 @@ class CategoryPopup{
         editValueInput.classList.add('rounded-corner-container');
         deleteValueInput.classList.add('rounded-corner-container');
 
-        submitButton.textContent = "Submit";
-
         popup.style.zIndex = '1000';
         popup.classList.add('centered-element');
 
         popup.appendChild(newValueInput);
         popup.appendChild(editValueInput);
         popup.appendChild(deleteValueInput);
-        buttonWrapper.appendChild(submitButton);
         popup.appendChild(buttonWrapper);
+
+        const submitAction = function(){CategoryService.editValue(popupContainer)}
+        const submitButton = DomBuilderService.createElement('button',[],['smallBtn','red'],[submitAction]);
+        submitButton.textContent = "Submit";
+        buttonWrapper.appendChild(submitButton);
 
         popup.style.width = 'fit-content';
         popup.style.maxWidth = '70%';
@@ -50,5 +52,58 @@ class CategoryPopup{
 
         return popupContainer;
     }
+
+    static async setupRefractorPopup(category,oldValue,points){
+
+        //build popup for refractor content
+        const catObj = await CategoryController.getCategoryByAlias(category);
+        const list = await CategoryController.getValuesOfCategoryAlias(category);
+        const popupHolder = NewWindowService.getPopupWindow("Refactor " + catObj.name,true);
+        const popup = popupHolder.querySelector('.newWindow');
+        const newValueDropdown = await DomBuilderService.buildCatInputDropdownFromCatObj(catObj);
+
+        popup.appendChild(newValueDropdown);
+        
+        popup.style.maxHeight = '80vh';
+        popup.style.maxWidth = '100%';
+        // popup.style.overflow = 'scroll';
+    
+        // buildDropdown("new-value",list,null);
+
+    
+        //build table with points
+        let hide = [
+            'id',
+            'objectType',
+            'name',
+            'coordinates',
+            'originalPictureSize',
+            'lotoPoints',
+            'specificLocation',
+            'files',
+            'mainFile'
+        ]
+        // let table = createTableFromObjects(points, hide);
+        // let tableContainer = document.createElement('div');
+        // tableContainer.appendChild(table);
+        // modalBody.appendChild(tableContainer);
+        // tableContainer.classList.add('table-container');
+        
+    
+        // let saveButton = popup.querySelector('#save');
+        // let newVal = function(){
+        //     let inputValue = document.getElementById('new-value-input');
+        //     deleteWithRefactor(oldValue,inputValue.getAttribute('data-object-id')); 
+        //     myModal.hide();
+        //     saveButton.removeEventListener('click', newVal);
+        //     let footer = saveButton.closest('.modal-footer');
+        //     if (footer) {
+        //         footer.removeChild(saveButton);
+        //     }
+        // }
+        // saveButton.addEventListener('click', newVal);
+        return popupHolder;
+    }
+    
 }
 export default CategoryPopup;

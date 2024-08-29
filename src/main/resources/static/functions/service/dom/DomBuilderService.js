@@ -8,6 +8,7 @@ class DomBuilderService extends BaseDomBuilder{
     static buildItem(obj,attributes,styles,actions){return List.item(obj,attributes,styles,actions);}
     static buildInputWithLabelAndControls(labelText,placeholderText,id){return Input.buildInputWithLabelAndControls(labelText,placeholderText,id)}
     static async buildCatInputDropdownWithControls(object,key){return await Dropdown.buildCatInputDropdown(object,key);}
+    static async buildCatInputDropdownFromCatObj(catObj){return await Dropdown.buildCatInputDropdownFromCatObj(catObj);}
     static buildInputDdropdown(header, items, id){return Dropdown.buildInputDropdown(header, items, id)}
 }
 export default DomBuilderService;

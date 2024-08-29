@@ -115,6 +115,7 @@ class NewWindowDom{
 
         newWind.style.borderRadius = '30px';
         newWind.style.backgroundColor = 'white';
+        newWind.style.paddingRight = '20px';
 
         popupBackground.classList.add('popup-background');
         popupBackground.appendChild(newWind);
