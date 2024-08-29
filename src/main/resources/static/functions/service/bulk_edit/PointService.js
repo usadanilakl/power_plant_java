@@ -45,7 +45,8 @@ function hideExcelFields(point,field){
 function getExcelPointsByLabel(label){
     let result = [];
     revisedExcelPoints.forEach(e=>{
-        if(e.tagNumber && formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e); //old version
+        if(e.tagNumber && formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);
+        if(e.description && trimToLowerCaseRemoveDashes(e.description).includes(trimToLowerCaseRemoveDashes(label))) result.push(e)
     })
     oldExcelPoints.forEach(e=>{
         if(formatLabel(e.tagNumber).includes(formatLabel(label)) ) result.push(e);

@@ -1540,17 +1540,23 @@ async function submitBulkEdit(){
         }
         if(editModes.lotoPointPosition.state){
             let lp = e.lotoPoints.find(el=>el.tagNumber===e.tagNumber);
-            lp.isoPos={};
-            lp.isoPos.id=value;
-            console.log(value)
-            await updateIsoPos(e,true);
+            if(lp){
+                lp.isoPos={};
+                lp.isoPos.id=value;
+                console.log(value)
+                await updateIsoPos(e,true);
+            }
+
         }
         if(editModes.lotoPointNormPosition.state){
             let lp = e.lotoPoints.find(el=>el.tagNumber===e.tagNumber);
-            lp.normPos={};
-            lp.normPos.id=value;
-            console.log(value)
-            await updateNormPos(e,true);
+            if(lp){
+                lp.normPos={};
+                lp.normPos.id=value;
+                console.log(value)
+                await updateNormPos(e,true);
+            }
+            
         }
         if(editModes.system.state){
             e[categoryAlias] = {};
