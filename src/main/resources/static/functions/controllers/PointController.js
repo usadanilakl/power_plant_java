@@ -41,7 +41,6 @@ async function getCurrentLotoPoints(){
     console.log("running current loto points")
     let response = await fetch('/loto-points-api/');
     let data = await response.json();
-    console.log(JSON.stringify(data))
     revisedExcelPoints = data;
     return data;
 }

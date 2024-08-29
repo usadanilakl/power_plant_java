@@ -258,14 +258,19 @@ async function fillExcelPointInfoWindow(points,eq){
 function excelPointSearch(searchValue){
     let result = [];
     revisedExcelPoints.forEach(e=>{
-        if(e.tagNumber && e.description)
-        if(
-            trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || 
-            trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber)) ||
-            trimToLowerCaseRemoveDashes(e.description).includes(trimToLowerCaseRemoveDashes(searchValue)) ||
-            trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.description))
-            // e.description.toLowerCase().indexOf(searchValue.toLowerCase)>-1
+        if(e.tagNumber){
+            if(
+                trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || 
+                trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber))
+            )result.push(e);
+        }
+         if(e.description){
+            if(
+                trimToLowerCaseRemoveDashes(e.description).includes(trimToLowerCaseRemoveDashes(searchValue)) ||
+                trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.description))
         ) result.push(e);
+         }
+            
     });
     oldExcelPoints.forEach(e=>{
         if(e.tagNumber!==""&&(trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber)))) result.push(e);

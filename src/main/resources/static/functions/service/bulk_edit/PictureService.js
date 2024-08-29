@@ -71,7 +71,7 @@ function setAreas(areas){
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
             highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
-            
+
             console.log(revisedExcelPoints.length);
             console.log(JSON.stringify(revisedExcelPoints[0]));
         })
@@ -723,6 +723,21 @@ function updatePointInfo(highlight){
     let result = JSON.stringify(updatedCoords);
     result = result.replace("{","").replace("}","");
     selectedArea.coordinates = result;
+
+    let ar = document.getElementById(highlight.id.slice(0,-1));
+    let arCoord = getAreaCoordinates(result);
+    highlight.id = arCoord+'h';
+    ar.id = arCoord;
+    ar.setAttribute('coords',arCoord);
+
+    let coefficient = picture.getBoundingClientRect().width/picture.naturalWidth;
+
+    let coord = ar.getAttribute('coords').split(",");
+    for(let i = 0; i<coord.length; i++){
+        coord[i] = coord[i]*coefficient;
+    }
+    ar.setAttribute('coords', ""+coord.join(","));
+    
 }
 
 function createNewHighlight(){

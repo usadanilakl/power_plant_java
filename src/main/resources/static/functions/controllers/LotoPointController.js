@@ -7,7 +7,7 @@ async function getLotoPointByOldId(oldId){
 }
 
 async function getLotoPointById(id){
-  const resp = await fetch(baseLotoPointUrl+'/'+id);
+  const resp = await fetch(baseLotoPointUrl+id);
   const data = await resp.json();
   return data;
 }
