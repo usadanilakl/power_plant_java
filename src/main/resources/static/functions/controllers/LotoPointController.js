@@ -29,7 +29,8 @@ async function updateLotoPointDescription(point){
 
 async function getLotoPointsByTag(tag){
     try {
-        const resp = await fetch(baseLotoPointUrl + 'tag/' + tag);
+        // const resp = await fetch(baseLotoPointUrl + 'tag/' + tag);
+        const resp = await fetch(baseLotoPointUrl + 'tag-and-tag-in-description/' + tag);
         if (!resp.ok) {
           throw new Error('HTTP error! status: ' + resp.status);
         }

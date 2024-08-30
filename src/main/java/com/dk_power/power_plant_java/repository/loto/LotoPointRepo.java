@@ -12,6 +12,8 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface LotoPointRepo extends BaseRepository<LotoPoint> {
+    List<LotoPoint> findByDescriptionContaining(String tag);
+
     LotoPoint findByOldId(String oldId);
 
     List<LotoPoint> findByNormPos(Value oldVal);

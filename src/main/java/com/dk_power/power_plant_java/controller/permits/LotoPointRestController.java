@@ -43,6 +43,20 @@ public class LotoPointRestController {
     public ResponseEntity<List<LotoPointDto>> getLotoPointByTag(@PathVariable String tag){
         return ResponseEntity.ok(lotoPointService.getByTagNumber(tag));
     }
+    @GetMapping("/tag-in-description/{tag}")
+    public ResponseEntity<List<LotoPointDto>> getLotoPointByTagInDescription(@PathVariable String tag){
+        return ResponseEntity.ok(lotoPointService.getByTagNumberInDescription(tag));
+    }
+
+    @GetMapping("/tag-and-tag-in-description/{tag}")
+    public ResponseEntity<List<LotoPointDto>> getLotoPointByTagAndTagInDescription(@PathVariable String tag){
+        List<LotoPointDto> list = new ArrayList<>();
+        List<LotoPointDto> byTagInDescription = lotoPointService.getByTagNumberInDescription(tag);
+        List<LotoPointDto> byTag = lotoPointService.getByTagNumber(tag);
+        if(byTag!=null)list.addAll(byTag);
+        if(byTagInDescription!=null)list.addAll(byTagInDescription);
+        return ResponseEntity.ok(list);
+    }
 
 
 }

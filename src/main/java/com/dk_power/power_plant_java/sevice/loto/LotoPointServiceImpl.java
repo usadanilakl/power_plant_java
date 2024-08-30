@@ -134,6 +134,11 @@ public class LotoPointServiceImpl implements LotoPointService {
     }
 
     @Override
+    public List<LotoPointDto> getByTagNumberInDescription(String tag) {
+        return lotoPointRepo.findByDescriptionContaining(tag).stream().map(this::convertToDto).toList();
+    }
+
+    @Override
     public void refactor(Value old, Value _new) {
         String cat = old.getCategory().getAlias();
         for (LotoPoint f : getByValue(old)) {

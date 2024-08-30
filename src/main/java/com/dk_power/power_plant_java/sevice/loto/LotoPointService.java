@@ -25,4 +25,6 @@ public interface LotoPointService extends ExcelTransferService<LotoPoint, LotoPo
 
     List<LotoPointDtoLight> getAllLight();
 
+    List<LotoPointDto> getByTagNumberInDescription(String tag);
+
 }
