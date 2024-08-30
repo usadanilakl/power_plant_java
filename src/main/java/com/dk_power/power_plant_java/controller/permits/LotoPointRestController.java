@@ -39,6 +39,10 @@ public class LotoPointRestController {
         if(entity == null) return ResponseEntity.ok("Loto Point is not found");
         else return ResponseEntity.ok(lotoPointService.save(dto).getTagNumber() + " was successfully saved - ");
     }
+    @PostMapping("/")
+    public ResponseEntity<LotoPointDto> createNew(@RequestBody LotoPointDto dto){
+        return ResponseEntity.ok(lotoPointService.convertToDto(lotoPointService.save(dto)));
+    }
     @GetMapping("/tag/{tag}")
     public ResponseEntity<List<LotoPointDto>> getLotoPointByTag(@PathVariable String tag){
         return ResponseEntity.ok(lotoPointService.getByTagNumber(tag));

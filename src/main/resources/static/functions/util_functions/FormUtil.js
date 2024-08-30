@@ -127,6 +127,10 @@ async function buildFormFromObject(point){
     
     if(point.objectType==="Equipment"){
 
+        
+        let infoFrame = document.getElementById('infoFramePoint');
+        let infoContainer = document.getElementById('infoWindowPoint');
+
         let lotoPointContainer = document.createElement('div');
         lotoPointContainer.id = 'loto-point-container';
         form.appendChild(lotoPointContainer);
@@ -140,6 +144,8 @@ async function buildFormFromObject(point){
         submitButton.addEventListener('click',()=>{
             updatePoint(point);
             changeSubmitButtonToGreen(submitButton);
+            if(infoContainer)infoContainer.innerHTML = "";
+            if(infoFrame)infoFrame.classList.add('hide');
         })
         form.appendChild(submitButton);
         // document.getElementById('infoWindowPoint').appendChild(submitButton);

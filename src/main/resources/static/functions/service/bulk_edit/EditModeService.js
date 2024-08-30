@@ -252,10 +252,14 @@ async function fillHighlightInfo(highlight){
             }
         }
 
+        let w = document.querySelector(`div.newWindow[data-point-id='${point.id}']`);
         let editWind = document.getElementById("point-info-"+point.id);
         let editAllButton = document.createElement('button');
         editAllButton.textContent = "Edit All Fields";
-        editAllButton.addEventListener('click',()=>fillPointInfoWindow(point));
+        editAllButton.addEventListener('click',()=>{
+            fillPointInfoWindow(point);
+            w.parentElement.removeChild(w);
+        });
         editWind.appendChild(editAllButton);
     }
 }
@@ -336,7 +340,6 @@ function enableLotoPointConnection(equipment){
 }
 
 function addLotoPoint(point,equipment){
-    revisedExcelPoints.push(point);
     if(equipment){
         if(!equipment.lotoPoints) equipment.lotoPoints = [];
         equipment.lotoPoints.push(point);

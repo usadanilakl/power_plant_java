@@ -306,9 +306,11 @@ function buildPointSearchField(){
 } 
 
 async function createNewLotoPoint(tag){
-    let newLotoPoint = await getEmptyLotoPoint();
+    let newLotoPoint = {};
     newLotoPoint.tagNumber = tag;
-    addLotoPoint(newLotoPoint);
+    let savedPoint = await createNew(newLotoPoint);
+    revisedExcelPoints.push(savedPoint);
+    addLotoPoint(savedPoint);
 }
 
 

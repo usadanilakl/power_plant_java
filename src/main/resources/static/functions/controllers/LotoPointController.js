@@ -41,3 +41,9 @@ async function getLotoPointsByTag(tag){
         return [];
       }
 }
+
+async function createNew(point){
+  const resp = await fetch(baseLotoPointUrl, getPostMetaDataWithBody(point));
+  const data = await resp.json();
+  return data;
+}
