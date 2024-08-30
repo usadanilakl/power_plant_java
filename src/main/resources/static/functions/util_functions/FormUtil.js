@@ -37,12 +37,12 @@ async function buildFormFromObject(point){
             if(!point[e]){
                 point[e] = {id:null,
                     category:cat,
-                    name:"no data"
+                    name:null
                 };
             } 
             
-            label.textContent = point[e].category.name;
-            input.value = point[e].name
+            if(point[e].name)label.textContent = point[e].category.name;
+            if(point[e].name)input.value = point[e].name
 
             input.setAttribute('data-object-field', e); //this is the field name of main object, ex: point.vendor/point.eqType
             input.setAttribute('data-object-category', point[e].category.name); //this is category name for display, ex: Vendor/Equipment Type

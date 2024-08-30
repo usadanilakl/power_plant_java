@@ -51,7 +51,7 @@ public class EquipmentDto extends BaseEquipmentDto {
                 ",\n coordinates='" + coordinates + '\'' +
                 ",\n originalPictureSize='" + originalPictureSize + '\'' +
                 ",\n mainFile='" + mainFile + '\'' +
-                ",\n lotoPoints='" + lotoPoints.stream().map(LotoPointDto::getTagNumber).collect(Collectors.joining(", ")) + '\'' +
+//                ",\n lotoPoints='" + lotoPoints.stream().map(LotoPointDto::getTagNumber).collect(Collectors.joining(", ")) + '\'' +
                 '}';
     }
 }

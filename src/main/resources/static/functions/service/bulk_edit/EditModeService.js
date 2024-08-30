@@ -251,6 +251,12 @@ async function fillHighlightInfo(highlight){
                 allInfoWindow.style.top = window.innerHeight-allInfoWindow.offsetHeight + 'px';
             }
         }
+
+        let editWind = document.getElementById("point-info-"+point.id);
+        let editAllButton = document.createElement('button');
+        editAllButton.textContent = "Edit All Fields";
+        editAllButton.addEventListener('click',()=>fillPointInfoWindow(point));
+        editWind.appendChild(editAllButton);
     }
 }
 
@@ -330,6 +336,7 @@ function enableLotoPointConnection(equipment){
 }
 
 function addLotoPoint(point,equipment){
+    revisedExcelPoints.push(point);
     if(equipment){
         if(!equipment.lotoPoints) equipment.lotoPoints = [];
         equipment.lotoPoints.push(point);
