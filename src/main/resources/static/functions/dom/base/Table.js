@@ -1,0 +1,73 @@
+import BaseDomBuilder from "./BaseDomBuilder.js";
+import DomBuilderService from "../../service/dom/DomBuilderService.js"
+import Input from "./Input.js";
+
+class Table extends BaseDomBuilder{
+
+    static buildTableFromObject(array, ignoreFields, style){
+        let table = super.createElement('table',[],['table',style],[]);
+        let thead = super.createElement('thead',[],['sticky-top'],[]);
+        let headerRow = super.createElement('tr',[],[],[]);
+        let index = super.createElement('th',[],[],[]);
+        let tbody = Table.createTableRows(ignoreFields,array)
+
+        index.textContent = "#";
+        headerRow.appendChild(index);
+
+        for(let key in array[0]){
+            if(ignoreFields && ignoreFields.includes(key)) continue;
+            headerRow.appendChild(this.tableHeaderCell(key));
+        }  
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        thead.appendChild(headerRow);  
+
+        return table;
+    }
+
+    static tableHeaderCell(key){
+        let th = super.createElement('th',[{'id':'th-'+key}],[],[]);
+        let search = Input.buildInputWithButton("Filter "+key,'search-'+key);
+        let sort = super.createElement('button',[{'id':'sort-'+key}],[],[]);
+
+        sort.textContent = key;
+
+        search.appendChild(sort);
+        th.appendChild(search);
+
+        return th;
+    }
+
+    static createTableRows(ignoreFields,array){
+        let tbody = super.createElement('tbody',[],[],[]);
+        let i = 1;
+        let rows = [];
+        array.forEach(el=>{
+            let row = document.createElement('tr');
+            if(i<100){
+            tbody.appendChild(row); 
+            }
+            
+            rows.push(row);
+
+            let indexData = document.createElement('td');
+            indexData.textContent = i++;
+            row.appendChild(indexData);
+            indexData.classList.add('idexData');
+
+            for(let key in el){
+                if(ignoreFields && ignoreFields.includes(key)) continue;
+                let td = document.createElement('td');
+                if(el[key] && el[key].name){
+                    td.textContent = el[key].name
+                } 
+                else td.textContent = el[key];
+                row.appendChild(td);
+            }
+        })
+        return tbody;
+    }
+
+}
+
+export default Table;

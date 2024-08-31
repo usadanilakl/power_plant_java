@@ -21,6 +21,20 @@ class Input extends BaseDomBuilder{
         return div;
     }
 
+    static buildInput(placeholderText,id){
+        let div = document.createElement('div'); //input container
+        let input = document.createElement('input');
+
+        div.classList.add('form-group'); //bootstrap styling for input container
+        
+        input.setAttribute('id',id);
+        input.setAttribute('placeholder',placeholderText);
+        input.classList.add('custom-input'); //bootstrap styling for input field
+
+        div.appendChild(input);
+        return div;
+    }
+
     static buildInputWithLabelAndButton(labelText,placeholderText,id){
         let container = Input.buildInputWithLabel(labelText,placeholderText,id);
         const elementToWrap = container.querySelector('input');
@@ -33,6 +47,17 @@ class Input extends BaseDomBuilder{
         wrapper.appendChild(elementToWrap);
         wrapper.appendChild(button);
         wrapper.style.display = 'inline';
+
+        return container;
+    }
+
+    static buildInputWithButton(placeholderText,id){
+        let container = Input.buildInput(placeholderText,id);
+        const button = document.createElement('button');
+
+        button.textContent = '+';
+        container.appendChild(button);
+        container.style.display = 'inline';
 
         return container;
     }

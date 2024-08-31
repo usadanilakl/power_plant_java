@@ -66,12 +66,7 @@ class CategoryPopup{
         
         popup.style.maxHeight = '80vh';
         popup.style.maxWidth = '100%';
-        // popup.style.overflow = 'scroll';
-    
-        // buildDropdown("new-value",list,null);
 
-    
-        //build table with points
         let hide = [
             'id',
             'objectType',
@@ -83,11 +78,10 @@ class CategoryPopup{
             'files',
             'mainFile'
         ]
-        // let table = createTableFromObjects(points, hide);
-        // let tableContainer = document.createElement('div');
-        // tableContainer.appendChild(table);
-        // modalBody.appendChild(tableContainer);
-        // tableContainer.classList.add('table-container');
+        let table = DomBuilderService.buildTableFromObject(points,hide,'table-dark');
+        popup.appendChild(table);
+
+
         
     
         // let saveButton = popup.querySelector('#save');
