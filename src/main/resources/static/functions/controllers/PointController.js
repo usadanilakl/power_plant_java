@@ -87,9 +87,17 @@ async function updatePoint(obj){
         let isCat = await isCategory(key)
         if(isCat && obj[key] && !(obj[key].name || obj[key].name==="")) obj[key]=null;
     }
+
+    if(obj.lotoPoints){
+        for(let p of obj.lotoPoints){
+            for(let key in p){
+                let isCat = await isCategory(key)
+                if(isCat && p[key] && !(p[key].name || p[key].name==="")) p[key]=null;
+            }
+        }
+    }
     const response = await fetch(baseEqUrl,getPostMetaDataWithBody(obj));
     const data = await response.json();
-    fillPointInfoWindow(data);
     return data;
     
 }
