@@ -4,6 +4,7 @@ package com.dk_power.power_plant_java;
 import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
 import com.dk_power.power_plant_java.dto.equipment.HtBreakerDto;
 import com.dk_power.power_plant_java.dto.equipment.HtPanelDto;
+import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseElectricalPanel;
 import com.dk_power.power_plant_java.entities.categories.Category;
@@ -38,9 +39,11 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.io.File;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 @SpringBootApplication
 @RequiredArgsConstructor
@@ -84,6 +87,14 @@ private final EquipmentRepo equipmentRepo;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+
+        int size = lotoPointService.getAll().size();
+        int size1 = lotoPointService.getAll().stream().filter(e -> e.getEquipmentList() != null && e.getEquipmentList().size() != 0).toList().size();
+        int size2 = lotoPointService.getAll().stream().filter(e -> e.getDateModified().isAfter(LocalDateTime.of(2024, 8, 9, 00, 00))).toList().size();
+
+        System.out.println(size1);
+        System.out.println(size);
+        System.out.println(size2);
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 //        fileService.getAll().forEach(e->{
