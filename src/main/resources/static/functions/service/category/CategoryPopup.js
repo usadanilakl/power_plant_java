@@ -2,6 +2,7 @@ import CategoryController from "../../controllers/category/CategoryController.js
 import GlobalVariables from "../../global/GlobalVariables.js";
 import DomBuilderService from "../dom/DomBuilderService.js";
 import NewWindowService from "../dom/NewWindowService.js";
+import TableService from "../dom/TableService.js";
 import CategoryService from "./CategoryService.js";
 
 class CategoryPopup{
@@ -78,7 +79,9 @@ class CategoryPopup{
             'files',
             'mainFile'
         ]
-        let table = DomBuilderService.buildTableFromObject(points,hide,'table-dark');
+        // let table = DomBuilderService.buildTableFromObject(points,hide,'table-dark');
+        const refactorTable = new TableService(points,hide);
+        let table = refactorTable.buildTableWithControls();
         popup.appendChild(table);
 
 

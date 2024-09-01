@@ -1,10 +1,12 @@
 import BaseDomBuilder from "./BaseDomBuilder.js";
 import DomBuilderService from "../../service/dom/DomBuilderService.js"
 import Input from "./Input.js";
+import SortingFilteringService from "../../service/util/SortingFilteringService.js";
+import LocatorService from "../../service/util/LocatorService.js";
 
 class Table extends BaseDomBuilder{
 
-    static buildTableFromObject(array, ignoreFields, style){
+    static buildTableFromObject(array, ignoreFields, style,lastSortedBy){
         let table = super.createElement('table',[],['table',style],[]);
         let thead = super.createElement('thead',[],['sticky-top'],[]);
         let headerRow = super.createElement('tr',[],[],[]);
@@ -16,7 +18,7 @@ class Table extends BaseDomBuilder{
 
         for(let key in array[0]){
             if(ignoreFields && ignoreFields.includes(key)) continue;
-            headerRow.appendChild(this.tableHeaderCell(key));
+            headerRow.appendChild(Table.tableHeaderCellWithControls(table,array,key,ignoreFields,lastSortedBy));
         }  
         table.appendChild(thead);
         table.appendChild(tbody);
@@ -25,16 +27,35 @@ class Table extends BaseDomBuilder{
         return table;
     }
 
-    static tableHeaderCell(key){
+    static tableHeaderCellWithControls(table,array,key,ignoreFields,lastSortedBy){
         let th = super.createElement('th',[{'id':'th-'+key}],[],[]);
         let search = Input.buildInputWithButton("Filter "+key,'search-'+key);
         let sort = super.createElement('button',[{'id':'sort-'+key}],[],[]);
+        let tbody = table.querySelector('tbody');
 
         sort.textContent = key;
 
         search.appendChild(sort);
         th.appendChild(search);
 
+        search.addEventListener('change',()=>{
+            array = SortingFilteringService.filterObjects(array,key,search.querySelector('input').value);
+            table.removeChild(tbody);
+            table.appendChild(Table.createTableRows(ignoreFields,array))
+        })
+
+        sort.addEventListener('change',()=>{
+            array = SortingFilteringService.sortObjects(array,lastSortedBy)
+            table.removeChild(tbody);
+            table.appendChild(Table.createTableRows(ignoreFields,array))
+        })
+
+        return th;
+    }
+
+    static tableHeaderCell(key){
+        let th = super.createElement('th',[{'id':'th-'+key}],[],[]);
+        th.textContent = key;
         return th;
     }
 
@@ -67,6 +88,7 @@ class Table extends BaseDomBuilder{
         })
         return tbody;
     }
+
 
 }
 

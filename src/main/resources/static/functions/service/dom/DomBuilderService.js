@@ -11,6 +11,6 @@ class DomBuilderService extends BaseDomBuilder{
     static async buildCatInputDropdownWithControls(object,key){return await Dropdown.buildCatInputDropdown(object,key);}
     static async buildCatInputDropdownFromCatObj(catObj){return await Dropdown.buildCatInputDropdownFromCatObj(catObj);}
     static buildInputDdropdown(header, items, id){return Dropdown.buildInputDropdown(header, items, id)}
-    static buildTableFromObject(array, ignoreFields, style){return Table.buildTableFromObject(array,ignoreFields,style)}
+    // static buildTableFromObject(array, ignoreFields, style){return Table.buildTableFromObject(array,ignoreFields,style)}
 }
 export default DomBuilderService;
