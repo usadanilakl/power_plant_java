@@ -55,7 +55,7 @@ class Input extends BaseDomBuilder{
         let container = Input.buildInput(placeholderText,id);
         const button = document.createElement('button');
 
-        button.textContent = '+';
+        button.textContent = 'X';
         container.appendChild(button);
         container.style.display = 'inline';
 

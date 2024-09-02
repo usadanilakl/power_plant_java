@@ -81,7 +81,8 @@ class CategoryPopup{
         ]
         // let table = DomBuilderService.buildTableFromObject(points,hide,'table-dark');
         const refactorTable = new TableService(points,hide);
-        let table = refactorTable.buildTableWithControls();
+        let table = refactorTable.buildSearchableTable('table-dark');
+        // let table = refactorTable.buildTableWithControls('table-dark');
         popup.appendChild(table);
 
 

@@ -6,7 +6,7 @@ import LocatorService from "../../service/util/LocatorService.js";
 
 class Table extends BaseDomBuilder{
 
-    static buildTableFromObject(array, ignoreFields, style,lastSortedBy){
+    static buildTableFromObject(array, ignoreFields, style, lastSortedBy, filters){
         let table = super.createElement('table',[],['table',style],[]);
         let thead = super.createElement('thead',[],['sticky-top'],[]);
         let headerRow = super.createElement('tr',[],[],[]);
@@ -18,7 +18,7 @@ class Table extends BaseDomBuilder{
 
         for(let key in array[0]){
             if(ignoreFields && ignoreFields.includes(key)) continue;
-            headerRow.appendChild(Table.tableHeaderCellWithControls(table,array,key,ignoreFields,lastSortedBy));
+            headerRow.appendChild(Table.tableHeaderCellWithControls(table,array,key,ignoreFields,lastSortedBy, filters));
         }  
         table.appendChild(thead);
         table.appendChild(tbody);
@@ -27,11 +27,12 @@ class Table extends BaseDomBuilder{
         return table;
     }
 
-    static tableHeaderCellWithControls(table,array,key,ignoreFields,lastSortedBy){
+    static tableHeaderCellWithControls(table,array,key,ignoreFields,lastSortedBy,filters){
         let th = super.createElement('th',[{'id':'th-'+key}],[],[]);
         let search = Input.buildInputWithButton("Filter "+key,'search-'+key);
         let sort = super.createElement('button',[{'id':'sort-'+key}],[],[]);
         let tbody = table.querySelector('tbody');
+        let clearButton = search.querySelector('button');
 
         sort.textContent = key;
 
@@ -39,16 +40,23 @@ class Table extends BaseDomBuilder{
         th.appendChild(search);
 
         search.addEventListener('change',()=>{
+            tbody = table.querySelector('tbody');
             array = SortingFilteringService.filterObjects(array,key,search.querySelector('input').value);
             table.removeChild(tbody);
-            table.appendChild(Table.createTableRows(ignoreFields,array))
+            table.appendChild(Table.createTableRows(ignoreFields,array));
+            filters.push(search.querySelector('input').value);
         })
 
-        sort.addEventListener('change',()=>{
-            array = SortingFilteringService.sortObjects(array,lastSortedBy)
+        sort.addEventListener('click',()=>{
+            tbody = table.querySelector('tbody');
+            array = SortingFilteringService.sortObjects(array,lastSortedBy,key)
             table.removeChild(tbody);
             table.appendChild(Table.createTableRows(ignoreFields,array))
+            if(lastSortedBy===key)lastSortedBy = "";
+            else lastSortedBy = key;
         })
+
+        // clearButton.addEventListener('click',()=>)
 
         return th;
     }
@@ -87,6 +95,39 @@ class Table extends BaseDomBuilder{
             }
         })
         return tbody;
+    }
+
+    static buildSimpleTable(style){
+        return super.createElement('table',[],['table',style],[]);
+    }
+
+    static buildSimpleHeader(object,ignoreFields){
+        let headerRow = super.createElement('tr',[],[],[]);
+        let index = super.createElement('th',[],[],[]);
+
+        index.textContent = "#";
+        headerRow.appendChild(index);
+
+        for(let key in object){
+            if(ignoreFields && ignoreFields.includes(key)) continue;
+            const cell = super.createElement('th',[{'data-column-key':key}],[],[]);
+            headerRow.appendChild(cell);
+        } 
+
+        return headerRow;
+    }
+
+    static addControlsToHeader(header){
+        for(let cell of header.cells){
+            let key = cell.getAttribute('data-column-key');
+            let search = Input.buildInputWithButton("Filter "+key,'search-'+key);
+            let sort = super.createElement('button',[{'id':'sort-'+key}],[],[]);
+            
+            sort.textContent = key;
+
+            cell.appendChild(search);
+            cell.appendChild(sort);
+        }
     }
 
 

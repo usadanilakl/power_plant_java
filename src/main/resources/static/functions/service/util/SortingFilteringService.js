@@ -3,24 +3,31 @@ import CategoryService from "../category/CategoryService.js";
 class SortingFilteringService{
     LAST_SORTED_BY = "";
     ARRAY = [];
+    FILTERS = [];
+    FILTERED_ARRAY = [];
 
     constructor(array){
         this.ARRAY = array;
+        this.FILTERED_ARRAY = array;
     }
 
-    static sortObjects(array,lastSortedBy){
-        if(lastSortedBy !== key){
-            array.sort((a,b)=>{
-                return a[key].toString().localeCompare(b[key].toString());
-        });
-        lastSortedBy = key;
-        }else{
-            array.sort((a,b)=>{
-                return b[key].toString().localeCompare(a[key].toString());
-            });
-            lastSortedBy = "";
+    static sortObjects(array, lastSortedBy, key) {
+        if (lastSortedBy !== key) {
+          lastSortedBy = key;
+          return array.sort((a, b) => {
+            const aValue = a[key] ? a[key].toString() : "";
+            const bValue = b[key] ? b[key].toString() : "";
+            return aValue.localeCompare(bValue);
+          });
+        } else {
+          lastSortedBy = "";
+          return array.sort((a, b) => {
+            const aValue = a[key] ? a[key].toString() : "";
+            const bValue = b[key] ? b[key].toString() : "";
+            return bValue.localeCompare(aValue);
+          });
         }
-    }
+      }
 
     static filterObjects(array,key,value){
         return array.filter(e=>{
@@ -29,12 +36,22 @@ class SortingFilteringService{
         })
     }
 
+    static clearObjectFilters(array,filters){
+        
+    }
+
     filter(key,value){
-        this.ARRAY = SortingFilteringService.filterObjects(this.ARRAY,key,value);
+        this.FILTERED_ARRAY = SortingFilteringService.filterObjects(this.ARRAY,key,value);
+        this.FILTERS.push(value);
     }
 
     sort(){
-        this.ARRAY = SortingFilteringService.sortObjects(this.ARRAY,this.LAST_SORTED_BY);
+        this.FILTERED_ARRAY = SortingFilteringService.sortObjects(this.ARRAY,this.LAST_SORTED_BY);
+    }
+
+    resetFilters(){
+        this.FILTERS = [];
+        this.FILTERED_ARRAY = this.ARRAY
     }
 }
 export default SortingFilteringService;
