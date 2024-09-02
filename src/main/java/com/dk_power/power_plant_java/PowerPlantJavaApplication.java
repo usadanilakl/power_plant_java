@@ -1,17 +1,6 @@
 package com.dk_power.power_plant_java;
 
 
-import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
-import com.dk_power.power_plant_java.dto.equipment.HtBreakerDto;
-import com.dk_power.power_plant_java.dto.equipment.HtPanelDto;
-import com.dk_power.power_plant_java.dto.files.FileDtoLight;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
-import com.dk_power.power_plant_java.entities.base_entities.BaseElectricalPanel;
-import com.dk_power.power_plant_java.entities.categories.Category;
-import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.entities.data_transfer.ElectricalTable;
-import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
-import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
@@ -26,7 +15,8 @@ import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointServ
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
 import com.dk_power.power_plant_java.sevice.image.OCRService;
-import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointMergeService;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.util.DataGenerator;
 import com.dk_power.power_plant_java.util.data_transfer.TransferMethods;
@@ -38,12 +28,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-import java.io.File;
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Stream;
 
 @SpringBootApplication
 @RequiredArgsConstructor
@@ -74,6 +60,7 @@ private final ElectricalTableService electricalTableService;
 private final OCRService ocrService;
 private final HighlightService highlightService;
 private final EquipmentRepo equipmentRepo;
+private final LotoPointMergeService lotoPointMergeService;
 
 
     public static void main(String[] args) {
@@ -88,13 +75,16 @@ private final EquipmentRepo equipmentRepo;
 
         System.err.println("=====================================================");
 
-        int size = lotoPointService.getAll().size();
-        int size1 = lotoPointService.getAll().stream().filter(e -> e.getEquipmentList() != null && e.getEquipmentList().size() != 0).toList().size();
-        int size2 = lotoPointService.getAll().stream().filter(e -> e.getDateModified().isAfter(LocalDateTime.of(2024, 8, 9, 00, 00))).toList().size();
+        List<LotoPoint> all = lotoPointService.getAll();
+        List<LotoPoint> completed = all.stream().filter(e -> e.getDateModified().isAfter(LocalDateTime.of(2024, 8, 6, 00, 00))).toList();
 
-        System.out.println(size1);
-        System.out.println(size);
-        System.out.println(size2);
+        System.out.println(all.size());
+        System.out.println(completed.size());
+
+
+//        for (LotoPoint lotoPoint : completed) {
+//            lotoPointMergeService.copyPointFromOtherUnit(lotoPoint.getId());
+//        }
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 //        fileService.getAll().forEach(e->{

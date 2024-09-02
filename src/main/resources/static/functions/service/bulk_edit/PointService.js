@@ -91,20 +91,23 @@ function trimToLowerCaseRemoveDashes(label){
 function showPointInfo(point){
     let form = document.createElement('form');
     for(let e in point){
+        if(hideFormFields(point, e)) continue;
+        // let isCat = await isCategory(e);
         let div = document.createElement('div');
         form.appendChild(div);
         div.classList.add('form-group');
         let label = document.createElement('label');
         div.appendChild(label);
         label.setAttribute('for',e);
-        label.textContent = e;        
+        label.textContent = e;
         label.style.color = "white";
         if(point.objectType === "OldLotoPoint" && e==="isoPos") label.textContent = "Description";
         let input = document.createElement('input');
         div.appendChild(input);
         input.setAttribute('id',e);
         input.classList.add('form-control');
-        input.value = point[e];
+        if(point[e] && point[e].name) input.value = point[e].name;
+        else input.value = point[e];
         input.readOnly = true;
         input.addEventListener('click',()=>{copyToClipboard(input)})
         if(hideExcelFields(point,e)) div.classList.add('hide');

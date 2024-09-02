@@ -7,7 +7,7 @@ import com.dk_power.power_plant_java.sevice.data_transfer.excel.*;
 import com.dk_power.power_plant_java.sevice.data_transfer.json.HeatTraceTransferService;
 import com.dk_power.power_plant_java.sevice.data_transfer.json.HighlightTransferService;
 import com.dk_power.power_plant_java.sevice.data_transfer.json.PidTransferService;
-import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

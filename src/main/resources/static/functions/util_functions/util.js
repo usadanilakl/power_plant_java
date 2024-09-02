@@ -8,6 +8,7 @@ function dbClick(element, oneClickFunc, twoClickFunc) {
                     oneClickFunc();
                 } else if (counter > 1) {
                     twoClickFunc();
+                    console.log("2 clicks")
                 }
                 counter = 0; // reset counter
             }, 300);

@@ -1,24 +1,14 @@
 package com.dk_power.power_plant_java.mappers.equipment;
 
-import com.dk_power.power_plant_java.dto.categories.ValueDto;
-import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.HighlightDto;
-import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.equipment.Highlight;
-import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
-import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
-import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.equipment.HighlightService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
-import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
-
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Component
 //@RequiredArgsConstructor

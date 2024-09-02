@@ -98,6 +98,7 @@ async function updatePoint(obj){
     }
     const response = await fetch(baseEqUrl,getPostMetaDataWithBody(obj));
     const data = await response.json();
+    updateCachedLotoPoints(data.lotoPoints)
     return data;
     
 }

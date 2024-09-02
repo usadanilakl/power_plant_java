@@ -1198,24 +1198,29 @@ function renameLotoPoint(point){
             if(point.objectType === "Equipment"){
                 point.location = {};
                 point.location.id = selectInput.getAttribute('data-object-id');
+                point.location.name = input.value;
             }
             else point.specificLocation = input.value;
         }
         if(editModes.lotoPointPosition.state && point.objectType==="LotoPoint"){
             point.isoPos={};
             point.isoPos.id = input.getAttribute('data-object-id');
+            point.isoPos.name = input.value;
         }
         if(editModes.lotoPointNormPosition.state && point.objectType==="LotoPoint"){
             point.normPos = {};
             point.normPos.id = input.getAttribute('data-object-id');
+            point.normPos.name = input.value;
         }
         if(editModes.system.state){
             point.system = {};
             point.system.id = input.getAttribute('data-object-id');
+            point.system.name = input.value;
         }
         if(editModes.eqType.state){
             point.eqType = {};
             point.eqType.id = input.getAttribute('data-object-id');
+            point.eqType.name = input.value;
         }
         text.value = input.value;
 

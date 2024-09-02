@@ -115,12 +115,19 @@ async function buildFormFromObject(point){
             console.log(point[e]); //print assignment
         })
         
-        input.addEventListener('click',async ()=>{
-            let clipBoardText = await checkClipboardAndPasteShort(input);
+    //     input.addEventListener('click',async ()=>{
+    //         let clipBoardText = await checkClipboardAndPasteShort(input);
+    //         if(!isCat){
+    //             point[e]= clipBoardText ;
+    //         }
+    // }); //paste function 
+
+    dbClick(input,()=>{},async ()=>{
+        let clipBoardText = await checkClipboardAndPasteShort(input);
             if(!isCat){
                 point[e]= clipBoardText ;
             }
-    }); //paste function 
+        })
         
     }
 
@@ -155,7 +162,9 @@ async function buildFormFromObject(point){
         deleteButton.classList.add('btn');
         deleteButton.classList.add('btn-danger');
         deleteButton.textContent = "Delete";
-        deleteButton.addEventListener('click',()=>deletePoint(point.id))
+        deleteButton.addEventListener('click',()=>showDeleteEqPopup(point));
+        // deleteButton.addEventListener('click',()=>deletePoint(point.id));
+
         form.appendChild(deleteButton);
         // document.getElementById('infoWindowPoint').appendChild(deleteButton);
         getDataFromForm(form,oldFormData);
@@ -227,7 +236,8 @@ let hiddenEquipmentFields = [
     'lotoPoints',
     'specificLocation',
     'files',
-    'mainFile'
+    'mainFile',
+    'highlight'
 ]
 
 let hiddenLotoPointFields = [
