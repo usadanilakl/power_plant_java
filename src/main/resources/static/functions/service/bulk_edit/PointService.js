@@ -37,6 +37,8 @@ let hiddenOldPointFields=[
     "objectType"
 ]
 
+let pointsToMatch =[];
+
 function hideExcelFields(point,field){
     if(point.objectType === "OldLotoPoint" && hiddenOldPointFields.includes(field)) return true;
     if(point.objectType === "RevisedLotoPoints" && hiddenRevisedPointFields.includes(field)) return true;
@@ -226,6 +228,189 @@ async function lotoPointDropdown(points){
 
     });
     return list;
+}
+
+async function lotoPointMatcherDropdown(points){
+    let list = document.createElement('ul');
+
+    for(let e of points){
+        let item = document.createElement('li');
+        list.appendChild(item);
+        let buttons = document.createElement('div');
+        item.appendChild(buttons);
+        buttons.classList.add('flex-inline');
+        let button = document.createElement('button');
+        buttons.appendChild(button);
+        let formContainer = document.createElement('div');
+        item.appendChild(formContainer);
+
+        if(e.id) item.id = 'item-'+e.id;
+
+        let tagText = e.tagNumber ? e.tagNumber : "no tag";
+        let descriptionText = e.description ? e.description : "no description";
+        let locationText = e.specificLocation ? e.specificLocation : "no location";
+        let isoPosText = e.isoPos?.name ? e.isoPos.name : "no iso pos";
+        let normPosText = e.normPos?.name ? e.normPos.name : "no norm pos";
+
+        let color = e.type==='original' ? 'green' : e.type==='match' ? 'blue' : 'red';
+        if(e.id) list.id = 'list-'+e.id;
+        
+        button.textContent = tagText + " || " + descriptionText + " || " + locationText + " || " + isoPosText + "/" + normPosText;
+        button.type = 'button';
+        button.style.backgroundColor = color;
+        button.addEventListener('click', async ()=>{
+            if(formContainer.children.length === 0){
+                const form = await buildFormFromObject(e);
+                formContainer.appendChild(form);
+
+                let cont = document.createElement('div');
+                let sub = document.createElement('button');
+                let del = document.createElement('button');
+
+                sub.type = 'button';
+                del.type = 'button';
+
+                sub.textContent = "Submit";
+                del.textContent = "Delete";
+
+                cont.appendChild(sub);
+                cont.appendChild(del);
+                form.appendChild(cont);
+
+                sub.addEventListener('click',async ()=>{
+                    await createNew(e);
+                });
+                del.addEventListener('click', async()=>{
+                    if(e.id) await deleteLotoPoint(e.id);
+                    for(let m of matchedItems){
+                        m.Match = m.Match.filter(p=>p.id!==e.id);
+                    }
+                    item.parentElement.removeChild(item);
+                });
+            }else{
+                formContainer.innerHTML = "";
+            }
+        });
+
+
+        let addButton = document.createElement('button');
+        buttons.appendChild(addButton);
+        addButton.type = 'button';
+        addButton.textContent = '+'
+        addButton.id = 'add-to-match-button-' + e.id ? e.id :"";
+        addButton.addEventListener('click',async ()=>{
+            
+            if(addButton.textContent==="+"){
+                if(pointsToMatch.length===0) addButton.style.backgroundColor = 'red'
+                else addButton.style.backgroundColor = 'green'
+                pointsToMatch.push(e);
+                addButton.textContent = "-"
+                if(pointsToMatch.length===2) {
+                    let readyPoints = await matchPoints(pointsToMatch[0],pointsToMatch[1]);
+                }
+            } 
+            else{
+                pointsToMatch = pointsToMatch.filter(p=>p.id !== e.id)
+                addButton.textContent = '+';
+                addButton.style.backgroundColor = ''
+            } 
+        })
+
+
+
+    };
+    return list;
+}
+
+async function matchPoints(source,destination){
+    let sourceTagNumber = source.tagNumber;
+    let destenationTagNumber = "";
+    let destDescription = "";
+    let specificLocation = "";
+    if(sourceTagNumber.startsWith("01")){
+        destenationTagNumber = "02"+sourceTagNumber.substring(2);
+        if(source.description!=null)destDescription = source.description.split(" ").map(e=>{
+            if(e.startsWith("01")) return e = "02"+e.substring(2);
+            else return e;
+        }).join(" ")
+        .replace(/Unit1/g, "Unit2")
+        .replace(/UNIT 1/g, "UNIT2")
+        .replace(/UNIT1/g, "UNIT2")
+        .replace(/Unit 1/g, "Unit 2")
+        .replaceAll(/U1/g, "U2");
+
+        if(source.specificLocation!=null) specificLocation = source.specificLocation.split(" ").map(e=>{
+            if(e.startsWith("01")) return e = "02"+e.substring(2);
+            else return e;
+        }).join(" ")
+        .replace(/Unit1/g, "Unit2")
+        .replace(/UNIT 1/g, "UNIT2")
+        .replace(/UNIT1/g, "UNIT2")
+        .replace(/Unit 1/g, "Unit 2")
+        .replaceAll(/U1/g, "U2");
+
+    }
+    else if (sourceTagNumber.startsWith("02")){
+        destenationTagNumber = "01"+sourceTagNumber.substring(2);
+
+        if(source.description!=null){
+            destDescription = source.description.split(" ").map(e=>{
+                if(e.startsWith("02")) return e = "01"+e.substring(2);
+                else return e;
+            }).join(" ")
+            .replace(/Unit2/g, "Unit1")
+            .replace(/UNIT2/g, "UNIT1")
+            .replace(/UNIT 2/g, "UNIT1")
+            .replace(/Unit 2/g, "Unit 1")
+            .replace(/U2/g, "U1");
+        }
+
+        if(source.specificLocation!=null){
+            specificLocation = source.specificLocation.split(" ").map(e=>{
+                if(e.startsWith("02")) return e = "01"+e.substring(2);
+                else return e;
+            }).join(" ")
+            .replace(/Unit2/g, "Unit1")
+            .replace(/UNIT2/g, "UNIT1")
+            .replace(/UNIT 2/g, "UNIT1")
+            .replace(/Unit 2/g, "Unit 1")
+            .replace(/U2/g, "U1");
+        }
+    }
+    if(!destination) destination = {};
+    destination.tagNumber = destenationTagNumber;
+    destination.specificLocation = specificLocation;
+    destination.description = destDescription;
+    destination.isoPos = source.isoPos;
+    destination.normPos = source.normPos;
+
+    let list = document.getElementById('main-list')
+    list.innerHTML = "";
+    pointsToMatch = [];
+
+    for(let e of matchedItems){
+        let f = await lotoPointMatcherDropdown(e.Match);
+        let submitBtn = document.createElement('button');
+        list.appendChild(f);
+        f.appendChild(submitBtn);
+
+        submitBtn.type = 'button';
+        submitBtn.textContent = "Submit";
+        submitBtn.addEventListener('click', async ()=>{
+            for(let el of e.Match)await createNew(el);
+
+            const index = matchedItems.indexOf(e);
+            if (index !== -1){
+                matchedItems.splice(index, 1);
+                f.parentElement.removeChild(f);
+            }
+
+        });
+    }
+
+
+
+    return [source,destination];
 }
 
 async function fillExcelPointInfoWindow(points,eq){

@@ -75,11 +75,11 @@ private final LotoPointMergeService lotoPointMergeService;
 
         System.err.println("=====================================================");
 
-        List<LotoPoint> all = lotoPointService.getAll();
-        List<LotoPoint> completed = all.stream().filter(e -> e.getDateModified().isAfter(LocalDateTime.of(2024, 8, 6, 00, 00))).toList();
-
-        System.out.println(all.size());
-        System.out.println(completed.size());
+//        List<LotoPoint> all = lotoPointService.getAll();
+//        List<LotoPoint> completed = all.stream().filter(e -> e.getDateModified().isAfter(LocalDateTime.of(2024, 8, 6, 00, 00))).toList();
+//
+//        System.out.println(all.size());
+//        System.out.println(completed.size());
 
 
 //        for (LotoPoint lotoPoint : completed) {

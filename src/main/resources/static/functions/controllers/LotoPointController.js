@@ -1,5 +1,7 @@
 let baseLotoPointUrl = '/loto-points-api/'
 
+let matchedItems = [];
+
 async function getLotoPointByOldId(oldId){
     const resp = await fetch(baseLotoPointUrl+'old-id/'+oldId);
     const data = await resp.json();
@@ -44,6 +46,27 @@ async function getLotoPointsByTag(tag){
 
 async function createNew(point){
   const resp = await fetch(baseLotoPointUrl, getPostMetaDataWithBody(point));
+  const data = await resp.json();
+  console.log(data.tagNumber);
+  return data;
+}
+
+async function matchLotoPoints(id){
+  const resp = await fetch(baseLotoPointUrl+'match-points/'+id);
+  const data = await resp.json();
+  matchedItems = data;
+  return data;
+}
+
+async function deleteLotoPoint(id){
+  const resp = await fetch(baseLotoPointUrl+id,deleteNoBody);
+  const data = await resp.text();
+  console.log(data);
+  return data;
+}
+
+async function getProjectStatus(){
+  const resp = await fetch(baseLotoPointUrl+'project-status');
   const data = await resp.json();
   return data;
 }

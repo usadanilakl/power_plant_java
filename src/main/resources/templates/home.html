@@ -20,6 +20,18 @@
             white-space: 'nowrap';
             font-size: 18px;
         }
+        .full-width-list {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #000000;
+            color:white;
+            font-size: x-large;
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
@@ -35,8 +47,24 @@
             </ul> 
         </div>
 
+        <div id="status">
+            <ul id="status-list" class="full-width-list">
+                <li id="lotoPoints"></li>
+                <li id="pids"></li>
+            </ul>
+        </div>
+
 
 
 <script src="./bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+<script src="./functions/controllers/LotoPointController.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async function() {
+    console.log('Document is fully loaded');
+    let status = await getProjectStatus();
+    document.getElementById('lotoPoints').textContent = status.lotoPoints;
+    document.getElementById('pids').textContent = status.pids;
+});
+</script>
 </body>
 </html>

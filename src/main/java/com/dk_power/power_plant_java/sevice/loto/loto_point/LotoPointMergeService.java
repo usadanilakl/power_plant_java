@@ -8,6 +8,10 @@ import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import com.dk_power.power_plant_java.sevice.base_services.RefactorService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelTransferService;
 
+import java.util.List;
+import java.util.Map;
+
 public interface LotoPointMergeService extends CrudService<LotoPoint, LotoPointDto, LotoPointRepo, LotoPointMapper> {
-    LotoPoint copyPointFromOtherUnit(Long id);
+    Map<String, Object> copyPointFromOtherUnit(Long id);
+
 }

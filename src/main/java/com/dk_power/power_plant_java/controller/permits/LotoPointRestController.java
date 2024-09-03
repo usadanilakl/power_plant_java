@@ -2,23 +2,36 @@ package com.dk_power.power_plant_java.controller.permits;
 
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDtoLight;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.sevice.file.FileService;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointMergeService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @RestController
 @RequestMapping("/loto-points-api")
 @RequiredArgsConstructor
 public class LotoPointRestController {
     private final LotoPointService lotoPointService;
+    private final LotoPointMergeService lotoPointMergeService;
+    private final FileService fileService;
     @GetMapping("/")
     public ResponseEntity<List<LotoPointDtoLight>> getAllRivisedPoint(){
         return ResponseEntity.ok(lotoPointService.getAllLight());
+    }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> getAllRivisedPoint(@PathVariable String id){
+        LotoPoint obj = lotoPointService.getEntityById(id);
+        Long objId = obj.getId();
+        lotoPointService.softDelete(obj);
+        return ResponseEntity.ok("Success deleting"+objId);
     }
     @GetMapping("/old-id/{oldId}")
     public ResponseEntity<LotoPointDto> getLotoPointByOldId(@PathVariable String oldId){
@@ -40,6 +53,7 @@ public class LotoPointRestController {
     }
     @PostMapping("/")
     public ResponseEntity<LotoPointDto> createNew(@RequestBody LotoPointDto dto){
+        System.out.println(dto.getTagNumber());
         return ResponseEntity.ok(lotoPointService.convertToDto(lotoPointService.save(dto)));
     }
     @GetMapping("/tag/{tag}")
@@ -59,6 +73,41 @@ public class LotoPointRestController {
         if(byTag!=null)list.addAll(byTag);
         if(byTagInDescription!=null)list.addAll(byTagInDescription);
         return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/match-points/{id}")
+    public ResponseEntity<List<Map<String,Object>>> matchPoints(@PathVariable String id){
+
+        FileObject file = fileService.getEntityById(id);
+        Set<LotoPointDto> items = new HashSet<>();
+        file.getPoints().forEach(e->{
+            List<LotoPointDto> list = e.getLotoPoints().stream().map(lotoPointService::convertToDto).toList();
+            items.addAll(list);
+        });
+
+        List<Map<String,Object>> result = new ArrayList<>();
+        for (LotoPointDto item : items) {
+            Map<String, Object> matched = lotoPointMergeService.copyPointFromOtherUnit(item.getId());
+            List<LotoPointDto> list = ((List<LotoPoint>) matched.get("Match")).stream().map(lotoPointService::convertToDto).toList();
+            matched.put("Match",list);
+            matched.put("Original",lotoPointService.convertToDto((LotoPoint)matched.get("Original")));
+            result.add(matched);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/project-status")
+    public ResponseEntity<Map<String,String>> getProjectStatus(){
+        int all = lotoPointService.getAll().size();
+        int completed = lotoPointService.getAll().stream().filter(e -> e.getDateModified().isAfter(LocalDateTime.of(2024, 8, 6, 00, 00))).toList().size();
+
+        int complPids = fileService.getCompletedPids().size();
+        int allPids = fileService.getIncompletePids().stream().filter(e -> e.getFileType().getName().equalsIgnoreCase("pid")).toList().size();
+
+        Map<String,String> result = new HashMap<>();
+        result.put("lotoPoints","LOTO Points: Processed-"+completed+"/total-" + all);
+        result.put("pids","PID:Processed-"+complPids+"/total-" + allPids);
+        return ResponseEntity.ok(result);
     }
 
 

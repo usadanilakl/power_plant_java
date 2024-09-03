@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 import java.util.HashSet;
@@ -20,6 +21,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Audited
+@Where(clause = "deleted=false")
 public class LotoPoint extends BaseAuditEntity {
     private String unit;
     private String tagged;

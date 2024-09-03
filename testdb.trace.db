@@ -6868,3 +6868,9 @@ SELECT * FROM FILE_POINT WHERE TAG_NUMBER = '01-VINA260' [42122-224]
 	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659)
 	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
 	at java.base/java.lang.Thread.run(Thread.java:1583)
+2024-09-03 02:07:33.907875-05:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT * FROM LOTO_POINT where tag [*]number = '02-VINA275.'"; SQL statement:
+SELECT * FROM LOTO_POINT where tag number = '02-VINA275.' [42000-224]
+2024-09-03 02:07:56.942532-05:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT * FROM LOTO_POINT where tag [*]number = '02-VINA275'"; SQL statement:
+SELECT * FROM LOTO_POINT where tag number = '02-VINA275' [42000-224]

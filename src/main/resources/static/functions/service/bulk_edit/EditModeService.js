@@ -811,6 +811,7 @@ function buildEditStepControls(){
         let li4 = document.createElement('li');
         let li5 = document.createElement('li');
         let li6 = document.createElement('li');
+        let li7 = document.createElement('li');
 
         li1.classList.add("btn")
         li1.classList.add("btn-outline-light")
@@ -824,6 +825,8 @@ function buildEditStepControls(){
         li5.classList.add("btn-outline-light")
         li6.classList.add("btn")
         li6.classList.add("btn-outline-light")
+        li7.classList.add("btn")
+        li7.classList.add("btn-outline-light")
 
 
         li5.textContent = 'Enable Bulk Edit';
@@ -861,26 +864,70 @@ function buildEditStepControls(){
                     ite.textContent = key + ': ' + e[key];
                     l.appendChild(ite);
                 }
-
-
-
-                // let it1 = document.createElement('li');
-                // let it2 = document.createElement('li');
-                // let it3 = document.createElement('li');
-
-                // it1.textContent = e.Description;
-                // it2.textContent = 'Eq: ' + e.Eq;
-                // it3.textContent = 'LP: ' + e.LP;
-
-                // l.appendChild(it1);
-                // l.appendChild(it2);
-                // l.appendChild(it3);
             });
 
 
             
 
         })
+
+        li7.addEventListener('click',async ()=>{
+            let w = document.querySelector('[data-file-window="match"]');
+            if(w) all.removeChild(w);
+            let newWind = getEmptyWindow("Match Loto Points Between Units");
+            let box = document.createElement('div');
+            let l = document.createElement('ul');
+            l.id = 'main-list';
+    
+            newWind.setAttribute('data-file-window','match');
+    
+            box.style.position = 'absolute';
+            box.style.top = "35px";
+    
+            let items = await matchLotoPoints(fileWithPoints.id);
+
+            for(let e of items){
+                let points = e.Match;
+                points.forEach(e=>e.type = 'match');
+                if(e.Size === 0) points[0].type = 'new';
+                e.Original.type = 'original';
+                points.push(e.Original);
+
+                let f = await lotoPointMatcherDropdown(points);
+                let submitBtn = document.createElement('button');
+
+                l.appendChild(f);
+                f.appendChild(submitBtn);
+
+                submitBtn.type = 'button';
+                submitBtn.textContent = "Submit";
+                submitBtn.addEventListener('click', async ()=>{
+                    for(let el of points)await createNew(el);
+                    const index = matchedItems.indexOf(e);
+                    if (index !== -1){
+                        matchedItems.splice(index, 1);
+                        f.parentElement.removeChild(f);
+                    }
+                });
+
+
+            }
+
+            
+
+    
+            box.appendChild(l);
+            newWind.appendChild(box);
+            all.appendChild(newWind);
+
+            newWind.style.maxWidth = '100%';
+            newWind.style.maxHeight = '100%';
+            newWind.style.backgroundColor = 'black';
+            newWind.style.minWidth = '40%';
+            newWind.style.minHeight = '40%';
+        }) 
+    
+        li7.textContent = "Match Loto Points"
 
         li1.textContent = "Step 7: Edit Equipment Type (click for details)";
         li3.textContent = "Previous Step"
@@ -893,6 +940,7 @@ function buildEditStepControls(){
         list.appendChild(li5);
         list.appendChild(document.createElement('li').appendChild(getTextButton()));
         list.appendChild(li6);
+        list.appendChild(li7);
 
         buildCategorySelector("eqType");
     }
@@ -921,6 +969,7 @@ function buildEditStepControls(){
         await updateFileEditStep("skip");
         location.reload();
     });
+
     getSkippedButton.addEventListener('click',async ()=>{
         let w = document.querySelector('[data-file-window="skipped"]');
         if(w) all.removeChild(w);

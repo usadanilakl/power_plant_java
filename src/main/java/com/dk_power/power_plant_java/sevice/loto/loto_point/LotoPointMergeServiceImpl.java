@@ -11,7 +11,9 @@ import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +47,7 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
     }
 
     @Override
-    public LotoPoint copyPointFromOtherUnit(Long id) {
+    public Map<String, Object> copyPointFromOtherUnit(Long id) {
         LotoPoint sourcePoint = getEntityById(id);
         String sourceTagNumber = sourcePoint.getTagNumber();
         String destenationTagNumber = "";
@@ -108,21 +110,16 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
         }
 
         List<LotoPoint> byTagNumber = null;
+        int size = 0;
+        Map<String, Object> result = new HashMap<>();
+
         if(!destenationTagNumber.equalsIgnoreCase("")) byTagNumber = lotoPointRepo.findByTagNumber(destenationTagNumber);
 
         if(byTagNumber!=null && byTagNumber.size()>1){
-//            System.out.println("==================sourceTagNumber = " + sourceTagNumber+"================");
-//            byTagNumber.forEach(e->{
-//                System.out.println("tag: "+e.getTagNumber());
-//                System.out.println("descr: "+e.getDescription());
-//            });
-//            System.out.println("=========================================================");
+            size = byTagNumber.size();
         }
-        else if(byTagNumber!=null && byTagNumber.size()==1 && (byTagNumber.get(0).getDescription()==null || byTagNumber.get(0).getDescription().equalsIgnoreCase(""))){
-//            System.out.println("=======================================================");
-//            System.out.println("source: " + sourcePoint.getDescription());
-//            System.out.println("dest: " + byTagNumber.get(0).getDescription());
-//            System.out.println("=======================================================");
+        else if(byTagNumber!=null && byTagNumber.size()==1){
+            size = byTagNumber.size();
         }else if(!destenationTagNumber.equalsIgnoreCase("") && (byTagNumber==null || byTagNumber.size()==0)){
             LotoPoint newLotoPoint = new LotoPoint();
             newLotoPoint.setTagNumber(destenationTagNumber);
@@ -130,12 +127,18 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
             newLotoPoint.setDescription(destDescription);
             newLotoPoint.setIsoPos(sourcePoint.getIsoPos());
             newLotoPoint.setNormPos(sourcePoint.getNormPos());
-            save(newLotoPoint);
+            byTagNumber.add(newLotoPoint);
+            System.out.println(destenationTagNumber);
 
 //            System.out.println("==============================================================================");
 //            System.out.println(sourcePoint.getTagNumber() + "||" + sourcePoint.getDescription() + "||" + sourcePoint.getSpecificLocation());
 //            System.out.println(destenationTagNumber+ "||" + destDescription + "||" + specificLocation);
         }
-        return null;
+
+        result.put("Size",size);
+        result.put("Match",byTagNumber);
+        result.put("Original",sourcePoint);
+
+        return result;
     }
 }
