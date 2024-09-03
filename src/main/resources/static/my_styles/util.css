@@ -82,6 +82,21 @@ ul {
     width: 100%;
   }
 
+  .hidden-container {
+    display: none; /* Initially hide the container */
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    padding: 10px;
+    z-index: 100; /* Ensure the container appears above other elements */
+  }
+  
+  .revial-button:hover + .hidden-container {
+    display: block; /* Show the container on hover */
+  }
+
 /*button, #buttons li, #file-input{*/
 /*    !* display: inline-block; *!*/
 /*    padding: 10px 20px;*/

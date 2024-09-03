@@ -18,6 +18,10 @@ class NewWindowService{
         return NewWindowDom.getEmptyWithdowWithCover(header,all);
     }
 
+    static getHintWindow(header,all){
+
+    }
+
     static newInfoWindow(name){
 
     }

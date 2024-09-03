@@ -56,6 +56,7 @@ class Input extends BaseDomBuilder{
         const button = document.createElement('button');
 
         button.textContent = 'X';
+        button.classList.add('util-button');
         container.appendChild(button);
         container.style.display = 'inline';
 

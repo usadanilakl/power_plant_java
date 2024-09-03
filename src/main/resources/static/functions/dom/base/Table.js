@@ -121,8 +121,9 @@ class Table extends BaseDomBuilder{
         for(let cell of header.cells){
             let key = cell.getAttribute('data-column-key');
             let search = Input.buildInputWithButton("Filter "+key,'search-'+key);
-            let sort = super.createElement('button',[{'id':'sort-'+key}],[],[]);
-            
+            let sort = super.createElement('button',[{'id':'sort-'+key}],['sort-button'],[]);
+
+            search.querySelector('button').classList.add('revial-button');
             sort.textContent = key;
 
             cell.appendChild(search);

@@ -1,4 +1,5 @@
 import Table from "../../dom/base/Table.js";
+import NewWindowDom from "../../dom/window/NewWindowDom.js";
 import SortingFilteringService from "../util/SortingFilteringService.js";
 import DomBuilderService from "./DomBuilderService.js";
 
@@ -24,34 +25,50 @@ class TableService {
         const table = Table.buildSimpleTable(style);
         const header = Table.buildSimpleHeader(this.ARRAY[0],this.IGNORE_FILDS);
         const controls = Table.addControlsToHeader(header)
-        const tbody = Table.createTableRows(this.IGNORE_FILDS, this.FILTERED_ARRAY)
+        let tbody = Table.createTableRows(this.IGNORE_FILDS, this.FILTERED_ARRAY)
 
         table.appendChild(header);
         table.appendChild(tbody);
 
         for(let cell of header.cells){
             const input = cell.querySelector('input');
-            const filter = cell.querySelector('button');
+            const sort = cell.querySelector('.sort-button');
+            const clearFilter = cell.querySelector('.util-button');
             const key = cell.getAttribute('data-column-key');
 
             input.addEventListener('change',()=>{
+                tbody = table.querySelector('tbody');
                 this.FILTERED_ARRAY = SortingFilteringService.filterObjects(this.FILTERED_ARRAY, key, input.value);
                 table.removeChild(tbody);
                 table.appendChild(Table.createTableRows(this.IGNORE_FILDS,this.FILTERED_ARRAY));
                 this.FILTERS.push(input.value);
             });
 
-            filter.addEventListener('click',()=>{
+            sort.addEventListener('click',()=>{
+                tbody = table.querySelector('tbody');
                 this.FILTERED_ARRAY = SortingFilteringService.sortObjects(this.FILTERED_ARRAY,this.LAST_SORTED_BY,key)
                 table.removeChild(tbody);
                 table.appendChild(Table.createTableRows(this.IGNORE_FILDS,this.FILTERED_ARRAY))
                 if(this.LAST_SORTED_BY===key)this.LAST_SORTED_BY = "";
                 else this.LAST_SORTED_BY = key;
             })
+
+            clearFilter.addEventListener('click',()=>{
+                tbody = table.querySelector('tbody');
+                this.FILTERED_ARRAY = this.ARRAY;
+                table.removeChild(tbody);
+                table.appendChild(Table.createTableRows(this.IGNORE_FILDS,this.FILTERED_ARRAY));
+                this.FILTERS  = [];
+            });
+
+            const w = NewWindowDom.getEmptyWindow("Filters",true);
+            w.classList.add('hidden-container');
         }
 
         return table;
     }
+
+    
     
 }
 

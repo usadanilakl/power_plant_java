@@ -77,7 +77,8 @@ class CategoryPopup{
             'lotoPoints',
             'specificLocation',
             'files',
-            'mainFile'
+            'mainFile',
+            'highlight'
         ]
         // let table = DomBuilderService.buildTableFromObject(points,hide,'table-dark');
         const refactorTable = new TableService(points,hide);
