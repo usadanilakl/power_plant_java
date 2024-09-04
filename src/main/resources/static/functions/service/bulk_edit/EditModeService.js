@@ -861,9 +861,14 @@ function buildEditStepControls(){
                 l.style.top = '30px';
                 newWind.style.width = '80%';
                 newWind.style.height = '80%';
+                newWind.style.maxWidth = '100%';
+                newWind.style.maxHeight = '100%';
                 for(let e of fileWithPoints.points){
+                    if(e.eqType && e.eqType.name){
+                        if(e.eqType.name==="Line" || e.eqType.name==="Connector") continue; 
+                    }
+                    
                     let group = await eqDropdown(e);
-                    console.log(group)
                     l.appendChild(group);
                     //just text display version:
                     // for(let key in e){

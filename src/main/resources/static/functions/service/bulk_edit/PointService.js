@@ -532,8 +532,8 @@ async function fillPointInfoWindow(point){
     infoContainer.innerHTML = "";
     infoContainer.appendChild(form);
     
-    if(selectedArea.lotoPoints){
-        const list = await lotoPointDropdown(selectedArea.lotoPoints); 
+    if(point.lotoPoints){
+        const list = await lotoPointDropdown(point.lotoPoints); 
         // infoContainer.appendChild(list);
         document.getElementById('loto-point-container').appendChild(list);
     } 
@@ -568,12 +568,14 @@ async function eqDropdown(point){
             lpItem.textContent = tagText + " || " + descriptionText + " || " + locationText + " || " + isoPosText + "/" + normPosText;
             lpItem.classList.add("smallBtn");
             lpItem.classList.add('lime');
+            lpItem.style.backgroundColor = 'rgb(0, 84, 140)';
         }
     }
 
     let sub = document.createElement('li');
     sub.classList.add("smallBtn");
     sub.classList.add('red');
+    sub.style.backgroundColor = 'darkgrey';
     list.appendChild(sub);
 
     sub.textContent = "Edit";
