@@ -67,10 +67,10 @@ class Table extends BaseDomBuilder{
         return th;
     }
 
-    static createTableRows(ignoreFields,array){
+    static createTableRows(ignoreFields,array,rows){
         let tbody = super.createElement('tbody',[],[],[]);
+        rows = [];
         let i = 1;
-        let rows = [];
         array.forEach(el=>{
             let row = document.createElement('tr');
             if(i<100){
@@ -125,11 +125,78 @@ class Table extends BaseDomBuilder{
 
             search.querySelector('button').classList.add('revial-button');
             sort.textContent = key;
+            sort.classList.add('smallBtn');
+            sort.classList.add('green-inward');
+            sort.style.width = '100%';
 
             cell.appendChild(search);
             cell.appendChild(sort);
         }
     }
+
+    static deleteRowsFromTop(num,tbody){
+        for (let i = 0; i < num; i++) {
+            if (tbody.rows.length > 80) {
+                tbody.deleteRow(0);
+            } else {
+                break;
+            }
+        }
+    }
+    
+    static addRowsToBottom(num,tbody,arr){
+        const lastRow = tbody.rows[tbody.rows.length - 1];
+        const indexValue = lastRow.cells[0].textContent;
+        const index = parseInt(indexValue);
+        for(let i = 0; i<num; i++){
+            let next = index+i;
+            if(next<arr.length) tbody.appendChild(arr[next]);
+            else break;
+        }
+        
+    }
+    
+    static tableDisplayControl(table, scrollUp){
+        let tbody = table.querySelector('tbody');
+        let numberOfRows = 20
+        
+            if(scrollUp){
+                Table.addRowsOnTop(numberOfRows,tbody,rows);
+                Table.deleteRowsFromBottom(numberOfRows,tbody);
+            }else{
+                Table.addRowsToBottom(numberOfRows,tbody,rows);
+                Table.deleteRowsFromTop(numberOfRows,tbody);            
+            }
+    
+        
+    }
+    
+    static deleteRowsFromBottom(num,tbody){
+        for (let i = 0; i < num; i++) {
+            if (tbody.rows.length > 80) {
+                tbody.deleteRow(tbody.rows.length-1);
+            } else {
+                break;
+            }
+        }
+    }
+    
+    static addRowsOnTop(num,tbody,arr){
+        const firstRow = tbody.rows[0];
+        if(firstRow){
+            const indexValue = firstRow.cells[0].textContent;
+            const index = parseInt(indexValue);
+            for(let i = 0; i<num; i++){
+                let next = index-i;
+                if(next>-1) tbody.insertBefore(arr[next],tbody.rows[0]);
+                else break;
+            }
+        }
+    
+        
+    }
+
+
 
 
 }

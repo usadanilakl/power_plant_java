@@ -124,6 +124,8 @@ class NewWindowDom{
             if(!newWind.contains(event.target)) popupBackground.parentElement.removeChild(popupBackground);
         })
         if(add) GlobalVariables.ALL.appendChild(popupBackground);
+
+        
         return popupBackground;
     }
 

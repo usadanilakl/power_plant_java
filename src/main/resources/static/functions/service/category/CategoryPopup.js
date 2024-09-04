@@ -62,6 +62,7 @@ class CategoryPopup{
         const popupHolder = NewWindowService.getPopupWindow("Refactor " + catObj.name,true);
         const popup = popupHolder.querySelector('.newWindow');
         const newValueDropdown = await DomBuilderService.buildCatInputDropdownFromCatObj(catObj);
+        const inputValue = newValueDropdown.querySelector('input');
 
         popup.appendChild(newValueDropdown);
         
@@ -80,13 +81,21 @@ class CategoryPopup{
             'mainFile',
             'highlight'
         ]
-        // let table = DomBuilderService.buildTableFromObject(points,hide,'table-dark');
+
         const refactorTable = new TableService(points,hide);
-        let table = refactorTable.buildSearchableTable('table-dark');
-        // let table = refactorTable.buildTableWithControls('table-dark');
+        let table = refactorTable.buildScrollAbleTable('table-dark');
         popup.appendChild(table);
+        popup.classList.add('centered-element');
+        popup.style.width = 'fit-content';
+        popup.style.maxWidth = '70%';
+        popup.style.height = 'fit-content';
+        popup.style.maxHeight = '70%';
 
+        let operation = async function(){
+            await deleteWithRefactor(oldValue,inputValue.getAttribute('data-object-id'));
+        }
 
+        DomBuilderService.createElement('button',[],['smalBtn','lime'],[operation])
         
     
         // let saveButton = popup.querySelector('#save');

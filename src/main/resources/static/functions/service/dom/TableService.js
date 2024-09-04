@@ -9,6 +9,7 @@ class TableService {
     FILTERED_ARRAY = [];
     IGNORE_FILDS = [];
     FILTERS = [];
+    ROWS = [];
 
     constructor(array,ignoreFields){
         this.ARRAY = array;
@@ -25,7 +26,7 @@ class TableService {
         const table = Table.buildSimpleTable(style);
         const header = Table.buildSimpleHeader(this.ARRAY[0],this.IGNORE_FILDS);
         const controls = Table.addControlsToHeader(header)
-        let tbody = Table.createTableRows(this.IGNORE_FILDS, this.FILTERED_ARRAY)
+        let tbody = Table.createTableRows(this.IGNORE_FILDS, this.FILTERED_ARRAY, this.ROWS)
 
         table.appendChild(header);
         table.appendChild(tbody);
@@ -61,11 +62,39 @@ class TableService {
                 this.FILTERS  = [];
             });
 
-            const w = NewWindowDom.getEmptyWindow("Filters",true);
-            w.classList.add('hidden-container');
+            // const w = NewWindowDom.getEmptyWindow("Filters",true);
+            // w.classList.add('hidden-container');
         }
 
         return table;
+    }
+
+    buildScrollAbleTable(style){
+        try {
+
+            let table = this.buildSearchableTable(style);
+            let tableContainer = document.createElement('div');
+            tableContainer.appendChild(table);
+            let lastScrollTop = 0
+    
+            tableContainer.addEventListener('scroll', function() {
+                const scrollPosition = tableContainer.scrollTop + tableContainer.clientHeight;
+                const tableHeight = tableContainer.scrollHeight;
+                let currentScrollTop = tableContainer.scrollTop;
+        
+                // Check if the scroll position is within 100px of the bottom of the table
+                if (tableHeight - scrollPosition < 500 && currentScrollTop>lastScrollTop) {
+                    Table.tableDisplayControl(table, false);
+                }else if(tableContainer.scrollTop < 500 && currentScrollTop<lastScrollTop){
+                    Table.tableDisplayControl(table, true);
+                }
+                lastScrollTop = currentScrollTop;
+        });
+        return table;
+    
+        } catch (error) {
+            console.error('Error fetching or processing data:', error);
+        }
     }
 
     

@@ -58,7 +58,7 @@ class Input extends BaseDomBuilder{
         button.textContent = 'X';
         button.classList.add('util-button');
         container.appendChild(button);
-        container.style.display = 'inline';
+        container.classList.add('flex-inline')
 
         return container;
     }
