@@ -86,8 +86,11 @@ public class LotoPointRestController {
         });
 
         List<Map<String,Object>> result = new ArrayList<>();
+        Set<Long> ids = new HashSet<>();
         for (LotoPointDto item : items) {
             Map<String, Object> matched = lotoPointMergeService.copyPointFromOtherUnit(item.getId());
+            if(matched==null) continue;
+            if(!ids.addAll((Set<Long>)matched.get("Ids"))) continue;
             List<LotoPointDto> list = ((List<LotoPoint>) matched.get("Match")).stream().map(lotoPointService::convertToDto).toList();
             matched.put("Match",list);
             matched.put("Original",lotoPointService.convertToDto((LotoPoint)matched.get("Original")));

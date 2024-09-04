@@ -10,10 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -109,36 +107,43 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
 
         }
 
-        List<LotoPoint> byTagNumber = null;
-        int size = 0;
-        Map<String, Object> result = new HashMap<>();
+        if(!destenationTagNumber.equalsIgnoreCase("")){
+            List<LotoPoint> byTagNumber = null;
+            int size = 0;
+            Map<String, Object> result = new HashMap<>();
 
-        if(!destenationTagNumber.equalsIgnoreCase("")) byTagNumber = lotoPointRepo.findByTagNumber(destenationTagNumber);
+            byTagNumber = lotoPointRepo.findByTagNumber(destenationTagNumber);
 
-        if(byTagNumber!=null && byTagNumber.size()>1){
-            size = byTagNumber.size();
-        }
-        else if(byTagNumber!=null && byTagNumber.size()==1){
-            size = byTagNumber.size();
-        }else if(!destenationTagNumber.equalsIgnoreCase("") && (byTagNumber==null || byTagNumber.size()==0)){
-            LotoPoint newLotoPoint = new LotoPoint();
-            newLotoPoint.setTagNumber(destenationTagNumber);
-            newLotoPoint.setSpecificLocation(specificLocation);
-            newLotoPoint.setDescription(destDescription);
-            newLotoPoint.setIsoPos(sourcePoint.getIsoPos());
-            newLotoPoint.setNormPos(sourcePoint.getNormPos());
-            byTagNumber.add(newLotoPoint);
-            System.out.println(destenationTagNumber);
+            if(byTagNumber!=null && byTagNumber.size()>1){
+                size = byTagNumber.size();
+            }
+            else if(byTagNumber!=null && byTagNumber.size()==1){
+                size = byTagNumber.size();
+            }else if((byTagNumber==null || byTagNumber.size()==0)){
+                LotoPoint newLotoPoint = new LotoPoint();
+                newLotoPoint.setTagNumber(destenationTagNumber);
+                newLotoPoint.setSpecificLocation(specificLocation);
+                newLotoPoint.setDescription(destDescription);
+                newLotoPoint.setIsoPos(sourcePoint.getIsoPos());
+                newLotoPoint.setNormPos(sourcePoint.getNormPos());
+                byTagNumber.add(newLotoPoint);
+                System.out.println(destenationTagNumber);
 
 //            System.out.println("==============================================================================");
 //            System.out.println(sourcePoint.getTagNumber() + "||" + sourcePoint.getDescription() + "||" + sourcePoint.getSpecificLocation());
 //            System.out.println(destenationTagNumber+ "||" + destDescription + "||" + specificLocation);
+            }
+
+            Set<Long> ids = byTagNumber.stream().map(LotoPoint::getId).collect(Collectors.toSet());
+            ids.add(sourcePoint.getId());
+
+            result.put("Size",size);
+            result.put("Match",byTagNumber);
+            result.put("Original",sourcePoint);
+            result.put("Ids", ids);
+
+            return result;
         }
-
-        result.put("Size",size);
-        result.put("Match",byTagNumber);
-        result.put("Original",sourcePoint);
-
-        return result;
+        return null;
     }
 }

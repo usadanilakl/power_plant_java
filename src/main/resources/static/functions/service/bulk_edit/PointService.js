@@ -257,7 +257,9 @@ async function lotoPointMatcherDropdown(points){
         
         button.textContent = tagText + " || " + descriptionText + " || " + locationText + " || " + isoPosText + "/" + normPosText;
         button.type = 'button';
-        button.style.backgroundColor = color;
+        // button.style.backgroundColor = color;
+        button.classList.add("smallBtn");
+        button.classList.add(color);
         button.addEventListener('click', async ()=>{
             if(formContainer.children.length === 0){
                 const form = await buildFormFromObject(e);
@@ -272,6 +274,12 @@ async function lotoPointMatcherDropdown(points){
 
                 sub.textContent = "Submit";
                 del.textContent = "Delete";
+
+                sub.classList.add('smallBtn');
+                sub.classList.add('green');
+
+                del.classList.add('smallBtn');
+                del.classList.add('red');
 
                 cont.appendChild(sub);
                 cont.appendChild(del);
@@ -298,6 +306,8 @@ async function lotoPointMatcherDropdown(points){
         addButton.type = 'button';
         addButton.textContent = '+'
         addButton.id = 'add-to-match-button-' + e.id ? e.id :"";
+        addButton.classList.add('smallBtn');
+        addButton.classList.add('yellow');
         addButton.addEventListener('click',async ()=>{
             
             if(addButton.textContent==="+"){
@@ -394,8 +404,11 @@ async function matchPoints(source,destination){
         list.appendChild(f);
         f.appendChild(submitBtn);
 
+        submitBtn.classList.add('smallBtn');
+        submitBtn.classList.add('lime')
+
         submitBtn.type = 'button';
-        submitBtn.textContent = "Submit";
+        submitBtn.textContent = "Submit this Point-Group";
         submitBtn.addEventListener('click', async ()=>{
             for(let el of e.Match)await createNew(el);
 
@@ -524,6 +537,50 @@ async function fillPointInfoWindow(point){
         // infoContainer.appendChild(list);
         document.getElementById('loto-point-container').appendChild(list);
     } 
+}
+
+async function eqDropdown(point){
+    let list = document.createElement('ul');
+    let eqItem = document.createElement('li')
+    list.appendChild(eqItem);
+
+    let tagText = point.tagNumber ? point.tagNumber : "no tag";
+    let descriptionText = point.description ? point.description : "no description";
+    let locationText = point.location?.name ? point.location.name : "no location";
+    let systText = point.system?.name ? point.system.name : "no syst";
+    let typeText = point.eqType?.name ? point.eqType.name : "no type";
+
+    eqItem.textContent = tagText + " || " + descriptionText + " || " + locationText + " || " + systText + "/" + typeText;
+    eqItem.classList.add("smallBtn");
+    eqItem.classList.add('aqua');
+
+    if(point.lotoPoints){
+        for(let e of point.lotoPoints){
+            let lpItem = document.createElement('li');
+            list.appendChild(lpItem);
+
+            let tagText = e.tagNumber ? e.tagNumber : "no tag";
+            let descriptionText = e.description ? e.description : "no description";
+            let locationText = e.specificLocation ? e.specificLocation : "no location";
+            let isoPosText = e.isoPos?.name ? e.isoPos.name : "no iso pos";
+            let normPosText = e.normPos?.name ? e.normPos.name : "no norm pos";
+
+            lpItem.textContent = tagText + " || " + descriptionText + " || " + locationText + " || " + isoPosText + "/" + normPosText;
+            lpItem.classList.add("smallBtn");
+            lpItem.classList.add('lime');
+        }
+    }
+
+    let sub = document.createElement('li');
+    sub.classList.add("smallBtn");
+    sub.classList.add('red');
+    list.appendChild(sub);
+
+    sub.textContent = "Edit";
+    sub.addEventListener('click',()=>{
+        fillPointInfoWindow(point);
+    })
+    return list;
 }
 
 function convertToLotoPointFormDto(p){

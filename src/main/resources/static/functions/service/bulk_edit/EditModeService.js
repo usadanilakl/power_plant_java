@@ -843,32 +843,36 @@ function buildEditStepControls(){
         li5.addEventListener('click',enableBulkEdit);
 
         li6.addEventListener('click', async ()=>{
-            let resp = await fetch('/file-api/verify/'+file.id);
-            let points = await resp.json();
-            let w = document.getElementById('verification-window');
-            if(w) all.removeChild(w);
-            let newWind = getEmptyWindow();
-            all.appendChild(newWind);
-            newWind.id = 'verification-window';
-            let l = document.createElement('ul');
-            newWind.appendChild(l);
-            l.style.backgroundColor = 'white'
-            l.style.position = 'absolute';
-            l.style.top = '30px';
-            newWind.style.width = '80%';
-            newWind.style.height = '80%';
-            points.forEach(e=>{
+            // location.reload();
 
-                for(let key in e){
-                    let ite = document.createElement('li');
-                    ite.textContent = key + ': ' + e[key];
-                    l.appendChild(ite);
+            // After reload (in a script that runs on every page load)
+            // window.addEventListener('load', async function() {
+                let resp = await fetch('/file-api/verify/'+file.id);
+                let points = await resp.json();
+                let w = document.getElementById('verification-window');
+                if(w) all.removeChild(w);
+                let newWind = getEmptyWindow();
+                all.appendChild(newWind);
+                newWind.id = 'verification-window';
+                let l = document.createElement('ul');
+                newWind.appendChild(l);
+                l.style.backgroundColor = 'white'
+                l.style.position = 'absolute';
+                l.style.top = '30px';
+                newWind.style.width = '80%';
+                newWind.style.height = '80%';
+                for(let e of fileWithPoints.points){
+                    let group = await eqDropdown(e);
+                    console.log(group)
+                    l.appendChild(group);
+                    //just text display version:
+                    // for(let key in e){
+                    //     let ite = document.createElement('li'); 
+                    //     ite.textContent = key + ': ' + e[key];
+                    //     l.appendChild(ite);
+                    // }
                 }
-            });
-
-
-            
-
+            // });
         })
 
         li7.addEventListener('click',async ()=>{
@@ -900,7 +904,11 @@ function buildEditStepControls(){
                 f.appendChild(submitBtn);
 
                 submitBtn.type = 'button';
-                submitBtn.textContent = "Submit";
+                submitBtn.textContent = "Submit this Point-Group";
+
+                submitBtn.classList.add('smallBtn');
+                submitBtn.classList.add('lime')
+
                 submitBtn.addEventListener('click', async ()=>{
                     for(let el of points)await createNew(el);
                     const index = matchedItems.indexOf(e);
