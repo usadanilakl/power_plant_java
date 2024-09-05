@@ -52,7 +52,8 @@ async function loadPictureWithLightFile(file){
     setEditMode(fileWithPoints.bulkEditStep);
     buildEditStepControls();
     setAreas(fileWithPoints.points);
-    originalWidth = picture.naturalWidth;
+    setTimeout(()=>{originalWidth = picture.naturalWidth;},1000)
+    
 }
 
 function setAreas(areas){
