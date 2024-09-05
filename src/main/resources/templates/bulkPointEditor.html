@@ -257,7 +257,7 @@
         incompletePid = incompletePid.filter(e=>e.fileType.name === 'PID' && (e.vendor.name==="John Cockerill" || e.vendor.name==="Kiewit"));
         incompletePid.sort((a,b)=>a.vendor.name.localeCompare(b.vendor.name));
         //setEditMode(incompletePid[0].bulkEditStep); //it is in loadPictureWithLightFile now
-        loadPictureWithLightFile(incompletePid[0]);
+        await loadPictureWithLightFile(incompletePid[0]);
 
         getAllCategoryObjects();
         // getRevisedExcelPoints();
@@ -278,7 +278,7 @@
         item.classList.add('hide');
         
     }).then(async ()=>{
-        completedPid = completedPid.filter(e=>e.vendor.name==="Kiewit");
+        completedPid = completedPid.filter(e=>e.vendor.name==="Kiewit" || e.vendor.name === "John Cockerill");
        if(mode) setMode(mode); 
     }).then(()=>{
         // console.log(JSON.stringify(allAliases));
