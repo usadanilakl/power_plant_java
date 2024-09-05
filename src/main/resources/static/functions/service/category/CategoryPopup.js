@@ -1,4 +1,5 @@
 import CategoryController from "../../controllers/category/CategoryController.js";
+import Table from "../../dom/base/Table.js";
 import GlobalVariables from "../../global/GlobalVariables.js";
 import DomBuilderService from "../dom/DomBuilderService.js";
 import NewWindowService from "../dom/NewWindowService.js";
@@ -83,13 +84,38 @@ class CategoryPopup{
         ]
 
         const refactorTable = new TableService(points,hide);
-        let table = refactorTable.buildScrollAbleTable('table-dark');
+        let table = refactorTable.buildSearchableTable('table-dark');
+        console.log(refactorTable.ROWS)
+        // let table = refactorTable.buildScrollAbleTable('table-dark');
         popup.appendChild(table);
         popup.classList.add('centered-element');
         popup.style.width = 'fit-content';
         popup.style.maxWidth = '70%';
         popup.style.height = 'fit-content';
         popup.style.maxHeight = '70%';
+
+        let lastScrollTop = 0
+
+        popup.addEventListener('scroll', function() {
+            const scrollPosition = popup.scrollTop + popup.clientHeight;
+            const tableHeight = popup.scrollHeight;
+            let currentScrollTop = popup.scrollTop;
+    
+            // Check if the scroll position is within 100px of the bottom of the table
+            if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
+                Table.tableDisplayControl(table, false, refactorTable.ROWS);
+            }else if(popup.scrollTop < 500 && currentScrollTop < lastScrollTop){
+                Table.tableDisplayControl(table, true, refactorTable.ROWS);
+            }
+
+            lastScrollTop = currentScrollTop;
+
+            console.log(tableHeight - scrollPosition);
+            console.log(popup.scrollTop);
+
+            console.log("==================================");
+        });
+
 
         let operation = async function(){
             await deleteWithRefactor(oldValue,inputValue.getAttribute('data-object-id'));

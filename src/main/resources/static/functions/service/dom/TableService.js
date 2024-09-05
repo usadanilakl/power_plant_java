@@ -16,6 +16,7 @@ class TableService {
         this.IGNORE_FILDS = ignoreFields;
         this.LAST_SORTED_BY = "";
         this.FILTERED_ARRAY = array;
+        this.ROWS = [];
     }
 
     buildTableWithControls(style){

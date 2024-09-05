@@ -69,7 +69,6 @@ class Table extends BaseDomBuilder{
 
     static createTableRows(ignoreFields,array,rows){
         let tbody = super.createElement('tbody',[],[],[]);
-        rows = [];
         let i = 1;
         array.forEach(el=>{
             let row = document.createElement('tr');
@@ -156,7 +155,7 @@ class Table extends BaseDomBuilder{
         
     }
     
-    static tableDisplayControl(table, scrollUp){
+    static tableDisplayControl(table, scrollUp, rows){
         let tbody = table.querySelector('tbody');
         let numberOfRows = 20
         
