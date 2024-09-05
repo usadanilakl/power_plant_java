@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
@@ -29,7 +30,9 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 @SpringBootApplication
 @RequiredArgsConstructor
@@ -75,16 +78,25 @@ private final LotoPointMergeService lotoPointMergeService;
 
         System.err.println("=====================================================");
 
-//        List<LotoPoint> all = lotoPointService.getAll();
-//        List<LotoPoint> completed = all.stream().filter(e -> e.getDateModified().isAfter(LocalDateTime.of(2024, 8, 6, 00, 00))).toList();
-//
+//        List<Equipment> manValves = equipmentService.getAll().stream()
+//                .filter(e -> e.getVendor()!=null && e.getVendor().getId()==4155L)
+//                .filter(e -> e.getEqType()!=null && e.getEqType().getName().equalsIgnoreCase("manual valve"))
+//                .toList();
+
+
+//        List<Equipment> all = equipmentService.getAll();
 //        System.out.println(all.size());
-//        System.out.println(completed.size());
+//        List<Equipment> hrsg = all.stream().filter(e -> e.getVendor() != null && e.getVendor().getId() == 4209L).toList();
+//        System.out.println(hrsg.size());
+//        List<Equipment> manValves = hrsg.stream().filter(e -> e.getEqType() != null && e.getEqType().getName().equalsIgnoreCase("manual valve")).toList();
+//        manValves.forEach(e->{
+//            String s = e.getTagNumber().replaceAll("-", "").replaceFirst("01", "01-");
+////            System.out.println(s);
+//            e.setTagNumber(s);
+//            System.out.println(e.getTagNumber());
+//            equipmentService.save(e);
+//        } );
 
-
-//        for (LotoPoint lotoPoint : completed) {
-//            lotoPointMergeService.copyPointFromOtherUnit(lotoPoint.getId());
-//        }
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 //        fileService.getAll().forEach(e->{

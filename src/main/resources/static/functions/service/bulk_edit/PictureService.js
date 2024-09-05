@@ -24,6 +24,7 @@ function loadPictureWithAreas(src, areas){
     picture.setAttribute('src',src);
     removeAllHighlights();
     setAreas(areas);
+    originalWidth = picture.naturalWidth;
 }
 
 function loadPictureWithFile(file){
@@ -51,6 +52,7 @@ async function loadPictureWithLightFile(file){
     setEditMode(fileWithPoints.bulkEditStep);
     buildEditStepControls();
     setAreas(fileWithPoints.points);
+    originalWidth = picture.naturalWidth;
 }
 
 function setAreas(areas){
@@ -558,7 +560,7 @@ async function handleMouseUp() {
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
 
-    await offsetSizing(picture);
+    offsetSizing(picture);
     //await sendCoordinates();
 
     let areaCoordinates = 'StartX:'+coords.mouseOnPictureStart.x + ',StartY:' + coords.mouseOnPictureStart.y+ ',EndX:'+ coords.mouseOnPictureEnd.x + ',EndY:' + coords.mouseOnPictureEnd.y +',width:'+ coords.getObjWidth() +',height:'+ coords.getObjHeight();
@@ -575,7 +577,7 @@ async function handleMouseUp() {
 
     if(coords.getObjWidth() < 20 && coords.getObjHeight() < 20){
         removeLastHighlight();
-        document.removeEventListener('mousedown',handleMouseDown);
+        //document.removeEventListener('mousedown',handleMouseDown);
         return;
     }
 
@@ -602,7 +604,9 @@ async function handleMouseUp() {
 
 
         if(!isGettingText){
+            console.log('getting text');
             removeLastHighlight();
+            console.log(areaInfo.coordinates);
             let text = await getText(areaInfo.coordinates);
             saveInClipboard(text);
             selectedArea.tagNumber = text;
@@ -640,13 +644,18 @@ async function handleMouseUp() {
     
 }
 
-async function offsetSizing(picture){
+function offsetSizing(picture){
+    console.log('offsetting width:');
     const coefficientX = originalWidth/picture.offsetWidth;
+    console.log(originalWidth);
+    console.log(picture.offsetWidth);
+
 
     coords.mouseOnPictureStart.x = Math.floor(coords.mouseOnPictureStart.x*coefficientX);
     coords.mouseOnPictureStart.y = Math.floor(coords.mouseOnPictureStart.y*coefficientX);
     coords.mouseOnPictureEnd.x = Math.floor(coords.mouseOnPictureEnd.x*coefficientX);
     coords.mouseOnPictureEnd.y = Math.floor(coords.mouseOnPictureEnd.y*coefficientX);
+
     }
 
 function removeLastHighlight(){

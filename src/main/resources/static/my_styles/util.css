@@ -59,6 +59,10 @@ ul {
     color: black;
 }
 
+.s{
+    background-color: darkgrey;
+}
+
 /*button, #buttons li, #file-input{*/
 /*    !* display: inline-block; *!*/
 /*    padding: 10px 20px;*/
