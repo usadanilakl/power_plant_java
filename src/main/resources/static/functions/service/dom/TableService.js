@@ -29,6 +29,12 @@ class TableService {
         const controls = Table.addControlsToHeader(header)
         let tbody = Table.createTableRows(this.IGNORE_FILDS, this.FILTERED_ARRAY, this.ROWS)
 
+        let tableContainer = document.createElement('div');
+        tableContainer.appendChild(table);
+
+        tableContainer.style.position = 'relative';
+        tableContainer.style.minHeight = 65*this.ROWS.length + 'px';
+
         table.appendChild(header);
         table.appendChild(tbody);
 
@@ -67,7 +73,7 @@ class TableService {
             // w.classList.add('hidden-container');
         }
 
-        return table;
+        return tableContainer;
     }
 
     buildScrollAbleTable(style){
@@ -77,6 +83,13 @@ class TableService {
             let tableContainer = document.createElement('div');
             tableContainer.appendChild(table);
             let lastScrollTop = 0
+
+            // console.log(this.ROWS)
+
+            tableContainer.style.width = '100%';
+            tableContainer.style.height = '100%';
+            tableContainer.style.position = 'relative';
+            tableContainer.style.overflow = 'scroll';
     
             tableContainer.addEventListener('scroll', function() {
                 const scrollPosition = tableContainer.scrollTop + tableContainer.clientHeight;
@@ -85,13 +98,13 @@ class TableService {
         
                 // Check if the scroll position is within 100px of the bottom of the table
                 if (tableHeight - scrollPosition < 500 && currentScrollTop>lastScrollTop) {
-                    Table.tableDisplayControl(table, false);
+                    Table.tableDisplayControl(table, false, this.ROWS);
                 }else if(tableContainer.scrollTop < 500 && currentScrollTop<lastScrollTop){
-                    Table.tableDisplayControl(table, true);
+                    Table.tableDisplayControl(table, true, this.ROWS);
                 }
                 lastScrollTop = currentScrollTop;
-        });
-        return table;
+            });
+        return tableContainer;
     
         } catch (error) {
             console.error('Error fetching or processing data:', error);

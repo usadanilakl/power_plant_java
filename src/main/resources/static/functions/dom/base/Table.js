@@ -134,9 +134,13 @@ class Table extends BaseDomBuilder{
     }
 
     static deleteRowsFromTop(num,tbody){
+        let container = tbody.parentElement.parentElement;
         for (let i = 0; i < num; i++) {
+            let rowHight = tbody.rows[0].offsetHeight;
+            let oldHight = container.offsetHeight;
             if (tbody.rows.length > 80) {
                 tbody.deleteRow(0);
+                container.style.height = oldHight-rowHight+'px';
             } else {
                 break;
             }
@@ -157,14 +161,14 @@ class Table extends BaseDomBuilder{
     
     static tableDisplayControl(table, scrollUp, rows){
         let tbody = table.querySelector('tbody');
-        let numberOfRows = 20
+        let numberOfRows = 20;
         
             if(scrollUp){
                 Table.addRowsOnTop(numberOfRows,tbody,rows);
                 Table.deleteRowsFromBottom(numberOfRows,tbody);
             }else{
                 Table.addRowsToBottom(numberOfRows,tbody,rows);
-                Table.deleteRowsFromTop(numberOfRows,tbody);            
+                Table.deleteRowsFromTop(numberOfRows,tbody);    
             }
     
         
@@ -193,6 +197,44 @@ class Table extends BaseDomBuilder{
         }
     
         
+    }
+
+    static isAlmostInViewFromBottom(tableBody,container,bufferDistance) {
+        const tableRect = tableBody.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const lastRow = tableBody.lastElementChild;
+        
+        if (!lastRow) return false;
+        
+        const lastRowRect = lastRow.getBoundingClientRect();
+        const distanceToBottom = lastRowRect.bottom-containerRect.bottom;
+        // const distanceToBottom = containerRect.bottom - lastRowRect.bottom;
+
+        // console.log(containerRect.bottom);
+        // console.log(lastRowRect.bottom);
+        // console.log(distanceToBottom);
+        // console.log("==============================")
+        
+        return distanceToBottom < bufferDistance;
+    }
+
+    static isAlmostInViewFromTop(tableBody,container,bufferDistance) {
+        const tableRect = tableBody.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const firstRow = tableBody.rows[0];
+        
+        if (!firstRow) return false;
+        
+        const firstRowRect = firstRow.getBoundingClientRect();
+        const distanceAboveTop = containerRect.top - firstRowRect.bottom;
+        // const distanceToBottom = containerRect.bottom - lastRowRect.bottom;
+
+        console.log(firstRowRect.bottom);
+        console.log(containerRect.top);
+        console.log(distanceAboveTop);
+        console.log("==============================")
+        
+        return distanceAboveTop < bufferDistance;
     }
 
 

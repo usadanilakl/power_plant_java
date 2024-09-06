@@ -85,35 +85,39 @@ class CategoryPopup{
 
         const refactorTable = new TableService(points,hide);
         let table = refactorTable.buildSearchableTable('table-dark');
-        console.log(refactorTable.ROWS)
+        let tableBody = table.querySelector('tbody');
         // let table = refactorTable.buildScrollAbleTable('table-dark');
         popup.appendChild(table);
         popup.classList.add('centered-element');
         popup.style.width = 'fit-content';
         popup.style.maxWidth = '70%';
-        popup.style.height = 'fit-content';
+        popup.style.height = 'auto';
         popup.style.maxHeight = '70%';
+        popup.style.overflow = 'auto';
 
         let lastScrollTop = 0
 
         popup.addEventListener('scroll', function() {
-            const scrollPosition = popup.scrollTop + popup.clientHeight;
-            const tableHeight = popup.scrollHeight;
             let currentScrollTop = popup.scrollTop;
+
+            if(Table.isAlmostInViewFromBottom(tableBody,popup,500) && currentScrollTop > lastScrollTop) Table.tableDisplayControl(table, false, refactorTable.ROWS);
+            if(Table.isAlmostInViewFromTop(tableBody,popup,1000) && currentScrollTop < lastScrollTop) Table.tableDisplayControl(table, true, refactorTable.ROWS);
+
+            // console.log(Table.isAlmostInViewFromTop(tableBody,popup,1000));
+            // console.log(Table.isAlmostInViewFromTop(tableBody,popup,1000));
+
+            // const scrollPosition = popup.scrollTop + popup.clientHeight;
+            // const tableHeight = popup.scrollHeight;
+            
     
-            // Check if the scroll position is within 100px of the bottom of the table
-            if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
-                Table.tableDisplayControl(table, false, refactorTable.ROWS);
-            }else if(popup.scrollTop < 500 && currentScrollTop < lastScrollTop){
-                Table.tableDisplayControl(table, true, refactorTable.ROWS);
-            }
+            // // Check if the scroll position is within 100px of the bottom of the table
+            // if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
+            //     Table.tableDisplayControl(table, false, refactorTable.ROWS);
+            // }else if(popup.scrollTop < 1000 && currentScrollTop < lastScrollTop){
+            //     Table.tableDisplayControl(table, true, refactorTable.ROWS);
+            // }
 
             lastScrollTop = currentScrollTop;
-
-            console.log(tableHeight - scrollPosition);
-            console.log(popup.scrollTop);
-
-            console.log("==================================");
         });
 
 
