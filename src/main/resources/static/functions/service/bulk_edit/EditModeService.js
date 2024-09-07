@@ -430,7 +430,7 @@ async function moveToStepByName(step){
     loadPictureWithLightFile(updatedFile);
 }
 
-function buildEditStepControls(){
+async function buildEditStepControls(){
     console.log("building edit controls for the page")
     let list = document.getElementById('bulk-edit-controls');
     let box = document.getElementById('step-option-box')
@@ -678,7 +678,7 @@ function buildEditStepControls(){
         // options.style.bottom = '100%';
         // options.style.left = li5.offsetLeft+'px';
 
-        buildCategorySelector("location");
+        await buildCategorySelector("location");
     }
     else if(editModes.lotoPointPosition.state){
         stepButton.textContent = "Step 4 Edit Isolated Position";
@@ -719,7 +719,7 @@ function buildEditStepControls(){
         list.appendChild(li5);
         list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
-        buildCategorySelector("isoPos");
+        await buildCategorySelector("isoPos");
     }
     else if(editModes.lotoPointNormPosition.state){
         stepButton.textContent = "Step 5 Edit Normal Position";
@@ -760,7 +760,7 @@ function buildEditStepControls(){
         list.appendChild(li5);
         list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
-        buildCategorySelector("normPos");
+        await buildCategorySelector("normPos");
     }
     else if(editModes.system.state){
         stepButton.textContent = "Step 6 Edit System";
@@ -801,7 +801,7 @@ function buildEditStepControls(){
         list.appendChild(li5);
         list.appendChild(document.createElement('li').appendChild(getTextButton()));
 
-        buildCategorySelector("system");
+        await buildCategorySelector("system");
     }
     else if(editModes.eqType.state){
         stepButton.textContent = "Step 7 Edit Equipment Type";
@@ -955,7 +955,7 @@ function buildEditStepControls(){
         list.appendChild(li6);
         list.appendChild(li7);
 
-        buildCategorySelector("eqType");
+        await buildCategorySelector("eqType");
     }
 
     let skipButton = document.createElement('li');
@@ -1081,7 +1081,9 @@ function buildEditStepControls(){
 }
 
 async function buildCategorySelector(catAlias){
-    let cat = categoryObjects.find(c=>c.alias===catAlias);
+    console.log(categoryObjects.length)
+    let cat = await categoryObjects.find(c=>c.alias===catAlias);
+    console.log(JSON.stringify(cat))
     let catWindow = document.querySelector(`[data-category-window='${cat.alias}'`);
     if(catWindow){
         all.removeChild(catWindow);

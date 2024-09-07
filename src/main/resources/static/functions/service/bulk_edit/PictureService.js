@@ -50,7 +50,7 @@ async function loadPictureWithLightFile(file){
     removeAllHighlights();
     fileWithPoints = await getFileFromDbByLink(file.fileNumber);
     setEditMode(fileWithPoints.bulkEditStep);
-    buildEditStepControls();
+    await buildEditStepControls();
     setAreas(fileWithPoints.points);
     setTimeout(()=>{originalWidth = picture.naturalWidth;},1000)
     

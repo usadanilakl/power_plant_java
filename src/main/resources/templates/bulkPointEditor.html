@@ -257,16 +257,16 @@
         incompletePid = incompletePid.filter(e=>e.fileType.name === 'PID' && (e.vendor.name==="John Cockerill" || e.vendor.name==="Kiewit"));
         incompletePid.sort((a,b)=>a.vendor.name.localeCompare(b.vendor.name));
         //setEditMode(incompletePid[0].bulkEditStep); //it is in loadPictureWithLightFile now
+        await getAllCategoryObjects();
         await loadPictureWithLightFile(incompletePid[0]);
 
-        getAllCategoryObjects();
         // getRevisedExcelPoints();
-        getCurrentLotoPoints();
-        getOldExcelPoints();
-        getHrsgValvesFromDb();
-        getKiewitValvesFromDb();
-        getBypassesFromDb();
-        getCompletedFiles();
+        await getCurrentLotoPoints();
+        await getOldExcelPoints();
+        await getHrsgValvesFromDb();
+        await getKiewitValvesFromDb();
+        await getBypassesFromDb();
+        await getCompletedFiles();
 
 
 
