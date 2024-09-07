@@ -136,11 +136,16 @@ class Table extends BaseDomBuilder{
     static deleteRowsFromTop(num,tbody){
         let container = tbody.parentElement.parentElement;
         for (let i = 0; i < num; i++) {
-            let rowHight = tbody.rows[0].offsetHeight;
-            let oldHight = container.offsetHeight;
+            let rowHight = tbody.rows[1].offsetHeight;
             if (tbody.rows.length > 80) {
-                tbody.deleteRow(0);
-                container.style.height = oldHight-rowHight+'px';
+                if(tbody.rows[0].cells[0].textContent!=='1') tbody.deleteRow(0);
+                else{
+                   let firstRow = tbody.rows[0]; 
+                   let oldHight = firstRow.offsetHeight;
+                   firstRow.style.height = oldHight+rowHight+'px';
+                } 
+                
+
             } else {
                 break;
             }
@@ -186,12 +191,17 @@ class Table extends BaseDomBuilder{
     
     static addRowsOnTop(num,tbody,arr){
         const firstRow = tbody.rows[0];
+        const secondRow = tbody.rows[1];
         if(firstRow){
-            const indexValue = firstRow.cells[0].textContent;
+            const indexValue = secondRow.cells[0].textContent;
             const index = parseInt(indexValue);
             for(let i = 0; i<num; i++){
                 let next = index-i;
-                if(next>-1) tbody.insertBefore(arr[next],tbody.rows[0]);
+                if(next>0){
+                  tbody.insertBefore(arr[next],tbody.rows[1]);  
+                  firstRow.style.height = firstRow.offsetHeight-arr[next].offsetHeight+'px';
+                } 
+
                 else break;
             }
         }

@@ -13,6 +13,7 @@ import java.util.List;
 public interface EquipmentService extends CrudService<Equipment, EquipmentDto, EquipmentRepo, EquipmentMapper> , RefactorService {
     Equipment saveForTransfer(Equipment transfer);
     void combineDuplicates(String tagNumber);
+    List<Equipment> getTagNumberDuplicates();
 
     List<Equipment> getByTagNumber(String tag);
     public List<Equipment> getByVendor(Value oldVal);

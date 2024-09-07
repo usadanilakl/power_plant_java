@@ -130,6 +130,14 @@ public class EquipmentServiceImpl implements EquipmentService {
     }
 
     @Override
+    public List<Equipment> getTagNumberDuplicates() {
+        List<String> duplicateTagNumbers = equipmentRepo.findDuplicateTagNumbers();
+        List<Equipment> result = new ArrayList<>();
+        duplicateTagNumbers.forEach(e->result.addAll(equipmentRepo.findByTagNumber(e)));
+        return result;
+    }
+
+    @Override
     public List<Equipment> getByTagNumber(String tag) {
         return equipmentRepo.findByTagNumber(tag);
     }

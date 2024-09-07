@@ -72,7 +72,7 @@ class TableService {
             // const w = NewWindowDom.getEmptyWindow("Filters",true);
             // w.classList.add('hidden-container');
         }
-
+    
         return tableContainer;
     }
 

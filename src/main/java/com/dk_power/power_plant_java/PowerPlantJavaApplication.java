@@ -85,46 +85,18 @@ private final EquipmentRepo equipmentRepo;
         System.err.println("=====================================================");
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
-//        fileService.getAll().forEach(e->{
-//            e.buildFileLink("jpg");
-//            fileService.save(e);
-//        });
 
-        FileObject entityById = fileService.getEntityById(5256l);
-//        entityById.buildFileLink("jpg");
-//        fileService.save(entityById);
-
-//        equipmentService.getAll().forEach(highlightService::transferEqToHighlights);
-//        equipmentService.getAll().forEach(e->{
-//            if(e.getCoordinates().contains("undefined"))e.setCoordinates(e.getCoordinates().replace("undefined",""));
-//            if(e.getMainFile()==null) equipmentService.hardDelete(e);// System.out.println(e.getTagNumber());
-//            equipmentService.save(e);
-//
-//        });
-//        System.out.println("equipmentService.getAll().size() = " + equipmentService.getAll().size());
-//        System.out.println("highlightService.getAll().size() = " + highlightService.getAll().size());
-//        System.out.println("Completed");
-////        equipmentService.hardDelete(equipmentService.getEntityById(26399L));
-//
-//        List<String> duplicateTagNumbers = equipmentRepo.findDuplicateTagNumbers();
-//        List<String> uniqueTagNumbers = equipmentRepo.findUniqueTagNumbers();
-//        System.out.println("duplicateTagNumbers.size() = " + duplicateTagNumbers.size());
-//        System.out.println("uniqueTagNumbers.size() = " + uniqueTagNumbers.size());
-
-//        duplicateTagNumbers.forEach(System.out::println);
-//        int n = 0;
-//        for(String e : duplicateTagNumbers){
-//
-//            try{
-//                equipmentService.combineDuplicates(e);
-//                System.out.println("++++++++++++++++++++++++++++++++++++++++++++++++++++");
-//            }catch (NullPointerException ex){
-//                n++;
-//            }
-//
-//        }
-//        System.out.println(n);
-
+        List<Equipment> tagNumberDuplicates = equipmentService.getTagNumberDuplicates();
+        int n = 0;
+        for(Equipment e : tagNumberDuplicates){
+            if(e.getLotoPoints()!=null && e.getLotoPoints().size()!=0){
+                String descr = e.getDescription()!=null ? e.getDescription() : "no descr";
+                String loc = e.getLocation()!=null ? e.getLocation().getName() : "no loc";
+                System.out.println(e.getTagNumber() + "||" + descr + "||" + loc + "||" +  e.getMainFile().getFileNumber());
+                n++;
+            }
+        }
+        System.out.println(n);
 
 /******************************************************************************************************************************************
  *  Creating File Objects from files in a folder
