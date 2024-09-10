@@ -36,15 +36,15 @@ public class FileRestController {
         return ResponseEntity.ok(fileService.getAllDtos("jpg")) ;
     }
 
-//    @GetMapping("/get-vendors")
-//    public List<String> getAllVendors(){
-//        return fileService.getVendors();
-//    }
-//
-//    @GetMapping("/get-categories")
-//    public List<Map<String,String>> getAllCategories(){
-//        return SortingGroup.getValues();
-//    }
+    @GetMapping("/get-vendors")
+    public List<String> getAllVendors(){
+        return fileService.getVendors();
+    }
+
+    @GetMapping("/get-categories")
+    public List<Map<String,String>> getAllCategories(){
+        return SortingGroup.getValues();
+    }
 
     @DeleteMapping("/delete-kiewit")
     public void deleteKiewit() {

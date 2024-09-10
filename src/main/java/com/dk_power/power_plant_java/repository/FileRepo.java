@@ -35,5 +35,7 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileObject> findByBulkEditStep(String step);
     @Query("SELECT f.relatedSystems FROM FileObject f WHERE f.fileType.name = 'PID'")
     List<String> findUniqueRelatedSystems();
+
+    List<FileObject> findByDocNumberContaining(String number);
 }
 

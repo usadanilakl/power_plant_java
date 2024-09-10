@@ -18,6 +18,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @Audited
+@DiscriminatorValue("HEAT_TRACE")
 public class HeatTrace extends BaseEquipment {
     /***********************************Breaker*********************************************/
     @ManyToOne(cascade = CascadeType.ALL)

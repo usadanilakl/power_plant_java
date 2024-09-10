@@ -42,4 +42,6 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List<Map<String, String>> verifyPid(String pid);
     List<FileDto> getSkipped();
     Set<String> getPidRelatedSystems();
+
+    List<FileObject> getIfDocNumberContains(String number);
 }

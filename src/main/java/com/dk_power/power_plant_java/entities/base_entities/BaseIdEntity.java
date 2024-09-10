@@ -25,6 +25,7 @@ public class BaseIdEntity {
 //    @Enumerated(EnumType.STRING)
 //    private ObjectType objectType;
     private String objectType;
+    private String note;
     {
         objectType = this.getClass().getSimpleName();
     }

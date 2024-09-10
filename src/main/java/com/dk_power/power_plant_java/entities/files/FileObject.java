@@ -1,12 +1,12 @@
 package com.dk_power.power_plant_java.entities.files;
 
 
-import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
-import com.dk_power.power_plant_java.entities.equipment.Highlight;
+import com.dk_power.power_plant_java.entities.highlights.DrawingElement;
+import com.dk_power.power_plant_java.entities.highlights.Highlight;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -79,8 +79,7 @@ public class FileObject extends BaseAuditEntity {
 
     private Boolean completed;
     private String bulkEditStep = "eqTagNumber";
-
-
+    private String docNumber;
 
 
     @Transient

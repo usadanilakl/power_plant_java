@@ -176,6 +176,11 @@ public class FileServiceImpl implements FileService {
         return result;
     }
 
+    @Override
+    public List<FileObject> getIfDocNumberContains(String number) {
+        return fileRepo.findByDocNumberContaining(number);
+    }
+
     public List<FileDto> getAllDtos(String ext) {
         return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
     }

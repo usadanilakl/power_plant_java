@@ -5,15 +5,18 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.base_entities.BaseEquipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.highlights.DrawingElement;
+import com.dk_power.power_plant_java.entities.highlights.Highlight;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
@@ -21,9 +24,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Entity
+@DiscriminatorValue("EQUIPMENT")
 @NoArgsConstructor
 @Getter
 @Setter
@@ -40,10 +43,10 @@ public class Equipment extends BaseEquipment {
     private Value eqType;
 //    @ManyToMany(mappedBy = "points")
 //    @JsonIgnore
-@ManyToMany(cascade = CascadeType.ALL)
-@JoinTable(name = "file_point",
-        joinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"),
-        inverseJoinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"))
+    @ManyToMany(cascade = CascadeType.ALL)
+    @JoinTable(name = "file_point",
+            joinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"))
     private List<FileObject> files;
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "vendor_id")
@@ -73,10 +76,13 @@ public class Equipment extends BaseEquipment {
     @ManyToMany(mappedBy = "equipmentList")
     @JsonBackReference
     private List<EqBreaker> breakers;
-    @ManyToOne(cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "equipment")
     @JsonManagedReference
-    @JoinColumn(name = "eq_highlight")
-    private Highlight highlight;
+    private List<Highlight> highlights;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "drawing_element_id")
+    private DrawingElement drawingElement;
 
 
 

@@ -1,18 +1,10 @@
 package com.dk_power.power_plant_java;
 
 
-import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
-import com.dk_power.power_plant_java.dto.equipment.HtBreakerDto;
-import com.dk_power.power_plant_java.dto.equipment.HtPanelDto;
-import com.dk_power.power_plant_java.entities.base_entities.BaseElectricalPanel;
-import com.dk_power.power_plant_java.entities.categories.Category;
-import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.entities.data_transfer.ElectricalTable;
-import com.dk_power.power_plant_java.entities.data_transfer.RevisedLotoPoints;
 import com.dk_power.power_plant_java.entities.equipment.*;
-import com.dk_power.power_plant_java.entities.files.FileObject;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.highlights.Highlight;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.repository.highlights.DrawingElementRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -23,6 +15,7 @@ import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.*;
+import com.dk_power.power_plant_java.sevice.highlights.HighlightService;
 import com.dk_power.power_plant_java.sevice.image.OCRService;
 import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
@@ -36,10 +29,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-import java.io.File;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @SpringBootApplication
 @RequiredArgsConstructor
@@ -70,6 +60,7 @@ private final ElectricalTableService electricalTableService;
 private final OCRService ocrService;
 private final HighlightService highlightService;
 private final EquipmentRepo equipmentRepo;
+private final DrawingElementRepo drawingElementRepo;
 
 
     public static void main(String[] args) {
@@ -86,17 +77,49 @@ private final EquipmentRepo equipmentRepo;
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
-        List<Equipment> tagNumberDuplicates = equipmentService.getTagNumberDuplicates();
-        int n = 0;
-        for(Equipment e : tagNumberDuplicates){
-            if(e.getLotoPoints()!=null && e.getLotoPoints().size()!=0){
-                String descr = e.getDescription()!=null ? e.getDescription() : "no descr";
-                String loc = e.getLocation()!=null ? e.getLocation().getName() : "no loc";
-                System.out.println(e.getTagNumber() + "||" + descr + "||" + loc + "||" +  e.getMainFile().getFileNumber());
-                n++;
-            }
-        }
-        System.out.println(n);
+//        List<Equipment> tagNumberDuplicates = equipmentService.getTagNumberDuplicates();
+//        int n = 0;
+//        for(Equipment e : tagNumberDuplicates){
+//            if(e.getLotoPoints()!=null && e.getLotoPoints().size()!=0){
+//                String descr = e.getDescription()!=null ? e.getDescription() : "no descr";
+//                String loc = e.getLocation()!=null ? e.getLocation().getName() : "no loc";
+//                System.out.println(e.getTagNumber() + "||" + descr + "||" + loc + "||" +  e.getMainFile().getFileNumber());
+//                n++;
+//            }
+//        }
+//        System.out.println(n);
+
+        List<String> duplicateTagNumbers = equipmentRepo.findDuplicateTagNumbers();
+        Set<String> singles = new TreeSet<>();
+//        duplicateTagNumbers.forEach(e-> singles.add(e.trim()));
+//        singles.forEach(e-> {
+//            System.out.println(e);
+//        });
+
+
+
+//        highlightService.fixConnectorsBeforeTranser();
+//        List<Equipment> all = equipmentService.getAll();
+//        for (Equipment e : all) {
+//            if(e.getEqType()!=null && e.getEqType().getName().equalsIgnoreCase("connector")){
+//                highlightService.transferConnectorToHighlights(e);
+//            }else if(duplicateTagNumbers.contains(e.getTagNumber())){
+////                equipmentService.getByTagNumber(e.getTagNumber());
+//            }else{
+////                highlightService.transferEqToHighlights(e);
+//            }
+//        }
+////
+//        List<Equipment> connectors = equipmentService.getAll().stream().filter(e -> e.getEqType() != null && e.getEqType().getName().equalsIgnoreCase("connector")).toList();
+//        System.out.println(connectors.size() + " connectors found");
+
+
+
+
+
+
+
+
 
 /******************************************************************************************************************************************
  *  Creating File Objects from files in a folder

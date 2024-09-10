@@ -4,15 +4,18 @@ import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.highlights.Highlight;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
+import com.dk_power.power_plant_java.sevice.highlights.HighlightService;
 import com.dk_power.power_plant_java.sevice.loto.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import lombok.AllArgsConstructor;
+import lombok.val;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,28 +108,6 @@ public class EquipmentServiceImpl implements EquipmentService {
         transfer.setMainFile(file);
         transfer.addFile(file);
         return save(transfer);
-    }
-
-    @Override
-    public void combineDuplicates(String tagNumber) {
-        List<Equipment> byTagNumber = equipmentRepo.findByTagNumber(tagNumber);
-        String descr = "";
-        String loc = "";
-        for(Equipment e:byTagNumber){
-//            if(e.getDescription()!=null) System.out.println(e.getDescription());
-//            if(e.getEqType()!=null) System.out.println(e.getEqType().getId());
-//            if(e.getSystem()!=null) System.out.println(e.getSystem().getId());
-//            if(e.getSpecificLocation()!=null) System.out.println(e.getSpecificLocation());
-            if(e.getLocation()!=null) loc +=e.getLocation().getId()+", ";
-            descr += e.getDescription()+",";
-
-        }
-
-        System.out.println(descr);
-        System.out.println(loc);
-
-
-
     }
 
     @Override

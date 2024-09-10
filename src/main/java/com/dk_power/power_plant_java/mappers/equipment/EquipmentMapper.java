@@ -102,8 +102,8 @@ public class EquipmentMapper implements BaseMapper {
             dto.setHeatTraceList(entity.getHeatTraceList().stream().map(heatTraceMapper::convertToDtoLight).toList());
         }
 
-        if(entity.getHighlight()!=null){
-            dto.setHighlight(highlightMapper.convertToDtoLight(entity.getHighlight()));
+        if(entity.getHighlights()!=null){
+            dto.setHighlights(entity.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
         }
         return dto;
     }
