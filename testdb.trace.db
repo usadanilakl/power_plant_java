@@ -6877,3 +6877,42 @@ SELECT * FROM LOTO_POINT where tag number = '02-VINA275' [42000-224]
 2024-09-10 20:37:57.378799-05:00 jdbc[3]: exception
 org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
 update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 05:21:58.799799-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 05:38:31.109413-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 05:42:01.464411-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 05:45:02.900338-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 05:49:49.170069-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 05:53:02.610555-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 05:56:59.281175-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 06:00:45.633617-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 06:10:05.591212-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 06:15:06.669462-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 06:28:45.716522-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 06:31:59.101721-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]
+2024-09-11 06:34:16.540651-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (46080)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]

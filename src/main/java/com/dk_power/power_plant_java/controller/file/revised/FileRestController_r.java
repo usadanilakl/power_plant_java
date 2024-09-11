@@ -102,7 +102,10 @@ public class FileRestController_r {
 
     @GetMapping("/copy-file-points/{sourceId}/{destId}")
     public ResponseEntity<FileDto> getFileWithCopiedPoints(@PathVariable String sourceId, @PathVariable String destId){
-        return ResponseEntity.ok(fileService.copyFromAnotherUnit(sourceId,destId));
+        fileService.copyFromAnotherUnit(sourceId, destId);
+        FileDto fileDto = fileService.getDtoById(destId);
+        System.out.println(fileDto.getRelatedSystems());
+        return ResponseEntity.ok(fileDto);
     }
 
     @GetMapping("/get-id/{docNum}")

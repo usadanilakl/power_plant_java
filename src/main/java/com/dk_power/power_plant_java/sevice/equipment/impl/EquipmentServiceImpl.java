@@ -242,9 +242,15 @@ public class EquipmentServiceImpl implements EquipmentService {
 
     @Override
     public Equipment copyEqFromAnotherUnit(Equipment sourcePoint) {
-        EquipmentDto processedEqDto = convertToDto(sourcePoint);
-        processedEqDto.setId(null);
-        Equipment processedEq = convertToEntity(processedEqDto);
+
+        Equipment processedEq = new Equipment();
+        processedEq.setCoordinates(sourcePoint.getCoordinates());
+        processedEq.setOriginalPictureSize(sourcePoint.getOriginalPictureSize());
+        processedEq.setSystem(sourcePoint.getSystem());
+        processedEq.setLocation(sourcePoint.getLocation());
+        processedEq.setVendor(sourcePoint.getVendor());
+        processedEq.setEqType(sourcePoint.getEqType());
+        processedEq.setLotoPoints(new HashSet<>());
 
         String sourceTagNumber = sourcePoint.getTagNumber();
         String destenationTagNumber = "";
@@ -284,8 +290,8 @@ public class EquipmentServiceImpl implements EquipmentService {
         processedEq.setTagNumber(destenationTagNumber);
         processedEq.setDescription(destDescription);
         if(docNum!=""){
-            List<FileObject> files = fileService.getIfNumberContains(docNum);
-            if(files!=null && files.size()!=0)processedEq.setMainFile(files.get(0));
+//            List<FileObject> files = fileService.getIfNumberContains(docNum);
+//            if(files!=null && files.size()!=0)processedEq.setMainFile(files.get(0));
         }
         Set<LotoPoint> lotoPoints = sourcePoint.getLotoPoints();
         if(lotoPoints!=null){
@@ -297,6 +303,7 @@ public class EquipmentServiceImpl implements EquipmentService {
         List<Equipment> byTagNumber = getByTagNumber(destenationTagNumber);
         if(byTagNumber==null || byTagNumber.size()==0) return save(processedEq);
         else return null;
+
     }
 
     @Override

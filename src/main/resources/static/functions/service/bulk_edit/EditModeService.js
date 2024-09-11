@@ -518,6 +518,7 @@ async function buildEditStepControls(){
         let li2 = document.createElement('li');
         let li3 = document.createElement('li');
         let li4 = document.createElement('li');
+        let li5 = document.createElement('li');
         let inp = document.createElement('input');
         let pasteButton = document.createElement('button');
 
@@ -529,6 +530,8 @@ async function buildEditStepControls(){
         li3.classList.add("btn-outline-light")
         li4.classList.add("btn")
         li4.classList.add("btn-outline-light")
+        li5.classList.add("btn")
+        li5.classList.add("btn-outline-light")
         pasteButton.classList.add("btn")
         pasteButton.classList.add("btn-outline-light")
 
@@ -545,9 +548,16 @@ async function buildEditStepControls(){
             await pasteFromClipboardWithoutClearing(inp);
         });
 
+        li5.addEventListener('click', async ()=>{
+            let docNum = inp.value.trim();
+            let id = await getFileIdByDocNum(docNum);
+            await loadPictureWithCopiedPoints(id);
+        });
+
         li1.textContent = "Step 1: Select all loto points (click for details)";
         li3.textContent = "Highlight New Equipment";
         li4.textContent = "Submit Selected Points";
+        li5.textContent = "Copy Points";
         pasteButton.textContent = "P"
 
         li2.appendChild(inp);
@@ -557,6 +567,7 @@ async function buildEditStepControls(){
         list.appendChild(li3);
         list.appendChild(li4);
         list.appendChild(document.createElement('li').appendChild(getTextButton()));
+        list.appendChild(li5);
     }
     else if(editModes.eqDescription.state){
         stepButton.textContent = "Step 2 Edit Description";

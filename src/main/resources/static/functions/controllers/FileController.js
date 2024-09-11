@@ -186,8 +186,10 @@ async function getPdfAndConvertToJpg(id){
 }
 
 async function getFileWithCopiedPoints(sourceId,destId){
+    console.log(sourceId+'||'+destId);
     const resp = await fetch(baseFileApiUrl+'copy-file-points/'+sourceId+'/'+destId);
     const data = await resp.json();
+    console.log(JSON.stringify(data))
     return data;
 }
 

@@ -185,6 +185,9 @@ public class FileServiceImpl implements FileService {
         FileObject sourceFile = getEntityById(sourceId);
         FileObject destinationFile = getEntityById(destinationId);
 
+        System.out.println("sourceFile.getRelatedSystems() = " + sourceFile.getRelatedSystems());
+        System.out.println("destinationFile.getRelatedSystems() = " + destinationFile.getRelatedSystems());
+
         List<Equipment> sourceFilePoints = sourceFile.getPoints();
         List<Equipment> destinationFilePoints = destinationFile.getPoints();
 
@@ -195,7 +198,9 @@ public class FileServiceImpl implements FileService {
                 destinationFilePoints.add(equipment);
             }
         }
-        return convertToDto(save(destinationFile));
+        FileObject ready = save(destinationFile);
+        System.out.println("ready.getRelatedSystems() = " + ready.getRelatedSystems());
+        return convertToDto(destinationFile);
     }
 
     public List<FileDto> getAllDtos(String ext) {

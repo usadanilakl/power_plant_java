@@ -99,10 +99,8 @@ private final LotoPointMergeService lotoPointMergeService;
 
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
-//        fileService.getAll().forEach(e->{
-//            e.buildFileLink("jpg");
-//            fileService.save(e);
-//        });
+
+//        fileService.copyFromAnotherUnit("5260", "5367");
 
         FileObject entityById = fileService.getEntityById(5256l);
 //        entityById.buildFileLink("jpg");
