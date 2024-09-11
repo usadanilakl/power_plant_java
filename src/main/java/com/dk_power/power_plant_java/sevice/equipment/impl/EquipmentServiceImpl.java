@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointMergeService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import lombok.AllArgsConstructor;
@@ -17,10 +18,7 @@ import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @AllArgsConstructor
@@ -33,6 +31,7 @@ public class EquipmentServiceImpl implements EquipmentService {
     private final CategoryService categoryService;
     private final FileServiceImpl fileService;
     private final LotoPointService lotoPointService;
+    private final LotoPointMergeService lotoPointMergeService;
 
 
 
@@ -239,6 +238,65 @@ public class EquipmentServiceImpl implements EquipmentService {
         if(cat.equals("eqType")) result.addAll(getByEqType(val));
         if(cat.equals("location")) result.addAll(getByLocation(val));
         return result;
+    }
+
+    @Override
+    public Equipment copyEqFromAnotherUnit(Equipment sourcePoint) {
+        EquipmentDto processedEqDto = convertToDto(sourcePoint);
+        processedEqDto.setId(null);
+        Equipment processedEq = convertToEntity(processedEqDto);
+
+        String sourceTagNumber = sourcePoint.getTagNumber();
+        String destenationTagNumber = "";
+        String destDescription = "";
+        String docNum = "";
+
+        if(sourceTagNumber.startsWith("01")){
+            if(sourcePoint.getVendor().getName().equalsIgnoreCase("kiewit")) docNum = sourcePoint.getMainFile().getFileNumber().replace('A','B');
+            destenationTagNumber = "02"+sourceTagNumber.substring(2);
+            if(sourcePoint.getDescription()!=null)destDescription = Arrays.stream(sourcePoint.getDescription().split(" ")).map(e->{
+                        if(e.startsWith("01")) return e = "02"+e.substring(2);
+                        else return e;
+                    }).toList().toString()
+                    .replaceAll("Unit1", "Unit2")
+                    .replaceAll("Unit 1", "Unit 2")
+                    .replaceAll("U1", "U2")
+                    .replace("[","")
+                    .replace("]","")
+                    .replace(",","");
+        }
+        else if (sourceTagNumber.startsWith("02")){
+            destenationTagNumber = "01"+sourceTagNumber.substring(2);
+
+            if(sourcePoint.getDescription()!=null){
+                destDescription = Arrays.stream(sourcePoint.getDescription().split(" ")).map(e->{
+                            if(e.startsWith("02")) return e = "01"+e.substring(2);
+                            else return e;
+                        }).toList().toString()
+                        .replaceAll("Unit2", "Unit1")
+                        .replaceAll("Unit 2", "Unit 1")
+                        .replaceAll("U2", "U1")
+                        .replace("[","")
+                        .replace("]","")
+                        .replace(",","");
+            }
+        }
+        processedEq.setTagNumber(destenationTagNumber);
+        processedEq.setDescription(destDescription);
+        if(docNum!=""){
+            List<FileObject> files = fileService.getIfNumberContains(docNum);
+            if(files!=null && files.size()!=0)processedEq.setMainFile(files.get(0));
+        }
+        Set<LotoPoint> lotoPoints = sourcePoint.getLotoPoints();
+        if(lotoPoints!=null){
+            for (LotoPoint lp : lotoPoints) {
+                List<LotoPoint> points =(List<LotoPoint>) lotoPointMergeService.copyPointFromOtherUnit(lp.getId()).get("Match");
+                processedEq.getLotoPoints().addAll(points);
+            }
+        }
+        List<Equipment> byTagNumber = getByTagNumber(destenationTagNumber);
+        if(byTagNumber==null || byTagNumber.size()==0) return save(processedEq);
+        else return null;
     }
 
     @Override

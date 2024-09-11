@@ -99,4 +99,14 @@ public class FileRestController_r {
         fileUploaderService.PdfToJpgConverter(entityById.getFileLink());
         return ResponseEntity.ok("Success");
     }
+
+    @GetMapping("/copy-file-points/{sourceId}/{destId}")
+    public ResponseEntity<FileDto> getFileWithCopiedPoints(@PathVariable String sourceId, @PathVariable String destId){
+        return ResponseEntity.ok(fileService.copyFromAnotherUnit(sourceId,destId));
+    }
+
+    @GetMapping("/get-id/{docNum}")
+    public ResponseEntity<String> getFileWithCopiedPoints(@PathVariable String docNum){
+        return ResponseEntity.ok(fileService.getIfNumberContains(docNum).get(0).getId()+"");
+    }
 }

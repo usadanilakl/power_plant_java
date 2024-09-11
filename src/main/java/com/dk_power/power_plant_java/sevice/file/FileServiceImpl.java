@@ -1,17 +1,21 @@
 package com.dk_power.power_plant_java.sevice.file;
 
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
+import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +25,6 @@ import java.nio.file.*;
 import java.util.*;
 
 @Service
-@AllArgsConstructor
 @Transactional
 public class FileServiceImpl implements FileService {
     private final FileRepo fileRepo;
@@ -31,6 +34,18 @@ public class FileServiceImpl implements FileService {
     private final CategoryService categoryService;
     private final ValueService valueService;
     private final FileUploaderService fileUploaderService;
+    private final EquipmentService equipmentService;
+
+    public FileServiceImpl(FileRepo fileRepo, LotoPointService lotoPointService, FileMapper fileMapper, SessionFactory sessionFactory, CategoryService categoryService, ValueService valueService, FileUploaderService fileUploaderService, @Lazy EquipmentService equipmentService) {
+        this.fileRepo = fileRepo;
+        this.lotoPointService = lotoPointService;
+        this.fileMapper = fileMapper;
+        this.sessionFactory = sessionFactory;
+        this.categoryService = categoryService;
+        this.valueService = valueService;
+        this.fileUploaderService = fileUploaderService;
+        this.equipmentService = equipmentService;
+    }
 
 
     public List<String> getVendors() {
@@ -163,6 +178,24 @@ public class FileServiceImpl implements FileService {
     @Override
     public List<FileDto> getSkipped() {
         return fileRepo.findByBulkEditStep("skip").stream().map(this::convertToDto).toList();
+    }
+
+    @Override
+    public FileDto copyFromAnotherUnit(String sourceId, String destinationId) {
+        FileObject sourceFile = getEntityById(sourceId);
+        FileObject destinationFile = getEntityById(destinationId);
+
+        List<Equipment> sourceFilePoints = sourceFile.getPoints();
+        List<Equipment> destinationFilePoints = destinationFile.getPoints();
+
+        for (Equipment p : sourceFilePoints) {
+            Equipment equipment = equipmentService.copyEqFromAnotherUnit(p);
+            if(equipment!=null){
+                equipment.setMainFile(destinationFile);
+                destinationFilePoints.add(equipment);
+            }
+        }
+        return convertToDto(save(destinationFile));
     }
 
     public List<FileDto> getAllDtos(String ext) {

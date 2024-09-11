@@ -6874,3 +6874,6 @@ SELECT * FROM LOTO_POINT where tag number = '02-VINA275.' [42000-224]
 2024-09-03 02:07:56.942532-05:00 jdbc[13]: exception
 org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT * FROM LOTO_POINT where tag [*]number = '02-VINA275'"; SQL statement:
 SELECT * FROM LOTO_POINT where tag number = '02-VINA275' [42000-224]
+2024-09-10 20:37:57.378799-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "RELATED_SYSTEMS CHARACTER VARYING(255)": "'[CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, Steam, HRSG][CRH, Kiewit, U1, S... (480)"; SQL statement:
+update file_object set base_link=?,bulk_edit_step=?,completed=?,created_by=?,date_modified=?,deleted=?,extension=?,file_link=?,file_number=?,file_type_id=?,folder=?,modified_by=?,name=?,object_type=?,related_systems=?,system_id=?,vendor_id=? where id=? [22001-224]

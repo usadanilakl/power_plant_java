@@ -40,4 +40,5 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
 
     List<Map<String, String>> verifyPid(String pid);
     List<FileDto> getSkipped();
+    FileDto copyFromAnotherUnit(String sourceId,String destinationId);
 }

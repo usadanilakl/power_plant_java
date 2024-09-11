@@ -56,6 +56,16 @@ async function loadPictureWithLightFile(file){
     
 }
 
+async function loadPictureWithCopiedPoints(sourceId){
+    removeAllHighlights();
+    fileWithPoints = await getFileWithCopiedPoints(sourceId, fileWithPoints.id);
+    setEditMode(fileWithPoints.bulkEditStep);
+    await buildEditStepControls();
+    setAreas(fileWithPoints.points);
+    setTimeout(()=>{originalWidth = picture.naturalWidth;},1000)
+    
+}
+
 function setAreas(areas){
     map.innerHTML = "";
     removeAllHighlights();
