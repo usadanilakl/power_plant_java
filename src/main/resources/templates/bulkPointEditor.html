@@ -258,7 +258,7 @@
         // positionInfoWindowsInline();
 
         console.log(JSON.stringify(incompletePid[0]))
-        incompletePid = incompletePid.filter(e=>e.fileType.name === 'PID' && (e.vendor.name==="John Cockerill" || e.vendor.name==="Kiewit"));
+        incompletePid = incompletePid.filter(e=>e.fileType.name === 'PID');
         incompletePid.sort((a,b)=>a.vendor.name.localeCompare(b.vendor.name));
         //setEditMode(incompletePid[0].bulkEditStep); //it is in loadPictureWithLightFile now
         await getAllCategoryObjects();

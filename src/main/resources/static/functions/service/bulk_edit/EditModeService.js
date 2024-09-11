@@ -567,7 +567,7 @@ async function buildEditStepControls(){
         list.appendChild(li3);
         list.appendChild(li4);
         list.appendChild(document.createElement('li').appendChild(getTextButton()));
-        list.appendChild(li5);
+        if(fileWithPoints.vendor && fileWithPoints.vendor.name.toLowerCase()==='kiewit')list.appendChild(li5);
     }
     else if(editModes.eqDescription.state){
         stepButton.textContent = "Step 2 Edit Description";

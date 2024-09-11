@@ -152,7 +152,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
             e.printStackTrace();
         }
     }
-    public void PdfToJpgConverter(String pathToFile) {
+    public String PdfToJpgConverter(String pathToFile) {
         try {
             String sourceDir = pathToFile.replaceAll("jpg","pdf"); // Pdf files are read from this folder
 //            String destinationDir = "uploads/"; // converted images from pdf would be saved here
@@ -171,17 +171,22 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 int numberOfPages = document.getNumberOfPages();
 
                 for (int i = 0; i < numberOfPages; ++i) {
-                    BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 216);
+                    BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 300); //216
                     ImageIO.write(bim, "jpg", new File(destinationDir));
                 }
 
                 document.close();
-                System.out.println("Images created");
+                String result = "Images created";
+                System.out.println(result);
+                return result;
             } else {
-                System.err.println(sourceFile.toPath() +" File not exists");
+                String result = sourceFile.toPath() +" File not found";
+                System.err.println(result);
+                return result;
             }
         } catch (Exception e) {
             e.printStackTrace();
+            return e.getMessage();
         }
     }
     @Override

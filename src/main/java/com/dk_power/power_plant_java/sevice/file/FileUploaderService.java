@@ -10,7 +10,7 @@ String uploadFilesToLocal(FileUploader files);
 String uploadFilesToGitHub(FileUploader files, String path);
 byte[] getFileFromGitHub(String path);
 void PdfToJpgConverter();
-void PdfToJpgConverter(String path);
+String PdfToJpgConverter(String path);
 FileObject initialSave(String number, String link);
 File[] getListOfFolders(String path);
 File[] getListOfFiles(String path);

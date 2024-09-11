@@ -31,8 +31,13 @@ function loadPictureWithFile(file){
     picture.setAttribute('src','/'+file.fileLink);
     picture.onerror = async function() {
         console.log('Image not found. Running fallback function.');
-        await getPdfAndConvertToJpg(file.id);
-        picture.setAttribute('src','/'+file.fileLink)
+        let message = await getPdfAndConvertToJpg(file.id);
+        if(message.toLocaleLowerCase().includes('file not found')){
+            await updateFileStatus(file.id,true);
+            await updateFileEditStep("skip");
+            location.reload();
+        } 
+        picture.setAttribute('src','/'+file.fileLink);
     };
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
@@ -43,7 +48,12 @@ async function loadPictureWithLightFile(file){
     picture.setAttribute('src','/'+file.fileLink);
     picture.onerror = async function() {
         console.log('Image not found. Running fallback function.');
-        await getPdfAndConvertToJpg(file.id);
+        let message = await getPdfAndConvertToJpg(file.id);
+        if(message.toLocaleLowerCase().includes('file not found')){
+            await updateFileStatus(file.id,true);
+            await updateFileEditStep("skip");
+            location.reload();
+        }
         picture.setAttribute('src','/'+file.fileLink)
     };
     picture.setAttribute('data-file-id', file.id);
@@ -69,10 +79,14 @@ async function loadPictureWithCopiedPoints(sourceId){
 function setAreas(areas){
     map.innerHTML = "";
     removeAllHighlights();
-
+    // if(!oldWidth) oldWidth = picture.naturalWidth;
+    let reference = getOriginalPictureSizes(areas[0].originalPictureSize).w
+    oldWidth = reference;
     areas.forEach(e=>{
-        oldWidth = getOriginalPictureSizes(e.originalPictureSize).w;
+        // oldWidth = getOriginalPictureSizes(e.originalPictureSize).w;
+        let coord = matchAreaOriginalSizes(e,reference);
         let area = createAreaElement(e);
+        area.setAttribute('coords',coord);
         area.addEventListener('click',()=>{
             event.preventDefault();
             selectedArea = e;
@@ -85,8 +99,6 @@ function setAreas(areas){
             fillExcelPointInfoWindow(points);
             highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
 
-            console.log(revisedExcelPoints.length);
-            console.log(JSON.stringify(revisedExcelPoints[0]));
         })
         //doubleClick(shape, e);
         map.appendChild(area);
@@ -165,6 +177,18 @@ function resizeAreas(){
 
     //resizeHighlite();
     oldWidth = width; 
+}
+
+function matchAreaOriginalSizes(point,reference){
+    let areaWidth = getOriginalPictureSizes(point.originalPictureSize).w;
+    let coord = getAreaCoordinates(point.coordinates).split(",");
+    if(areaWidth!==reference){
+        let coefficient = reference/areaWidth;
+        for(let i = 0; i<coord.length; i++){
+            coord[i] = coord[i]*coefficient;
+        }
+    }
+    return coord.join(",");
 }
 
 function resizeHighlights(){
