@@ -80,8 +80,8 @@ function setAreas(areas){
     map.innerHTML = "";
     removeAllHighlights();
     // if(!oldWidth) oldWidth = picture.naturalWidth;
-    let reference = getOriginalPictureSizes(areas[0].originalPictureSize).w
-    oldWidth = reference;
+    let reference =areas[0] ? getOriginalPictureSizes(areas[0].originalPictureSize).w : null
+    oldWidth = reference ? reference : picture.naturalWidth;
     areas.forEach(e=>{
         // oldWidth = getOriginalPictureSizes(e.originalPictureSize).w;
         let coord = matchAreaOriginalSizes(e,reference);
