@@ -40,7 +40,7 @@ public class LotoPointMapper implements BaseMapper{
         if (entity.getNormPos() != null) dto.setNormPos(valueService.convertToDto(entity.getNormPos()));
         if (entity.getSpecificLocation() != null) dto.setSpecificLocation(entity.getSpecificLocation());
         if (entity.getStandard() != null) dto.setStandard(entity.getStandard());
-//        if (entity.getGeneralLocation() != null) dto.setGeneralLocation(entity.getGeneralLocation());
+        if (entity.getGeneralLocation() != null) dto.setGeneralLocation(entity.getGeneralLocation());
 //        if (entity.getEquipment() != null) dto.setEquipment(entity.getEquipment());
 //        if (entity.getExtraInfo() != null) dto.setExtraInfo(entity.getExtraInfo());
 //        if (entity.getType() != null) dto.setType(entity.getType());
@@ -74,7 +74,7 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getNormPos() != null) entity.setNormPos(valueService.convertToEntity(dto.getNormPos()));
         if (dto.getSpecificLocation() != null) entity.setSpecificLocation(dto.getSpecificLocation());
         if (dto.getStandard() != null) entity.setStandard(dto.getStandard());
-//        if (dto.getGeneralLocation() != null) entity.setGeneralLocation(dto.getGeneralLocation());
+        if (dto.getGeneralLocation() != null) entity.setGeneralLocation(dto.getGeneralLocation());
 //        if (dto.getEquipment() != null) entity.setEquipment(dto.getEquipment());
 //        if (dto.getExtraInfo() != null) entity.setExtraInfo(dto.getExtraInfo());
 //        if (dto.getType() != null) entity.setType(dto.getType());

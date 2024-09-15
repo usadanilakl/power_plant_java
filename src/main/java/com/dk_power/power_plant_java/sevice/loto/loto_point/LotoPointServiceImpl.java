@@ -139,6 +139,11 @@ public class LotoPointServiceImpl implements LotoPointService {
     }
 
     @Override
+    public List<LotoPointDto> getActiveLotoPoints() {
+        return lotoPointRepo.findByEquipmentListNotNull().stream().map(this::convertToDto).toList();
+    }
+
+    @Override
     public void refactor(Value old, Value _new) {
         String cat = old.getCategory().getAlias();
         for (LotoPoint f : getByValue(old)) {

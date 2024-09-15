@@ -24,4 +24,6 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     @Query("SELECT new com.dk_power.power_plant_java.dto.permits.LotoPointDtoLight(e.id,e.unit,e.tagged,e.tagNumber,e.description,e.specificLocation,e.normalPosition, e.isolatedPosition,e.oldId,e.objectType)FROM LotoPoint e")
     List<LotoPointDtoLight> getAllLight();
 
+    List<LotoPoint> findByEquipmentListNotNull();
+
 }

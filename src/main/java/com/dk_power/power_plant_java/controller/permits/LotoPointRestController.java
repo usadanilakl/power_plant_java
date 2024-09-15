@@ -113,5 +113,10 @@ public class LotoPointRestController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/get-active-points")
+    public ResponseEntity<List<LotoPointDto>> getActiveLotoPoints(){
+        return ResponseEntity.ok(lotoPointService.getActiveLotoPoints());
+    }
+
 
 }

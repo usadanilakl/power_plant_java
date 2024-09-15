@@ -417,7 +417,6 @@ async function matchPoints(source,destination){
                 matchedItems.splice(index, 1);
                 f.parentElement.removeChild(f);
             }
-
         });
     }
 

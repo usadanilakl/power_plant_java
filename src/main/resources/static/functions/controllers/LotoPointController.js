@@ -70,3 +70,9 @@ async function getProjectStatus(){
   const data = await resp.json();
   return data;
 }
+
+async function getActiveLotoPoints(){
+  const resp = await fetch(baseLotoPointUrl+'get-active-points');
+  const data = await resp.json();
+  return data;
+}
