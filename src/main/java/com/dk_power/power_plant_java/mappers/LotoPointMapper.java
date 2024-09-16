@@ -1,13 +1,17 @@
 package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
+import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+
+import java.util.stream.Collectors;
 
 @Component
 //@RequiredArgsConstructor
@@ -17,13 +21,15 @@ public class LotoPointMapper implements BaseMapper{
     private final LotoMapper lotoMapper;
     private final ValueService valueService;
     private final LotoPointService lotoPointService;
+    private final EquipmentService equipmentService;
 
-    public LotoPointMapper(ModelMapper modelMapper, @Lazy EquipmentMapper equipmentMapper, LotoMapper lotoMapper, ValueService valueService, @Lazy LotoPointService lotoPointService) {
+    public LotoPointMapper(ModelMapper modelMapper, @Lazy EquipmentMapper equipmentMapper, LotoMapper lotoMapper, ValueService valueService, @Lazy LotoPointService lotoPointService, @Lazy EquipmentService equipmentService) {
         this.modelMapper = modelMapper;
         this.equipmentMapper = equipmentMapper;
         this.lotoMapper = lotoMapper;
         this.valueService = valueService;
         this.lotoPointService = lotoPointService;
+        this.equipmentService = equipmentService;
     }
 
     public LotoPointDto convertToDto(LotoPoint entity) {
@@ -41,6 +47,7 @@ public class LotoPointMapper implements BaseMapper{
         if (entity.getSpecificLocation() != null) dto.setSpecificLocation(entity.getSpecificLocation());
         if (entity.getStandard() != null) dto.setStandard(entity.getStandard());
         if (entity.getGeneralLocation() != null) dto.setGeneralLocation(entity.getGeneralLocation());
+        if(entity.getEquipmentList()!=null) dto.setEquipmentIdList(entity.getEquipmentList().stream().map(BaseIdEntity::getId).toList());
 //        if (entity.getEquipment() != null) dto.setEquipment(entity.getEquipment());
 //        if (entity.getExtraInfo() != null) dto.setExtraInfo(entity.getExtraInfo());
 //        if (entity.getType() != null) dto.setType(entity.getType());
@@ -75,6 +82,7 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getSpecificLocation() != null) entity.setSpecificLocation(dto.getSpecificLocation());
         if (dto.getStandard() != null) entity.setStandard(dto.getStandard());
         if (dto.getGeneralLocation() != null) entity.setGeneralLocation(dto.getGeneralLocation());
+        if(dto.getEquipmentIdList()!=null) entity.setEquipmentList(dto.getEquipmentIdList().stream().map(equipmentService::getEntityById).collect(Collectors.toSet()));
 //        if (dto.getEquipment() != null) entity.setEquipment(dto.getEquipment());
 //        if (dto.getExtraInfo() != null) entity.setExtraInfo(dto.getExtraInfo());
 //        if (dto.getType() != null) entity.setType(dto.getType());

@@ -67,8 +67,9 @@ function createRows(tbody,ignoreFields){
     rows = [];
     filteredArray.forEach(el=>{
         let row = document.createElement('tr');
+        if(el.id)row.setAttribute('data-obj-id',el.id)
         if(i<100){
-           tbody.appendChild(row); 
+            tbody.appendChild(row); 
         }
         
         rows.push(row);
@@ -102,11 +103,6 @@ function createRows(tbody,ignoreFields){
             let editItem = function(){editFile(el.id)}
             editButton.addEventListener('click',editItem);  
         }
-        
-
-        
-        
-
     })
 }
 
@@ -180,7 +176,7 @@ function tableDisplayControl(table, scrollUp){
             deleteRowsFromBottom(numberOfRows,tbody);
         }else{
             addRowsToBottom(numberOfRows,tbody,rows);
-            deleteRowsFromTop(numberOfRows,tbody);            
+            deleteRowsFromTop(numberOfRows,tbody);
         }
 
     

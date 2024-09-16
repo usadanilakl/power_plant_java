@@ -11,12 +11,17 @@
 
         html, #main, #loto-point-table{
             width: 100%;
-            height: 100%; 
+            height: 100%;
         }
 
         #loto-point-table {
-            height: 400px;
+            height: 100vh;
             overflow-y: auto;
+        }
+
+        p{
+            color:white;
+            font-size: large;
         }
 
     </style>
@@ -27,6 +32,16 @@
         <div th:replace="~{partials/index::header}"></div>
 
         <div class="container-fluid">
+
+            <div class="row">
+                <div class="col-md-6" id="table-controls">
+                    <p id="table-title">Table contains LOTO Points that needs to be verified</p>
+                </div>
+                <div class="col-md-6" id="table-controls">
+                    <button id="switch-table-content-button">Show All LOTO Points</button>
+                </div>
+            </div>
+
             <div class="row">
                 <div class="col-md-12" id="loto-point-table">
                     
@@ -37,89 +52,66 @@
 
     </div>
 
+<script>
+        let tableContainer = document.getElementById('loto-point-table');
+        let tableContentBtn = document.getElementById('switch-table-content-button');
+        let tableTitle = document.getElementById('table-title');
 
+</script>
 
 <script src="./bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
 <script src="./functions/controllers/LotoPointController.js"></script>
 <script src="./functions/service/TableSErvice.js"></script>
+<script src="./functions/service/bulk_edit/LotoPointVerification.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
-    let tableContainer = document.getElementById('loto-point-table');
-    if (!tableContainer) {
-        console.error('Table container not found');
-        return;
-    }
 
-    try {
         let data = await getActiveLotoPoints();
-        let items = data.map(e => ({
-            tagNumber: e.tagNumber,
-            description: e.description,
-            generalLocation: e.generalLocation,
-            specificLocation: e.specificLocation
-        }));
 
-        let ignoreFields = [];
-        let table = createTableFromObjects(items, ignoreFields);
-        
-        tableContainer.appendChild(table);
+        if (!tableContainer) {
+            console.error('Table container not found');
+            return;
+        }
 
-        let lastScrollTop = 0;
-        tableContainer.addEventListener('scroll', function() {
-            const scrollPosition = this.scrollTop + this.clientHeight;
-            const tableHeight = this.scrollHeight;
-            let currentScrollTop = this.scrollTop;
+        try {
+            // let data = await getActiveLotoPoints();
+            let items = data.map(e => ({
+                tagNumber: e.tagNumber,
+                description: e.description,
+                generalLocation: e.generalLocation,
+                specificLocation: e.specificLocation,
+                id:e.id
+            }));
 
-            if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
-                tableDisplayControl(table, false);
-            } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
-                tableDisplayControl(table, true);
-            }
+            let ignoreFields = ["id"];
+            let table = createTableFromObjects(items, ignoreFields);
+            
+            tableContainer.appendChild(table);
 
-            lastScrollTop = currentScrollTop;
-        });
+            let lastScrollTop = 0;
+            tableContainer.addEventListener('scroll', function() {
+                const scrollPosition = this.scrollTop + this.clientHeight;
+                const tableHeight = this.scrollHeight;
+                let currentScrollTop = this.scrollTop;
 
-        console.log('Scroll event listener added');
-    } catch (error) {
-        console.error('Error loading table data:', error);
-    }
+                if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
+                    tableDisplayControl(table, false);
+                } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
+                    tableDisplayControl(table, true);
+                }
+
+                lastScrollTop = currentScrollTop;
+            });
+
+            console.log('Scroll event listener added');
+        } catch (error) {
+            console.error('Error loading table data:', error);
+        }
+        await getAllLotoPoints();
+
+        tableContentBtn.addEventListener('click',()=>toggleTableContent());
 });
-    // window.addEventListener('load',async()=>{
-    //     let tableContainer = document.getElementById('loto-point-table');
-    //     let data = await getActiveLotoPoints();
-    //     let items = [];
-    //     for(let e of data){
-    //         let item = {};
-    //         item.tagNumber = e.tagNumber;
-    //         item.description = e.description;
-    //         item.generalLocation = e.generalLocation;
-    //         item.specificLocation = e.specificLocation;
-    //         items.push(item);
-    //     }
-    //     let ignoreFields = [];
-    //     let table = createTableFromObjects(items, ignoreFields)
-        
-    //     tableContainer.appendChild(table);
 
-    //     let lastScrollTop = 0
-
-    //     tableContainer.addEventListener('scroll', function() {
-    //         const scrollPosition = tableContainer.scrollTop + tableContainer.clientHeight;
-    //         const tableHeight = tableContainer.scrollHeight;
-    //         let currentScrollTop = tableContainer.scrollTop;
-
-    //         // Check if the scroll position is within 100px of the bottom of the table
-    //         if (tableHeight - scrollPosition < 500 && currentScrollTop>lastScrollTop) {
-    //             tableDisplayControl(table, false);
-    //         }else if(tableContainer.scrollTop < 500 && currentScrollTop<lastScrollTop){
-    //             tableDisplayControl(table, true);
-    //         }
-    //         console.log(lastScrollTop);
-    //         lastScrollTop = currentScrollTop;
-    //         console.log(lastScrollTop);
-
-    //     });
-    // })
 
 </script>
 </body>

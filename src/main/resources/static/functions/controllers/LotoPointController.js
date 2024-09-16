@@ -2,6 +2,9 @@ let baseLotoPointUrl = '/loto-points-api/'
 
 let matchedItems = [];
 
+let allLotoPoints = [];
+let activeLotoPoints = [];
+
 async function getLotoPointByOldId(oldId){
     const resp = await fetch(baseLotoPointUrl+'old-id/'+oldId);
     const data = await resp.json();
@@ -74,5 +77,14 @@ async function getProjectStatus(){
 async function getActiveLotoPoints(){
   const resp = await fetch(baseLotoPointUrl+'get-active-points');
   const data = await resp.json();
+  activeLotoPoints = data;
   return data;
 }
+
+async function getAllLotoPoints(){
+  const resp = await fetch(baseLotoPointUrl);
+  const data = await resp.json();
+  allLotoPoints = data;
+  return data;
+}
+

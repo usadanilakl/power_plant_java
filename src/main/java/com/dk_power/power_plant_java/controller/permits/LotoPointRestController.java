@@ -26,6 +26,11 @@ public class LotoPointRestController {
     public ResponseEntity<List<LotoPointDtoLight>> getAllRivisedPoint(){
         return ResponseEntity.ok(lotoPointService.getAllLight());
     }
+    @GetMapping("/all")
+    public ResponseEntity<List<LotoPointDto>> getAllLotoPoints(){
+        System.out.println("Getting all loto points");
+        return ResponseEntity.ok(lotoPointService.getAll().stream().map(lotoPointService::convertToDto).toList());
+    }
     @DeleteMapping("/{id}")
     public ResponseEntity<String> getAllRivisedPoint(@PathVariable String id){
         LotoPoint obj = lotoPointService.getEntityById(id);
