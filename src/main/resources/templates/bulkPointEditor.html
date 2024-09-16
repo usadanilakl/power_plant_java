@@ -238,6 +238,8 @@
         let completeButton = document.getElementById('pid-complete-status-button');
         let copyPointsButton = document.getElementById('copy-points-button');
         let copyPointsSource = document.getElementById('copy-points-source');
+        
+        let currentFileLight;
 
 
 
@@ -262,6 +264,7 @@
         incompletePid.sort((a,b)=>a.vendor.name.localeCompare(b.vendor.name));
         //setEditMode(incompletePid[0].bulkEditStep); //it is in loadPictureWithLightFile now
         await getAllCategoryObjects();
+        currentFileLight = incompletePid[0];
         await loadPictureWithLightFile(incompletePid[0]);
 
         // getRevisedExcelPoints();
@@ -314,10 +317,12 @@ let currentFileIndex = 0;
 function switchPid(i){
     if(i>-1){
         let next = incompletePid[i];
+        currentFileLight = next;
         loadPictureWithLightFile(next);
         return next;
     } else {
         let next = completedPid[completedPid.length+i];
+        currentFileLight = next;
         loadPictureWithLightFile(next);
         return next;
     }

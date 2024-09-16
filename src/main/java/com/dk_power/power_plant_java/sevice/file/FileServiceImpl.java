@@ -203,6 +203,11 @@ public class FileServiceImpl implements FileService {
         return convertToDto(destinationFile);
     }
 
+    @Override
+    public List<FileObject> getCompletedFull() {
+        return fileRepo.findByCompletedIsTrue();
+    }
+
     public List<FileDto> getAllDtos(String ext) {
         return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
     }

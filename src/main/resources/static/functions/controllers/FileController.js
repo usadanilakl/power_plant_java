@@ -33,6 +33,7 @@ function filePutWithBody(data){
         body:JSON.stringify(data)
     }
 }
+
 function filePatchWithBody(data){
     return{
         method: 'PATCH',

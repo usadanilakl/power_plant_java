@@ -108,6 +108,7 @@ private final LotoPointRepo lotoPointRepo;
 //        fileService.copyFromAnotherUnit("5260", "5367");
 
 //
+//        lotoPointMergeService.generateGeneralLocationFromEquipment();
 
         FileObject entityById = fileService.getEntityById(5256l);
 //        entityById.buildFileLink("jpg");

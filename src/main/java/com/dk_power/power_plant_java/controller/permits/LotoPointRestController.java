@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.permits.LotoPointDtoLight;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.sevice.data_transfer.ExcelWriterService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointMergeService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
@@ -22,6 +23,7 @@ public class LotoPointRestController {
     private final LotoPointService lotoPointService;
     private final LotoPointMergeService lotoPointMergeService;
     private final FileService fileService;
+    private final ExcelWriterService excelWriterService;
     @GetMapping("/")
     public ResponseEntity<List<LotoPointDtoLight>> getAllRivisedPoint(){
         return ResponseEntity.ok(lotoPointService.getAllLight());
@@ -121,6 +123,12 @@ public class LotoPointRestController {
     @GetMapping("/get-active-points")
     public ResponseEntity<List<LotoPointDto>> getActiveLotoPoints(){
         return ResponseEntity.ok(lotoPointService.getActiveLotoPoints());
+    }
+
+    @GetMapping("/to-excel")
+    public ResponseEntity<String> lotoPointsToExcel(){
+        excelWriterService.writeLotoPointsToExcel("output.xlsx",lotoPointService.getAll());
+        return ResponseEntity.ok("Transfer Complete") ;
     }
 
 

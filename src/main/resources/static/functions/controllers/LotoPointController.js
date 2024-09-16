@@ -88,3 +88,9 @@ async function getAllLotoPoints(){
   return data;
 }
 
+async function allLotoPointsToExcel(){
+  const resp = await fetch(baseLotoPointUrl+'to-excel');
+  const data = await resp.text();
+  console.log(data)
+}
+

@@ -46,11 +46,13 @@ function loadPictureWithFile(file){
 
 async function loadPictureWithLightFile(file){
     picture.setAttribute('src','/'+file.fileLink);
+    let id = file.id;
     picture.onerror = async function() {
         console.log('Image not found. Running fallback function.');
         let message = await getPdfAndConvertToJpg(file.id);
         if(message.toLocaleLowerCase().includes('file not found')){
-            await updateFileStatus(file.id,true);
+            console.log(id)
+            await updateFileStatus(id,true);
             await updateFileEditStep("skip");
             location.reload();
         }

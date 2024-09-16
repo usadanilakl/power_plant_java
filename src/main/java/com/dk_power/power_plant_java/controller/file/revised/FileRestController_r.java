@@ -112,4 +112,5 @@ public class FileRestController_r {
     public ResponseEntity<String> getFileWithCopiedPoints(@PathVariable String docNum){
         return ResponseEntity.ok(fileService.getIfNumberContains(docNum).get(0).getId()+"");
     }
+
 }
