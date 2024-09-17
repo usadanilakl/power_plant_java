@@ -304,12 +304,18 @@
         if(event.button===0){
             event.preventDefault();
             relocateHighlightsWithPicture(event);
-        }
+        }   
+    });
 
-    
-});
+    pictureContainer.addEventListener('touchstart',(event)=>{
+        if(event.target.tagName === "INPUT") return
+
+        event.preventDefault();
+        relocateHighlightsWithPictureTouch(event);
+    });
 const zoom = zoomPicture.bind(null,picture);
 pictureContainer.addEventListener('wheel',zoom);
+pictureContainer.addEventListener('touchstart', zoomPictureTouch);
 // document.addEventListener('mousedown',handleMouseDown); //this enables drawing new highlights
 
 

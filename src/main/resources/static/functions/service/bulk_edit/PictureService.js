@@ -422,6 +422,47 @@ function relocateHighlightsWithPicture(event){
 
 }
 
+function relocateHighlightsWithPictureTouch(event) {
+    // Only proceed if there are exactly two touch points
+    if (event.touches.length !== 2) return;
+
+    let highlightPosition = [];
+    activeHighlights.forEach(e => {
+        highlightPosition.push({top: e.offsetTop, left: e.offsetLeft});
+    });
+
+    let picPosition = {top: picture.offsetTop, left: picture.offsetLeft};
+    let startX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+    let startY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+
+    const handleTouchMove = (event) => {
+        event.preventDefault(); // Prevent scrolling while moving
+        if (event.touches.length !== 2) return;
+
+        let currentX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+        let currentY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+        
+        let changeX = startX - currentX;
+        let changeY = startY - currentY;
+        
+        activeHighlights.forEach((e, i) => {
+            e.style.top = highlightPosition[i].top - changeY + 'px';
+            e.style.left = highlightPosition[i].left - changeX + 'px';
+        });
+
+        picture.style.top = picPosition.top - changeY + "px";
+        picture.style.left = picPosition.left - changeX + "px";
+    }
+
+    const handleTouchEnd = () => {
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+    }
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+}
+
 function doubleClickArea(element){
     if(modes.viewMode.state) jumpToFile(element.getAttribute('name'))
     else if(modes.editMode.state) console.log('editing'+element.getAttribute('name'))
@@ -443,8 +484,6 @@ function zoomPicture(){
     let size = picture.getBoundingClientRect();
     let startW = picture.offsetWidth; // get current width of picture
     let startH = picture.offsetHeight;
-    let correction = window.innerWidth*0.028
-    correction = 0 //to turn off correction (it was caused by menu, now they overlap and no need for correction)
     
     //finding the original spot where mosue is pointed before zooming
     let areaX = event.clientX - size.left;
@@ -490,6 +529,113 @@ function zoomPicture(){
         resizeHighlights(); 
         //resizeManualHighlites(); 
     
+}
+
+function zoomPictureTouch(event) {
+    // Get the current size and position of the picture
+    let size = picture.getBoundingClientRect();
+    // Get the current width and height of the picture
+    let startW = picture.offsetWidth;
+    let startH = picture.offsetHeight;
+
+    // Get all touch points from the event
+    let touches = event.touches;
+
+    // Only proceed if there are exactly two touch points (for pinch-to-zoom)
+    if (touches.length !== 2) return;
+
+    // Prevent default touch actions like scrolling
+    event.preventDefault();
+
+    // Get the first and second touch points
+    let touch1 = touches[0];
+    let touch2 = touches[1];
+
+    // Calculate the initial distance between the two touch points
+    let initialDistance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+    );
+
+    // Calculate the center point between the two touches
+    let centerX = (touch1.clientX + touch2.clientX) / 2;
+    let centerY = (touch1.clientY + touch2.clientY) / 2;
+
+    // Calculate the position of the center point relative to the picture
+    let areaX = centerX - size.left;
+    let areaY = centerY - size.top;
+
+    // Get the current position of the picture
+    let startPictureX = picture.offsetLeft;
+    let startPictureY = picture.offsetTop;
+
+    // Get the current width of the picture and use it as the initial scale
+    let width = picture.offsetWidth;
+    let scale = width;
+
+    // Define zoom factors for zooming in and out
+    let zoomIn = 1.2;
+    let zoomOut = 0.8;
+
+    // Function to handle touch movement during zoom
+    function handleTouchMove(e) {
+        // Get the current touch points
+        let currentTouches = e.touches;
+        // Only proceed if there are still two touch points
+        if (currentTouches.length !== 2) return;
+
+        let currentTouch1 = currentTouches[0];
+        let currentTouch2 = currentTouches[1];
+
+        // Calculate the current distance between touch points
+        let currentDistance = Math.hypot(
+            currentTouch1.clientX - currentTouch2.clientX,
+            currentTouch1.clientY - currentTouch2.clientY
+        );
+
+        // Calculate the zoom factor based on the change in distance
+        let zoomFactor = currentDistance / initialDistance;
+
+        // Apply zoom if within allowed limits
+        if ((zoomFactor > 1 && startW / window.innerWidth < 25) || 
+            (zoomFactor < 1 && startW / window.innerWidth > 0.2)) {
+            // Update scale based on zoom direction
+            scale *= zoomFactor > 1 ? zoomIn : zoomOut;
+            // Adjust the area X and Y based on zoom direction
+            areaX = areaX * (zoomFactor > 1 ? zoomIn : zoomOut) + (zoomFactor > 1 ? -correction : correction);
+            areaY *= zoomFactor > 1 ? zoomIn : zoomOut;
+        }
+
+        // Apply the new scale to the picture
+        picture.style.width = scale + 'px';
+
+        // Calculate the new center point between current touch positions
+        let newCenterX = (currentTouch1.clientX + currentTouch2.clientX) / 2;
+        let newCenterY = (currentTouch1.clientY + currentTouch2.clientY) / 2;
+
+        // Calculate the new position of the picture
+        let newPictureX = newCenterX - areaX - size.left + startPictureX;
+        let newPictureY = newCenterY - areaY - size.top + startPictureY;
+
+        // Apply the new position to the picture
+        picture.style.left = `${newPictureX}px`;
+        picture.style.top = `${newPictureY}px`;
+
+        // Resize other elements accordingly
+        resizeAreas();
+        resizeHighlights();
+    }
+
+    // Function to handle the end of the touch event
+    function handleTouchEnd() {
+        // Remove event listeners when touch ends
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+    }
+
+    // Add event listeners for touch movement and touch end
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
 }
 
 /************************************************************EDIT FUNCTIONS****************************************************************************/
