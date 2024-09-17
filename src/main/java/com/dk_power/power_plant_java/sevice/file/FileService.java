@@ -44,4 +44,5 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     Set<String> getPidRelatedSystems();
 
     List<FileObject> getIfDocNumberContains(String number);
+    FileDtoLight getLightById(Long id);
 }

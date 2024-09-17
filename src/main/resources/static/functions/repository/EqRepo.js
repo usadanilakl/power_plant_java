@@ -7,7 +7,7 @@ class EqRepo{
     static EQ_LIST;
 
     static getEqById(id){
-        return FileRepo.FILE_WITH_POINTS.points.find(e=>e.id+''===id);
+        return FileRepo.FILE_WITH_POINTS.highlights.find(e=>e.id+''===id);
     }
 
 

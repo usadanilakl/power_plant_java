@@ -181,6 +181,11 @@ public class FileServiceImpl implements FileService {
         return fileRepo.findByDocNumberContaining(number);
     }
 
+    @Override
+    public FileDtoLight getLightById(Long id) {
+        return fileRepo.getLightById(id);
+    }
+
     public List<FileDto> getAllDtos(String ext) {
         return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
     }

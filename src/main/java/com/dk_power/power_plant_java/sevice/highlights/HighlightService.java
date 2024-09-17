@@ -12,4 +12,6 @@ public interface HighlightService extends CrudService<Highlight, HighlightDto, H
     void transferConnectorToHighlights(Equipment eq);
     Equipment combineDuplicatesAndCreateHighlights(String tagNumber);
     void fixConnectorsBeforeTranser();
+    void fixCoordinates();
+    void performTransfer();
 }

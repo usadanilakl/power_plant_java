@@ -232,6 +232,11 @@ public class EquipmentServiceImpl implements EquipmentService {
     }
 
     @Override
+    public List<String> getDuplicateTagStrings() {
+        return equipmentRepo.findDuplicateTagNumbers();
+    }
+
+    @Override
     public void refactor(Value old, Value _new) {
         String cat = old.getCategory().getAlias();
         for (Equipment f : getByValue(old)) {

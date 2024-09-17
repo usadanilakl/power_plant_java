@@ -2,13 +2,18 @@ import CoordinateCalculator from "../../service/picture/CoordinateCalculator.js"
 import ResizeRelocate from "../../service/picture/ResizeRelocate.js";
 
 class EqHighlightDom{
-    static buildArea(eq){
+    static buildArea(highlight){
     
-        let coord = CoordinateCalculator.serverStringToAreaString(eq.coordinates);
+        console.log(JSON.stringify(highlight))
+        let contentType = highlight.contentType;
+        let content = highlight[contentType];
+        let eq = null;
+        if(content.objectType==="Equipment") eq=highlight.equipment;
+        let coord = CoordinateCalculator.serverStringToAreaString(highlight.coordinates);
         let newArea = document.createElement('area');
-        newArea.setAttribute('alt',eq.tagNumber);
-        newArea.setAttribute('title', eq.tagNumber);
-        newArea.setAttribute('data-point-id', eq.id);
+        newArea.setAttribute('alt',highlight.tagNumber);
+        newArea.setAttribute('title', highlight.tagNumber);
+        newArea.setAttribute('data-point-id', highlight.id);
         //newArea.setAttribute('href',eq.label);
         newArea.setAttribute('class',"ar");
         //newArea.classList.add(eq.eqType.name.replace(/" "/g, ""));
@@ -18,7 +23,7 @@ class EqHighlightDom{
         newArea.setAttribute('shape',"rect");
     
         let directLotoPoint;
-        if(eq.lotoPoints!=null && eq.lotoPoints.length>0){
+        if(eq && eq.lotoPoints!=null && eq.lotoPoints.length>0){
             directLotoPoint = eq.lotoPoints.find(e=>e.tagNumber===eq.tagNumber);
             if(!directLotoPoint) directLotoPoint = eq.lotoPoints[0];
             if(directLotoPoint.isoPos && directLotoPoint.isoPos.name && directLotoPoint.isoPos.name.toLowerCase().includes('open')){

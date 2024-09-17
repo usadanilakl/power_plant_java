@@ -32,11 +32,12 @@ class EqService extends BaseEqService{
         infoFrame.style.height = 'fit-content';
         infoFrame.style.width = 'fit-content';
         
-        // if(selectedArea.lotoPoints){
-        //     const list = await LotoService.lotoPointDropdown(selectedArea.lotoPoints); 
-        //     // infoContainer.appendChild(list);
-        //     document.getElementById('loto-point-container').appendChild(list);
-        // } 
+        if(EqRepo.SELECTED_EQ.lotoPoints){
+            // const list = await LotoService.lotoPointDropdown(EqRepo.SELECTED_EQ.lotoPoints); 
+            // // infoContainer.appendChild(list);
+            // document.getElementById('loto-point-container').appendChild(list);
+            console.log(EqRepo.SELECTED_EQ.lotoPoints.length)
+        } 
     }
 
 }

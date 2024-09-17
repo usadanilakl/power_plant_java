@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.highlights.Highlight;
 import com.dk_power.power_plant_java.mappers.equipment.HighlightMapper;
 import com.dk_power.power_plant_java.repository.highlights.HighlightRepo;
+import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.TransferExcecutionService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.highlights.HighlightService;
@@ -15,7 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 @Service
@@ -27,6 +30,7 @@ public class HighlightServiceImpl implements HighlightService {
     private final SessionFactory sessionFactory;
     private final EquipmentService equipmentService;
     private final FileService fileService;
+    private final TransferExcecutionService transferExcecutionService;
 
 
     @Override
@@ -57,22 +61,22 @@ public class HighlightServiceImpl implements HighlightService {
 
     @Override
     public void transferEqToHighlights(Equipment equipment) {
-        Highlight highlight = new Highlight();
-        FileObject mainFile = equipment.getMainFile();
-        highlight.setCoordinates(equipment.getCoordinates());
-        highlight.setOriginalPictureSize(equipment.getOriginalPictureSize());
-        highlight.buildPictureSize();
-        highlight.buildCoordinates();
-        highlight.setFile(mainFile);
-        highlight.setTagNumber(equipment.getTagNumber());
-        highlight.setEquipment(equipment);
-        save(highlight);
+            Highlight highlight = new Highlight();
+            FileObject mainFile = equipment.getMainFile();
+            highlight.setCoordinates(equipment.getCoordinates());
+            highlight.setOriginalPictureSize(equipment.getOriginalPictureSize());
+            highlight.buildPictureSize();
+            highlight.buildCoordinates();
+            highlight.setFile(mainFile);
+            highlight.setTagNumber(equipment.getTagNumber());
+            highlight.setEquipment(equipment);
+            save(highlight);
 //        equipment.getHighlights().add(highlight);
 //        equipmentService.save(equipment);
 //        mainFile.getHighlights().add(highlight);
 //        fileService.save(mainFile);
-    }
 
+    }
     @Override
     public void transferConnectorToHighlights(Equipment equipment) {
         Highlight highlight = new Highlight();
@@ -155,7 +159,6 @@ public class HighlightServiceImpl implements HighlightService {
         });
         return equipmentService.save(keeper);
     }
-
     @Override
     public void fixConnectorsBeforeTranser() {
         List<Equipment> connectors = equipmentService.getAll().stream().filter(e -> e.getEqType() != null && e.getEqType().getName().equalsIgnoreCase("connector")).toList();
@@ -173,10 +176,57 @@ public class HighlightServiceImpl implements HighlightService {
                 e.setNote("Deleted Connectors to files that are not tagged");
                 equipmentService.softDelete(e);
             }
-
-
-
-
         });
+    }
+    @Override
+    public void fixCoordinates(){
+        for (Equipment e : equipmentService.getAll()) {
+            if(e.getCoordinates().contains("undefined") ||e.getCoordinates().contains("null")){
+                System.out.println(e.getCoordinates() + " " + e.getTagNumber() + " " + e.getMainFile().getDocNumber());
+                if(e.getCoordinates().contains("startX:null")){
+                    e.setNote("missing x coords");
+                    equipmentService.softDelete(e);
+                    continue;
+                }
+                e.setCoordinates(e.getCoordinates().replaceAll("undefined","").replaceAll("null",""));
+                equipmentService.save(e);
+            }
+        }
+    }
+    public void fixOriginalSize(){
+        for (Equipment e : equipmentService.getAll()) {
+            if(e.getOriginalPictureSize()==null || e.getOriginalPictureSize().contains("undefined") ||e.getOriginalPictureSize().contains("null")){
+                System.out.println(e.getTagNumber() + " was deleted");
+                e.setNote("was deleted because no original size");
+                equipmentService.softDelete(e);
+                equipmentService.save(e);
+            }
+        }
+    }
+    public void performTransfer(){
+        transferExcecutionService.addDocNumberToExistingFiles();
+        fixConnectorsBeforeTranser();
+        fixCoordinates();
+        fixOriginalSize();
+
+        List<Equipment> connector = equipmentService.getAll().stream().filter(e -> e.getEqType() != null && e.getEqType().getName().equalsIgnoreCase("connector")).toList();
+        connector.forEach(this::transferConnectorToHighlights);
+
+        List<String> duplicateTagStrings = equipmentService.getDuplicateTagStrings();
+        Set<String> setOfDuplicates = new HashSet<>(duplicateTagStrings);
+        setOfDuplicates.forEach(this::combineDuplicatesAndCreateHighlights);
+
+
+        List<String> coords = getAll().stream().map(h -> h.getCoordinates() + h.getFile().getFileNumber()).toList();
+        List<Equipment> all = equipmentService.getAll();
+        all.forEach(e->{
+            String coord = e.getCoordinates()+ e.getMainFile().getFileNumber();
+            if(!coords.contains(coord)){
+                transferEqToHighlights(e);
+            }
+        });
+
+
+        System.out.println("Done");
     }
 }

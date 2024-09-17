@@ -2,6 +2,7 @@ import EqHighlightDom from "../../dom/picture/EqHighlightDom.js";
 import GlobalVariables from "../../global/GlobalVariables.js";
 import EqRepo from "../../repository/EqRepo.js";
 import AreaRepo from "../../repository/picture/AreaRepo.js";
+import HighlightRepo from "../../repository/picture/HighlightRepo.js";
 import EqService from "../equipment/EqService.js";
 import CoordinateCalculator from "./CoordinateCalculator.js";
 import HighlightService from "./HighlightService.js";
@@ -18,12 +19,15 @@ class AreaService{
         HighlightService.removeAllHighlights();
         HighlightService.createHighlight(area);
         EqService.eqEditModeControl(); 
-        EqRepo.SELECTED_EQ = EqRepo.getEqById(area.getAttribute('data-point-id'));
-        // EqRepo.SELECTED_EQ = EqRepo.EQ_LIST.find(e=>e.id+''===area.getAttribute('data-point-id'))
-        EqService.fillPointInfoWindow(EqRepo.SELECTED_EQ);
-        // let points = EqService.getExcelPointsByLabel(AreaRepo.SELECTED_AREA.tagNumber);
-        // EqService.fillExcelPointInfoWindow(points);
-        //positionInfoWindowsInline();
+        HighlightRepo.SELECTED_HIGHLIGHT = HighlightRepo.getHighlightById(area.getAttribute('data-point-id'))
+        if(HighlightRepo.SELECTED_HIGHLIGHT.contentType==='equipment'){
+            EqRepo.SELECTED_EQ = HighlightRepo.SELECTED_HIGHLIGHT.equipment;
+            // EqRepo.SELECTED_EQ = EqRepo.EQ_LIST.find(e=>e.id+''===area.getAttribute('data-point-id'))
+            EqService.fillPointInfoWindow(EqRepo.SELECTED_EQ);
+            // let points = EqService.getExcelPointsByLabel(AreaRepo.SELECTED_AREA.tagNumber);
+            // EqService.fillExcelPointInfoWindow(points);
+            //positionInfoWindowsInline();
+        }
     }
 
     static setUpArea(eq){

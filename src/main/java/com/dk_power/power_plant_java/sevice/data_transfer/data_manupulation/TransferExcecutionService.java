@@ -20,5 +20,6 @@ public interface TransferExcecutionService {
     List<HeatTraceJson> getHtFromJson();
     List<HighilightsJson> getHighlitsFromJson();
     String getProjectRootFolder();
+    void addDocNumberToExistingFiles();
 
 }

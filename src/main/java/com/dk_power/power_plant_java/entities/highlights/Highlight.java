@@ -42,6 +42,7 @@ public class Highlight extends BaseAuditEntity {
     private Double pictureWidth;
     private Double pictureHeight;
     private String  tagNumber;
+    private String contentType;
 
 
     @ManyToOne(cascade = CascadeType.ALL)
@@ -102,6 +103,13 @@ public class Highlight extends BaseAuditEntity {
         map.put("height",pictureHeight);
 
         return map;
+    }
+    public String identifyContent(){
+        String cont = "";
+        if(equipment!=null) cont = "equipment";
+        else if(connector!=null) cont = "connector";
+        contentType = cont;
+        return cont;
     }
 
 }

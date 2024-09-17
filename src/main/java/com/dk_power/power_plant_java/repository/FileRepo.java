@@ -26,6 +26,8 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileDtoLight> getAllCompletedLight();
     @Query("SELECT new com.dk_power.power_plant_java.dto.files.FileDtoLight(e.id,e.name,e.fileLink,e.relatedSystems,e.fileNumber,e.vendor,e.fileType) FROM FileObject e WHERE e.completed = false")
     List<FileDtoLight> getAllIncompleteLight();
+    @Query("SELECT new com.dk_power.power_plant_java.dto.files.FileDtoLight(e.id,e.name,e.fileLink,e.relatedSystems,e.fileNumber,e.vendor,e.fileType) FROM FileObject e WHERE e.id=?1")
+    FileDtoLight getLightById(Long id);
 
     FileObject findByFileLink(String fileLink);
 

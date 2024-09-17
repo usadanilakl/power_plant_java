@@ -3,6 +3,7 @@ import FileMenu from "../../dom/file/FileMenu.js";
 import GlobalVariables from "../../global/GlobalVariables.js";
 import EqRepo from "../../repository/EqRepo.js";
 import FileRepo from "../../repository/FileRepo.js";
+import HighlightRepo from "../../repository/picture/HighlightRepo.js";
 import DomBuilderService from "../dom/DomBuilderService.js";
 import AreaService from "../picture/AreaService.js";
 import HighlightService from "../picture/HighlightService.js";
@@ -23,14 +24,17 @@ class FileService{
         FileRepo.ALL_FILES = await FileController.getAllFiles();
         return FileRepo.ALL_FILES;
     }
+
     static async setFileCategories(){
         FileRepo.FILE_CATEGORIES = await FileController.getFileCategories();
         return FileRepo.FILE_CATEGORIES;
     }
+
     static async setFileVendors(){
         FileRepo.FILE_VENDORS = await FileController.getFileVendors();
         return FileRepo.FILE_VENDORS;
     }
+
     static async setFileSystems(){
         FileRepo.FILE_SYSTEMS = await FileController.getFileSystems();
         return FileRepo.FILE_SYSTEMS;
@@ -152,8 +156,9 @@ class FileService{
         picture.setAttribute('data-file-id', file.id);
         HighlightService.removeAllHighlights();
         FileRepo.FILE_WITH_POINTS = await FileController.getFileFromDbByNumber(file.fileNumber);
-        EqRepo.EQ_LIST = FileRepo.FILE_WITH_POINTS.points;
-        AreaService.setAreas(EqRepo.EQ_LIST);
+        // EqRepo.EQ_LIST = FileRepo.FILE_WITH_POINTS.points;
+        HighlightRepo.ALL_HIGHLIGHTS = FileRepo.FILE_WITH_POINTS.highlights;
+        AreaService.setAreas(HighlightRepo.ALL_HIGHLIGHTS);
     }
 
 }

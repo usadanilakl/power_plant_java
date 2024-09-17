@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.entities.equipment.*;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.highlights.Highlight;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.highlights.DrawingElementRepo;
@@ -30,6 +31,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 @SpringBootApplication
 @RequiredArgsConstructor
@@ -77,48 +79,24 @@ private final DrawingElementRepo drawingElementRepo;
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
-//        List<Equipment> tagNumberDuplicates = equipmentService.getTagNumberDuplicates();
-//        int n = 0;
-//        for(Equipment e : tagNumberDuplicates){
-//            if(e.getLotoPoints()!=null && e.getLotoPoints().size()!=0){
-//                String descr = e.getDescription()!=null ? e.getDescription() : "no descr";
-//                String loc = e.getLocation()!=null ? e.getLocation().getName() : "no loc";
-//                System.out.println(e.getTagNumber() + "||" + descr + "||" + loc + "||" +  e.getMainFile().getFileNumber());
-//                n++;
-//            }
-//        }
-//        System.out.println(n);
 
-        List<String> duplicateTagNumbers = equipmentRepo.findDuplicateTagNumbers();
-        Set<String> singles = new TreeSet<>();
-//        duplicateTagNumbers.forEach(e-> singles.add(e.trim()));
-//        singles.forEach(e-> {
-//            System.out.println(e);
+//        highlightService.performTransfer();
+
+//        List<FileObject> ifNumberContains = fileService.getIfNumberContains("PD-020A");
+//        FileObject fileObject = ifNumberContains.get(0);
+//        List<Highlight> highlights = fileObject.getHighlights();
+//        List<Equipment> points = fileObject.getPoints();
+//        System.out.println("points = " + points.size());
+//        System.out.println("highlights = " + highlights.size());
+//
+//        points.forEach(e->{
+//            if(e.getHighlights().size()>1) e.getHighlights().forEach(h-> System.out.println(h.getTagNumber()+" " + h.getFile().getFileNumber()));
 //        });
 
-
-
-//        highlightService.fixConnectorsBeforeTranser();
-//        List<Equipment> all = equipmentService.getAll();
-//        for (Equipment e : all) {
-//            if(e.getEqType()!=null && e.getEqType().getName().equalsIgnoreCase("connector")){
-//                highlightService.transferConnectorToHighlights(e);
-//            }else if(duplicateTagNumbers.contains(e.getTagNumber())){
-////                equipmentService.getByTagNumber(e.getTagNumber());
-//            }else{
-////                highlightService.transferEqToHighlights(e);
-//            }
-//        }
-////
-//        List<Equipment> connectors = equipmentService.getAll().stream().filter(e -> e.getEqType() != null && e.getEqType().getName().equalsIgnoreCase("connector")).toList();
-//        System.out.println(connectors.size() + " connectors found");
-
-
-
-
-
-
-
+//        highlightService.getAll().forEach(e->{
+//            e.identifyContent();
+//            highlightService.save(e);
+//        });
 
 
 /******************************************************************************************************************************************
