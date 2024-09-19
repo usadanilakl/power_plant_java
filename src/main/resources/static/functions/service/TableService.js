@@ -209,19 +209,48 @@ function filterObjects(key,value, objects){
     })
 }
 
-function sortObjects(key){
-    if(lastSortedBy !== key){
-            filteredArray.sort((a,b)=>{
-                return a[key].toString().localeCompare(b[key].toString());
-        });
+// function sortObjects(key){
+//     if(lastSortedBy !== key){
+//             filteredArray.sort((a,b)=>{
+//                 if(a[key] && a[key].name) return a[key].name.localeCompare(b[key].name)
+//                 else if(a[key])return a[key].localeCompare(b[key]);
+//         });
+//         lastSortedBy = key;
+//     }else{
+//         filteredArray.sort((a,b)=>{
+//             // return b[key].toString().localeCompare(a[key].toString());
+//             if(a[key] && a[key].name) return b[key].name.localeCompare(a[key].name)
+//             else if(a[key])return b[key].localeCompare(a[key]);
+//         });
+//         lastSortedBy = "";
+//     }
+
+// }
+function sortObjects(key) {
+    const compareValues = (a, b) => {
+        const valA = a[key];
+        const valB = b[key];
+
+        // Handle null, undefined, or empty values
+        if (!valA && !valB) return 0;
+        if (!valA) return 1;
+        if (!valB) return -1;
+
+        // Handle nested objects with 'name' property
+        if (typeof valA === 'object' && valA.name) return valA.name.localeCompare(valB.name);
+        if (typeof valB === 'object' && valB.name) return valA.localeCompare(valB.name);
+
+        // Default comparison
+        return valA.toString().localeCompare(valB.toString());
+    };
+
+    if (lastSortedBy !== key) {
+        filteredArray.sort(compareValues);
         lastSortedBy = key;
-    }else{
-        filteredArray.sort((a,b)=>{
-            return b[key].toString().localeCompare(a[key].toString());
-        });
+    } else {
+        filteredArray.sort((a, b) => compareValues(b, a));
         lastSortedBy = "";
     }
-
 }
 
 function searchFieldAndButtonInLine(){
