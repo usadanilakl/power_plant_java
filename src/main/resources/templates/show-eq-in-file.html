@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
     <meta id="mode" th:content="${mode}"/>
+    <meta id="eqId" th:content="${eqId}"/>
+
     <title>My Main Layout</title>
 
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
@@ -118,17 +120,6 @@
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
-    <!-- <script src="/functions/dev_functions/Page.js"></script>
-    <script src="/functions/dev_functions/Picture.js"></script>
-    <script src="/functions/dev_functions/Editing.js"></script>
-    <script src="/functions/dev_functions/Http.js"></script>
-    <script src="/functions/FileFunctions.js"></script>
-    <script src="/functions/display_functions/PopUpForGroups.js"></script>
-    <script src="/functions/display_functions/PopUpForHtml.js"></script>
-    <script src="/functions/display_functions/DisplayPicture.js"></script>
-    <script src="/functions/display_functions/FileDropdown.js"></script>
-    <script src="/functions/util_functions/util.js"></script> -->
-
     <script>
         let token = document.getElementById('token').getAttribute('content');
     </script>
@@ -170,6 +161,7 @@
         let all = document.getElementById('all');
         let infoWindowsContainer = document.getElementById('infoWindowsContainer');
         let mode = document.getElementById('mode').getAttribute('content');
+        let eqId = document.getElementById('eqId').getAttribute('content');
         let popups = [];
         let pinMenuBtn = document.getElementById('pin-menu');
         let left = document.getElementById('left');
@@ -177,45 +169,25 @@
 
 
 
-    getAllFiles()
-    .then(()=>getVendors())
-    .then(()=>getCategories())
-    .then(()=>{
-        console.log("Dropdown is ready to be built");
-        console.log(fileRepository.length + " files in array")
-        createDropdownItem(categories,container);
-        let arr = getFilesByVendor("Kiewit");
-        //document.getElementById('infoFrameOld-LOTO-Points').appendChild(buildPointSearchField());
-
+    getFileByEqId(eqId)
+    .then(async ()=>{
+        
         let left = document.getElementById('lower').querySelector('ul');
         let item = document.createElement('li');
         item.appendChild(createModeButtons());
         left.appendChild(item);
         item.classList.add('btn-list-in-line');
-
         
-
-        f = findFileByPartualNumber("20023894-PD-021A");
-        loadPictureWithLightFile(f);
-
-        getAllCategoryObjects();
-        getAllCategories();
-        // getAllTransferDataFromDb();
-        getRevisedExcelPoints();
-        getOldExcelPoints();
-        getHrsgValvesFromDb();
-        getKiewitValvesFromDb();
-        getBypassesFromDb();
-
-        
-        
- 
+        await loadPictureWithLightFile(fileByEqId);
         
     }).then(()=>{
-        console.log(JSON.stringify(hrsgValves))
-        // console.log(JSON.stringify(allTransferData))
-        // console.log(JSON.stringify(allTransferData))
-       if(mode) setMode(mode); 
+        if(mode) setMode(mode);
+        requestAnimationFrame(() => {
+            highlightEq(eqId);
+            let eq = fileWithPoints.filter(f=>f.id===eqId);
+            fillPointInfoWindow(eq);
+        });
+        
     })
 
     pictureContainer.addEventListener('mousedown',(event)=>{
@@ -223,28 +195,17 @@
             event.preventDefault();
             relocateHighlightsWithPicture(event);
         }
-
-    
-});
-pictureContainer.addEventListener('touchstart',(event)=>{
+    });
+    pictureContainer.addEventListener('touchstart',(event)=>{
         if(event.target.tagName === "INPUT") return
-
         event.preventDefault();
-        // relocateHighlightsWithPictureTouch(event);
         relocateHighlightsWithPictureDoubleTap(event);
     });
-const zoom = zoomPicture.bind(null,picture);
-pictureContainer.addEventListener('wheel',zoom);
-pictureContainer.addEventListener('touchstart', zoomPictureTouch);
-document.addEventListener('mousedown',handleMouseDown);
+    const zoom = zoomPicture.bind(null,picture);
+    pictureContainer.addEventListener('wheel',zoom);
+    pictureContainer.addEventListener('touchstart', zoomPictureTouch);
+    document.addEventListener('mousedown',handleMouseDown);
 
-pinMenuBtn.addEventListener('click',()=>{
-    left.classList.toggle('hide');
-})
-
-// pinMenuBtn.addEventListener('touchstart',()=>{
-//     left.classList.toggle('hide');
-// })
 
 
 

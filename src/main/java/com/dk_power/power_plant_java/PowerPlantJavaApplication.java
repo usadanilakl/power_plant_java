@@ -1,10 +1,13 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -32,6 +35,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 @SpringBootApplication
@@ -64,6 +68,7 @@ private final OCRService ocrService;
 private final HighlightService highlightService;
 private final EquipmentRepo equipmentRepo;
 private final LotoPointMergeService lotoPointMergeService;
+private final LotoPointRepo lotoPointRepo;
 
 
     public static void main(String[] args) {
@@ -101,6 +106,9 @@ private final LotoPointMergeService lotoPointMergeService;
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
 //        fileService.copyFromAnotherUnit("5260", "5367");
+
+//
+//        lotoPointMergeService.generateGeneralLocationFromEquipment();
 
         FileObject entityById = fileService.getEntityById(5256l);
 //        entityById.buildFileLink("jpg");

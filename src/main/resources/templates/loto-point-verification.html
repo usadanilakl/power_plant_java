@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html xmlns:th="<http://www.thymeleaf.org>">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/my_styles/home.css">
+    <link rel="stylesheet" href="/my_styles/glow-buttons.css">
+    <style>
+
+        html, #main, #loto-point-table{
+            width: 100%;
+            height: 100%;
+        }
+
+        #loto-point-table {
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        p{
+            color:white;
+            font-size: large;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="main">
+        <div th:replace="~{partials/index::header}"></div>
+
+        <div class="container-fluid">
+
+            <div class="row">
+                <div class="col-md-6" id="table-controls">
+                    <p id="table-title">Table contains LOTO Points that needs to be verified</p>
+                </div>
+                <div class="col-md-3" id="table-controls">
+                    <button id="switch-table-content-button">Show All LOTO Points</button>
+                </div>
+                <div class="col-md-3">
+                    <button id="to-excel-btn">Get Excel</button>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12" id="loto-point-table">
+                    
+        
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+        let tableContainer = document.getElementById('loto-point-table');
+        let tableContentBtn = document.getElementById('switch-table-content-button');
+        let tableTitle = document.getElementById('table-title');
+        let toExcelBtn = document.getElementById('to-excel-btn')
+
+</script>
+
+<script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+<script src="/functions/controllers/LotoPointController.js"></script>
+<script src="/functions/controllers/FileController.js"></script>
+<script src="/functions/service/TableService.js"></script>
+<script src="/functions/service/bulk_edit/LotoPointVerification.js"></script>
+<script>
+//     document.addEventListener('DOMContentLoaded', async () => {
+
+//         let data = await getActiveLotoPoints();
+
+//         if (!tableContainer) {
+//             console.error('Table container not found');
+//             return;
+//         }
+
+//         try {
+//             // let data = await getActiveLotoPoints();
+//             let items = data.map(e => ({
+//                 tagNumber: e.tagNumber,
+//                 description: e.description,
+//                 generalLocation: e.generalLocation,
+//                 specificLocation: e.specificLocation,
+//                 id:e.id
+//             }));
+
+//             let ignoreFields = ["id"];
+//             let table = createTableFromObjects(items, ignoreFields);
+            
+//             tableContainer.appendChild(table);
+
+//             let lastScrollTop = 0;
+//             tableContainer.addEventListener('scroll', function() {
+//                 const scrollPosition = this.scrollTop + this.clientHeight;
+//                 const tableHeight = this.scrollHeight;
+//                 let currentScrollTop = this.scrollTop;
+
+//                 if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
+//                     tableDisplayControl(table, false);
+//                 } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
+//                     tableDisplayControl(table, true);
+//                 }
+
+//                 lastScrollTop = currentScrollTop;
+//             });
+
+//             console.log('Scroll event listener added');
+//         } catch (error) {
+//             console.error('Error loading table data:', error);
+//         }
+//         await getAllLotoPoints();
+
+//         tableContentBtn.addEventListener('click',()=>toggleTableContent());
+//         toExcelBtn.addEventListener('click',async()=>allLotoPointsToExcel())
+// });
+
+getActiveLotoPoints()
+.then( async () => {
+
+
+
+if (!tableContainer) {
+    console.error('Table container not found');
+    return;
+}
+
+try {
+    let data = activeLotoPoints;
+    let items = data.map(e => ({
+        tagNumber: e.tagNumber,
+        description: e.description,
+        generalLocation: e.generalLocation,
+        specificLocation: e.specificLocation,
+        id:e.id,
+        eqIds : e.equipmentIdList
+    }));
+
+    let ignoreFields = ["id", "eqIds"];
+    let table = createTableWithFunctionFromObjects(items, ignoreFields,showEquipmentOnPid);
+    
+    tableContainer.appendChild(table);
+
+    let lastScrollTop = 0;
+    tableContainer.addEventListener('scroll', function() {
+        const scrollPosition = this.scrollTop + this.clientHeight;
+        const tableHeight = this.scrollHeight;
+        let currentScrollTop = this.scrollTop;
+
+        if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
+            tableDisplayControl(table, false);
+        } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
+            tableDisplayControl(table, true);
+        }
+
+        lastScrollTop = currentScrollTop;
+    });
+
+    console.log('Scroll event listener added');
+} catch (error) {
+    console.error('Error loading table data:', error);
+}
+await getAllLotoPoints();
+
+tableContentBtn.addEventListener('click',()=>toggleTableContent());
+toExcelBtn.addEventListener('click',async()=>allLotoPointsToExcel())
+})
+.then(()=>{
+
+})
+
+
+</script>
+</body>
+</html>

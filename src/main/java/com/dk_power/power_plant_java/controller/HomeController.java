@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller;
 
+import com.azure.core.annotation.Get;
 import com.dk_power.power_plant_java.enums.SortingGroup;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import lombok.AllArgsConstructor;
@@ -31,6 +32,10 @@ public class HomeController {
     String getEditBulk(Model model){
         model.addAttribute("mode","editMode");
         return "bulkPointEditor";
+    }
+    @GetMapping("/verification")
+    public String verifyLotoPoints(){
+        return "loto-point-verification";
     }
     @GetMapping("/admin")
     String getAdmin(){

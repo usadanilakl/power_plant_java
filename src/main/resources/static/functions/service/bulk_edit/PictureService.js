@@ -46,11 +46,13 @@ function loadPictureWithFile(file){
 
 async function loadPictureWithLightFile(file){
     picture.setAttribute('src','/'+file.fileLink);
+    let id = file.id;
     picture.onerror = async function() {
         console.log('Image not found. Running fallback function.');
         let message = await getPdfAndConvertToJpg(file.id);
         if(message.toLocaleLowerCase().includes('file not found')){
-            await updateFileStatus(file.id,true);
+            console.log(id)
+            await updateFileStatus(id,true);
             await updateFileEditStep("skip");
             location.reload();
         }
@@ -99,7 +101,19 @@ function setAreas(areas){
             fillExcelPointInfoWindow(points);
             highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
 
-        })
+        });
+        area.addEventListener('touchstart', function(event) {
+            event.preventDefault(); // Prevent default touch behavior
+            selectedArea = e;
+            selectedAres.push(selectedArea);
+            let highlight = createHighlight(area,true);
+            selectedBundle.push({"area":area,"eq":e,"highlight":highlight});
+            // pointEditModeControl();
+            setEditType();
+            let points = getExcelPointsByLabel(e.tagNumber);
+            fillExcelPointInfoWindow(points);
+            highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
+        });
         //doubleClick(shape, e);
         map.appendChild(area);
     });
@@ -420,6 +434,108 @@ function relocateHighlightsWithPicture(event){
 
 }
 
+function relocateHighlightsWithPictureTouch(event) {
+    // Only proceed if there are exactly two touch points
+    if (event.touches.length !== 2) return;
+
+    let highlightPosition = [];
+    activeHighlights.forEach(e => {
+        highlightPosition.push({top: e.offsetTop, left: e.offsetLeft});
+    });
+
+    let picPosition = {top: picture.offsetTop, left: picture.offsetLeft};
+    let startX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+    let startY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+
+    const handleTouchMove = (event) => {
+        event.preventDefault(); // Prevent scrolling while moving
+        if (event.touches.length !== 2) return;
+
+        let currentX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+        let currentY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+        
+        let changeX = startX - currentX;
+        let changeY = startY - currentY;
+        
+        activeHighlights.forEach((e, i) => {
+            e.style.top = highlightPosition[i].top - changeY + 'px';
+            e.style.left = highlightPosition[i].left - changeX + 'px';
+        });
+
+        picture.style.top = picPosition.top - changeY + "px";
+        picture.style.left = picPosition.left - changeX + "px";
+    }
+
+    const handleTouchEnd = () => {
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+    }
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+}
+
+function relocateHighlightsWithPictureDoubleTap(event) {
+    let lastTap = 0;
+    let isDragging = false;
+    let highlightPosition = [];
+    let picPosition = { top: picture.offsetTop, left: picture.offsetLeft };
+    let startX, startY;
+
+    picture.addEventListener('touchstart', handleTouchStart);
+
+    function handleTouchStart(event) {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        
+        if (tapLength < 300 && tapLength > 0 && event.touches.length===1) {
+            // Double tap detected
+            event.preventDefault();
+            isDragging = true;
+            
+            highlightPosition = activeHighlights.map(e => ({
+                top: e.offsetTop,
+                left: e.offsetLeft
+            }));
+
+            picPosition = { top: picture.offsetTop, left: picture.offsetLeft };
+            startX = event.touches[0].clientX;
+            startY = event.touches[0].clientY;
+
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd);
+        }
+        
+        lastTap = currentTime;
+    }
+
+    function handleTouchMove(event) {
+        if (!isDragging) return;
+        
+        event.preventDefault(); // Prevent scrolling while moving
+
+        let currentX = event.touches[0].clientX;
+        let currentY = event.touches[0].clientY;
+        
+        let changeX = startX - currentX;
+        let changeY = startY - currentY;
+        
+        activeHighlights.forEach((e, i) => {
+            e.style.top = highlightPosition[i].top - changeY + 'px';
+            e.style.left = highlightPosition[i].left - changeX + 'px';
+        });
+
+        picture.style.top = picPosition.top - changeY + "px";
+        picture.style.left = picPosition.left - changeX + "px";
+    }
+
+    function handleTouchEnd() {
+        isDragging = false;
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+    }
+}
+
 function doubleClickArea(element){
     if(modes.viewMode.state) jumpToFile(element.getAttribute('name'))
     else if(modes.editMode.state) console.log('editing'+element.getAttribute('name'))
@@ -441,8 +557,6 @@ function zoomPicture(){
     let size = picture.getBoundingClientRect();
     let startW = picture.offsetWidth; // get current width of picture
     let startH = picture.offsetHeight;
-    let correction = window.innerWidth*0.028
-    correction = 0 //to turn off correction (it was caused by menu, now they overlap and no need for correction)
     
     //finding the original spot where mosue is pointed before zooming
     let areaX = event.clientX - size.left;
@@ -465,14 +579,14 @@ function zoomPicture(){
     //scroll in
     if (event.deltaY < 0 && startW/window.innerWidth < 25) {
         scale *= zoomIn;
-        areaX = areaX*zoomIn-correction; //this is X of where mosue was pointed before zooming
+        areaX = areaX*zoomIn; //this is X of where mosue was pointed before zooming
         areaY *= zoomIn; //this is Y of where mosue was pointed before zooming
         
             
     //scroll out   
     }else if(event.deltaY>0 && startW/window.innerWidth>0.2){
         scale *=zoomOut;
-        areaX = areaX*zoomOut+correction; //this is X of where mosue was pointed before zooming
+        areaX = areaX*zoomOut; //this is X of where mosue was pointed before zooming
         areaY *= zoomOut; //this is Y of where mosue was pointed before zooming
         
     }
@@ -488,6 +602,88 @@ function zoomPicture(){
         resizeHighlights(); 
         //resizeManualHighlites(); 
     
+}
+
+function zoomPictureTouch(event) {
+    // Sensitivity setting - adjust this value to change sensitivity
+    const sensitivityThreshold = 0.05; // Higher value = less sensitive
+
+    // Get the current size and position of the picture
+    let size = picture.getBoundingClientRect();
+    let startW = picture.offsetWidth;
+    let startH = picture.offsetHeight;
+
+    // Only proceed if there are exactly two touch points (for pinch-to-zoom)
+    if (event.touches.length !== 2) return;
+
+    event.preventDefault();
+
+    let touch1 = event.touches[0];
+    let touch2 = event.touches[1];
+
+    let initialDistance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+    );
+
+    let centerX = (touch1.clientX + touch2.clientX) / 2;
+    let centerY = (touch1.clientY + touch2.clientY) / 2;
+
+    let areaX = centerX - size.left;
+    let areaY = centerY - size.top;
+
+    let startPictureX = picture.offsetLeft;
+    let startPictureY = picture.offsetTop;
+
+    let scale = picture.offsetWidth;
+
+    function handleTouchMove(e) {
+        if (e.touches.length !== 2) return;
+
+        let currentTouch1 = e.touches[0];
+        let currentTouch2 = e.touches[1];
+
+        let currentDistance = Math.hypot(
+            currentTouch1.clientX - currentTouch2.clientX,
+            currentTouch1.clientY - currentTouch2.clientY
+        );
+
+        let zoomFactor = currentDistance / initialDistance;
+
+        // Only apply zoom if the change is greater than the threshold
+        if (Math.abs(zoomFactor - 1) > sensitivityThreshold) {
+            if ((zoomFactor > 1 && startW / window.innerWidth < 25) || 
+                (zoomFactor < 1 && startW / window.innerWidth > 0.2)) {
+                scale *= zoomFactor > 1 ? 1.1 : 0.9;
+                areaX = areaX * (zoomFactor > 1 ? 1.1 : 0.9) + (zoomFactor > 1 ? -10 : 10);
+                areaY *= zoomFactor > 1 ? 1.1 : 0.9;
+
+                picture.style.width = scale + 'px';
+
+                let newCenterX = (currentTouch1.clientX + currentTouch2.clientX) / 2;
+                let newCenterY = (currentTouch1.clientY + currentTouch2.clientY) / 2;
+
+                let newPictureX = newCenterX - areaX - size.left + startPictureX;
+                let newPictureY = newCenterY - areaY - size.top + startPictureY;
+
+                picture.style.left = `${newPictureX}px`;
+                picture.style.top = `${newPictureY}px`;
+
+                resizeAreas();
+                resizeHighlights();
+
+                initialDistance = currentDistance;
+            }
+        }
+    }
+
+    function handleTouchEnd() {
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+    }
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
 }
 
 /************************************************************EDIT FUNCTIONS****************************************************************************/

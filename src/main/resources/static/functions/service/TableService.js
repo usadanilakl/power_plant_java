@@ -67,10 +67,11 @@ function createRows(tbody,ignoreFields){
     rows = [];
     filteredArray.forEach(el=>{
         let row = document.createElement('tr');
+        if(el.id)row.setAttribute('data-obj-id',el.id)
         if(i<100){
-           tbody.appendChild(row); 
+            tbody.appendChild(row); 
         }
-        
+
         rows.push(row);
 
         let indexData = document.createElement('td');
@@ -102,11 +103,102 @@ function createRows(tbody,ignoreFields){
             let editItem = function(){editFile(el.id)}
             editButton.addEventListener('click',editItem);  
         }
-        
+    })
+}
 
-        
-        
+function createTableWithFunctionFromObjects(objects, ignoreFields,action){
+    console.log(JSON.stringify(ignoreFields))
+    filteredArray = objects;
+    console.log(filteredArray.length);
+    let table = document.createElement('table');
+    table.classList.add('table');
+    table.classList.add('table-dark');
+    let thead = document.createElement('thead');
+    thead.classList.add('sticky-top');
+    table.appendChild(thead);
+    let header = document.createElement('tr');
+    thead.appendChild(header);
 
+    let index = document.createElement('th');
+    header.appendChild(index);
+    index.textContent = 'Index';
+
+    let tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+
+    for(let e in objects[0]){
+        if(ignoreFields && ignoreFields.includes(e)) continue;
+        let th = document.createElement('th');
+        header.appendChild(th);
+        let search = document.createElement('input');
+        th.appendChild(search);
+        search.setAttribute('type','text');
+        search.setAttribute('placeholder','filter');
+        search.addEventListener('change', ()=>{
+            filteredArray = filterObjects(e,search.value,objects);
+            tbody.innerHTML = "";
+            createRows(tbody);
+    });
+        let button = document.createElement('button');
+        th.appendChild(button);
+        button.textContent = e;
+        button.addEventListener('click',()=>{
+            sortObjects(e);
+            tbody.innerHTML = "";
+            createRows(tbody);
+        });
+    }
+    if(objects[0].id){ //this will create an extra column for edit buttons if id is present
+        let crud = document.createElement('th');
+        header.appendChild(crud);
+        crud.textContent = 'Edit/Delete'; 
+    }
+
+
+    createRowsWithFunction(tbody,ignoreFields,action);
+
+    return table;
+}
+
+function createRowsWithFunction(tbody,ignoreFields,action){
+    let i = 1;
+    rows = [];
+    filteredArray.forEach(el=>{
+        let row = document.createElement('tr');
+        if(el.id)row.setAttribute('data-obj-id',el.id)
+        if(i<100){
+            tbody.appendChild(row); 
+        }
+        
+        rows.push(row);
+
+        let indexData = document.createElement('td');
+        indexData.textContent = i++;
+        row.appendChild(indexData);
+        indexData.classList.add('idexData');
+
+        for(let key in el){
+            if(ignoreFields && ignoreFields.includes(key)) continue;
+            let td = document.createElement('td');
+            if(el[key] && el[key].name){
+                td.textContent = el[key].name
+            } 
+            else td.textContent = el[key];
+            row.appendChild(td);
+        }
+
+        if(action){
+            let crud = document.createElement('td');
+            row.appendChild(crud);
+            crud.classList.add('crud');
+
+            let editButton = document.createElement('button')
+            crud.appendChild(editButton);
+            editButton.classList.add('crudButton');
+            editButton.textContent = "Edit";
+
+            editButton.addEventListener('click',()=>action(el));
+        }
     })
 }
 
@@ -180,7 +272,7 @@ function tableDisplayControl(table, scrollUp){
             deleteRowsFromBottom(numberOfRows,tbody);
         }else{
             addRowsToBottom(numberOfRows,tbody,rows);
-            deleteRowsFromTop(numberOfRows,tbody);            
+            deleteRowsFromTop(numberOfRows,tbody);
         }
 
     

@@ -1,5 +1,7 @@
 let fileRepository;
 let filesAreLoded = false;
+let fileByEqId = {};
+fileWithPoints = [];
 
 let vendors=[];
 let categories;
@@ -33,6 +35,7 @@ function filePutWithBody(data){
         body:JSON.stringify(data)
     }
 }
+
 function filePatchWithBody(data){
     return{
         method: 'PATCH',
@@ -197,4 +200,20 @@ async function getFileIdByDocNum(docNum){
     const resp = await fetch(baseFileApiUrl+'get-id/'+docNum);
     const data = await resp.text();
     return data;
+}
+
+async function getFileByEqId(eqId){
+    const resp = await fetch(baseFileApiUrl+'get-file-by-eq-id/'+eqId);
+    const data = await resp.json();
+    fileByEqId = data;
+    return data;
+}
+
+async function openEqFile(eqId){
+    try {
+        const url = `/file/show-eq-in-file/${eqId}`;
+        window.open(url, '_blank', 'width=800,height=600');
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }

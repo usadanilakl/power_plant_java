@@ -112,4 +112,11 @@ public class FileRestController_r {
     public ResponseEntity<String> getFileWithCopiedPoints(@PathVariable String docNum){
         return ResponseEntity.ok(fileService.getIfNumberContains(docNum).get(0).getId()+"");
     }
+
+    @GetMapping("/get-file-by-eq-id/{id}")
+    public ResponseEntity<FileDto> getFileByEqId(@PathVariable String id){
+        FileObject fileByEqId = fileService.getFileByEqId(Long.parseLong(id));
+        return ResponseEntity.ok(fileService.convertToDto(fileByEqId));
+    }
+
 }

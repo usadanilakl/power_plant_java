@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.loto.loto_point;
 
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
@@ -145,5 +146,24 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
             return result;
         }
         return null;
+    }
+
+    public void generateGeneralLocationFromEquipment(){
+        List<LotoPoint> activeLotoPoints = lotoPointRepo.findByEquipmentListNotNull();
+        int n = 0;
+        for(LotoPoint e : activeLotoPoints){
+            Set<Equipment> equipmentList = e.getEquipmentList();
+            List<Equipment> list = equipmentList.stream().toList();
+            Equipment equipment = list.get(0);
+//            System.out.println("equipment.getLocation().getName() = " + (equipment.getLocation()!=null ? equipment.getLocation().getName() : equipment.getTagNumber()));
+            String name = Optional.ofNullable(equipment.getLocation())
+                    .map(Value::getName)
+                    .orElse("Location Is Not Defined");
+            e.setGeneralLocation(name);
+            save(e);
+            n++;
+        }
+
+        System.out.println("General Locations are set in "+n+" points");
     }
 }

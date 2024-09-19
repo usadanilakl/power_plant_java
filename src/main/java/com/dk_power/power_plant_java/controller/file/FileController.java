@@ -80,6 +80,13 @@ public class FileController {
         return "redirect:/";
     }
 
+    @GetMapping("/show-eq-in-file/{id}")
+    public String showEqInFile(@PathVariable("id") String id, Model model){
+        model.addAttribute("eqId",id);
+        model.addAttribute("mode","editMode");
+        return "show-eq-in-file";
+    }
+
 
 
 }
