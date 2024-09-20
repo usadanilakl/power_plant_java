@@ -3,10 +3,6 @@ let filteredArray = [];
 let lastSortedBy = "";
 let rows = [];
 
-/*************
- * <table class="table table-dark">
-                <thead class="sticky-top">
- */
 
 function createTableFromObjects(objects, ignoreFields){
     console.log(JSON.stringify(ignoreFields))
@@ -135,9 +131,9 @@ function createTableWithFunctionFromObjects(objects, ignoreFields,action){
         search.setAttribute('type','text');
         search.setAttribute('placeholder','filter');
         search.addEventListener('change', ()=>{
-            filteredArray = filterObjects(e,search.value,objects);
+            filteredArray = filterObjects(e,search.value,filteredArray);
             tbody.innerHTML = "";
-            createRows(tbody);
+            createRowsWithFunction(tbody,null,action);
     });
         let button = document.createElement('button');
         th.appendChild(button);
@@ -145,7 +141,7 @@ function createTableWithFunctionFromObjects(objects, ignoreFields,action){
         button.addEventListener('click',()=>{
             sortObjects(e);
             tbody.innerHTML = "";
-            createRows(tbody);
+            createRows(tbody,null,action);
         });
     }
     if(objects[0].id){ //this will create an extra column for edit buttons if id is present
@@ -169,8 +165,7 @@ function createRowsWithFunction(tbody,ignoreFields,action){
         if(i<100){
             tbody.appendChild(row); 
         }
-        
-        rows.push(row);
+
 
         let indexData = document.createElement('td');
         indexData.textContent = i++;
@@ -198,7 +193,9 @@ function createRowsWithFunction(tbody,ignoreFields,action){
             editButton.textContent = "Edit";
 
             editButton.addEventListener('click',()=>action(el));
-        }
+        }        
+
+        rows.push(row);
     })
 }
 
@@ -209,23 +206,6 @@ function filterObjects(key,value, objects){
     })
 }
 
-// function sortObjects(key){
-//     if(lastSortedBy !== key){
-//             filteredArray.sort((a,b)=>{
-//                 if(a[key] && a[key].name) return a[key].name.localeCompare(b[key].name)
-//                 else if(a[key])return a[key].localeCompare(b[key]);
-//         });
-//         lastSortedBy = key;
-//     }else{
-//         filteredArray.sort((a,b)=>{
-//             // return b[key].toString().localeCompare(a[key].toString());
-//             if(a[key] && a[key].name) return b[key].name.localeCompare(a[key].name)
-//             else if(a[key])return b[key].localeCompare(a[key]);
-//         });
-//         lastSortedBy = "";
-//     }
-
-// }
 function sortObjects(key) {
     const compareValues = (a, b) => {
         const valA = a[key];

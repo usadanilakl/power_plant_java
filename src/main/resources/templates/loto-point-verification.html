@@ -70,54 +70,6 @@
 <script src="/functions/service/ValueService.js"></script>
 <script src="/functions/service/bulk_edit/LotoPointVerification.js"></script>
 <script>
-//     document.addEventListener('DOMContentLoaded', async () => {
-
-//         let data = await getActiveLotoPoints();
-
-//         if (!tableContainer) {
-//             console.error('Table container not found');
-//             return;
-//         }
-
-//         try {
-//             // let data = await getActiveLotoPoints();
-//             let items = data.map(e => ({
-//                 tagNumber: e.tagNumber,
-//                 description: e.description,
-//                 generalLocation: e.generalLocation,
-//                 specificLocation: e.specificLocation,
-//                 id:e.id
-//             }));
-
-//             let ignoreFields = ["id"];
-//             let table = createTableFromObjects(items, ignoreFields);
-            
-//             tableContainer.appendChild(table);
-
-//             let lastScrollTop = 0;
-//             tableContainer.addEventListener('scroll', function() {
-//                 const scrollPosition = this.scrollTop + this.clientHeight;
-//                 const tableHeight = this.scrollHeight;
-//                 let currentScrollTop = this.scrollTop;
-
-//                 if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
-//                     tableDisplayControl(table, false);
-//                 } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
-//                     tableDisplayControl(table, true);
-//                 }
-
-//                 lastScrollTop = currentScrollTop;
-//             });
-
-//             console.log('Scroll event listener added');
-//         } catch (error) {
-//             console.error('Error loading table data:', error);
-//         }
-//         await getAllLotoPoints();
-
-//         tableContentBtn.addEventListener('click',()=>toggleTableContent());
-//         toExcelBtn.addEventListener('click',async()=>allLotoPointsToExcel())
-// });
 
 getActiveLotoPoints()
 .then( async () => {
