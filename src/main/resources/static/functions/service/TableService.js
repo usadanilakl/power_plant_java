@@ -2,6 +2,7 @@ let searchValues = [];
 let filteredArray = [];
 let lastSortedBy = "";
 let rows = [];
+let filters = [];
 
 
 function createTableFromObjects(objects, ignoreFields){
@@ -130,11 +131,14 @@ function createTableWithFunctionFromObjects(objects, ignoreFields,action){
         th.appendChild(search);
         search.setAttribute('type','text');
         search.setAttribute('placeholder','filter');
+        search.setAttribute('data-filter',e)
         search.addEventListener('change', ()=>{
-            filteredArray = filterObjects(e,search.value,filteredArray);
+            // filteredArray = filterObjects(e,search.value,filteredArray);
+            setFilters();
+            filteredArray = muliFilter(objects,filters);
             tbody.innerHTML = "";
             createRowsWithFunction(tbody,null,action);
-    });
+        });
         let button = document.createElement('button');
         th.appendChild(button);
         button.textContent = e;
@@ -203,6 +207,32 @@ function filterObjects(key,value, objects){
     return objects.filter(e=>{
         //console.log(e[key] + ", " + value);
         return String(e[key]).trim().toLowerCase().includes(value.trim().toLowerCase());
+    })
+}
+
+function muliFilter(objects,filters){
+    return objects.filter(e=>{
+        let match = true;
+        for(let f of filters){
+            if(e[f.key] && e[f.key].name && String(e[f.key].name).trim().toLowerCase().includes(f.value.trim().toLowerCase())) match=true;
+            else if(e[f.key] && String(e[f.key]).trim().toLowerCase().includes(f.value.trim().toLowerCase())) match=true;
+            else {
+                match = false
+                break;
+            }
+        }
+        return match;
+    })
+}
+
+function setFilters(){
+    filters = [];
+    let inputs = document.querySelectorAll('[data-filter]');
+    inputs.forEach(i=>{
+        let key = i.getAttribute('data-filter');
+        let value = i.value;
+        let filter = {key:key,value:value};
+        filters.push(filter);
     })
 }
 
@@ -311,6 +341,8 @@ function addRowsOnTop(num,tbody,arr){
 
     
 }
+
+
 
 
 

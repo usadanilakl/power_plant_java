@@ -246,6 +246,12 @@ public class FileServiceImpl implements FileService {
     public List<FileObject> getIfNumberContains(String pid) {
         return fileRepo.findByFileNumberContaining(pid);
     }
+
+    @Override
+    public List<FileObject> getIfNameContains(String tag) {
+        return fileRepo.findByNameContaining(tag);
+    }
+
     public FileObject getFileByNumber(String s) {
         return fileRepo.findByFileNumber(s);
     }

@@ -8,5 +8,6 @@ import java.awt.*;
 
 public interface ElectricalPanelRepo extends BaseRepository<ElectricalPanel> {
     ElectricalPanel findByTagNumber(String panel);
+    ElectricalPanel findByNameContaining(String tag);
 
 }

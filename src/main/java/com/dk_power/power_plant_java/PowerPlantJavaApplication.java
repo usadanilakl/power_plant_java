@@ -13,10 +13,7 @@ import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.DataDistributionService;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.TransferExcecutionServiceImpl;
-import com.dk_power.power_plant_java.sevice.data_transfer.excel.ElectricalTableService;
-import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
-import com.dk_power.power_plant_java.sevice.data_transfer.excel.OldLotoPointService;
-import com.dk_power.power_plant_java.sevice.data_transfer.excel.RevisedLotoPointService;
+import com.dk_power.power_plant_java.sevice.data_transfer.excel.*;
 import com.dk_power.power_plant_java.sevice.equipment.*;
 import com.dk_power.power_plant_java.sevice.image.OCRService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointMergeService;
@@ -69,6 +66,7 @@ private final HighlightService highlightService;
 private final EquipmentRepo equipmentRepo;
 private final LotoPointMergeService lotoPointMergeService;
 private final LotoPointRepo lotoPointRepo;
+private final ElectricalPanelTransferService electricalPanelTransferService;
 
 
     public static void main(String[] args) {
@@ -82,6 +80,9 @@ private final LotoPointRepo lotoPointRepo;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+
+//        electricalPanelTransferService.createElectricalPanelFileObjectsFromExcelList();
+        electricalPanelTransferService.connectPanelsFilesWithPanelObjects();
 
 //        List<Equipment> manValves = equipmentService.getAll().stream()
 //                .filter(e -> e.getVendor()!=null && e.getVendor().getId()==4155L)

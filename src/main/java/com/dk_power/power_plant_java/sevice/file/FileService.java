@@ -17,7 +17,7 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List<FileDtoLight> getAllLight();
     List<FileDto> getAllDtos(String ext);
     List<FileObject> getIfNumberContains(String pid);
-
+    List<FileObject> getIfNameContains(String tag);
 
     FileObject getByFileLink(String fileLink);
     FileObject getFileByNumber(String s);
