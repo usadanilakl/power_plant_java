@@ -4,6 +4,10 @@ let fileByEqId = {};
 fileWithPoints = [];
 
 let vendors=[];
+let systems = [];
+let heatTracePanels = [];
+let electricalPanels = [];
+
 let categories;
 let file;
 let lightFile;
@@ -90,8 +94,8 @@ async function getCategories(){
         e['getContent'] = function(){
             if(e.value.toLowerCase().includes("vendor"))return vendors;
             else if(e.value.toLowerCase().includes("system"))return systems;
-            else if(e.value.toLowerCase().includes("heat trace"))return heatTrace;
-            else if(e.value.toLowerCase().includes("electrical"))return electircal;
+            else if(e.value.toLowerCase().includes("heat trace"))return heatTracePanels;
+            else if(e.value.toLowerCase().includes("electrical"))return electricalPanels;
         }
         e['dropdownFunc'] = function(event){createDropdownItem(this.getContent(e.value), event.target.parentNode);}.bind(e) 
     })
@@ -116,6 +120,45 @@ async function getVendors(){
     return data;
 }
 
+async function getSystems(){
+    const resp = await fetch('/data/get-systems');
+    const data = await resp.json();
+    data.forEach(e=>{
+        let i = {};
+        i.value = e;
+        i.getContent = function(){return getFilesBySystem(e.system.name)};
+        i.dropdownFunc = function(event){createDropdownItem(this.getContent(), event.target.parentNode);}.bind(i);
+        systems.push(i);
+    })
+    return data;
+}
+
+async function getHtPanels(){
+    const resp = await fetch('/data/get-htPanels');
+    const data = await resp.json();
+    data.forEach(e=>{
+        let i = {};
+        i.value = e;
+        i.getContent = function(){console.log("getContent")};
+        i.dropdownFunc = function(event){console.log("dropdown func")};
+        heatTracePanels.push(i);
+    })
+    return data;
+}
+
+async function getElPanels(){
+    const resp = await fetch('/data/get-elPanels');
+    const data = await resp.json();
+    data.forEach(e=>{
+        let i = {};
+        i.value = e;
+        i.getContent = function(){return getFilesByPenalTag(e)};
+        i.dropdownFunc = function(event){createDropdownItem(this.getContent(), event.target.parentNode);}.bind(i);
+        electricalPanels.push(i);
+    })
+    return data;
+}
+
 async function editFile(itemId){
     console.log('/edit/itmem/'+itemId);
 }
@@ -137,8 +180,18 @@ function getFilesByVendor(vendor){
 function getFilesBySystem(system){
     let result =  fileRepository.filter(e=>e.systems.includes(system));
     result.forEach(e=>{
-        e['dropdownFunc'] = loadPictureWithFile(e);
+        e['dropdownFunc'] = loadPictureWithLightFile(e);
     })
+}
+
+function getFilesByPenalTag(tagNumber){
+    let result =  fileRepository.filter(e=> e.name && e.name.toLowerCase().includes(tagNumber.toLowerCase()) || e.fileNumber.toLowerCase().includes(tagNumber.toLowerCase()));
+    result.forEach(e=>{
+        e['dropdownFunc'] = function(){loadPictureWithLightFile(e)};
+        e.value = e.name ? e.name : e.fileNumber
+        // console.log(e.fileNumber);
+    });
+    return result;
 }
 
 async function submitFile(file){

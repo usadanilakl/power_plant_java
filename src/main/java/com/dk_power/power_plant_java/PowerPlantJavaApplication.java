@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -81,8 +82,11 @@ private final ElectricalPanelTransferService electricalPanelTransferService;
 
         System.err.println("=====================================================");
 
+//        electricalPanelTransferService.deleteOldPanelObjects();
 //        electricalPanelTransferService.createElectricalPanelFileObjectsFromExcelList();
-        electricalPanelTransferService.connectPanelsFilesWithPanelObjects();
+//        electricalPanelTransferService.createFileObjectsForPanelPictures();
+//        electricalPanelTransferService.connectPanelsFilesWithPanelObjects();
+
 
 //        List<Equipment> manValves = equipmentService.getAll().stream()
 //                .filter(e -> e.getVendor()!=null && e.getVendor().getId()==4155L)

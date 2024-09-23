@@ -1,8 +1,8 @@
 package com.dk_power.power_plant_java.sevice.file;
 
-import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
+import com.dk_power.power_plant_java.entities.base_entities.BaseElectricalPanel;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
@@ -11,9 +11,10 @@ import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
+import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
+import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
-import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -35,8 +37,10 @@ public class FileServiceImpl implements FileService {
     private final ValueService valueService;
     private final FileUploaderService fileUploaderService;
     private final EquipmentService equipmentService;
+    private final HtPanelService htPanelService;
+    private final ElectricalPanelService electricalPanelService;
 
-    public FileServiceImpl(FileRepo fileRepo, LotoPointService lotoPointService, FileMapper fileMapper, SessionFactory sessionFactory, CategoryService categoryService, ValueService valueService, FileUploaderService fileUploaderService, @Lazy EquipmentService equipmentService) {
+    public FileServiceImpl(FileRepo fileRepo, LotoPointService lotoPointService, FileMapper fileMapper, SessionFactory sessionFactory, CategoryService categoryService, ValueService valueService, FileUploaderService fileUploaderService, @Lazy EquipmentService equipmentService, HtPanelService htPanelService, ElectricalPanelService electricalPanelService) {
         this.fileRepo = fileRepo;
         this.lotoPointService = lotoPointService;
         this.fileMapper = fileMapper;
@@ -45,6 +49,8 @@ public class FileServiceImpl implements FileService {
         this.valueService = valueService;
         this.fileUploaderService = fileUploaderService;
         this.equipmentService = equipmentService;
+        this.htPanelService = htPanelService;
+        this.electricalPanelService = electricalPanelService;
     }
 
 
@@ -212,6 +218,16 @@ public class FileServiceImpl implements FileService {
     public FileObject getFileByEqId(Long id) {
         FileObject mainFile = equipmentService.getEntityById(id).getMainFile();
         return mainFile;
+    }
+
+    @Override
+    public List<String> getHtPanels() {
+        return htPanelService.getAll().stream().map(BaseElectricalPanel::getTagNumber).toList();
+    }
+
+    @Override
+    public List<String> getElPanels() {
+        return electricalPanelService.getAll().stream().map(e->e.getTagNumber()).toList();
     }
 
     public List<FileDto> getAllDtos(String ext) {

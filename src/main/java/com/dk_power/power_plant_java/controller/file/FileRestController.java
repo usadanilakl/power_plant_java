@@ -41,6 +41,19 @@ public class FileRestController {
         return fileService.getVendors();
     }
 
+    @GetMapping("/get-systems")
+    public List<String> getAllSystems(){
+        return fileService.getSystems();
+    }
+    @GetMapping("/get-htPanels")
+    public List<String> getAllHtPanels(){
+        return fileService.getHtPanels();
+    }
+    @GetMapping("/get-elPanels")
+    public List<String> getAllElPanels(){
+        return fileService.getElPanels();
+    }
+
     @GetMapping("/get-categories")
     public List<Map<String,String>> getAllCategories(){
         return SortingGroup.getValues();

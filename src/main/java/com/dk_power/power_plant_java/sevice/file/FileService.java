@@ -43,4 +43,8 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     FileDto copyFromAnotherUnit(String sourceId,String destinationId);
     List<FileObject> getCompletedFull();
     FileObject getFileByEqId(Long id);
+
+    List<String> getHtPanels();
+
+    List<String> getElPanels();
 }

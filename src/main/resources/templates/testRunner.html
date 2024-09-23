@@ -179,6 +179,9 @@
 
     getAllFiles()
     .then(()=>getVendors())
+    .then(()=>getSystems())
+    .then(()=>getElPanels())
+    .then(()=>getHtPanels())
     .then(()=>getCategories())
     .then(()=>{
         console.log("Dropdown is ready to be built");
