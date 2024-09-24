@@ -25,4 +25,8 @@ public interface EquipmentRepo extends BaseRepository<Equipment> {
     List<String> findDuplicateTagNumbers();
     @Query("SELECT u.tagNumber FROM Equipment u GROUP BY u.tagNumber HAVING COUNT(u.tagNumber) = 1")
     List<String> findUniqueTagNumbers();
+
+    List<Equipment> findByTagNumberContainingIgnoreCase(String value);
+
+    List<Equipment> findByDescriptionContainingIgnoreCase(String value);
 }

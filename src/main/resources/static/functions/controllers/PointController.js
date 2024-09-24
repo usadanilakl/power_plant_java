@@ -155,6 +155,12 @@ async function deletePoint(id){
 
 }
 
+async function eqPointSearch(searchValue){
+    const resp = await fetch(baseEqApiUrl+'search/'+searchValue);
+    const data = await resp.json();
+    return data;
+}
+
 
 /**********************************************************************************************************************8
  * Field By Field

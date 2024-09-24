@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.*;
 
 @RestController
 @RequestMapping("/eq-api")
@@ -16,7 +16,7 @@ public class EquipmentRestController {
     private final EquipmentService equipmentService;
     @GetMapping("/")
     public ResponseEntity<List<EquipmentDto>> getAllEquipment(){
-        return ResponseEntity.ok(equipmentService.getAll().stream().map(equipmentService::convertToDto).toList());
+        return ResponseEntity.ok(equipmentService.getAll().stream().map(e->equipmentService.getMapper().convertToDtoLight(e)).toList());
     }
     @GetMapping("/{id}")
     public ResponseEntity<EquipmentDto> getSingleEquipment(@PathVariable String id){
@@ -56,5 +56,18 @@ public class EquipmentRestController {
         }
         else return ResponseEntity.ok("Equipment wasn't found");
 
+    }
+
+    @GetMapping("/search/{value}")
+    public ResponseEntity<List<EquipmentDto>> searchEqPoint(@PathVariable String value){
+        value = value.trim().toLowerCase();
+        Set<Equipment> result = new LinkedHashSet<>();
+        List<Equipment> searchByTag = equipmentService.getIfTagNumberContains(value);
+        List<Equipment> searchByDescription = equipmentService.getIfDescriptionContains(value);
+
+        if(searchByTag!=null && searchByTag.size()>0) result.addAll(searchByTag);
+        if(searchByDescription!=null && searchByDescription.size()>0) result.addAll(searchByDescription);
+
+        return ResponseEntity.ok(result.stream().map(equipmentService::convertToDto).toList());
     }
 }

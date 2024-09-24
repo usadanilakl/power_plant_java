@@ -312,6 +312,16 @@ public class EquipmentServiceImpl implements EquipmentService {
     }
 
     @Override
+    public List<Equipment> getIfTagNumberContains(String value) {
+        return equipmentRepo.findByTagNumberContainingIgnoreCase(value);
+    }
+
+    @Override
+    public List<Equipment> getIfDescriptionContains(String value) {
+        return equipmentRepo.findByDescriptionContainingIgnoreCase(value);
+    }
+
+    @Override
     public void refactor(Value old, Value _new) {
         String cat = old.getCategory().getAlias();
         for (Equipment f : getByValue(old)) {

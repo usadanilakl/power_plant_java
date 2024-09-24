@@ -23,4 +23,8 @@ public interface EquipmentService extends CrudService<Equipment, EquipmentDto, E
     Equipment copyEqFromAnotherUnit(Equipment eq);
 
     List<Equipment> getByTagNumberContains(String tag);
+
+    List<Equipment> getIfTagNumberContains(String value);
+
+    List<Equipment> getIfDescriptionContains(String value);
 }

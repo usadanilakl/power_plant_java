@@ -623,32 +623,13 @@ function buildPointSearchField(){
     let button = document.createElement('button');
     div.appendChild(button);
     button.textContent = "Search";
-    button.addEventListener('click', ()=>{
-        let points = eqPointSearch(input.value);
+    button.addEventListener('click', async ()=>{
+        let points = await eqPointSearch(input.value);
+        console.log(points.length);
         fillEqDropdownWindow(points);
     });
     return div;
 } 
-
-function eqPointSearch(searchValue){
-    let result = [];
-    equipmentPoints.forEach(e=>{
-        if(e.tagNumber){
-            if(
-                trimToLowerCaseRemoveDashes(e.tagNumber).includes(trimToLowerCaseRemoveDashes(searchValue)) || 
-                trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.tagNumber))
-            )result.push(e);
-        }
-         if(e.description){
-            if(
-                trimToLowerCaseRemoveDashes(e.description).includes(trimToLowerCaseRemoveDashes(searchValue)) ||
-                trimToLowerCaseRemoveDashes(searchValue).includes(trimToLowerCaseRemoveDashes(e.description))
-        ) result.push(e);
-         }
-            
-    });
-    return result;
-}
 
 function getPointFromArrById(id){
     return file.points.find(e => e.id === id);
