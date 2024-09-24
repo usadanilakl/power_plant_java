@@ -1,10 +1,13 @@
 let revisedExcelPoints = [];
 let oldExcelPoints = [];
 let currentLotoPoints = [];
+let equipmentPoints = [];
 
 let addLotoPointToEqUrl = '/points/add-loto-point/' //{eqId}/{pointOldId}
 let baseEqUrl = '/points/';
 let baseEqApiUrl = '/eq-api/';
+
+
 
 function getPostMetaDataWithBody(data){
     return{
@@ -49,6 +52,13 @@ async function getOldExcelPoints(){
     let response = await fetch('/point/get-old-excel-points');
     let data = await response.json();
     oldExcelPoints = data;
+    return data;
+}
+
+async function getAllEqPoints(){
+    const resp = await fetch(baseEqApiUrl);
+    const data = await resp.json();
+    equipmentPoints = data;
     return data;
 }
 

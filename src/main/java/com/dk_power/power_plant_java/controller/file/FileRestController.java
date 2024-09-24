@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.file;
 
+import com.dk_power.power_plant_java.dto.equipment.HtBreakerDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.enums.SortingGroup;
@@ -48,6 +49,10 @@ public class FileRestController {
     @GetMapping("/get-htPanels")
     public List<String> getAllHtPanels(){
         return fileService.getHtPanels();
+    }
+    @GetMapping("/get-htBrakers/{panelTag}")
+    public List<HtBreakerDto> getHtBreakersByPanel(@PathVariable String panelTag){
+        return fileService.getHtBrakersByPanelTag(panelTag);
     }
     @GetMapping("/get-elPanels")
     public List<String> getAllElPanels(){

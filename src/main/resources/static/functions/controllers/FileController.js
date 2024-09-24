@@ -28,7 +28,6 @@ function getPostMetaDataWithStringBody(data){
     }
 }
 
-
 function filePutWithBody(data){
     return{
         method: 'POST',
@@ -139,11 +138,40 @@ async function getHtPanels(){
     data.forEach(e=>{
         let i = {};
         i.value = e;
-        i.getContent = function(){console.log("getContent")};
-        i.dropdownFunc = function(event){console.log("dropdown func")};
+        i.getContent = async function(){return await getHtBreakers(e)};
+        i.dropdownFunc = async function(event){createDropdownItem(await this.getContent(), event.target.parentNode);}.bind(i);
         heatTracePanels.push(i);
     })
     return data;
+}
+
+async function getHtBreakers(panel){
+    const resp = await fetch('/data/get-htBrakers/'+panel)
+    const data = await resp.json();
+    data.forEach(e=>{
+        e.value = e.brNumber + '||' + e.tagNumber;
+        e.getContent = function(){return getFilesByHtBreaker(e);};
+        e.dropdownFunc = function(event){createDropdownItem(this.getContent(), event.target.parentNode);}.bind(e);
+    });
+    return data;
+}
+
+function getFilesByHtBreaker(breaker){
+    let fileIds = [];
+    let hts = breaker.equipmentList;
+    if(hts){
+        hts.forEach(e=>{
+            if(e.htIso) fileIds.push(e.htIso.id);
+            if(e.pid) e.pid.forEach(p=>fileIds.push(p.id));
+        });
+    }
+
+    let result =  fileRepository.filter(e=>e!==null && e.id!==null && fileIds.includes(e.id));
+    result.forEach(e=>{
+        e['dropdownFunc'] = function(){loadPictureWithLightFile(e);}
+        e.value = e.fileNumber;
+    })
+    return result;
 }
 
 async function getElPanels(){
@@ -178,10 +206,12 @@ function getFilesByVendor(vendor){
 }
 
 function getFilesBySystem(system){
-    let result =  fileRepository.filter(e=>e.systems.includes(system));
+    let result =  fileRepository.filter(e=>e.relatedSystems.includes(system));
     result.forEach(e=>{
-        e['dropdownFunc'] = loadPictureWithLightFile(e);
+        e['dropdownFunc'] = function(){loadPictureWithLightFile(e);} 
+        e.value = e.fileNumber;
     })
+    return result;
 }
 
 function getFilesByPenalTag(tagNumber){

@@ -12,6 +12,7 @@ import java.util.List;
 public class BaseBreakerDto extends BaseDto{
     private BaseElectricalPanelDto panel;
     private String tagNumber;
+    private String brNumber;
     private List equipmentList;
     public <D extends BaseEquipmentDto> void setEquipmentList(List<D> list){
         equipmentList = list;

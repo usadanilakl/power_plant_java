@@ -16,7 +16,7 @@ public class EquipmentRestController {
     private final EquipmentService equipmentService;
     @GetMapping("/")
     public ResponseEntity<List<EquipmentDto>> getAllEquipment(){
-        return ResponseEntity.ok(equipmentService.getAllDtos());
+        return ResponseEntity.ok(equipmentService.getAll().stream().map(equipmentService::convertToDto).toList());
     }
     @GetMapping("/{id}")
     public ResponseEntity<EquipmentDto> getSingleEquipment(@PathVariable String id){

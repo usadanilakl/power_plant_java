@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
@@ -68,6 +69,7 @@ private final EquipmentRepo equipmentRepo;
 private final LotoPointMergeService lotoPointMergeService;
 private final LotoPointRepo lotoPointRepo;
 private final ElectricalPanelTransferService electricalPanelTransferService;
+private final HtTransferService htTransferService;
 
 
     public static void main(String[] args) {
@@ -81,6 +83,9 @@ private final ElectricalPanelTransferService electricalPanelTransferService;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+
+
+//        htTransferService.connectInstrumentsWithPids();
 
 //        electricalPanelTransferService.deleteOldPanelObjects();
 //        electricalPanelTransferService.createElectricalPanelFileObjectsFromExcelList();

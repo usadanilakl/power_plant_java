@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface EquipmentRepo extends BaseRepository<Equipment> {
     List<Equipment> findByTagNumber(String lable);
+    List<Equipment> findByTagNumberContaining(String lable);
 
     List<Equipment> findByCoordinates(String coordinates);
 

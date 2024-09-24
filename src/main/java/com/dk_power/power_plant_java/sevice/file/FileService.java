@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.file;
 
+import com.dk_power.power_plant_java.dto.equipment.HtBreakerDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
@@ -47,4 +48,6 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List<String> getHtPanels();
 
     List<String> getElPanels();
+
+    List<HtBreakerDto> getHtBrakersByPanelTag(String panelTag);
 }

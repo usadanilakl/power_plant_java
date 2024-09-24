@@ -33,6 +33,11 @@ public class HomeController {
         model.addAttribute("mode","editMode");
         return "bulkPointEditor";
     }
+    @GetMapping("/edit-ht")
+    String getEditHt(Model model){
+        model.addAttribute("mode","editMode");
+        return "htEditor";
+    }
     @GetMapping("/verification")
     public String verifyLotoPoints(){
         return "loto-point-verification";

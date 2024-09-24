@@ -21,4 +21,6 @@ public interface EquipmentService extends CrudService<Equipment, EquipmentDto, E
     public List<Equipment> getByLocation(Value oldVal);
     List<Equipment> getByValue(Value val);
     Equipment copyEqFromAnotherUnit(Equipment eq);
+
+    List<Equipment> getByTagNumberContains(String tag);
 }
