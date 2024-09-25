@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.points;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.sevice.data_transfer.JsonWriterService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.AllArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.List;
 public class PointRestController {
     private final EquipmentService equipmentService;
     private final LotoPointService lotoPointService;
+    private final JsonWriterService jsonWriterService;
     @PostMapping("/create")
     public List<Equipment> createPoints(@RequestBody List<Equipment> points){
         for (Equipment point : points) {
@@ -39,10 +41,12 @@ public class PointRestController {
         return ResponseEntity.ok(equipmentService.convertToDto(update));
     }
     @PostMapping("/")
-    public ResponseEntity<EquipmentDto> createEquipment(@RequestBody EquipmentDto dto){
-        System.out.println(dto);
-        Equipment save = equipmentService.save(dto);
-        return ResponseEntity.ok(equipmentService.convertToDto(save));
+    public ResponseEntity<EquipmentDto> createEquipment(@RequestBody EquipmentDto eq){
+        System.out.println(eq.getIsUpdated());
+        Equipment saved = equipmentService.save(eq);
+        EquipmentDto equipmentDto = equipmentService.convertToDto(saved);
+        if(eq.getIsUpdated()!=null)jsonWriterService.writeJsonFile("updates/"+eq.getIsUpdated()+".json",equipmentDto);
+        return ResponseEntity.ok(equipmentDto);
     }
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteEquipment(@PathVariable String id){

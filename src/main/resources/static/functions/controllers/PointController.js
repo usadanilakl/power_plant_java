@@ -106,6 +106,9 @@ async function updatePoint(obj){
             }
         }
     }
+    if(isUpdating) obj.isUpdated = isUpdating;
+    else obj.isUpdated = null;
+    console.log(isUpdating)
     const response = await fetch(baseEqUrl,getPostMetaDataWithBody(obj));
     const data = await response.json();
     updateCachedLotoPoints(data.lotoPoints)

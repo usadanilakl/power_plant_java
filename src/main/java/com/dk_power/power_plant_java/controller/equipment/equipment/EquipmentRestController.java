@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.equipment.equipment;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.sevice.data_transfer.JsonWriterService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class EquipmentRestController {
     private final EquipmentService equipmentService;
+    private final JsonWriterService jsonWriterService;
     @GetMapping("/")
     public ResponseEntity<List<EquipmentDto>> getAllEquipment(){
         return ResponseEntity.ok(equipmentService.getAll().stream().map(e->equipmentService.getMapper().convertToDtoLight(e)).toList());
@@ -24,7 +26,11 @@ public class EquipmentRestController {
     }
     @PostMapping("/")
     public ResponseEntity<EquipmentDto> createNewEquipment(@RequestBody EquipmentDto eq){
-        return ResponseEntity.ok(equipmentService.convertToDto(equipmentService.save(eq)));
+        System.out.println(eq.getIsUpdated());
+        Equipment saved = equipmentService.save(eq);
+        EquipmentDto equipmentDto = equipmentService.convertToDto(saved);
+        if(eq.getIsUpdated()!=null)jsonWriterService.writeJsonFile("updates/"+eq.getIsUpdated()+".json",equipmentDto);
+        return ResponseEntity.ok(equipmentDto);
     }
     @PutMapping("/")
     public ResponseEntity<EquipmentDto> updateEquipment(@RequestBody EquipmentDto eq){

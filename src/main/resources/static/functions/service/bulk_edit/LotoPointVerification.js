@@ -47,7 +47,6 @@ async function toggleTableContent(){
 }
 
 async function showEquipmentOnPid(eq){
-    console.log(eq)
     let eqId = eq.eqIds[0];
     await openEqFile(eqId);
 }

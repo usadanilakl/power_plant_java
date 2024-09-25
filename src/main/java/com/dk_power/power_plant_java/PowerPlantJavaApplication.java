@@ -91,26 +91,11 @@ private final HtTransferService htTransferService;
 //        electricalPanelTransferService.createElectricalPanelFileObjectsFromExcelList();
 //        electricalPanelTransferService.createFileObjectsForPanelPictures();
 //        electricalPanelTransferService.connectPanelsFilesWithPanelObjects();
+//        htTransferService.connectHtWithIsoFiles();
 
 
-//        List<Equipment> manValves = equipmentService.getAll().stream()
-//                .filter(e -> e.getVendor()!=null && e.getVendor().getId()==4155L)
-//                .filter(e -> e.getEqType()!=null && e.getEqType().getName().equalsIgnoreCase("manual valve"))
-//                .toList();
+//        lotoPointMergeService.generateGeneralLocationFromEquipment();
 
-
-//        List<Equipment> all = equipmentService.getAll();
-//        System.out.println(all.size());
-//        List<Equipment> hrsg = all.stream().filter(e -> e.getVendor() != null && e.getVendor().getId() == 4209L).toList();
-//        System.out.println(hrsg.size());
-//        List<Equipment> manValves = hrsg.stream().filter(e -> e.getEqType() != null && e.getEqType().getName().equalsIgnoreCase("manual valve")).toList();
-//        manValves.forEach(e->{
-//            String s = e.getTagNumber().replaceAll("-", "").replaceFirst("01", "01-");
-////            System.out.println(s);
-//            e.setTagNumber(s);
-//            System.out.println(e.getTagNumber());
-//            equipmentService.save(e);
-//        } );
 
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
@@ -118,7 +103,7 @@ private final HtTransferService htTransferService;
 //        fileService.copyFromAnotherUnit("5260", "5367");
 
 //
-//        lotoPointMergeService.generateGeneralLocationFromEquipment();
+
 
         FileObject entityById = fileService.getEntityById(5256l);
 //        entityById.buildFileLink("jpg");

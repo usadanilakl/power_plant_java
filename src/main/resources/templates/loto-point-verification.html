@@ -60,16 +60,20 @@
         let tableContentBtn = document.getElementById('switch-table-content-button');
         let tableTitle = document.getElementById('table-title');
         let toExcelBtn = document.getElementById('to-excel-btn')
+        let isUpdating = '';
 
 </script>
 
 <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+<script src="/functions/util_functions/util.js"></script>
 <script src="/functions/controllers/LotoPointController.js"></script>
 <script src="/functions/controllers/FileController.js"></script>
 <script src="/functions/service/TableService.js"></script>
 <script src="/functions/service/ValueService.js"></script>
 <script src="/functions/service/bulk_edit/LotoPointVerification.js"></script>
 <script>
+
+isUpdating = getTimeStampFileName();
 
 getActiveLotoPoints()
 .then( async () => {

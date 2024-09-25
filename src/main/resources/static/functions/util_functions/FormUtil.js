@@ -5,6 +5,7 @@
  *  assign an event listener for each form field to auto update respective field in the object
  *************************************************************************************************************************************/
 const events = ['input', 'change', 'blur'];
+
 async function buildFormFromObject(point){
     let form = document.createElement('form');
     for(let e in point){

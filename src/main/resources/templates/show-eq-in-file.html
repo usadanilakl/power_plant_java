@@ -6,6 +6,7 @@
     <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
     <meta id="mode" th:content="${mode}"/>
     <meta id="eqId" th:content="${eqId}"/>
+    <meta id="isUpdating" th:content="${time}"/>
 
     <title>My Main Layout</title>
 
@@ -162,6 +163,7 @@
         let infoWindowsContainer = document.getElementById('infoWindowsContainer');
         let mode = document.getElementById('mode').getAttribute('content');
         let eqId = document.getElementById('eqId').getAttribute('content');
+        let isUpdating = document.getElementById('isUpdating').getAttribute('content');
         let popups = [];
         let pinMenuBtn = document.getElementById('pin-menu');
         let left = document.getElementById('left');
@@ -171,12 +173,16 @@
 
     getFileByEqId(eqId)
     .then(async ()=>{
-        
+        console.log('show-eq-in-file')
         let left = document.getElementById('lower').querySelector('ul');
         let item = document.createElement('li');
         item.appendChild(createModeButtons());
         left.appendChild(item);
         item.classList.add('btn-list-in-line');
+        
+        await getCategories();
+        await getAllCategories();
+        await getAllValuesOfEachCategory();
         
         await loadPictureWithLightFile(fileByEqId);
         

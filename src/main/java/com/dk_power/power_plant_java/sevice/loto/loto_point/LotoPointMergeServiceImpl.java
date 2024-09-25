@@ -153,13 +153,14 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
         int n = 0;
         for(LotoPoint e : activeLotoPoints){
             Set<Equipment> equipmentList = e.getEquipmentList();
-            List<Equipment> list = equipmentList.stream().toList();
-            Equipment equipment = list.get(0);
-//            System.out.println("equipment.getLocation().getName() = " + (equipment.getLocation()!=null ? equipment.getLocation().getName() : equipment.getTagNumber()));
-            String name = Optional.ofNullable(equipment.getLocation())
-                    .map(Value::getName)
-                    .orElse("Location Is Not Defined");
-            e.setGeneralLocation(name);
+            String location = "Location Is Not Defined";
+            for (Equipment eq : equipmentList) {
+                if(eq.getLocation()!=null) {
+                    location = eq.getLocation().getName();
+                    break;
+                }
+            }
+            e.setGeneralLocation(location);
             save(e);
             n++;
         }

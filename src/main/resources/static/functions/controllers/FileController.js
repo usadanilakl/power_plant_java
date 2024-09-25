@@ -149,7 +149,7 @@ async function getHtBreakers(panel){
     const resp = await fetch('/data/get-htBrakers/'+panel)
     const data = await resp.json();
     data.forEach(e=>{
-        e.value = e.brNumber + '||' + e.tagNumber;
+        e.value = 'BR:'+e.brNumber + '-' + e.tagNumber;
         e.getContent = function(){return getFilesByHtBreaker(e);};
         e.dropdownFunc = function(event){createDropdownItem(this.getContent(), event.target.parentNode);}.bind(e);
     });
@@ -294,7 +294,7 @@ async function getFileByEqId(eqId){
 
 async function openEqFile(eqId){
     try {
-        const url = `/file/show-eq-in-file/${eqId}`;
+        const url = `/file/show-eq-in-file/${eqId}/${isUpdating}`;
         window.open(url, '_blank', 'width=800,height=600');
     } catch (error) {
         console.error('Error:', error);

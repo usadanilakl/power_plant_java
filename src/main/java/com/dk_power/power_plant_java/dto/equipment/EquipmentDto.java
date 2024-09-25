@@ -35,6 +35,7 @@ public class EquipmentDto extends BaseEquipmentDto {
     @JsonBackReference
     private List<HeatTraceDto> heatTraceList;
     private HighlightDto highlight;
+    private String isUpdated;
 
 
     @Override

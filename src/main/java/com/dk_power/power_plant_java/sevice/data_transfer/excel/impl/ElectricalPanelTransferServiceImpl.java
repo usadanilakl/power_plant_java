@@ -27,7 +27,7 @@ public class ElectricalPanelTransferServiceImpl implements ElectricalPanelTransf
     private final FileReaderService fileReaderService;
     @Override
     public void createElectricalPanelFileObjectsFromExcelList() {
-        List<Map<String, String>> fileMaps = excelReaderService.readExcelFile("uploads/pdf/Electrical/Kiewit/panel_schedules/LIST OF PANELS.xlsx");
+        List<Map<String, String>> fileMaps = excelReaderService.readExcelFile("uploads/pdf/Electrical Panel Schedule/Kiewit/LIST OF PANELS.xlsx");
         List<File> files = fileReaderService.getFilesInFolderUsingFilesList("uploads/pdf/Electrical Panel Schedule/Kiewit");
         Value fileType = valueService.valueSetup("File Type", "Electrical Panel Schedule");
         Value vendor = valueService.valueSetup("Vendor", "Kiewit");
@@ -68,7 +68,7 @@ public class ElectricalPanelTransferServiceImpl implements ElectricalPanelTransf
 
     @Override
     public void createFileObjectsForPanelPictures() {
-        List<File> files = fileReaderService.getFilesInFolderUsingFilesList("uploads/jpg/Electrical/Kiewit/panel_schedule_pics");
+        List<File> files = fileReaderService.getFilesInFolderUsingFilesList("uploads/jpg/Electrical Panel Schedule Picture/Kiewit");
         Value fileType = valueService.valueSetup("File Type", "Electrical Panel Schedule Picture");
         Value vendor = valueService.valueSetup("Vendor", "Kiewit");
         Value system = valueService.valueSetup("System", "Electrical");

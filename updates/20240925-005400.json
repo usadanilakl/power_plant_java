@@ -1,0 +1,311 @@
+[ {
+  "id" : 48052,
+  "name" : null,
+  "objectType" : "Equipment",
+  "description" : "UNIT 1 ACC FAN 01A",
+  "tagNumber" : "01-ACC-MFN-01A",
+  "specificLocation" : null,
+  "eqType" : {
+    "id" : 12504,
+    "name" : "FAN-BLOWER-COMPRESSOR",
+    "category" : {
+      "id" : 2502,
+      "name" : "Equipment Type",
+      "alias" : "eqType"
+    }
+  },
+  "files" : [ "uploads/jpg/PID/Kiewit/20023894-PD-055A.01.C2CR.01.01.jpg" ],
+  "vendor" : {
+    "id" : 4156,
+    "name" : "Kiewit",
+    "category" : {
+      "id" : 2453,
+      "name" : "Vendor",
+      "alias" : "vendor"
+    }
+  },
+  "location" : {
+    "id" : 12502,
+    "name" : "ACC UPPER",
+    "category" : {
+      "id" : 2702,
+      "name" : "Location",
+      "alias" : "location"
+    }
+  },
+  "system" : {
+    "id" : 12503,
+    "name" : "ACC",
+    "category" : {
+      "id" : 2552,
+      "name" : "System",
+      "alias" : "system"
+    }
+  },
+  "coordinates" : "StartX:292,StartY:780,EndX:447,EndY:1011,width:155,height:231",
+  "originalPictureSize" : "width:7344,height:4752",
+  "mainFile" : "uploads/jpg/PID/Kiewit/20023894-PD-055A.01.C2CR.01.01.jpg",
+  "lotoPoints" : [ {
+    "id" : 21066,
+    "name" : null,
+    "objectType" : "LotoPoint",
+    "unit" : "UNIT 1",
+    "tagged" : "NO",
+    "tagNumber" : "01-ACC-HTR-01A",
+    "description" : "UNIT 1 ACC FAN GRBX OIL HTR 01A",
+    "isoPos" : {
+      "id" : 5414,
+      "name" : "OPEN",
+      "category" : {
+        "id" : 3052,
+        "name" : "Isolated Position",
+        "alias" : "isoPos"
+      }
+    },
+    "normPos" : {
+      "id" : 5403,
+      "name" : "CLOSED",
+      "category" : {
+        "id" : 3053,
+        "name" : "Normal Position",
+        "alias" : "normPos"
+      }
+    },
+    "specificLocation" : "01-LVD-PPL-2311, BR 13, OUTSIDE OF ACC MCC ENCLOSURE",
+    "standard" : "ACC/ACC FANS",
+    "generalLocation" : "ACC UPPER",
+    "equipmentIdList" : [ 48052 ],
+    "normalPosition" : "CLOSED",
+    "isolatedPosition" : "OPEN",
+    "lotos" : null,
+    "equipmentList" : null,
+    "oldId" : "65.0"
+  }, {
+    "id" : 21035,
+    "name" : null,
+    "objectType" : "LotoPoint",
+    "unit" : "UNIT 1",
+    "tagged" : "NO",
+    "tagNumber" : "",
+    "description" : "UNIT 1 ACC FAN GEARBOX OIL COOLER 01A",
+    "isoPos" : {
+      "id" : 5414,
+      "name" : "OPEN",
+      "category" : {
+        "id" : 3052,
+        "name" : "Isolated Position",
+        "alias" : "isoPos"
+      }
+    },
+    "normPos" : {
+      "id" : 5403,
+      "name" : "CLOSED",
+      "category" : {
+        "id" : 3053,
+        "name" : "Normal Position",
+        "alias" : "normPos"
+      }
+    },
+    "specificLocation" : "01-ACC-MCC-131, CUBICLE 17FB",
+    "standard" : "ACC/ACC FANS",
+    "generalLocation" : "ACC UPPER",
+    "equipmentIdList" : [ 48052 ],
+    "normalPosition" : "CLOSED",
+    "isolatedPosition" : "OPEN",
+    "lotos" : null,
+    "equipmentList" : null,
+    "oldId" : "34.0"
+  }, {
+    "id" : 21094,
+    "name" : null,
+    "objectType" : "LotoPoint",
+    "unit" : "UNIT 1",
+    "tagged" : "NO",
+    "tagNumber" : "01-ACC-MFN-01A",
+    "description" : "UNIT 1 ACC FAN 01A",
+    "isoPos" : {
+      "id" : 5414,
+      "name" : "OPEN",
+      "category" : {
+        "id" : 3052,
+        "name" : "Isolated Position",
+        "alias" : "isoPos"
+      }
+    },
+    "normPos" : {
+      "id" : 5403,
+      "name" : "CLOSED",
+      "category" : {
+        "id" : 3053,
+        "name" : "Normal Position",
+        "alias" : "normPos"
+      }
+    },
+    "specificLocation" : "01-ACC-MCC-131, CUBICLE 4FM",
+    "standard" : "ACC/ACC FANS",
+    "generalLocation" : "ACC UPPER",
+    "equipmentIdList" : [ 48052 ],
+    "normalPosition" : "CLOSED",
+    "isolatedPosition" : "OPEN",
+    "lotos" : null,
+    "equipmentList" : null,
+    "oldId" : "93.0"
+  } ],
+  "highlight" : null,
+  "isUpdated" : null
+}, {
+  "id" : 48059,
+  "name" : null,
+  "objectType" : "Equipment",
+  "description" : "UNIT 1 ACC FAN 01B",
+  "tagNumber" : "01-ACC-MFN-01B",
+  "specificLocation" : null,
+  "eqType" : {
+    "id" : 12504,
+    "name" : "FAN-BLOWER-COMPRESSOR",
+    "category" : {
+      "id" : 2502,
+      "name" : "Equipment Type",
+      "alias" : "eqType"
+    }
+  },
+  "files" : [ "uploads/jpg/PID/Kiewit/20023894-PD-055A.01.C2CR.01.01.jpg" ],
+  "vendor" : {
+    "id" : 4156,
+    "name" : "Kiewit",
+    "category" : {
+      "id" : 2453,
+      "name" : "Vendor",
+      "alias" : "vendor"
+    }
+  },
+  "location" : {
+    "id" : 12502,
+    "name" : "ACC UPPER",
+    "category" : {
+      "id" : 2702,
+      "name" : "Location",
+      "alias" : "location"
+    }
+  },
+  "system" : {
+    "id" : 12503,
+    "name" : "ACC",
+    "category" : {
+      "id" : 2552,
+      "name" : "System",
+      "alias" : "system"
+    }
+  },
+  "coordinates" : "StartX:301,StartY:1508,EndX:447,EndY:1698,width:146,height:190",
+  "originalPictureSize" : "width:7344,height:4752",
+  "mainFile" : "uploads/jpg/PID/Kiewit/20023894-PD-055A.01.C2CR.01.01.jpg",
+  "lotoPoints" : [ {
+    "id" : 21095,
+    "name" : null,
+    "objectType" : "LotoPoint",
+    "unit" : "UNIT 1",
+    "tagged" : "NO",
+    "tagNumber" : "01-ACC-MFN-01B",
+    "description" : "UNIT 1 ACC FAN 01B",
+    "isoPos" : {
+      "id" : 5414,
+      "name" : "OPEN",
+      "category" : {
+        "id" : 3052,
+        "name" : "Isolated Position",
+        "alias" : "isoPos"
+      }
+    },
+    "normPos" : {
+      "id" : 5403,
+      "name" : "CLOSED",
+      "category" : {
+        "id" : 3053,
+        "name" : "Normal Position",
+        "alias" : "normPos"
+      }
+    },
+    "specificLocation" : "01-ACC-MCC-231, CUBICLE9FM",
+    "standard" : "ACC/ACC FANS",
+    "generalLocation" : "ACC UPPER",
+    "equipmentIdList" : [ 48059 ],
+    "normalPosition" : "CLOSED",
+    "isolatedPosition" : "OPEN",
+    "lotos" : null,
+    "equipmentList" : null,
+    "oldId" : "94.0"
+  }, {
+    "id" : 21068,
+    "name" : null,
+    "objectType" : "LotoPoint",
+    "unit" : "UNIT 1",
+    "tagged" : "NO",
+    "tagNumber" : "01-ACC-HTR-01B",
+    "description" : "UNIT 1 ACC FAN GRBX OIL HTR 01B",
+    "isoPos" : {
+      "id" : 5414,
+      "name" : "OPEN",
+      "category" : {
+        "id" : 3052,
+        "name" : "Isolated Position",
+        "alias" : "isoPos"
+      }
+    },
+    "normPos" : {
+      "id" : 5403,
+      "name" : "CLOSED",
+      "category" : {
+        "id" : 3053,
+        "name" : "Normal Position",
+        "alias" : "normPos"
+      }
+    },
+    "specificLocation" : "01-LVD-PPL-2311, BR 15, OUTSIDE OF ACC MCC ENCLOSURE",
+    "standard" : "ACC/ACC FANS",
+    "generalLocation" : "ACC UPPER",
+    "equipmentIdList" : [ 48059 ],
+    "normalPosition" : "CLOSED",
+    "isolatedPosition" : "OPEN",
+    "lotos" : null,
+    "equipmentList" : null,
+    "oldId" : "67.0"
+  }, {
+    "id" : 21037,
+    "name" : null,
+    "objectType" : "LotoPoint",
+    "unit" : "UNIT 1",
+    "tagged" : "NO",
+    "tagNumber" : "01-ACC-HEX-01B",
+    "description" : "UNIT 1 ACC FAN GEARBOX OIL COOLER 01B",
+    "isoPos" : {
+      "id" : 5414,
+      "name" : "OPEN",
+      "category" : {
+        "id" : 3052,
+        "name" : "Isolated Position",
+        "alias" : "isoPos"
+      }
+    },
+    "normPos" : {
+      "id" : 5403,
+      "name" : "CLOSED",
+      "category" : {
+        "id" : 3053,
+        "name" : "Normal Position",
+        "alias" : "normPos"
+      }
+    },
+    "specificLocation" : "01-ACC-MCC-231, CUBICLE2FH",
+    "standard" : "ACC/ACC FANS",
+    "generalLocation" : "ACC UPPER",
+    "equipmentIdList" : [ 48059 ],
+    "normalPosition" : "CLOSED",
+    "isolatedPosition" : "OPEN",
+    "lotos" : null,
+    "equipmentList" : null,
+    "oldId" : "36.0"
+  } ],
+  "highlight" : null,
+  "isUpdated" : null
+} ]
