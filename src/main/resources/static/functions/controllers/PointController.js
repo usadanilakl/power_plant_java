@@ -20,6 +20,17 @@ function getPostMetaDataWithBody(data){
     }
 }
 
+function getPostMetaDataWithBody(data){
+    return{
+        method: 'PUT',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Content-Type': 'application/json'
+        },
+        body:JSON.stringify(data)
+    }
+}
+
 function getPatchMetaDataWithBody(data){
     return{
         method: 'PATCH',
@@ -108,7 +119,6 @@ async function updatePoint(obj){
     }
     if(isUpdating) obj.isUpdated = isUpdating;
     else obj.isUpdated = null;
-    console.log(isUpdating)
     const response = await fetch(baseEqUrl,getPostMetaDataWithBody(obj));
     const data = await response.json();
     updateCachedLotoPoints(data.lotoPoints)

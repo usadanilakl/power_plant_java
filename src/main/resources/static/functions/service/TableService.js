@@ -137,7 +137,7 @@ function createTableWithFunctionFromObjects(objects, ignoreFields,action){
             setFilters();
             filteredArray = muliFilter(objects,filters);
             tbody.innerHTML = "";
-            createRowsWithFunction(tbody,null,action);
+            createRowsWithFunction(tbody,ignoreFields,action);
         });
         let button = document.createElement('button');
         th.appendChild(button);
@@ -145,7 +145,7 @@ function createTableWithFunctionFromObjects(objects, ignoreFields,action){
         button.addEventListener('click',()=>{
             sortObjects(e);
             tbody.innerHTML = "";
-            createRows(tbody,null,action);
+            createRowsWithFunction(tbody,ignoreFields,action);
         });
     }
     if(objects[0].id){ //this will create an extra column for edit buttons if id is present
@@ -164,6 +164,7 @@ function createRowsWithFunction(tbody,ignoreFields,action){
     let i = 1;
     rows = [];
     filteredArray.forEach(el=>{
+
         let row = document.createElement('tr');
         if(el.id)row.setAttribute('data-obj-id',el.id)
         if(i<100){
@@ -197,6 +198,17 @@ function createRowsWithFunction(tbody,ignoreFields,action){
             editButton.textContent = "Edit";
 
             editButton.addEventListener('click',()=>action(el));
+
+            let submitButton = document.createElement('button')
+            crud.appendChild(submitButton);
+            submitButton.classList.add('crudButton');
+            submitButton.textContent = "Submit";
+
+            submitButton.addEventListener('click',()=>{
+                el.isUpdated = getTimeStampFileName();
+                updateNonNullFields(el);
+                row.classList.add('hide');
+            });
         }        
 
         rows.push(row);

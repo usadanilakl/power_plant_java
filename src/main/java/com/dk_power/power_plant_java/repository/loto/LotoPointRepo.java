@@ -26,4 +26,6 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
 
     List<LotoPoint> findByEquipmentListNotNull();
 
+    List<LotoPoint> findByEquipmentListNotNullAndIsUpdatedNull();
+
 }

@@ -22,3 +22,7 @@ async function updateTempLoto(loto,csrfToken){
     let data = await response.text();
     window.location.href = '/lotos/create';
 }
+
+async function buildLoto(){
+    const resp = await fetch('/api-lotos/build-loto');
+}

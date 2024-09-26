@@ -1,0 +1,88 @@
+[
+  {
+  "id" : 101010,
+  "name" : null,
+  "objectType" : "Equipment",
+  "description" : "AUX BOILER BFP \"A\" SUCTION STRAINER DRAIN ",
+  "tagNumber" : "00-VAXS971",
+  "specificLocation" : null,
+  "eqType" : {
+    "id" : 4204,
+    "name" : "Manual Valve",
+    "category" : {
+      "id" : 2502,
+      "name" : "Equipment Type",
+      "alias" : "eqType"
+    }
+  },
+  "files" : [ "uploads/jpg/PID/Cleaver Brooks/94.03.32.175-PD-0002-001.07.APP.07.01_DA.jpg" ],
+  "vendor" : {
+    "id" : 5552,
+    "name" : "Cleaver Brooks",
+    "category" : {
+      "id" : 2453,
+      "name" : "Vendor",
+      "alias" : "vendor"
+    }
+  },
+  "location" : {
+    "id" : 14106,
+    "name" : "AUX BOILER BLDG",
+    "category" : {
+      "id" : 2702,
+      "name" : "Location",
+      "alias" : "location"
+    }
+  },
+  "system" : {
+    "id" : 9302,
+    "name" : "AXS",
+    "category" : {
+      "id" : 2552,
+      "name" : "System",
+      "alias" : "system"
+    }
+  },
+  "coordinates" : "StartX:1650,StartY:1491,EndX:1761,EndY:1533,width:111,height:42",
+  "originalPictureSize" : "width:3734,height:2438",
+  "mainFile" : "uploads/jpg/PID/Cleaver Brooks/94.03.32.175-PD-0002-001.07.APP.07.01_DA.jpg",
+  "lotoPoints" : [ {
+    "id" : 21479,
+    "name" : null,
+    "objectType" : "LotoPoint",
+    "unit" : "BOP",
+    "tagged" : "hung",
+    "tagNumber" : "00-VAXS971",
+    "description" : "AUX BOILER BFP \"A\" SUCTION STRAINER DRAIN",
+    "isoPos" : {
+      "id" : 5414,
+      "name" : "OPEN",
+      "category" : {
+        "id" : 3052,
+        "name" : "Isolated Position",
+        "alias" : "isoPos"
+      }
+    },
+    "normPos" : {
+      "id" : 5403,
+      "name" : "CLOSED",
+      "category" : {
+        "id" : 3053,
+        "name" : "Normal Position",
+        "alias" : "normPos"
+      }
+    },
+    "specificLocation" : "AUX BOILER BLDG",
+    "standard" : "AUX BOILER/DA",
+    "generalLocation" : "AUX BOILER BLDG",
+    "equipmentIdList" : [ 101010 ],
+    "normalPosition" : "CLOSED",
+    "isolatedPosition" : "OPEN",
+    "lotos" : null,
+    "equipmentList" : null,
+    "oldId" : "478.0"
+  } ],
+  "highlight" : null,
+  "isUpdated" : null
+}
+]

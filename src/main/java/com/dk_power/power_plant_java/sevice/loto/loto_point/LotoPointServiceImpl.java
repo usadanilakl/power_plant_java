@@ -142,6 +142,10 @@ public class LotoPointServiceImpl implements LotoPointService {
     public List<LotoPointDto> getActiveLotoPoints() {
         return lotoPointRepo.findByEquipmentListNotNull().stream().map(this::convertToDto).toList();
     }
+    @Override
+    public List<LotoPointDto> getActiveNotVerifiedLotoPoints() {
+        return lotoPointRepo.findByEquipmentListNotNullAndIsUpdatedNull().stream().map(this::convertToDto).toList();
+    }
 
     @Override
     public void refactor(Value old, Value _new) {

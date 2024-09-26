@@ -95,27 +95,7 @@
         <div id="infoWindowsContainer"></div>
 
     </div>
-    <div id="popup" class="ignoreDk" style="z-index:1060;">
-        <!-- Modal -->
-        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Create New Item</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body" >
-                        <label for="system-name">New Item Name:</label>
-                        <input class="form-control group-value" type="text" id="value-name">
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <!-- <button type="button" class="btn btn-primary"  id="save">Save changes</button> -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
 
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
@@ -187,12 +167,13 @@
         await loadPictureWithLightFile(fileByEqId);
         
     }).then(()=>{
-        if(mode) setMode(mode);
-        requestAnimationFrame(() => {
+        requestAnimationFrame(async () => {
+            let eq = fileWithPoints.points.find(f=>f.id===eqId);
+            selectedArea = eq;
             highlightEq(eqId);
-            let eq = fileWithPoints.filter(f=>f.id===eqId);
-            fillPointInfoWindow(eq);
+            await fillPointInfoWindow(eq);
         });
+        // if(mode) setMode(mode);
         
     })
 

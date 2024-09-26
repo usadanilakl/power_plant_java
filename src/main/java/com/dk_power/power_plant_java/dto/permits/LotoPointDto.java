@@ -39,5 +39,6 @@ public class LotoPointDto extends BaseDto {
     private Set<EquipmentDto> equipmentList;
     private String oldId;
     private String objectType;
+    private Long isUpdated;
 
 }

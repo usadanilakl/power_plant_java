@@ -42,6 +42,7 @@ public class LotoPoint extends BaseAuditEntity {
     private String redTagId;
     private Boolean inUse = false;
     private String oldId;
+    private Long isUpdated;
     @ManyToOne
     @JoinColumn(name = "isoPos_id")
     private Value isoPos;

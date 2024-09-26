@@ -122,7 +122,8 @@ public class LotoPointRestController {
 
     @GetMapping("/get-active-points")
     public ResponseEntity<List<LotoPointDto>> getActiveLotoPoints(){
-        return ResponseEntity.ok(lotoPointService.getActiveLotoPoints());
+        return ResponseEntity.ok(lotoPointService.getActiveNotVerifiedLotoPoints());
+//        return ResponseEntity.ok(lotoPointService.getActiveLotoPoints());
     }
 
     @GetMapping("/to-excel")
@@ -130,6 +131,12 @@ public class LotoPointRestController {
 //        excelWriterService.writeLotoPointsToExcel("output.xlsx",lotoPointService.getAll());
         excelWriterService.writeLotoPointsToExcelTable("output.xlsx",lotoPointService.getAll());
         return ResponseEntity.ok("Transfer Complete") ;
+    }
+
+    @PutMapping("/")
+    public ResponseEntity<String> updateNonNullFields(@RequestBody LotoPointDto lp){
+        lotoPointService.save(lp);
+        return ResponseEntity.ok("Success");
     }
 
 

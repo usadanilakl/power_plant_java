@@ -3,19 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
     <title>Home</title>
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/my_styles/util.css">
     <link rel="stylesheet" href="/my_styles/home.css">
     <link rel="stylesheet" href="/my_styles/glow-buttons.css">
     <style>
 
-        html, #main, #loto-point-table{
+html, #main, #loto-point-table{
             width: 100%;
             height: 100%;
+            
         }
 
         #loto-point-table {
-            height: 100vh;
+            height: 85vh;
             overflow-y: auto;
         }
 
@@ -56,6 +59,7 @@
     </div>
 
 <script>
+    let token = document.getElementById('token').getAttribute('content');
         let tableContainer = document.getElementById('loto-point-table');
         let tableContentBtn = document.getElementById('switch-table-content-button');
         let tableTitle = document.getElementById('table-title');
@@ -67,6 +71,7 @@
 <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
 <script src="/functions/util_functions/util.js"></script>
 <script src="/functions/controllers/LotoPointController.js"></script>
+<script src="/functions/controllers/PointController.js"></script>
 <script src="/functions/controllers/FileController.js"></script>
 <script src="/functions/service/TableService.js"></script>
 <script src="/functions/service/ValueService.js"></script>

@@ -3,6 +3,9 @@
     padding: 0;
     box-sizing: border-box;
 }
+html,body{
+    overflow: hidden;
+}
 #all{
     display:flex;
     flex-direction: column;
@@ -12,6 +15,7 @@
     left:0;
     right:0;
     background-color: black;
+    overflow: hidden;
 }
 
 #upper{
