@@ -20,11 +20,11 @@ public class LotoBuilderService {
 
 
 
-            Pattern searchMenu = new Pattern("LOTO pic/searchMenu.png");
-            Pattern searchInput = new Pattern("LOTO pic/searchInputField.png");
-            Pattern searchButton = new Pattern("LOTO pic/searchButton.png");
-            Pattern selectItem = new Pattern("LOTO pic/selectItemField.png");
-            Pattern clearButton = new Pattern("LOTO pic/clearButton.png");
+            Pattern searchMenu = new Pattern("J:/Jackson Generation P&IDs/New LOTO Project/LOTO pic/searchMenu.png");
+            Pattern searchInput = new Pattern("J:/Jackson Generation P&IDs/New LOTO Project/LOTO pic/searchInputField.png");
+            Pattern searchButton = new Pattern("J:/Jackson Generation P&IDs/New LOTO Project/LOTO pic/searchButton.png");
+            Pattern selectItem = new Pattern("J:/Jackson Generation P&IDs/New LOTO Project/LOTO pic/selectItemField.png");
+            Pattern clearButton = new Pattern("J:/Jackson Generation P&IDs/New LOTO Project/LOTO pic/clearButton.png");
 
             Region appWindow = scr.find(searchMenu);
             appWindow = new Region(appWindow.x,appWindow.y,appWindow.w,appWindow.h+30);
@@ -53,7 +53,7 @@ public class LotoBuilderService {
 //                r2.offset(0,r2.h/2).doubleClick();
                 r2.doubleClick();
                 //appWindow.wait("J:/Jackson Generation P&IDs/LOTO/LOTO pic/clearButton.png",10);
-                appWindow.click("LOTO pic/clearButton.png");
+                appWindow.click("J:/Jackson Generation P&IDs/New LOTO Project/LOTO pic/clearButton.png");
             }
         } catch (RuntimeException e) {
             e.printStackTrace();

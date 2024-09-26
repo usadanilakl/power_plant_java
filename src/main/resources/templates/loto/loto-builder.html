@@ -75,9 +75,8 @@
                     <ul >
                         <li class="btn btn-outline-light" onclick="removeAllHighlights()">Remove Highlights</li>
                         <li class="btn btn-outline-light" onclick="highlightAll()">Highlight All</li>                      
-                        <li class="btn btn-outline-light" onclick="highlightLotoPoints()">Highlight Loto Points</li>                      
-                        <li class="btn btn-outline-light" ><a class="nav-link" href="/lotos/build-loto">LOTOs</a></li>                      
-                        <li class="btn btn-outline-light" onclick="openNewWindow(getUploadFileForm)">Upload Files</li>
+                        <li class="btn btn-outline-light" onclick="highlightLotoPoints()">Highlight Loto Points</li>                     
+                        <li class="btn btn-outline-light" onclick="buildLoto()">Build Loto</li>
                     </ul>
                 </div>
             </div>
@@ -93,27 +92,7 @@
         <div id="infoWindowsContainer"></div>
 
     </div>
-    <div id="popup" class="ignoreDk" style="z-index:1060;">
-        <!-- Modal -->
-        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Create New Item</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body" >
-                        <label for="system-name">New Item Name:</label>
-                        <input class="form-control group-value" type="text" id="value-name">
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <!-- <button type="button" class="btn btn-primary"  id="save">Save changes</button> -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
 
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
@@ -139,7 +118,7 @@
 
     <script src="/functions/service/PopupService.js"></script>
     <script src="/functions/service/MenuDropdownService.js"></script>
-    <script src="/functions/service/PictureService.js"></script>
+    <script src="/functions/service/loto_builder/PictureService.js"></script>
     <script src="/functions/service/ResizerService.js"></script>
     <script src="/functions/service/FileService.js"></script>
     <script src="/functions/service/MasterService.js"></script>
@@ -148,6 +127,7 @@
     <script src="/functions/service/InfoWindowService.js"></script>
     <script src="/functions/service/PointService.js"></script>
     <script src="/functions/service/LotoService.js"></script>
+    <script src="/functions/service/loto_builder/LotoBuilderService.js"></script>
     <script src="/functions/service/ValueService.js"></script>
     <script src="/functions/service/NewWindowService.js"></script>
     

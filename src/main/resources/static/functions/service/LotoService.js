@@ -1,6 +1,7 @@
 let lotoWindow = null;
 let lotoPoints = [];
 
+
 function lotoModeControl(){
     if(modes.lotoMode.state){
         if(lotoWindow === null && selectedArea) setUpLotoWindow();
@@ -146,3 +147,4 @@ function updateLotoPointsButton(){
     button.addEventListener('click',submitLotoPoints);
     return button;
 }
+

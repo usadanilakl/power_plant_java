@@ -18,6 +18,7 @@ import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.Tran
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.*;
 import com.dk_power.power_plant_java.sevice.equipment.*;
 import com.dk_power.power_plant_java.sevice.image.OCRService;
+import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointMergeService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
@@ -29,6 +30,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.time.LocalDateTime;
@@ -73,8 +75,11 @@ private final HtTransferService htTransferService;
 
 
     public static void main(String[] args) {
-        SpringApplication.run(PowerPlantJavaApplication.class, args);
+//        SpringApplication.run(PowerPlantJavaApplication.class, args);
 
+        SpringApplicationBuilder builder = new SpringApplicationBuilder(PowerPlantJavaApplication.class);
+        builder.headless(false);
+        builder.run(args);
     }
 
 
@@ -94,9 +99,15 @@ private final HtTransferService htTransferService;
 //        htTransferService.connectHtWithIsoFiles();
 
 
-//        lotoPointMergeService.generateGeneralLocationFromEquipment();
+//        lotoPointMergeService.generateGeneralLocationFromEquipment();+
 
 
+//        List<String> tags = new ArrayList<>();
+//        tags.add("01-VAXS147");
+//        tags.add("01-VAXS165");
+//        tags.add("01-VAXS168");
+//        tags.add("01-VAXS147");
+//        LotoBuilderService.buildLoto(tags);
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 

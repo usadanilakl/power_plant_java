@@ -172,6 +172,18 @@
                     </excludes>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <jvmArguments>
+                        -Xms8g
+                        -Xmx16g
+                        -Djava.awt.headless=false
+                    </jvmArguments>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

@@ -20,7 +20,7 @@ function getPostMetaDataWithBody(data){
     }
 }
 
-function getPostMetaDataWithBody(data){
+function getPutMetaDataWithBody(data){
     return{
         method: 'PUT',
         headers: {

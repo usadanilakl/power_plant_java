@@ -95,6 +95,6 @@ async function allLotoPointsToExcel(){
 }
 
 async function updateNonNullFields(lp){
-  const resp = await fetch(baseLotoPointUrl,getPostMetaDataWithBody(lp));
+  const resp = await fetch(baseLotoPointUrl,getPutMetaDataWithBody(lp));
 }
 

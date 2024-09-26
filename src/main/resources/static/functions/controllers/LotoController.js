@@ -24,5 +24,6 @@ async function updateTempLoto(loto,csrfToken){
 }
 
 async function buildLoto(){
-    const resp = await fetch('/api-lotos/build-loto');
+    let tags = selectedLotoPoints.map(p=>p.tagNumber);
+    const resp = await fetch('/api-lotos/build-loto',getPostMetaDataWithBody(tags));
 }

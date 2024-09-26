@@ -146,6 +146,11 @@ private final LotoPointService lotoPointService;
         return "redirect:/lotos/add-points";
     }
 
+    @GetMapping("/build-loto")
+    public String buildLoto(){
+        return "loto/loto-builder";
+    }
+
 
 
 
