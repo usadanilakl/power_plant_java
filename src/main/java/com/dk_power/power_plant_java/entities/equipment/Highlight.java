@@ -28,7 +28,6 @@ import java.util.Map;
 @Audited
 public class Highlight extends BaseAuditEntity {
 
-
     private String coordinates;
     private String originalPictureSize;
     private Double startX;
@@ -40,15 +39,24 @@ public class Highlight extends BaseAuditEntity {
 
     private Double pictureWidth;
     private Double pictureHeight;
+    private String  tagNumber;
+    private String contentType;
+
 
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "pid_highlight")
     @JsonBackReference
     private FileObject file;
 
-    @OneToMany(mappedBy = "highlight")
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "eq_highlight")
     @JsonManagedReference
-    private List<Equipment> equipmentList;
+    private Equipment equipment;
+
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "connector_highlight")
+    @JsonBackReference
+    private FileObject connector;
 
     public String buildCoordinateString(){
         coordinates = "startX:"+startX+",startY:"+startY+",endX:"+endX+",endY:"+endY+",width:"+width+",height:"+height;
@@ -73,7 +81,6 @@ public class Highlight extends BaseAuditEntity {
 
         return map;
     }
-
     public String buildPictureSizeString(){
         originalPictureSize = "widht:"+pictureWidth+",height:"+pictureHeight;
         return originalPictureSize;
@@ -89,9 +96,11 @@ public class Highlight extends BaseAuditEntity {
 
         return map;
     }
-
-    public void addEquipment(Equipment equipment) {
-        if(equipmentList==null) equipmentList = new ArrayList<>();
-        if(equipment!=null && !equipmentList.contains(equipment)) equipmentList.add(equipment);
+    public String identifyContent(){
+        String cont = "";
+        if(equipment!=null) cont = "equipment";
+        else if(connector!=null) cont = "connector";
+        contentType = cont;
+        return cont;
     }
 }

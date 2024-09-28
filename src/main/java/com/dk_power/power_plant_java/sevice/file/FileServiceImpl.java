@@ -241,6 +241,27 @@ public class FileServiceImpl implements FileService {
         return byTagNumber.getHtBreakers().stream().map(e->htBreakerService.convertToDto(e)).toList();
     }
 
+    @Override
+    public Set<String> getPidRelatedSystems() {
+        Set<String> result = new HashSet<>();
+        List<String> systems = fileRepo.findUniqueRelatedSystems();
+        for (String s : systems) {
+            result.addAll(Arrays.asList(s.split(",")));
+        }
+
+        return result;
+    }
+
+    @Override
+    public List<FileObject> getIfDocNumberContains(String number) {
+        return fileRepo.findByDocNumberContaining(number);
+    }
+
+    @Override
+    public FileDtoLight getLightById(Long id) {
+        return fileRepo.getLightById(id);
+    }
+
     public List<FileDto> getAllDtos(String ext) {
         return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
     }

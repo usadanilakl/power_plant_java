@@ -27,4 +27,5 @@ public interface EquipmentService extends CrudService<Equipment, EquipmentDto, E
     List<Equipment> getIfTagNumberContains(String value);
 
     List<Equipment> getIfDescriptionContains(String value);
+    List<String> getDuplicateTagStrings();
 }

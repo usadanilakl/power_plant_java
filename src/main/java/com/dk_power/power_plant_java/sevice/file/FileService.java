@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.sevice.base_services.RefactorService;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface FileService extends CrudService<FileObject, FileDto, FileRepo, FileMapper>, RefactorService {
     FileObject saveForTransfer(FileDto transfer);
@@ -50,4 +51,9 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List<String> getElPanels();
 
     List<HtBreakerDto> getHtBrakersByPanelTag(String panelTag);
+
+    Set<String> getPidRelatedSystems();
+
+    List<FileObject> getIfDocNumberContains(String number);
+    FileDtoLight getLightById(Long id);
 }

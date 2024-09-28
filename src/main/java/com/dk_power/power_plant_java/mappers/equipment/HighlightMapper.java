@@ -28,7 +28,7 @@ public class HighlightMapper implements BaseMapper {
 
     public HighlightDto convertToDto(Highlight entity) {
         HighlightDto dto = new HighlightDto();
-        
+
         dto.setId(entity.getId());
 
         if (entity.getName() != null) {
@@ -51,8 +51,12 @@ public class HighlightMapper implements BaseMapper {
             dto.setFile(fileService.convertToDto(entity.getFile()));
         }
 
-        if(entity.getEquipmentList()!=null){
-            dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
+        if(entity.getEquipment()!=null){
+            dto.setEquipment(equipmentService.getMapper().convertToDtoLight(entity.getEquipment()));
+        }
+
+        if(entity.getConnector()!=null){
+            dto.setConnector(fileService.getLightById(entity.getConnector().getId()));
         }
 
         if(entity.getStartX()!=null){
@@ -77,6 +81,14 @@ public class HighlightMapper implements BaseMapper {
 
         if(entity.getHeight()!=null){
             dto.setHeight(entity.getHeight());
+        }
+
+        if(entity.getTagNumber()!=null){
+            dto.setTagNumber(entity.getTagNumber());
+        }
+
+        if(entity.getContentType()!=null){
+            dto.setContentType(entity.getContentType());
         }
 
         return dto;
@@ -107,9 +119,13 @@ public class HighlightMapper implements BaseMapper {
 //            dto.setFile(fileService.convertToDto(entity.getFile()));
 //        }
 
-//        if(entity.getEquipmentList()!=null){
-//            dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
-//        }
+        if(entity.getEquipment()!=null){
+            dto.setEquipment(equipmentService.getMapper().convertToDtoLight(entity.getEquipment()));
+        }
+
+        if(entity.getConnector()!=null){
+            dto.setConnector(fileService.getLightById(entity.getConnector().getId()));
+        }
 
         if(entity.getStartX()!=null){
             dto.setStartX(entity.getStartX());
@@ -143,6 +159,14 @@ public class HighlightMapper implements BaseMapper {
             dto.setPictureWidth(entity.getPictureWidth());
         }
 
+        if(entity.getTagNumber()!=null){
+            dto.setTagNumber(entity.getTagNumber());
+        }
+
+        if(entity.getContentType()!=null){
+            dto.setContentType(entity.getContentType());
+        }
+
         return dto;
     }
 
@@ -172,9 +196,13 @@ public class HighlightMapper implements BaseMapper {
             entity.setFile(fileService.convertToEntity(source.getFile()));
         }
 
-        if(source.getEquipmentList()!=null){
-            entity.setEquipmentList(source.getEquipmentList().stream().map(equipmentService::convertToEntity).toList());
+        if(source.getEquipment()!=null){
+            entity.setEquipment(equipmentService.convertToEntity(source.getEquipment()));
         }
+
+//        if(source.getConnector()!=null){
+//            entity.setConnector(fileService.convertToEntity(source.getConnector()));
+//        }
 
         if(source.getStartX()!=null){
             entity.setStartX(source.getStartX());
@@ -198,6 +226,14 @@ public class HighlightMapper implements BaseMapper {
 
         if(source.getHeight()!=null){
             entity.setHeight(source.getHeight());
+        }
+
+        if(source.getTagNumber()!=null){
+            entity.setTagNumber(source.getTagNumber());
+        }
+
+        if(source.getContentType()!=null){
+            entity.setContentType(source.getContentType());
         }
         return entity;
     }

@@ -6,6 +6,7 @@ let activeHighlights = [];
 let highlatedAreas = [];
 let selectedAres = [];
 let selectedArea;
+let selectedHighlight;
 let selectedBundle = [];
 let currentSizeCoefficient;
 let fileWithPoints;
@@ -15,7 +16,7 @@ let highlightIsEnabled = false;
 
 function getPointByIdFromCurrentFile(id){
     id = parseInt(id);
-    return fileWithPoints.points.find(e=>e.id===id);
+    return fileWithPoints.highlights.find(e=>e.equipment.id===id);
 }
 
 /*****************************************************DISPLAY FUNCTIONS*****************************************************************/
@@ -63,7 +64,7 @@ async function loadPictureWithLightFile(file){
     fileWithPoints = await getFileFromDbByLink(file.fileNumber);
     setEditMode(fileWithPoints.bulkEditStep);
     await buildEditStepControls();
-    setAreas(fileWithPoints.points);
+    setAreas(fileWithPoints.highlights);
     setTimeout(()=>{originalWidth = picture.naturalWidth;},1000)
     
 }
@@ -73,7 +74,7 @@ async function loadPictureWithCopiedPoints(sourceId){
     fileWithPoints = await getFileWithCopiedPoints(sourceId, fileWithPoints.id);
     setEditMode(fileWithPoints.bulkEditStep);
     await buildEditStepControls();
-    setAreas(fileWithPoints.points);
+    setAreas(fileWithPoints.highlights);
     setTimeout(()=>{originalWidth = picture.naturalWidth;},1000)
     
 }
@@ -91,7 +92,8 @@ function setAreas(areas){
         area.setAttribute('coords',coord);
         area.addEventListener('click',()=>{
             event.preventDefault();
-            selectedArea = e;
+            selectedHighlight = e;
+            selectedArea = e.equipment;
             selectedAres.push(selectedArea);
             let highlight = createHighlight(area,true);
             selectedBundle.push({"area":area,"eq":e,"highlight":highlight});
@@ -139,7 +141,7 @@ function createAreaElement(area){
     newArea.setAttribute('shape',"rect");
 
 
-
+if(area.equipment){
     let directLotoPoint;
     if(area.lotoPoints!=null && area.lotoPoints.length>0){
         directLotoPoint = area.lotoPoints.find(e=>e.tagNumber===area.tagNumber);
@@ -152,7 +154,7 @@ function createAreaElement(area){
         }
         else newArea.setAttribute('data-loto-point-area', '');
     } 
-
+}
     //drag(newArea,pictureContainer);
     newArea.addEventListener('mousedown',(event)=>{
         event.preventDefault();
@@ -692,19 +694,21 @@ let newHighlights = [];
 let coords = {}
 coords.getObjWidth = function(){return this.mouseOnPictureEnd.x-this.mouseOnPictureStart.x}.bind(coords);
 coords.getObjHeight = function(){return this.mouseOnPictureEnd.y-this.mouseOnPictureStart.y}.bind(coords);
-let areaInfo = {
+let areaInfo = {    
     tagNumber:null,
-    description:null,
-    location:"",//{category:"Location",name:null,id:null},
-    specificLocation:null,
-    system:"",//{category:"System",name:null,id:null},
-    files:null,
     mainFile:null,
     coordinates:null,
     originalPictureSize:null,
-    vendor:"", //{category:"Vendor",name:null,id:null},
-    eqType:"", //{category:"Equipment Type",name:null,id:null},
-    lotoPoints:[]
+    equipment:{    
+        tagNumber:null,
+        description:null,
+        location:"",//{category:"Location",name:null,id:null},
+        specificLocation:null,
+        system:"",//{category:"System",name:null,id:null},
+        vendor:"", //{category:"Vendor",name:null,id:null},
+        eqType:"", //{category:"Equipment Type",name:null,id:null},
+        lotoPoints:[]
+    }
 }
 
 function getPictureSize(){
@@ -820,16 +824,16 @@ async function handleMouseUp() {
         areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
     
         areaInfo.tagNumber = "new Area";
+        areaInfo.equipment.tagNumber = "new Area";
         areaInfo.mainFile = file.fileLink;
-        areaInfo.files = [];
-        areaInfo.files.push(file.fileLink);
-        if(file.vendor && file.vendor!=="")areaInfo.vendor = file.vendor;
-        if(file.system && file.system!=="")areaInfo.system = file.system;
-        else areaInfo.system = null;
-        areaInfo.eqType = null;
-        areaInfo.location = null;
+        if(file.vendor && file.vendor!=="")areaInfo.equipment.vendor = file.vendor;
+        if(file.system && file.system!=="")areaInfo.equipment.system = file.system;
+        else areaInfo.equipment.system = null;
+        areaInfo.equipment.eqType = null;
+        areaInfo.equipment.location = null;
     
-        selectedArea = areaInfo;
+        selectedHighlight = areaInfo;
+        selectedArea = areaInfo.equipment;
         selectedArea.isNew = true;
         selectedArea.id = "new";
 
@@ -844,8 +848,10 @@ async function handleMouseUp() {
             let points = getExcelPointsByLabel(text);
             fillExcelPointInfoWindow(points);
 
-            let newEq = await createNewEq(selectedArea);
-            selectedArea = newEq;
+            let newEq = await createNewEqWithHighlight(areaInfo);
+            // let newEq = await createNewEq(selectedArea);
+            selectedArea = newEq.equipment;
+            selectedHighlight = newEq;
 
             let area = createAreaElement(newEq);
             area.addEventListener('click',()=>{
@@ -855,7 +861,7 @@ async function handleMouseUp() {
 
             map.appendChild(area);
             resizeNewArea(area);
-            fileWithPoints.points.push(selectedArea);
+            fileWithPoints.highlights.push(newEq);
             let highlight = createHighlight(area,true);
             highlight.querySelectorAll('.corners').forEach(e=>e.classList.remove('hide'));
             selectedBundle.push({"area":area,"eq":selectedArea,"highlight":highlight});

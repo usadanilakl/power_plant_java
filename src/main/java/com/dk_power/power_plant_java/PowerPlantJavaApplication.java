@@ -106,17 +106,15 @@ private final HeatTraceRepo heatTraceRepo;
 
 //        lotoPointMergeService.generateGeneralLocationFromEquipment();+
 
-
-        List<HeatTrace> byTagNumber = heatTraceService.getByTagNumber("HTT-1561");
-        HeatTrace heatTrace = byTagNumber.get(0);
-        heatTrace.getEquipmentList().forEach(e-> System.out.println(e.getTagNumber()));
-        System.out.println("heatTrace.getTempEquipment() = " + heatTrace.getTempEquipment());
+//        highlightService.performTransfer();
+        heatTraceService.getAll().forEach(h->{
+            h.getEquipmentList().forEach(e->{
+                if(e.getDeleted()) System.out.println(e.getTagNumber());
+            });
+        });
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
-//        fileService.copyFromAnotherUnit("5260", "5367");
-
-//
 
 
         FileObject entityById = fileService.getEntityById(5256l);
@@ -124,12 +122,7 @@ private final HeatTraceRepo heatTraceRepo;
 //        fileService.save(entityById);
 
 //        equipmentService.getAll().forEach(highlightService::transferEqToHighlights);
-//        equipmentService.getAll().forEach(e->{
-//            if(e.getCoordinates().contains("undefined"))e.setCoordinates(e.getCoordinates().replace("undefined",""));
-//            if(e.getMainFile()==null) equipmentService.hardDelete(e);// System.out.println(e.getTagNumber());
-//            equipmentService.save(e);
-//
-//        });
+
 //        System.out.println("equipmentService.getAll().size() = " + equipmentService.getAll().size());
 //        System.out.println("highlightService.getAll().size() = " + highlightService.getAll().size());
 //        System.out.println("Completed");

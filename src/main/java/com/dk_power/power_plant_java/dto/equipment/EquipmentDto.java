@@ -34,7 +34,7 @@ public class EquipmentDto extends BaseEquipmentDto {
     private Set<LotoPointDto> lotoPoints;
     @JsonBackReference
     private List<HeatTraceDto> heatTraceList;
-    private HighlightDto highlight;
+    private List<HighlightDto> highlights;
     private String isUpdated;
 
 

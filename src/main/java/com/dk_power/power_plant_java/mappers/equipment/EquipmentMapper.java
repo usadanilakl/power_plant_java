@@ -43,7 +43,7 @@ public class EquipmentMapper implements BaseMapper {
 
     public EquipmentDto convertToDto(Equipment entity) {
         EquipmentDto dto = new EquipmentDto();
-        
+
         dto.setId(entity.getId());
 
         if (entity.getName() != null) {
@@ -78,7 +78,7 @@ public class EquipmentMapper implements BaseMapper {
             dto.setVendor(valueService.getDtoById(entity.getVendor().getId()));
         }
         if (entity.getMainFile() != null) {
-            dto.setMainFile(entity.getMainFile().getFileLink());
+//            dto.setMainFile(entity.getMainFile().getFileLink());
         }
         if (entity.getLocation() != null) {
             dto.setLocation(valueService.getDtoById(entity.getLocation().getId()));
@@ -89,12 +89,12 @@ public class EquipmentMapper implements BaseMapper {
         if (entity.getSystem() != null) {
             dto.setSystem(valueService.getDtoById(entity.getSystem().getId()));
         }
-        if (entity.getFiles() != null) {
-            dto.setFiles(entity.getFiles().stream()
-                    .filter(Objects::nonNull)
-                    .map(FileObject::getFileLink)
-                    .collect(Collectors.toList()));
-        }
+//        if (entity.getFiles() != null) {
+//            dto.setFiles(entity.getFiles().stream()
+//                    .filter(Objects::nonNull)
+//                    .map(FileObject::getFileLink)
+//                    .collect(Collectors.toList()));
+//        }
         if(entity.getLotoPoints()!=null){
             dto.setLotoPoints(entity.getLotoPoints().stream().map(lotoPointService::convertToDto).collect(Collectors.toSet()));
         }
@@ -102,8 +102,8 @@ public class EquipmentMapper implements BaseMapper {
             dto.setHeatTraceList(entity.getHeatTraceList().stream().map(heatTraceMapper::convertToDtoLight).toList());
         }
 
-        if(entity.getHighlight()!=null){
-            dto.setHighlight(highlightMapper.convertToDtoLight(entity.getHighlight()));
+        if(entity.getHighlights()!=null){
+            dto.setHighlights(entity.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
         }
         return dto;
     }
@@ -129,48 +129,48 @@ public class EquipmentMapper implements BaseMapper {
             dto.setSpecificLocation(entity.getSpecificLocation());
         }
 
-//        if (entity.getCoordinates() != null) {
-//            dto.setCoordinates(entity.getCoordinates());
-//        }
-//
-//        if (entity.getOriginalPictureSize() != null) {
-//            dto.setOriginalPictureSize(entity.getOriginalPictureSize());
-//        }
+        if (entity.getCoordinates() != null) {
+            dto.setCoordinates(entity.getCoordinates());
+        }
+
+        if (entity.getOriginalPictureSize() != null) {
+            dto.setOriginalPictureSize(entity.getOriginalPictureSize());
+        }
 
         if (entity.getObjectType() != null) {
             dto.setObjectType(entity.getObjectType());
         }
 
-//        if (entity.getVendor() != null) {
-//            dto.setVendor(valueService.getDtoById(entity.getVendor().getId()));
-//        }
-//        if (entity.getMainFile() != null) {
+        if (entity.getVendor() != null) {
+            dto.setVendor(valueService.getDtoById(entity.getVendor().getId()));
+        }
+        if (entity.getMainFile() != null) {
 //            dto.setMainFile(entity.getMainFile().getFileLink());
-//        }
-//        if (entity.getLocation() != null) {
-//            dto.setLocation(valueService.getDtoById(entity.getLocation().getId()));
-//        }
-//        if (entity.getEqType() != null) {
-//            dto.setEqType(valueService.getDtoById(entity.getEqType().getId()));
-//        }
-//        if (entity.getSystem() != null) {
-//            dto.setSystem(valueService.getDtoById(entity.getSystem().getId()));
-//        }
+        }
+        if (entity.getLocation() != null) {
+            dto.setLocation(valueService.getDtoById(entity.getLocation().getId()));
+        }
+        if (entity.getEqType() != null) {
+            dto.setEqType(valueService.getDtoById(entity.getEqType().getId()));
+        }
+        if (entity.getSystem() != null) {
+            dto.setSystem(valueService.getDtoById(entity.getSystem().getId()));
+        }
 //        if (entity.getFiles() != null) {
 //            dto.setFiles(entity.getFiles().stream()
 //                    .filter(Objects::nonNull)
 //                    .map(FileObject::getFileLink)
 //                    .collect(Collectors.toList()));
 //        }
-//        if(entity.getLotoPoints()!=null){
-//            dto.setLotoPoints(entity.getLotoPoints().stream().map(lotoPointService::convertToDto).collect(Collectors.toSet()));
-//        }
-//        if(entity.getHeatTraceList()!=null){
-//            dto.setHeatTraceList(entity.getHeatTraceList().stream().map(heatTraceMapper::convertToDtoLight).toList());
-//        }
+        if(entity.getLotoPoints()!=null){
+            dto.setLotoPoints(entity.getLotoPoints().stream().map(lotoPointService::convertToDto).collect(Collectors.toSet()));
+        }
+        if(entity.getHeatTraceList()!=null){
+            dto.setHeatTraceList(entity.getHeatTraceList().stream().map(heatTraceMapper::convertToDtoLight).toList());
+        }
 
-//        if(entity.getHighlight()!=null){
-//            dto.setHighlight(highlightMapper.convertToDtoLight(entity.getHighlight()));
+//        if(entity.getHighlights()!=null){
+//            dto.setHighlights(entity.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
 //        }
         return dto;
     }
@@ -217,7 +217,7 @@ public class EquipmentMapper implements BaseMapper {
 
         }
         if (source.getMainFile() != null) {
-            entity.setMainFile(fileService.getByFileLink(source.getMainFile()));
+//            entity.setMainFile(fileService.getByFileLink(source.getMainFile()));
         }
         if (source.getLocation() != null) {
             if(source.getLocation().getId() == null){
@@ -249,12 +249,12 @@ public class EquipmentMapper implements BaseMapper {
                 entity.setSystem(valueService.getEntityById(source.getSystem().getId()));
             }
         }
-        if (source.getFiles() != null) {
-            entity.setFiles(source.getFiles().stream()
-                    .filter(Objects::nonNull)
-                    .map(fileService::getByFileLink)
-                    .collect(Collectors.toList()));
-        }
+//        if (source.getFiles() != null) {
+//            entity.setFiles(source.getFiles().stream()
+//                    .filter(Objects::nonNull)
+//                    .map(fileService::getByFileLink)
+//                    .collect(Collectors.toList()));
+//        }
 
         if(source.getLotoPoints()!=null){
             entity.setLotoPoints(source.getLotoPoints().stream().map(lotoPointService::convertToEntity).collect(Collectors.toSet()));

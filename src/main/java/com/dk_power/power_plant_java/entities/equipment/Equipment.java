@@ -73,10 +73,9 @@ public class Equipment extends BaseEquipment {
     @ManyToMany(mappedBy = "equipmentList")
     @JsonBackReference
     private List<EqBreaker> breakers;
-    @ManyToOne(cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "equipment")
     @JsonManagedReference
-    @JoinColumn(name = "eq_highlight")
-    private Highlight highlight;
+    private List<Highlight> highlights;
 
 
 

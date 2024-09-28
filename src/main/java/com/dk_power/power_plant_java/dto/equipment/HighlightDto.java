@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.dto.equipment;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,6 +26,9 @@ public class HighlightDto extends BaseDto {
     private Double pictureWidth;
     private Double pictureHeight;
     private FileDto file;
-    private List<EquipmentDto> equipmentList;
+    private EquipmentDto equipment;
+    private FileDtoLight connector;
+    private String tagNumber;
+    private String contentType;
 
 }

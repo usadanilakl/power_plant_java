@@ -49,13 +49,12 @@ public class FileMapper implements BaseMapper{
         if(file.getSystem()!=null)fileDto.setSystem(valueService.getDtoById(file.getSystem().getId()));
         if(file.getVendor()!=null)fileDto.setVendor(valueService.getDtoById(file.getVendor().getId()));
         if(file.getRelatedSystems()!=null) fileDto.setRelatedSystems(file.getRelatedSystems());
-        if(file.getPoints()!=null) fileDto.setPoints(file.getPoints().stream().map(e->equipmentService.getDtoById(e.getId())).toList());
+//        if(file.getPoints()!=null) fileDto.setPoints(file.getPoints().stream().map(e->equipmentService.getDtoById(e.getId())).toList());
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
         if(file.getBulkEditStep()!=null) fileDto.setBulkEditStep(file.getBulkEditStep());
         if(file.getHighlights()!=null) fileDto.setHighlights(file.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
         return fileDto;
     }
-
     public FileDto convertToDtoLight(FileObject file){
         FileDto fileDto = new FileDto();
         fileDto.setFileLink(file.buildFileLink());
@@ -73,7 +72,7 @@ public class FileMapper implements BaseMapper{
         if(file.getBulkEditStep()!=null) fileDto.setBulkEditStep(file.getBulkEditStep());
 //        if(file.getPoints()!=null) fileDto.setPoints(file.getPoints().stream().map(e->equipmentService.getDtoById(e.getId())).toList());
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
-        if(file.getHighlights()!=null) fileDto.setHighlights(file.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
+//        if(file.getHighlights()!=null) fileDto.setHighlights(file.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
         return fileDto;
     }
     public FileDto convertToDto(FileObject file, String extension){

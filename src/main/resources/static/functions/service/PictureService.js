@@ -5,6 +5,7 @@ let originalWidth;
 let activeHighlights = []; 
 let highlatedAreas = [];
 let selectedArea;
+let selectedHighlight;
 let isGettingText = false;
 let fileWithPoints;
 // let eqFormInfo; //moved to global variables
@@ -38,23 +39,27 @@ async function loadPictureWithLightFile(file){
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
     fileWithPoints = await getFileFromDbByLink(file.fileNumber);
-    setAreas(fileWithPoints.points);
+    setAreas(fileWithPoints.highlights);
 }
 function setAreas(areas){
     map.innerHTML = "";
     removeAllHighlights();
-    let n = 1;
+    let reference =areas[0] ? getOriginalPictureSizes(areas[0].originalPictureSize).w : null
+    oldWidth = reference ? reference : picture.naturalWidth;
 
     areas.forEach(e=>{
-        oldWidth = getOriginalPictureSizes(e.originalPictureSize).w;
+        // oldWidth = getOriginalPictureSizes(e.originalPictureSize).w;
+        let coord = matchAreaOriginalSizes(e,reference);
         let area = createAreaElement(e);
+        area.setAttribute('coords',coord);
         area.addEventListener('click',()=>{
             event.preventDefault();
             removeAllHighlights();
             createHighlight(area);
             pointEditModeControl(); 
-            selectedArea = e;
-            eqFormInfo = convertToFormDto(e);
+            selectedHighlight = e;
+            selectedArea = e.equipment;
+            eqFormInfo = convertToFormDto(e.equipment);
             fillPointInfoWindow(selectedArea);
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
@@ -66,8 +71,8 @@ function setAreas(areas){
             removeAllHighlights();
             createHighlight(area);
             pointEditModeControl(); 
-            selectedArea = e;
-            eqFormInfo = convertToFormDto(e);
+            selectedArea = e.equipment;
+            eqFormInfo = convertToFormDto(e.equipment);
             fillPointInfoWindow(selectedArea);
             let points = getExcelPointsByLabel(e.tagNumber);
             fillExcelPointInfoWindow(points);
@@ -82,7 +87,7 @@ function setAreas(areas){
     
 }
 function createAreaElement(area){
-    
+    console.log(JSON.stringify(area))
     let coord = getAreaCoordinates(area.coordinates);
     let newArea = document.createElement('area');
     newArea.setAttribute('alt',area.tagNumber);
@@ -101,10 +106,11 @@ function createAreaElement(area){
     //   else newArea.setAttribute('data-loto-point-area', false);
     // } 
 
+if(area.equipment){
     let directLotoPoint;
-    if(area.lotoPoints!=null && area.lotoPoints.length>0){
-        directLotoPoint = area.lotoPoints.find(e=>e.tagNumber===area.tagNumber);
-        if(!directLotoPoint) directLotoPoint = area.lotoPoints[0];
+    if(area.equipment.lotoPoints!=null && area.equipment.lotoPoints.length>0){
+        directLotoPoint = area.equipment.lotoPoints.find(e=>e.tagNumber===area.tagNumber);
+        if(!directLotoPoint) directLotoPoint = area.equipment.lotoPoints[0];
         if(directLotoPoint.isoPos && directLotoPoint.isoPos.name && directLotoPoint.isoPos.name.toLowerCase().includes('open')){
             newArea.setAttribute('data-loto-point-area', true);
         }
@@ -113,6 +119,7 @@ function createAreaElement(area){
         }
         else newArea.setAttribute('data-loto-point-area', '');
     } 
+}
 
     //drag(newArea,pictureContainer);
     newArea.addEventListener('mousedown',(event)=>{
@@ -543,19 +550,21 @@ let newHighlights = [];
 let coords = {}
 coords.getObjWidth = function(){return this.mouseOnPictureEnd.x-this.mouseOnPictureStart.x}.bind(coords);
 coords.getObjHeight = function(){return this.mouseOnPictureEnd.y-this.mouseOnPictureStart.y}.bind(coords);
-let areaInfo = {
+let areaInfo = {    
     tagNumber:null,
-    description:null,
-    location:"",//{category:"Location",name:null,id:null},
-    specificLocation:null,
-    system:"",//{category:"System",name:null,id:null},
-    files:null,
     mainFile:null,
     coordinates:null,
     originalPictureSize:null,
-    vendor:"", //{category:"Vendor",name:null,id:null},
-    eqType:"", //{category:"Equipment Type",name:null,id:null},
-    lotoPoints:[]
+    equipment:{    
+        tagNumber:null,
+        description:null,
+        location:"",//{category:"Location",name:null,id:null},
+        specificLocation:null,
+        system:"",//{category:"System",name:null,id:null},
+        vendor:"", //{category:"Vendor",name:null,id:null},
+        eqType:"", //{category:"Equipment Type",name:null,id:null},
+        lotoPoints:[]
+    }
 }
 
 function getPictureSize(){
@@ -594,25 +603,24 @@ function getObjCoordOnPicture(object){
 
 function handleMouseDown(event) {
     if(event.button===2){
+        let shape = document.createElement('div');
+        shape.setAttribute('class', 'areaHighlights');
+        all.appendChild(shape);
+        newHighlights.push({element:shape});
+        shape.addEventListener('mousedown',(event)=>{
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            event.stopPropagation();
+            relocateHighlightsWithPicture(event);
+        })
 
-    let shape = document.createElement('div');
-    shape.setAttribute('class', 'areaHighlights');
-    all.appendChild(shape);
-    newHighlights.push({element:shape});
-    shape.addEventListener('mousedown',(event)=>{
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        relocateHighlightsWithPicture(event);
-    })
+        coords.picture = getPictureCoordsOnScreen();
+        coords.mouseOnScreenStart = registerMouseCoordsOnScreen(event);
+        coords.mouseOnPictureStart = registerMouseCoordsOnPicture(event);
 
-    coords.picture = getPictureCoordsOnScreen();
-    coords.mouseOnScreenStart = registerMouseCoordsOnScreen(event);
-    coords.mouseOnPictureStart = registerMouseCoordsOnPicture(event);
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup',handleMouseUp);    
-}
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup',handleMouseUp);    
+    }
 }
   
 function handleMouseMove(event) {
@@ -661,13 +669,13 @@ async function handleMouseUp() {
         areaInfo.originalPictureSize = "width:"+image.naturalWidth + ",height:"+image.naturalHeight;
 
         areaInfo.tagNumber = "new Area";
+        areaInfo.equipment.tagNumber = "new Area";
         areaInfo.mainFile = file.fileLink;
-        areaInfo.files = [];
-        areaInfo.files.push(file.fileLink);
-        if(file.vendor)areaInfo.vendor = file.vendor;
-        if(file.system)areaInfo.system = file.system;
-        areaInfo.eqType = null;
-        areaInfo.location = null;
+        areaInfo.equipment.files.push(file.fileLink);
+        if(file.vendor)areaInfo.equipment.vendor = file.vendor;
+        if(file.system)areaInfo.equipment.system = file.system;
+        areaInfo.equipment.eqType = null;
+        areaInfo.equipment.location = null;
 
         if(!isGettingText){
             let area = createAreaElement(areaInfo);
@@ -685,7 +693,7 @@ async function handleMouseUp() {
             // console.log(JSON.stringify(selectedArea))
             //let newEq = await createNewEq(areaInfo);
             //file.points.push(newEq);
-            selectedArea = areaInfo;
+            selectedArea = areaInfo.equipment;
             fillPointInfoWindow(selectedArea);        
         }else{
             let text = await getText(areaInfo.coordinates);

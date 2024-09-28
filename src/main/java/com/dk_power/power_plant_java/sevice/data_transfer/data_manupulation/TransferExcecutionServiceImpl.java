@@ -3,16 +3,19 @@ package com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation;
 import com.dk_power.power_plant_java.dto.data_transfer.HeatTraceJson;
 import com.dk_power.power_plant_java.dto.data_transfer.HighilightsJson;
 import com.dk_power.power_plant_java.dto.data_transfer.PidJson;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.*;
 import com.dk_power.power_plant_java.sevice.data_transfer.json.HeatTraceTransferService;
 import com.dk_power.power_plant_java.sevice.data_transfer.json.HighlightTransferService;
 import com.dk_power.power_plant_java.sevice.data_transfer.json.PidTransferService;
+import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 //@AllArgsConstructor
@@ -30,6 +33,7 @@ public class TransferExcecutionServiceImpl implements TransferExcecutionService 
     private final HeatTraceTransferService heatTraceTransferService;
     private final HighlightTransferService highlightTransferService;
     private final ElectricalTableService electricalTableService;
+    private final FileService fileService;
     public void transferBypassFromExcel(){
         System.out.println("Bypass Transfer Started.");
         System.out.println(bypassService.getAll().size() + " items are in db");
@@ -126,6 +130,17 @@ public class TransferExcecutionServiceImpl implements TransferExcecutionService 
 
     public String getProjectRootFolder() {
         return System.getProperty("user.dir");
+    }
+
+    @Override
+    public void addDocNumberToExistingFiles() {
+        List<PidJson> pidsFromJson = getPidsFromJson();
+        List<FileObject> all = fileService.getAll();
+        for (FileObject f : all) {
+            Optional<PidJson> first = pidsFromJson.stream().filter(e -> e.getFileNumber().equalsIgnoreCase(f.getFileNumber())).findFirst();
+            first.ifPresent(pidJson -> f.setDocNumber(pidJson.getPidNumber()));
+            fileService.save(f);
+        }
     }
 
 }

@@ -6,6 +6,7 @@ let equipmentPoints = [];
 let addLotoPointToEqUrl = '/points/add-loto-point/' //{eqId}/{pointOldId}
 let baseEqUrl = '/points/';
 let baseEqApiUrl = '/eq-api/';
+let baseHighUrl = '/highlight-api/';
 
 
 
@@ -157,6 +158,14 @@ async function createNewEq(obj){
     const response = await fetch(baseEqUrl,getPostMetaDataWithBody(obj));
     const data = await response.json();
     console.log(data.id)
+    return data;
+}
+
+async function createNewEqWithHighlight(obj){
+    obj.id=null;
+    obj.equipment.id=null;
+    const response = await fetch(baseHighUrl,getPostMetaDataWithBody(obj));
+    const data = await response.json();
     return data;
 }
 

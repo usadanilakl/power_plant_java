@@ -37,5 +37,13 @@ public interface FileRepo extends BaseRepository<FileObject> {
 
     List<FileObject> findByFileType(Value oldVal);
     List<FileObject> findByBulkEditStep(String step);
+
+    @Query("SELECT new com.dk_power.power_plant_java.dto.files.FileDtoLight(e.id,e.name,e.fileLink,e.relatedSystems,e.fileNumber,e.vendor,e.fileType) FROM FileObject e WHERE e.id=?1")
+    FileDtoLight getLightById(Long id);
+
+    @Query("SELECT f.relatedSystems FROM FileObject f WHERE f.fileType.name = 'PID'")
+    List<String> findUniqueRelatedSystems();
+
+    List<FileObject> findByDocNumberContaining(String number);
 }
 
