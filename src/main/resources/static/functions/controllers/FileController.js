@@ -149,7 +149,7 @@ async function getHtBreakers(panel){
     const resp = await fetch('/data/get-htBrakers/'+panel)
     const data = await resp.json();
     data.forEach(e=>{
-        e.value = 'BR:'+e.brNumber + '-' + e.tagNumber;
+        e.value = 'BR:'+e.brNumber;
         e.getContent = function(){return getFilesByHtBreaker(e);};
         e.dropdownFunc = function(event){createDropdownItem(this.getContent(), event.target.parentNode);}.bind(e);
     });
@@ -158,17 +158,28 @@ async function getHtBreakers(panel){
 
 function getFilesByHtBreaker(breaker){
     let fileIds = [];
+    let eqIds = [];
     let hts = breaker.equipmentList;
     if(hts){
         hts.forEach(e=>{
             if(e.htIso) fileIds.push(e.htIso.id);
             if(e.pid) e.pid.forEach(p=>fileIds.push(p.id));
+            if(e.equipmentList)e.equipmentList.forEach(eq=>eqIds.push(eq.id))
         });
     }
 
     let result =  fileRepository.filter(e=>e!==null && e.id!==null && fileIds.includes(e.id));
     result.forEach(e=>{
-        e['dropdownFunc'] = function(){loadPictureWithLightFile(e);}
+        e['dropdownFunc'] = async function(){
+            await loadPictureWithLightFile(e);
+            setTimeout(() => {
+                eqIds.forEach(id=>{
+                highlightEq(id);
+                })
+            }, 500);
+
+            
+        }
         e.value = e.fileNumber;
     })
     return result;

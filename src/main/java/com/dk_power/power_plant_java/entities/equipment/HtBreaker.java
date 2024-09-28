@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ import static org.hibernate.envers.RelationTargetAuditMode.NOT_AUDITED;
 @Setter
 @NoArgsConstructor
 @Audited(targetAuditMode = NOT_AUDITED)
+@Where(clause = "deleted=false")
 public class HtBreaker extends BaseBreaker {
 
     @ManyToOne(cascade = CascadeType.ALL)

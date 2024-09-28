@@ -6,9 +6,11 @@ import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
+import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.repository.equipment.HeatTraceRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
@@ -72,6 +74,7 @@ private final LotoPointMergeService lotoPointMergeService;
 private final LotoPointRepo lotoPointRepo;
 private final ElectricalPanelTransferService electricalPanelTransferService;
 private final HtTransferService htTransferService;
+private final HeatTraceRepo heatTraceRepo;
 
 
     public static void main(String[] args) {
@@ -97,17 +100,17 @@ private final HtTransferService htTransferService;
 //        electricalPanelTransferService.createFileObjectsForPanelPictures();
 //        electricalPanelTransferService.connectPanelsFilesWithPanelObjects();
 //        htTransferService.connectHtWithIsoFiles();
-
+//        htTransferService.combineCircuits();
+//        htTransferService.combineBreakers();
+//        htTransferService.connectHtWithPids();
 
 //        lotoPointMergeService.generateGeneralLocationFromEquipment();+
 
 
-//        List<String> tags = new ArrayList<>();
-//        tags.add("01-VAXS147");
-//        tags.add("01-VAXS165");
-//        tags.add("01-VAXS168");
-//        tags.add("01-VAXS147");
-//        LotoBuilderService.buildLoto(tags);
+        List<HeatTrace> byTagNumber = heatTraceService.getByTagNumber("HTT-1561");
+        HeatTrace heatTrace = byTagNumber.get(0);
+        heatTrace.getEquipmentList().forEach(e-> System.out.println(e.getTagNumber()));
+        System.out.println("heatTrace.getTempEquipment() = " + heatTrace.getTempEquipment());
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 

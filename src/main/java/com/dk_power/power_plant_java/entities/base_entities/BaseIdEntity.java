@@ -21,6 +21,7 @@ public class BaseIdEntity {
     private Long id;
     private Boolean deleted = false;
     private String name;
+    private String note;
     private String createdBy;
 //    @Enumerated(EnumType.STRING)
 //    private ObjectType objectType;

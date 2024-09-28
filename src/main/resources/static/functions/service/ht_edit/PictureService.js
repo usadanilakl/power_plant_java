@@ -119,8 +119,6 @@ function setAreas(areas){
     });
     resizeAreas();
     highlighter();
-    
-    
 }
 
 function createAreaElement(area){
@@ -393,6 +391,11 @@ async function highlightLotoPoints(){
         // }
         }
     }
+}
+
+function highlightEq(eqId){
+    const area = document.querySelector(`[data-point-id='${eqId}']`);
+    createHighlight(area);
 }
 
 function relocateHighlightsWithPicture(event){

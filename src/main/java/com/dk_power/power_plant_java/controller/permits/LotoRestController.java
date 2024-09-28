@@ -4,7 +4,6 @@ import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
 import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import lombok.AllArgsConstructor;
-import org.python.antlr.ast.Str;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

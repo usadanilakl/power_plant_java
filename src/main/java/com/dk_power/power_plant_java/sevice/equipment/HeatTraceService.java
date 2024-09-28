@@ -12,4 +12,7 @@ public interface HeatTraceService extends CrudService<HeatTrace, HeatTraceDto, H
     void transferToDb();
 
     List<HeatTrace> getByTagNumber(String s);
+
+    List<String> getAllTags();
+
 }

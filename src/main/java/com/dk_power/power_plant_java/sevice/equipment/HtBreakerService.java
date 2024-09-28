@@ -6,5 +6,10 @@ import com.dk_power.power_plant_java.mappers.equipment.HtBreakerMapper;
 import com.dk_power.power_plant_java.repository.equipment.HtBreakerRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 
+import java.util.List;
+
 public interface HtBreakerService extends CrudService<HtBreaker, HtBreakerDto, HtBreakerRepo, HtBreakerMapper> {
+    List<String> getAllTags();
+
+    List<HtBreaker> getByTagNumber(String b);
 }

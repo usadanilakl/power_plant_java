@@ -149,4 +149,9 @@ public class EqBreakerServiceImpl implements EqBreakerService {
             }
         }
     }
+
+    @Override
+    public List<String> getAllTags() {
+        return eqBreakerRepo.findDistinctByTagNumber();
+    }
 }

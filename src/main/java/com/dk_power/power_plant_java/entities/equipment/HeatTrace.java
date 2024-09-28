@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @Audited
+@Where(clause = "deleted=false")
 public class HeatTrace extends BaseEquipment {
     /***********************************Breaker*********************************************/
     @ManyToOne(cascade = CascadeType.ALL)

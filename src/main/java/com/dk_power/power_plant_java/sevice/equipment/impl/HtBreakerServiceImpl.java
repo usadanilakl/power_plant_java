@@ -9,6 +9,8 @@ import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @Transactional
 public class HtBreakerServiceImpl implements HtBreakerService {
@@ -55,5 +57,15 @@ public class HtBreakerServiceImpl implements HtBreakerService {
     @Override
     public HtBreakerDto convertToDto(HtBreaker entity) {
         return getMapper().convertToDto(entity);
+    }
+
+    @Override
+    public List<String> getAllTags() {
+        return htBreakerRepo.findDistinctByTagNumber();
+    }
+
+    @Override
+    public List<HtBreaker> getByTagNumber(String b) {
+        return htBreakerRepo.findByTagNumber(b);
     }
 }
