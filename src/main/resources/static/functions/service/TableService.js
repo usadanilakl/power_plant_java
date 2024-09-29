@@ -354,6 +354,46 @@ function addRowsOnTop(num,tbody,arr){
     
 }
 
+function scrollBottomRowToTop() {
+    const table = document.querySelector('.table');
+    const rows = table.querySelectorAll('tr');
+    const body = table.querySelector('tbody');
+    const tableRect = table.getBoundingClientRect();
+    let lastVisibleRow;
+    let rowsScrolled = 0;
+
+    // Find the last visible row
+    for (let i = 0; i < rows.length; i++) {
+    const rowRect = rows[i].getBoundingClientRect();
+    if (rowRect.bottom <= window.innerHeight-20) {
+        lastVisibleRow = rows[i];
+        rowsScrolled = i;
+    } else {
+        break;
+    }
+    }
+
+    // If a visible row was found, scroll it to the top
+    if (lastVisibleRow) {
+    lastVisibleRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    while(isScrollbarAt50Percent(table.parentElement)){
+        deleteRowsFromTop(1,body);
+        addRowsToBottom(1,body,rows)
+    }
+
+    }
+}
+
+function isScrollbarAt50Percent(element) {
+    const scrollTop = element.scrollTop;
+    const scrollHeight = element.scrollHeight;
+    const clientHeight = element.clientHeight;
+    
+    const scrollPercentage = (scrollTop / (scrollHeight - clientHeight)) * 100;
+    
+    return Math.abs(scrollPercentage - 50) < 1;
+  }
+
 
 
 

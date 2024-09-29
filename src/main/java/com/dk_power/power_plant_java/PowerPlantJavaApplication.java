@@ -107,11 +107,6 @@ private final HeatTraceRepo heatTraceRepo;
 //        lotoPointMergeService.generateGeneralLocationFromEquipment();+
 
 
-        List<HeatTrace> byTagNumber = heatTraceService.getByTagNumber("HTT-1561");
-        HeatTrace heatTrace = byTagNumber.get(0);
-        heatTrace.getEquipmentList().forEach(e-> System.out.println(e.getTagNumber()));
-        System.out.println("heatTrace.getTempEquipment() = " + heatTrace.getTempEquipment());
-
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
 //        fileService.copyFromAnotherUnit("5260", "5367");

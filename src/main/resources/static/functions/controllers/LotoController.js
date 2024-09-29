@@ -27,3 +27,9 @@ async function buildLoto(){
     let tags = selectedLotoPoints.map(p=>p.tagNumber);
     const resp = await fetch('/api-lotos/build-loto',getPostMetaDataWithBody(tags));
 }
+
+async function buildLotoWithNewPoints(){
+    let tags = selectedLotoPoints.map(p=>p.tagNumber);
+    const resp = await fetch('/api-lotos/build-loto-with-new-points',getPostMetaDataWithBody(tags));
+}
+
