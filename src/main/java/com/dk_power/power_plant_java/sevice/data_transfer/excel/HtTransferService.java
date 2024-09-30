@@ -6,4 +6,5 @@ public interface HtTransferService {
     void connectInstrumentsWithPids();
     void combineCircuits();
     void combineBreakers();
+    void updateEqList();
 }

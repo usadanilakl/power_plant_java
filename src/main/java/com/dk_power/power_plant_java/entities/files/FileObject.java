@@ -79,6 +79,7 @@ public class FileObject extends BaseAuditEntity {
 
     private Boolean completed;
     private String bulkEditStep = "eqTagNumber";
+    private String docNum;
 
 
 

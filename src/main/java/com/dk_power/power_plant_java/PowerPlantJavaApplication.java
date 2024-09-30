@@ -4,9 +4,7 @@ package com.dk_power.power_plant_java;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
-import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
+import com.dk_power.power_plant_java.entities.equipment.*;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
@@ -19,6 +17,7 @@ import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.Data
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.TransferExcecutionServiceImpl;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.*;
 import com.dk_power.power_plant_java.sevice.equipment.*;
+import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
 import com.dk_power.power_plant_java.sevice.image.OCRService;
 import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointMergeService;
@@ -75,6 +74,7 @@ private final LotoPointRepo lotoPointRepo;
 private final ElectricalPanelTransferService electricalPanelTransferService;
 private final HtTransferService htTransferService;
 private final HeatTraceRepo heatTraceRepo;
+private final FileUploaderService fileUploaderService;
 
 
     public static void main(String[] args) {
@@ -95,14 +95,41 @@ private final HeatTraceRepo heatTraceRepo;
 
 //        htTransferService.connectInstrumentsWithPids();
 
+
+
 //        electricalPanelTransferService.deleteOldPanelObjects();
 //        electricalPanelTransferService.createElectricalPanelFileObjectsFromExcelList();
 //        electricalPanelTransferService.createFileObjectsForPanelPictures();
 //        electricalPanelTransferService.connectPanelsFilesWithPanelObjects();
+
 //        htTransferService.connectHtWithIsoFiles();
 //        htTransferService.combineCircuits();
 //        htTransferService.combineBreakers();
 //        htTransferService.connectHtWithPids();
+//
+//        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Cleaver Brooks");
+//        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Extra");
+//        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Gas (Vendor)");
+//        fileService.createFileObjectsFromFolder("uploads","PID","pdf","HOLTEC");
+//        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Mitsubishi");
+//        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads","HT Panel Schedule","pdf","Kiewit","Heat Trace");
+//
+//
+//        fileService.addDocNumToPIDs();
+
+//        List<ElectricalPanel> allPanels = electricalPanelService.getAll();
+//        for (ElectricalPanel p : allPanels) {
+//            List<LotoPoint> points = lotoPointService.getIfLocationContains(p.getTagNumber());
+//            System.out.println(points.size() + " in " + p.getTagNumber());
+//        }
+
+//        List<HtPanel> htPanels = htPanelService.getAll();
+//        for (HtPanel p : htPanels) {
+//            List<LotoPoint> points = lotoPointService.getIfLocationContains(p.getTagNumber());
+//            System.out.println(points.size() + " in " + p.getTagNumber());
+//        }
+
+
 
 //        lotoPointMergeService.generateGeneralLocationFromEquipment();+
 

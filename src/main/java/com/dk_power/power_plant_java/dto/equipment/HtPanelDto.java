@@ -1,7 +1,9 @@
 package com.dk_power.power_plant_java.dto.equipment;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseElectricalPanelDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,4 +16,5 @@ import java.util.List;
 @NoArgsConstructor
 public class HtPanelDto extends BaseElectricalPanelDto {
     private List<HtBreakerDto> htBreakers = new ArrayList<>();
+    private FileDto panelSchedule;
 }

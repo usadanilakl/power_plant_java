@@ -15,5 +15,7 @@ FileObject initialSave(String number, String link);
 File[] getListOfFolders(String path);
 File[] getListOfFiles(String path);
 void deleteFile(String path);
+void scanDirectoryAndCreateObjectsForNewFiles(String dir);
+void createObjectsFromDirectoryUsingMetaDataExcel(String dir);
 
 }

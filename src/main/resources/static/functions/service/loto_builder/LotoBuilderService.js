@@ -7,13 +7,22 @@ async function fillSelectedPointsWindow(){
     let allInfoWindow = getEmptyWindow('LOTO Points');
             allInfoWindow.style.width = 'fit-content';
             allInfoWindow.style.height = 'fit-content';
+            allInfoWindow.style.minWidth = '30%';
+            allInfoWindow.style.maxHeight = '90%';
+            allInfoWindow.style.maxWidth = '50%';
             allInfoWindow.id = 'loto-points-window';
 
             allInfoWindow.style.right = 0 + 'px';
             allInfoWindow.style.bottom = 0+ 'px';
             document.getElementById('all').appendChild(allInfoWindow);
 
-            allInfoWindow.appendChild(await buildLotoPointList(selectedLotoPoints))
+            let content = document.createElement('div');
+            allInfoWindow.appendChild(content);
+            content.style.position = 'relative';
+            // content.style.top = '20px';
+            content.style.padding = '20px';
+
+            content.appendChild(await buildLotoPointList(selectedLotoPoints))
 
 }
         
@@ -58,5 +67,61 @@ async function buildLotoPointList(points){
 
     });
     return list;
+}
+
+async function buildSearchTableWindow(){
+    const currentWindow = document.querySelector('#loto-points-window');
+    if(currentWindow) all.removeChild(currentWindow);
+    let allInfoWindow = getEmptyWindow('LOTO Points');
+            allInfoWindow.style.width = 'fit-content';
+            allInfoWindow.style.height = 'fit-content';
+            allInfoWindow.style.minWidth = '30%';
+            allInfoWindow.style.maxHeight = '90%';
+            allInfoWindow.style.maxWidth = '50%';
+            allInfoWindow.id = 'loto-points-table-window';
+
+            allInfoWindow.style.right = 0 + 'px';
+            allInfoWindow.style.bottom = 0+ 'px';
+            document.getElementById('all').appendChild(allInfoWindow);
+
+            let content = document.createElement('div');
+            allInfoWindow.appendChild(content);
+            content.style.position = 'relative';
+            content.style.padding = '20px';
+            content.style.overflow = 'auto';
+
+            await getAllLotoPoints();
+            let items = allLotoPoints.map(e => ({
+                tagNumber: e.tagNumber,
+                description: e.description,
+                generalLocation: e.generalLocation,
+                specificLocation: e.specificLocation,
+                standard:e.standard,
+                id:e.id,
+                eqIds : e.equipmentIdList
+            }));
+        
+            let ignoreFields = ["id", "eqIds"];
+            let table = createTableWithFunctionFromObjects(items, ignoreFields,showPointOnPid);
+            content.appendChild(table)
+            let lastScrollTop = 0;
+            content.addEventListener('scroll', function() {
+                const scrollPosition = this.scrollTop + this.clientHeight;
+                const tableHeight = this.scrollHeight;
+                let currentScrollTop = this.scrollTop;
+        
+                if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
+                    tableDisplayControl(table, false);
+                } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
+                    tableDisplayControl(table, true);
+                }
+        
+                lastScrollTop = currentScrollTop;
+            });
+
+}
+
+function showPointOnPid(point){
+    console.log('showing point '+point.tagNumber)
 }
 

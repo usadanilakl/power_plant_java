@@ -63,7 +63,7 @@
             </div>
             <div id="right">
                 <div id="picture-container" class="view" data-file-id="">
-                    <img src="/uploads/jpg/PID/Kiewit/20023894-PD-021A.01.C2CR.01.01.jpg" usemap="#image_map" id="picture">
+                    <img src="" usemap="#image_map" id="picture">
                     <map name="image_map" id="map"></map>
                 </div>
             </div>
@@ -76,8 +76,8 @@
                         <li class="btn btn-outline-light" onclick="removeAllHighlights()">Remove Highlights</li>
                         <li class="btn btn-outline-light" onclick="highlightAll()">Highlight All</li>                      
                         <li class="btn btn-outline-light" onclick="highlightLotoPoints()">Highlight Loto Points</li>                     
-                        <li class="btn btn-outline-light" onclick="buildLoto()">Build Loto</li>
-                        <li class="btn btn-outline-light" onclick="buildLotoWithNewPoints()">Build Loto With New Points</li>
+                        <!-- <li class="btn btn-outline-light" onclick="buildLoto()">Build Loto</li> -->
+                        <li class="btn btn-outline-light" onclick="buildLotoWithNewPoints()">Build Loto</li>
                     </ul>
                 </div>
             </div>
@@ -114,6 +114,7 @@
     <script src="/functions/controllers/FileController.js"></script>
     <script src="/functions/controllers/PointController.js"></script>
     <script src="/functions/controllers/LotoController.js"></script>
+    <script src="/functions/controllers/LotoPointController.js"></script>
     <script src="/functions/controllers/TransferDataController.js"></script>
     <script src="/functions/controllers/ImageController.js"></script>
 
@@ -169,27 +170,29 @@
 
         
 
-        f = findFileByPartualNumber("20023894-PD-021A");
-        loadPictureWithLightFile(f);
+        // f = findFileByPartualNumber("20023894-PD-021A");
+        // loadPictureWithLightFile(f);
 
         getAllCategoryObjects();
         getAllCategories();
         // getAllTransferDataFromDb();
-        getRevisedExcelPoints();
-        getOldExcelPoints();
-        getHrsgValvesFromDb();
-        getKiewitValvesFromDb();
-        getBypassesFromDb();
+        // getRevisedExcelPoints();
+        // getOldExcelPoints();
+        // getHrsgValvesFromDb();
+        // getKiewitValvesFromDb();
+        // getBypassesFromDb();
 
         
         
  
         
-    }).then(()=>{
+    }).then(async ()=>{
         console.log(JSON.stringify(hrsgValves))
         // console.log(JSON.stringify(allTransferData))
         // console.log(JSON.stringify(allTransferData))
-       if(mode) setMode(mode); 
+        if(mode) setMode(mode);
+
+        await buildSearchTableWindow();
     })
 
     pictureContainer.addEventListener('mousedown',(event)=>{

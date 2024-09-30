@@ -213,6 +213,7 @@ function createRowsWithFunction(tbody,ignoreFields,action){
 
         rows.push(row);
     })
+    console.log("table is built " + filteredArray.length)
 }
 
 function filterObjects(key,value, objects){
@@ -223,6 +224,7 @@ function filterObjects(key,value, objects){
 }
 
 function muliFilter(objects,filters){
+    console.log(JSON.stringify(filters))
     return objects.filter(e=>{
         let match = true;
         for(let f of filters){
@@ -244,7 +246,7 @@ function setFilters(){
         let key = i.getAttribute('data-filter');
         let value = i.value;
         let filter = {key:key,value:value};
-        filters.push(filter);
+        if(value!=null && value.trim()!=="")filters.push(filter);
     })
 }
 
@@ -392,7 +394,7 @@ function isScrollbarAt50Percent(element) {
     const scrollPercentage = (scrollTop / (scrollHeight - clientHeight)) * 100;
     
     return Math.abs(scrollPercentage - 50) < 1;
-  }
+}
 
 
 

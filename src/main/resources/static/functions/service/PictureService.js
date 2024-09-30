@@ -30,9 +30,13 @@ function loadPictureWithFile(file){
 async function loadPictureWithLightFile(file){
     lightFile = {...file};
     picture.setAttribute('src','/'+file.fileLink);
+    let id = file.id;
     picture.onerror = async function() {
         console.log('Image not found. Running fallback function.');
-        await getPdfAndConvertToJpg(file.id);
+        let message = await getPdfAndConvertToJpg(file.id);
+        if(message.toLocaleLowerCase().includes('file not found')){
+            location.reload();
+        }
         picture.setAttribute('src','/'+file.fileLink)
     };
     picture.setAttribute('data-file-id', file.id);
@@ -43,11 +47,13 @@ async function loadPictureWithLightFile(file){
 function setAreas(areas){
     map.innerHTML = "";
     removeAllHighlights();
-    let n = 1;
+    let reference =areas[0] ? getOriginalPictureSizes(areas[0].originalPictureSize).w : null
+    oldWidth = reference ? reference : picture.naturalWidth;
 
     areas.forEach(e=>{
-        oldWidth = getOriginalPictureSizes(e.originalPictureSize).w;
+        let coord = matchAreaOriginalSizes(e,reference);
         let area = createAreaElement(e);
+        area.setAttribute('coords',coord);
         area.addEventListener('click',()=>{
             event.preventDefault();
             removeAllHighlights();
@@ -149,6 +155,17 @@ function resizeAreas(){
 
     //resizeHighlite();
     oldWidth = width; 
+}
+function matchAreaOriginalSizes(point,reference){
+    let areaWidth = getOriginalPictureSizes(point.originalPictureSize).w;
+    let coord = getAreaCoordinates(point.coordinates).split(",");
+    if(areaWidth!==reference){
+        let coefficient = reference/areaWidth;
+        for(let i = 0; i<coord.length; i++){
+            coord[i] = coord[i]*coefficient;
+        }
+    }
+    return coord.join(",");
 }
 function resizeHighlights(){
     

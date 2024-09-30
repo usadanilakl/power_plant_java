@@ -126,4 +126,19 @@ public class HtTransferServiceImpl implements HtTransferService {
         }
     }
 
+    @Override
+    public void updateEqList() {
+        List<HeatTrace> all = heatTraceService.getAll(); //get all heat trace
+        for (HeatTrace ht : all) {
+            List<Equipment> eqList = ht.getEquipmentList(); //get current eq list of current ht
+            eqList.forEach(eq->{
+                List<Equipment> byTagNumber = equipmentService.getByTagNumber(ht.getTagNumber().trim());
+                byTagNumber.forEach(e->{
+                    if(!eqList.contains(e)) eqList.add(e); //add missing eq to current ht
+                });
+            });
+            heatTraceService.save(ht);
+        }
+    }
+
 }
