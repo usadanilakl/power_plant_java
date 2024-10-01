@@ -17,7 +17,7 @@ html, #main, #loto-point-table{
             
         }
 
-        #loto-point-table {
+        #table {
             height: 85vh;
             overflow-y: auto;
         }
@@ -38,51 +38,64 @@ html, #main, #loto-point-table{
             
 
             <div class="row">
-                <div class="col-md-6" id="table-controls">
-                    <p id="table-title">Table contains LOTO Points that needs to be verified</p>
+                <div class="col-md-3" id="table-controls">
+                    <p id="file-table">Files</p>
                 </div>
                 <div class="col-md-3" id="table-controls">
-                    <button id="switch-table-content-button">Show All LOTO Points</button>
+                    <button id="equipment-table">Equipment</button>
                 </div>
-                <div class="col-md-3">
-                    <button id="to-excel-btn">Get Excel</button>
+                <div class="col-md-3" id="table-controls">
+                    <button id="loto-point-table">LOTO Points</button>
+                </div>
+                <div class="col-md-3" id="table-controls">
+                    <button id="heat-trace-table">Heat Trace</button>
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-md-12" id="loto-point-table">
+            <div class="row" id="all">
+                <div class="col-md-12" id="table">
+                    <div id="dragControl" style="position: absolute; right: 0; width: 20px; height: 60px; background: #ccc; cursor: ns-resize;"></div>
                     
         
                 </div>
             </div>
-            <button onclick="scrollBottomRowToTop()">Scroll</button>
+            <!-- <button onclick="scrollBottomRowToTop()">Scroll</button> -->
         </div>
 
     </div>
 
 <script>
     let token = document.getElementById('token').getAttribute('content');
-        let tableContainer = document.getElementById('loto-point-table');
-        let tableContentBtn = document.getElementById('switch-table-content-button');
-        let tableTitle = document.getElementById('table-title');
-        let toExcelBtn = document.getElementById('to-excel-btn')
-        let isUpdating = '';
+        let tableContainer = document.getElementById('table');
+        let filesButton = document.getElementById('file-table');
+        let equipmentButton = document.getElementById('equipment-table');
+        let lotoPointButton = document.getElementById('loto-point-table');
+        let heatTraceButton = document.getElementById('heat-trace-table');
+        const control = document.getElementById('dragControl');
 
 </script>
 
 <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
 <script src="/functions/util_functions/util.js"></script>
+<script src="/functions/util_functions/FormBuilder.js"></script>
+<script src="/functions/util_functions/FormUtil.js"></script>
 <script src="/functions/controllers/LotoPointController.js"></script>
 <script src="/functions/controllers/PointController.js"></script>
 <script src="/functions/controllers/FileController.js"></script>
+<script src="/functions/controllers/ValueController.js"></script>
 <script src="/functions/service/TableService.js"></script>
+<script src="/functions/service/PointService.js"></script>
+<script src="/functions/service/FileService.js"></script>
 <script src="/functions/service/ValueService.js"></script>
+<script src="/functions/service/NewWindowService.js"></script>
+<script src="/functions/service/ModeService.js"></script>
 <script src="/functions/service/bulk_edit/LotoPointVerification.js"></script>
 <script>
 
 isUpdating = getTimeStampFileName();
-
+modes.editMode.state = true;
 getActiveLotoPoints()
+.then(async ()=>getAllCategories())
 .then( async () => {
 
 
@@ -122,15 +135,18 @@ try {
 
         lastScrollTop = currentScrollTop;
     });
-
+    
+    initDragScroll(tableContainer, control);
     console.log('Scroll event listener added');
 } catch (error) {
     console.error('Error loading table data:', error);
 }
-await getAllLotoPoints();
+// await getAllLotoPoints();
+await getAllEqLightPoints();
+await getAllFiles()
 
-tableContentBtn.addEventListener('click',()=>toggleTableContent());
-toExcelBtn.addEventListener('click',async()=>allLotoPointsToExcel())
+equipmentButton.addEventListener('click',()=>buildEqTable(tableContainer))
+filesButton.addEventListener('click',()=>buildFileTable(tableContainer))
 })
 .then(()=>{
 

@@ -122,8 +122,8 @@ public class LotoPointRestController {
 
     @GetMapping("/get-active-points")
     public ResponseEntity<List<LotoPointDto>> getActiveLotoPoints(){
-        return ResponseEntity.ok(lotoPointService.getActiveNotVerifiedLotoPoints());
-//        return ResponseEntity.ok(lotoPointService.getActiveLotoPoints());
+//        return ResponseEntity.ok(lotoPointService.getActiveNotVerifiedLotoPoints());
+        return ResponseEntity.ok(lotoPointService.getActiveLotoPoints());
     }
 
     @GetMapping("/to-excel")

@@ -14,5 +14,6 @@ import java.util.Map;
 public interface LotoPointMergeService extends CrudService<LotoPoint, LotoPointDto, LotoPointRepo, LotoPointMapper> {
     Map<String, Object> copyPointFromOtherUnit(Long id);
     void generateGeneralLocationFromEquipment();
+    void setProcessedStatus();
 
 }

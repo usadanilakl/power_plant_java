@@ -7,4 +7,6 @@ public interface HtTransferService {
     void combineCircuits();
     void combineBreakers();
     void updateEqList();
+
+    void connectHtPanelsWithFiles();
 }

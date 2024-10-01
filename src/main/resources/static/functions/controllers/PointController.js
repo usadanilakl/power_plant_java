@@ -2,6 +2,7 @@ let revisedExcelPoints = [];
 let oldExcelPoints = [];
 let currentLotoPoints = [];
 let equipmentPoints = [];
+let equipmentLightPoints = [];
 
 let addLotoPointToEqUrl = '/points/add-loto-point/' //{eqId}/{pointOldId}
 let baseEqUrl = '/points/';
@@ -70,6 +71,13 @@ async function getAllEqPoints(){
     const resp = await fetch(baseEqApiUrl);
     const data = await resp.json();
     equipmentPoints = data;
+    return data;
+}
+
+async function getAllEqLightPoints(){
+    const resp = await fetch(baseEqApiUrl+'light');
+    const data = await resp.json();
+    equipmentLightPoints = data;
     return data;
 }
 

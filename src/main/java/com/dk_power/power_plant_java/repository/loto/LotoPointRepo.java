@@ -27,4 +27,6 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
 
     List<LotoPoint> findBySpecificLocationContaining(String tagNumber);
 
+    List<LotoPoint> findByTagNumberContaining(String tagNumber);
+
 }

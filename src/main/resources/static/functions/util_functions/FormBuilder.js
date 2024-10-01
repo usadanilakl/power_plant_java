@@ -37,7 +37,7 @@ async function setInputs(object){
         input.addEventListener("input",assignValue) //assing value back to object on input event
         input.addEventListener('click',pasteFromClipboard); //paste function 
 
-        if(modes.editMode.state) input.readOnly = false;
+        if(modes && modes.editMode.state) input.readOnly = false;
         else input.readOnly = true;
 
         if(hideFormFields(object, key)) input.parentElement.classList.add('hide'); //this hides all listed fields

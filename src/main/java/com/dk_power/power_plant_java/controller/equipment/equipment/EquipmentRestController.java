@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.equipment.equipment;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDtoLight;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.sevice.data_transfer.JsonWriterService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
@@ -19,6 +20,10 @@ public class EquipmentRestController {
     @GetMapping("/")
     public ResponseEntity<List<EquipmentDto>> getAllEquipment(){
         return ResponseEntity.ok(equipmentService.getAll().stream().map(e->equipmentService.getMapper().convertToDtoLight(e)).toList());
+    }
+    @GetMapping("/light")
+    public ResponseEntity<List<EquipmentDtoLight>> getAllEquipmentLight(){
+        return ResponseEntity.ok(equipmentService.getAllLight());
     }
     @GetMapping("/{id}")
     public ResponseEntity<EquipmentDto> getSingleEquipment(@PathVariable String id){

@@ -178,6 +178,52 @@ public class FileServiceImpl implements FileService {
 
         }
     }
+
+    @Override
+    public void updateMetadata(String folder, String type, String extension, String vendor,String system) {
+        String root = System.getProperty("user.dir").replaceAll("\\\\","/");
+        folder =root+"/" +folder+"/"+extension+"/"+type+"/"+vendor;
+        File[] listOfFiles = fileUploaderService.getListOfFiles(folder);
+        File excel = Arrays.stream(listOfFiles).filter(e->e.getName().contains(".xl")).findFirst().orElse(null);
+        List<Map<String, String>> metadata = null;
+        if(excel!=null)metadata = excelReaderService.readExcelFile(folder + "/" + excel.getName());
+
+        for (File file : listOfFiles) {
+            String fileNumber = null;
+            if (file.getName().contains(extension)) fileNumber = file.getName().substring(0, file.getName().indexOf(extension) - 1);
+            FileObject f = getFileByNumber(fileNumber);
+            if (f == null && file.getName().contains(extension)) {
+                f = new FileObject();
+                f.setBaseLink("uploads");
+                f.setExtension(extension);
+                f.setFileType(valueService.valueSetup("FileType", type));
+                f.setVendor(valueService.valueSetup("Vendor", vendor));
+                f.setFileNumber(fileNumber);
+                System.out.println(f.getFileNumber());
+                f.buildFileLink("jpg");
+                f.buildFolder();
+                f.setRelatedSystems(system);
+
+                if (metadata != null) {
+                    Map<String, String> details = metadata.stream().filter(e -> file.getName().contains(e.get("Document No."))).findFirst().orElse(null);
+                    if (details != null) {
+                        f.setName(details.get("Title"));
+                        f.setDocNum(details.get("VDN"));
+                    }
+                }
+
+                save(f);
+            } else if (f != null && file.getName().contains(extension) && metadata!=null) {
+                Map<String, String> details = metadata.stream().filter(e -> file.getName().contains(e.get("Document No."))).findFirst().orElse(null);
+                    if (details != null) {
+                        if(f.getName()==null)f.setName(details.get("Title"));
+                        if(f.getDocNum()==null)f.setDocNum(details.get("VDN"));
+                        save(f);
+                    }
+            }
+        }
+    }
+
     @Override
     public void createNewFile(FileDto file) {
         if(getFileByNumber(file.getFileNumber())==null){
@@ -311,6 +357,11 @@ public class FileServiceImpl implements FileService {
     public List<HtBreakerDto> getHtBrakersByPanelTag(String panelTag) {
         HtPanel byTagNumber = htPanelService.getByTagNumber(panelTag);
         return byTagNumber.getHtBreakers().stream().map(e->htBreakerService.convertToDto(e)).toList();
+    }
+
+    @Override
+    public List<FileObject> getIfRelatedSystemsContains(String system) {
+        return fileRepo.findByRelatedSystemsContaining(system);
     }
 
     public List<FileDto> getAllDtos(String ext) {

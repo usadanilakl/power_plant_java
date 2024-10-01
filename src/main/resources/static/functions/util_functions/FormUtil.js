@@ -252,9 +252,15 @@ let hiddenLotoPointFields = [
     'isolatedPosition'
 ]
 
+let hiddenFileFields = [
+    'id',
+    'objectType'
+]
+
 function hideFormFields(point, key){
     if(point.objectType === "Equipment" && hiddenEquipmentFields.includes(key)) return true;
     if(point.objectType === "LotoPoint" && hiddenLotoPointFields.includes(key)) return true;
+    if(point.objectType === "FileObject" && hiddenFileFields.includes(key)) return true;
     return false;
 }
 

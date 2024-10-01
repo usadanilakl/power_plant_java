@@ -3,10 +3,12 @@ package com.dk_power.power_plant_java.sevice.loto.loto_point;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
+import com.dk_power.power_plant_java.sevice.file.FileService;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
     private final LotoPointRepo lotoPointRepo;
     private final SessionFactory sessionFactory;
     private final LotoPointMapper lotoPointMapper;
+    private final FileService fileService;
     @Override
     public LotoPoint getEntity() {
         return new LotoPoint();
@@ -167,4 +170,17 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
 
         System.out.println("General Locations are set in "+n+" points");
     }
+
+    @Override
+    public void setProcessedStatus() {
+        List<LotoPoint> all = lotoPointRepo.findAll();
+        List<String> files = fileService.getIfRelatedSystemsContains("Breakers").stream().map(e->e.getRelatedSystems()).toList();
+        for (LotoPoint lp : all) {
+            if(lp.getEquipmentList()!=null && lp.getEquipmentList().size()>0) lp.setIsProcessed(true);
+            else if(lp.getTagNumber().toLowerCase().contains("hpl")) lp.setIsProcessed(true);
+            else if(lp.getTagNumber().toLowerCase().contains("hpl")) lp.setIsProcessed(true);
+
+        }
+    }
+
 }

@@ -141,4 +141,14 @@ public class HtTransferServiceImpl implements HtTransferService {
         }
     }
 
+    @Override
+    public void connectHtPanelsWithFiles() {
+        List<HtPanel> all = htPanelService.getAll();
+        all.forEach(p->{
+            List<FileObject> files = fileService.getIfNameContains(p.getTagNumber());
+            if(files.size()>0)p.setPanelSchedule(files.get(0));
+            htPanelService.save(p);
+        });
+    }
+
 }

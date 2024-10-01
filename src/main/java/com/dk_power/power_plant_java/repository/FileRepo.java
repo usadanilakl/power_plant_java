@@ -36,6 +36,9 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileObject> findBySystem(Value oldVal);
 
     List<FileObject> findByFileType(Value oldVal);
+
     List<FileObject> findByBulkEditStep(String step);
+
+    List<FileObject> findByRelatedSystemsContaining(String system);
 }
 

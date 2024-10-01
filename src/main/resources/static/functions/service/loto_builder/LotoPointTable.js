@@ -184,6 +184,10 @@ function createRowsWithFunction(tbody,ignoreFields,action){
                 td.textContent = el[key].name
             } 
             else td.textContent = el[key];
+            
+            if(el.eqIds){
+                // td.style.color = 'green';
+            } 
             row.appendChild(td);
         }
 
@@ -195,20 +199,19 @@ function createRowsWithFunction(tbody,ignoreFields,action){
             let editButton = document.createElement('button')
             crud.appendChild(editButton);
             editButton.classList.add('crudButton');
-            editButton.textContent = "Edit";
+            editButton.textContent = "View";
 
-            editButton.addEventListener('click',()=>action(el));
+            editButton.addEventListener('click',async ()=>await action(el));
 
             let submitButton = document.createElement('button')
             crud.appendChild(submitButton);
             submitButton.classList.add('crudButton');
-            submitButton.textContent = "Submit";
+            submitButton.textContent = "Add";
 
-            // submitButton.addEventListener('click',()=>{ //using this in verification table, need to redo
-            //     el.isUpdated = getTimeStampFileName();
-            //     updateNonNullFields(el);
-            //     row.classList.add('hide');
-            // });
+            submitButton.addEventListener('click',async ()=>{
+                selectedLotoPoints.push(el);
+                await fillSelectedPointsWindow();
+            });
         }        
 
         rows.push(row);
@@ -467,7 +470,6 @@ function initDragScroll(container, control) {
         requestAnimationFrame(animate);
     }
 }
-
 
 
 

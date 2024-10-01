@@ -70,7 +70,7 @@ async function buildLotoPointList(points){
 }
 
 async function buildSearchTableWindow(){
-    const currentWindow = document.querySelector('#loto-points-window');
+    const currentWindow = document.querySelector('#loto-points-table-window');
     if(currentWindow) all.removeChild(currentWindow);
     let allInfoWindow = getEmptyWindow('LOTO Points');
             allInfoWindow.style.width = 'fit-content';
@@ -80,9 +80,11 @@ async function buildSearchTableWindow(){
             allInfoWindow.style.maxWidth = '50%';
             allInfoWindow.id = 'loto-points-table-window';
 
+            document.getElementById('all').appendChild(allInfoWindow);
+            allInfoWindow.style.position = 'absolute';
             allInfoWindow.style.right = 0 + 'px';
             allInfoWindow.style.bottom = 0+ 'px';
-            document.getElementById('all').appendChild(allInfoWindow);
+
 
             let content = document.createElement('div');
             allInfoWindow.appendChild(content);
@@ -90,8 +92,9 @@ async function buildSearchTableWindow(){
             content.style.padding = '20px';
             content.style.overflow = 'auto';
 
-            await getAllLotoPoints();
-            let items = allLotoPoints.map(e => ({
+            // await getAllLotoPoints();
+            await getActiveLotoPoints();
+            let items = activeLotoPoints.map(e => ({
                 tagNumber: e.tagNumber,
                 description: e.description,
                 generalLocation: e.generalLocation,
@@ -121,7 +124,16 @@ async function buildSearchTableWindow(){
 
 }
 
-function showPointOnPid(point){
-    console.log('showing point '+point.tagNumber)
+async function showPointOnPid(point){
+    let eqId = point.eqIds[0];
+    let eq = await getPoint(eqId);
+    let file = await getFileByLink (eq.mainFile);
+    if(!fileWithPoints || fileWithPoints.id!==file.id) await loadPictureWithLightFile(file);
+    requestAnimationFrame(async () => {
+        selectedArea = eq;
+        highlightEq(eqId);
+        // await fillPointInfoWindow(eq);
+    }); 
+
 }
 

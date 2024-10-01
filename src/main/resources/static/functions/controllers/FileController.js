@@ -67,7 +67,21 @@ async function getAllFiles(){
 
 async function getFileFromDbByLink(link) {
     try {
-        const response = await fetch('/fileObjects/get-by-link/' + link);
+        const response = await fetch('/fileObjects/get-by-link/'+link);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        file = { ...data };
+        return data;
+    } catch (error) {
+        console.error('Error fetching file:', error);
+    }
+}
+
+async function getFileByLink(link) {
+    try {
+        const response = await fetch('/fileObjects/get-by-link',getPostMetaDataWithStringBody(link));
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -139,7 +153,13 @@ async function getHtPanels(){
         let i = {};
         i.value = e;
         i.getContent = async function(){return await getHtBreakers(e)};
-        i.dropdownFunc = async function(event){createDropdownItem(await this.getContent(), event.target.parentNode);}.bind(i);
+        i.dropdownFunc = async function(event){
+            createDropdownItem(await this.getContent(), event.target.parentNode);
+            console.log(e);
+            let panelSchedule;
+            fileRepository.forEach(f=>{if(f && f.name && f.name.includes(e))panelSchedule=f});
+            if(panelSchedule)await loadPictureWithLightFile(panelSchedule);
+        }.bind(i);
         heatTracePanels.push(i);
     })
     return data;

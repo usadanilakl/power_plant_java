@@ -158,6 +158,11 @@ public class LotoPointServiceImpl implements LotoPointService {
     }
 
     @Override
+    public List<LotoPoint> getIfTagNumberContains(String tagNumber) {
+        return lotoPointRepo.findByTagNumberContaining(tagNumber);
+    }
+
+    @Override
     public void refactor(Value old, Value _new) {
         String cat = old.getCategory().getAlias();
         for (LotoPoint f : getByValue(old)) {

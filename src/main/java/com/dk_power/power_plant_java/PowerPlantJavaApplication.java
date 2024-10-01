@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDtoLight;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.*;
@@ -106,6 +107,7 @@ private final FileUploaderService fileUploaderService;
 //        htTransferService.combineCircuits();
 //        htTransferService.combineBreakers();
 //        htTransferService.connectHtWithPids();
+//        htTransferService.connectHtPanelsWithFiles();
 //
 //        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Cleaver Brooks");
 //        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Extra");
@@ -113,7 +115,8 @@ private final FileUploaderService fileUploaderService;
 //        fileService.createFileObjectsFromFolder("uploads","PID","pdf","HOLTEC");
 //        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Mitsubishi");
 //        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads","HT Panel Schedule","pdf","Kiewit","Heat Trace");
-//
+//        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads","Electrical One and Three Line Diagram","pdf","Kiewit","Electrical");
+
 //
 //        fileService.addDocNumToPIDs();
 
@@ -125,13 +128,13 @@ private final FileUploaderService fileUploaderService;
 
 //        List<HtPanel> htPanels = htPanelService.getAll();
 //        for (HtPanel p : htPanels) {
-//            List<LotoPoint> points = lotoPointService.getIfLocationContains(p.getTagNumber());
+//            List<LotoPoint> points = lotoPointService.getIfTagNumberContains(p.getTagNumber());
 //            System.out.println(points.size() + " in " + p.getTagNumber());
 //        }
 
 
 
-//        lotoPointMergeService.generateGeneralLocationFromEquipment();+
+//        lotoPointMergeService.generateGeneralLocationFromEquipment();
 
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");

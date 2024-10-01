@@ -35,6 +35,7 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     void createFileObjectsFromFolder(String path, String type, String extension, String vendor,String system);
     void createObjectsFromDirectoryUsingMetaDataExcel(String path, String type, String extension, String vendor,String system);
     void addDocNumToPIDs();
+    void updateMetadata(String folder, String type, String extension, String vendor,String system);
     void createNewFile(FileDto file);
     void updateFile(FileDto file);
 
@@ -52,4 +53,6 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List<String> getElPanels();
 
     List<HtBreakerDto> getHtBrakersByPanelTag(String panelTag);
+
+    List<FileObject> getIfRelatedSystemsContains(String system);
 }

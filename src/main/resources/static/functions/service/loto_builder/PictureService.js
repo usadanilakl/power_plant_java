@@ -190,10 +190,16 @@ function createHighlight(area){
 
     highlight.addEventListener('mousedown',(event)=>{
         event.preventDefault();
-        relocateHighlightsWithPicture(event); 
+        relocateHighlightsWithPicture(event);
         
         // updatePointInfo(event);
     })
+
+    async function addLotoPoints(){
+        let e = fileWithPoints.points.filter(i=>i.id+"" === area.getAttribute('data-point-id'));
+        selectedArea.lotoPoints.forEach(lp=>selectedLotoPoints.push(lp));
+        await fillSelectedPointsWindow();
+    }
 
     const zoom = zoomPicture.bind(null,picture);
     highlight.addEventListener('wheel',zoom);
@@ -202,7 +208,7 @@ function createHighlight(area){
     highlight.addEventListener('click',dClick);
     setTimeout(()=>{
         highlight.removeEventListener('click',dClick);
-        dbClick(highlight,()=>console.log("highlight one click"), ()=>console.log("highlight db click"));
+        dbClick(highlight,async ()=>await addLotoPoints(), ()=>console.log("highlight db click"));
     },300)
 
     

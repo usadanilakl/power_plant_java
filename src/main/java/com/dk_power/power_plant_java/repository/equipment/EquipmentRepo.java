@@ -1,5 +1,7 @@
 package com.dk_power.power_plant_java.repository.equipment;
 
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDtoLight;
+import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
@@ -9,6 +11,23 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface EquipmentRepo extends BaseRepository<Equipment> {
+//    @Query("SELECT new com.dk_power.power_plant_java.dto.equipment.EquipmentDtoLight(e.id,e.tagNumber,e.description,e.specificLocation,e.eqType.name,e.vendor.name, e.location.name,e.system.name)FROM Equipment e")
+//    List<EquipmentDtoLight> getAllLight();
+@Query("SELECT new com.dk_power.power_plant_java.dto.equipment.EquipmentDtoLight(" +
+        "e.id, " +
+        "e.tagNumber, " +
+        "e.description, " +
+        "e.specificLocation, " +
+        "et.name, " +
+        "v.name, " +
+        "l.name, " +
+        "s.name) " +
+        "FROM Equipment e " +
+        "LEFT JOIN e.eqType et " +
+        "LEFT JOIN e.vendor v " +
+        "LEFT JOIN e.location l " +
+        "LEFT JOIN e.system s")
+List<EquipmentDtoLight> getAllLight();
     List<Equipment> findByTagNumber(String lable);
     List<Equipment> findByTagNumberContaining(String lable);
 
