@@ -64,6 +64,7 @@ public class LotoPointMapper implements BaseMapper{
 //        if(entity.getLotos()!=null) dto.setLotos(entity.getLotos().stream().map(lotoMapper::convertToDto).toList());
         if (entity.getOldId() != null) dto.setOldId(entity.getOldId());
         if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
+        if(entity.getFileIds()!=null) dto.setFileIds(entity.getFileIds());
         return dto;
     }
 
@@ -99,6 +100,7 @@ public class LotoPointMapper implements BaseMapper{
 //        if(dto.getLotos()!=null) entity.setLotos(dto.getLotos().stream().map(lotoMapper::convertToEntity).toList());
         if (dto.getOldId() != null) entity.setOldId(dto.getOldId());
         if (dto.getIsUpdated() != null) entity.setIsUpdated(dto.getIsUpdated());
+        if(dto.getFileIds()!=null) entity.setFileIds(dto.getFileIds());
         return entity;
     }
 

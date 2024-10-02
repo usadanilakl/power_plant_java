@@ -180,7 +180,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public void updateMetadata(String folder, String type, String extension, String vendor,String system) {
+    public void updateMetadata(String folder, String type, String extension, String vendor,String system,boolean forceUpdate) {
         String root = System.getProperty("user.dir").replaceAll("\\\\","/");
         folder =root+"/" +folder+"/"+extension+"/"+type+"/"+vendor;
         File[] listOfFiles = fileUploaderService.getListOfFiles(folder);
@@ -216,8 +216,9 @@ public class FileServiceImpl implements FileService {
             } else if (f != null && file.getName().contains(extension) && metadata!=null) {
                 Map<String, String> details = metadata.stream().filter(e -> file.getName().contains(e.get("Document No."))).findFirst().orElse(null);
                     if (details != null) {
-                        if(f.getName()==null)f.setName(details.get("Title"));
-                        if(f.getDocNum()==null)f.setDocNum(details.get("VDN"));
+                        if(f.getName()==null) f.setName(details.get("Title"));
+                        if(forceUpdate) f.setName(details.get("Title"));
+                        if(f.getDocNum()==null) f.setDocNum(details.get("VDN"));
                         save(f);
                     }
             }

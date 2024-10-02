@@ -140,6 +140,7 @@ function buildOptions(id, items) {
 
 function buildCategoryOptions(id, items) {
     let dropdownContent = document.createElement('div');
+    dropdownContent.style.zIndex = '3000';
     dropdownContent.classList.add('searchable-dropdown-content');
     dropdownContent.id = `${id}-options`;
     items.forEach(e => {

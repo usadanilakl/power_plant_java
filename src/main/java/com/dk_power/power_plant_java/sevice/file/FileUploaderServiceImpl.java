@@ -178,6 +178,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 for (int i = 0; i < numberOfPages; ++i) {
                     BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 300); //216
                     ImageIO.write(bim, "jpg", new File(destinationDir));
+                    break; //for now just converting first page;
                 }
 
                 document.close();

@@ -2,12 +2,16 @@ package com.dk_power.power_plant_java.sevice.loto.loto_point;
 
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.equipment.ElectricalPanel;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.equipment.HtPanel;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
+import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
+import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -23,6 +27,9 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
     private final SessionFactory sessionFactory;
     private final LotoPointMapper lotoPointMapper;
     private final FileService fileService;
+    private final LotoPointService lotoPointService;
+    private final HtPanelService htPanelService;
+    private final ElectricalPanelService electricalPanelService;
     @Override
     public LotoPoint getEntity() {
         return new LotoPoint();
@@ -174,13 +181,47 @@ public class LotoPointMergeServiceImpl implements LotoPointMergeService{
     @Override
     public void setProcessedStatus() {
         List<LotoPoint> all = lotoPointRepo.findAll();
-        List<String> files = fileService.getIfRelatedSystemsContains("Breakers").stream().map(e->e.getRelatedSystems()).toList();
         for (LotoPoint lp : all) {
             if(lp.getEquipmentList()!=null && lp.getEquipmentList().size()>0) lp.setIsProcessed(true);
             else if(lp.getTagNumber().toLowerCase().contains("hpl")) lp.setIsProcessed(true);
-            else if(lp.getTagNumber().toLowerCase().contains("hpl")) lp.setIsProcessed(true);
+            else if(lp.getFileIds()!=null && !lp.getFileIds().trim().equalsIgnoreCase("")) lp.setIsProcessed(true);
+        }
+    }
+
+    @Override
+    public void connectBreakerLotoPointsToFiles() {
+        List<ElectricalPanel> allPanels = electricalPanelService.getAll();
+        for (ElectricalPanel p : allPanels) {
+            List<LotoPoint> points = lotoPointService.getIfLocationContains(p.getTagNumber());
+            List<FileObject> files = fileService.getIfNameContains(p.getTagNumber());
+            String ids = files.stream().map(f -> f.getId()).toList().toString().replace("[", "").replace("]", "").replaceAll(" ","");
+            if(ids!=null && !ids.equalsIgnoreCase("") && ids.length()<254 && points!=null && points.size()>0){
+                points.forEach(lp->{
+                    if(lp.getFileIds()!=null && !lp.getFileIds().contains(ids))lp.setFileIds(lp.getFileIds()+","+ids);
+                    else if(lp.getFileIds()==null) lp.setFileIds(ids);
+                    lotoPointService.save(lp);
+                    if(ids.length()>50) System.out.println(lp.getSpecificLocation() + ", "+lp.getTagNumber());
+                });
+                System.out.println(ids);
+            }
+        }
+
+        List<HtPanel> htPanels = htPanelService.getAll();
+        for (HtPanel p : htPanels) {
+            List<LotoPoint> points = lotoPointService.getIfTagNumberContains(p.getTagNumber());
+            List<FileObject> files = fileService.getIfNameContains(p.getTagNumber());
+            String ids = files.stream().map(f -> f.getId()).toList().toString().replace("[", "").replace("]", "");
+            if(ids!=null && !ids.equalsIgnoreCase("") && points!=null && points.size()>0){
+                points.forEach(lp->{
+                    if(lp.getFileIds()!=null && !lp.getFileIds().contains(ids))lp.setFileIds(lp.getFileIds()+","+ids);
+                    else if(lp.getFileIds()==null) lp.setFileIds(ids);
+                    lotoPointService.save(lp);
+                });
+                System.out.println(ids);
+            }
 
         }
     }
+
 
 }

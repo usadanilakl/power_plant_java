@@ -17,10 +17,21 @@ async function fileFormSetup(){
    popups.push(fileFormSetup)
 }
 
+async function fileFormSetup2(file){
+   const popup = await getFormPopUp();
+   const fileForm = await buildFormForEachField(file,async()=>submitFile(file),null);
+   document.body.appendChild(popup);
+   popup.querySelector('#insert-html').appendChild(fileForm);
+   let myModal = new bootstrap.Modal(document.getElementById('formModal'), {});
+   myModal.show();
+   // popups.push(fileFormSetup)
+}
+
 function buildFileTable(tableContainer){
+   tableContainer.style.zIndex='2'
    tableContainer.innerHTML="";
    let ignoreFields = ["id"];
-   let table = createTableWithFunctionFromObjects(fileRepository, ignoreFields,buildFileEditForm);
+   let table = createTableWithFunctionFromObjects(fileRepository, ignoreFields,fileFormSetup2);
    
    tableContainer.appendChild(table);
 
@@ -42,26 +53,39 @@ function buildFileTable(tableContainer){
 
 async function buildFileEditForm(file){
    const fileForm = await buildFormForEachField(file,async()=>submitFile(file),null);
-   const currentWindow = document.querySelector('#file-edit-window');
-   if(currentWindow) all.removeChild(currentWindow);
-   let allInfoWindow = getEmptyWindow('Edit File');
-         allInfoWindow.style.width = 'fit-content';
-         allInfoWindow.style.height = 'fit-content';
-         allInfoWindow.style.minWidth = '30%';
-         allInfoWindow.style.maxHeight = '90%';
-         allInfoWindow.style.maxWidth = '50%';
-         allInfoWindow.id = 'file-edit-window';
+   const popup = document.querySelector('#popup');
+   const currentWindow = document.querySelector('#popup-insert');
+   // if(currentWindow) all.removeChild(currentWindow);
+   // let allInfoWindow = getEmptyWindow('Edit File');
+   // document.getElementById('all').appendChild(allInfoWindow);
+   // allInfoWindow.style.position = 'fixed';
+   // allInfoWindow.style.zIndex = '2000';
+   //       allInfoWindow.style.width = 'fit-content';
+   //       allInfoWindow.style.height = 'fit-content';
+   //       allInfoWindow.style.minWidth = '30%';
+   //       allInfoWindow.style.maxHeight = '90%';
+   //       allInfoWindow.style.maxWidth = '50%';
+   //       allInfoWindow.id = 'file-edit-window';
 
-         allInfoWindow.style.right = 0 + 'px';
-         allInfoWindow.style.bottom = 0+ 'px';
-         document.getElementById('all').appendChild(allInfoWindow);
+   //       allInfoWindow.style.right = 0 + 'px';
+   //       // allInfoWindow.style.bottom = 0+ 'px';
 
          let content = document.createElement('div');
-         allInfoWindow.appendChild(content);
+         currentWindow.appendChild(content);
          content.style.position = 'relative';
          content.style.padding = '20px';
          content.style.overflow = 'auto';
          content.appendChild(fileForm);
+
+         showPopup();
+}
+
+function showPopup() {
+   document.getElementById('popup').style.display = 'block';
+}
+
+function closePopup() {
+   document.getElementById('popup').style.display = 'none';
 }
 
 function editFile(file){

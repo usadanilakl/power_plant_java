@@ -15,5 +15,6 @@ public interface LotoPointMergeService extends CrudService<LotoPoint, LotoPointD
     Map<String, Object> copyPointFromOtherUnit(Long id);
     void generateGeneralLocationFromEquipment();
     void setProcessedStatus();
+    void connectBreakerLotoPointsToFiles();
 
 }

@@ -201,7 +201,7 @@ function createRowsWithFunction(tbody,ignoreFields,action){
             editButton.classList.add('crudButton');
             editButton.textContent = "View";
 
-            editButton.addEventListener('click',async ()=>await action(el));
+            editButton.addEventListener('click',async ()=>await action(el,editButton));
 
             let submitButton = document.createElement('button')
             crud.appendChild(submitButton);

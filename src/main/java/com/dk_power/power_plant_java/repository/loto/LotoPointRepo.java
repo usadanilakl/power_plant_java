@@ -29,4 +29,6 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
 
     List<LotoPoint> findByTagNumberContaining(String tagNumber);
 
+    List<LotoPoint> findByIsProcessed(boolean isProcessed);
+
 }

@@ -140,7 +140,7 @@ public class LotoPointServiceImpl implements LotoPointService {
 
     @Override
     public List<LotoPointDto> getActiveLotoPoints() {
-        return lotoPointRepo.findByEquipmentListNotNull().stream().map(this::convertToDto).toList();
+        return lotoPointRepo.findByIsProcessed(true).stream().map(this::convertToDto).toList();
     }
     @Override
     public List<LotoPointDto> getActiveNotVerifiedLotoPoints() {

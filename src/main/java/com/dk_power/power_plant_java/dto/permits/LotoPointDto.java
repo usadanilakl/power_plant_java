@@ -40,5 +40,6 @@ public class LotoPointDto extends BaseDto {
     private String oldId;
     private String objectType;
     private Long isUpdated;
+    private String fileIds ;
 
 }

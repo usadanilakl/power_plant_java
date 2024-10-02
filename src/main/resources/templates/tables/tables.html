@@ -9,9 +9,10 @@
     <link rel="stylesheet" href="/my_styles/util.css">
     <link rel="stylesheet" href="/my_styles/home.css">
     <link rel="stylesheet" href="/my_styles/glow-buttons.css">
+    <link rel="stylesheet" href="/my_styles/searchable-dropdown.css">
     <style>
 
-html, #main, #loto-point-table{
+html, #all, #loto-point-table{
             width: 100%;
             height: 100%;
             
@@ -27,12 +28,45 @@ html, #main, #loto-point-table{
             font-size: large;
         }
 
+.popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.479);
+    z-index: 1000;
+}
+
+.popup-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgb(75, 73, 73);
+    padding: 20px;
+    border-radius: 5px;
+    /* text-align: center; */
+    overflow: scroll;
+    max-height: 85%;
+}
+
     </style>
 </head>
 <body>
 
-    <div id="main">
+    <div id="all">
         <div th:replace="~{partials/index::header}"></div>
+
+            <!-- Add this new div for the pop-up -->
+    <div id="popup" class="popup">
+        <div class="popup-content">
+            <h2>Edit File</h2>
+            <div id="popup-insert"></div>
+            <button onclick="closePopup()">Close</button>
+        </div>
+    </div>
 
         <div class="container-fluid">
             
@@ -52,7 +86,7 @@ html, #main, #loto-point-table{
                 </div>
             </div>
 
-            <div class="row" id="all">
+            <div class="row">
                 <div class="col-md-12" id="table">
                     <div id="dragControl" style="position: absolute; right: 0; width: 20px; height: 60px; background: #ccc; cursor: ns-resize;"></div>
                     
@@ -66,12 +100,12 @@ html, #main, #loto-point-table{
 
 <script>
     let token = document.getElementById('token').getAttribute('content');
-        let tableContainer = document.getElementById('table');
-        let filesButton = document.getElementById('file-table');
-        let equipmentButton = document.getElementById('equipment-table');
-        let lotoPointButton = document.getElementById('loto-point-table');
-        let heatTraceButton = document.getElementById('heat-trace-table');
-        const control = document.getElementById('dragControl');
+    let tableContainer = document.getElementById('table');
+    let filesButton = document.getElementById('file-table');
+    let equipmentButton = document.getElementById('equipment-table');
+    let lotoPointButton = document.getElementById('loto-point-table');
+    let heatTraceButton = document.getElementById('heat-trace-table');
+    const control = document.getElementById('dragControl');
 
 </script>
 
@@ -79,10 +113,14 @@ html, #main, #loto-point-table{
 <script src="/functions/util_functions/util.js"></script>
 <script src="/functions/util_functions/FormBuilder.js"></script>
 <script src="/functions/util_functions/FormUtil.js"></script>
+<script src="/functions/util_functions/SearchableDropdown.js"></script>
+
 <script src="/functions/controllers/LotoPointController.js"></script>
 <script src="/functions/controllers/PointController.js"></script>
 <script src="/functions/controllers/FileController.js"></script>
 <script src="/functions/controllers/ValueController.js"></script>
+<script src="/functions/controllers/PopupController.js"></script>
+
 <script src="/functions/service/TableService.js"></script>
 <script src="/functions/service/PointService.js"></script>
 <script src="/functions/service/FileService.js"></script>

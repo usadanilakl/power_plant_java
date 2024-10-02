@@ -14,6 +14,7 @@ import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
+import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.DataDistributionService;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.TransferExcecutionServiceImpl;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.*;
@@ -36,9 +37,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 @SpringBootApplication
@@ -76,6 +75,7 @@ private final ElectricalPanelTransferService electricalPanelTransferService;
 private final HtTransferService htTransferService;
 private final HeatTraceRepo heatTraceRepo;
 private final FileUploaderService fileUploaderService;
+private final ExcelReaderService excelReaderService;
 
 
     public static void main(String[] args) {
@@ -93,6 +93,11 @@ private final FileUploaderService fileUploaderService;
 
         System.err.println("=====================================================");
 
+//        fileService.getAll().forEach(e->{
+//            if(e.getFileType().getId().equals(42954L) && e.getName()==null) e.setName(e.getFileNumber() + " - Picture");
+//            fileService.save(e);
+//        });
+
 
 //        htTransferService.connectInstrumentsWithPids();
 
@@ -102,6 +107,7 @@ private final FileUploaderService fileUploaderService;
 //        electricalPanelTransferService.createElectricalPanelFileObjectsFromExcelList();
 //        electricalPanelTransferService.createFileObjectsForPanelPictures();
 //        electricalPanelTransferService.connectPanelsFilesWithPanelObjects();
+//        electricalPanelService.createPanelsFromExcelMetadata();
 
 //        htTransferService.connectHtWithIsoFiles();
 //        htTransferService.combineCircuits();
@@ -116,68 +122,18 @@ private final FileUploaderService fileUploaderService;
 //        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Mitsubishi");
 //        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads","HT Panel Schedule","pdf","Kiewit","Heat Trace");
 //        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads","Electrical One and Three Line Diagram","pdf","Kiewit","Electrical");
-
-//
+//        fileService.updateMetadata("uploads","Electrical One and Three Line Diagram","pdf","Kiewit","Electrical",true);
 //        fileService.addDocNumToPIDs();
-
-//        List<ElectricalPanel> allPanels = electricalPanelService.getAll();
-//        for (ElectricalPanel p : allPanels) {
-//            List<LotoPoint> points = lotoPointService.getIfLocationContains(p.getTagNumber());
-//            System.out.println(points.size() + " in " + p.getTagNumber());
-//        }
-
-//        List<HtPanel> htPanels = htPanelService.getAll();
-//        for (HtPanel p : htPanels) {
-//            List<LotoPoint> points = lotoPointService.getIfTagNumberContains(p.getTagNumber());
-//            System.out.println(points.size() + " in " + p.getTagNumber());
-//        }
-
 
 
 //        lotoPointMergeService.generateGeneralLocationFromEquipment();
+//        lotoPointMergeService.connectBreakerLotoPointsToFiles();
+//        lotoPointMergeService.setProcessedStatus();
 
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
-//        fileService.copyFromAnotherUnit("5260", "5367");
 
-//
-
-
-        FileObject entityById = fileService.getEntityById(5256l);
-//        entityById.buildFileLink("jpg");
-//        fileService.save(entityById);
-
-//        equipmentService.getAll().forEach(highlightService::transferEqToHighlights);
-//        equipmentService.getAll().forEach(e->{
-//            if(e.getCoordinates().contains("undefined"))e.setCoordinates(e.getCoordinates().replace("undefined",""));
-//            if(e.getMainFile()==null) equipmentService.hardDelete(e);// System.out.println(e.getTagNumber());
-//            equipmentService.save(e);
-//
-//        });
-//        System.out.println("equipmentService.getAll().size() = " + equipmentService.getAll().size());
-//        System.out.println("highlightService.getAll().size() = " + highlightService.getAll().size());
-//        System.out.println("Completed");
-////        equipmentService.hardDelete(equipmentService.getEntityById(26399L));
-//
-//        List<String> duplicateTagNumbers = equipmentRepo.findDuplicateTagNumbers();
-//        List<String> uniqueTagNumbers = equipmentRepo.findUniqueTagNumbers();
-//        System.out.println("duplicateTagNumbers.size() = " + duplicateTagNumbers.size());
-//        System.out.println("uniqueTagNumbers.size() = " + uniqueTagNumbers.size());
-
-//        duplicateTagNumbers.forEach(System.out::println);
-//        int n = 0;
-//        for(String e : duplicateTagNumbers){
-//
-//            try{
-//                equipmentService.combineDuplicates(e);
-//                System.out.println("++++++++++++++++++++++++++++++++++++++++++++++++++++");
-//            }catch (NullPointerException ex){
-//                n++;
-//            }
-//
-//        }
-//        System.out.println(n);
 
 
 /******************************************************************************************************************************************

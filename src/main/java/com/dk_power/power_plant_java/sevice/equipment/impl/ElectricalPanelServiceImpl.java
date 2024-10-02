@@ -5,10 +5,17 @@ import com.dk_power.power_plant_java.entities.equipment.ElectricalPanel;
 import com.dk_power.power_plant_java.entities.equipment.HtPanel;
 import com.dk_power.power_plant_java.mappers.equipment.ElectricalPanelMapper;
 import com.dk_power.power_plant_java.repository.equipment.ElectricalPanelRepo;
+import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
 import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import org.hibernate.SessionFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -16,11 +23,13 @@ public class ElectricalPanelServiceImpl implements ElectricalPanelService {
     private final ElectricalPanelMapper electricalPanelMapper;
     private final ElectricalPanelRepo electricalPanelRepo;
     private final SessionFactory sessionFactory;
+    private final ExcelReaderService excelReaderService;
 
-    public ElectricalPanelServiceImpl(ElectricalPanelMapper electricalPanelMapper, ElectricalPanelRepo electricalPanelRepo, SessionFactory sessionFactory) {
+    public ElectricalPanelServiceImpl(ElectricalPanelMapper electricalPanelMapper, ElectricalPanelRepo electricalPanelRepo, SessionFactory sessionFactory, @Lazy ExcelReaderService excelReaderService) {
         this.electricalPanelMapper = electricalPanelMapper;
         this.electricalPanelRepo = electricalPanelRepo;
         this.sessionFactory = sessionFactory;
+        this.excelReaderService = excelReaderService;
     }
 
     @Override
@@ -143,6 +152,25 @@ public class ElectricalPanelServiceImpl implements ElectricalPanelService {
             p.setTagNumber(s);
             save(p);
         }
+    }
+
+    @Override
+    public void createPanelsFromExcelMetadata() {
+        List<Map<String, String>> data = excelReaderService.readExcelFile("uploads/pdf/Electrical One and Three Line Diagram/Kiewit/metadata.xlsx");
+        Set<String> tags = new HashSet<>();
+        for (Map<String, String> d : data) {
+            String s = d.get("tagNumber").trim();
+            if(s!="") tags.add(s);
+        }
+
+        tags.forEach(t->{
+            ElectricalPanel panel = getByTagNumber(t);
+            if(panel==null){
+                ElectricalPanel ep = new ElectricalPanel();
+                ep.setTagNumber(t);
+                save(ep);
+            }
+        });
     }
 
     @Override

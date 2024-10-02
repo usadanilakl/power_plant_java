@@ -14,3 +14,12 @@
     flex-direction: column;
 }
 
+#items{
+    /* position: relative;
+    bottom:10vh;
+    max-height: 90vh; */
+    height: 90vh;
+    overflow: scroll;
+    padding-bottom: 10vh;
+}
+
