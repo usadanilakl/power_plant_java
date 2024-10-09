@@ -261,7 +261,7 @@
         // positionInfoWindowsInline();
 
         console.log(JSON.stringify(incompletePid[0]))
-        incompletePid = incompletePid.filter(e=>e.fileType.name === 'PID');
+        incompletePid = incompletePid.filter(e=>e.fileType.name === 'PID' ||(e.name && e.name.toLowerCase().includes("overview")) );
         incompletePid.sort((a,b)=>a.vendor.name.localeCompare(b.vendor.name));
         //setEditMode(incompletePid[0].bulkEditStep); //it is in loadPictureWithLightFile now
         await getAllCategoryObjects();
@@ -286,9 +286,10 @@
         item.classList.add('hide');
         
     }).then(async ()=>{
-        completedPid = completedPid.filter(e=>e.vendor.name==="Kiewit" || e.vendor.name === "John Cockerill");
+        // completedPid = completedPid.filter(e=>e.vendor.name==="Kiewit" || e.vendor.name === "John Cockerill");
        if(mode) setMode(mode);
        copyPointsButton.addEventListener('click', async ()=>{
+    
         let docNum = copyPointsSource.value.trim();
         let id = await getFileIdByDocNum(docNum);
         await loadPictureWithCopiedPoints(id);

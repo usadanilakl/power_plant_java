@@ -22,8 +22,51 @@ async function fillSelectedPointsWindow(){
             // content.style.top = '20px';
             content.style.padding = '20px';
 
+            content.appendChild(clearListButton());
+            content.appendChild(switchToOtherUnitButton());
             content.appendChild(await buildLotoPointList(selectedLotoPoints))
 
+}
+
+function switchToOtherUnitButton(){
+    let button1 = document.createElement('button');
+    button1.textContent = "Switch to U1";
+    let button2 = document.createElement('button');
+    button2.textContent = "Switch to U2";
+
+    button1.style.color = 'blue';
+    button2.style.color = 'blue';
+
+    button1.addEventListener('click',async ()=>{
+        let tags = selectedLotoPoints.map(e=>e.tagNumber);
+        selectedLotoPoints = await getPointsByTagForUnit('01',tags);
+        await fillSelectedPointsWindow();
+    });
+
+    button2.addEventListener('click',async ()=>{
+        let tags = selectedLotoPoints.map(e=>e.tagNumber);
+        selectedLotoPoints = await getPointsByTagForUnit('02',tags);
+        await fillSelectedPointsWindow();
+    });
+
+    let container = document.createElement('div');
+    container.appendChild(button1);
+    container.appendChild(button2);
+    container.style.display = 'flex';
+    container.style.flexDirection = 'row';
+
+    return container;
+}
+
+function clearListButton(){
+    let button = document.createElement('button');
+    button.textContent = "Clear All";
+    button.addEventListener('click',async ()=>{
+        selectedLotoPoints = [];
+        await fillSelectedPointsWindow();
+    })
+    button.style.color = 'red';
+    return button;
 }
         
 async function buildLotoPointList(points){
@@ -69,22 +112,27 @@ async function buildLotoPointList(points){
     return list;
 }
 
+
+/**************************************************************
+Build Table
+**************************************************************/
+
 async function buildSearchTableWindow(){
     const currentWindow = document.querySelector('#loto-points-table-window');
     if(currentWindow) all.removeChild(currentWindow);
     let allInfoWindow = getEmptyWindow('LOTO Points');
     document.getElementById('all').appendChild(allInfoWindow);
             allInfoWindow.style.width = 'fit-content';
-            allInfoWindow.style.height = 'fit-content';
-            allInfoWindow.style.minWidth = '30%';
+            allInfoWindow.style.height = '20vh';
+            allInfoWindow.style.minWidth = '20%';
             allInfoWindow.style.maxHeight = '90%';
-            allInfoWindow.style.maxWidth = '50%';
+            allInfoWindow.style.maxWidth = '90%';
             allInfoWindow.id = 'loto-points-table-window';
 
             
             allInfoWindow.style.position = 'absolute';
             allInfoWindow.style.right = 0 + 'px';
-            allInfoWindow.style.bottom = 0+ 'px';
+            allInfoWindow.style.top = 0+ 'px';
 
 
             let content = document.createElement('div');
@@ -106,8 +154,8 @@ async function buildSearchTableWindow(){
                 fileIds:e.fileIds
             }));
         
-            let ignoreFields = ["id", "eqIds"];
-            let table = createTableWithFunctionFromObjects(items, ignoreFields,showPointOnPid);
+            let ignoreFields = ["id", "eqIds","fileIds"];
+            let table = await createTableWithFunctionFromObjects(items, ignoreFields,showPointOnPid);
             content.appendChild(table)
             let lastScrollTop = 0;
             content.addEventListener('scroll', function() {
@@ -182,6 +230,8 @@ function showFileDropdown(files,element){
     })
 
     options.style.position = 'fixed';
+    options.style.display = 'flex';
+    options.style.flexDirection = 'column';
     // options.style.top = `${elemRect.bottom}px`;
     // options.style.right = `${elemRect.left}px`;
     options.style.top = '50%';

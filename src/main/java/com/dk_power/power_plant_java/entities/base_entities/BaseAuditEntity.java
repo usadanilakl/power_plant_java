@@ -12,6 +12,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @MappedSuperclass
 @Getter
@@ -46,5 +47,10 @@ public class BaseAuditEntity extends BaseIdEntity {
         BaseAuditEntity otherEntity = (BaseAuditEntity) obj;
         if(getId()!=null)return getId().equals(otherEntity.getId());
         else return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId());
     }
 }

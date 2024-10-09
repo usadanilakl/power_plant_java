@@ -55,4 +55,6 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List<HtBreakerDto> getHtBrakersByPanelTag(String panelTag);
 
     List<FileObject> getIfRelatedSystemsContains(String system);
+
+    void updateFileRelatedSystems();
 }

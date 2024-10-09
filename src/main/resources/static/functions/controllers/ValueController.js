@@ -1,3 +1,5 @@
+let baseValueUrl = '/values/'
+
 let postNoBody = {
     method: 'POST',
     headers: {
@@ -34,6 +36,7 @@ const getRefractorPopupUrl = "/cat/refractor-popup"
 let categoryObjects = [];
 let allAliases = [];
 let valuesByCategory = {};
+let allValues = [];
 
 async function getValuesOfCategoryAlias(e){
     const resp = await fetch('/category/get-'+ e);
@@ -171,4 +174,11 @@ async function getAllValuesOfEachCategory(){
     for(let a of allAliases){
         valuesByCategory[a] = await getValuesOfCategoryAlias(a);
     }
+}
+
+async function getAllValues(){
+    const resp = await fetch(baseValueUrl);
+    const data = await resp.json();
+    allValues = data;
+    return data;
 }

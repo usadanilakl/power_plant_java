@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
     <meta id="mode" th:content="${mode}"/>
+    <meta id="fileId" th:content="${fileId}"/>
     <title>My Main Layout</title>
 
     <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
@@ -160,6 +161,7 @@
         let all = document.getElementById('all');
         let infoWindowsContainer = document.getElementById('infoWindowsContainer');
         let mode = document.getElementById('mode').getAttribute('content');
+        let fileId = document.getElementById('fileId').getAttribute('content');
         let popups = [];
         let pinMenuBtn = document.getElementById('pin-menu');
         let left = document.getElementById('left');
@@ -190,6 +192,9 @@
         
 
         f = findFileByPartualNumber("20023894-PD-021A");
+        console.log(fileId);
+        if(fileId) f = fileRepository.find(e=>e.id.toString()=== fileId);
+        console.log(f.getId)
         loadPictureWithLightFile(f);
 
         getAllCategoryObjects();

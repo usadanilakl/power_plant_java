@@ -62,8 +62,7 @@ function buildDropdown(id, items, buttonAction) {
         if (!isClickInside) {
             document.getElementById(`${id}-options`).classList.remove("show");
             document.removeEventListener('click',detectClickOutsideOfDropdown)
-        }
-        
+        } 
     }
 
     // Add the event listener after appending options to the dropdown
@@ -196,7 +195,7 @@ function filterFunction(id) {
     }else{
         input.style.backgroundColor = "white"; 
     }
-    updateEqFormInfo(input);
+    //updateEqFormInfo(input);
     
 }
 

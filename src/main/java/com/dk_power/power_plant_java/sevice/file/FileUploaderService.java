@@ -11,6 +11,7 @@ String uploadFilesToGitHub(FileUploader files, String path);
 byte[] getFileFromGitHub(String path);
 void PdfToJpgConverter();
 String PdfToJpgConverter(String path);
+void convertAllToJpg();
 FileObject initialSave(String number, String link);
 File[] getListOfFolders(String path);
 File[] getListOfFiles(String path);

@@ -197,6 +197,7 @@ async function createTableWithFunctionFromObjects(objects, ignoreFields,action){
                     filterTable();
                 }
             });
+            optionContainer.style.zIndex = '3001';
         }
 
 
@@ -215,7 +216,8 @@ async function createTableWithFunctionFromObjects(objects, ignoreFields,action){
 function createRowsWithFunction(tbody,ignoreFields,action){
     let i = 1;
     rows = [];
-    filteredArray.forEach(el=>{
+    for(let el of filteredArray){
+        if(el.eqType && el.eqType==="Connector") continue;
 
         let row = document.createElement('tr');
         if(el.id)row.setAttribute('data-obj-id',el.id)
@@ -255,19 +257,19 @@ function createRowsWithFunction(tbody,ignoreFields,action){
 
             editButton.addEventListener('click',async ()=>await action(el,editButton));
 
-            let submitButton = document.createElement('button')
-            crud.appendChild(submitButton);
-            submitButton.classList.add('crudButton');
-            submitButton.textContent = "Add";
+            // let submitButton = document.createElement('button')
+            // crud.appendChild(submitButton);
+            // submitButton.classList.add('crudButton');
+            // submitButton.textContent = "Add";
 
-            submitButton.addEventListener('click',async ()=>{
-                selectedLotoPoints.push(el);
-                await fillSelectedPointsWindow();
-            });
+            // submitButton.addEventListener('click',async ()=>{
+            //     selectedLotoPoints.push(el);
+            //     await fillSelectedPointsWindow();
+            // });
         }        
 
         rows.push(row);
-    })
+    }
     console.log("table is built " + filteredArray.length)
 }
 

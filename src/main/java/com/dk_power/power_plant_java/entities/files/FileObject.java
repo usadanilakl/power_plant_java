@@ -56,6 +56,7 @@ public class FileObject extends BaseAuditEntity {
     @JoinColumn(name = "system_id")
     private Value system;
 
+    //@Column(length = 2000)
     private String relatedSystems;
     private String fileNumber;
     private String extension;
@@ -124,7 +125,7 @@ public class FileObject extends BaseAuditEntity {
 
     public void setRelatedSystems(String system){
         if(relatedSystems==null)relatedSystems = system;
-        else relatedSystems+=system;
+        else relatedSystems+=","+system;
     }
 
     @Override

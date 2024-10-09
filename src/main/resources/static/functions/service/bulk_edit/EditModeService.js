@@ -296,7 +296,7 @@ function highlightEditControls(highlight,resize){
 async function buildLotoPointList(eq){
     let lotoPoints = document.getElementById('loto-points-'+eq.id);
     let input = document.getElementById('value-editor-input');
-    if(eq.lotoPoints===null || eq.lotoPoints.length===0) eq.lotoPoints = await getLotoPointsByTag(eq.tagNumber);
+    if((eq.lotoPoints===null || eq.lotoPoints.length===0)&&eq.tagNumber.length>3) eq.lotoPoints = await getLotoPointsByTag(eq.tagNumber);
 
     if(lotoPoints){lotoPoints.innerHTML = "";}
     else{
@@ -1029,7 +1029,7 @@ async function buildEditStepControls(){
     getCompletedButton.addEventListener('click',async ()=>{
         let w = document.querySelector('[data-file-window="completed"]');
         if(w) all.removeChild(w);
-        let newWind = getEmptyWindow("Skipped Files");
+        let newWind = getEmptyWindow("Completed Files");
         let box = document.createElement('div');
         let l = document.createElement('ul');
 
@@ -1039,6 +1039,14 @@ async function buildEditStepControls(){
         box.style.top = "35px";
 
         completedPid.forEach(e=>{
+            // let groupContainer = document.getElementById(e.fileType.name + '-completed-group')
+            // if(!groupContainer){
+            //     groupContainer = document.createElement('div');
+            //     groupContainer.id = e.fileType.name + '-completed-group';
+            //     groupContainer.textContent=e.fileType.name
+            //     groupContainer.addEventListener('click',()=>groupContainer.children.forEach(c=>c.classList.toggle('hide')));
+            //     l.appendChild(groupContainer);
+            // }
             let f = document.createElement('li');
             f.classList.add('smallBtn');
             f.classList.add('yellow');

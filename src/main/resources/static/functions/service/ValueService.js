@@ -19,7 +19,6 @@ function validateCategory(category, value){
 }
 
 async function isCategory(key){
-    console.log(JSON.stringify(allAliases))
     if(allAliases.includes(key))return true;
     return false;
 }

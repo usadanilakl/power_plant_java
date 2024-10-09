@@ -139,5 +139,27 @@ public class LotoPointRestController {
         return ResponseEntity.ok("Success");
     }
 
+    @PostMapping("/by-tag-by-unit/{unit}")
+    public ResponseEntity<Set<LotoPointDto>> getPointsByTagByUnit(@RequestBody List<String> tags,@PathVariable String unit){
+        Set<LotoPointDto> result = new HashSet<>();
+        tags.forEach(e -> {
+            if ((e.trim().startsWith("01") && unit.equalsIgnoreCase("02")) ||
+                    (e.trim().startsWith("02") && unit.equalsIgnoreCase("01")))
+            {
+                List<LotoPointDto> byTagNumber = lotoPointService.getByTagNumber(unit + e.substring(2).trim());
+                byTagNumber.forEach(el->{
+                    if(!result.stream().map(id->id.getId()).toList().contains(el.getId())) result.add(el);
+                });
+            } else
+            {
+                List<LotoPointDto> byTagNumber = lotoPointService.getByTagNumber(e.trim());
+                byTagNumber.forEach(el->{
+                    if(!result.stream().map(id->id.getId()).toList().contains(el.getId())) result.add(el);
+                });
+            }
+        });
+        return ResponseEntity.ok(result);
+    }
+
 
 }

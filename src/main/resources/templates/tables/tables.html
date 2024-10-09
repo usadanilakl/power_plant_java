@@ -5,11 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
     <title>Home</title>
-    <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+    <!-- <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="/my_styles/util.css">
     <link rel="stylesheet" href="/my_styles/home.css">
     <link rel="stylesheet" href="/my_styles/glow-buttons.css">
+    <link rel="stylesheet" href="/my_styles/searchable-dropdown.css"> -->
+
+    <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/my_styles/page.css">
     <link rel="stylesheet" href="/my_styles/searchable-dropdown.css">
+    <link rel="stylesheet" href="/my_styles/picture.css">
+    <link rel="stylesheet" href="/my_styles/menu.css">
+    <link rel="stylesheet" href="/my_styles/util.css">
+    <link rel="stylesheet" href="/my_styles/floating-menu.css">
+    <link rel="stylesheet" href="/my_styles/resize_style.css">
+    <link rel="stylesheet" href="/my_styles/infoWindow.css">
+    <link rel="stylesheet" href="/my_styles/NewWindowStyle.css">
+    <link rel="stylesheet" href="/my_styles/table.css">
+    <link rel="stylesheet" href="/my_styles/glow-buttons.css">
     <style>
 
 html, #all, #loto-point-table{
@@ -27,6 +40,18 @@ html, #all, #loto-point-table{
             color:white;
             font-size: large;
         }
+
+#table-buttons{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+#table-controls{
+    flex-grow: 1;
+}
+.btns{
+    width: 100%;
+}
 
 .popup {
     display: none;
@@ -71,19 +96,19 @@ html, #all, #loto-point-table{
         <div class="container-fluid">
             
 
-            <div class="row">
-                <div class="col-md-3" id="table-controls">
-                    <p id="file-table">Files</p>
+            <div class="row" id="table-buttons">
+                <div class="col-md-4 table-controls">
+                    <button id="file-table" class="btns">Files</button>
                 </div>
-                <div class="col-md-3" id="table-controls">
-                    <button id="equipment-table">Equipment</button>
+                <div class="col-md-4 table-controls">
+                    <button id="equipment-table" class="btns">Equipment</button>
                 </div>
-                <div class="col-md-3" id="table-controls">
-                    <button id="loto-point-table">LOTO Points</button>
+                <div class="col-md-4 table-controls">
+                    <button id="loto-point-table" class="btns">LOTO Points</button>
                 </div>
-                <div class="col-md-3" id="table-controls">
+                <!-- <div class="col-md-3" id="table-controls">
                     <button id="heat-trace-table">Heat Trace</button>
-                </div>
+                </div> -->
             </div>
 
             <div class="row">
@@ -121,8 +146,10 @@ html, #all, #loto-point-table{
 <script src="/functions/controllers/ValueController.js"></script>
 <script src="/functions/controllers/PopupController.js"></script>
 
-<script src="/functions/service/TableService.js"></script>
+<script src="/functions/service/table_view/TableViewTable.js"></script>
+<script src="/functions/service/table_view/TableViewService.js"></script>
 <script src="/functions/service/PointService.js"></script>
+<script src="/functions/service/PictureService.js"></script>
 <script src="/functions/service/FileService.js"></script>
 <script src="/functions/service/ValueService.js"></script>
 <script src="/functions/service/NewWindowService.js"></script>
@@ -133,58 +160,23 @@ html, #all, #loto-point-table{
 isUpdating = getTimeStampFileName();
 modes.editMode.state = true;
 getActiveLotoPoints()
-.then(async ()=>getAllCategories())
+.then(async ()=>await getAllCategories())
+.then(async ()=> await getAllValues())
+.then(async ()=> await getAllCategoryObjects())
+.then(async ()=> await getAllCategories())
 .then( async () => {
-
-
-
-if (!tableContainer) {
-    console.error('Table container not found');
-    return;
-}
-
-try {
-    let data = activeLotoPoints;
-    let items = data.map(e => ({
-        tagNumber: e.tagNumber,
-        description: e.description,
-        generalLocation: e.generalLocation,
-        specificLocation: e.specificLocation,
-        id:e.id,
-        eqIds : e.equipmentIdList
-    }));
-
-    let ignoreFields = ["id", "eqIds"];
-    let table = createTableWithFunctionFromObjects(items, ignoreFields,showEquipmentOnPid);
     
-    tableContainer.appendChild(table);
-
-    let lastScrollTop = 0;
-    tableContainer.addEventListener('scroll', function() {
-        const scrollPosition = this.scrollTop + this.clientHeight;
-        const tableHeight = this.scrollHeight;
-        let currentScrollTop = this.scrollTop;
-
-        if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
-            tableDisplayControl(table, false);
-        } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
-            tableDisplayControl(table, true);
-        }
-
-        lastScrollTop = currentScrollTop;
-    });
     
-    initDragScroll(tableContainer, control);
-    console.log('Scroll event listener added');
-} catch (error) {
-    console.error('Error loading table data:', error);
-}
+
+
+await buildLotoPointTable(tableContainer);
 // await getAllLotoPoints();
 await getAllEqLightPoints();
 await getAllFiles()
 
 equipmentButton.addEventListener('click',()=>buildEqTable(tableContainer))
 filesButton.addEventListener('click',()=>buildFileTable(tableContainer))
+lotoPointButton.addEventListener('click',()=>buildLotoPointTable(tableContainer))
 })
 .then(()=>{
 

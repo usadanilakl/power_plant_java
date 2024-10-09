@@ -27,30 +27,6 @@ async function fileFormSetup2(file){
    // popups.push(fileFormSetup)
 }
 
-function buildFileTable(tableContainer){
-   tableContainer.style.zIndex='2'
-   tableContainer.innerHTML="";
-   let ignoreFields = ["id"];
-   let table = createTableWithFunctionFromObjects(fileRepository, ignoreFields,fileFormSetup2);
-   
-   tableContainer.appendChild(table);
-
-   let lastScrollTop = 0;
-   tableContainer.addEventListener('scroll', function() {
-      const scrollPosition = this.scrollTop + this.clientHeight;
-      const tableHeight = this.scrollHeight;
-      let currentScrollTop = this.scrollTop;
-
-      if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
-         tableDisplayControl(table, false);
-      } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
-         tableDisplayControl(table, true);
-      }
-
-      lastScrollTop = currentScrollTop;
-   });
-}
-
 async function buildFileEditForm(file){
    const fileForm = await buildFormForEachField(file,async()=>submitFile(file),null);
    const popup = document.querySelector('#popup');

@@ -33,3 +33,5 @@ async function buildLotoWithNewPoints(){
     const resp = await fetch('/api-lotos/build-loto-with-new-points',getPostMetaDataWithBody(tags));
 }
 
+
+

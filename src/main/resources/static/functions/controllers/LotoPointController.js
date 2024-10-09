@@ -98,3 +98,9 @@ async function updateNonNullFields(lp){
   const resp = await fetch(baseLotoPointUrl,getPutMetaDataWithBody(lp));
 }
 
+async function getPointsByTagForUnit(unit,tags){
+  const resp = await fetch(baseLotoPointUrl+'by-tag-by-unit/'+unit, getPostMetaDataWithBody(tags));
+  const data = await resp.json();
+  return data;
+}
+

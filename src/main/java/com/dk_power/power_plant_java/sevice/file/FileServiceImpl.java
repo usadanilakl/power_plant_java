@@ -365,6 +365,22 @@ public class FileServiceImpl implements FileService {
         return fileRepo.findByRelatedSystemsContaining(system);
     }
 
+    @Override
+    public void updateFileRelatedSystems() {
+        for (FileObject f : getAll()) {
+            f.getPoints().forEach(e->{
+                String system = e.getSystem()!=null ? e.getSystem().getName().trim():null;
+                if(f.getRelatedSystems()==null && system!=null) f.setRelatedSystems(system);
+                else if(system!=null && !f.getRelatedSystems().contains(system)) f.setRelatedSystems(system);
+            });
+            if(f.getRelatedSystems()!=null){
+                System.out.println(f.getFileNumber()+" - "+f.getRelatedSystems());
+                System.out.println("++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+            }
+            save(f);
+        }
+    }
+
     public List<FileDto> getAllDtos(String ext) {
         return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
     }

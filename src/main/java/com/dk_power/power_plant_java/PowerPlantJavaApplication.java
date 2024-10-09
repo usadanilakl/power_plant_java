@@ -130,9 +130,9 @@ private final ExcelReaderService excelReaderService;
 //        lotoPointMergeService.connectBreakerLotoPointsToFiles();
 //        lotoPointMergeService.setProcessedStatus();
 
-
+//        fileUploaderService.convertAllToJpg();
+//        fileService.updateFileRelatedSystems();
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
-
 
 
 

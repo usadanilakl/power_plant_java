@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Base64;
+import java.util.List;
 import java.util.stream.Stream;
 
 @AllArgsConstructor
@@ -195,6 +196,19 @@ public class FileUploaderServiceImpl implements FileUploaderService {
             return e.getMessage();
         }
     }
+
+    @Override
+    public void convertAllToJpg() {
+        List<FileObject> all = fileRepo.findAll();
+        all.forEach(f->{
+            String fileLink = f.getFileLink();
+            File file = new File(fileLink);
+            if(!file.exists()){
+                PdfToJpgConverter(fileLink);
+            }
+        });
+    }
+
     @Override
     public FileObject initialSave(String number, String link) {
         FileObject fileObjectObj = new FileObject();

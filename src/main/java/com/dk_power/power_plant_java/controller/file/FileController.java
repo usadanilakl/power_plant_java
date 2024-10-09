@@ -88,6 +88,12 @@ public class FileController {
         return "show-eq-in-file";
     }
 
+    @GetMapping("show-file-in-new-wind/{id}")
+    public String showFileInNewWind(@PathVariable("id") String id, Model model){
+        model.addAttribute("fileId",id);
+        model.addAttribute("mode","viewMode");
+        return "testRunner";
+    }
 
 
 }

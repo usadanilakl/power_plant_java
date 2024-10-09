@@ -17,6 +17,7 @@ public class HomeController {
         model.addAttribute("files", fileService.getAll());
         model.addAttribute("sortingGroups", SortingGroup.values());
         return "home";
+//        return "home_loto";
 //        return "layouts/main-template";
     }
     @GetMapping("/view")

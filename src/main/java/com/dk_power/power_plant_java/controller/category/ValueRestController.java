@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.category;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -39,5 +41,9 @@ public class ValueRestController {
     public ResponseEntity<String> refactorValue(@PathVariable String oldId,@PathVariable String newId){
         valueService.refactor(valueService.getEntityById(oldId),valueService.getEntityById(newId));
         return ResponseEntity.ok("Success");
+    }
+    @GetMapping("/")
+    public ResponseEntity<List<ValueDto>> getAllValues(){
+        return ResponseEntity.ok(valueService.getAll().stream().map(valueService::convertToDto).toList());
     }
 }

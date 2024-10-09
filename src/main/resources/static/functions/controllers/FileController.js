@@ -139,7 +139,7 @@ async function getSystems(){
     data.forEach(e=>{
         let i = {};
         i.value = e;
-        i.getContent = function(){return getFilesBySystem(e.system.name)};
+        i.getContent = function(){return getFilesBySystem(e)};
         i.dropdownFunc = function(event){createDropdownItem(this.getContent(), event.target.parentNode);}.bind(i);
         systems.push(i);
     })
@@ -237,7 +237,8 @@ function getFilesByVendor(vendor){
 }
 
 function getFilesBySystem(system){
-    let result =  fileRepository.filter(e=>e.relatedSystems.includes(system));
+    console.log(system);
+    let result =  fileRepository.filter(e=>e.relatedSystems && e.relatedSystems.includes(system));
     result.forEach(e=>{
         e['dropdownFunc'] = function(){loadPictureWithLightFile(e);} 
         e.value = e.fileNumber;
