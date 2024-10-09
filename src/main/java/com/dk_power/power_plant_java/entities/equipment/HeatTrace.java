@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.entities.equipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseEquipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -55,6 +56,13 @@ public class HeatTrace extends BaseEquipment {
     )
     private List<FileObject> pid = new ArrayList<>();
     /***************************************************************************************/
+
+    /*********************************************************************************************
+     * Loto Points
+     ********************************************************************************************/
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "loto_point_id")
+    private LotoPoint lotoPoint;
 
     private String tempEquipment;
     private String tempPids;

@@ -15,4 +15,5 @@ public interface HeatTraceService extends CrudService<HeatTrace, HeatTraceDto, H
 
     List<String> getAllTags();
 
+    List<HeatTrace> getIfTagContains(String tag);
 }

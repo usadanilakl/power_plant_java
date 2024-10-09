@@ -30,14 +30,15 @@ function loadPictureWithAreas(src, areas){
 function loadPictureWithFile(file){
     picture.setAttribute('src','/'+file.fileLink);
     picture.onerror = async function() {
-        console.log('Image not found. Running fallback function.');
-        let message = await getPdfAndConvertToJpg(file.id);
-        if(message.toLocaleLowerCase().includes('file not found')){
-            await updateFileStatus(file.id,true);
-            await updateFileEditStep("skip");
-            location.reload();
-        } 
-        picture.setAttribute('src','/'+file.fileLink);
+        //Goes into infinite loop if file is not found - need to fix
+        // console.log('Image not found. Running fallback function.');
+        // let message = await getPdfAndConvertToJpg(file.id);
+        // if(message.toLocaleLowerCase().includes('file not found')){
+        //     location.reload();
+        // }
+        // picture.setAttribute('src','/'+file.fileLink)
+
+        location.reload();
     };
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();

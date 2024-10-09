@@ -30,5 +30,6 @@ public interface EquipmentService extends CrudService<Equipment, EquipmentDto, E
     List<Equipment> getIfDescriptionContains(String value);
 
     List<EquipmentDtoLight> getAllLight();
+    void assignEqTypeByTagContaining();
 
 }

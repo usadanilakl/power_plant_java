@@ -99,7 +99,7 @@ private final ExcelReaderService excelReaderService;
 //        });
 
 
-//        htTransferService.connectInstrumentsWithPids();
+
 
 
 
@@ -114,7 +114,10 @@ private final ExcelReaderService excelReaderService;
 //        htTransferService.combineBreakers();
 //        htTransferService.connectHtWithPids();
 //        htTransferService.connectHtPanelsWithFiles();
-//
+//        htTransferService.addLotoPointsToHt();
+//        htTransferService.connectInstrumentsWithPids();
+//        htTransferService.addHtLotoPointsToEq();
+
 //        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Cleaver Brooks");
 //        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Extra");
 //        fileService.createFileObjectsFromFolder("uploads","PID","pdf","Gas (Vendor)");
@@ -132,6 +135,11 @@ private final ExcelReaderService excelReaderService;
 
 //        fileUploaderService.convertAllToJpg();
 //        fileService.updateFileRelatedSystems();
+
+//        equipmentService.assignEqTypeByTagContaining();
+
+
+
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
 

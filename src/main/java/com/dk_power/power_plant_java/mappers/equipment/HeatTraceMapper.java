@@ -48,6 +48,7 @@ public class HeatTraceMapper implements BaseMapper {
             if(entity.getHtIso()!=null) dto.setHtIso(fileService.convertToDto(entity.getHtIso()));
             if(entity.getPid()!=null) dto.setPid(entity.getPid().stream().map(fileMapper::convertToDtoLight).toList());
             if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
+            if(entity.getLotoPoint()!=null) dto.setLotoPoint(entity.getLotoPoint());
             return dto;
         }
         return null;
@@ -63,6 +64,7 @@ public class HeatTraceMapper implements BaseMapper {
             if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
             if(entity.getHtIso()!=null) dto.setHtIso(fileService.convertToDto(entity.getHtIso()));
             if(entity.getPid()!=null) dto.setPid(entity.getPid().stream().map(fileMapper::convertToDtoLight).toList());
+            if(entity.getLotoPoint()!=null) dto.setLotoPoint(entity.getLotoPoint());
 //            if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentService::convertToDto).toList());
             return dto;
         }
@@ -82,6 +84,7 @@ public class HeatTraceMapper implements BaseMapper {
             if(dto.getHtIso()!=null) entity.setHtIso(fileService.convertToEntity(dto.getHtIso()));
             if(dto.getPid()!=null) entity.setPid(dto.getPid().stream().map(fileService::convertToEntity).toList());
             if(dto.getEquipmentList()!=null) entity.setEquipmentList(dto.getEquipmentList().stream().map(equipmentService::convertToEntity).toList());
+            if(dto.getLotoPoint()!=null) entity.setLotoPoint(dto.getLotoPoint());
 
             return entity;
         }

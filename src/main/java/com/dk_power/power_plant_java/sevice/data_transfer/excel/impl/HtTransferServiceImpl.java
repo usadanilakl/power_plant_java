@@ -6,16 +6,19 @@ import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
 import com.dk_power.power_plant_java.entities.equipment.HtPanel;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.HtTransferService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.equipment.HtBreakerService;
 import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -29,6 +32,7 @@ public class HtTransferServiceImpl implements HtTransferService {
     private final EquipmentService equipmentService;
     private final HtBreakerService htBreakerService;
     private final HtPanelService htPanelService;
+    private final LotoPointService lotoPointService;
     @Override
     public void connectHtWithIsoFiles() {
         List<HeatTrace> all = heatTraceService.getAll();
@@ -54,17 +58,30 @@ public class HtTransferServiceImpl implements HtTransferService {
 
     @Override
     public void connectInstrumentsWithPids() {
+        int n = 0;
+        int n2 = 0;
         List<HeatTrace> all = heatTraceService.getAll();
         for (HeatTrace h : all) {
             if(h.getTagNumber().contains("ENC")){
+                n2++;
                 String tag = h.getTagNumber();
                 tag = tag.substring(tag.indexOf("ENC")+3).trim();
-                List<Equipment> eq = equipmentService.getByTagNumberContains(tag);
-                if(eq==null || eq.size()==0) System.out.println(h.getTagNumber());
+                List<Equipment> eq = equipmentService.getByTagNumberContains(tag).stream().filter(e->e.getEqType()!=null && e.getEqType().getName().equalsIgnoreCase("instrument")).toList();
+                if(eq.size()>0){
+                    Equipment equipment = eq.stream().filter(e -> e.getTagNumber().substring(0, 2).equals(h.getTagNumber().substring(0, 2))).findFirst().orElse(null);
+                    if(equipment==null) continue;
+//                    System.out.println(h.getTagNumber() + " " + equipment.getTagNumber());
+                    h.getEquipmentList().add(equipment);
+                    heatTraceService.save(h);
+                    n++;
+                }
             }
-//            heatTraceService.save(h);
+
+
+//                heatTraceService.save(h);
+            }
+        System.out.println(n+"/"+n2);
         }
-    }
 
     @Override
     public void combineCircuits() {
@@ -149,6 +166,32 @@ public class HtTransferServiceImpl implements HtTransferService {
             if(files.size()>0)p.setPanelSchedule(files.get(0));
             htPanelService.save(p);
         });
+    }
+
+    @Override
+    public void addHtLotoPointsToEq() {
+        List<HeatTrace> all = heatTraceService.getAll();
+        for (HeatTrace ht : all) {
+            List<Equipment> eqList = ht.getEquipmentList();
+            eqList.forEach(eq->{
+                if(eq.getLotoPoints()==null)eq.setLotoPoints(new HashSet<>());
+                else eq.getLotoPoints().add(ht.getLotoPoint());
+                equipmentService.save(eq);
+            });
+        }
+    }
+
+    @Override
+    public void addLotoPointsToHt() {
+        List<HeatTrace> all = heatTraceService.getAll();
+        System.out.println(all.size());
+        for (HeatTrace ht : all) {
+            List<LotoPoint> lotoPoints = lotoPointService.getIfDescriptionContains(ht.getTagNumber());
+            if(lotoPoints.size()>0){
+                ht.setLotoPoint(lotoPoints.get(0));
+            }
+            heatTraceService.save(ht);
+        }
     }
 
 }

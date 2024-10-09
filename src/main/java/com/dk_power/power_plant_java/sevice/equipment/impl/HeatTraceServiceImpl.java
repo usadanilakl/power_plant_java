@@ -147,4 +147,9 @@ public class HeatTraceServiceImpl implements HeatTraceService {
     public List<String> getAllTags() {
         return heatTraceRepo.findDistinctByTagNumber();
     }
+
+    @Override
+    public List<HeatTrace> getIfTagContains(String tag) {
+        return heatTraceRepo.findByTagNumberContaining(tag);
+    }
 }

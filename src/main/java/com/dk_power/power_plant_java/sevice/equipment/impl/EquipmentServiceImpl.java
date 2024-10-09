@@ -328,6 +328,27 @@ public class EquipmentServiceImpl implements EquipmentService {
     }
 
     @Override
+    public void assignEqTypeByTagContaining() {
+        for (Equipment e : getAll()) {
+            if(e.getEqType() == null){
+                if(e.getTagNumber().contains("-CPL-")) e.setEqType(valueService.valueSetup("Equipment Type","CONTROL PANEL"));
+                if(e.getTagNumber().contains("-MPM-") || e.getTagNumber().contains("-PMP-")) e.setEqType(valueService.valueSetup("Equipment Type","Pump"));
+                if(e.getTagNumber().contains("-SKD-") || e.getTagNumber().contains("-PMP-")) e.setEqType(valueService.valueSetup("Equipment Type","SKID"));
+                if(e.getTagNumber().contains("-VINA-") || e.getTagNumber().contains("-VPDR-")) e.setEqType(valueService.valueSetup("Equipment Type","Manual Valve"));
+                if(e.getTagNumber().contains("-TCV-") ||
+                        e.getTagNumber().contains("-FCV-") ||
+                        e.getTagNumber().contains("-PCV-") ||
+                        e.getTagNumber().contains("-YV-") ||
+                        e.getTagNumber().contains("-YCV-") ||
+                        e.getTagNumber().contains("-LV-")
+                )e.setEqType(valueService.valueSetup("Equipment Type","AOV"));
+                if(e.getTagNumber().contains("-LV-")) e.setEqType(valueService.valueSetup("Equipment Type","FCV"));
+            }
+            save(e);
+        }
+    }
+
+    @Override
     public void refactor(Value old, Value _new) {
         String cat = old.getCategory().getAlias();
         for (Equipment f : getByValue(old)) {

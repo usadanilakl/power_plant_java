@@ -10,6 +10,5 @@ public interface HeatTraceRepo extends BaseRepository<HeatTrace> {
     List<HeatTrace> findByTagNumber(String s);
     @Query("SELECT DISTINCT e.tagNumber FROM HeatTrace e")
     List<String> findDistinctByTagNumber();
-
-
+    List<HeatTrace> findByTagNumberContaining(String tag);
 }
