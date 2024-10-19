@@ -77,9 +77,9 @@ public class EquipmentMapper implements BaseMapper {
         if (entity.getVendor() != null) {
             dto.setVendor(valueService.getDtoById(entity.getVendor().getId()));
         }
-        if (entity.getMainFile() != null) {
-//            dto.setMainFile(entity.getMainFile().getFileLink());
-        }
+//        if (entity.getMainFile() != null) {
+////            dto.setMainFile(entity.getMainFile().getFileLink());
+//        }
         if (entity.getLocation() != null) {
             dto.setLocation(valueService.getDtoById(entity.getLocation().getId()));
         }
@@ -144,9 +144,9 @@ public class EquipmentMapper implements BaseMapper {
         if (entity.getVendor() != null) {
             dto.setVendor(valueService.getDtoById(entity.getVendor().getId()));
         }
-        if (entity.getMainFile() != null) {
-//            dto.setMainFile(entity.getMainFile().getFileLink());
-        }
+//        if (entity.getMainFile() != null) {
+////            dto.setMainFile(entity.getMainFile().getFileLink());
+//        }
         if (entity.getLocation() != null) {
             dto.setLocation(valueService.getDtoById(entity.getLocation().getId()));
         }
@@ -216,9 +216,9 @@ public class EquipmentMapper implements BaseMapper {
 
 
         }
-        if (source.getMainFile() != null) {
-//            entity.setMainFile(fileService.getByFileLink(source.getMainFile()));
-        }
+//        if (source.getMainFile() != null) {
+////            entity.setMainFile(fileService.getByFileLink(source.getMainFile()));
+//        }
         if (source.getLocation() != null) {
             if(source.getLocation().getId() == null){
                 ValueDto v = valueService.getValueFromCategory("Location",source.getLocation().getName());

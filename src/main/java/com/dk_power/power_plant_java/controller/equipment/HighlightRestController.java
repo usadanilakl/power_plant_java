@@ -21,6 +21,7 @@ public class HighlightRestController {
     private final JsonWriterService jsonWriterService;
     @PostMapping("/")
     public ResponseEntity<HighlightDto> createEquipment(@RequestBody HighlightDto hl){
+        hl.setEquipment(null);
         Highlight saved = highlightService.save(hl);
         HighlightDto hlDto = highlightService.convertToDto(saved);
         if(hlDto.getEquipment().getIsUpdated()!=null)jsonWriterService.writeJsonFile("updates/"+hl.getEquipment().getIsUpdated()+".json",hlDto);

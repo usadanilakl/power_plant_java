@@ -91,7 +91,7 @@ public class FileMapper implements BaseMapper{
         if(fileDto.getVendor()!=null)file.setVendor(valueService.getEntityById(fileDto.getVendor().getId()));
         if(fileDto.getFileType()!=null)file.setFileType(valueService.getEntityById(fileDto.getFileType().getId()));
         if(fileDto.getSystem()!=null)file.setSystem(valueService.getEntityById(fileDto.getSystem().getId()));
-        if(fileDto.getPoints()!=null) file.setPoints(fileDto.getPoints().stream().map(e->equipmentService.getEntityById(e.getId())).toList());
+//        if(fileDto.getPoints()!=null) file.setPoints(fileDto.getPoints().stream().map(e->equipmentService.getEntityById(e.getId())).toList());
         if(fileDto.getExtension()!=null) file.setExtension(fileDto.getExtension());
         if(fileDto.getRelatedSystems()!=null) file.setRelatedSystems(fileDto.getRelatedSystems());
         if(fileDto.getName()!=null) file.setName(fileDto.getName());

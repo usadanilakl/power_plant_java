@@ -91,10 +91,10 @@ public class Equipment extends BaseEquipment {
         if(lotoPoints == null) lotoPoints = new HashSet<>();
         if(lotoPoint!=null) lotoPoints.add(lotoPoint);
     }
-    public void setMainFile(FileObject file){
-        addFile(file);
-        this.mainFile = file;
-    }
+//    public void setMainFile(FileObject file){
+//        addFile(file);
+//        this.mainFile = file;
+//    }
 
     @Override
     public String toString() {

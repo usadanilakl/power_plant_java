@@ -105,20 +105,7 @@ public class FileObject extends BaseAuditEntity {
         if(!points.contains(entity))points.add(entity);
     }
 
-    public String getFileLink() {
-        return fileLink;
-    }
 
-    public String getFileNumber() {
-        return fileNumber;
-    }
-    //    @JsonManagedReference
-//    @OneToMany(mappedBy="mainFile")
-//    private List<Point> filePoints;
-//    public void addFilePoint(Point entity) {
-//        if(filePoints==null) filePoints = new ArrayList<>();
-//        filePoints.add(entity);
-//    }
 
     public void setRelatedSystems(String system){
         if(relatedSystems==null)relatedSystems = system;
