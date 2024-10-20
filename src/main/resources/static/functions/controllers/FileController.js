@@ -332,3 +332,9 @@ async function openEqFile(eqId){
         console.error('Error:', error);
     }
 }
+
+async function getTempS3Url(key){
+    const resp = await fetch(baseFileApiUrl+'temp-s3-url/'+key);
+    const data = await resp.text();
+    return data;
+}

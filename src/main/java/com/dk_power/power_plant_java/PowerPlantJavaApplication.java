@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.equipment.HeatTraceRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
+import com.dk_power.power_plant_java.sevice.S3Service;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
@@ -76,6 +77,7 @@ private final HtTransferService htTransferService;
 private final HeatTraceRepo heatTraceRepo;
 private final FileUploaderService fileUploaderService;
 private final ExcelReaderService excelReaderService;
+private final S3Service s3Service;
 
 
     public static void main(String[] args) {
@@ -138,6 +140,11 @@ private final ExcelReaderService excelReaderService;
 
 //        equipmentService.assignEqTypeByTagContaining();
 
+        FileObject kiewit = fileService.getFilesByVendor("Kiewit").get(0);
+        String fileLink = kiewit.getFileLink();
+        System.out.println("fileLink = " + fileLink);
+        String s = s3Service.generatePresignedUrl(fileLink, 5);
+        System.out.println("temp link = " + s);
 
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");

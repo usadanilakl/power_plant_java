@@ -29,7 +29,11 @@ function loadPictureWithFile(file){
 }
 async function loadPictureWithLightFile(file){
     lightFile = {...file};
-    picture.setAttribute('src','/'+file.fileLink);
+    const tempUrl = await getTempS3Url(file.fileLink.replace('uploads/',''));
+    console.log('Temp S3 URL:', tempUrl);
+    console.log('Oiginal url:', file.fileLink);
+    picture.setAttribute('src',tempUrl); //for S3 repository
+    // picture.setAttribute('src','/'+file.fileLink);//for local repository
     let id = file.id;
     picture.onerror = async function() {
         //Goes into infinite loop if file is not found - need to fix

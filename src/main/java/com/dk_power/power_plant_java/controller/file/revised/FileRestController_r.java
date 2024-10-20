@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.sevice.S3Service;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.file.FileUploaderService;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class FileRestController_r {
     private final FileService fileService;
     private final FileUploaderService fileUploaderService;
+    private final S3Service s3Service;
     @GetMapping("/")
     public ResponseEntity<List<FileDtoLight>> getAllLightFiles(){
         return ResponseEntity.ok(fileService.getAllLight());
@@ -117,6 +119,11 @@ public class FileRestController_r {
     public ResponseEntity<FileDto> getFileByEqId(@PathVariable String id){
         FileObject fileByEqId = fileService.getFileByEqId(Long.parseLong(id));
         return ResponseEntity.ok(fileService.convertToDto(fileByEqId));
+    }
+
+    @GetMapping("/temp-s3-url/{key}")
+    public ResponseEntity<String> getTempS3Url(@PathVariable String key){
+        return ResponseEntity.ok(s3Service.generatePresignedUrl(key, 5));
     }
 
 }
