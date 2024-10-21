@@ -33,9 +33,6 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
 
     void createFileObjectsFromFolder(String path, String type, String extension, String vendor);
     void createFileObjectsFromFolder(String path, String type, String extension, String vendor,String system);
-    void createObjectsFromDirectoryUsingMetaDataExcel(String path, String type, String extension, String vendor,String system);
-    void addDocNumToPIDs();
-    void updateMetadata(String folder, String type, String extension, String vendor,String system, boolean forceUpdate);
     void createNewFile(FileDto file);
     void updateFile(FileDto file);
 

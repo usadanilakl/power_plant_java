@@ -15,8 +15,6 @@ import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
-import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
-import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.DataDistributionService;
 import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.HtBreakerService;
@@ -46,10 +44,9 @@ public class FileServiceImpl implements FileService {
     private final HtPanelService htPanelService;
     private final ElectricalPanelService electricalPanelService;
     private final HtBreakerService htBreakerService;
-    private final ExcelReaderService excelReaderService;
-    private final DataDistributionService dataDistributionService;
+//    private final DataDistributionService dataDistributionService;
 
-    public FileServiceImpl(FileRepo fileRepo, LotoPointService lotoPointService, FileMapper fileMapper, SessionFactory sessionFactory, CategoryService categoryService, ValueService valueService, FileUploaderService fileUploaderService, @Lazy EquipmentService equipmentService, HtPanelService htPanelService, ElectricalPanelService electricalPanelService, HtBreakerService htBreakerService, ExcelReaderService excelReaderService, DataDistributionService dataDistributionService) {
+    public FileServiceImpl(FileRepo fileRepo, LotoPointService lotoPointService, FileMapper fileMapper, SessionFactory sessionFactory, CategoryService categoryService, ValueService valueService, FileUploaderService fileUploaderService, @Lazy EquipmentService equipmentService, HtPanelService htPanelService, ElectricalPanelService electricalPanelService, HtBreakerService htBreakerService) {
         this.fileRepo = fileRepo;
         this.lotoPointService = lotoPointService;
         this.fileMapper = fileMapper;
@@ -61,8 +58,7 @@ public class FileServiceImpl implements FileService {
         this.htPanelService = htPanelService;
         this.electricalPanelService = electricalPanelService;
         this.htBreakerService = htBreakerService;
-        this.excelReaderService = excelReaderService;
-        this.dataDistributionService = dataDistributionService;
+//        this.dataDistributionService = dataDistributionService;
     }
 
 
@@ -120,107 +116,6 @@ public class FileServiceImpl implements FileService {
                 save(f);
             }else{
                 throw new RuntimeException("File with this name already exists");
-            }
-        }
-    }
-
-    @Override
-    public void createObjectsFromDirectoryUsingMetaDataExcel(String folder, String type, String extension, String vendor,String system) {
-        String root = System.getProperty("user.dir").replaceAll("\\\\","/");
-        folder =root+"/" +folder+"/"+extension+"/"+type+"/"+vendor;
-        File[] listOfFiles = fileUploaderService.getListOfFiles(folder);
-        File excel = Arrays.stream(listOfFiles).filter(e->e.getName().contains(".xl")).findFirst().orElse(null);
-        List<Map<String, String>> metadata = null;
-        if(excel!=null)metadata = excelReaderService.readExcelFile(folder + "/" + excel.getName());
-
-        for (File file : listOfFiles) {
-            String fileNumber = null;
-            if(file.getName().contains(extension)) fileNumber = file.getName().substring(0,file.getName().indexOf(extension)-1);
-            FileObject f = getFileByNumber(fileNumber);
-            if(f==null && file.getName().contains(extension)){
-                f = new FileObject();
-                f.setBaseLink("uploads");
-                f.setExtension(extension);
-                f.setFileType(valueService.valueSetup("FileType",type));
-                f.setVendor(valueService.valueSetup("Vendor",vendor));
-                f.setFileNumber(fileNumber);
-                System.out.println(f.getFileNumber());
-                f.buildFileLink("jpg");
-                f.buildFolder();
-                f.setRelatedSystems(system);
-
-                if(metadata!=null){
-                    Map<String, String> details = metadata.stream().filter(e -> file.getName().contains(e.get("Document No."))).findFirst().orElse(null);
-                    if(details!=null){
-                        f.setName(details.get("Title"));
-                        f.setDocNum(details.get("VDN"));
-                    }
-
-                }
-
-                save(f);
-            }else{
-//                throw new RuntimeException("File with this name already exists");
-                System.out.println("Skipped: " + file.getName());
-            }
-        }
-
-    }
-    public void addDocNumToPIDs(){
-        List<PidJson> pidJsons = dataDistributionService.getPidJsons();
-        for (PidJson p : pidJsons) {
-            String docNum = p.getPidNumber();
-            FileObject fileByNumber = getFileByNumber(p.getFileNumber());
-            if(fileByNumber!=null){
-                fileByNumber.setDocNum(docNum);
-                save(fileByNumber);
-            }
-
-        }
-    }
-
-    @Override
-    public void updateMetadata(String folder, String type, String extension, String vendor,String system,boolean forceUpdate) {
-        String root = System.getProperty("user.dir").replaceAll("\\\\","/");
-        folder =root+"/" +folder+"/"+extension+"/"+type+"/"+vendor;
-        File[] listOfFiles = fileUploaderService.getListOfFiles(folder);
-        File excel = Arrays.stream(listOfFiles).filter(e->e.getName().contains(".xl")).findFirst().orElse(null);
-        List<Map<String, String>> metadata = null;
-        if(excel!=null)metadata = excelReaderService.readExcelFile(folder + "/" + excel.getName());
-
-        for (File file : listOfFiles) {
-            String fileNumber = null;
-            if (file.getName().contains(extension)) fileNumber = file.getName().substring(0, file.getName().indexOf(extension) - 1);
-            FileObject f = getFileByNumber(fileNumber);
-            if (f == null && file.getName().contains(extension)) {
-                f = new FileObject();
-                f.setBaseLink("uploads");
-                f.setExtension(extension);
-                f.setFileType(valueService.valueSetup("FileType", type));
-                f.setVendor(valueService.valueSetup("Vendor", vendor));
-                f.setFileNumber(fileNumber);
-                System.out.println(f.getFileNumber());
-                f.buildFileLink("jpg");
-                f.buildFolder();
-                f.setRelatedSystems(system);
-
-                if (metadata != null) {
-                    Map<String, String> details = metadata.stream().filter(e -> file.getName().contains(e.get("Document No."))).findFirst().orElse(null);
-                    if (details != null) {
-                        f.setName(details.get("Title"));
-                        f.setDocNum(details.get("VDN"));
-                    }
-                }
-
-                save(f);
-            } else if (f != null && file.getName().contains(extension) && metadata!=null) {
-                Map<String, String> details = metadata.stream().filter(e -> file.getName().contains(e.get("Document No."))).findFirst().orElse(null);
-                    if (details != null) {
-                        if(f.getName()==null) f.setName(details.get("Title"));
-                        if(forceUpdate) f.setName(details.get("Title"));
-                        if(f.getDocNum()==null) f.setDocNum(details.get("VDN"));
-                        save(f);
-                    }
             }
         }
     }

@@ -6,7 +6,6 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
-import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
@@ -23,14 +22,12 @@ public class LotoPointServiceImpl implements LotoPointService {
     private final LotoPointRepo lotoPointRepo;
     private final SessionFactory sessionFactory;
     private final LotoPointMapper lotoPointMapper;
-    private final ExcelService excelService;
 
 
-    public LotoPointServiceImpl(LotoPointRepo lotoPointRepo, SessionFactory sessionFactory, @Lazy LotoPointMapper lotoPointMapper, @Qualifier("LotoPoint") ExcelService excelService) {
+    public LotoPointServiceImpl(LotoPointRepo lotoPointRepo, SessionFactory sessionFactory, @Lazy LotoPointMapper lotoPointMapper) {
         this.lotoPointRepo = lotoPointRepo;
         this.sessionFactory = sessionFactory;
         this.lotoPointMapper = lotoPointMapper;
-        this.excelService = excelService;
     }
 
     @Override
@@ -56,37 +53,6 @@ public class LotoPointServiceImpl implements LotoPointService {
     @Override
     public SessionFactory getSessionFactory() {
         return sessionFactory;
-    }
-    @Override
-    public List<LotoPoint> transferExcelToDB() {
-        List<Map<String, String>> excelPoints = excelService.getDataList();
-        List<LotoPoint> lotoPoints = new ArrayList<>();
-
-        for (Map<String, String> excelPoint : excelPoints) {
-            LotoPoint point = new LotoPoint();
-            point.setUnit(excelPoint.get("Unit"));
-            point.setTagged(excelPoint.get("Tagged"));
-            point.setTagNumber(excelPoint.get("ID"));
-            point.setDescription(excelPoint.get("Description"));
-            point.setSpecificLocation(excelPoint.get("Location"));
-            point.setStandard(excelPoint.get("Standard"));
-            point.setGeneralLocation(excelPoint.get("GENERAL LOCATION"));
-            point.setEquipment(excelPoint.get("Equipment"));
-            point.setExtraInfo(excelPoint.get("Extra Info"));
-            point.setType(excelPoint.get("Type"));
-            point.setSystem(excelPoint.get("System"));
-            point.setNormalPosition(excelPoint.get("Normal Pos"));
-            point.setIsolatedPosition(excelPoint.get("Iso Pos"));
-            point.setFluid(excelPoint.get("Fluid"));
-            point.setSize(excelPoint.get("Size"));
-            point.setElectricalCheckStatus(excelPoint.get("T"));
-            point.setRedTagId(excelPoint.get("Rec ID"));
-            point.setOldId(excelPoint.get("Original ID"));
-
-            lotoPoints.add(point);
-            lotoPointRepo.save(point);
-        }
-        return lotoPoints;
     }
 
 

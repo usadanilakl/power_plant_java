@@ -5,8 +5,6 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
-import com.dk_power.power_plant_java.sevice.base_services.RefactorService;
-import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelTransferService;
 
 import java.util.List;
 import java.util.Map;

@@ -9,7 +9,6 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
-import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
 import com.dk_power.power_plant_java.sevice.file.FileService;

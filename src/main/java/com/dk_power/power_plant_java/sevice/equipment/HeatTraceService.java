@@ -9,7 +9,7 @@ import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import java.util.List;
 
 public interface HeatTraceService extends CrudService<HeatTrace, HeatTraceDto, HeatTraceRepo, HeatTraceMapper> {
-    void transferToDb();
+//    void transferToDb();
 
     List<HeatTrace> getByTagNumber(String s);
 

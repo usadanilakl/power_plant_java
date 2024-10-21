@@ -5,8 +5,6 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
-import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
-import com.dk_power.power_plant_java.sevice.data_transfer.FileReaderService;
 import com.dk_power.power_plant_java.util.PropertyReader;
 import lombok.AllArgsConstructor;
 import org.apache.commons.io.IOUtils;
@@ -42,8 +40,6 @@ public class FileUploaderServiceImpl implements FileUploaderService {
     private final CategoryService categoryService;
     private final ValueService valueService;
     private final FileRepo fileRepo;
-    private final FileReaderService fileReaderService;
-    private final ExcelReaderService excelReaderService;
 
 
     public String uploadFilesToLocal(FileUploader files){
@@ -247,13 +243,6 @@ public class FileUploaderServiceImpl implements FileUploaderService {
 
     }
 
-    @Override
-    public void createObjectsFromDirectoryUsingMetaDataExcel(String dir) {
-        String root = System.getProperty("user.dir").replaceAll("\\\\","/");
-        String fullPath = root+"/"+dir;
-        fileReaderService.getFilesInFolderUsingFilesList(fullPath);
-
-    }
 
     private GitHub connectToGitHub(){
         try {
