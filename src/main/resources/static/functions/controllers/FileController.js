@@ -334,7 +334,16 @@ async function openEqFile(eqId){
 }
 
 async function getTempS3Url(key){
-    const resp = await fetch(baseFileApiUrl+'temp-s3-url/'+key);
+    console.log(key);
+    console.log(token)
+    const resp = await fetch(baseFileApiUrl+'temp-s3-url', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ key: key })
+    });
     const data = await resp.text();
     return data;
 }

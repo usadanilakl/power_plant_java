@@ -140,11 +140,6 @@ private final S3Service s3Service;
 
 //        equipmentService.assignEqTypeByTagContaining();
 
-        FileObject kiewit = fileService.getFilesByVendor("Kiewit").get(0);
-        String fileLink = kiewit.getFileLink();
-        System.out.println("fileLink = " + fileLink);
-        String s = s3Service.generatePresignedUrl(fileLink, 5);
-        System.out.println("temp link = " + s);
 
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");

@@ -44,7 +44,7 @@ async function loadPictureWithLightFile(file){
         // }
         // picture.setAttribute('src','/'+file.fileLink)
 
-        location.reload();
+        // location.reload();
     };
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();

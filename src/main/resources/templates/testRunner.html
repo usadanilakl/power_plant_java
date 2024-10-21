@@ -124,7 +124,7 @@
         let token = document.getElementById('token').getAttribute('content');
     </script>
     
-    <script src="/functions/globla/PointVariables.js"></script>
+    <!-- <script src="/functions/globla/PointVariables.js"></script> -->
     <script src="/functions/util_functions/util.js"></script>
     <script src="/functions/util_functions/SearchableDropdown.js"></script>
     <script src="/functions/util_functions/FormUtil.js"></script>
@@ -217,21 +217,19 @@
        if(mode) setMode(mode); 
     })
 
-    pictureContainer.addEventListener('mousedown',(event)=>{
-        if(event.button===0){
-            event.preventDefault();
-            relocateHighlightsWithPicture(event);
-        }
-
-    
+pictureContainer.addEventListener('mousedown',(event)=>{
+    if(event.button===0){
+        event.preventDefault();
+        relocateHighlightsWithPicture(event);
+    }  
 });
 pictureContainer.addEventListener('touchstart',(event)=>{
-        if(event.target.tagName === "INPUT") return
+    if(event.target.tagName === "INPUT") return
 
-        event.preventDefault();
-        // relocateHighlightsWithPictureTouch(event);
-        relocateHighlightsWithPictureDoubleTap(event);
-    });
+    event.preventDefault();
+    // relocateHighlightsWithPictureTouch(event);
+    relocateHighlightsWithPictureDoubleTap(event);
+});
 const zoom = zoomPicture.bind(null,picture);
 pictureContainer.addEventListener('wheel',zoom);
 pictureContainer.addEventListener('touchstart', zoomPictureTouch);

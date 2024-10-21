@@ -121,9 +121,11 @@ public class FileRestController_r {
         return ResponseEntity.ok(fileService.convertToDto(fileByEqId));
     }
 
-    @GetMapping("/temp-s3-url/{key}")
-    public ResponseEntity<String> getTempS3Url(@PathVariable String key){
-        return ResponseEntity.ok(s3Service.generatePresignedUrl(key, 5));
+    @PostMapping("/temp-s3-url")
+    public ResponseEntity<String> getTempS3Url(@RequestBody Map<String,String> key){
+        String link = key.get("key");
+        String s3Url = s3Service.generatePresignedUrl(link, 5);
+        return ResponseEntity.ok(s3Url);
     }
 
 }
