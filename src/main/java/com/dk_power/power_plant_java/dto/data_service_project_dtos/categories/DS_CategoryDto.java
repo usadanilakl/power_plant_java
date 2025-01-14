@@ -1,0 +1,23 @@
+package com.dk_power.power_plant_java.dto.data_service_project_dtos.categories;
+
+import com.dk_power.power_plant_java.dto.categories.CategoryDto;
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_BaseDto;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
+
+import java.util.HashSet;
+import java.util.Set;
+
+@Getter
+@Setter
+@SuperBuilder
+@NoArgsConstructor
+public class DS_CategoryDto extends DS_BaseDto {
+    private String name;
+    private String description;
+    private String alias;
+    private Set<DS_ValueDto> values = new HashSet<>();
+}

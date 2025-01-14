@@ -12,7 +12,6 @@ import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.equipment.HeatTraceRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
-import com.dk_power.power_plant_java.sevice.S3Service;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
@@ -39,6 +38,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @SpringBootApplication
@@ -77,7 +77,6 @@ private final HtTransferService htTransferService;
 private final HeatTraceRepo heatTraceRepo;
 private final FileUploaderService fileUploaderService;
 private final ExcelReaderService excelReaderService;
-private final S3Service s3Service;
 
 
     public static void main(String[] args) {
@@ -140,7 +139,18 @@ private final S3Service s3Service;
 
 //        equipmentService.assignEqTypeByTagContaining();
 
-
+        int count = 0;
+        List<Equipment> all = equipmentService.getAll();
+        for (Equipment e : all) {
+            if(e.getLotoPoints().size()>0){
+                Set<String> tags = e.getLotoPoints().stream().map(LotoPoint::getTagNumber).collect(Collectors.toSet());
+                if (!tags.contains(e.getTagNumber())) {
+                    System.out.println(e.getTagNumber());
+                    count++;
+                    if(count==100){break;}
+                }
+            }
+        }
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
