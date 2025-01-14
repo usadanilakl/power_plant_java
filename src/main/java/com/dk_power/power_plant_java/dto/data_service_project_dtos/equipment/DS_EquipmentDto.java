@@ -2,7 +2,7 @@ package com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_ConnectableDto;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.FileElementDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
@@ -34,7 +34,7 @@ public class DS_EquipmentDto extends DS_ConnectableDto {
     private ValueDto vendor;
     private Map<String, String> attributes = new HashMap<>();
     private Set<ValueDto> tags = new HashSet<>();
-    private Set<FileElementDto> fileElements = new HashSet<>();
+    private Set<DS_FileElementDto> fileElements = new HashSet<>();
     private Set<DS_EquipmentConnectionDto> connectionsFrom = new HashSet<>();
     private Set<DS_EquipmentConnectionDto> connectionsTo = new HashSet<>();
     private Set<LotoPointDto> lotoPoints = new HashSet<>();

@@ -34,7 +34,7 @@ public class DS_FileObjectDtoDS extends DS_ConnectableDto {
     private ValueDto vendor;
     private List<ValueDto> systems;
     private List<ValueDto> tags;
-    private List<FileElementDto> elements;
+    private List<DS_FileElementDto> elements;
 
     public String buildFileLink() {
         if (rootPath == null || extension == null || fileNumber == null) {

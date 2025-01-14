@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.dto.data_service_project_dtos.files;
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_ConnectableDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Getter;
@@ -20,8 +21,8 @@ import java.util.Map;
             property = "id"
     )
 
-    public class FileElementDto extends BaseDto {
-        public FileElementDto(){super();}
+    public class DS_FileElementDto extends BaseDto {
+        public DS_FileElementDto(){super();}
 
 
         private DS_FileObjectDtoDS fileObject;
@@ -29,8 +30,8 @@ import java.util.Map;
         private String originalPictureSize;
         private String tagNumber;
         private DS_ConnectableDto connection;
-        private ValueDto elementType;
-        private ValueDto shapeType;
+        private DS_ValueDto elementType;
+        private DS_ValueDto shapeType;
 
         private Map<String,Float> shapeData;
 

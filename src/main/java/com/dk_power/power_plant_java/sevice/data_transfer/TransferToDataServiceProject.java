@@ -1,5 +1,9 @@
 package com.dk_power.power_plant_java.sevice.data_transfer;
 
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_LotoPointDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_TagNumberDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
@@ -9,9 +13,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @Transactional
@@ -39,13 +41,12 @@ public class TransferToDataServiceProject {
 
 
      * POSSIBLE CONFLICT RESOLUTION:
-     *      Preconditions:resolve duplicates in equipment and loto points
      *      1. Transfer files
      *      2. Transfer loto points that have no conflicts
      *      3. Transfer equipment that have no conflicts
      *      4. Transfer heat trace to equipment
      *      5. Transfer electrical breakers and panels to equipment
-     *      6. resolve equipment and loto point conflicts
+     *      6. resolve equipment and loto point conflicts - get rest of the equipment and loto points and process them manually (build UI to process)
      *      7. create FileElements with connections
      *      8. create equipment connections
      **/
@@ -72,9 +73,20 @@ public class TransferToDataServiceProject {
     private void transferEquipment(){
         //get all equipment
         List<Equipment> all = equipmentService.getAll();
-        //for each equipment:
-            //check if it has duplicates - handle duplicates
-            //check if it has loto point that matches equipment tagNumber
+        for (Equipment e : all) {
+            DS_TagNumberDto tagNumber = DS_TagNumberDto.builder().number(e.getTagNumber()).build();
+            Set<DS_TagNumberDto> tagNumbers = new HashSet<> (Collections.singletonList(tagNumber));
+            if(e.getEqType().getName().equals("Connector")){
+                DS_ValueDto shapeType = DS_ValueDto.builder().name("Rectangle").build();
+                DS_FileElementDto fileElement = DS_FileElementDto.builder()
+                        .tagNumber(e.getTagNumber())
+                        .coordinates(e.getCoordinates())
+                        .originalPictureSize(e.getOriginalPictureSize())
+                        .elementType(shapeType)
+//                        .fileObject(e.getMainFile().get)
+                        .build();
+            }
+        }
     }
 
     private void createFileElements(){
@@ -97,6 +109,13 @@ public class TransferToDataServiceProject {
                     //merge datata
                     //send updated loto point back to data service project to be saved
                 }else{
+                    DS_TagNumberDto tagNumber = DS_TagNumberDto.builder().number(lp.getTagNumber()).build();
+                    Set<DS_TagNumberDto> tagNumbers = new HashSet<> (Collections.singletonList(tagNumber));
+                    DS_LotoPointDto.builder()
+                            .unit(lp.getUnit())
+                            .description(lp.getDescription())
+                            .tagNumbers(tagNumbers)
+                            .build();
 
                 }
             }
