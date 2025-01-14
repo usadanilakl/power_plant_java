@@ -20,6 +20,7 @@ import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -81,6 +82,8 @@ public class FileObject extends BaseAuditEntity {
     private Boolean completed;
     private String bulkEditStep = "eqTagNumber";
     private String docNum;
+
+    private UUID dataServiceFileId;
 
 
 

@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_LotoPointDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_TagNumberDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
@@ -12,6 +13,7 @@ import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointServiceImpl
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
@@ -55,6 +57,7 @@ public class TransferToDataServiceProject {
 
     private final EquipmentServiceImpl equipmentService;
     private final LotoPointServiceImpl lotoPointService;
+    private final RestTemplate restTemplate;
 
     public void transferExecution(){
 
@@ -73,9 +76,12 @@ public class TransferToDataServiceProject {
     private void transferEquipment(){
         //get all equipment
         List<Equipment> all = equipmentService.getAll();
+        Set<String> tags = new HashSet<>();
         for (Equipment e : all) {
             DS_TagNumberDto tagNumber = DS_TagNumberDto.builder().number(e.getTagNumber()).build();
             Set<DS_TagNumberDto> tagNumbers = new HashSet<> (Collections.singletonList(tagNumber));
+            DS_FileObjectDtoDS fileObject = DS_FileObjectDtoDS.builder().id(e.getMainFile().getDataServiceFileId()).build();
+
             if(e.getEqType().getName().equals("Connector")){
                 DS_ValueDto shapeType = DS_ValueDto.builder().name("Rectangle").build();
                 DS_FileElementDto fileElement = DS_FileElementDto.builder()
@@ -83,8 +89,30 @@ public class TransferToDataServiceProject {
                         .coordinates(e.getCoordinates())
                         .originalPictureSize(e.getOriginalPictureSize())
                         .elementType(shapeType)
-//                        .fileObject(e.getMainFile().get)
+                        .shapeType(shapeType)
+                        .fileObject(fileObject)
                         .build();
+            }else {
+                if(tags.add(e.getTagNumber())){
+                    DS_ValueDto shapeType = DS_ValueDto.builder().name("Rectangle").build();
+                    DS_ValueDto elementType = DS_ValueDto.builder().name("Equipment").build();
+                    DS_FileElementDto fileElement = DS_FileElementDto.builder()
+                            .tagNumber(e.getTagNumber())
+                            .coordinates(e.getCoordinates())
+                            .originalPictureSize(e.getOriginalPictureSize())
+                            .elementType(shapeType)
+                            .fileObject(fileObject)
+                            .build();
+                }
+            }
+            if(tags.add(e.getTagNumber())){
+                if(e.getLotoPoints()!=null && e.getLotoPoints().size()>0){
+                    //get existing equipment from data service progect
+                    //merge datata
+                    //send updated equipment back to data service project to be saved
+                }else{
+
+                }
             }
         }
     }

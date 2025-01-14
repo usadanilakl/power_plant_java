@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -13,5 +15,9 @@ public class WebConfigurer implements WebMvcConfigurer {
                 .addResourceLocations("file:./uploads/");
 //                .addResourceLocations("file:///J:/Jackson Generation P&IDs/New LOTO Project/uploads/");
 
+    }
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }

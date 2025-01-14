@@ -10,6 +10,6 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 //@JsonIgnoreProperties(ignoreUnknown = true)
 //@JsonInclude(JsonInclude.Include.NON_NULL)
-public class DS_ConnectableDto extends BaseDto {
+public class DS_ConnectableDto extends DS_BaseDto {
     protected DS_ConnectableDto(){super();}
 }
