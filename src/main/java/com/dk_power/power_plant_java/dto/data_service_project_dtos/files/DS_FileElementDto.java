@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.dto.data_service_project_dtos.files;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_BaseDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_ConnectableDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -21,7 +22,7 @@ import java.util.Map;
             property = "id"
     )
 
-    public class DS_FileElementDto extends BaseDto {
+    public class DS_FileElementDto extends DS_BaseDto {
         public DS_FileElementDto(){super();}
 
 

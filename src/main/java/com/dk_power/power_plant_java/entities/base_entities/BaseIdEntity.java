@@ -1,11 +1,12 @@
 package com.dk_power.power_plant_java.entities.base_entities;
 
-import com.dk_power.power_plant_java.enums.ObjectType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.*;
+
+import java.util.UUID;
 
 @MappedSuperclass
 @Getter
@@ -26,6 +27,9 @@ public class BaseIdEntity {
 //    @Enumerated(EnumType.STRING)
 //    private ObjectType objectType;
     private String objectType;
+    private UUID dataServiceItemId;
+    @Column(columnDefinition = "TEXT")
+    private String refactorNotes;
     {
         objectType = this.getClass().getSimpleName();
     }

@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
@@ -26,8 +27,8 @@ public class DS_LotoPointDto extends DS_EquipmentDto {
     private String description;
     private Boolean isUpdated;
     private Boolean isProcessed;
-    private ValueDto isolationType;
-    private ValueDto normalPosition;
-    private ValueDto isolatedPosition;
+    private DS_ValueDto isolationType;
+    private DS_ValueDto normalPosition;
+    private DS_ValueDto isolatedPosition;
     private Set<EquipmentDto> isolatedEquipment = new HashSet<>();
 }

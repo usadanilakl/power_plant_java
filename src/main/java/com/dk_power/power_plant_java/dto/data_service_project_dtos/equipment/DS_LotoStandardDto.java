@@ -19,10 +19,10 @@ import java.util.Set;
         generator = ObjectIdGenerators.PropertyGenerator.class,
         property = "id"
 )
-public class DS_LotoStandardDto extends EquipmentDto {
+public class DS_LotoStandardDto extends DS_EquipmentDto {
 
     public DS_LotoStandardDto() {super();}
 
     private String name;
-    private Set<LotoPointDto> lotoPoints = new HashSet<>();
+    private Set<DS_LotoPointDto> lotoPoints = new HashSet<>();
 }

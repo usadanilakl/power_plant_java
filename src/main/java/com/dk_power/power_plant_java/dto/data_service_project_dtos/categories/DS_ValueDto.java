@@ -14,5 +14,5 @@ import lombok.experimental.SuperBuilder;
 public class DS_ValueDto extends DS_BaseDto {
     private String name;
     private String description;
-    private CategoryDto category;
+    private DS_CategoryDto category;
 }

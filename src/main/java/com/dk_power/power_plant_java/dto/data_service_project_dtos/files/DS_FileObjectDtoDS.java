@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.dto.data_service_project_dtos.files;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_ConnectableDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Getter;
@@ -28,12 +29,13 @@ public class DS_FileObjectDtoDS extends DS_ConnectableDto {
     private String rootPath;
     private String folder;
     private String fileNumber;
+    private String docNumber;
     private String extension;
     private String path;
-    private ValueDto fileType;
-    private ValueDto vendor;
-    private List<ValueDto> systems;
-    private List<ValueDto> tags;
+    private DS_ValueDto fileType;
+    private DS_ValueDto vendor;
+    private List<DS_ValueDto> systems;
+    private List<DS_ValueDto> tags;
     private List<DS_FileElementDto> elements;
 
     public String buildFileLink() {
@@ -41,8 +43,8 @@ public class DS_FileObjectDtoDS extends DS_ConnectableDto {
             throw new IllegalStateException("Required fields are not set");
         }
         Path filePath = Paths.get(rootPath, extension,
-                Optional.ofNullable(fileType).map(ValueDto::getName).orElse(""),
-                Optional.ofNullable(vendor).map(ValueDto::getName).orElse(""),
+                Optional.ofNullable(fileType).map(DS_ValueDto::getName).orElse(""),
+                Optional.ofNullable(vendor).map(DS_ValueDto::getName).orElse(""),
                 fileNumber + "." + extension);
         path = filePath.toString();
         return path;
@@ -81,10 +83,10 @@ public class DS_FileObjectDtoDS extends DS_ConnectableDto {
         }
 
         // Set fileType and vendor
-        this.fileType = new ValueDto();
+        this.fileType = new DS_ValueDto();
         this.fileType.setName(fileTypeName);
 
-        this.vendor = new ValueDto();
+        this.vendor = new DS_ValueDto();
         this.vendor.setName(vendorName);
 
         // Build folder
@@ -96,8 +98,8 @@ public class DS_FileObjectDtoDS extends DS_ConnectableDto {
             throw new IllegalStateException("Required fields are not set");
         }
         Path folderPath = Paths.get(rootPath, extension,
-                Optional.ofNullable(fileType).map(ValueDto::getName).orElse(""),
-                Optional.ofNullable(vendor).map(ValueDto::getName).orElse(""));
+                Optional.ofNullable(fileType).map(DS_ValueDto::getName).orElse(""),
+                Optional.ofNullable(vendor).map(DS_ValueDto::getName).orElse(""));
         folder = folderPath.toString();
         return folder;
     }

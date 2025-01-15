@@ -1,20 +1,41 @@
 package com.dk_power.power_plant_java.sevice.data_transfer;
 
+import com.amazonaws.util.IOUtils;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.ApiResponse;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_CategoryDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_LotoPointDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_TagNumberDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
-import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
+import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.springframework.core.ParameterizedTypeReference;
+import org.apache.hc.core5.http.HttpEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 @Service
@@ -57,19 +78,68 @@ public class TransferToDataServiceProject {
 
     private final EquipmentServiceImpl equipmentService;
     private final LotoPointServiceImpl lotoPointService;
+    private final FileServiceImpl fileService;
     private final RestTemplate restTemplate;
 
-    public void transferExecution(){
-
+    public void transferExecution() throws IOException {
+        transferFileObjects();
     }
 
-    private void transferFileObjects(){
-        //Get all files
-        //For each file:
-            //Create new file object
-            //Fill out fields
-            //Register id of old file in new file object
-            //Save new file object
+    private void transferFileObjects() throws IOException {
+        List<FileObject> all = fileService.getAll();
+        int count = 0;
+        for (FileObject fileObject : all) {
+            if(count++>20) break;
+            DS_FileObjectDtoDS newFileObject = DS_FileObjectDtoDS.builder()
+                    .name(fileObject.getName())
+                    .fileNumber(fileObject.getFileNumber())
+                    .extension(fileObject.getExtension())
+                    .vendor(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Vendor").build()).name(fileObject.getVendor().getName()).build())
+                    .oldPidProjectItemId(fileObject.getId())
+                    .build();
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            String fileObjectJson = objectMapper.writeValueAsString(newFileObject);
+
+            MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+
+            // Add the JSON part
+            builder.addTextBody("fileDto", fileObjectJson, ContentType.APPLICATION_JSON);
+
+            // Add the file part
+            File file = new File(fileObject.getFileLink());
+            builder.addBinaryBody("file", file, ContentType.APPLICATION_OCTET_STREAM, file.getName());
+
+            HttpEntity multipartEntity = builder.build();
+
+            try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+                HttpPost httpPost = new HttpPost("http://localhost:8081/api/files");
+                httpPost.setEntity(multipartEntity);
+
+                try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                    int statusCode = response.getCode();
+                    if (statusCode == HttpStatus.OK.value()) {
+                        HttpEntity entity = response.getEntity();
+                        if (entity != null) {
+                            String jsonResponse = EntityUtils.toString(entity);
+                            ObjectMapper mapper = new ObjectMapper();
+                            ApiResponse<DS_FileObjectDtoDS> apiResponse = mapper.readValue(jsonResponse,
+                                    new TypeReference<ApiResponse<DS_FileObjectDtoDS>>() {
+                                    });
+
+                            DS_FileObjectDtoDS createdFileObject = apiResponse.getData();
+                            System.out.println("File created successfully. ID: " + createdFileObject.getId());
+                        } else {
+                            // Handle error
+                            System.out.println("Error creating file. Status: " + statusCode);
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error during file transfer: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
 
@@ -80,7 +150,7 @@ public class TransferToDataServiceProject {
         for (Equipment e : all) {
             DS_TagNumberDto tagNumber = DS_TagNumberDto.builder().number(e.getTagNumber()).build();
             Set<DS_TagNumberDto> tagNumbers = new HashSet<> (Collections.singletonList(tagNumber));
-            DS_FileObjectDtoDS fileObject = DS_FileObjectDtoDS.builder().id(e.getMainFile().getDataServiceFileId()).build();
+            DS_FileObjectDtoDS fileObject = DS_FileObjectDtoDS.builder().id(e.getMainFile().getDataServiceItemId()).build();
 
             if(e.getEqType().getName().equals("Connector")){
                 DS_ValueDto shapeType = DS_ValueDto.builder().name("Rectangle").build();

@@ -15,6 +15,7 @@ import com.dk_power.power_plant_java.sevice.FilePathService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
+import com.dk_power.power_plant_java.sevice.data_transfer.TransferToDataServiceProject;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.DataDistributionService;
 import com.dk_power.power_plant_java.sevice.data_transfer.data_manupulation.TransferExcecutionServiceImpl;
 import com.dk_power.power_plant_java.sevice.data_transfer.excel.*;
@@ -77,6 +78,7 @@ private final HtTransferService htTransferService;
 private final HeatTraceRepo heatTraceRepo;
 private final FileUploaderService fileUploaderService;
 private final ExcelReaderService excelReaderService;
+private final TransferToDataServiceProject transferToDataServiceProject;
 
 
     public static void main(String[] args) {
@@ -101,7 +103,7 @@ private final ExcelReaderService excelReaderService;
 
 
 
-
+        transferToDataServiceProject.transferExecution();
 
 
 //        electricalPanelTransferService.deleteOldPanelObjects();
@@ -139,18 +141,7 @@ private final ExcelReaderService excelReaderService;
 
 //        equipmentService.assignEqTypeByTagContaining();
 
-        int count = 0;
-        List<Equipment> all = equipmentService.getAll();
-        for (Equipment e : all) {
-            if(e.getLotoPoints().size()>0){
-                Set<String> tags = e.getLotoPoints().stream().map(LotoPoint::getTagNumber).collect(Collectors.toSet());
-                if (!tags.contains(e.getTagNumber())) {
-                    System.out.println(e.getTagNumber());
-                    count++;
-                    if(count==100){break;}
-                }
-            }
-        }
+
 
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 

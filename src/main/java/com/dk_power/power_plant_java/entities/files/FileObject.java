@@ -83,7 +83,7 @@ public class FileObject extends BaseAuditEntity {
     private String bulkEditStep = "eqTagNumber";
     private String docNum;
 
-    private UUID dataServiceFileId;
+
 
 
 

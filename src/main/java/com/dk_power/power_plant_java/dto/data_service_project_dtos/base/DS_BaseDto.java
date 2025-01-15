@@ -21,6 +21,9 @@ public class DS_BaseDto {
     private String objectType;
     private String note;
 
+    private Long oldPidProjectItemId;
+    private String refactorNotes;
+
     @Builder.Default
     @JsonIgnore
     List<String> skipMappingFields = new ArrayList<>();

@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_ConnectableDto;
+import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -28,16 +29,16 @@ public class DS_EquipmentDto extends DS_ConnectableDto {
     private Set<DS_TagNumberDto> tagNumbers;
     private String description;
     private String specificLocation;
-    private ValueDto location;
-    private ValueDto system;
-    private ValueDto equipmentType;
-    private ValueDto vendor;
+    private DS_ValueDto location;
+    private DS_ValueDto system;
+    private DS_ValueDto equipmentType;
+    private DS_ValueDto vendor;
     private Map<String, String> attributes = new HashMap<>();
-    private Set<ValueDto> tags = new HashSet<>();
+    private Set<DS_ValueDto> tags = new HashSet<>();
     private Set<DS_FileElementDto> fileElements = new HashSet<>();
     private Set<DS_EquipmentConnectionDto> connectionsFrom = new HashSet<>();
     private Set<DS_EquipmentConnectionDto> connectionsTo = new HashSet<>();
-    private Set<LotoPointDto> lotoPoints = new HashSet<>();
+    private Set<DS_LotoPointDto> lotoPoints = new HashSet<>();
 
     @Override
     public String toString() {
