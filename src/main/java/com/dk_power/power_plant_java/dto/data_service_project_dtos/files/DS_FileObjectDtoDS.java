@@ -29,7 +29,7 @@ public class DS_FileObjectDtoDS extends DS_ConnectableDto {
     private String rootPath;
     private String folder;
     private String fileNumber;
-    private String docNumber;
+    private String docNumbers;
     private String extension;
     private String path;
     private DS_ValueDto fileType;

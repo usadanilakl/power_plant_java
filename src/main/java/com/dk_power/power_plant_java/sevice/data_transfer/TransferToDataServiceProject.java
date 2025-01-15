@@ -17,6 +17,7 @@ import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointServiceImpl
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -80,6 +81,7 @@ public class TransferToDataServiceProject {
     private final LotoPointServiceImpl lotoPointService;
     private final FileServiceImpl fileService;
     private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     public void transferExecution() throws IOException {
         transferFileObjects();
@@ -89,7 +91,7 @@ public class TransferToDataServiceProject {
         List<FileObject> all = fileService.getAll();
         int count = 0;
         for (FileObject fileObject : all) {
-            if(count++>20) break;
+//            if(count++>20) break;
             DS_FileObjectDtoDS newFileObject = DS_FileObjectDtoDS.builder()
                     .name(fileObject.getName())
                     .fileNumber(fileObject.getFileNumber())
@@ -98,7 +100,6 @@ public class TransferToDataServiceProject {
                     .oldPidProjectItemId(fileObject.getId())
                     .build();
 
-            ObjectMapper objectMapper = new ObjectMapper();
             String fileObjectJson = objectMapper.writeValueAsString(newFileObject);
 
             MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -108,7 +109,13 @@ public class TransferToDataServiceProject {
 
             // Add the file part
             File file = new File(fileObject.getFileLink());
-            builder.addBinaryBody("file", file, ContentType.APPLICATION_OCTET_STREAM, file.getName());
+            if (file.exists()) {
+                builder.addBinaryBody("file", file, ContentType.APPLICATION_OCTET_STREAM, file.getName());
+            } else {
+                System.out.println("File not found: " + fileObject.getFileLink());
+                // You might want to skip this iteration or handle the missing file in some way
+                continue; // Skip to the next file object
+            }
 
             HttpEntity multipartEntity = builder.build();
 
@@ -123,7 +130,7 @@ public class TransferToDataServiceProject {
                         if (entity != null) {
                             String jsonResponse = EntityUtils.toString(entity);
                             ObjectMapper mapper = new ObjectMapper();
-                            ApiResponse<DS_FileObjectDtoDS> apiResponse = mapper.readValue(jsonResponse,
+                            ApiResponse<DS_FileObjectDtoDS> apiResponse = objectMapper.readValue(jsonResponse,
                                     new TypeReference<ApiResponse<DS_FileObjectDtoDS>>() {
                                     });
 

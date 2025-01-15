@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.dto.data_service_project_dtos;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
@@ -9,6 +10,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
 public class ApiResponse<T> {
     private T data;
     private String message;
