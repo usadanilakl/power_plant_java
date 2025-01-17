@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_BaseD
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_ConnectableDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,6 +27,7 @@ import java.util.Map;
         public DS_FileElementDto(){super();}
 
 
+        @JsonIgnore
         private DS_FileObjectDtoDS fileObject;
         private String coordinates;
         private String originalPictureSize;
@@ -33,6 +35,7 @@ import java.util.Map;
         private DS_ConnectableDto connection;
         private DS_ValueDto elementType;
         private DS_ValueDto shapeType;
+        private String color;
 
         private Map<String,Float> shapeData;
 

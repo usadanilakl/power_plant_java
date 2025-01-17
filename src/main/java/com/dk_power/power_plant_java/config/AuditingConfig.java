@@ -11,18 +11,28 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Optional;
 
+
 @Configuration
 @EnableJpaAuditing(auditorAwareRef = "auditorProvider")
 public class AuditingConfig {
 
+    private static boolean auditingEnabled = false;
+
     @Bean
     public AuditorAware<String> auditorProvider() {
-        return new AuditorAwareImpl();
+        return auditingEnabled ? new AuditorAwareImpl() : new NoOpAuditorAware();
+    }
+
+    public static void disableAuditing() {
+        auditingEnabled = false;
+    }
+
+    public static void enableAuditing() {
+        auditingEnabled = true;
     }
 }
 
 class AuditorAwareImpl implements AuditorAware<String> {
-    @Bean
     @Override
     public Optional<String> getCurrentAuditor() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -33,3 +43,35 @@ class AuditorAwareImpl implements AuditorAware<String> {
         return Optional.of(userPrincipal.getName());
     }
 }
+
+class NoOpAuditorAware implements AuditorAware<String> {
+    @Override
+    public Optional<String> getCurrentAuditor() {
+        return Optional.empty();
+    }
+}
+
+
+
+//@Configuration
+//@EnableJpaAuditing(auditorAwareRef = "auditorProvider")
+//public class AuditingConfig {
+//
+//    @Bean
+//    public AuditorAware<String> auditorProvider() {
+//        return new AuditorAwareImpl();
+//    }
+//}
+//
+//class AuditorAwareImpl implements AuditorAware<String> {
+//    @Bean
+//    @Override
+//    public Optional<String> getCurrentAuditor() {
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (authentication == null || !authentication.isAuthenticated()) {
+//            return Optional.empty();
+//        }
+//        CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
+//        return Optional.of(userPrincipal.getName());
+//    }
+//}

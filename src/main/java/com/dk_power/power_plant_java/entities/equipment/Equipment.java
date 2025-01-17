@@ -115,4 +115,6 @@ public class Equipment extends BaseEquipment {
                 ",\n pid='" + pid + '\'' +
                 '}';
     }
+
+
 }

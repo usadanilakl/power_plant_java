@@ -33,4 +33,9 @@ public class BaseIdEntity {
     {
         objectType = this.getClass().getSimpleName();
     }
+
+    public void addRefactorNote(String s) {
+        if(refactorNotes == null || refactorNotes.isEmpty()) refactorNotes = s;
+        else refactorNotes += ";" + s;
+    }
 }
