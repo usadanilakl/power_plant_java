@@ -82,6 +82,8 @@ public class TransferToDataServiceProject {
 
     public void transferExecution() throws IOException {
 //        fileObjectTransfer.transferFileObjects();
+//        fileObjectTransfer.cleanTransferData();
+
 //        fileElementTransfer.clearTransferStatus();
         fileElementTransfer.createFileElements();
     }
