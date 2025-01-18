@@ -85,70 +85,9 @@ public class TransferToDataServiceProject {
 //        fileObjectTransfer.cleanTransferData();
 
 //        fileElementTransfer.clearTransferStatus();
-        fileElementTransfer.createFileElements();
+//        fileElementTransfer.createFileElements();
     }
 
-//    private void transferFileObjects() throws IOException {
-//        List<FileObject> all = fileService.getAll();
-//        int count = 0;
-//        for (FileObject fileObject : all) {
-////            if(count++>20) break;
-//            DS_FileObjectDtoDS newFileObject = DS_FileObjectDtoDS.builder()
-//                    .name(fileObject.getName())
-//                    .fileNumber(fileObject.getFileNumber())
-//                    .extension(fileObject.getExtension())
-//                    .vendor(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Vendor").build()).name(fileObject.getVendor().getName()).build())
-//                    .oldPidProjectItemId(fileObject.getId())
-//                    .build();
-//
-//            String fileObjectJson = objectMapper.writeValueAsString(newFileObject);
-//
-//            MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-//
-//            // Add the JSON part
-//            builder.addTextBody("fileDto", fileObjectJson, ContentType.APPLICATION_JSON);
-//
-//            // Add the file part
-//            File file = new File(fileObject.getFileLink());
-//            if (file.exists()) {
-//                builder.addBinaryBody("file", file, ContentType.APPLICATION_OCTET_STREAM, file.getName());
-//            } else {
-//                System.out.println("File not found: " + fileObject.getFileLink());
-//                // You might want to skip this iteration or handle the missing file in some way
-//                continue; // Skip to the next file object
-//            }
-//
-//            HttpEntity multipartEntity = builder.build();
-//
-//            try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-//                HttpPost httpPost = new HttpPost("http://localhost:8081/api/files");
-//                httpPost.setEntity(multipartEntity);
-//
-//                try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-//                    int statusCode = response.getCode();
-//                    if (statusCode == HttpStatus.OK.value()) {
-//                        HttpEntity entity = response.getEntity();
-//                        if (entity != null) {
-//                            String jsonResponse = EntityUtils.toString(entity);
-//                            ObjectMapper mapper = new ObjectMapper();
-//                            ApiResponse<DS_FileObjectDtoDS> apiResponse = objectMapper.readValue(jsonResponse,
-//                                    new TypeReference<ApiResponse<DS_FileObjectDtoDS>>() {
-//                                    });
-//
-//                            DS_FileObjectDtoDS createdFileObject = apiResponse.getData();
-//                            System.out.println("File created successfully. ID: " + createdFileObject.getId());
-//                        } else {
-//                            // Handle error
-//                            System.out.println("Error creating file. Status: " + statusCode);
-//                        }
-//                    }
-//                } catch (Exception e) {
-//                    System.out.println("Error during file transfer: " + e.getMessage());
-//                    e.printStackTrace();
-//                }
-//            }
-//        }
-//    }
 
 
     private void transferEquipment(){
@@ -218,8 +157,4 @@ public class TransferToDataServiceProject {
         }
     }
 
-    private void duplcateConflictResolver(){
-        //Get duplicates
-        //merge data
-    }
 }

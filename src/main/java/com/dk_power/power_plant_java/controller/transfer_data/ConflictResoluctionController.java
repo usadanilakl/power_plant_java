@@ -1,0 +1,42 @@
+package com.dk_power.power_plant_java.controller.transfer_data;
+
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.FileElementTransfer;
+import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointServiceImpl;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/conflict")
+public class ConflictResoluctionController {
+
+    private final FileElementTransfer fileElementTransfer;
+    private final EquipmentServiceImpl equipmentService;
+    private final LotoPointServiceImpl lotoPointService;
+
+    @GetMapping("/equipment/{conflict}")
+    public ResponseEntity<List<EquipmentDto>> getEquipmentConflicts(@PathVariable String conflict) {
+        List<Equipment> conflictingEquipment = fileElementTransfer.getConflictingEquipment(conflict);
+        return ResponseEntity.ok(conflictingEquipment.stream().map(equipmentService::convertToDto).toList());
+    }
+
+    @GetMapping("/loto-point/{conflict}")
+    public ResponseEntity<List<LotoPointDto>> getLotoPointConflicts(@PathVariable String conflict) {
+        List<LotoPoint> conflictingEquipment = fileElementTransfer.getConflictingLotoPoints(conflict);
+        return ResponseEntity.ok(conflictingEquipment.stream().map(lotoPointService::convertToDto).toList());
+    }
+
+    @GetMapping("/get-duplicates")
+    public ResponseEntity<List<EquipmentDto>> getDuplicatesEq(){
+        List<Equipment> conflictingEquipment = fileElementTransfer.getSingleSetOfEqDuplicates();
+        return ResponseEntity.ok(conflictingEquipment.stream().map(equipmentService::convertToDto).toList());
+    }
+}

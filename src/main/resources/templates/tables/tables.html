@@ -106,9 +106,17 @@ html, #all, #loto-point-table{
                 <div class="col-md-4 table-controls">
                     <button id="loto-point-table" class="btns">LOTO Points</button>
                 </div>
-                <!-- <div class="col-md-3" id="table-controls">
-                    <button id="heat-trace-table">Heat Trace</button>
-                </div> -->
+                <div class="col-md-3 table-controls">
+                    <select id="api-dropdown" class="form-select">
+                        <option value="">Select Conflict</option>
+                        <option value="/equipment/coordinates">Equipment Coordinates</option>
+                        <option value="/equipment/duplicates">Equipment Duplicates</option>
+                        <option value="/equipment/tag">Eq/Lp Tag missmatch</option>
+                        <option value="/loto-point/noEquipment">LP with no equipment</option>
+                        <option value="/loto-point/duplicates">LP Duplicates</option>
+                        <option value="/loto-point/unprocessed">LP Unprocessed</option>
+                    </select>
+                </div>
             </div>
 
             <div class="row">
@@ -174,9 +182,43 @@ await buildLotoPointTable(tableContainer);
 await getAllEqLightPoints();
 await getAllFiles()
 
-equipmentButton.addEventListener('click',()=>buildEqTable(tableContainer))
-filesButton.addEventListener('click',()=>buildFileTable(tableContainer))
-lotoPointButton.addEventListener('click',()=>buildLotoPointTable(tableContainer))
+equipmentButton.addEventListener('click',()=>buildEqTable(tableContainer));
+filesButton.addEventListener('click',()=>buildFileTable(tableContainer));
+lotoPointButton.addEventListener('click',()=>buildLotoPointTable(tableContainer));
+
+
+document.getElementById('api-dropdown').addEventListener('change', async function() {
+    const selectedValue = this.value;
+    if (selectedValue) {
+        const apiEndpoint = `/conflict${selectedValue}`;
+        
+        try {
+            const response = await fetch(apiEndpoint, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token // Using the token variable you already have
+                }
+            });
+            const data = await response.json();
+            console.log('API response:', data);
+            // Handle the API response here
+            if(selectedValue.includes('equipment')){
+                buildEqConflictTable(tableContainer, data)
+                // tableContainer.innerHTML = '';
+                // const editableTable = await createEditableTableFromObjects(data);
+                // console.log(editableTable);
+                // tableContainer.appendChild(editableTable);
+            } else {
+                buildLotoPointConflictTable(tableContainer, data);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+});
+
+
 })
 .then(()=>{
 

@@ -29,6 +29,29 @@ async function buildEqTable(tableContainer){
     });
 }
 
+async function buildEqConflictTable(tableContainer, objects){
+    tableContainer.innerHTML="";
+    let ignoreFields = ["id"];
+    let table = await createTableWithFunctionFromObjects(objects, ignoreFields,showEquipmentOnPid2);
+    
+    tableContainer.appendChild(table);
+
+    let lastScrollTop = 0;
+    tableContainer.addEventListener('scroll', function() {
+        const scrollPosition = this.scrollTop + this.clientHeight;
+        const tableHeight = this.scrollHeight;
+        let currentScrollTop = this.scrollTop;
+
+        if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
+            tableDisplayControl(table, false);
+        } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
+            tableDisplayControl(table, true);
+        }
+
+        lastScrollTop = currentScrollTop;
+    });
+}
+
 async function showEquipmentOnPid2(eq){
     await openEqFile(eq.id);
 }
@@ -65,6 +88,52 @@ async function buildFileTable(tableContainer){
  /************************************************************************************************** *
   * LOTO POINT
  ************************************************************************************************** */
+
+ async function buildLotoPointConflictTable(tableContainer,objects){
+    if (!tableContainer) {
+        console.error('Table container not found');
+        return;
+    }
+    
+    try {
+        let data = objects;
+        let items = data.map(e => ({
+            tagNumber: e.tagNumber,
+            description: e.description,
+            generalLocation: e.generalLocation,
+            specificLocation: e.specificLocation,
+            id:e.id,
+            eqIds : e.equipmentIdList,
+            fileIds:e.fileIds
+        }));
+    
+        let ignoreFields = ["id", "eqIds","fileIds"];
+        let table = await createTableWithFunctionFromObjects(items, ignoreFields,showPointOnPid);
+        
+        tableContainer.appendChild(table);
+    
+        let lastScrollTop = 0;
+        tableContainer.addEventListener('scroll', function() {
+            const scrollPosition = this.scrollTop + this.clientHeight;
+            const tableHeight = this.scrollHeight;
+            let currentScrollTop = this.scrollTop;
+    
+            if (tableHeight - scrollPosition < 500 && currentScrollTop > lastScrollTop) {
+                tableDisplayControl(table, false);
+            } else if (this.scrollTop < 500 && currentScrollTop < lastScrollTop) {
+                tableDisplayControl(table, true);
+            }
+    
+            lastScrollTop = currentScrollTop;
+        });
+        
+        initDragScroll(tableContainer, control);
+        console.log('Scroll event listener added');
+    } catch (error) {
+        console.error('Error loading table data:', error);
+    }
+ }
+
 
 async function buildLotoPointTable(tableContainer){
     if (!tableContainer) {
@@ -208,3 +277,97 @@ async function loadPictureInNewWindow(file){
         console.error('Error:', error);
     }
 }
+
+
+
+async function createEditableTableFromObjects(objects) {
+    const table = document.createElement('table');
+    table.className = 'table table-striped table-bordered';
+
+    // Create table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const headers = ['Field', 'Value', 'Actions'];
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Create table body
+    const tbody = document.createElement('tbody');
+    objects.forEach((obj, index) => {
+        Object.entries(obj).forEach(([key, value]) => {
+            const row = document.createElement('tr');
+            
+            // Field name
+            const fieldCell = document.createElement('td');
+            fieldCell.textContent = key;
+            row.appendChild(fieldCell);
+
+            // Value (as form input)
+            const valueCell = document.createElement('td');
+            const form = document.createElement('form');
+            form.className = 'edit-form';
+            form.dataset.objectIndex = index;
+            form.dataset.field = key;
+
+            let input;
+            if (typeof value === 'object' && value !== null) {
+                input = document.createElement('textarea');
+                input.value = JSON.stringify(value, null, 2);
+            } else {
+                input = document.createElement('input');
+                input.type = 'text';
+                input.value = value !== null ? value : '';
+            }
+            input.name = key;
+            input.className = 'form-control';
+            form.appendChild(input);
+            valueCell.appendChild(form);
+            row.appendChild(valueCell);
+
+            // Actions
+            const actionsCell = document.createElement('td');
+            const saveButton = document.createElement('button');
+            saveButton.textContent = 'Save';
+            saveButton.className = 'btn btn-primary btn-sm';
+            saveButton.onclick = (e) => {
+                e.preventDefault();
+                saveChanges(form, objects);
+            };
+            actionsCell.appendChild(saveButton);
+            row.appendChild(actionsCell);
+
+            tbody.appendChild(row);
+        });
+    });
+    table.appendChild(tbody);
+
+    return table;
+}
+
+function saveChanges(form, objects) {
+    const objectIndex = parseInt(form.dataset.objectIndex);
+    const field = form.dataset.field;
+    const newValue = form.elements[0].value;
+
+    try {
+        // Try to parse as JSON if it's an object or array
+        objects[objectIndex][field] = JSON.parse(newValue);
+    } catch (e) {
+        // If parsing fails, treat it as a simple string
+        objects[objectIndex][field] = newValue;
+    }
+
+    console.log(`Updated object ${objectIndex}, field ${field} to:`, objects[objectIndex][field]);
+    // Here you would typically send this update to your backend
+}
+
+// Usage example:
+// const tableContainer = document.getElementById('table');
+// const objects = [/* your array of objects */];
+// const editableTable = await createEditableTableFromObjects(objects);
+// tableContainer.appendChild(editableTable);
