@@ -34,9 +34,17 @@ public class ConflictResoluctionController {
         return ResponseEntity.ok(conflictingEquipment.stream().map(lotoPointService::convertToDto).toList());
     }
 
-    @GetMapping("/get-duplicates")
-    public ResponseEntity<List<EquipmentDto>> getDuplicatesEq(){
-        List<Equipment> conflictingEquipment = fileElementTransfer.getSingleSetOfEqDuplicates();
-        return ResponseEntity.ok(conflictingEquipment.stream().map(equipmentService::convertToDto).toList());
+    @PostMapping("/update-equipment")
+    public ResponseEntity<EquipmentDto> updateEquipment(@RequestBody EquipmentDto dto){
+        Equipment equipment = equipmentService.convertToEntity(dto);
+        Equipment update = equipmentService.update(equipment);
+        return ResponseEntity.ok(equipmentService.convertToDto(update));
+    }
+
+    @PostMapping("/update-loto-point")
+    public ResponseEntity<LotoPointDto> updateLotoPoint(@RequestBody LotoPointDto dto){
+        LotoPoint lotoPoint = lotoPointService.convertToEntity(dto);
+        LotoPoint update = lotoPointService.save(lotoPoint);
+        return ResponseEntity.ok(lotoPointService.convertToDto(update));
     }
 }

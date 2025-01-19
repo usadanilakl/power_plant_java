@@ -61,6 +61,7 @@ public class LotoPoint extends BaseAuditEntity {
     @ManyToMany(mappedBy = "lotoPoints")
     @JsonIgnore
     private Set<Equipment> equipmentList;
+    private String conflictStatus;
 
     public void addLoto(Loto entity) {
         lotos.add(entity);

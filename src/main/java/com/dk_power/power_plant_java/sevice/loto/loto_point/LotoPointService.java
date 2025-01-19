@@ -35,4 +35,5 @@ public interface LotoPointService extends ExcelTransferService<LotoPoint, LotoPo
     List<LotoPoint> getIfLocationContains(String tagNumber);
 
     List<LotoPoint> getIfTagNumberContains(String tagNumber);
+    List<LotoPoint> getEntityByTagNumber(String tagNumber);
 }

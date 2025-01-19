@@ -171,4 +171,9 @@ public class LotoPointServiceImpl implements LotoPointService {
             save(f);
         }
     }
+
+    public List<LotoPoint> getEntityByTagNumber(String tagNumber) {
+        return lotoPointRepo.findByTagNumber(tagNumber);
+    }
+
 }

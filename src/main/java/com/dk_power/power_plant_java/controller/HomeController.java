@@ -70,4 +70,9 @@ public class HomeController {
         return "loto/loto-builder";
     }
 
+    @GetMapping("/data-transfer")
+    public String showDataTransferToDataPage(){
+        return "DataTransferToDataServiceProject";
+    }
+
 }

@@ -105,6 +105,10 @@ public class EquipmentMapper implements BaseMapper {
         if(entity.getHighlight()!=null){
             dto.setHighlight(highlightMapper.convertToDtoLight(entity.getHighlight()));
         }
+
+        if(entity.getConflictStatus()!=null){
+            dto.setConflictStatus(entity.getConflictStatus());
+        }
         return dto;
     }
 
@@ -139,6 +143,10 @@ public class EquipmentMapper implements BaseMapper {
 
         if (entity.getObjectType() != null) {
             dto.setObjectType(entity.getObjectType());
+        }
+
+        if(entity.getConflictStatus()!=null){
+            dto.setConflictStatus(entity.getConflictStatus());
         }
 
 //        if (entity.getVendor() != null) {
@@ -261,6 +269,9 @@ public class EquipmentMapper implements BaseMapper {
         }
         if(source.getHeatTraceList()!=null) entity.setHeatTraceList(source.getHeatTraceList().stream().map(heatTraceService::convertToEntity).toList());
 
+        if(source.getConflictStatus()!=null){
+            entity.setConflictStatus(source.getConflictStatus());
+        }
         return entity;
     }
 

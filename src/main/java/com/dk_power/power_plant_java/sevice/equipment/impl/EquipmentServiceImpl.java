@@ -360,6 +360,9 @@ public class EquipmentServiceImpl implements EquipmentService {
         }
     }
 
+    public List<String> getByTagNumberStartingWith(String num) {
+        return equipmentRepo.findByTagNumberStartingWith(num);
+    }
 
 
 //    @Override

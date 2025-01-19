@@ -1,13 +1,11 @@
 package com.dk_power.power_plant_java.entities.equipment;
 
 
-import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.base_entities.BaseEquipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -21,7 +19,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Entity
 @NoArgsConstructor
@@ -77,6 +74,7 @@ public class Equipment extends BaseEquipment {
     @JsonManagedReference
     @JoinColumn(name = "eq_highlight")
     private Highlight highlight;
+    private String conflictStatus;
 
 
 

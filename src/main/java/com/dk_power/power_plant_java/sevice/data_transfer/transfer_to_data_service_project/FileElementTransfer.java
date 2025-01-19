@@ -9,7 +9,6 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -28,18 +27,9 @@ public class FileElementTransfer {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    private LinkedList<String> duplicateEquipment = new LinkedList<>();
-
-//    @PostConstruct
-//    private void init(){
-//        List<Equipment> all = equipmentService.getAll();
-//        Set<String> tags = new HashSet<>();
-//        for (Equipment e : all) {
-//            if(e.getLotoPoints()!=null && !e.getLotoPoints().isEmpty() && !tags.add(e.getTagNumber())){
-//                duplicateEquipment.add(e.getTagNumber());
-//            }
-//        }
-//    }
+    /******************************************************
+     * TRANSFER
+     *******************************************************/
 
     protected void createFileElements(){
         //Get all equipment
@@ -92,6 +82,38 @@ public class FileElementTransfer {
             e.setDataServiceItemId(null);
             equipmentService.save(e);
         } );
+    }
+
+    public void matchLotoPointsInDuplicates(){
+        List<Equipment> all = equipmentService.getAll();
+        Set<String> tags = new HashSet<>();
+        int count = 0;
+        for (Equipment e : all) {
+            if(e.getLotoPoints()!=null && !e.getLotoPoints().isEmpty() && !tags.add(e.getTagNumber())){
+                // Found duplicate equipment with LOTO points
+                List<Equipment> duplicates = equipmentService.getByTagNumber(e.getTagNumber());
+                Set<LotoPoint> lotoPoints = new HashSet<>();
+
+                // Collect all unique LOTO points from all duplicates
+                duplicates.forEach(duplicate -> {
+                    lotoPoints.addAll(duplicate.getLotoPoints());
+                });
+
+                // Update each duplicate with the complete set of LOTO points
+                duplicates.forEach(duplicate ->{
+                    duplicate.setLotoPoints(lotoPoints);
+                    equipmentService.save(duplicate);
+                });
+
+                // Update each LOTO point to include all duplicate equipment
+                lotoPoints.forEach(lp -> {
+                    lp.getEquipmentList().addAll(duplicates);
+                    lotoPointService.save(lp);
+                });
+                count++;
+            }
+        }
+        System.out.println("Matched LOTO points in duplicates: " + count);
     }
 
 
@@ -171,28 +193,31 @@ public class FileElementTransfer {
     }
 
 
-    
+    /******************************************************
+     * CONFLICTS
+     *******************************************************/
     
     
     public List<Equipment> getConflictingEquipment(String conflictType) {
-    switch (conflictType.toLowerCase()) {
-        case "coordinates":
-            return checkCoordinateConflicts();
-        case "duplicates":
-            return checkForEquipmentDuplicates();
-        case "tag":
-            return checkForEquipmentWithNoMatchingLotoPoint();
-        default:
-            throw new IllegalArgumentException("Unknown conflict type: " + conflictType);
-    }
+        switch (conflictType.toLowerCase()) {
+            case "coordinates":
+                return checkCoordinateConflicts();
+            case "duplicates":
+    //            return checkForEquipmentDuplicates();
+                return getSingleSetOfEqDuplicates();
+            case "tag":
+                return getEquipmentWithNoMatchingLotoPoint(10);
+            default:
+                throw new IllegalArgumentException("Unknown conflict type: " + conflictType);
+        }
 }
 
     public List<LotoPoint> getConflictingLotoPoints(String conflictType) {
         switch (conflictType.toLowerCase()) {
             case "noEquipment":
-                return lotoPointsWithNoEquipmentAssociation();
+                return lotoPointsWithNoEquipmentAssociation(1);
             case "duplicates":
-                return checkForLotoPointDuplictates();
+                return checkForLotoPointDuplictates(1);
             case "unprocessed":
                 return getUnprocessedLotoPoints();
             default:
@@ -220,6 +245,11 @@ public class FileElementTransfer {
         return conflicts;
     }
 
+
+    /******************************************************
+     * DUPLICATE EQUIPMENT
+     *******************************************************/
+
     public List<Equipment> checkForEquipmentDuplicates(){
         List<Equipment> duplicates = new ArrayList<Equipment>();
         List<Equipment> all = equipmentService.getAll();
@@ -233,10 +263,26 @@ public class FileElementTransfer {
     }
 
     public List<Equipment> getSingleSetOfEqDuplicates(){
-        return equipmentService.getByTagNumber(duplicateEquipment.pop());
+        List<Equipment> all = equipmentService.getAll();
+        Set<String> tags = new HashSet<>();
+
+        for (Equipment e : all) {
+            if(e.getLotoPoints()!=null && !e.getLotoPoints().isEmpty() && !tags.add(e.getTagNumber())){
+                List<Equipment> byTagNumber = equipmentService.getByTagNumber(e.getTagNumber());
+                String description = e.getDescription();
+                for (Equipment duplicate : byTagNumber) {
+                    if(duplicate.getDescription()==null || !duplicate.getDescription().equals(description)) return byTagNumber;
+                }
+            }
+        }
+        return new ArrayList<>();
     }
 
-    public List<Equipment> checkForEquipmentWithNoMatchingLotoPoint(){
+    /******************************************************
+     * EQ/LP TAG MISMATCH
+     *******************************************************/
+
+    public List<Equipment> getEquipmentWithNoMatchingLotoPoint(){
         List<Equipment> all = equipmentService.getAll();
         List<Equipment> noLotoPoints = new ArrayList<>();
         for (Equipment e : all) {
@@ -249,6 +295,41 @@ public class FileElementTransfer {
         return noLotoPoints;
     }
 
+    public List<Equipment> getEquipmentWithNoMatchingLotoPoint(int count){
+        List<Equipment> all = equipmentService.getAll();
+        List<Equipment> noLotoPoints = new ArrayList<>();
+        for (Equipment e : all) {
+            if(e.getLotoPoints()!=null && !e.getLotoPoints().isEmpty()) {
+                if(e.getLotoPoints().stream().noneMatch(lp -> lp.getTagNumber().equals(e.getTagNumber()))){
+                    noLotoPoints.add(e);
+                }
+            }
+            if(noLotoPoints.size()>=count) return noLotoPoints;
+        }
+        return noLotoPoints;
+    }
+
+
+    /*****************************************************
+     * U1/U2 MISMATCH
+     ********************************************************/
+
+    public List<Equipment> getEquipmentWithMismatchBetweenUnits(){
+        List<String> tags = equipmentService.getByTagNumberStartingWith("01");
+        List<Equipment> mismatched = new ArrayList<>();
+        for (String tag : tags) {
+            String u2Tag ="02"+ tag.substring(2);
+            List<Equipment> u1Eq = equipmentService.getByTagNumber(tag);
+            List<Equipment> u2Eq = equipmentService.getByTagNumber(u2Tag);
+
+        }
+        return null;
+    }
+
+    /******************************************************
+     * LOTO POINTS WITH NO EQUIPMENT ASSOCIATION
+     *******************************************************/
+
     public List<LotoPoint> lotoPointsWithNoEquipmentAssociation(){
         List<LotoPoint> all = lotoPointService.getAll();
         List<LotoPoint> noEquipmentAssociation = new ArrayList<>();
@@ -259,6 +340,22 @@ public class FileElementTransfer {
         }
         return noEquipmentAssociation;
     }
+
+    public List<LotoPoint> lotoPointsWithNoEquipmentAssociation(int count){
+        List<LotoPoint> all = lotoPointService.getAll();
+        List<LotoPoint> noEquipmentAssociation = new ArrayList<>();
+        for (LotoPoint lp : all) {
+            if((lp.getEquipmentList()!=null && !lp.getEquipmentList().isEmpty()) || (lp.getFileIds()!=null && !lp.getFileIds().isEmpty())){
+                noEquipmentAssociation.add(lp);
+            }
+            if(noEquipmentAssociation.size()>=count) return noEquipmentAssociation;
+        }
+        return noEquipmentAssociation;
+    }
+
+    /******************************************************
+     * DUPLICATE LOTO POINTS
+     *******************************************************/
 
     public List<LotoPoint> checkForLotoPointDuplictates(){
         List<LotoPoint> duplicates = new ArrayList<LotoPoint>();
@@ -271,6 +368,23 @@ public class FileElementTransfer {
         }
         return duplicates;
     }
+    public List<LotoPoint> checkForLotoPointDuplictates(int count){
+        List<LotoPoint> duplicates = new ArrayList<LotoPoint>();
+        List<LotoPoint> all = lotoPointService.getAll();
+        Set<String> tags = new HashSet<>();
+        for (LotoPoint lp : all) {
+            if(!tags.add(lp.getTagNumber())){
+                List<LotoPoint> byTagNumber = lotoPointService.getEntityByTagNumber(lp.getTagNumber());
+                duplicates.addAll(byTagNumber);
+            }
+            if(duplicates.size()>=count) return duplicates;
+        }
+        return duplicates;
+    }
+
+    /******************************************************
+     * UNPROCESSED LOTO POINTS
+     *******************************************************/
 
     public List<LotoPoint> getUnprocessedLotoPoints(){
         List<LotoPoint> all = lotoPointService.getAll();

@@ -41,5 +41,6 @@ public class LotoPointDto extends BaseDto {
     private String objectType;
     private Long isUpdated;
     private String fileIds ;
+    private String conflictStatus;
 
 }

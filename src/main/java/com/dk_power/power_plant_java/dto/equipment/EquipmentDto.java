@@ -1,12 +1,9 @@
 package com.dk_power.power_plant_java.dto.equipment;
 
 
-import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.base_dtos.BaseEquipmentDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
-import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
-import com.dk_power.power_plant_java.entities.equipment.Highlight;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +11,6 @@ import lombok.Setter;
 
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -36,6 +32,7 @@ public class EquipmentDto extends BaseEquipmentDto {
     private List<HeatTraceDto> heatTraceList;
     private HighlightDto highlight;
     private String isUpdated;
+    private String conflictStatus;
 
 
     @Override
