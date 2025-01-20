@@ -3,9 +3,11 @@ package com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_serv
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_CategoryDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
+import com.dk_power.power_plant_java.entities.Conflict;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.repository.ConflictRepo;
 import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +18,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +30,7 @@ public class FileElementTransfer {
     private final LotoPointServiceImpl lotoPointService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final ConflictRepo conflictRepo;
 
     /******************************************************
      * TRANSFER
@@ -82,38 +87,6 @@ public class FileElementTransfer {
             e.setDataServiceItemId(null);
             equipmentService.save(e);
         } );
-    }
-
-    public void matchLotoPointsInDuplicates(){
-        List<Equipment> all = equipmentService.getAll();
-        Set<String> tags = new HashSet<>();
-        int count = 0;
-        for (Equipment e : all) {
-            if(e.getLotoPoints()!=null && !e.getLotoPoints().isEmpty() && !tags.add(e.getTagNumber())){
-                // Found duplicate equipment with LOTO points
-                List<Equipment> duplicates = equipmentService.getByTagNumber(e.getTagNumber());
-                Set<LotoPoint> lotoPoints = new HashSet<>();
-
-                // Collect all unique LOTO points from all duplicates
-                duplicates.forEach(duplicate -> {
-                    lotoPoints.addAll(duplicate.getLotoPoints());
-                });
-
-                // Update each duplicate with the complete set of LOTO points
-                duplicates.forEach(duplicate ->{
-                    duplicate.setLotoPoints(lotoPoints);
-                    equipmentService.save(duplicate);
-                });
-
-                // Update each LOTO point to include all duplicate equipment
-                lotoPoints.forEach(lp -> {
-                    lp.getEquipmentList().addAll(duplicates);
-                    lotoPointService.save(lp);
-                });
-                count++;
-            }
-        }
-        System.out.println("Matched LOTO points in duplicates: " + count);
     }
 
 
@@ -202,10 +175,9 @@ public class FileElementTransfer {
         switch (conflictType.toLowerCase()) {
             case "coordinates":
                 return checkCoordinateConflicts();
-            case "duplicates":
-    //            return checkForEquipmentDuplicates();
-                return getSingleSetOfEqDuplicates();
-            case "tag":
+            case "equipment_duplicates":
+                return getUnresolvedEquipmentDuplicates(1);
+            case "eq_lp_tag_mismatch":
                 return getEquipmentWithNoMatchingLotoPoint(10);
             default:
                 throw new IllegalArgumentException("Unknown conflict type: " + conflictType);
@@ -224,7 +196,36 @@ public class FileElementTransfer {
                 throw new IllegalArgumentException("Unknown conflict type: " + conflictType);
         }
     }
+
+    public void resolveConflict(Conflict.ConflictType conflictType, String equipmentId) {
+        switch (conflictType) {
+            case Conflict.ConflictType.equipment_duplicates:
+                resolveEqDuplicateConflict(equipmentId);
+                break;
+        }
+    }
     
+    
+    public void removeSpaces() {
+        for (Equipment e : equipmentService.getAll()) {
+            if (e.getTagNumber() != null) {
+                e.setTagNumber(e.getTagNumber().trim());
+            }
+            if (e.getDescription() != null) {
+                e.setDescription(e.getDescription().trim());
+            }
+            equipmentService.save(e);
+        }
+        for (LotoPoint lp : lotoPointService.getAll()) {
+            if (lp.getTagNumber() != null) {
+                lp.setTagNumber(lp.getTagNumber().trim());
+            }
+            if (lp.getDescription() != null) {
+                lp.setDescription(lp.getDescription().trim());
+            }
+            lotoPointService.save(lp);
+        }
+    }
     
     public List<Equipment> checkCoordinateConflicts(){
         List<Equipment> conflicts = new ArrayList<Equipment>();
@@ -250,32 +251,129 @@ public class FileElementTransfer {
      * DUPLICATE EQUIPMENT
      *******************************************************/
 
-    public List<Equipment> checkForEquipmentDuplicates(){
-        List<Equipment> duplicates = new ArrayList<Equipment>();
+    public void matchLotoPointsInDuplicates(){
         List<Equipment> all = equipmentService.getAll();
         Set<String> tags = new HashSet<>();
+        int count = 0;
         for (Equipment e : all) {
             if(e.getLotoPoints()!=null && !e.getLotoPoints().isEmpty() && !tags.add(e.getTagNumber())){
-                duplicates.addAll(equipmentService.getByTagNumber(e.getTagNumber()));
+                // Found duplicate equipment with LOTO points
+                List<Equipment> duplicates = equipmentService.getByTagNumber(e.getTagNumber());
+                Set<LotoPoint> lotoPoints = new HashSet<>();
+
+                // Collect all unique LOTO points from all duplicates
+                duplicates.forEach(duplicate -> {
+                    lotoPoints.addAll(duplicate.getLotoPoints());
+                });
+
+                // Update each duplicate with the complete set of LOTO points
+                duplicates.forEach(duplicate ->{
+                    duplicate.setLotoPoints(lotoPoints);
+                    equipmentService.save(duplicate);
+                });
+
+                // Update each LOTO point to include all duplicate equipment
+                lotoPoints.forEach(lp -> {
+                    lp.getEquipmentList().addAll(duplicates);
+                    lotoPointService.save(lp);
+                });
+                count++;
             }
         }
-        return duplicates;
+        System.out.println("Matched LOTO points in duplicates: " + count);
     }
 
-    public List<Equipment> getSingleSetOfEqDuplicates(){
+    public void identifyDuplicateEquipment() {
         List<Equipment> all = equipmentService.getAll();
-        Set<String> tags = new HashSet<>();
+        Map<String, List<Equipment>> duplicatesMap = new HashMap<>();
 
+        // Group equipment by tag number
         for (Equipment e : all) {
-            if(e.getLotoPoints()!=null && !e.getLotoPoints().isEmpty() && !tags.add(e.getTagNumber())){
-                List<Equipment> byTagNumber = equipmentService.getByTagNumber(e.getTagNumber());
-                String description = e.getDescription();
-                for (Equipment duplicate : byTagNumber) {
-                    if(duplicate.getDescription()==null || !duplicate.getDescription().equals(description)) return byTagNumber;
+            duplicatesMap.computeIfAbsent(e.getTagNumber(), k -> new ArrayList<>()).add(e);
+        }
+
+        // Create conflicts for duplicates
+        for (Map.Entry<String, List<Equipment>> entry : duplicatesMap.entrySet()) {
+            List<Equipment> duplicates = entry.getValue();
+            if (duplicates.size() > 1) {
+                String duplicateIds = duplicates.stream()
+                    .map(equipment -> equipment.getId().toString())
+                    .collect(Collectors.joining(","));
+
+                boolean hasLotoPoints = duplicates.stream()
+                    .anyMatch(e -> e.getLotoPoints() != null && !e.getLotoPoints().isEmpty());
+
+                String description = "Duplicate equipment with tag number: " + entry.getKey() +
+                                     ", IDs: " + duplicateIds;
+                if (hasLotoPoints) {
+                    description += ", associated with LOTO points";
                 }
+
+                Conflict conflict = Conflict.builder()
+                        .conflictType(Conflict.ConflictType.equipment_duplicates)
+                        .description(description)
+                        .createdAt(LocalDateTime.now())
+                        .entityId(duplicateIds)
+                        .status(Conflict.ConflictStatus.OPEN)
+                        .build();
+
+                conflictRepo.save(conflict);
             }
         }
-        return new ArrayList<>();
+    }
+
+    public List<Equipment> getEqDuplicates(int count){
+        List<Conflict> duplicates = conflictRepo.findByConflictTypeAndDescriptionContaining(Conflict.ConflictType.equipment_duplicates,"LOTO");
+        List<Equipment> duplicateEquipment = new ArrayList<>();
+        int i = 0;
+        for (Conflict d : duplicates) {
+            String[] split = d.getEntityId().split(", ");
+            for (String s : split) {
+                duplicateEquipment.add(equipmentService.getEntityById(s));
+            }
+            System.out.println(d.getId() + ": " + d.getDescription() + " - " + d.getCreatedAt() + " - " + d.getStatus( ));
+            if(++i>=count) return duplicateEquipment;
+        }
+        return duplicateEquipment;
+    }
+
+    public List<Equipment> getEqDuplicates(){
+        return getEqDuplicates(200000);
+    }
+
+    public List<Equipment> getUnresolvedEquipmentDuplicates(int count){
+        List<Conflict> conflicts = conflictRepo.findByConflictTypeAndDescriptionContainingAndStatus(Conflict.ConflictType.equipment_duplicates,"LOTO",Conflict.ConflictStatus.OPEN);
+        int i = 0;
+        List<Equipment> eqList = new ArrayList<>();
+        for (Conflict c : conflicts) {
+            String[] split = c.getEntityId().split(",");
+            for (String s : split) {
+                eqList.add(equipmentService.getEntityById(s.trim()));
+            }
+            if(++i>=count) return eqList;
+        }
+        return eqList;
+    }
+
+    public Conflict getDuplicateConflictByEntityId(String id){
+        return conflictRepo.findByConflictTypeAndEntityIdContaining(Conflict.ConflictType.equipment_duplicates,id);
+    }
+
+    public void clearEquipmentDuplicateConfilicts(){
+        List<Conflict> duplicates = conflictRepo.findByConflictType(Conflict.ConflictType.equipment_duplicates);
+        duplicates.forEach(d -> conflictRepo.delete(d));
+    }
+
+    public void resolveEqDuplicateConflict(String eqId){
+        Conflict duplicateConflictByEntityId = getDuplicateConflictByEntityId(eqId);
+        try{
+            duplicateConflictByEntityId.setStatus(Conflict.ConflictStatus.RESOLVED);
+            conflictRepo.save(duplicateConflictByEntityId);
+            System.out.println(duplicateConflictByEntityId.getId() + ": Conflict resolved for equipment with ID: " + eqId);
+        }catch(Exception e){
+            // Handle exception
+            System.out.println("Error resolving conflict for equipment with ID: " + eqId);
+        }
     }
 
     /******************************************************

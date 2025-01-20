@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.transfer_data;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.entities.Conflict;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.FileElementTransfer;
@@ -34,15 +35,16 @@ public class ConflictResoluctionController {
         return ResponseEntity.ok(conflictingEquipment.stream().map(lotoPointService::convertToDto).toList());
     }
 
-    @PostMapping("/update-equipment")
-    public ResponseEntity<EquipmentDto> updateEquipment(@RequestBody EquipmentDto dto){
+    @PostMapping("/update-equipment/{conflict}")
+    public ResponseEntity<EquipmentDto> updateEquipment(@RequestBody EquipmentDto dto, @PathVariable Conflict.ConflictType conflict){
         Equipment equipment = equipmentService.convertToEntity(dto);
         Equipment update = equipmentService.update(equipment);
+        fileElementTransfer.resolveConflict(conflict,update.getId().toString());
         return ResponseEntity.ok(equipmentService.convertToDto(update));
     }
 
-    @PostMapping("/update-loto-point")
-    public ResponseEntity<LotoPointDto> updateLotoPoint(@RequestBody LotoPointDto dto){
+    @PostMapping("/update-loto-point/{conflict}")
+    public ResponseEntity<LotoPointDto> updateLotoPoint(@RequestBody LotoPointDto dto, @PathVariable Conflict.ConflictType conflict){
         LotoPoint lotoPoint = lotoPointService.convertToEntity(dto);
         LotoPoint update = lotoPointService.save(lotoPoint);
         return ResponseEntity.ok(lotoPointService.convertToDto(update));

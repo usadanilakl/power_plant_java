@@ -81,6 +81,8 @@ public class TransferToDataServiceProject {
     private final ObjectMapper objectMapper;
 
     public void transferExecution() throws IOException {
+//        fileElementTransfer.removeSpaces();
+//        fileElementTransfer.identifyDuplicateEquipment();
 //        fileElementTransfer.matchLotoPointsInDuplicates();
 
 //        fileObjectTransfer.transferFileObjects();

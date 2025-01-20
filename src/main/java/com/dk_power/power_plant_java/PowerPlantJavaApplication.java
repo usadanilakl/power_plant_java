@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.repository.ConflictRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.equipment.HeatTraceRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
@@ -65,6 +66,7 @@ private final HeatTraceRepo heatTraceRepo;
 private final FileUploaderService fileUploaderService;
 private final ExcelReaderService excelReaderService;
 private final TransferToDataServiceProject transferToDataServiceProject;
+private final ConflictRepo conflictRepo;
 
 
     public static void main(String[] args) {
@@ -88,6 +90,7 @@ private final TransferToDataServiceProject transferToDataServiceProject;
 //        });
 
 
+//        conflictRepo.findAll().forEach(conflictRepo::delete);
 
         transferToDataServiceProject.transferExecution();
 
