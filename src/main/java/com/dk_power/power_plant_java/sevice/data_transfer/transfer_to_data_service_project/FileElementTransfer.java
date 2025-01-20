@@ -412,16 +412,63 @@ public class FileElementTransfer {
      * U1/U2 MISMATCH
      ********************************************************/
 
-    public List<Equipment> getEquipmentWithMismatchBetweenUnits(){
-        List<String> tags = equipmentService.getByTagNumberStartingWith("01");
-        List<Equipment> mismatched = new ArrayList<>();
-        for (String tag : tags) {
-            String u2Tag ="02"+ tag.substring(2);
-            List<Equipment> u1Eq = equipmentService.getByTagNumber(tag);
-            List<Equipment> u2Eq = equipmentService.getByTagNumber(u2Tag);
+    public List<Conflict> identifyEquipmentWithMismatchBetweenUnits() {
+        List<Equipment> allEquipment = equipmentService.getAll();
+        List<Conflict> conflicts = new ArrayList<>();
 
+        // Group equipment by their base tag number (without unit prefix)
+        Map<String, List<Equipment>> equipmentMap = allEquipment.stream()
+            .filter(e -> e.getTagNumber().startsWith("01") || e.getTagNumber().startsWith("02"))
+            .collect(Collectors.groupingBy(e -> e.getTagNumber().substring(2)));
+
+        for (Map.Entry<String, List<Equipment>> entry : equipmentMap.entrySet()) {
+            String baseTag = entry.getKey();
+            List<Equipment> equipmentList = entry.getValue();
+
+            Equipment u1Equipment = equipmentList.stream()
+                .filter(e -> e.getTagNumber().startsWith("01"))
+                .findFirst().orElse(null);
+
+            Equipment u2Equipment = equipmentList.stream()
+                .filter(e -> e.getTagNumber().startsWith("02"))
+                .findFirst().orElse(null);
+
+            if (u1Equipment == null || u2Equipment == null) {
+                createMismatchConflict(conflicts, u1Equipment, u2Equipment, "Missing corresponding equipment");
+            } else if (!u1Equipment.getDescription().equals(u2Equipment.getDescription())) {
+                createMismatchConflict(conflicts, u1Equipment, u2Equipment, "Description mismatch");
+            }
         }
-        return null;
+
+        // Save all conflicts
+        conflictRepo.saveAll(conflicts);
+
+        return conflicts;
+    }
+
+    private void createMismatchConflict(List<Conflict> conflicts, Equipment u1Equipment, Equipment u2Equipment, String reason) {
+        String description = reason + " between Unit 1 and Unit 2 equipment: ";
+        String entityIds = "";
+
+        if (u1Equipment != null) {
+            description += "U1: " + u1Equipment.getTagNumber();
+            entityIds += u1Equipment.getId();
+        }
+
+        if (u2Equipment != null) {
+            description += (u1Equipment != null ? ", " : "") + "U2: " + u2Equipment.getTagNumber();
+            entityIds += (u1Equipment != null ? "," : "") + u2Equipment.getId();
+        }
+
+        Conflict conflict = Conflict.builder()
+            .conflictType(Conflict.ConflictType.unit_mismatch)
+            .description(description)
+            .createdAt(LocalDateTime.now())
+            .entityId(entityIds)
+            .status(Conflict.ConflictStatus.OPEN)
+            .build();
+
+        conflicts.add(conflict);
     }
 
     /******************************************************

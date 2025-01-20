@@ -37,6 +37,6 @@ public class Conflict {
     }
 
     public enum ConflictType {
-        equipment_duplicates,equipment_coordinates,equipment_lp_tag_mismatch,loto_point_noEq,loto_point_duplicates,loto_point_unprocessed
+        equipment_duplicates,equipment_coordinates,equipment_lp_tag_mismatch,loto_point_noEq,loto_point_duplicates, unit_mismatch, loto_point_unprocessed
     }
 }
