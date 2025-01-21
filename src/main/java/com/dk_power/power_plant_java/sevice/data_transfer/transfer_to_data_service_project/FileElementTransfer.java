@@ -471,6 +471,42 @@ public class FileElementTransfer {
         conflicts.add(conflict);
     }
 
+    public void clearUnitMissmatchConflicts(){
+        List<Conflict> mismatches = conflictRepo.findByConflictType(Conflict.ConflictType.unit_mismatch);
+        mismatches.forEach(conflictRepo::delete);
+    }
+
+    public List<Equipment> getUnitMismatchConflicts(int count){
+        List<Conflict> byConflictType = conflictRepo.findByConflictType(Conflict.ConflictType.unit_mismatch);
+        List<Equipment> conflictedEqList = new ArrayList<>();
+        int i = 0;
+        for (Conflict conflict : byConflictType) {
+            String[] split = conflict.getEntityId().split(",");
+            for (String s : split) {
+                conflictedEqList.add(equipmentService.getEntityById(s));
+            }
+            if(++i>=count)return conflictedEqList;
+        }
+        return conflictedEqList;
+    }
+
+//    public List<Equipment> getUnresolvedUnitMismatchEquipment
+
+    public Conflict getUnitMismatchConflictByEqId(String eqId){
+        return conflictRepo.findByConflictTypeAndEntityIdContaining(Conflict.ConflictType.unit_mismatch,eqId);
+    }
+
+    public void resolveUnitMismatchConflict(String eqId){
+        Conflict conflict = getUnitMismatchConflictByEqId(eqId);
+        try{
+            conflict.setStatus(Conflict.ConflictStatus.RESOLVED);
+            conflictRepo.save(conflict);
+            System.out.println(conflict.getId() + ": Conflict resolved for equipment with ID: " + eqId);
+        }catch(Exception e){
+            // Handle exception
+            System.out.println("Error resolving conflict for equipment with ID: " + eqId);
+        }
+    }
     /******************************************************
      * LOTO POINTS WITH NO EQUIPMENT ASSOCIATION
      *******************************************************/
