@@ -25,4 +25,5 @@ public class DS_TagNumberDto extends DS_BaseDto {
     @JsonBackReference
     private EquipmentDto equipment;
     private boolean isAssigned;
+    private boolean isPrimary;
 }

@@ -95,6 +95,7 @@ private final ConflictRepo conflictRepo;
         transferToDataServiceProject.transferExecution();
 
 
+
 //        electricalPanelTransferService.deleteOldPanelObjects();
 //        electricalPanelTransferService.createElectricalPanelFileObjectsFromExcelList();
 //        electricalPanelTransferService.createFileObjectsForPanelPictures();

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
+
+
+    <link rel="stylesheet" href="/transfer_to_data_service_porject/page.css">
+
+</head>
+<body>
+
+        <main>
+            
+            <div id="picture-container" class="view" data-file-id="">
+                <img src="" usemap="#image_map" id="picture">
+                <map name="image_map" id="map"></map>
+            </div>
+            
+        </main>
+
+
+    <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
+
+
+    <!-- <script src="/functions/controllers/FileController.js"></script> -->
+    <script src="/transfer_to_data_service_porject/Controller.js"></script>
+
+
+    <!-- <script src="/functions/functions/PictureService.js"></script> -->
+    <script src="/transfer_to_data_service_porject/DisplayPicture.js"></script>
+    <script>
+
+        document.addEventListener('DOMContentLoaded', async ()=>{
+
+            
+            let picture = document.getElementById('picture');
+            let pictureContainer = document.getElementById('picture-container');
+
+            const fileToVerify = await getNextFileToVerify();
+            loadPictureWithFile(fileToVerify);
+
+            pictureContainer.addEventListener('mousedown',(event)=>{
+                if(event.button===0){
+                    event.preventDefault();
+                    relocateHighlightsWithPicture(event);
+                }  
+            });
+            pictureContainer.addEventListener('touchstart',(event)=>{
+                if(event.target.tagName === "INPUT") return
+
+                event.preventDefault();
+                // relocateHighlightsWithPictureTouch(event);
+                relocateHighlightsWithPictureDoubleTap(event);
+            });
+            const zoom = zoomPicture.bind(null,picture);
+            pictureContainer.addEventListener('wheel',zoom);
+            pictureContainer.addEventListener('touchstart', zoomPictureTouch);
+            document.addEventListener('mousedown',handleMouseDown);
+
+
+        })
+
+
+    </script>
+</body>
+</html>

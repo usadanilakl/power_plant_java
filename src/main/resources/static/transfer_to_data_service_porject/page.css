@@ -1,0 +1,47 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    z-index: 1;
+}
+html,body,main{
+    overflow: hidden;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+}
+
+#picture-container {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+
+  #picture {
+    width: 100%;
+    height: auto;
+    overflow: hidden;
+    position: relative;
+    /* transition: transform 0.3s ease-in-out; */
+    /* transition: width 0.3s ease-in-out, height 0.3s ease-in-out; */
+    z-index: 2;
+  }
+
+  .areaHighlights{
+    border: 2px solid blue !important;
+    z-index: 300;
+}
+
+[data-loto-point-highlight="true"]{
+    border: 2px solid rgb(255, 0, 0) !important;
+    z-index: 300;
+}
+
+[data-loto-point-highlight="false"]{
+    border: 2px solid rgb(13, 255, 0) !important;
+    z-index: 300;
+}
+
+

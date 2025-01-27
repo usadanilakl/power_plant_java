@@ -72,7 +72,12 @@ public class HomeController {
 
     @GetMapping("/data-transfer")
     public String showDataTransferToDataPage(){
-        return "DataTransferToDataServiceProject";
+        return "data_transfer_to_data_service_project/DataTransferToDataServiceProject";
+    }
+    @GetMapping("/data-transfer-file-by-file")
+    public String transferFileByFile(){
+        return "redirect:/file-by-file";
+//        return "data_transfer_to_data_service_project/TransferFileByFile";
     }
 
 }

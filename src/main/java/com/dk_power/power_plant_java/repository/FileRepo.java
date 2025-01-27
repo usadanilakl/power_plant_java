@@ -40,5 +40,7 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileObject> findByBulkEditStep(String step);
 
     List<FileObject> findByRelatedSystemsContaining(String system);
+
+    List<FileObject> findByCompletedIsTrueAndIsVerifiedIsFalse();
 }
 

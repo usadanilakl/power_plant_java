@@ -1,36 +1,20 @@
 package com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project;
 
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.ApiResponse;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_CategoryDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_LotoPointDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_TagNumberDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
-import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointServiceImpl;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
@@ -75,8 +59,8 @@ public class TransferToDataServiceProject {
     private final EquipmentServiceImpl equipmentService;
     private final LotoPointServiceImpl lotoPointService;
 
-    private final FileObjectTransfer fileObjectTransfer;
-    private final FileElementTransfer fileElementTransfer;
+    private final FileObjectTransferService fileObjectTransferService;
+    private final FileElementTransferService fileElementTransferService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -84,6 +68,8 @@ public class TransferToDataServiceProject {
 //        fileElementTransfer.removeSpaces();
 //        fileElementTransfer.identifyDuplicateEquipment();
 //        fileElementTransfer.matchLotoPointsInDuplicates();
+
+//        fileElementTransfer.identifyEquipmentWithMismatchBetweenUnits();
 
 //        fileObjectTransfer.transferFileObjects();
 //        fileObjectTransfer.cleanTransferData();

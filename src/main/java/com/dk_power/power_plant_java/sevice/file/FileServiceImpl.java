@@ -381,6 +381,11 @@ public class FileServiceImpl implements FileService {
         }
     }
 
+    @Override
+    public List<FileObject> getAllFilesForVerification() {
+        return fileRepo.findByCompletedIsTrueAndIsVerifiedIsFalse();
+    }
+
     public List<FileDto> getAllDtos(String ext) {
         return getAll().stream().map(e->fileMapper.convertToDto(e,ext)).toList();
     }

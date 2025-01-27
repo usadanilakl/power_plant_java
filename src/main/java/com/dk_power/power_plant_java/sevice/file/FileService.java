@@ -57,4 +57,6 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     List<FileObject> getIfRelatedSystemsContains(String system);
 
     void updateFileRelatedSystems();
+
+    List<FileObject> getAllFilesForVerification();
 }
