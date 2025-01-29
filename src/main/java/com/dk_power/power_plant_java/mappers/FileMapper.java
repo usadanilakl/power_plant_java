@@ -54,6 +54,7 @@ public class FileMapper implements BaseMapper{
         if(file.getBulkEditStep()!=null) fileDto.setBulkEditStep(file.getBulkEditStep());
         if(file.getHighlights()!=null) fileDto.setHighlights(file.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
         if(file.getDocNum()!=null) fileDto.setDocNum(file.getDocNum());
+        if(file.getIsVerified()!=null) fileDto.setIsVerified(file.getIsVerified());
         return fileDto;
     }
 
@@ -76,6 +77,7 @@ public class FileMapper implements BaseMapper{
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
         if(file.getHighlights()!=null) fileDto.setHighlights(file.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
         if(file.getDocNum()!=null) fileDto.setDocNum(file.getDocNum());
+        if(file.getIsVerified()!=null) fileDto.setIsVerified(file.getIsVerified());
         return fileDto;
     }
     public FileDto convertToDto(FileObject file, String extension){
@@ -96,12 +98,13 @@ public class FileMapper implements BaseMapper{
         if(fileDto.getSystem()!=null)file.setSystem(valueService.getEntityById(fileDto.getSystem().getId()));
         if(fileDto.getPoints()!=null) file.setPoints(fileDto.getPoints().stream().map(e->equipmentService.getEntityById(e.getId())).toList());
         if(fileDto.getExtension()!=null) file.setExtension(fileDto.getExtension());
-        if(fileDto.getRelatedSystems()!=null) file.setRelatedSystems(fileDto.getRelatedSystems());
+        if(fileDto.getRelatedSystems()!=null && file.getRelatedSystems()!=null && !fileDto.getRelatedSystems().equals(file.getRelatedSystems())) file.setRelatedSystems(fileDto.getRelatedSystems());
         if(fileDto.getName()!=null) file.setName(fileDto.getName());
         if(fileDto.getBulkEditStep()!=null) file.setBulkEditStep(fileDto.getBulkEditStep());
 //        if(fileDto.getHeatTraceList()!=null) file.setHeatTrace(fileDto.getHeatTraceList().stream().map(heatTraceService::convertToEntity).toList());
         if(fileDto.getHighlights()!=null) file.setHighlights(fileDto.getHighlights().stream().map(highlightMapper::convertToEntity).toList());
         if(fileDto.getDocNum()!=null) file.setDocNum(fileDto.getDocNum());
+        if(fileDto.getIsVerified()!=null) file.setIsVerified(fileDto.getIsVerified());
         return file;
     }
 

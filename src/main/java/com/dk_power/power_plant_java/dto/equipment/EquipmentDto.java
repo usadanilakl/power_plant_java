@@ -33,6 +33,7 @@ public class EquipmentDto extends BaseEquipmentDto {
     private HighlightDto highlight;
     private String isUpdated;
     private String conflictStatus;
+    private Boolean isVerified = false;
 
 
     @Override

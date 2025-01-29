@@ -36,6 +36,7 @@ function setAreas(areas){
         map.appendChild(area);
     });
     resizeAreas();
+    highlightAll();
     
 }
 function createAreaElement(area){

@@ -109,6 +109,10 @@ public class EquipmentMapper implements BaseMapper {
         if(entity.getConflictStatus()!=null){
             dto.setConflictStatus(entity.getConflictStatus());
         }
+
+        if(entity.getIsVerified()!=null){
+            dto.setIsVerified(entity.getIsVerified());
+        }
         return dto;
     }
 
@@ -147,6 +151,10 @@ public class EquipmentMapper implements BaseMapper {
 
         if(entity.getConflictStatus()!=null){
             dto.setConflictStatus(entity.getConflictStatus());
+        }
+
+        if(entity.getIsVerified()!=null){
+            dto.setIsVerified(entity.getIsVerified());
         }
 
 //        if (entity.getVendor() != null) {
@@ -271,6 +279,9 @@ public class EquipmentMapper implements BaseMapper {
 
         if(source.getConflictStatus()!=null){
             entity.setConflictStatus(source.getConflictStatus());
+        }
+        if(source.getIsVerified()!=null){
+            entity.setIsVerified(source.getIsVerified());
         }
         return entity;
     }

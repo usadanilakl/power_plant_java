@@ -81,12 +81,6 @@ public class FileElementTransferService {
             }
 //            if(count++>0) break;
         }
-        //For each equipment:
-        //Create new fileElement
-        //if equipment is "Connector" - set fileElement type to "Connector", set tagNumber, set FileObject, setConnection to related FileObject
-        //if equipment has loto points - check for conflicts, create new loto point, fill out fields, set FileElement
-        //Register id of old equipment in new equipment
-        //Save new equipment
     }
 
     protected void transferOneEquipment(Equipment e){

@@ -75,6 +75,7 @@ public class Equipment extends BaseEquipment {
     @JoinColumn(name = "eq_highlight")
     private Highlight highlight;
     private String conflictStatus;
+    private Boolean isVerified = false;
 
 
 

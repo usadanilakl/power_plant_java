@@ -44,6 +44,7 @@ public class FileDto extends BaseDto {
     private String bulkEditStep;
     private List<HighlightDto> highlights;
     private String docNum;
+    private Boolean isVerified = false;
 
     public String buildFileLink(){
         fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+extension;

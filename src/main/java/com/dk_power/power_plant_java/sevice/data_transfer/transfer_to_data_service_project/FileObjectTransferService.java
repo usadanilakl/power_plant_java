@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -59,8 +60,15 @@ public class FileObjectTransferService {
     }
 
     public FileDto getNextFileToVerify(){
-        FileObject fileObject = fileService.getAllFilesForVerification().get(0);
-        return fileService.convertToDto(fileObject);
+        for (FileObject fileObject : fileService.getAllFilesForVerification()  ) {
+            if(fileObject.getPoints().stream().anyMatch(p -> !p.getIsVerified())){
+                return fileService.convertToDto(fileObject);
+            }else{
+                fileObject.setIsVerified(true);
+                fileService.save(fileObject);
+            }
+        }
+        return null;
     }
 
     public void transferOneFile(FileObject fileObject) throws IOException {
