@@ -76,6 +76,7 @@ public class Equipment extends BaseEquipment {
     private Highlight highlight;
     private String conflictStatus;
     private Boolean isVerified = false;
+    private String conflictId;
 
 
 

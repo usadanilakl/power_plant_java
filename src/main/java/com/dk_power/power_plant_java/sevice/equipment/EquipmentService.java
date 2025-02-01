@@ -18,6 +18,7 @@ public interface EquipmentService extends CrudService<Equipment, EquipmentDto, E
     List<Equipment> getByTagNumber(String tag);
     public List<Equipment> getByVendor(Value oldVal);
     public List<Equipment> getByEqType(Value oldVal);
+    public List<Equipment> getByEqType(String type);
     public List<Equipment> getBySystem(Value oldVal);
     public List<Equipment> getByLocation(Value oldVal);
     List<Equipment> getByValue(Value val);

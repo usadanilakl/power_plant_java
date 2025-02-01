@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
     <style>
+        #conflictControls {
+            position: sticky;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f0f0f0;
+            padding: 10px;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
         .equipment-form {
             background-color: #f0f0f0;
             padding: 20px;
@@ -98,6 +108,8 @@
                 <option value="loto_point_duplicates">LP Duplicates</option>
                 <option value="loto_point_unprocessed">LP Unprocessed</option>
             </select>
+
+            <div id="conflictControls" class="conflic-controls"></div>
             
         </main>
 
@@ -113,7 +125,8 @@
 
 
             document.getElementById('api-dropdown').addEventListener('change', async function() {
-                getConflictList(this.value)
+                getConflictList(this.value);
+                setConflictCotnrols(this.value);
             });
 
         async function getConflictList(selectedValue) {
@@ -150,6 +163,13 @@
         }
 
 
+        function setConflictCotnrols(type) {
+            
+        }
+
+        function equipmentDuplicateConflictButtons(){
+
+        } 
 
 
         let duplicates = [];

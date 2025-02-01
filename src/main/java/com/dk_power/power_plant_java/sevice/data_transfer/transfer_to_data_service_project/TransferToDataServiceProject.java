@@ -41,18 +41,32 @@ public class TransferToDataServiceProject {
      *     loto points that belong to multiple equipment: 587 - MEANS that loto point has assosiations with other equipment - SOLUTION: create loto point for each instance and establish connections using To and From fields
      *     processed loto points: 7978/11712 - MEANS that some loto points are not processed and might be wrong - SOLUTION: process manually and associate with files or delete.
      *     not processed loto points: 3734
+     *
+     *     equipment without type
+     *     loto points without isoPos/normPos
 
 
      * POSSIBLE CONFLICT RESOLUTION:
      *      1. Transfer files
-     *      2. Transfer loto points that have no conflicts
-     *      3. Transfer equipment that have no conflicts
-     *      4. Transfer heat trace to equipment
-     *      5. Transfer electrical breakers and panels to equipment
-     *      6. resolve equipment and loto point conflicts - get rest of the equipment and loto points and process them manually (build UI to process)
-     *      7. create FileElements with connections
-     *      8. create equipment connections
+     *      2. Fix coordinates in equipment
+     *      3. Transfer all Equipment as FileElements
+     *      4. Fix equipment conflicts
+     *      5. Transfer equipment as Connectors, Equipment and LotoPoints
+     *      6. Transfer heat trace as equipment
+     *      7. Transfer electrical breakers and panels as equipment
+     *      8. Create Equipment connections using tag reference in equipment description field or LotoPoints
+     *
+     *
+     * FIXING EQUIPMENT CONFLICTS:
+     *     1. Duplicate equipment - combine loto points, match description so all duplicates have same information.
+     *     2. U1/U2 mismatch conflict - make sure both units have same equipment with matching description.
+     *     3. Equipment with no matching loto point - if electrical then need to create new electrical equipment.
+     *     4. Transfer all equipment that has loto points - send new LotoPoint to Data Service Project, get file element object that represents this loto point, check if loto point with same tag already exists, if not then save it and assosiate with file element, if exists then assosiate existing loto point with file element.
+     *
      **/
+
+
+
 
 
 
@@ -65,17 +79,16 @@ public class TransferToDataServiceProject {
     private final ObjectMapper objectMapper;
 
     public void transferExecution() throws IOException {
-//        fileElementTransfer.removeSpaces();
-//        fileElementTransfer.identifyDuplicateEquipment();
-//        fileElementTransfer.matchLotoPointsInDuplicates();
+//        fileElementTransferService.identifyConflicts();
+//        fileElementTransferService.identifyConflictedEquipment();
 
-//        fileElementTransfer.identifyEquipmentWithMismatchBetweenUnits();
+//        fileObjectTransferService.transferFileObjects();
+//        fileObjectTransferService.cleanTransferData();
+//
+//        fileElementTransferService.clearTransferStatus();
+//        fileElementTransferService.transferFileElements();
 
-//        fileObjectTransfer.transferFileObjects();
-//        fileObjectTransfer.cleanTransferData();
-
-//        fileElementTransfer.clearTransferStatus();
-//        fileElementTransfer.createFileElements();
+        fileElementTransferService.transferEquipment();
     }
 
 

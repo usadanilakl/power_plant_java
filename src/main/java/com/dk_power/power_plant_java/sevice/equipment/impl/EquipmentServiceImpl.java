@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -220,6 +221,13 @@ public class EquipmentServiceImpl implements EquipmentService {
     @Override
     public List<Equipment> getByEqType(Value oldVal) {
         return equipmentRepo.findByEqType(oldVal);
+    }
+    @Override
+    public List<Equipment> getByEqType(String type){
+        Value value  = valueService.getByName(type).stream().filter(v -> v.getName().equals(type)).findFirst().orElse(null);
+        if(value==null) return new ArrayList<>();
+        return equipmentRepo.findByEqType(value);
+
     }
     @Override
     public List<Equipment> getBySystem(Value oldVal) {

@@ -17,4 +17,6 @@ public interface ConflictRepo extends JpaRepository<Conflict,Long> {
     List<Conflict> findByConflictTypeAndStatus(Conflict.ConflictType conflictType, Conflict.ConflictStatus conflictStatus);
 
     List<Conflict> findByConflictTypeAndDescriptionContainingAndStatus(Conflict.ConflictType conflictType, String loto, Conflict.ConflictStatus conflictStatus);
+
+    Conflict findByConflictTypeAndEntityId(Conflict.ConflictType conflictType, String eqId);
 }
