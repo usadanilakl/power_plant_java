@@ -148,11 +148,24 @@ public class FileElementTransferService {
                     .oldPidProjectItemId(lotoPoint.getId())
                     .build();
             // Send POST request to create loto point
-            ResponseEntity<DS_LotoPointDto> responseLotoPoint = createLotoPoint(fileElementId.toString(), lotoPointDto);
-            if (responseLotoPoint!= null && responseLotoPoint.getStatusCode() == HttpStatus.OK) {
-                UUID id = responseLotoPoint.getBody().getId();
-                e.addRefactorNote("Loto point id: " + id);
-                System.out.println("Loto point created successfully: " + responseLotoPoint.getBody());
+            String ds_lotoPointId = e.getRefactorNotes();
+            ds_lotoPointId = ds_lotoPointId != null ? ds_lotoPointId.substring(ds_lotoPointId.indexOf("Loto point id:")) : null;
+            ds_lotoPointId = ds_lotoPointId != null ? ds_lotoPointId.substring(ds_lotoPointId.indexOf(":") + 1).trim() : null;
+
+            if(ds_lotoPointId==null) {
+                ResponseEntity<DS_LotoPointDto> responseLotoPoint = createOrUpdateLotoPoint(fileElementId.toString(), lotoPointDto);
+                if (responseLotoPoint != null && responseLotoPoint.getStatusCode() == HttpStatus.OK) {
+                    UUID id = responseLotoPoint.getBody().getId();
+                    e.addRefactorNote("Loto point id: " + id);
+                    equipmentService.save(e);
+                    lotoPoint.setDataServiceItemId(id);
+                    lotoPointService.save(lotoPoint);
+                    System.out.println("Loto point created successfully: " + responseLotoPoint.getBody());
+                }
+            }else {
+                lotoPointDto.setId(UUID.fromString(ds_lotoPointId));
+                ResponseEntity<DS_LotoPointDto> orUpdateLotoPoint = createOrUpdateLotoPoint(lotoPointDto);
+                System.out.println("Loto point updated successfully: " + orUpdateLotoPoint.getBody());
             }
         }else if(e.getEqType()!=null && e.getEqType().getName().equals("Connector")){
             FileObject entityById = fileService.getEntityById(e.getNote().substring(e.getNote().indexOf(":") + 1).trim());
@@ -166,12 +179,23 @@ public class FileElementTransferService {
         }
     }
 
-    public void clearTransferStatus(){
+    public void clearFileElementTransferStatus(){
         equipmentService.getAll().forEach(e ->{
-            e.setRefactorNotes(null);
             e.setDataServiceItemId(null);
             equipmentService.save(e);
         } );
+    }
+
+    public void clearEquipmentTransferStatus(){
+        equipmentService.getAll().forEach(e ->{
+            e.setRefactorNotes(null);
+            equipmentService.save(e);
+        } );
+        lotoPointService.getAll().forEach(lp ->{
+            lp.setDataServiceItemId(null);
+            lp.setRefactorNotes(null);
+            lotoPointService.save(lp);
+        });
     }
 
     private Map<String, Float> convertToCoordinatesMap(String coordinates, String originalPictureSize) {
@@ -276,8 +300,34 @@ public class FileElementTransferService {
         }
     }
 
-    private ResponseEntity<DS_LotoPointDto> createLotoPoint(String fileId, DS_LotoPointDto lotoPointDto) {
+    private ResponseEntity<DS_LotoPointDto> createOrUpdateLotoPoint(String fileId, DS_LotoPointDto lotoPointDto) {
         String url = "http://localhost:8081/api/loto-points/" + fileId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<DS_LotoPointDto> requestEntity = new HttpEntity<>(lotoPointDto, headers);
+
+        try {
+            ResponseEntity<DS_LotoPointDto> responseEntity = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    DS_LotoPointDto.class
+            );
+
+            return responseEntity;
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            System.out.println("Error creating FileElement: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
+            return null;
+        } catch (Exception e) {
+            System.out.println("Unexpected error creating FileElement: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+    private ResponseEntity<DS_LotoPointDto> createOrUpdateLotoPoint(DS_LotoPointDto lotoPointDto) {
+        String url = "http://localhost:8081/api/loto-points";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

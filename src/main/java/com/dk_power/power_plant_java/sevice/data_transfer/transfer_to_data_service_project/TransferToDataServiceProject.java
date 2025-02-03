@@ -85,10 +85,11 @@ public class TransferToDataServiceProject {
 //        fileObjectTransferService.cleanTransferData();
 //        fileObjectTransferService.transferFileObjects();
 //
-//        fileElementTransferService.clearTransferStatus();
+//        fileElementTransferService.clearFileElementTransferStatus();
 //        fileElementTransferService.transferFileElements();
 //
-//        fileElementTransferService.transferEquipment();
+        fileElementTransferService.clearEquipmentTransferStatus();
+        fileElementTransferService.transferEquipment();
     }
 
 
