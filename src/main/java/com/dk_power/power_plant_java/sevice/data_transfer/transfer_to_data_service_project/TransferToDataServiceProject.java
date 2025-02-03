@@ -82,13 +82,13 @@ public class TransferToDataServiceProject {
 //        fileElementTransferService.identifyConflicts();
 //        fileElementTransferService.identifyConflictedEquipment();
 
-//        fileObjectTransferService.transferFileObjects();
 //        fileObjectTransferService.cleanTransferData();
+//        fileObjectTransferService.transferFileObjects();
 //
 //        fileElementTransferService.clearTransferStatus();
 //        fileElementTransferService.transferFileElements();
-
-        fileElementTransferService.transferEquipment();
+//
+//        fileElementTransferService.transferEquipment();
     }
 
 

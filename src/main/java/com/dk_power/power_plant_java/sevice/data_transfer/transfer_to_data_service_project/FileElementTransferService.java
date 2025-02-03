@@ -90,7 +90,11 @@ public class FileElementTransferService {
         List<Equipment> all = equipmentService.getAll();
         int count = 0;
         for (Equipment e : all) {
-            if(e.getConflictId()==null)transferOneEquipment(e);
+            if(e.getConflictId()==null && e.getLotoPoints()!=null & !e.getLotoPoints().isEmpty()){
+                transferOneEquipment(e);
+                count++;
+            }
+            if(count>2) break;
         }
     }
 
@@ -124,6 +128,7 @@ public class FileElementTransferService {
         if(e.getLotoPoints()!=null &&!e.getLotoPoints().isEmpty()){
             LotoPoint lotoPoint = e.getLotoPoints().stream().filter(lp -> lp.getTagNumber().equals(e.getTagNumber())).findFirst().orElse(null);
 
+            if(lotoPoint==null)return;
 
             String unit = (e.getTagNumber().startsWith("01") ? "Unit 1" : e.getTagNumber().startsWith("02") ? "Unit 2" : "BOP");
             DS_ValueDto isolatedPosition = lotoPoint.getIsoPos()!=null? DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Isolated Position").alias("isoPos").build()).name(lotoPoint.getIsoPos().getName()).build() : null;
