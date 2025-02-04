@@ -94,7 +94,7 @@ public class FileElementTransferService {
                 transferOneEquipment(e);
                 count++;
             }
-            if(count>2) break;
+            if(count>200) break;
         }
     }
 
@@ -164,7 +164,7 @@ public class FileElementTransferService {
                 }
             }else {
                 lotoPointDto.setId(UUID.fromString(ds_lotoPointId));
-                ResponseEntity<DS_LotoPointDto> orUpdateLotoPoint = createOrUpdateLotoPoint(lotoPointDto);
+                ResponseEntity<DS_LotoPointDto> orUpdateLotoPoint = createOrUpdateLotoPoint(fileElementId.toString(),lotoPointDto);
                 System.out.println("Loto point updated successfully: " + orUpdateLotoPoint.getBody());
             }
         }else if(e.getEqType()!=null && e.getEqType().getName().equals("Connector")){
