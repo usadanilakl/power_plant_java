@@ -176,4 +176,9 @@ public class LotoPointServiceImpl implements LotoPointService {
         return lotoPointRepo.findByTagNumber(tagNumber);
     }
 
+    @Override
+    public List<LotoPoint> getAllNotTransferred() {
+        return lotoPointRepo.findByDataServiceItemIdIsNull();
+    }
+
 }

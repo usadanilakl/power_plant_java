@@ -50,39 +50,76 @@ public class FileElementTransferService {
         List<Equipment> all = equipmentService.getAll();
         int count = 0;
         for (Equipment e : all) {
-            Map<String, Float> coordinatesMap;
-            try{
-                coordinatesMap = convertToCoordinatesMap(e.getCoordinates(), e.getOriginalPictureSize());
-            }catch (Exception ex){
-                continue;
-            }
-            FileObject mainFile = e.getMainFile();
-            String color = "rgb(7, 89, 189)";
-            if(mainFile!=null && mainFile.getDataServiceItemId()!= null){
-                DS_FileElementDto fileElement = DS_FileElementDto.builder()
-                        .tagNumber(e.getTagNumber())
-                        .shapeData(coordinatesMap)
-                        .color(color)
-                        .shapeType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Shape Type").build()).name("rectangle").build())
-                        .elementType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Element Type").build()).name("equipment").build())
-                        .oldPidProjectItemId(e.getId())
-                        .build();
-
-                // Send POST request to create file element
-                UUID fileId = mainFile.getDataServiceItemId();
-                ResponseEntity<DS_FileElementDto> response = createFileElement(fileId.toString(), fileElement);
-
-                if (response != null && response.getStatusCode() == HttpStatus.OK) {
-                    UUID id = response.getBody().getId();
-                    e.setDataServiceItemId(id);
-                    e.addRefactorNote("fileElementId:" + id);
-                    System.out.println("File element created successfully: " + response.getBody());
-                } else {
-                    System.out.println("Failed to create file element");
-                }
-            }
+            transferOneFileElement(e);
+//            Map<String, Float> coordinatesMap;
+//            try{
+//                coordinatesMap = convertToCoordinatesMap(e.getCoordinates(), e.getOriginalPictureSize());
+//            }catch (Exception ex){
+//                continue;
+//            }
+//            FileObject mainFile = e.getMainFile();
+//            String color = "rgb(7, 89, 189)";
+//            if(mainFile!=null && mainFile.getDataServiceItemId()!= null){
+//                DS_FileElementDto fileElement = DS_FileElementDto.builder()
+//                        .tagNumber(e.getTagNumber())
+//                        .shapeData(coordinatesMap)
+//                        .color(color)
+//                        .shapeType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Shape Type").build()).name("rectangle").build())
+//                        .elementType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Element Type").build()).name("equipment").build())
+//                        .oldPidProjectItemId(e.getId())
+//                        .build();
+//
+//                // Send POST request to create file element
+//                UUID fileId = mainFile.getDataServiceItemId();
+//                ResponseEntity<DS_FileElementDto> response = createFileElement(fileId.toString(), fileElement);
+//
+//                if (response != null && response.getStatusCode() == HttpStatus.OK) {
+//                    UUID id = response.getBody().getId();
+//                    e.setDataServiceItemId(id);
+//                    e.addRefactorNote("fileElementId:" + id);
+//                    System.out.println("File element created successfully: " + response.getBody());
+//                } else {
+//                    System.out.println("Failed to create file element");
+//                }
+//            }
 //            if(count++>0) break;
         }
+    }
+
+    public void transferOneFileElement(Equipment e) {
+        if(e.getDataServiceItemId()!= null) return;
+        Map<String, Float> coordinatesMap;
+        try{
+            coordinatesMap = convertToCoordinatesMap(e.getCoordinates(), e.getOriginalPictureSize());
+        }catch (Exception ex){
+            return;
+        }
+        FileObject mainFile = e.getMainFile();
+        String color = "rgb(7, 89, 189)";
+        if(mainFile!=null && mainFile.getDataServiceItemId()!= null){
+            DS_FileElementDto fileElement = DS_FileElementDto.builder()
+                    .tagNumber(e.getTagNumber())
+                    .shapeData(coordinatesMap)
+                    .color(color)
+                    .shapeType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Shape Type").build()).name("rectangle").build())
+                    .elementType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Element Type").build()).name("equipment").build())
+                    .oldPidProjectItemId(e.getId())
+                    .build();
+
+            // Send POST request to create file element
+            UUID fileId = mainFile.getDataServiceItemId();
+            ResponseEntity<DS_FileElementDto> response = createFileElement(fileId.toString(), fileElement);
+
+            if (response != null && response.getStatusCode() == HttpStatus.OK) {
+                UUID id = response.getBody().getId();
+                e.setDataServiceItemId(id);
+                e.addRefactorNote("fileElementId:" + id);
+                System.out.println("File element created successfully: " + response.getBody());
+            } else {
+                System.out.println("Failed to create file element");
+            }
+        }
+
     }
 
     protected void transferEquipment(){
@@ -765,55 +802,8 @@ public class FileElementTransferService {
 
 
     /*****************************************************
-     * U1/U2 MISMATCH
+     * U1/U2 MISMATCH EQUIPMENT
      ********************************************************/
-
-//    public List<Conflict> identifyEquipmentWithMismatchBetweenUnits() {
-//        List<Equipment> allEquipment = equipmentService.getAll();
-//        List<Conflict> conflicts = new ArrayList<>();
-//
-//        // Group equipment by their base tag number (without unit prefix)
-//        Map<String, List<Equipment>> equipmentMap = allEquipment.stream()
-//            .filter(e -> e.getTagNumber().startsWith("01") || e.getTagNumber().startsWith("02"))
-//            .collect(Collectors.groupingBy(e -> e.getTagNumber().substring(2)));
-//
-//        for (Map.Entry<String, List<Equipment>> entry : equipmentMap.entrySet()) {
-//            String baseTag = entry.getKey();
-//            List<Equipment> equipmentList = entry.getValue();
-//
-//            Equipment u1Equipment = equipmentList.stream()
-//                .filter(e -> e.getTagNumber().startsWith("01"))
-//                .findFirst().orElse(null);
-//
-//            Equipment u2Equipment = equipmentList.stream()
-//                .filter(e -> e.getTagNumber().startsWith("02"))
-//                .findFirst().orElse(null);
-//
-//            boolean bothUnitsHaveSameEquipment = u1Equipment!=null && u2Equipment!=null;
-//            boolean bothUnitsDescriptionIsNull = bothUnitsHaveSameEquipment && u1Equipment.getDescription() == null && u2Equipment.getDescription() == null;
-//
-//            if (u1Equipment == null || u2Equipment == null) {
-//                createMismatchConflict(conflicts, u1Equipment, u2Equipment, "Missing corresponding equipment");
-//            }else if(bothUnitsDescriptionIsNull){
-//                continue;
-//            }else if(u1Equipment.getDescription()==null || u2Equipment.getDescription()==null){
-//                createMismatchConflict(conflicts, u1Equipment, u2Equipment, "Missing corresponding equipment description");
-//            } else if (!u1Equipment.getDescription().equals(u2Equipment.getDescription())) {
-//                createMismatchConflict(conflicts, u1Equipment, u2Equipment, "Description mismatch");
-//            }
-//        }
-//
-//        // Save all conflicts
-//        for (Conflict conflict : conflicts) {
-//            try {
-//                conflictRepo.save(conflict);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//        return conflicts;
-//    }
 
     public List<Conflict> identifyEquipmentWithMismatchBetweenUnits() {
         List<Equipment> allEquipment = equipmentService.getAll();
@@ -1066,7 +1056,234 @@ public class FileElementTransferService {
         return notProcessed;
     }
 
-    
+
+    public void lotoPointsWithNoConflicts(){
+        List<LotoPoint> all = lotoPointService.getAll();
+        List<LotoPoint> noConflicts = new ArrayList<>();
+        for (LotoPoint lp : all) {
+            if(lp.getEquipmentList()!=null && !lp.getEquipmentList().isEmpty()){
+                noConflicts.add(lp);
+            }
+        }
+        System.out.println(noConflicts.size() + " Loto Points with no conflicts");
+    }
+
+    /*****************************************************
+     * U1/U2 MISMATCH LOTO POINTS
+     ********************************************************/
+
+    public List<Conflict> identifyLotoPointsWithMismatchBetweenUnits() {
+        List<LotoPoint> all = lotoPointService.getAll();
+        List<Conflict> conflicts = new ArrayList<>();
+
+        // Group equipment by their base tag number (without unit prefix)
+        Map<String, List<LotoPoint>> lpMap = all.stream()
+                .filter(e -> e.getTagNumber().startsWith("01") || e.getTagNumber().startsWith("02"))
+                .collect(Collectors.groupingBy(e -> e.getTagNumber().substring(2)));
+
+        for (Map.Entry<String, List<LotoPoint>> entry : lpMap.entrySet()) {
+            String baseTag = entry.getKey();
+            List<LotoPoint> equipmentList = entry.getValue();
+
+            LotoPoint u1Equipment = equipmentList.stream()
+                    .filter(e -> e.getTagNumber().startsWith("01"))
+                    .findFirst().orElse(null);
+
+            LotoPoint u2Equipment = equipmentList.stream()
+                    .filter(e -> e.getTagNumber().startsWith("02"))
+                    .findFirst().orElse(null);
+
+            if (u1Equipment == null || u2Equipment == null) {
+                createMismatchConflict(conflicts, u1Equipment, u2Equipment, "Missing corresponding equipment");
+            }else if(u1Equipment.getDescription()==null || u2Equipment.getDescription()==null){
+                createMismatchConflict(conflicts, u1Equipment, u2Equipment, "Missing corresponding equipment description");
+            } else {
+                LotoPoint transformedU1 = transformEquipment(u1Equipment, "01", "02");
+
+                if (!compareEquipment(transformedU1, u2Equipment)) {
+                    createMismatchConflict(conflicts, u1Equipment, u2Equipment, "Mismatch after transformation (U1 to U2)");
+                }
+            }
+        }
+
+        // Save all conflicts
+        for (Conflict conflict : conflicts) {
+            try {
+                conflictRepo.save(conflict);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        return conflicts;
+    }
+
+    private LotoPoint transformEquipment(LotoPoint source, String fromUnit, String toUnit) {
+        LotoPoint transformed = new LotoPoint();
+        transformed.setTagNumber(toUnit + source.getTagNumber().substring(2));
+
+        if (source.getDescription() != null) {
+            transformed.setDescription(transformText(source.getDescription(), fromUnit, toUnit));
+        }
+
+        if (source.getSpecificLocation() != null) {
+            transformed.setSpecificLocation(transformText(source.getSpecificLocation(), fromUnit, toUnit));
+        }
 
 
+        return transformed;
+    }
+
+    private boolean compareEquipment(LotoPoint e1, LotoPoint e2) {
+        if (e1 == null || e2 == null) return false;
+
+        return Objects.equals(e1.getTagNumber().toLowerCase(), e2.getTagNumber().toLowerCase()) &&
+                Objects.equals(e1.getDescription().toLowerCase(), e2.getDescription().toLowerCase());
+    }
+
+    private void createMismatchConflict(List<Conflict> conflicts, LotoPoint u1Equipment, LotoPoint u2Equipment, String reason) {
+        String description = reason + " between Unit 1 and Unit 2 equipment: ";
+        String entityIds = "";
+
+        if (u1Equipment != null) {
+            description += "U1: " + u1Equipment.getTagNumber();
+            entityIds += u1Equipment.getId();
+        }
+
+        if (u2Equipment != null) {
+            description += (u1Equipment != null ? ", " : "") + "U2: " + u2Equipment.getTagNumber();
+            entityIds += (u1Equipment != null ? "," : "") + u2Equipment.getId();
+        }
+
+        Conflict conflict = Conflict.builder()
+                .conflictType(Conflict.ConflictType.unit_loto_point_mismatch)
+                .description(description)
+                .createdAt(LocalDateTime.now())
+                .entityId(entityIds)
+                .status(Conflict.ConflictStatus.OPEN)
+                .build();
+
+        conflicts.add(conflict);
+    }
+
+    public void clearLotoPointUnitMissmatchConflicts(){
+        List<Conflict> mismatches = conflictRepo.findByConflictType(Conflict.ConflictType.unit_loto_point_mismatch);
+        mismatches.forEach(conflictRepo::delete);
+        System.out.println("All Unit Missmatch Conflicts cleared");
+    }
+
+    public List<LotoPoint> getLotoPointUnitMismatchConflicts(int count){
+        List<Conflict> byConflictType = conflictRepo.findByConflictType(Conflict.ConflictType.unit_loto_point_mismatch);
+        List<LotoPoint> conflictedEqList = new ArrayList<>();
+        int i = 0;
+        for (Conflict conflict : byConflictType) {
+            String[] split = conflict.getEntityId().split(",");
+            for (String s : split) {
+                conflictedEqList.add(lotoPointService.getEntityById(s));
+            }
+            if(++i>=count)return conflictedEqList;
+        }
+        return conflictedEqList;
+    }
+
+    public List<LotoPoint> getUnresolvedLotoPointUnitMismatchEquipment(int count){
+        List<Conflict> unresolved = conflictRepo.findByConflictTypeAndStatus(Conflict.ConflictType.unit_loto_point_mismatch,Conflict.ConflictStatus.OPEN);
+        List<LotoPoint> unresolvedEqList = new ArrayList<>();
+        int i = 0;
+        for (Conflict conflict : unresolved) {
+            String[] split = conflict.getEntityId().split(",");
+            for (String s : split) {
+                unresolvedEqList.add(lotoPointService.getEntityById(s));
+            }
+            if(++i>=count) return unresolvedEqList;
+        }
+        return unresolvedEqList;
+    }
+
+    public List<LotoPoint> getUnresolvedLotoPointUnitMismatchWithEquipment(int count){
+        List<Conflict> unresolved = conflictRepo.findByConflictTypeAndStatus(Conflict.ConflictType.unit_loto_point_mismatch,Conflict.ConflictStatus.OPEN);
+        List<LotoPoint> unresolvedEqList = new ArrayList<>();
+        int i = 0;
+        for (Conflict conflict : unresolved) {
+            String[] split = conflict.getEntityId().split(",");
+            List<LotoPoint> withEquipment = new ArrayList<>();
+            for (String s : split) {
+                withEquipment.add(lotoPointService.getEntityById(s));
+            }
+            if(withEquipment.stream().anyMatch(e -> e.getEquipmentList()!= null &&!e.getEquipmentList().isEmpty())){
+                unresolvedEqList.addAll(withEquipment);
+                if(++i>=count) return unresolvedEqList;
+            }
+
+        }
+        return unresolvedEqList;
+    }
+
+    public Conflict getLotoPointUnitMismatchConflictByLpId(String lpId){
+        return conflictRepo.findByConflictTypeAndEntityIdContaining(Conflict.ConflictType.unit_loto_point_mismatch,lpId);
+    }
+
+    public void resolveLotoPointUnitMismatchConflict(String lpId){
+        Conflict conflict = getLotoPointUnitMismatchConflictByLpId(lpId);
+        try{
+            conflict.setStatus(Conflict.ConflictStatus.RESOLVED);
+            conflictRepo.save(conflict);
+            System.out.println(conflict.getId() + ": Conflict resolved for equipment with ID: " + lpId);
+        }catch(Exception e){
+            // Handle exception
+            System.out.println("Error resolving conflict for equipment with ID: " + lpId);
+        }
+    }
+
+    public LotoPoint createMatchingLotoPointForOtherUnit(Long lotoPointId) {
+        LotoPoint sourceLotoPoint = lotoPointService.getEntityById(lotoPointId.toString());
+        if (sourceLotoPoint == null) {
+            throw new IllegalArgumentException("LOTO point not found with ID: " + lotoPointId);
+        }
+
+        String sourceUnit = sourceLotoPoint.getTagNumber().substring(0, 2);
+        String targetUnit = sourceUnit.equals("01") ? "02" : "01";
+
+        LotoPoint newLotoPoint = new LotoPoint();
+        newLotoPoint.setTagNumber(targetUnit + sourceLotoPoint.getTagNumber().substring(2));
+        newLotoPoint.setDescription(transformText(sourceLotoPoint.getDescription(), sourceUnit, targetUnit));
+        newLotoPoint.setSpecificLocation(transformText(sourceLotoPoint.getSpecificLocation(), sourceUnit, targetUnit));
+        newLotoPoint.setUnit(targetUnit);
+
+        // Copy other fields that don't need transformation
+        newLotoPoint.setIsoPos(sourceLotoPoint.getIsoPos());
+        newLotoPoint.setNormPos(sourceLotoPoint.getNormPos());
+
+        // Save the new LOTO point
+        LotoPoint savedLotoPoint = lotoPointService.save(newLotoPoint);
+
+        // Resolve the conflict if it exists
+        Conflict conflict = getLotoPointUnitMismatchConflictByLpId(lotoPointId.toString());
+        if (conflict != null) {
+            conflict.setStatus(Conflict.ConflictStatus.RESOLVED);
+            conflict.setEntityId(conflict.getEntityId() + "," + savedLotoPoint.getId());
+            conflictRepo.save(conflict);
+        }
+
+        System.out.println("Created matching LOTO point for other unit: " + savedLotoPoint.getTagNumber());
+        return savedLotoPoint;
+    }
+
+
+    public List<LotoPoint> getReadyForTransferPoints() {
+        List<LotoPoint> readyForTransfer = new ArrayList<>();
+        List<LotoPoint> allNotTransferred = lotoPointService.getAllNotTransferred();
+        for (LotoPoint lotoPoint : allNotTransferred) {
+            if (lotoPoint.getEquipmentList() != null && !lotoPoint.getEquipmentList().isEmpty() && isNotConflicted(lotoPoint)) {
+                readyForTransfer.add(lotoPoint);
+            }
+        }
+        System.out.println("Ready for transfer LOTO points: " + readyForTransfer.size());
+        return readyForTransfer;
+    }
+
+    private boolean isNotConflicted(LotoPoint lotoPoint) {
+        List<Conflict> conflicts = conflictRepo.findByEntityIdContaining(lotoPoint.getId().toString());
+        return conflicts.isEmpty();
+    }
 }

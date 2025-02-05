@@ -41,6 +41,7 @@ public class FileObjectTransferService {
         int count = 0;
         for (FileObject fileObject : all) {
 //            if(count++>20) break;
+            if(!fileObject.getFileType().getName().equals("PID")){continue;}
             try{
                 transferOneFile(fileObject);
             }catch (RuntimeException e){

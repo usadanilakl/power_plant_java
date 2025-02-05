@@ -49,4 +49,14 @@ public class ConflictResoluctionController {
         LotoPoint update = lotoPointService.save(lotoPoint);
         return ResponseEntity.ok(lotoPointService.convertToDto(update));
     }
+
+
+    @PostMapping("/create-matching-loto-point/{lotoPointId}")
+    public ResponseEntity<LotoPointDto> createMatchingLotoPoint(@PathVariable String lotoPointId) {
+        LotoPoint matchingPoint = fileElementTransferService.createMatchingLotoPointForOtherUnit(Long.parseLong(lotoPointId));
+        return ResponseEntity.ok(lotoPointService.convertToDto(matchingPoint));
+    }
+
+
+
 }

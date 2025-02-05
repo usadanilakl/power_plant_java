@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     List<LotoPoint> findByDescriptionContaining(String tag);
@@ -30,5 +31,9 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     List<LotoPoint> findByTagNumberContaining(String tagNumber);
 
     List<LotoPoint> findByIsProcessed(boolean isProcessed);
+
+    List<LotoPoint> findByDataServiceItemIdIsNull();
+
+    List<LotoPoint> findByDataServiceItemId(UUID dataServiceItemId);
 
 }

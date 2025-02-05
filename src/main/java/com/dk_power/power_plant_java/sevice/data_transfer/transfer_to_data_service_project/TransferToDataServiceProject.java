@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointServiceImpl;
@@ -63,6 +64,15 @@ public class TransferToDataServiceProject {
      *     3. Equipment with no matching loto point - if electrical then need to create new electrical equipment.
      *     4. Transfer all equipment that has loto points - send new LotoPoint to Data Service Project, get file element object that represents this loto point, check if loto point with same tag already exists, if not then save it and assosiate with file element, if exists then assosiate existing loto point with file element.
      *
+     *
+     * TRANSFER FLOW:
+     *
+     *     1. Clean up tag and description leading and trailing spaces.
+     *     2. Clean up coordinates.
+     *     3. Identify conflicts.
+     *     4. Get all conflict free loto points.
+     *     5. Transfer point by point: get point, transfer related files, transfer related file elements, transfer loto point.
+     *     6. Resolve conflicts: get conflict point, fix issues, transfer point, change conflict status.
      **/
 
 
@@ -88,77 +98,26 @@ public class TransferToDataServiceProject {
 //        fileElementTransferService.clearFileElementTransferStatus();
 //        fileElementTransferService.transferFileElements();
 //
-        fileElementTransferService.clearEquipmentTransferStatus();
-        fileElementTransferService.transferEquipment();
+//        fileElementTransferService.clearEquipmentTransferStatus();
+//        fileElementTransferService.transferEquipment();
+//        fileElementTransferService.lotoPointsWithNoConflicts();
     }
 
-
-
-    private void transferEquipment(){
-        //get all equipment
-        List<Equipment> all = equipmentService.getAll();
-        Set<String> tags = new HashSet<>();
-        for (Equipment e : all) {
-            DS_TagNumberDto tagNumber = DS_TagNumberDto.builder().number(e.getTagNumber()).build();
-            Set<DS_TagNumberDto> tagNumbers = new HashSet<> (Collections.singletonList(tagNumber));
-            DS_FileObjectDtoDS fileObject = DS_FileObjectDtoDS.builder().id(e.getMainFile().getDataServiceItemId()).build();
-
-            if(e.getEqType().getName().equals("Connector")){
-                DS_ValueDto shapeType = DS_ValueDto.builder().name("Rectangle").build();
-                DS_FileElementDto fileElement = DS_FileElementDto.builder()
-                        .tagNumber(e.getTagNumber())
-                        .coordinates(e.getCoordinates())
-                        .originalPictureSize(e.getOriginalPictureSize())
-                        .elementType(shapeType)
-                        .shapeType(shapeType)
-                        .fileObject(fileObject)
-                        .build();
-            }else {
-                if(tags.add(e.getTagNumber())){
-                    DS_ValueDto shapeType = DS_ValueDto.builder().name("Rectangle").build();
-                    DS_ValueDto elementType = DS_ValueDto.builder().name("Equipment").build();
-                    DS_FileElementDto fileElement = DS_FileElementDto.builder()
-                            .tagNumber(e.getTagNumber())
-                            .coordinates(e.getCoordinates())
-                            .originalPictureSize(e.getOriginalPictureSize())
-                            .elementType(shapeType)
-                            .fileObject(fileObject)
-                            .build();
-                }
-            }
-            if(tags.add(e.getTagNumber())){
-                if(e.getLotoPoints()!=null && e.getLotoPoints().size()>0){
-                    //get existing equipment from data service progect
-                    //merge datata
-                    //send updated equipment back to data service project to be saved
-                }else{
-
-                }
-            }
+    public void transferOneByOne() throws IOException {
+        List<LotoPoint> all =  fileElementTransferService.getReadyForTransferPoints();
+        for (LotoPoint lotoPoint : all) {
+            transferOneLotoPoint(lotoPoint);
         }
     }
 
-    private void createLotoPoints(){
-        List<LotoPoint> all = lotoPointService.getAll();
-        Set<String> tags = new HashSet<>();
-        for (LotoPoint lp : all) {
-            if(lp.getEquipmentList()!=null && lp.getEquipmentList().size()>0){
-                if(!tags.add(lp.getTagNumber())){
-                    //get existing loto point from data service progect
-                    //merge datata
-                    //send updated loto point back to data service project to be saved
-                }else{
-                    DS_TagNumberDto tagNumber = DS_TagNumberDto.builder().number(lp.getTagNumber()).build();
-                    Set<DS_TagNumberDto> tagNumbers = new HashSet<> (Collections.singletonList(tagNumber));
-                    DS_LotoPointDto.builder()
-                            .unit(lp.getUnit())
-                            .description(lp.getDescription())
-                            .tagNumbers(tagNumbers)
-                            .build();
-
-                }
-            }
-        }
+    public void transferOneLotoPoint(LotoPoint lotoPoint) throws IOException {
+        Equipment equipment = lotoPoint.getEquipmentList().stream().filter(e -> e.getTagNumber().equals(lotoPoint.getTagNumber())).findFirst().orElse(null);
+        if(equipment == null)return;
+        FileObject fileObject = equipment.getMainFile();
+        if(fileObject == null)return;
+        fileObjectTransferService.transferOneFile(fileObject);
+        fileElementTransferService.transferOneFileElement(equipment);
+        fileElementTransferService.transferOneEquipment(equipment);
     }
 
 }
