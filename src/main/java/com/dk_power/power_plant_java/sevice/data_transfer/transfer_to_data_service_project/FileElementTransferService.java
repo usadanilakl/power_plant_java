@@ -6,9 +6,7 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_LotoPointDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_TagNumberDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
 import com.dk_power.power_plant_java.entities.Conflict;
-import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -185,9 +183,7 @@ public class FileElementTransferService {
                     .oldPidProjectItemId(lotoPoint.getId())
                     .build();
             // Send POST request to create loto point
-            String ds_lotoPointId = e.getRefactorNotes();
-            ds_lotoPointId = ds_lotoPointId != null ? ds_lotoPointId.substring(ds_lotoPointId.indexOf("Loto point id:")) : null;
-            ds_lotoPointId = ds_lotoPointId != null ? ds_lotoPointId.substring(ds_lotoPointId.indexOf(":") + 1).trim() : null;
+            String ds_lotoPointId = lotoPoint.getDataServiceItemId()!=null ? lotoPoint.getDataServiceItemId().toString() : null;
 
             if(ds_lotoPointId==null) {
                 ResponseEntity<DS_LotoPointDto> responseLotoPoint = createOrUpdateLotoPoint(fileElementId.toString(), lotoPointDto);
@@ -415,6 +411,35 @@ public class FileElementTransferService {
             e.printStackTrace();
             return null;
         }
+    }
+
+
+
+    public List<LotoPoint> getReadyForTransferPoints() {
+        List<LotoPoint> readyForTransfer = new ArrayList<>();
+        List<LotoPoint> allNotTransferred = lotoPointService.getAllNotTransferred();
+        for (LotoPoint lotoPoint : allNotTransferred) {
+            if (lotoPoint.getEquipmentList() != null && !lotoPoint.getEquipmentList().isEmpty() && isNotConflicted(lotoPoint)) {
+                readyForTransfer.add(lotoPoint);
+            }
+        }
+        System.out.println("Ready for transfer LOTO points: " + readyForTransfer.size());
+        return readyForTransfer;
+    }
+
+    private boolean isNotConflicted(LotoPoint lotoPoint) {
+        Equipment equipment = lotoPoint.getEquipmentList().stream().filter(eq -> eq.getTagNumber().equals(lotoPoint.getTagNumber())).findFirst().orElse(null);
+        if (equipment == null) {
+            return false;
+        }
+        List<Conflict> conflicts = conflictRepo.findByEntityIdContainingAndStatus(lotoPoint.getId().toString(), Conflict.ConflictStatus.OPEN);
+        conflicts.addAll(conflictRepo.findByEntityIdContainingAndStatus(equipment.getId().toString(), Conflict.ConflictStatus.OPEN));
+        return conflicts.isEmpty();
+    }
+
+    private boolean isNotConflicted(Equipment eq) {
+        List<Conflict> conflicts = conflictRepo.findByEntityIdContainingAndStatus(eq.getId().toString(), Conflict.ConflictStatus.OPEN);
+        return conflicts.isEmpty();
     }
 
 
@@ -1269,21 +1294,4 @@ public class FileElementTransferService {
         return savedLotoPoint;
     }
 
-
-    public List<LotoPoint> getReadyForTransferPoints() {
-        List<LotoPoint> readyForTransfer = new ArrayList<>();
-        List<LotoPoint> allNotTransferred = lotoPointService.getAllNotTransferred();
-        for (LotoPoint lotoPoint : allNotTransferred) {
-            if (lotoPoint.getEquipmentList() != null && !lotoPoint.getEquipmentList().isEmpty() && isNotConflicted(lotoPoint)) {
-                readyForTransfer.add(lotoPoint);
-            }
-        }
-        System.out.println("Ready for transfer LOTO points: " + readyForTransfer.size());
-        return readyForTransfer;
-    }
-
-    private boolean isNotConflicted(LotoPoint lotoPoint) {
-        List<Conflict> conflicts = conflictRepo.findByEntityIdContaining(lotoPoint.getId().toString());
-        return conflicts.isEmpty();
-    }
 }

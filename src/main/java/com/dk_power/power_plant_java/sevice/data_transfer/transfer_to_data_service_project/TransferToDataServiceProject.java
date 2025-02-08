@@ -92,15 +92,17 @@ public class TransferToDataServiceProject {
 //        fileElementTransferService.identifyConflicts();
 //        fileElementTransferService.identifyConflictedEquipment();
 
-//        fileObjectTransferService.cleanTransferData();
+        fileObjectTransferService.cleanTransferData();
 //        fileObjectTransferService.transferFileObjects();
 //
-//        fileElementTransferService.clearFileElementTransferStatus();
+        fileElementTransferService.clearFileElementTransferStatus();
 //        fileElementTransferService.transferFileElements();
 //
-//        fileElementTransferService.clearEquipmentTransferStatus();
+        fileElementTransferService.clearEquipmentTransferStatus();
 //        fileElementTransferService.transferEquipment();
 //        fileElementTransferService.lotoPointsWithNoConflicts();
+
+        transferOneByOne();
     }
 
     public void transferOneByOne() throws IOException {
