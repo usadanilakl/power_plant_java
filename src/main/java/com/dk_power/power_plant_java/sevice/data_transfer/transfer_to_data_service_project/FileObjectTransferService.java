@@ -1,12 +1,16 @@
 package com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project;
 
+import com.dk_power.power_plant_java.api.DataServiceClient;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.ApiResponse;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_CategoryDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.entities.Conflict;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.mappers.transfer_to_data_service_project.DS_FileObjectMapper;
+import com.dk_power.power_plant_java.repository.ConflictRepo;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +39,9 @@ public class FileObjectTransferService {
     private final FileServiceImpl fileService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final DataServiceClient dataServiceClient;
+    private final DS_FileObjectMapper dsFileObjectMapper;
+    private final ConflictService conflictService;
 
     void transferFileObjects() throws IOException {
         List<FileObject> all = fileService.getAll();
@@ -72,7 +79,7 @@ public class FileObjectTransferService {
         return null;
     }
 
-    public void transferOneFile(FileObject fileObject) throws IOException {
+    public void transferOneFileOld(FileObject fileObject) throws IOException {
         if (fileObject.getDataServiceItemId()!= null) {
             System.out.println("File already transferred: " + fileObject.getName());
             return;
@@ -133,6 +140,42 @@ public class FileObjectTransferService {
                 e.printStackTrace();
             }
         }
+    }
+
+    public void transferOneFile(FileObject fileObject) throws IOException {
+        if (fileObject.getDataServiceItemId() != null) {
+            System.out.println("File already transferred: " + fileObject.getName());
+            return;
+        }
+
+        DS_FileObjectDtoDS newFileObject = dsFileObjectMapper.convertToDS_FileObjectDto(fileObject);
+
+        File file = new File(fileObject.getFileLink());
+        if (!file.exists()) {
+            System.out.println("File not found: " + fileObject.getFileLink());
+            conflictService.createFileNotFoundConflict(fileObject);
+        }
+
+        try {
+            DS_FileObjectDtoDS createdFileObject = dataServiceClient.transferFile(newFileObject, file);
+
+            if (createdFileObject != null && createdFileObject.getId() != null) {
+                System.out.println("File created successfully. ID: " + createdFileObject.getId());
+                fileObject.setDataServiceItemId(createdFileObject.getId());
+                fileService.save(fileObject);
+            } else {
+                System.out.println("Error creating file. Response was null or ID was not provided.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error during file transfer: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Error during file transfer", e);
+        }
+    }
+
+    public void testTransferOneFile() throws IOException {
+        FileObject fileObject1 = fileService.getAll().stream().filter(f -> f.getFileType().getName().equals("PID")).findFirst().get();
+        transferOneFile(fileObject1);
     }
 
 

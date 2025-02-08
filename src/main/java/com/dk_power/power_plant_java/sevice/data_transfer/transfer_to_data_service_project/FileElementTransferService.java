@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project;
 
+import com.dk_power.power_plant_java.api.DataServiceClient;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_CategoryDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_EquipmentDto;
@@ -10,6 +11,7 @@ import com.dk_power.power_plant_java.entities.Conflict;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.mappers.transfer_to_data_service_project.DS_FileElementMapper;
 import com.dk_power.power_plant_java.repository.ConflictRepo;
 import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
@@ -39,52 +41,23 @@ public class FileElementTransferService {
     private final ConflictRepo conflictRepo;
     private final FileServiceImpl fileService;
 
+    private final DS_FileElementMapper fileElementMapper;
+    private final ConflictService conflictService;
+    private final DataServiceClient dataServiceClient;
+
     /******************************************************
      * TRANSFER
      *******************************************************/
 
     protected void transferFileElements(){
-        //Get all equipment
         List<Equipment> all = equipmentService.getAll();
         int count = 0;
         for (Equipment e : all) {
             transferOneFileElement(e);
-//            Map<String, Float> coordinatesMap;
-//            try{
-//                coordinatesMap = convertToCoordinatesMap(e.getCoordinates(), e.getOriginalPictureSize());
-//            }catch (Exception ex){
-//                continue;
-//            }
-//            FileObject mainFile = e.getMainFile();
-//            String color = "rgb(7, 89, 189)";
-//            if(mainFile!=null && mainFile.getDataServiceItemId()!= null){
-//                DS_FileElementDto fileElement = DS_FileElementDto.builder()
-//                        .tagNumber(e.getTagNumber())
-//                        .shapeData(coordinatesMap)
-//                        .color(color)
-//                        .shapeType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Shape Type").build()).name("rectangle").build())
-//                        .elementType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Element Type").build()).name("equipment").build())
-//                        .oldPidProjectItemId(e.getId())
-//                        .build();
-//
-//                // Send POST request to create file element
-//                UUID fileId = mainFile.getDataServiceItemId();
-//                ResponseEntity<DS_FileElementDto> response = createFileElement(fileId.toString(), fileElement);
-//
-//                if (response != null && response.getStatusCode() == HttpStatus.OK) {
-//                    UUID id = response.getBody().getId();
-//                    e.setDataServiceItemId(id);
-//                    e.addRefactorNote("fileElementId:" + id);
-//                    System.out.println("File element created successfully: " + response.getBody());
-//                } else {
-//                    System.out.println("Failed to create file element");
-//                }
-//            }
-//            if(count++>0) break;
         }
     }
 
-    public void transferOneFileElement(Equipment e) {
+    public void transferOneFileElementOld(Equipment e) {
         if(e.getDataServiceItemId()!= null) return;
         Map<String, Float> coordinatesMap;
         try{
@@ -120,8 +93,41 @@ public class FileElementTransferService {
 
     }
 
+    public void transferOneFileElement(Equipment e) {
+        if(e.getDataServiceItemId()!= null) return;
+        FileObject mainFile = e.getMainFile();
+        if(mainFile!=null && mainFile.getDataServiceItemId()!= null){
+
+            DS_FileElementDto fileElement = null;
+            try {
+                fileElement = fileElementMapper.map(e);
+            } catch (Exception ex) {
+                System.err.println("Error mapping equipment to DS_FileElementDto: " + ex.getMessage());
+                ex.printStackTrace();
+                conflictService.save(Conflict.builder()
+                                .status(Conflict.ConflictStatus.OPEN)
+                                .conflictType(Conflict.ConflictType.equipment_coordinates)
+                                .build());
+                return;
+            }
+
+            // Send POST request to create file element
+            UUID fileId = mainFile.getDataServiceItemId();
+            ResponseEntity<DS_FileElementDto> response = dataServiceClient.createFileElement(fileId.toString(), fileElement);
+
+            if (response != null && response.getStatusCode() == HttpStatus.OK) {
+                UUID id = response.getBody().getId();
+                e.setDataServiceItemId(id);
+                e.addRefactorNote("fileElementId:" + id);
+                System.out.println("File element created successfully: " + response.getBody());
+            } else {
+                System.out.println("Failed to create file element");
+            }
+        }
+
+    }
+
     protected void transferEquipment(){
-        //Get all equipment
         List<Equipment> all = equipmentService.getAll();
         int count = 0;
         for (Equipment e : all) {
@@ -359,6 +365,7 @@ public class FileElementTransferService {
             return null;
         }
     }
+
     private ResponseEntity<DS_LotoPointDto> createOrUpdateLotoPoint(DS_LotoPointDto lotoPointDto) {
         String url = "http://localhost:8081/api/loto-points";
 
