@@ -6,11 +6,8 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
 import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.entities.Conflict;
-import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.transfer_to_data_service_project.DS_FileObjectMapper;
-import com.dk_power.power_plant_java.repository.ConflictRepo;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -142,10 +139,17 @@ public class FileObjectTransferService {
         }
     }
 
-    public void transferOneFile(FileObject fileObject) throws IOException {
-        if (fileObject.getDataServiceItemId() != null) {
-            System.out.println("File already transferred: " + fileObject.getName());
-            return;
+    public boolean transferOneFile(FileObject fileObject) throws IOException {
+        if(fileObject==null) return false;
+        System.out.println(fileObject.getDataServiceItemId());
+        if(fileObject.getDataServiceItemId()!=null){
+            DS_FileObjectDtoDS fileObjectById = dataServiceClient.getFileObjectById(fileObject.getDataServiceItemId());
+            if(fileObjectById!=null){
+                System.out.println("File already transferred: " + fileObject.getFileNumber() + " (ID: " + fileObject.getDataServiceItemId() + ")");
+                return true;
+            }else{
+                System.out.println("File not found in Data Service: " + fileObject.getFileNumber() + " (ID: " + fileObject.getDataServiceItemId() + ")");
+            }
         }
 
         DS_FileObjectDtoDS newFileObject = dsFileObjectMapper.convertToDS_FileObjectDto(fileObject);
@@ -154,6 +158,7 @@ public class FileObjectTransferService {
         if (!file.exists()) {
             System.out.println("File not found: " + fileObject.getFileLink());
             conflictService.createFileNotFoundConflict(fileObject);
+            return false;
         }
 
         try {
@@ -171,6 +176,7 @@ public class FileObjectTransferService {
             e.printStackTrace();
             throw new RuntimeException("Error during file transfer", e);
         }
+        return true;
     }
 
     public void testTransferOneFile() throws IOException {

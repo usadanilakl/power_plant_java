@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.ConflictService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,9 +15,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DS_FileElementMapper {
     public DS_FileElementDto map(Equipment e) {
+        Map<String, Float> stringFloatMap = convertToCoordinatesMap(e.getCoordinates(), e.getOriginalPictureSize());
+        if(!isCoordinatesValid(stringFloatMap)){
+            throw new IllegalArgumentException("Coordinates are not valid");
+        }
         return DS_FileElementDto.builder()
                 .tagNumber(e.getTagNumber())
-                .shapeData(convertToCoordinatesMap(e.getCoordinates(), e.getOriginalPictureSize()))
+                .shapeData(stringFloatMap)
                 .color("rgb(7, 89, 189)")
                 .shapeType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Shape Type").build()).name("rectangle").build())
                 .elementType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Element Type").build()).name("equipment").build())
@@ -40,6 +45,12 @@ public class DS_FileElementMapper {
                         break;
                     case "startY":
                         result.put("y", value);
+                        break;
+                    case "endX":
+                        result.put("x2", value);
+                        break;
+                    case "endY":
+                        result.put("y2", value);
                         break;
                     case "width":
                         result.put("width", value);
@@ -69,6 +80,32 @@ public class DS_FileElementMapper {
             }
         }
 
+        System.out.println(result);
         return result;
+    }
+    
+    private boolean isCoordinatesValid(Map<String, Float> coordinates) {
+        boolean allValuesPresent = coordinates.containsKey("x") && coordinates.containsKey("y") &&
+                coordinates.containsKey("width") && coordinates.containsKey("height") &&
+                coordinates.containsKey("originalPictureWidth") && coordinates.containsKey("originalPictureHeight");
+        if (!allValuesPresent) return false;
+
+        boolean heightAndWidthMatch = true;
+        if (coordinates.containsKey("x2") && coordinates.containsKey("y2")) {
+            final float EPSILON = 5f; // Adjust this value based on your acceptable error margin
+
+            float expectedX2 = coordinates.get("x") + coordinates.get("width");
+            float expectedY2 = coordinates.get("y") + coordinates.get("height");
+
+            boolean equalsX = Math.abs(coordinates.get("x2") - expectedX2) < EPSILON;
+            boolean equalsY = Math.abs(coordinates.get("y2") - expectedY2) < EPSILON;
+
+            heightAndWidthMatch = equalsX && equalsY;
+        }
+        if(!heightAndWidthMatch){
+            System.out.println("Coordinates do not match height and width");
+            return false;
+        }
+        return true;
     }
 }

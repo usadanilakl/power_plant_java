@@ -44,6 +44,17 @@ public class FileElementTransferService {
     private final DS_FileElementMapper fileElementMapper;
     private final ConflictService conflictService;
     private final DataServiceClient dataServiceClient;
+    /******************************************************
+     * INITIAL CLEANUP
+     *******************************************************/
+
+    public void removeQuotesFromCoordinates(){
+        List<Equipment> all = equipmentService.getAll();
+        for (Equipment e : all) {
+            e.setCoordinates(e.getCoordinates().replaceAll("\"", ""));
+            equipmentService.save(e);
+        }
+    }
 
     /******************************************************
      * TRANSFER
@@ -93,8 +104,15 @@ public class FileElementTransferService {
 
     }
 
-    public void transferOneFileElement(Equipment e) {
-        if(e.getDataServiceItemId()!= null) return;
+    public boolean transferOneFileElement(Equipment e) {
+        if(e==null) return false;
+        if(e.getDataServiceItemId()!=null){
+            DS_FileElementDto element = dataServiceClient.getFileElementByEqId(e.getDataServiceItemId());
+            if(element!=null){
+                System.out.println("File element exists for eq with id: " + e.getId() + ", tag number: " + e.getTagNumber());
+                return true;
+            }
+        }
         FileObject mainFile = e.getMainFile();
         if(mainFile!=null && mainFile.getDataServiceItemId()!= null){
 
@@ -105,10 +123,10 @@ public class FileElementTransferService {
                 System.err.println("Error mapping equipment to DS_FileElementDto: " + ex.getMessage());
                 ex.printStackTrace();
                 conflictService.save(Conflict.builder()
-                                .status(Conflict.ConflictStatus.OPEN)
+                                .entityId(e.getId().toString())
                                 .conflictType(Conflict.ConflictType.equipment_coordinates)
                                 .build());
-                return;
+                return false;
             }
 
             // Send POST request to create file element
@@ -118,13 +136,12 @@ public class FileElementTransferService {
             if (response != null && response.getStatusCode() == HttpStatus.OK) {
                 UUID id = response.getBody().getId();
                 e.setDataServiceItemId(id);
-                e.addRefactorNote("fileElementId:" + id);
                 System.out.println("File element created successfully: " + response.getBody());
             } else {
                 System.out.println("Failed to create file element");
             }
         }
-
+        return true;
     }
 
     protected void transferEquipment(){

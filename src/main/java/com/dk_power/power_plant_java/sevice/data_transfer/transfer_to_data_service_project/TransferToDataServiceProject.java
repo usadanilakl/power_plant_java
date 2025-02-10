@@ -79,49 +79,28 @@ public class TransferToDataServiceProject {
 
 
 
-
-    private final EquipmentServiceImpl equipmentService;
-    private final LotoPointServiceImpl lotoPointService;
-
     private final FileObjectTransferService fileObjectTransferService;
     private final FileElementTransferService fileElementTransferService;
-    private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    private final LotoPointTransferService lotoPointTransferService;
 
     public void transferExecution() throws IOException {
 //        fileElementTransferService.identifyConflicts();
 //        fileElementTransferService.identifyConflictedEquipment();
 
-//        fileObjectTransferService.cleanTransferData();
+        fileObjectTransferService.cleanTransferData();
 //        fileObjectTransferService.transferFileObjects();
 //
-//        fileElementTransferService.clearFileElementTransferStatus();
+        fileElementTransferService.clearFileElementTransferStatus();
 //        fileElementTransferService.transferFileElements();
 //
-//        fileElementTransferService.clearEquipmentTransferStatus();
+        fileElementTransferService.clearEquipmentTransferStatus();
 //        fileElementTransferService.transferEquipment();
 //        fileElementTransferService.lotoPointsWithNoConflicts();
 
-//        transferOneByOne();
-
+        lotoPointTransferService.transferAllLotoPoints();
 
     }
 
-    public void transferOneByOne() throws IOException {
-        List<LotoPoint> all =  fileElementTransferService.getReadyForTransferPoints();
-        for (LotoPoint lotoPoint : all) {
-            transferOneLotoPoint(lotoPoint);
-        }
-    }
 
-    public void transferOneLotoPoint(LotoPoint lotoPoint) throws IOException {
-        Equipment equipment = lotoPoint.getEquipmentList().stream().filter(e -> e.getTagNumber().equals(lotoPoint.getTagNumber())).findFirst().orElse(null);
-        if(equipment == null)return;
-        FileObject fileObject = equipment.getMainFile();
-        if(fileObject == null)return;
-        fileObjectTransferService.transferOneFile(fileObject);
-        fileElementTransferService.transferOneFileElement(equipment);
-        fileElementTransferService.transferOneEquipment(equipment);
-    }
 
 }

@@ -44,6 +44,6 @@ public class Conflict {
         loto_point_duplicates,
         unit_equipment_mismatch,
         equipment_connector,
-        unit_loto_point_mismatch, file_not_found, incomplete_loto_point, loto_point_unprocessed
+        unit_loto_point_mismatch, file_not_found, incomplete_loto_point, lp_missing_eq, incomplete_lp, loto_point_unprocessed
     }
 }

@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project;
 
 import com.dk_power.power_plant_java.entities.Conflict;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.ConflictRepo;
@@ -15,16 +16,20 @@ public class ConflictService {
     private final ConflictRepo conflictRepo;
 
     public Conflict save(Conflict conflict) {
-        if (checkIfConflictExists(conflict.getConflictType(), conflict.getEntityId())) {
-            System.out.println("Conflict with the same type and entity ID already exists. Skipping.");
-            return null;
+        Conflict conflict1 = checkIfConflictExists(conflict.getConflictType(), conflict.getEntityId());
+        if (conflict1!=null) {
+            System.out.println("Conflict with the same type and entity ID already exists. Changing status to OPEN.");
+            conflict1.setStatus(Conflict.ConflictStatus.OPEN);
+            return conflictRepo.save(conflict1);
         }
+        conflict.setCreatedAt(LocalDateTime.now());
+        conflict.setStatus(Conflict.ConflictStatus.OPEN);
         return conflictRepo.save(conflict);
     }
 
-    public boolean checkIfConflictExists(Conflict.ConflictType conflictType, String entityId) {
+    public Conflict checkIfConflictExists(Conflict.ConflictType conflictType, String entityId) {
         Conflict byConflictTypeAndEntityIdContaining = conflictRepo.findByConflictTypeAndEntityIdContaining(conflictType, entityId);
-        return byConflictTypeAndEntityIdContaining != null;
+        return byConflictTypeAndEntityIdContaining;
     }
 
     public void resolveConflict(Conflict.ConflictType conflictType, String equipmentId) {
@@ -34,9 +39,13 @@ public class ConflictService {
         }
         // Resolve conflict logic goes here
         conflict.setStatus(Conflict.ConflictStatus.RESOLVED);
+        conflict.setResolvedAt(LocalDateTime.now());
         conflictRepo.save(conflict);
 
     }
+
+
+
 
     public Conflict createFileNotFoundConflict(FileObject fileObject) {
         Conflict conflict = Conflict.builder()
@@ -47,7 +56,7 @@ public class ConflictService {
         return save(conflict);
     }
 
-    Conflict createMismatchConflict(LotoPoint u1Equipment, LotoPoint u2Equipment, String reason) {
+    Conflict createUnitMismatchConflict(LotoPoint u1Equipment, LotoPoint u2Equipment, String reason) {
         String description = reason + " between Unit 1 and Unit 2 equipment: ";
         String entityIds = "";
 
@@ -64,9 +73,7 @@ public class ConflictService {
         Conflict conflict = Conflict.builder()
                 .conflictType(Conflict.ConflictType.unit_loto_point_mismatch)
                 .description(description)
-                .createdAt(LocalDateTime.now())
                 .entityId(entityIds)
-                .status(Conflict.ConflictStatus.OPEN)
                 .build();
 
         try {
@@ -75,5 +82,30 @@ public class ConflictService {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public Conflict createLpMissingEqConflict(LotoPoint lotoPoint) {
+        Conflict conflict = Conflict.builder()
+                .conflictType(Conflict.ConflictType.lp_missing_eq)
+                .entityId(lotoPoint.getId().toString())
+                .build();
+        return save(conflict);
+    }
+
+    public Conflict createIncompleteLpConflict(LotoPoint lotoPoint) {
+        Conflict conflict = Conflict.builder()
+                .conflictType(Conflict.ConflictType.incomplete_lp)
+                .entityId(lotoPoint.getId().toString())
+                .build();
+        return save(conflict);
+    }
+
+    public Conflict createCoordinatesMissmatchConflict(Equipment e) {
+        Conflict conflict = Conflict.builder()
+               .conflictType(Conflict.ConflictType.equipment_coordinates)
+               .entityId(e.getId().toString())
+               .description("Coordinates mismatch for equipment with tag number: " + e.getTagNumber())
+               .build();
+        return save(conflict);
     }
 }
