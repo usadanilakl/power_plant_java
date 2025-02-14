@@ -45,6 +45,8 @@ public class DS_LotoPointMapper {
         DS_ValueDto isolatedPosition = lotoPoint.getIsoPos()!=null? DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Isolated Position").alias("isoPos").build()).name(lotoPoint.getIsoPos().getName()).build() : null;
         DS_ValueDto normalPosition = lotoPoint.getNormPos()!=null? DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Normal Position").alias("normPos").build()).name(lotoPoint.getNormPos().getName()).build() : null;
 
+        String specificLocation = e.getSpecificLocation()!= null? e.getSpecificLocation() : lotoPoint.getSpecificLocation()!=null? lotoPoint.getSpecificLocation() : null;
+
         DS_LotoPointDto lotoPointDto = DS_LotoPointDto.builder()
                 .tagNumbers(tagNumbers)
                 .unit(unit)
@@ -52,7 +54,7 @@ public class DS_LotoPointMapper {
                 .location(location)
                 .vendor(vendor)
                 .system(system)
-                .specificLocation(e.getSpecificLocation())
+                .specificLocation(specificLocation)
                 .isolatedPosition(isolatedPosition)
                 .normalPosition(normalPosition)
                 .equipmentType(eqType)
