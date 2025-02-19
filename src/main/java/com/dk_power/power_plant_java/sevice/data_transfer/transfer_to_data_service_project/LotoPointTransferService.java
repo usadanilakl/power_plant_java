@@ -95,6 +95,11 @@ public class LotoPointTransferService {
         return true;
     }
 
+    public boolean transferOneLotoPoint(String id) throws IOException {
+        LotoPoint lotoPoint = lotoPointService.getEntityById(id);
+        if(lotoPoint==null) return false;
+        return transferOneLotoPointTransactional(lotoPoint);
+    }
     protected boolean transferOneLotoPoint(Equipment e){
         if(e==null) return false;
         if(e.getRefactorNotes()!=null && e.getRefactorNotes().contains("lpId")){

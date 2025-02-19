@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.mappers.transfer_to_data_service_project;
 
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_CategoryDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_LotoPointDto;
@@ -47,6 +48,13 @@ public class DS_LotoPointMapper {
 
         String specificLocation = e.getSpecificLocation()!= null? e.getSpecificLocation() : lotoPoint.getSpecificLocation()!=null? lotoPoint.getSpecificLocation() : null;
 
+        Set<DS_ValueDto> equipmentTags = new HashSet<>();
+        DS_ValueDto taggingStatus = DS_ValueDto.builder()
+                .category(DS_CategoryDto.builder().name("Tagging Status").alias("taggingStatus").build())
+                .name("Needs Tagging")
+                .build();
+        equipmentTags.add(taggingStatus);
+
         DS_LotoPointDto lotoPointDto = DS_LotoPointDto.builder()
                 .tagNumbers(tagNumbers)
                 .unit(unit)
@@ -59,6 +67,7 @@ public class DS_LotoPointMapper {
                 .normalPosition(normalPosition)
                 .equipmentType(eqType)
                 .oldPidProjectItemId(lotoPoint.getId())
+                .equipmentTags(equipmentTags)
                 .build();
         return lotoPointDto;
     }

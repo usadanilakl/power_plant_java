@@ -32,6 +32,7 @@ public class DS_EquipmentDto extends DS_ConnectableDto {
     private DS_ValueDto location;
     private DS_ValueDto system;
     private DS_ValueDto equipmentType;
+    private Set<DS_ValueDto> equipmentTags;
     private DS_ValueDto vendor;
     private Map<String, String> attributes = new HashMap<>();
     private Set<DS_ValueDto> tags = new HashSet<>();

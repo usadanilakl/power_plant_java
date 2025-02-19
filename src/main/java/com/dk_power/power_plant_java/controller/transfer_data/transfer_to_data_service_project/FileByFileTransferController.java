@@ -16,11 +16,11 @@ public class FileByFileTransferController {
 
     @GetMapping("/")
     public String fileByFileTransfer(Model model) {
-        FileDto nextFileToVerify = fileObjectTransferService.getNextFileToVerify();
-        if (nextFileToVerify == null) {
-            return "redirect:/";
-        }
-        model.addAttribute("file", nextFileToVerify);
+//        FileDto nextFileToVerify = fileObjectTransferService.getNextFileToVerify();
+//        if (nextFileToVerify == null) {
+//            return "redirect:/";
+//        }
+//        model.addAttribute("file", nextFileToVerify);
         return "data_transfer_to_data_service_project/TransferFileByFile";
     }
 }

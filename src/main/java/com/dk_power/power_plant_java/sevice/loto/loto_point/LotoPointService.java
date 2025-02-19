@@ -39,4 +39,5 @@ public interface LotoPointService extends ExcelTransferService<LotoPoint, LotoPo
     List<LotoPoint> getEntityByTagNumber(String tagNumber);
 
     List<LotoPoint> getAllNotTransferred();
+
 }

@@ -471,6 +471,13 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public List<FileObject> getByFileType(String type) {
+        ValueDto valueDto = categoryService.getFileTypes().stream().filter(e -> e.getName().equals(type)).findFirst().orElse(null);
+        if(valueDto == null) return new ArrayList<>();
+        return fileRepo.findByFileType(valueService.convertToEntity(valueDto));
+    }
+
+    @Override
     public List<FileObject> getByValue(Value val) {
         List<FileObject> result = new ArrayList<>();
         String cat = val.getCategory().getAlias();

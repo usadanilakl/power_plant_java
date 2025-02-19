@@ -109,19 +109,34 @@ function matchAreaOriginalSizes(point,reference){
     }
     return coord.join(",");
 }
-function resizeHighlights(){
+function resizeHighlights() {
+    let allHighlights = document.querySelectorAll('.areaHighlights');
     
-    let allHighlites = document.querySelectorAll('.areaHighlights');
-    allHighlites.forEach(e=>{
-        let area = document.getElementById(e.getAttribute('id').slice(0,-1));
-       e.style.top = getShapeCoordinates(area).y; 
-       e.style.left = getShapeCoordinates(area).x;
-       e.style.width = getShapeCoordinates(area).w;
-       e.style.height = getShapeCoordinates(area).h;
-       //console.log(JSON.stringify(getShapeCoordinates(area)));
-
-       //console.log(parseFloat((e.style.top.replace('px',''))-picture.offsetTop)*coefficient + picture.offsetTop+ 'px');
-    })
+    allHighlights.forEach(highlight => {
+        let area = document.getElementById(highlight.getAttribute('id').slice(0, -1));
+        let coords = getShapeCoordinates(area);
+        
+        highlight.style.top = coords.y;
+        highlight.style.left = coords.x;
+        highlight.style.width = coords.w;
+        highlight.style.height = coords.h;
+    });
+}
+function getShapeCoordinates(area) {
+    let coords = area.getAttribute('coords').split(",").map(Number);
+    let pictureRect = picture.getBoundingClientRect();
+    
+    let width = coords[2] - coords[0];
+    let height = coords[3] - coords[1];
+    let x = coords[0] + pictureRect.left;
+    let y = coords[1] + pictureRect.top;
+    
+    return {
+        w: `${width}px`, 
+        h: `${height}px`, 
+        x: `${x}px`, 
+        y: `${y}px`
+    };
 }
 function createHighlight(area){
     let position = getShapeCoordinates(area);
@@ -167,14 +182,6 @@ function createHighlight(area){
     activeHighlights.push(highlight);
     highlatedAreas.push(area);
     return highlight;
-}
-function getShapeCoordinates(area){
-    let coords = area.getAttribute('coords').split(",");
-    let width = (coords[2]-coords[0])+'px'; 
-    let height = (coords[3]-coords[1])+'px'; 
-    let y = parseFloat(coords[1])+picture.offsetTop + "px";
-    let x = parseFloat(coords[0])+picture.offsetLeft + "px";
-    return {w:width, h:height, y:y, x:x};
 }
 function getOriginalPictureSizes(originalPictureSize){
     let arr = originalPictureSize.split(",");

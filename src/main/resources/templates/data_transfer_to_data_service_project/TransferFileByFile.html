@@ -7,9 +7,12 @@
 
 
     <link rel="stylesheet" href="/transfer_to_data_service_porject/page.css">
+    <link rel="stylesheet" href="/transfer_to_data_service_porject/FileMenu.css">
 
 </head>
 <body>
+        <button id="toggle-menu">Toggle Menu</button>
+        <div id="menu-container" style="display: none;"></div>
 
         <main>
             
@@ -29,17 +32,19 @@
 
 
     <!-- <script src="/functions/functions/PictureService.js"></script> -->
+    <script src="/transfer_to_data_service_porject/FileMenu.js"></script>
     <script src="/transfer_to_data_service_porject/DisplayPicture.js"></script>
     <script>
 
         document.addEventListener('DOMContentLoaded', async ()=>{
 
+
             
             let picture = document.getElementById('picture');
             let pictureContainer = document.getElementById('picture-container');
 
-            const fileToVerify = await getNextFileToVerify();
-            loadPictureWithFile(fileToVerify);
+            // const fileToVerify = await getNextFileToVerify();
+            // loadPictureWithFile(fileToVerify);
 
             pictureContainer.addEventListener('mousedown',(event)=>{
                 if(event.button===0){
@@ -59,6 +64,15 @@
             pictureContainer.addEventListener('touchstart', zoomPictureTouch);
             document.addEventListener('mousedown',handleMouseDown);
 
+            const menu = await createFileMenu();
+            document.getElementById('menu-container').appendChild(menu);
+
+            const toggleButton = document.getElementById('toggle-menu');
+            const menuContainer = document.getElementById('menu-container');
+            
+            toggleButton.addEventListener('click', () => {
+                menuContainer.style.display = menuContainer.style.display === 'none' ? 'block' : 'none';
+            });
 
         })
 
