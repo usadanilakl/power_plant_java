@@ -100,6 +100,7 @@ public class LotoPointTransferService {
         if(lotoPoint==null) return false;
         return transferOneLotoPointTransactional(lotoPoint);
     }
+
     protected boolean transferOneLotoPoint(Equipment e){
         if(e==null) return false;
         if(e.getRefactorNotes()!=null && e.getRefactorNotes().contains("lpId")){
@@ -125,7 +126,9 @@ public class LotoPointTransferService {
             try{
                 lotoPointDto = dsLotoPointMapper.map(e);
             }catch (Exception ex){
-                conflictService.createIncompleteLpConflict(lotoPoint);
+                Conflict incompleteLpConflict = conflictService.createIncompleteLpConflict(lotoPoint);
+                e.addConflictId(incompleteLpConflict.getId().toString());
+                equipmentService.save(e);
                 return false;
             }
 
@@ -148,11 +151,14 @@ public class LotoPointTransferService {
             }
 
         }else{
-            conflictService.save(Conflict.builder()
+            Conflict saved = conflictService.save(Conflict.builder()
                     .entityId(e.getId().toString())
+                    .entityType(e.getObjectType())
                     .conflictType(Conflict.ConflictType.equipment_lp_tag_mismatch)
                     .status(Conflict.ConflictStatus.OPEN)
                     .build());
+            e.addConflictId(saved.getId().toString());
+            equipmentService.save(e);
             return false;
         }
         return true;

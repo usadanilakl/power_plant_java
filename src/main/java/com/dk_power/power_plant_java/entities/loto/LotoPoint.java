@@ -62,6 +62,7 @@ public class LotoPoint extends BaseAuditEntity {
     @JsonIgnore
     private Set<Equipment> equipmentList;
     private String conflictStatus;
+    private String conflictId;
 
     public void addLoto(Loto entity) {
         lotos.add(entity);
@@ -78,4 +79,10 @@ public class LotoPoint extends BaseAuditEntity {
         equipmentList.removeIf(e->e.getId()==entity.getId());
     }
 
+    public void addConflictId(Long id) {
+        if (conflictId == null) {
+            conflictId = "";
+        }
+        conflictId += "," + id;
+    }
 }

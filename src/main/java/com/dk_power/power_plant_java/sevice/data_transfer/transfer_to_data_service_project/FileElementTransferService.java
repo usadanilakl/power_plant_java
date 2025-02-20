@@ -122,10 +122,13 @@ public class FileElementTransferService {
             } catch (Exception ex) {
                 System.err.println("Error mapping equipment to DS_FileElementDto: " + ex.getMessage());
                 ex.printStackTrace();
-                conflictService.save(Conflict.builder()
+                Conflict confflict = conflictService.save(Conflict.builder()
                                 .entityId(e.getId().toString())
+                                .entityType(e.getObjectType())
                                 .conflictType(Conflict.ConflictType.equipment_coordinates)
                                 .build());
+                e.addConflictId(confflict.getId().toString());
+                equipmentService.save(e);
                 return false;
             }
 
@@ -599,6 +602,7 @@ public class FileElementTransferService {
                         Conflict conflict = Conflict.builder()
                                 .conflictType(Conflict.ConflictType.equipment_connector)
                                 .entityId(e.getId().toString())
+                                .entityType(e.getObjectType())
                                 .status(Conflict.ConflictStatus.OPEN)
                                 .description(conflictDescription)
                                 .build();
@@ -714,6 +718,7 @@ public class FileElementTransferService {
                             .description(description)
                             .createdAt(LocalDateTime.now())
                             .entityId(duplicateIds)
+                            .entityType("Equipment")
                             .status(Conflict.ConflictStatus.OPEN)
                             .build();
 
@@ -816,9 +821,11 @@ public class FileElementTransferService {
                     if(conflictRepo.findByConflictTypeAndEntityId(Conflict.ConflictType.equipment_lp_tag_mismatch,e.getId().toString())==null ){
                         Conflict conflict = Conflict.builder()
                                 .entityId(e.getId().toString())
+                                .entityType(e.getObjectType())
                                 .description("Equipment with tag number " + e.getTagNumber() + " has no matching LOTO point")
                                 .conflictType(Conflict.ConflictType.equipment_lp_tag_mismatch)
                                 .status(Conflict.ConflictStatus.OPEN)
+                                .entityType(e.getObjectType())
                                 .build();
                         conflictRepo.save(conflict);
                     }

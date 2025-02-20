@@ -25,6 +25,7 @@ function setAreas(areas){
             removeAllHighlights();
             createHighlight(area);
             selectedArea = e;
+            displayEquipmentWithConflict(e.id)
         });
         area.addEventListener('touchstart', function(event) {
             event.preventDefault();
@@ -143,6 +144,7 @@ function createHighlight(area){
     let coords = area.getAttribute('coords').split(",");
     let highlight = document.createElement('div');
     highlight.setAttribute('id', area.getAttribute('id') + "h");
+    highlight.setAttribute('data-point-id', area.getAttribute('data-point-id'));
     highlight.setAttribute('class','areaHighlights');
     highlight.setAttribute('name',area.getAttribute('title'))
     document.body.appendChild(highlight);
@@ -171,6 +173,8 @@ function createHighlight(area){
 
     highlight.addEventListener('click', () => {
         console.log("Single click on highlight");
+        
+        displayEquipmentWithConflict(highlight.dataset.pointId);
     });
 
     highlight.addEventListener('dblclick', () => {

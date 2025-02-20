@@ -117,4 +117,8 @@ public class Equipment extends BaseEquipment {
     }
 
 
+    public void addConflictId(String string) {
+        if(conflictId == null) conflictId = string;
+        else conflictId += ","+string;
+    }
 }

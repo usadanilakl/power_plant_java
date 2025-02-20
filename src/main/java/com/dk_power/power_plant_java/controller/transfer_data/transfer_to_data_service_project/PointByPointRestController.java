@@ -5,9 +5,8 @@ import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.ConflictService;
 import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.LotoPointTransferService;
-import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.TransferToDataServiceProject;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
@@ -16,10 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -30,6 +26,7 @@ public class PointByPointRestController {
     private final FileService fileService;
     private final LotoPointService lotoPointService;
     private final EquipmentService equipmentService;
+    private final ConflictService conflictService;
     @PostMapping
     public void transferAll() throws IOException {
         lotoPointTransferService.transferAllLotoPoints();
@@ -76,5 +73,20 @@ public class PointByPointRestController {
             }
         }
         return ResponseEntity.ok(all);
+    }
+
+    @GetMapping("/conflict/{id}")
+    public ResponseEntity<Map<String, List<EquipmentDto>>> getConflictedPointsById(@PathVariable String id) {
+        try {
+            Map<String, List<EquipmentDto>> conflictMap = conflictService.getConflictedPointsById(id);
+
+            if (conflictMap.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok(conflictMap);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Collections.emptyMap());
+        }
     }
 }

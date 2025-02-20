@@ -4,7 +4,6 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.ConflictService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
