@@ -45,7 +45,7 @@ public class LotoPointTransferService {
             } else {
                 conflicts++;
             }
-            if(count > 100){break;}
+            if(count > 10){break;}
         }
         System.out.println("Total loto points transferred: " + count);
         System.out.println("Total conflicts: " + conflicts);
