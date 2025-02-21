@@ -1,23 +1,10 @@
 package com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project;
 
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_LotoPointDto;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_TagNumberDto;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
-import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.entities.files.FileObject;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
-import com.dk_power.power_plant_java.sevice.equipment.impl.EquipmentServiceImpl;
-import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointServiceImpl;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.util.*;
 
 @Service
 @Transactional
@@ -65,18 +52,13 @@ public class TransferToDataServiceProject {
     private final LotoPointTransferService lotoPointTransferService;
 
     public void transferExecution() throws IOException {
-//        fileElementTransferService.identifyConflicts();
-//        fileElementTransferService.identifyConflictedEquipment();
 
-        fileObjectTransferService.cleanTransferData();
-//        fileObjectTransferService.transferFileObjects();
-//
-        fileElementTransferService.clearFileElementTransferStatus();
-//        fileElementTransferService.transferFileElements();
-//
-        fileElementTransferService.clearEquipmentTransferStatus();
-//        fileElementTransferService.transferEquipment();
-//        fileElementTransferService.lotoPointsWithNoConflicts();
+        fileElementTransferService.initialCleanup();
+        lotoPointTransferService.initialCleanup();
+
+        fileObjectTransferService.cleanTransferStatus();
+        fileElementTransferService.clearTransferStatus();
+        lotoPointTransferService.clearTransferStatus();
 
         lotoPointTransferService.transferAllLotoPoints();
 
