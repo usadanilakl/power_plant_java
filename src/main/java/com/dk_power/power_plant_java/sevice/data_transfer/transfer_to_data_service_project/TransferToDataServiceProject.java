@@ -29,50 +29,31 @@ public class TransferToDataServiceProject {
      ****************************************************************************************/
     /**
      * MAIN OBJECTIVE:
-     *      1. Each file contains file elements
-     *      2. Each file element is linked to a file or equipment
-     *      3. Loto point is child of Equipment so if loto point is created, equipment will be automatically created.
-     *      4. Each equipment will have connections From and To other equipment.
+     *      1. Process point by point.
+     *      2. For each loto point: identify associated equipment, identify associated files, create file, file element and loto point DTOs.
+     *      3. If step 2 encounters any issues, then conflict object will be created with conflict details and id reference to conflicted entities.
+     *      4. Send created DTOs to Data Service Project and save references to each other: file to file, equipment to file element, loto point to loto point. (Use data service item id field);
      * POSSIBLE CONFLICTS:
-     *     Duplicate equipment (excluding pipes) 371 - MEANS that same equipment is shown multiple times in a file(s), or tagNumber is not unique - SOLUTION: create file element for each instance, merge duplicates into one equipment, in case if it is 2 different equipment with matching tag - mark to indicate it.
-     *     780 out of 5060 Equipment with multiple loto points found - MEANS that equipment has assosiations with other equipment - SOLUTION: create loto point for each instance and establish connections using To and From fields
-     *     304 equipment that have loto point associated with them do not contain loto point that matches equipment tagNumber
-
-     *     Duplicate loto points 521 (by tag number) - MEANS that same loto point was created multiple times, or tagNumber is not unique - SOLUTION: create loto point for each instance, merge duplicates into one loto point, in case if it is 2 different loto points with matching tag - mark
-     *     loto points that belong to multiple equipment: 587 - MEANS that loto point has assosiations with other equipment - SOLUTION: create loto point for each instance and establish connections using To and From fields
-     *     processed loto points: 7978/11712 - MEANS that some loto points are not processed and might be wrong - SOLUTION: process manually and associate with files or delete.
-     *     not processed loto points: 3734
-     *
-     *     equipment without type
-     *     loto points without isoPos/normPos
-
-
-     * POSSIBLE CONFLICT RESOLUTION:
-     *      1. Transfer files
-     *      2. Fix coordinates in equipment
-     *      3. Transfer all Equipment as FileElements
-     *      4. Fix equipment conflicts
-     *      5. Transfer equipment as Connectors, Equipment and LotoPoints
-     *      6. Transfer heat trace as equipment
-     *      7. Transfer electrical breakers and panels as equipment
-     *      8. Create Equipment connections using tag reference in equipment description field or LotoPoints
-     *
-     *
-     * FIXING EQUIPMENT CONFLICTS:
-     *     1. Duplicate equipment - combine loto points, match description so all duplicates have same information.
-     *     2. U1/U2 mismatch conflict - make sure both units have same equipment with matching description.
-     *     3. Equipment with no matching loto point - if electrical then need to create new electrical equipment.
-     *     4. Transfer all equipment that has loto points - send new LotoPoint to Data Service Project, get file element object that represents this loto point, check if loto point with same tag already exists, if not then save it and assosiate with file element, if exists then assosiate existing loto point with file element.
-     *
+     *     1. White spaces in equipment tag number and description. Need to remove them
+     *     2. Coordinates having extra strings or missing parts. Need to resolve them manually.
+     *     3. Duplicate equipment. Need to combine data between all duplicates - description, location, type, loto points.
+     *     4. Equipment that have loto point associated with them do not contain loto point that matches equipment tagNumber. Need to manually find matching loto point for each equipment.
+     *     5. Incomplete information: equipment type, vendor, location, specific location, description, isoPos, normPos.
+     *     6. Description mismatch between units.
      *
      * TRANSFER FLOW:
      *
      *     1. Clean up tag and description leading and trailing spaces.
-     *     2. Clean up coordinates.
-     *     3. Identify conflicts.
-     *     4. Get all conflict free loto points.
-     *     5. Transfer point by point: get point, transfer related files, transfer related file elements, transfer loto point.
-     *     6. Resolve conflicts: get conflict point, fix issues, transfer point, change conflict status.
+     *     2. Get all loto points that have associated equipment.
+     *     3. For each loto point:
+     *          identify associated equipment.
+     *          find equipment matching loto point tag number or create tag mismatch conflict.
+     *          verify that equipment doesn't have duplicates or create equipment duplicate conflict.
+     *          identify that description and location matched between units.
+     *          identify associated files
+     *          create file dto, transfer or create conflict.
+     *          create file element dto, transfer or create conflict.
+     *          create loto point dto, transfer or create conflict.
      **/
 
 
