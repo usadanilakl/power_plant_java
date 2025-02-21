@@ -92,7 +92,7 @@ private final ConflictRepo conflictRepo;
 
 //        conflictRepo.findAll().forEach(conflictRepo::delete);
 
-//        transferToDataServiceProject.transferExecution();
+        transferToDataServiceProject.transferExecution();
 
 
 
