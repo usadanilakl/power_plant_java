@@ -99,58 +99,5 @@ public class FileElementTransferService {
         } );
     }
 
-    private Map<String, Float> convertToCoordinatesMap(String coordinates, String originalPictureSize) {
-        Map<String, Float> result = new HashMap<>();
-
-        // Parse coordinates
-        String[] coordParts = coordinates.split(",");
-        for (String part : coordParts) {
-            String[] keyValue = part.split(":");
-            if (keyValue.length == 2) {
-                String key = keyValue[0].trim();
-                float value = Float.parseFloat(keyValue[1].trim());
-                switch (key) {
-                    case "startX":
-                        result.put("x", value);
-                        break;
-                    case "startY":
-                        result.put("y", value);
-                        break;
-                    case "width":
-                        result.put("width", value);
-                        break;
-                    case "height":
-                        result.put("height", value);
-                        break;
-                }
-            }
-        }
-
-        // Parse original picture size
-        String[] sizeParts = originalPictureSize.split(",");
-        for (String part : sizeParts) {
-            String[] keyValue = part.split(":");
-            if (keyValue.length == 2) {
-                String key = keyValue[0].trim();
-                float value = Float.parseFloat(keyValue[1].trim());
-                switch (key) {
-                    case "width":
-                        result.put("originalPictureWidth", value);
-                        break;
-                    case "height":
-                        result.put("originalPictureHeight", value);
-                        break;
-                }
-            }
-        }
-
-        return result;
-    }
-
-
-
-
-
-
 
 }
