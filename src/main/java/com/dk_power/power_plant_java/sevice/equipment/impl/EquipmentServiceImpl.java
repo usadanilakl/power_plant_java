@@ -357,6 +357,11 @@ public class EquipmentServiceImpl implements EquipmentService {
     }
 
     @Override
+    public Collection<Equipment> getEntityByTagNumber(String otherUnitTag) {
+        return equipmentRepo.findByTagNumber(otherUnitTag);
+    }
+
+    @Override
     public void refactor(Value old, Value _new) {
         String cat = old.getCategory().getAlias();
         for (Equipment f : getByValue(old)) {

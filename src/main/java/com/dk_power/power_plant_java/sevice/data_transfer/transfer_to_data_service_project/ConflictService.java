@@ -127,6 +127,40 @@ public class ConflictService {
         }
     }
 
+    Conflict createUnitMismatchConflict(Equipment u1Equipment, Equipment u2Equipment, String reason) {
+        String description = reason + " between Unit 1 and Unit 2 equipment: ";
+        String entityIds = "";
+
+        if (u1Equipment != null) {
+            description += "U1: " + u1Equipment.getTagNumber();
+            entityIds += u1Equipment.getId();
+        }
+
+        if (u2Equipment != null) {
+            description += (u1Equipment != null ? ", " : "") + "U2: " + u2Equipment.getTagNumber();
+            entityIds += (u1Equipment != null ? "," : "") + u2Equipment.getId();
+        }
+
+        Conflict conflict = Conflict.builder()
+                .conflictType(Conflict.ConflictType.unit_loto_point_mismatch)
+                .description(description)
+                .entityType(u1Equipment.getObjectType())
+                .entityId(entityIds)
+                .build();
+
+        try {
+            Conflict saved = save(conflict);
+            u1Equipment.addConflictId(saved.getId().toString());
+            u2Equipment.addConflictId(saved.getId().toString());
+            equipmentService.save(u1Equipment);
+            equipmentService.save(u2Equipment);
+            return saved;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public Conflict createLpMissingEqConflict(LotoPoint lotoPoint) {
         Conflict conflict = Conflict.builder()
                 .conflictType(Conflict.ConflictType.lp_missing_eq)
@@ -151,6 +185,9 @@ public class ConflictService {
         return saved;
     }
 
+
+
+
     public Conflict createCoordinatesMissmatchConflict(Equipment e) {
         Conflict conflict = Conflict.builder()
                 .conflictType(Conflict.ConflictType.equipment_coordinates)
@@ -162,5 +199,46 @@ public class ConflictService {
         return save(conflict);
     }
 
+    public Conflict createEqMissingLpConflict(Equipment equipment) {
+        Conflict conflict = Conflict.builder()
+                .conflictType(Conflict.ConflictType.eq_missing_lp)
+                .entityId(equipment.getId().toString())
+                .entityType(equipment.getObjectType())
+                .build();
+        Conflict saved = save(conflict);
+        equipment.addConflictId(saved.getId().toString());
+        equipmentService.save(equipment);
+        return saved;
+    }
 
+    public Conflict createEqDuplicateConflict(List<Equipment> byTagNumber) {
+        String entityIds = byTagNumber.stream().map(Equipment::getId).map(Object::toString).collect(Collectors.joining(","));
+        Conflict conflict = Conflict.builder()
+                .conflictType(Conflict.ConflictType.equipment_duplicates)
+                .entityId(entityIds)
+                .entityType(byTagNumber.get(0).getObjectType())
+                .status(Conflict.ConflictStatus.OPEN)
+                .description("Duplicate equipment tag numbers: " + entityIds)
+                .build();
+        Conflict saved = save(conflict);
+        byTagNumber.forEach(e -> {
+            e.addConflictId(saved.getId().toString());
+            equipmentService.save(e);
+        });
+        return saved;
+    }
+
+    public Conflict createIncompleteEqConflict(Equipment equipment) {
+        Conflict conflict = Conflict.builder()
+                .conflictType(Conflict.ConflictType.incomplete_eq)
+                .entityId(equipment.getId().toString())
+                .entityType(equipment.getObjectType())
+                .status(Conflict.ConflictStatus.OPEN)
+                .description("Incomplete equipment with tag number: " + equipment.getTagNumber())
+                .build();
+        Conflict saved = save(conflict);
+        equipment.addConflictId(saved.getId().toString());
+        equipmentService.save(equipment);
+        return saved;
+    }
 }

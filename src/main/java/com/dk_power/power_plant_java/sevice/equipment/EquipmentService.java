@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import com.dk_power.power_plant_java.sevice.base_services.RefactorService;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface EquipmentService extends CrudService<Equipment, EquipmentDto, EquipmentRepo, EquipmentMapper> , RefactorService {
@@ -33,4 +34,5 @@ public interface EquipmentService extends CrudService<Equipment, EquipmentDto, E
     List<EquipmentDtoLight> getAllLight();
     void assignEqTypeByTagContaining();
 
+    Collection<Equipment> getEntityByTagNumber(String otherUnitTag);
 }

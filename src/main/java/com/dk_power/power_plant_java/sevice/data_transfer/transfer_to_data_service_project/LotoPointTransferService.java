@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.mappers.transfer_to_data_service_project.DS
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.RequiredArgsConstructor;
+import org.python.antlr.op.Eq;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -204,7 +205,7 @@ public class LotoPointTransferService {
 
 
     /************************************************************************************
-     *CONFLICT HANDLING METHODS
+     *LOTO POINT CONFLICT HANDLING METHODS
      ***************************************************************************************/
 
     public boolean isLotoPointConflicted(LotoPoint lotoPoint){
@@ -272,18 +273,100 @@ public class LotoPointTransferService {
                 lotoPoint.getIsoPos()!= null &&
                 lotoPoint.getNormPos()!= null &&
                 lotoPoint.getSpecificLocation()!= null;
-        Equipment eq = lotoPoint.getEquipmentList().stream().filter(e -> e.getTagNumber().equals(lotoPoint.getTagNumber())).findFirst().orElse(null);
+
+        if(!isLotoPointComplete){
+            conflictService.createIncompleteLpConflict(lotoPoint);
+            return false;
+        }
+        return true;
+    }
+
+    /************************************************************************************
+     *EQUIPMENT CONFLICT HANDLING METHODS
+     ***************************************************************************************/
+    public boolean isEquipmentConflicted(Equipment equipment){
+        if(
+                equipment==null ||
+                        !bothUnitsHaveMatchingEquipment(equipment) ||
+                        !equipmentHasMatchingLotoPoints(equipment) ||
+                        !isEquipmentDuplicated(equipment) ||
+                        !isEquipmentComplete(equipment)
+        ) return true;
+        return false;
+    }
+
+    private boolean bothUnitsHaveMatchingEquipment(Equipment equipment) {
+        if (equipment == null || !equipment.getTagNumber().startsWith("01") && !equipment.getTagNumber().startsWith("02")) {
+            return false;
+        }
+
+        String baseTag = equipment.getTagNumber().substring(2);
+        String otherUnitPrefix = equipment.getTagNumber().startsWith("01") ? "02" : "01";
+        String otherUnitTag = otherUnitPrefix + baseTag;
+
+        Equipment otherUnitEquipment = equipmentService.getEntityByTagNumber(otherUnitTag).stream().findFirst().orElse(null);
+
+        if (otherUnitEquipment == null) {
+            conflictService.createUnitMismatchConflict(otherUnitEquipment, null, "Missing corresponding equipment");
+            return false;
+        } else if (equipment.getDescription() == null || otherUnitEquipment.getDescription() == null) {
+            conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Missing corresponding equipment description");
+            return false;
+        } else {
+            Equipment transformedEquipment = transformEquipment(equipment, equipment.getTagNumber().substring(0, 2), otherUnitPrefix);
+
+            if (!compareEquipment(transformedEquipment, otherUnitEquipment)) {
+                conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Mismatch after transformation");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean equipmentHasMatchingLotoPoints(Equipment equipment) {
+        if (equipment == null) return false;
+
+        Set<LotoPoint> lotoPoints = equipment.getLotoPoints();
+        if(lotoPoints == null || lotoPoints.isEmpty()){
+            conflictService.createEqMissingLpConflict(equipment);
+            return false;
+        }
+        if (!lotoPoints.stream().anyMatch(e -> e.getEquipmentList().contains(equipment))){
+            conflictService.createEqMissingLpConflict(equipment);
+            return false;
+        }
+        if(!lotoPoints.stream().anyMatch(e -> e.getTagNumber().equals(equipment.getTagNumber()))){
+            conflictService.createEqMissingLpConflict(equipment);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isEquipmentComplete(Equipment eq) {
+
         boolean isEquipmentComplete = eq!= null &&
                 eq.getEqType()!= null && eq.getEqType().getName()!= null &&
                 eq.getLocation()!= null && eq.getLocation().getName()!= null &&
                 eq.getSystem()!= null && eq.getSystem().getName()!= null &&
                 eq.getVendor()!= null && eq.getVendor().getName()!= null;
 
-        if(!isLotoPointComplete || !isEquipmentComplete){
-            conflictService.createIncompleteLpConflict(lotoPoint);
+        if(!isEquipmentComplete){
+            conflictService.createIncompleteEqConflict(eq);
             return false;
         }
         return true;
+
+    }
+
+    private boolean isEquipmentDuplicated(Equipment equipment) {
+        if(equipment == null) return false;
+        List<Equipment> byTagNumber = equipmentService.getByTagNumber(equipment.getTagNumber());
+        if(byTagNumber.size() > 1){
+            conflictService.createEqDuplicateConflict(byTagNumber);
+            return true;
+        }
+        return false;
     }
 
 
@@ -310,7 +393,30 @@ public class LotoPointTransferService {
         return transformed;
     }
 
+    private Equipment transformEquipment(Equipment source, String fromUnit, String toUnit) {
+        Equipment transformed = new Equipment();
+        transformed.setTagNumber(toUnit + source.getTagNumber().substring(2));
+
+        if (source.getDescription() != null) {
+            transformed.setDescription(transformText(source.getDescription(), fromUnit, toUnit));
+        }
+
+        if (source.getSpecificLocation() != null) {
+            transformed.setSpecificLocation(transformText(source.getSpecificLocation(), fromUnit, toUnit));
+        }
+
+
+        return transformed;
+    }
+
     private boolean compareLotoPoint(LotoPoint e1, LotoPoint e2) {
+        if (e1 == null || e2 == null) return false;
+
+        return Objects.equals(e1.getTagNumber().toLowerCase(), e2.getTagNumber().toLowerCase()) &&
+                Objects.equals(e1.getDescription().toLowerCase(), e2.getDescription().toLowerCase());
+    }
+
+    private boolean compareEquipment(Equipment e1, Equipment e2) {
         if (e1 == null || e2 == null) return false;
 
         return Objects.equals(e1.getTagNumber().toLowerCase(), e2.getTagNumber().toLowerCase()) &&
