@@ -37,7 +37,10 @@ public class DS_LotoPointMapper {
                 .name(e.getEqType().getName())
                 .build() : null;
         Set<DS_TagNumberDto> tagNumbers = new HashSet<>();
-        tagNumbers.add(DS_TagNumberDto.builder().isPrimary(true).number(e.getTagNumber()).system(system).build());
+        tagNumbers.add(DS_TagNumberDto.builder()
+                .isPrimary(true)
+                .tagNumberType(DS_ValueDto.builder().category(DS_CategoryDto.builder().name("Tag Number Type").alias("tagNumberType").build()).name("Equipment Tag Number").build())
+                .number(e.getTagNumber()).system(system).build());
 
         LotoPoint lotoPoint = e.getLotoPoints().stream().filter(lp -> lp.getTagNumber().equals(e.getTagNumber())).findFirst().orElse(null);
 

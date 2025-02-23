@@ -87,6 +87,11 @@ public class FileObjectTransferService {
         return true;
     }
 
+    public void testTransferOneFile(){
+        FileObject first = fileService.getAll().getFirst();
+        transferOneFile(first);
+    }
+
     /******************************************************
      * CONNECTORS
      *******************************************************/

@@ -23,8 +23,7 @@ public class DS_TagNumberDto extends DS_BaseDto {
     public DS_TagNumberDto() { super(); }
     private String number;
     private DS_ValueDto system;
-    @JsonBackReference
-    private EquipmentDto equipment;
-    private boolean isAssigned;
-    private boolean isPrimary;
+    private DS_ValueDto tagNumberType;
+    private Boolean isAssigned;
+    private Boolean isPrimary;
 }

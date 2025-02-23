@@ -25,7 +25,7 @@ public class ConflictService {
 
     public Conflict save(Conflict conflict) {
         Conflict conflict1 = checkIfConflictExists(conflict.getConflictType(), conflict.getEntityId());
-        if (conflict1!=null) {
+        if (conflict1 != null) {
             System.out.println("Conflict with the same type and entity ID already exists. Changing status to OPEN.");
             conflict1.setStatus(Conflict.ConflictStatus.OPEN);
             return conflictRepo.save(conflict1);
@@ -59,10 +59,11 @@ public class ConflictService {
         if (entityById == null) {
             throw new IllegalStateException("No equipment found with the given ID");
         }
-        if(entityById.getConflictId()!=null)allConflictIds.addAll(Arrays.asList(entityById.getConflictId().split(",")));
+        if (entityById.getConflictId() != null)
+            allConflictIds.addAll(Arrays.asList(entityById.getConflictId().split(",")));
         entityById.getLotoPoints()
                 .stream()
-                .filter(lp -> lp.getConflictId()!=null)
+                .filter(lp -> lp.getConflictId() != null)
                 .forEach(lotoPoint -> allConflictIds.addAll(Arrays.asList(lotoPoint.getConflictId().split(","))));
 
         for (String conflictId : allConflictIds) {
@@ -80,8 +81,6 @@ public class ConflictService {
                         Collectors.mapping(Map.Entry::getValue, Collectors.toList())
                 ));
     }
-
-
 
 
     public Conflict createFileNotFoundConflict(FileObject fileObject) {
@@ -154,12 +153,12 @@ public class ConflictService {
 
     public Conflict createCoordinatesMissmatchConflict(Equipment e) {
         Conflict conflict = Conflict.builder()
-               .conflictType(Conflict.ConflictType.equipment_coordinates)
-               .entityId(e.getId().toString())
+                .conflictType(Conflict.ConflictType.equipment_coordinates)
+                .entityId(e.getId().toString())
                 .entityType(e.getObjectType())
-               .status(Conflict.ConflictStatus.OPEN)
-               .description("Coordinates mismatch for equipment with tag number: " + e.getTagNumber())
-               .build();
+                .status(Conflict.ConflictStatus.OPEN)
+                .description("Coordinates mismatch for equipment with tag number: " + e.getTagNumber())
+                .build();
         return save(conflict);
     }
 

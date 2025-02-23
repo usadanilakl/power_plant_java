@@ -53,15 +53,14 @@ public class TransferToDataServiceProject {
 
     public void transferExecution() throws IOException {
 
-        fileElementTransferService.initialCleanup();
-        lotoPointTransferService.initialCleanup();
+//        fileElementTransferService.initialCleanup();
+//        lotoPointTransferService.initialCleanup();
 
-        fileObjectTransferService.cleanTransferStatus();
-        fileElementTransferService.clearTransferStatus();
-        lotoPointTransferService.clearTransferStatus();
-
-        lotoPointTransferService.transferAllLotoPoints();
-
+//        fileObjectTransferService.cleanTransferStatus();
+//        fileElementTransferService.clearTransferStatus();
+//        lotoPointTransferService.clearTransferStatus();
+//
+//        lotoPointTransferService.transferAllLotoPoints();
     }
 
 

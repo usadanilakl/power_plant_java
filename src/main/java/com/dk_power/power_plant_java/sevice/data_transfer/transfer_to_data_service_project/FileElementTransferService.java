@@ -66,13 +66,9 @@ public class FileElementTransferService {
                 fileElement = fileElementMapper.map(e);
             } catch (Exception ex) {
                 System.err.println("Error mapping equipment to DS_FileElementDto: " + ex.getMessage());
-                ex.printStackTrace();
-                Conflict confflict = conflictService.save(Conflict.builder()
-                                .entityId(e.getId().toString())
-                                .entityType(e.getObjectType())
-                                .conflictType(Conflict.ConflictType.equipment_coordinates)
-                                .build());
-                e.addConflictId(confflict.getId().toString());
+//                ex.printStackTrace();
+                Conflict coordinatesMissmatchConflict = conflictService.createCoordinatesMissmatchConflict(e);
+                e.addConflictId(coordinatesMissmatchConflict.getId().toString());
                 equipmentService.save(e);
                 return false;
             }
