@@ -76,17 +76,33 @@ public class PointByPointRestController {
     }
 
     @GetMapping("/conflict/{id}")
-    public ResponseEntity<Map<String, List<EquipmentDto>>> getConflictedPointsById(@PathVariable String id) {
+    public ResponseEntity<List<EquipmentDto>> getConflictedPointsById(@PathVariable String id) {
         try {
-            Map<String, List<EquipmentDto>> conflictMap = conflictService.getConflictedPointsById(id);
+            Equipment eq = equipmentService.getEntityById(id);
 
-            if (conflictMap.isEmpty()) {
-                return ResponseEntity.notFound().build();
+            List<Equipment> duplicates = equipmentService.getByTagNumber(eq.getTagNumber());
+            if(eq.getTagNumber().startsWith("01-") || eq.getTagNumber().startsWith("02-")){
+                String baseTagNumber = eq.getTagNumber().substring(2);
+                String otherUnitPrefix = eq.getTagNumber().startsWith("01-")? "02" : "01";
+                String otherUnitTag = otherUnitPrefix + baseTagNumber;
+                List<Equipment> otherUnitEq = equipmentService.getByTagNumber(otherUnitTag);
+                duplicates.addAll(otherUnitEq);
             }
 
-            return ResponseEntity.ok(conflictMap);
+            List<EquipmentDto> result = duplicates.stream().map(equipmentService::convertToDto).collect(Collectors.toList());
+
+            return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Collections.emptyMap());
+            return ResponseEntity.badRequest().body(Collections.emptyList());
         }
+    }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<String> transferPoint(@RequestBody EquipmentDto dto) throws IOException {
+        Equipment equipment = equipmentService.convertToEntity(dto);
+        Equipment updated = equipmentService.save(equipment);
+        if(lotoPointTransferService.transferOneLotoPointWithAssosiatedElementsTransactional(updated))
+        return ResponseEntity.ok("Point transferred successfully");
+        else return ResponseEntity.badRequest().body("Point transfer failed");
     }
 }

@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="/transfer_to_data_service_porject/page.css">
     <link rel="stylesheet" href="/transfer_to_data_service_porject/FileMenu.css">
+    <link rel="stylesheet" href="/transfer_to_data_service_porject/DisplayConflict.css">
 
 </head>
 <body>
@@ -22,6 +23,12 @@
             </div>
             
         </main>
+        <div id="equipmentFormsPopup" class="equipment-forms-popup">
+            <div class="equipment-forms-content">
+                <span class="close-popup">&times;</span>
+                <div id="equipmentFormsContainer" class="equipment-forms-container"></div>
+            </div>
+        </div>
 
 
     <script src="/bootstrap-5.3.3-dist/js/bootstrap.min.js"></script>
@@ -35,6 +42,7 @@
     <script src="/transfer_to_data_service_porject/FileMenu.js"></script>
     <script src="/transfer_to_data_service_porject/DisplayPicture.js"></script>
     <script src="/transfer_to_data_service_porject/DisplayConflict.js"></script>
+    <script src="/transfer_to_data_service_porject/Shapes.js"></script>
     <script>
 
         document.addEventListener('DOMContentLoaded', async ()=>{
@@ -43,6 +51,8 @@
             
             let picture = document.getElementById('picture');
             let pictureContainer = document.getElementById('picture-container');
+            let csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+
 
             // const fileToVerify = await getNextFileToVerify();
             // loadPictureWithFile(fileToVerify);

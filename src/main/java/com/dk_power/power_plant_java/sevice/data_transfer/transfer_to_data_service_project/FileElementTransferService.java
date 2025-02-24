@@ -67,9 +67,9 @@ public class FileElementTransferService {
             } catch (Exception ex) {
                 System.err.println("Error mapping equipment to DS_FileElementDto: " + ex.getMessage());
 //                ex.printStackTrace();
-                Conflict coordinatesMissmatchConflict = conflictService.createCoordinatesMissmatchConflict(e);
-                e.addConflictId(coordinatesMissmatchConflict.getId().toString());
-                equipmentService.save(e);
+//                Conflict coordinatesMissmatchConflict = conflictService.createCoordinatesMissmatchConflict(e);
+//                e.addConflictId(coordinatesMissmatchConflict.getId().toString());
+//                equipmentService.save(e);
                 return false;
             }
 
@@ -80,6 +80,7 @@ public class FileElementTransferService {
             if (response != null && response.getStatusCode() == HttpStatus.OK) {
                 UUID id = response.getBody().getId();
                 e.setDataServiceItemId(id);
+                equipmentService.save(e);
                 System.out.println("File element created successfully: " + response.getBody());
             } else {
                 System.out.println("Failed to create file element");

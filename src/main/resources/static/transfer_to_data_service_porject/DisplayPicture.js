@@ -161,6 +161,7 @@ function createHighlight(area){
     else if(area.getAttribute('data-loto-point-area')==='false')highlight.setAttribute('data-loto-point-highlight',false);
 
     highlight.addEventListener('mousedown',(event)=>{
+        if(shapeRelocationIsEnabled) return;
         event.preventDefault();
         relocateHighlightsWithPicture(event); 
         
@@ -170,17 +171,27 @@ function createHighlight(area){
     const zoom = zoomPicture.bind(null,picture);
     highlight.addEventListener('wheel',zoom);
 
+        let clickTimer = null;
+        let clickDelay = 300; // milliseconds
+    
+        highlight.addEventListener('click', async (event) => {
+            event.preventDefault();
+            if (clickTimer === null) {
+                clickTimer = setTimeout(async function() {
+                    clickTimer = null;
+                    console.log("Single click on highlight");
+                    await displayEquipmentWithConflict(highlight.dataset.pointId);
+                }, clickDelay);
+            } else {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+                console.log("Double click on highlight");
+                shapeRelocationIsEnabled = !shapeRelocationIsEnabled;
+                console.log("Shape relocation is enabled " + shapeRelocationIsEnabled);
+            }
+        });
 
-    highlight.addEventListener('click', () => {
-        console.log("Single click on highlight");
-        
-        displayEquipmentWithConflict(highlight.dataset.pointId);
-    });
-
-    highlight.addEventListener('dblclick', () => {
-        console.log("Double click on highlight");
-    });
-
+        enableShapeDrag(highlight);
     
 
     activeHighlights.push(highlight);
@@ -512,7 +523,7 @@ function handleMouseDown(event) {
     document.addEventListener('mouseup',handleMouseUp);    
 }
 }
-  
+
 function handleMouseMove(event) {
 
     coords.mouseOnPictureEnd = registerMouseCoordsOnPicture(event);

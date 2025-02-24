@@ -93,24 +93,25 @@ public class LotoPointTransferService {
      *TRANSFER LOGIC new
      ***************************************************************************************/
     public void transferAllLotoPointsNew() throws IOException {
-        List<Equipment> all = equipmentService.getByDataServiceItemIdIsNull();
+        List<Equipment> all = equipmentService.getAll();
         int count = 0;
         int conflicts = 0;
         for (Equipment equipment : all) {
+            if(equipment.getLotoPoints()==null || equipment.getLotoPoints().isEmpty() || equipment.getDataServiceItemId()!=null) continue;
             boolean b = transferOneLotoPointWithAssosiatedElementsTransactional(equipment);
             if(b){
                 count++;
             } else {
                 conflicts++;
             }
-            if(count > 10){break;}
+//            if(count > 10){break;}
         }
         System.out.println("Total loto points transferred: " + count);
         System.out.println("Total conflicts: " + conflicts);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    private boolean transferOneLotoPointWithAssosiatedElementsTransactional(Equipment equipment) throws IOException {
+    public boolean transferOneLotoPointWithAssosiatedElementsTransactional(Equipment equipment) throws IOException {
         try {
             return transferOneLotoPointWithAssosiatedElements(equipment);
         } catch (Exception e) {
@@ -133,10 +134,19 @@ public class LotoPointTransferService {
     }
 
     private boolean transferOneLotoPointWithAssosiatedElements(Equipment equipment){
-        if(equipment==null) return false;
-        if(isEquipmentConflicted(equipment)) return false;
+        if(equipment==null){
+            System.out.println("Equipment is null for tag number: " + equipment.getTagNumber());
+            return false;
+        }
+        if(isEquipmentConflicted(equipment)){
+            System.out.println("Equipment is conflicted for tag number: " + equipment.getTagNumber());
+            return false;
+        }
         FileObject mainFile = equipment.getMainFile();
-        if(mainFile==null) return false;
+        if(mainFile==null){
+            System.out.println("No main file found for equipment with tag number: " + equipment.getTagNumber());
+            return false;
+        }
         if(!fileObjectTransferService.transferOneFile(mainFile)) {
             System.out.println("Failed to transfer file for equipment with tag number: " + equipment.getTagNumber());
             return false;
@@ -330,16 +340,16 @@ public class LotoPointTransferService {
         LotoPoint otherUnitLotoPoint = lotoPointService.getEntityByTagNumber(otherUnitTag).stream().findFirst().orElse(null);
 
         if (otherUnitLotoPoint == null) {
-            conflictService.createUnitMismatchConflict(lotoPoint, null, "Missing corresponding equipment");
+//            conflictService.createUnitMismatchConflict(lotoPoint, null, "Missing corresponding equipment");
             return false;
         } else if (lotoPoint.getDescription() == null || otherUnitLotoPoint.getDescription() == null) {
-            conflictService.createUnitMismatchConflict(lotoPoint, otherUnitLotoPoint, "Missing corresponding equipment description");
+//            conflictService.createUnitMismatchConflict(lotoPoint, otherUnitLotoPoint, "Missing corresponding equipment description");
             return false;
         } else {
             LotoPoint transformedLotoPoint = transformLotoPoint(lotoPoint, lotoPoint.getTagNumber().substring(0, 2), otherUnitPrefix);
 
             if (!compareLotoPoint(transformedLotoPoint, otherUnitLotoPoint)) {
-                conflictService.createUnitMismatchConflict(lotoPoint, otherUnitLotoPoint, "Mismatch after transformation");
+//                conflictService.createUnitMismatchConflict(lotoPoint, otherUnitLotoPoint, "Mismatch after transformation");
                 return false;
             }
         }
@@ -352,15 +362,15 @@ public class LotoPointTransferService {
 
         Set<Equipment> equipmentList = lotoPoint.getEquipmentList();
         if(equipmentList == null || equipmentList.isEmpty()){
-            conflictService.createLpMissingEqConflict(lotoPoint);
+//            conflictService.createLpMissingEqConflict(lotoPoint);
             return false;
         }
         if (!equipmentList.stream().anyMatch(e -> e.getLotoPoints().contains(lotoPoint))){
-            conflictService.createLpMissingEqConflict(lotoPoint);
+//            conflictService.createLpMissingEqConflict(lotoPoint);
              return false;
         }
         if(!equipmentList.stream().anyMatch(e -> e.getTagNumber().equals(lotoPoint.getTagNumber()))){
-            conflictService.createLpMissingEqConflict(lotoPoint);
+//            conflictService.createLpMissingEqConflict(lotoPoint);
             return false;
         }
         return true;
@@ -375,7 +385,7 @@ public class LotoPointTransferService {
                 lotoPoint.getSpecificLocation()!= null;
 
         if(!isLotoPointComplete){
-            conflictService.createIncompleteLpConflict(lotoPoint);
+//            conflictService.createIncompleteLpConflict(lotoPoint);
             return false;
         }
         return true;
@@ -392,29 +402,33 @@ public class LotoPointTransferService {
     }
 
     private boolean bothUnitsHaveMatchingEquipment(Equipment equipment) {
-        if (equipment == null || !equipment.getTagNumber().startsWith("01") && !equipment.getTagNumber().startsWith("02")) {
-            return false;
-        }
+        if(equipment == null) return false;
+        if (equipment.getTagNumber().startsWith("01") || equipment.getTagNumber().startsWith("02")) {
 
-        String baseTag = equipment.getTagNumber().substring(2);
-        String otherUnitPrefix = equipment.getTagNumber().startsWith("01") ? "02" : "01";
-        String otherUnitTag = otherUnitPrefix + baseTag;
+            String baseTag = equipment.getTagNumber().substring(2);
+            String otherUnitPrefix = equipment.getTagNumber().startsWith("01") ? "02" : "01";
+            String otherUnitTag = otherUnitPrefix + baseTag;
 
-        Equipment otherUnitEquipment = equipmentService.getEntityByTagNumber(otherUnitTag).stream().findFirst().orElse(null);
+            Equipment otherUnitEquipment = equipmentService.getEntityByTagNumber(otherUnitTag).stream().findFirst().orElse(null);
 
-        if (otherUnitEquipment == null) {
-//            conflictService.createUnitMismatchConflict(otherUnitEquipment, null, "Missing corresponding equipment");
-            return false;
-        } else if (equipment.getDescription() == null || otherUnitEquipment.getDescription() == null) {
-//            conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Missing corresponding equipment description");
-            return false;
-        } else {
-            Equipment transformedEquipment = transformEquipment(equipment, equipment.getTagNumber().substring(0, 2), otherUnitPrefix);
-
-            if (!compareEquipment(transformedEquipment, otherUnitEquipment)) {
-//                conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Mismatch after transformation");
+            if (otherUnitEquipment == null) {
+    //            conflictService.createUnitMismatchConflict(otherUnitEquipment, null, "Missing corresponding equipment");
+                System.out.println("Equipment with tag number: " + equipment.getTagNumber() + " does not exist in the other unit.");
                 return false;
+            } else if (equipment.getDescription() == null || otherUnitEquipment.getDescription() == null) {
+    //            conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Missing corresponding equipment description");
+                System.out.println("Equipment with tag number: " + equipment.getTagNumber() + " does not have a description in the other unit.");
+                return false;
+            } else {
+                Equipment transformedEquipment = transformEquipment(equipment, equipment.getTagNumber().substring(0, 2), otherUnitPrefix);
+
+                if (!compareEquipment(transformedEquipment, otherUnitEquipment)) {
+                    System.out.println("Conflict found in equipment with tag number: " + equipment.getTagNumber());
+    //                conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Mismatch after transformation");
+                    return false;
+                }
             }
+
         }
 
         return true;
@@ -426,14 +440,17 @@ public class LotoPointTransferService {
         Set<LotoPoint> lotoPoints = equipment.getLotoPoints();
         if(lotoPoints == null || lotoPoints.isEmpty()){
 //            conflictService.createEqMissingLpConflict(equipment);
+            System.out.println("Equipment has no loto points: " + equipment.getTagNumber());
             return false;
         }
         if (lotoPoints.stream().noneMatch(e -> e.getEquipmentList().contains(equipment))){
 //            conflictService.createEqMissingLpConflict(equipment);
+            System.out.println("Equipment has no loto points that match: " + equipment.getTagNumber());
             return false;
         }
         if(lotoPoints.stream().noneMatch(e -> e.getTagNumber().equals(equipment.getTagNumber()))){
 //            conflictService.createEqMissingLpConflict(equipment);
+            System.out.println("Equipment has no loto points that match: " + equipment.getTagNumber());
             return false;
         }
         return true;
@@ -450,7 +467,8 @@ public class LotoPointTransferService {
                 eq.getMainFile()!= null;
 
         if(!isEquipmentComplete){
-            conflictService.createIncompleteEqConflict(eq);
+            System.out.println("Incomplete equipment: " + eq.getTagNumber());
+//            conflictService.createIncompleteEqConflict(eq);
             return false;
         }
         return true;
@@ -461,7 +479,8 @@ public class LotoPointTransferService {
         if(equipment == null) return false;
         List<Equipment> byTagNumber = equipmentService.getByTagNumber(equipment.getTagNumber());
         if(byTagNumber.size() > 1){
-            conflictService.createEqDuplicateConflict(byTagNumber);
+            System.out.println("Duplicate equipment: " + equipment.getTagNumber());
+//            conflictService.createEqDuplicateConflict(byTagNumber);
             return true;
         }
         return false;

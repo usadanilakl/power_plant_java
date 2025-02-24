@@ -49,4 +49,5 @@ async function getFileWithConflictedPoints(fileId) {
 async function getConflict(pointId){
     const resp = await fetch(`/api/point-by-point/conflict/${pointId}`);
     const data = await resp.json();
+    return data;
 }
