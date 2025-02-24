@@ -35,4 +35,6 @@ public interface EquipmentService extends CrudService<Equipment, EquipmentDto, E
     void assignEqTypeByTagContaining();
 
     Collection<Equipment> getEntityByTagNumber(String otherUnitTag);
+
+    List<Equipment> getByDataServiceItemIdIsNull();
 }

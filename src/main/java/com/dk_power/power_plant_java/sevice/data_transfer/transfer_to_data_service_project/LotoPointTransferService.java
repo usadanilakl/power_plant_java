@@ -11,7 +11,6 @@ import com.dk_power.power_plant_java.mappers.transfer_to_data_service_project.DS
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.RequiredArgsConstructor;
-import org.python.antlr.op.Eq;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -90,9 +89,111 @@ public class LotoPointTransferService {
             lotoPointService.save(lp);
         });
     }
+    /************************************************************************************
+     *TRANSFER LOGIC new
+     ***************************************************************************************/
+    public void transferAllLotoPointsNew() throws IOException {
+        List<Equipment> all = equipmentService.getByDataServiceItemIdIsNull();
+        int count = 0;
+        int conflicts = 0;
+        for (Equipment equipment : all) {
+            boolean b = transferOneLotoPointWithAssosiatedElementsTransactional(equipment);
+            if(b){
+                count++;
+            } else {
+                conflicts++;
+            }
+            if(count > 10){break;}
+        }
+        System.out.println("Total loto points transferred: " + count);
+        System.out.println("Total conflicts: " + conflicts);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    private boolean transferOneLotoPointWithAssosiatedElementsTransactional(Equipment equipment) throws IOException {
+        try {
+            return transferOneLotoPointWithAssosiatedElements(equipment);
+        } catch (Exception e) {
+            System.err.println("Error transferring loto point with tag number: " + equipment.getTagNumber());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    private boolean transferOneLotoPointWithAssosiatedElementsTransactional(String eqId) throws IOException {
+        Equipment equipment = equipmentService.getEntityById(eqId);
+        try {
+            return transferOneLotoPointWithAssosiatedElements(equipment);
+        } catch (Exception e) {
+            System.err.println("Error transferring loto point with tag number: " + equipment.getTagNumber());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private boolean transferOneLotoPointWithAssosiatedElements(Equipment equipment){
+        if(equipment==null) return false;
+        if(isEquipmentConflicted(equipment)) return false;
+        FileObject mainFile = equipment.getMainFile();
+        if(mainFile==null) return false;
+        if(!fileObjectTransferService.transferOneFile(mainFile)) {
+            System.out.println("Failed to transfer file for equipment with tag number: " + equipment.getTagNumber());
+            return false;
+        }
+        if(!fileElementTransferService.transferOneFileElement(equipment)) {
+            System.out.println("Failed to transfer file element for equipment with tag number: " + equipment.getTagNumber());
+            return false;
+        }
+        LotoPoint lotoPoint = equipment.getLotoPoints().stream().filter(lp -> lp.getTagNumber().equals(equipment.getTagNumber())).findFirst().orElse(null);
+        if(lotoPoint==null) return false;
+        if(!transferOneLotoPointNew(lotoPoint)){
+            System.out.println("Failed to transfer equipment for tag number: " + equipment.getTagNumber());
+            return false;
+        }
+        return true;
+    }
+
+    private boolean transferOneLotoPointNew(LotoPoint lotoPoint) {
+        if(lotoPoint==null) return false;
+        if(isLotoPointConflicted(lotoPoint)) return false;
+
+        Equipment equipment = lotoPoint.getEquipmentList().stream().filter(e->e.getTagNumber().equals(lotoPoint.getTagNumber())).findFirst().orElse(null);
+        if(equipment==null) return false;
+        UUID fileElementId = equipment.getDataServiceItemId();
+        DS_LotoPointDto lotoPointDto = null;
+
+        if(lotoPoint.getDataServiceItemId()!=null){
+            lotoPointDto = dataServiceClient.getLotoPointById(lotoPoint.getDataServiceItemId());
+            if(lotoPointDto!=null){
+                System.out.println("Loto point already exists in data service for tag number: " + lotoPoint.getTagNumber());
+            }
+        }
+
+        try{
+            if(lotoPointDto==null)lotoPointDto = dsLotoPointMapper.map(equipment);
+        }catch (Exception ex){
+            Conflict incompleteLpConflict = conflictService.createIncompleteLpConflict(lotoPoint);
+            equipment.addConflictId(incompleteLpConflict.getId().toString());
+            equipmentService.save(equipment);
+            return false;
+        }
+        ResponseEntity<DS_LotoPointDto> responseLotoPoint = dataServiceClient.createOrUpdateLotoPoint(fileElementId.toString(), lotoPointDto);
+        if (responseLotoPoint != null && responseLotoPoint.getStatusCode() == HttpStatus.OK) {
+            UUID id = responseLotoPoint.getBody().getId();
+            equipment.addRefactorNote("lpId" + id + "lpId");
+            equipmentService.save(equipment);
+            lotoPoint.setDataServiceItemId(id);
+            lotoPointService.save(lotoPoint);
+            System.out.println("Loto Point was processed successfully" + responseLotoPoint.getBody());
+        }else{
+            throw new RuntimeException("Failed to create or update loto point for equipment with id: " + equipment.getId() + ", tag number: " + equipment.getTagNumber());
+        }
+        return true;
+    }
 
     /************************************************************************************
-        *TRANSFER LOGIC
+        *TRANSFER LOGIC OLD
      ***************************************************************************************/
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -107,7 +208,13 @@ public class LotoPointTransferService {
     }
 
     private boolean transferOneLotoPoint(LotoPoint lotoPoint) throws IOException {
+
         Set<Equipment> equipmentList = lotoPoint.getEquipmentList().stream().filter(e -> e.getTagNumber().equals(lotoPoint.getTagNumber())).collect(Collectors.toSet());
+
+//        for (Equipment e : equipmentList) {
+//            if(isEquipmentConflicted(e)) return false;
+//        }
+
         if(equipmentList.isEmpty()){
             System.out.println("No equipment found for loto point with tag number: " + lotoPoint.getTagNumber());
              return false;
@@ -188,14 +295,7 @@ public class LotoPointTransferService {
             }
 
         }else{
-            Conflict saved = conflictService.save(Conflict.builder()
-                    .entityId(e.getId().toString())
-                    .entityType(e.getObjectType())
-                    .conflictType(Conflict.ConflictType.equipment_lp_tag_mismatch)
-                    .status(Conflict.ConflictStatus.OPEN)
-                    .build());
-            e.addConflictId(saved.getId().toString());
-            equipmentService.save(e);
+            conflictService.createEqMissingLpConflict(e);
             return false;
         }
         return true;
@@ -285,14 +385,10 @@ public class LotoPointTransferService {
      *EQUIPMENT CONFLICT HANDLING METHODS
      ***************************************************************************************/
     public boolean isEquipmentConflicted(Equipment equipment){
-        if(
-                equipment==null ||
-                        !bothUnitsHaveMatchingEquipment(equipment) ||
-                        !equipmentHasMatchingLotoPoints(equipment) ||
-                        !isEquipmentDuplicated(equipment) ||
-                        !isEquipmentComplete(equipment)
-        ) return true;
-        return false;
+        return !bothUnitsHaveMatchingEquipment(equipment) ||
+                !equipmentHasMatchingLotoPoints(equipment) ||
+                !isEquipmentDuplicated(equipment) ||
+                !isEquipmentComplete(equipment);
     }
 
     private boolean bothUnitsHaveMatchingEquipment(Equipment equipment) {
@@ -307,16 +403,16 @@ public class LotoPointTransferService {
         Equipment otherUnitEquipment = equipmentService.getEntityByTagNumber(otherUnitTag).stream().findFirst().orElse(null);
 
         if (otherUnitEquipment == null) {
-            conflictService.createUnitMismatchConflict(otherUnitEquipment, null, "Missing corresponding equipment");
+//            conflictService.createUnitMismatchConflict(otherUnitEquipment, null, "Missing corresponding equipment");
             return false;
         } else if (equipment.getDescription() == null || otherUnitEquipment.getDescription() == null) {
-            conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Missing corresponding equipment description");
+//            conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Missing corresponding equipment description");
             return false;
         } else {
             Equipment transformedEquipment = transformEquipment(equipment, equipment.getTagNumber().substring(0, 2), otherUnitPrefix);
 
             if (!compareEquipment(transformedEquipment, otherUnitEquipment)) {
-                conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Mismatch after transformation");
+//                conflictService.createUnitMismatchConflict(equipment, otherUnitEquipment, "Mismatch after transformation");
                 return false;
             }
         }
@@ -329,15 +425,15 @@ public class LotoPointTransferService {
 
         Set<LotoPoint> lotoPoints = equipment.getLotoPoints();
         if(lotoPoints == null || lotoPoints.isEmpty()){
-            conflictService.createEqMissingLpConflict(equipment);
+//            conflictService.createEqMissingLpConflict(equipment);
             return false;
         }
-        if (!lotoPoints.stream().anyMatch(e -> e.getEquipmentList().contains(equipment))){
-            conflictService.createEqMissingLpConflict(equipment);
+        if (lotoPoints.stream().noneMatch(e -> e.getEquipmentList().contains(equipment))){
+//            conflictService.createEqMissingLpConflict(equipment);
             return false;
         }
-        if(!lotoPoints.stream().anyMatch(e -> e.getTagNumber().equals(equipment.getTagNumber()))){
-            conflictService.createEqMissingLpConflict(equipment);
+        if(lotoPoints.stream().noneMatch(e -> e.getTagNumber().equals(equipment.getTagNumber()))){
+//            conflictService.createEqMissingLpConflict(equipment);
             return false;
         }
         return true;
@@ -349,7 +445,9 @@ public class LotoPointTransferService {
                 eq.getEqType()!= null && eq.getEqType().getName()!= null &&
                 eq.getLocation()!= null && eq.getLocation().getName()!= null &&
                 eq.getSystem()!= null && eq.getSystem().getName()!= null &&
-                eq.getVendor()!= null && eq.getVendor().getName()!= null;
+                eq.getVendor()!= null && eq.getVendor().getName()!= null &&
+                eq.getCoordinates()!=null &&
+                eq.getMainFile()!= null;
 
         if(!isEquipmentComplete){
             conflictService.createIncompleteEqConflict(eq);

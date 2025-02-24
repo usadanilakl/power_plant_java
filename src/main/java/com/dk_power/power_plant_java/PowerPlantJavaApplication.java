@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.repository.ConflictRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.equipment.HeatTraceRepo;
@@ -93,8 +94,6 @@ private final ConflictRepo conflictRepo;
 //        conflictRepo.findAll().forEach(conflictRepo::delete);
 
         transferToDataServiceProject.transferExecution();
-
-
 
 
 

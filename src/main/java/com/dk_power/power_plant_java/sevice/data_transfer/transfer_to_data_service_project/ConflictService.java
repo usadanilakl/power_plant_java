@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.fasterxml.jackson.core.io.schubfach.FloatToDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -18,18 +19,23 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ConflictService {
     private final ConflictRepo conflictRepo;
     private final EquipmentService equipmentService;
     private final LotoPointService lotoPointService;
 
+    @Transactional
     public Conflict save(Conflict conflict) {
-        Conflict conflict1 = checkIfConflictExists(conflict.getConflictType(), conflict.getEntityId());
-        if (conflict1 != null) {
+        Conflict existingConflict = checkIfConflictExists(conflict.getConflictType(), conflict.getEntityId());
+        if (existingConflict != null) {
             System.out.println("Conflict with the same type and entity ID already exists. Changing status to OPEN.");
-            conflict1.setStatus(Conflict.ConflictStatus.OPEN);
-            return conflictRepo.save(conflict1);
+            existingConflict.setStatus(Conflict.ConflictStatus.OPEN);
+            return conflictRepo.save(existingConflict);
         }
+
+        // Ensure the ID is null for a new conflict
+        conflict.setId(null);
         conflict.setCreatedAt(LocalDateTime.now());
         conflict.setStatus(Conflict.ConflictStatus.OPEN);
         return conflictRepo.save(conflict);
@@ -144,16 +150,20 @@ public class ConflictService {
         Conflict conflict = Conflict.builder()
                 .conflictType(Conflict.ConflictType.unit_loto_point_mismatch)
                 .description(description)
-                .entityType(u1Equipment.getObjectType())
+                .entityType("Equipment")
                 .entityId(entityIds)
                 .build();
 
         try {
             Conflict saved = save(conflict);
-            u1Equipment.addConflictId(saved.getId().toString());
-            u2Equipment.addConflictId(saved.getId().toString());
-            equipmentService.save(u1Equipment);
-            equipmentService.save(u2Equipment);
+            if(u1Equipment!=null){
+                u1Equipment.addConflictId(saved.getId().toString());
+                equipmentService.save(u1Equipment);
+            }
+            if(u2Equipment!=null){
+                u2Equipment.addConflictId(saved.getId().toString());
+                equipmentService.save(u2Equipment);
+            }
             return saved;
         } catch (Exception e) {
             e.printStackTrace();
@@ -204,6 +214,8 @@ public class ConflictService {
                 .conflictType(Conflict.ConflictType.eq_missing_lp)
                 .entityId(equipment.getId().toString())
                 .entityType(equipment.getObjectType())
+                .description("Equipment with tag number: " + equipment.getTagNumber() + " is missing a loto point")
+                .status(Conflict.ConflictStatus.OPEN)
                 .build();
         Conflict saved = save(conflict);
         equipment.addConflictId(saved.getId().toString());

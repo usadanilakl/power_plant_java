@@ -48,4 +48,7 @@ List<EquipmentDtoLight> getAllLight();
     List<Equipment> findByDescriptionContainingIgnoreCase(String value);
 
     List<String> findByTagNumberStartingWith(String number);
+
+    @Query("SELECT e FROM Equipment e WHERE e.dataServiceItemId IS NULL")
+    List<Equipment> findByNullDataServiceItemId();
 }

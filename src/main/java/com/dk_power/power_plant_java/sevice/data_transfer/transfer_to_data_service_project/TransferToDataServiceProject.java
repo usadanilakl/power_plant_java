@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project;
 
+import com.dk_power.power_plant_java.repository.ConflictRepo;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -50,17 +51,23 @@ public class TransferToDataServiceProject {
     private final FileObjectTransferService fileObjectTransferService;
     private final FileElementTransferService fileElementTransferService;
     private final LotoPointTransferService lotoPointTransferService;
+    private final ConflictRepo conflictRepo;
 
     public void transferExecution() throws IOException {
 
 //        fileElementTransferService.initialCleanup();
 //        lotoPointTransferService.initialCleanup();
 
-//        fileObjectTransferService.cleanTransferStatus();
-//        fileElementTransferService.clearTransferStatus();
-//        lotoPointTransferService.clearTransferStatus();
+        conflictRepo.deleteAll();
+        fileObjectTransferService.cleanTransferStatus();
+        fileElementTransferService.clearTransferStatus();
+        lotoPointTransferService.clearTransferStatus();
 //
 //        lotoPointTransferService.transferAllLotoPoints();
+        lotoPointTransferService.transferAllLotoPointsNew();
+
+
+
     }
 
 
