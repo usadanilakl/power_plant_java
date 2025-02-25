@@ -5,8 +5,15 @@ function getCurrentPictureSize(){
     return {width:document.getElementById('picture').width, height:document.getElementById('picture').height};
 }
 
+function getOriginalPictureSize(){
+    return {
+        width:document.getElementById('picture').naturalWidth,
+        height:document.getElementById('picture').naturalHeight
+    }
+}
+
 function getResizeFactor(){
-    return getCurrentPictureSize().width / originalPictureSize.width;
+    return getOriginalPictureSize().width / getCurrentPictureSize().width;
 }
 
 function getShapeCoordinatesOnPicture(shape) {
@@ -18,7 +25,7 @@ function getShapeCoordinatesOnPicture(shape) {
     let relativeTop = shapeRect.top - pictureRect.top;
 
     // Calculate the scale factor
-    let scaleFactor = originalPictureSize.width / getCurrentPictureSize().width;
+    let scaleFactor = getResizeFactor();
 
     // Convert to original picture coordinates
     let startX = Math.round(relativeLeft * scaleFactor);

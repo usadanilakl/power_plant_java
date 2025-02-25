@@ -16,7 +16,7 @@ public class DS_FileElementMapper {
     public DS_FileElementDto map(Equipment e) {
         Map<String, Float> stringFloatMap = convertToCoordinatesMap(e.getCoordinates(), e.getOriginalPictureSize());
         if(!isCoordinatesValid(stringFloatMap)){
-            throw new IllegalArgumentException("Coordinates are not valid");
+            throw new IllegalArgumentException("Coordinates are not valid: "+stringFloatMap);
         }
         return DS_FileElementDto.builder()
                 .tagNumber(e.getTagNumber())

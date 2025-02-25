@@ -82,14 +82,15 @@
 }
 
 .equipment-field label {
-    display: inline-block;
-    width: 150px;
+    display: block;
+    width: 100%;
     font-weight: bold;
     color: #555;
 }
 
 .equipment-field input {
-    width: calc(100% - 160px);
+    /* width: calc(100% - 160px); */
+    width: 100%;
     padding: 5px;
     border: 1px solid #ccc;
     border-radius: 3px;
@@ -111,14 +112,15 @@
 }
 
 .loto-point label {
-    display: inline-block;
-    width: 140px;
+    display: block;
+    width: 100%;
     font-weight: bold;
     color: #555;
 }
 
 .loto-point input {
-    width: calc(100% - 150px);
+    /* width: calc(100% - 150px); */
+    width: 100%;
     padding: 3px;
     border: 1px solid #ccc;
     border-radius: 3px;

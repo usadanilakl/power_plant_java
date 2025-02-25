@@ -55,16 +55,16 @@ public class TransferToDataServiceProject {
 
     public void transferExecution() throws IOException {
 
-//        fileElementTransferService.initialCleanup();
-//        lotoPointTransferService.initialCleanup();
+        fileElementTransferService.initialCleanup();
+        lotoPointTransferService.initialCleanup();
 
-//        conflictRepo.deleteAll();
+        conflictRepo.deleteAll();
 //        fileObjectTransferService.cleanTransferStatus();
 //        fileElementTransferService.clearTransferStatus();
 //        lotoPointTransferService.clearTransferStatus();
 //
 //        lotoPointTransferService.transferAllLotoPoints();
-//        lotoPointTransferService.transferAllLotoPointsNew();
+        lotoPointTransferService.transferAllLotoPointsNew();
 
 
 

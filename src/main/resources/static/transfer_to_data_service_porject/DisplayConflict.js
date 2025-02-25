@@ -157,6 +157,7 @@ async function displayEquipmentWithConflict(eqId) {
                     tagNumber: formData.get('equipment.tagNumber'),
                     description: formData.get('equipment.description'),
                     specificLocation: formData.get('equipment.specificLocation'),
+                    coordinates: formData.get('equipment.coordinates'),
                     lotoPoints: []
                 };
         
@@ -274,7 +275,8 @@ async function displayEquipmentWithConflict(eqId) {
             const id = shape.dataset.pointId;
             const coordinates = currentShape.coordinates;
             console.log('Updating coordinates for point ID:', id);
-            document.getElementById(`${id}_coordinates`).value = JSON.stringify(coordinates);
+            const coordinatesString = JSON.stringify(coordinates).replace(/[{}"]/g, '');
+            document.getElementById(`${id}_coordinates`).value = coordinatesString;
         }
 
         /*******************************************************************
