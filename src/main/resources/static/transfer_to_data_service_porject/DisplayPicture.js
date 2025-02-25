@@ -2,6 +2,7 @@
 let selectedArea = null;
 let activeHighlights = []; 
 highlatedAreas = [];
+let currentShape = {};
 
 function loadPictureWithFile(file){
     const picture = document.getElementById('picture');
@@ -180,6 +181,8 @@ function createHighlight(area){
                 clickTimer = setTimeout(async function() {
                     clickTimer = null;
                     console.log("Single click on highlight");
+                    currentShape.shape = highlight;
+                    currentShape.coordinates = getShapeCoordinatesOnPicture(highlight);
                     await displayEquipmentWithConflict(highlight.dataset.pointId);
                 }, clickDelay);
             } else {

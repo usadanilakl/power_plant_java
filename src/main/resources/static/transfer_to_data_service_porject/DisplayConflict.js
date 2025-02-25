@@ -119,7 +119,7 @@ async function displayEquipmentWithConflict(eqId) {
             const updateCoordsButton = document.createElement('button');
             updateCoordsButton.type = 'button';
             updateCoordsButton.textContent = 'Update Coordinates';
-            updateCoordsButton.onclick = () => updateCoordinates(shape);
+            updateCoordsButton.onclick = () => updateCoordinates(currentShape);
             form.appendChild(updateCoordsButton);
 
             // Loto Points
@@ -269,9 +269,11 @@ async function displayEquipmentWithConflict(eqId) {
             });
         }
 
-        function updateCoordinates(shape){
+        function updateCoordinates(){
+            const shape = currentShape.shape;
             const id = shape.dataset.pointId;
-            const coordinates = getShapeCoordinatesOnPicture(shape);
+            const coordinates = currentShape.coordinates;
+            console.log('Updating coordinates for point ID:', id);
             document.getElementById(`${id}_coordinates`).value = JSON.stringify(coordinates);
         }
 
