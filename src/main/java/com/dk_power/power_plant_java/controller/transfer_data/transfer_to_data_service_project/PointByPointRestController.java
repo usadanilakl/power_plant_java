@@ -76,24 +76,29 @@ public class PointByPointRestController {
     }
 
     @GetMapping("/conflict/{id}")
-    public ResponseEntity<List<EquipmentDto>> getConflictedPointsById(@PathVariable String id) {
+    public ResponseEntity<Map<String,Object>> getConflictedPointsById(@PathVariable String id) {
         try {
+            Map<String,Object> conflicts = new HashMap<>();
             Equipment eq = equipmentService.getEntityById(id);
 
+            conflicts.put("point", eq);
+
             List<Equipment> duplicates = equipmentService.getByTagNumber(eq.getTagNumber());
+            duplicates.removeIf(e -> e.getId().equals(eq.getId()));
+
+            conflicts.put("duplicates", duplicates);
+
             if(eq.getTagNumber().startsWith("01-") || eq.getTagNumber().startsWith("02-")){
                 String baseTagNumber = eq.getTagNumber().substring(2);
                 String otherUnitPrefix = eq.getTagNumber().startsWith("01-")? "02" : "01";
                 String otherUnitTag = otherUnitPrefix + baseTagNumber;
                 List<Equipment> otherUnitEq = equipmentService.getByTagNumber(otherUnitTag);
-                duplicates.addAll(otherUnitEq);
+                conflicts.put("otherUnit", otherUnitEq);
             }
 
-            List<EquipmentDto> result = duplicates.stream().map(equipmentService::convertToDto).collect(Collectors.toList());
-
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(conflicts);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Collections.emptyList());
+            return ResponseEntity.badRequest().body(Collections.emptyMap());
         }
     }
 
