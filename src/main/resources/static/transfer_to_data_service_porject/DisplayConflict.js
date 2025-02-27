@@ -26,7 +26,7 @@ let currentEquipmentData = {};
         console.log('Displaying equipment with conflict for eqId:', eqId);
         try {
             const data = await getConflict(eqId);
-            currentEquipmentData = data;
+            currentEquipmentData = await data;
             console.log('Data received in displayEquipmentWithConflict:', data);
             
             if (data === null) {
@@ -37,8 +37,8 @@ let currentEquipmentData = {};
             // Clear previous forms
             document.getElementById('equipmentFormsContainer').innerHTML = '';
 
-            console.log(data.point);
             buildEquipmentForm(data.point);
+            showOtherUnitEq();
             
             // Open the popup after forms are built
             openEquipmentFormsPopup();
@@ -294,30 +294,147 @@ let currentEquipmentData = {};
     //     });
     // }
 
-    function addDuplicatesToForm(){
-        const duplicates = currentEquipmentData.duplicates;
-        const container = document.getElementById('equipmentFormsContainer');
-        duplicates.forEach(duplicate => {
-            const form = createEquipmentForm(duplicate);
-            container.appendChild(form);
-        });
-    }
     /*******************************************************************
      * SELECT CONFLICT TYPE
      * ****************************************************************/
 
-    function getDuplicates(){
+    
+    function showConflictData(conflictType) {
+        // Hide all conflict forms first
+        const allConflictForms = document.querySelectorAll('[id^="conflict-"]');
+        allConflictForms.forEach(form => {
+            form.style.display = 'none';
+        });
+    
+        // Show forms that contain the selected conflict type in their IDs
+        const relevantForms = document.querySelectorAll(`[id*="${conflictType}"]`);
+        relevantForms.forEach(form => {
+            form.style.display = 'block';
+        });
+    
+        // If no relevant forms found, display a message
+        if (relevantForms.length === 0) {
+            const container = document.getElementById('conflictsSection');
+            container.innerHTML = `<p>No ${conflictType} conflicts found.</p>`;
+        }
+    
+        // Log the action for debugging
+        console.log(`Showing conflict forms for type: ${conflictType}`);
+    }
+
+    function showDuplicates() {
         const duplicates = currentEquipmentData.duplicates;
-        addDuplicatesToForm();
+        const container = document.getElementById('conflictsSection');
+    
+        // Create a header for the duplicates section
+        const header = document.createElement('h3');
+        header.textContent = 'Duplicate Equipment';
+        container.appendChild(header);
+    
+        // Create a container for the duplicate forms
+        const duplicatesContainer = document.createElement('div');
+        duplicatesContainer.id = 'duplicatesContainer';
+        container.appendChild(duplicatesContainer);
+    
+        // Add each duplicate equipment form
+        duplicates.forEach((duplicate, index) => {
+            const formContainer = document.createElement('div');
+            formContainer.className = 'duplicate-form';
+            formContainer.id = `duplicate-${index}`;
+    
+            // Use the existing createEquipmentFormElement function
+            const duplicateForm = createEquipmentFormElement(duplicate, 'conflict');
+            formContainer.appendChild(duplicateForm);
+    
+            duplicatesContainer.appendChild(formContainer);
+        });
+    
+        // If no duplicates found
+        if (duplicates.length === 0) {
+            const noDuplicatesMessage = document.createElement('p');
+            noDuplicatesMessage.textContent = 'No duplicates found.';
+            duplicatesContainer.appendChild(noDuplicatesMessage);
+        }
     }
 
-    function getOtherUnitEq(){
-        const otherUnitEq = currentEquipmentData.otherUnit;
-        addOtherUnitEqToForm();
-    }
-
-    function checkPointData(){
+    function showOtherUnitEq() {
+        const otherUnit = currentEquipmentData.otherUnit;
+        const container = document.getElementById('conflictsSection');
         
+        // Clear existing content
+        container.innerHTML = '';
+
+    
+        // Create a container for the other unit equipment forms
+        const otherUnitContainer = document.createElement('div');
+        otherUnitContainer.id = 'otherUnitContainer';
+        container.appendChild(otherUnitContainer);
+    
+        // Add each other unit equipment form
+        otherUnit.forEach((equipment, index) => {
+            const formContainer = document.createElement('div');
+            formContainer.className = 'other-unit-form';
+            formContainer.id = `other-unit-${index}`;
+    
+            // Use the existing createEquipmentFormElement function
+            const equipmentForm = createEquipmentFormElement(equipment, 'conflict');
+            formContainer.appendChild(equipmentForm);
+    
+            otherUnitContainer.appendChild(formContainer);
+        });
+    
+        // If no other unit equipment found
+        if (otherUnit.length === 0) {
+            const noOtherUnitMessage = document.createElement('p');
+            noOtherUnitMessage.textContent = 'No other unit equipment found.';
+            otherUnitContainer.appendChild(noOtherUnitMessage);
+        }
+    }
+
+    function showDiscrepancies() {
+        const eq = currentEquipmentData.point;
+        const lotoPoints = eq.lotoPoints;
+        const tagNumber = eq.tagNumber;
+        const description = eq.description;
+        const specificLocation = eq.specificLocation;
+    
+        const container = document.getElementById('conflictsSection');
+    
+        // Function to highlight discrepancies
+        const highlightDiscrepancy = (input, referenceValue) => {
+            if (input.value.trim() !== (referenceValue || '').trim()) {
+                input.style.backgroundColor = 'yellow';
+                input.title = `Original value: ${referenceValue}`;
+            } else {
+                input.style.backgroundColor = '';
+                input.title = '';
+            }
+        };
+    
+        // Check equipment fields
+        ['tagNumber', 'description', 'specificLocation'].forEach(field => {
+            const inputs = container.querySelectorAll(`input[id*="${field}"]`);
+            inputs.forEach(input => highlightDiscrepancy(input, eq[field]));
+        });
+    
+        // Check LOTO points
+        if (Array.isArray(lotoPoints)) {
+            lotoPoints.forEach((point, index) => {
+                ['tagNumber', 'description', 'specificLocation', 'normalPosition', 'isolatedPosition'].forEach(field => {
+                    const input = container.querySelector(`input[name="lotoPoints[${index}].${field}"]`);
+                    if (input) {
+                        highlightDiscrepancy(input, point[field]);
+                    }
+                });
+            });
+        }
+    
+        // Optionally, you can add a message to indicate that discrepancies have been highlighted
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = 'Discrepancies have been highlighted in yellow.';
+        messageDiv.style.color = 'blue';
+        messageDiv.style.marginTop = '10px';
+        container.insertBefore(messageDiv, container.firstChild);
     }
 
     /*******************************************************************
@@ -402,6 +519,7 @@ let currentEquipmentData = {};
 
 
     //New Form Building Functions
+
     function buildEquipmentForm(equipment) {
         const container = document.getElementById('equipmentFormsContainer');
         container.innerHTML = ''; // Clear previous content
@@ -435,23 +553,32 @@ let currentEquipmentData = {};
         // Add dropdown to wrapper
         dropdownWrapper.appendChild(dropdown);
     
+        // Create a wrapper for the two sections
+        const sectionsWrapper = document.createElement('div');
+        sectionsWrapper.style.display = 'flex';
+        sectionsWrapper.style.justifyContent = 'space-between';
+        sectionsWrapper.style.width = '100%';
+    
         // Create two sections
         const currentEquipmentSection = document.createElement('div');
         currentEquipmentSection.id = 'currentEquipmentSection';
-        currentEquipmentSection.style.width = '100%';
+        currentEquipmentSection.style.width = '48%'; // Adjust as needed
     
         const conflictsSection = document.createElement('div');
         conflictsSection.id = 'conflictsSection';
-        conflictsSection.style.width = '100%';
+        conflictsSection.style.width = '48%'; // Adjust as needed
     
         // Build form for current equipment
         const currentEquipmentForm = createEquipmentFormElement(equipment, 'current');
     
+        // Append elements to the sections wrapper
+        currentEquipmentSection.appendChild(currentEquipmentForm);
+        sectionsWrapper.appendChild(currentEquipmentSection);
+        sectionsWrapper.appendChild(conflictsSection);
+    
         // Append elements to the content wrapper
         contentWrapper.appendChild(dropdownWrapper);
-        currentEquipmentSection.appendChild(currentEquipmentForm);
-        contentWrapper.appendChild(currentEquipmentSection);
-        contentWrapper.appendChild(conflictsSection);
+        contentWrapper.appendChild(sectionsWrapper);
     
         // Add the content wrapper to the container
         container.appendChild(contentWrapper);
@@ -461,7 +588,7 @@ let currentEquipmentData = {};
             const conflictType = this.value;
             console.log('Selected conflict type:', conflictType);
             if (conflictType !== 'select_conflict_type') {
-                const conflictData = await getConflictData(conflictType, equipment.id);
+                const conflictData = showConflictData(conflictType);
                 displayConflictData(conflictData, conflictType);
             } else {
                 conflictsSection.innerHTML = ''; // Clear the conflicts section
@@ -575,11 +702,6 @@ let currentEquipmentData = {};
         });
     
         return form;
-    }
-    
-    async function getConflictData(conflictType, equipmentId) {
-        // Implement this function to fetch conflict data from the server
-        // Return the conflict data
     }
     
     function displayConflictData(conflictData, conflictType) {
