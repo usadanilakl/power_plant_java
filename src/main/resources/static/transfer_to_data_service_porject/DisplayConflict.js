@@ -39,6 +39,8 @@ let currentEquipmentData = {};
 
             buildEquipmentForm(data.point);
             showOtherUnitEq();
+            showDuplicates();
+            showDiscrepancies();
             
             // Open the popup after forms are built
             openEquipmentFormsPopup();
@@ -360,10 +362,6 @@ let currentEquipmentData = {};
     function showOtherUnitEq() {
         const otherUnit = currentEquipmentData.otherUnit;
         const container = document.getElementById('conflictsSection');
-        
-        // Clear existing content
-        container.innerHTML = '';
-
     
         // Create a container for the other unit equipment forms
         const otherUnitContainer = document.createElement('div');
@@ -392,49 +390,107 @@ let currentEquipmentData = {};
     }
 
     function showDiscrepancies() {
-        const eq = currentEquipmentData.point;
-        const lotoPoints = eq.lotoPoints;
-        const tagNumber = eq.tagNumber;
-        const description = eq.description;
-        const specificLocation = eq.specificLocation;
-    
-        const container = document.getElementById('conflictsSection');
+        const container = document.getElementById('equipmentFormsContainer');
+        const currentEquipmentSection = document.getElementById('currentEquipmentSection');
+        const conflictsSection = document.getElementById('conflictsSection');
+        const currentEquipmentForm = currentEquipmentSection.querySelector('.equipment-form');
+        const conflictForms = conflictsSection.querySelectorAll('.conflict-form');
+        
+        const equipmentFields = ['tagNumber', 'description', 'specificLocation'];
+        const lotoPointFields = ['tagNumber', 'description', 'specificLocation', 'normalPosition', 'isolatedPosition'];
     
         // Function to highlight discrepancies
         const highlightDiscrepancy = (input, referenceValue) => {
             if (input.value.trim() !== (referenceValue || '').trim()) {
                 input.style.backgroundColor = 'yellow';
-                input.title = `Original value: ${referenceValue}`;
+                input.title = `Discrepancy found. Other value: ${referenceValue}`;
             } else {
                 input.style.backgroundColor = '';
                 input.title = '';
             }
         };
     
-        // Check equipment fields
-        ['tagNumber', 'description', 'specificLocation'].forEach(field => {
-            const inputs = container.querySelectorAll(`input[id*="${field}"]`);
-            inputs.forEach(input => highlightDiscrepancy(input, eq[field]));
-        });
+        // Function to swap unit references
+        const swapUnitReferences = (value, fromUnit, toUnit) => {
+            return value.replace(new RegExp(`${fromUnit}`, 'gi'), toUnit)
+                        .replace(new RegExp(`Unit${fromUnit[1]}`, 'gi'), `Unit${toUnit[1]}`)
+                        .replace(new RegExp(`UNIT ${fromUnit[1]}`, 'gi'), `UNIT${toUnit[1]}`)
+                        .replace(new RegExp(`UNIT${fromUnit[1]}`, 'gi'), `UNIT${toUnit[1]}`)
+                        .replace(new RegExp(`Unit ${fromUnit[1]}`, 'gi'), `Unit ${toUnit[1]}`)
+                        .replace(new RegExp(`U${fromUnit[1]}`, 'gi'), `U${toUnit[1]}`);
+        };
     
-        // Check LOTO points
-        if (Array.isArray(lotoPoints)) {
-            lotoPoints.forEach((point, index) => {
-                ['tagNumber', 'description', 'specificLocation', 'normalPosition', 'isolatedPosition'].forEach(field => {
-                    const input = container.querySelector(`input[name="lotoPoints[${index}].${field}"]`);
-                    if (input) {
-                        highlightDiscrepancy(input, point[field]);
-                    }
+        // Function to check discrepancies
+        const checkDiscrepancies = () => {
+            const allForms = [currentEquipmentForm, ...conflictForms];
+    
+            allForms.forEach((form) => {
+                const equipmentInputs = {};
+                equipmentFields.forEach(field => {
+                    equipmentInputs[field] = form.querySelector(`input[name="equipment.${field}"]`);
                 });
-            });
-        }
     
-        // Optionally, you can add a message to indicate that discrepancies have been highlighted
-        const messageDiv = document.createElement('div');
-        messageDiv.textContent = 'Discrepancies have been highlighted in yellow.';
-        messageDiv.style.color = 'blue';
-        messageDiv.style.marginTop = '10px';
-        container.insertBefore(messageDiv, container.firstChild);
+                // Step 1: Compare equipment fields with its LOTO points
+                const lotoPointsContainer = form.querySelector('.loto-points-container');
+                if (lotoPointsContainer) {
+                    const lotoPoints = lotoPointsContainer.querySelectorAll('.loto-point');
+                    lotoPoints.forEach((lotoPoint) => {
+                        lotoPointFields.forEach(field => {
+                            const lotoPointInput = lotoPoint.querySelector(`input[name^="lotoPoints["][name$="].${field}"]`);
+                            if (lotoPointInput && equipmentInputs[field]) {
+                                highlightDiscrepancy(equipmentInputs[field], lotoPointInput.value);
+                                highlightDiscrepancy(lotoPointInput, equipmentInputs[field].value);
+                            }
+                        });
+                    });
+                }
+    
+                // Step 2: Compare current equipment with duplicate equipment
+                if (form === currentEquipmentForm) {
+                    conflictForms.forEach((conflictForm) => {
+                        equipmentFields.forEach(field => {
+                            const conflictInput = conflictForm.querySelector(`input[name="equipment.${field}"]`);
+                            if (conflictInput && equipmentInputs[field]) {
+                                highlightDiscrepancy(equipmentInputs[field], conflictInput.value);
+                            }
+                        });
+                    });
+                }
+    
+                // Step 3: Compare current equipment with other unit equipment
+                if (form === currentEquipmentForm) {
+                    const currentTagNumber = equipmentInputs.tagNumber.value;
+                    const currentUnit = currentTagNumber.startsWith('01') ? '01' : '02';
+                    const otherUnit = currentUnit === '01' ? '02' : '01';
+    
+                    conflictForms.forEach((conflictForm) => {
+                        const conflictTagNumber = conflictForm.querySelector('input[name="equipment.tagNumber"]').value;
+                        if (conflictTagNumber.startsWith(otherUnit)) {
+                            equipmentFields.forEach(field => {
+                                const conflictInput = conflictForm.querySelector(`input[name="equipment.${field}"]`);
+                                if (conflictInput && equipmentInputs[field]) {
+                                    let conflictValue = conflictInput.value;
+                                    if (field === 'tagNumber') {
+                                        conflictValue = currentUnit + conflictValue.substring(2);
+                                    } else {
+                                        conflictValue = swapUnitReferences(conflictValue, otherUnit, currentUnit);
+                                    }
+                                    highlightDiscrepancy(equipmentInputs[field], conflictValue);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        };
+    
+        // Initial check
+        checkDiscrepancies();
+    
+        // Add event listeners to all input fields
+        container.querySelectorAll('input').forEach(input => {
+            input.addEventListener('change', checkDiscrepancies);
+        });
     }
 
     /*******************************************************************
