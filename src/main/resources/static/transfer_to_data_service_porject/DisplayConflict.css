@@ -66,9 +66,10 @@
     border-radius: 5px;
     flex: 0 1 calc(33.333% - 20px);
     min-width: 300px;
-    max-width: calc(33.333% - 20px);
+    /* max-width: calc(33.333% - 20px); */
     box-sizing: border-box;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 100%;
 }
 
 .equipment-form h2 {

@@ -348,7 +348,10 @@ let currentEquipmentData = {};
             formContainer.appendChild(duplicateForm);
     
             duplicatesContainer.appendChild(formContainer);
-            if(duplicateForm)showDiscrepancies(duplicateForm);
+            if(duplicateForm){
+                showDiscrepancies(duplicateForm);
+                showWrongReferences(duplicateForm);
+            }
         });
     
         // If no duplicates found
@@ -381,7 +384,10 @@ let currentEquipmentData = {};
     
             otherUnitContainer.appendChild(formContainer);
 
-            if(equipmentForm)showDiscrepancies(equipmentForm);
+            if(equipmentForm){
+                showDiscrepancies(equipmentForm);
+                showWrongReferences(equipmentForm);
+            }
         });
     
         // If no other unit equipment found
@@ -408,6 +414,7 @@ let currentEquipmentData = {};
         // Function to highlight discrepancies
         const highlightDiscrepancy = (input, referenceValue) => {
             if (input.value.trim() !== (referenceValue || '').trim()) {
+                console.log(`Discrepancy found in ${input.name} field. Current value: ${input.value}, Reference value: ${referenceValue}`);
                 input.style.backgroundColor = 'red';
                 input.title = `Discrepancy found. Other value: ${referenceValue}`;
             } else {
@@ -426,25 +433,7 @@ let currentEquipmentData = {};
                                       .replace(new RegExp(` ${fromUnit}`, 'g'), ` ${toUnit}`)
                                       .replace(new RegExp(`${fromUnit}-`, 'g'), `${toUnit}-`);
 
-            console.log(`Swapping references in value: ${swappedValue}`);
-            console.log(`original value: ${value}`);
-            console.log(`from: ${fromUnit}`);
-            console.log(`to: ${toUnit}`);
-        
-            const otherUnit = fromUnit === '01' ? '02' : '01';
-            const incorrectReferences = [
-                `Unit${otherUnit[1]}`, `UNIT ${otherUnit[1]}`, `UNIT${otherUnit[1]}`, `Unit ${otherUnit[1]}`, `U${otherUnit[1]}`,
-                ` ${fromUnit}`, `${fromUnit}-`
-            ];
-        
-            const hasIncorrectReference = incorrectReferences.some(ref => 
-                new RegExp(ref, 'gi').test(swappedValue)
-            );
-        
-            return {
-                value: swappedValue,
-                hasIncorrectReference: hasIncorrectReference
-            };
+            return swappedValue
         };
     
         //Compare current equipment with other unit equipment
@@ -473,12 +462,7 @@ let currentEquipmentData = {};
                                     conflictValue = currentUnit + conflictValue.substring(2);
                                 } else {
                                     const swapResult = swapUnitReferences(conflictValue, otherUnit, currentUnit);
-                                    conflictValue = swapResult.value;
-                                    if (swapResult.hasIncorrectReference) {
-                                        // Highlight the field if it contains an incorrect unit reference
-                                        equipmentInputs[field].style.backgroundColor = 'orange';
-                                        equipmentInputs[field].title = 'Contains reference to the wrong unit';
-                                    }
+                                    conflictValue = swapResult;
                                 }
                                 highlightDiscrepancy(equipmentInputs[field], conflictValue);
                             }
@@ -534,6 +518,49 @@ let currentEquipmentData = {};
     
         // Initial check
         checkDiscrepancies();
+    }
+
+    function showWrongReferences(form) {
+        const tagNumberInput = form.querySelector('input[name="equipment.tagNumber"]');
+        const lotoPointsContainer = form.querySelector('.loto-points-container');
+        const lotoPoints = lotoPointsContainer.querySelectorAll('.loto-point');
+        const equipmentFields = ['tagNumber', 'description', 'specificLocation'];
+        const lotoPointFields = ['tagNumber', 'description', 'specificLocation', 'normalPosition', 'isolatedPosition'];
+
+        // Function to highlight discrepancies
+        const highlightDiscrepancy = (input, unit) => {        
+            const otherUnit = unit === '01' ? '02' : '01';
+            const incorrectReferences = [
+                `Unit${otherUnit[1]}`, `UNIT ${otherUnit[1]}`, `UNIT${otherUnit[1]}`, `Unit ${otherUnit[1]}`, `U${otherUnit[1]}`,
+                ` ${otherUnit}`, `${otherUnit}-`
+            ];
+        
+            const value = input.value;
+                if(value){
+                    const hasIncorrectReference = incorrectReferences.some(ref => 
+                    new RegExp(ref, 'gi').test(value.trim())
+                );
+            
+                if(hasIncorrectReference){
+                    console.log('Highlighted field:', input.name);
+                    input.style.backgroundColor = 'orange';
+                    input.title = 'Contains reference to the wrong unit';
+                }else{
+                    input.style.backgroundColor = '';
+                    input.title = '';
+                }
+            }
+        };
+
+        if(tagNumberInput && tagNumberInput.value && (tagNumberInput.value.startsWith('01') || tagNumberInput.value.startsWith('02'))){
+            const unit = tagNumberInput.value.substring(0,2);
+            equipmentFields.forEach(field => {
+                const input = form.querySelector(`input[name="equipment.${field}"]`);
+                if (input) {
+                    highlightDiscrepancy(input, unit);
+                }
+            });
+        }
     }
 
     /*******************************************************************
@@ -628,6 +655,7 @@ let currentEquipmentData = {};
         contentWrapper.style.display = 'flex';
         contentWrapper.style.flexDirection = 'column';
         contentWrapper.style.alignItems = 'center';
+        contentWrapper.style.width = '100%';
     
         // Create a wrapper for the dropdown
         const dropdownWrapper = document.createElement('div');
@@ -710,6 +738,7 @@ let currentEquipmentData = {};
         });
 
         showDiscrepancies(currentEquipmentForm);
+        showWrongReferences(currentEquipmentForm);
     }
     
     function createEquipmentFormElement(equipment, formType) {
@@ -821,6 +850,9 @@ let currentEquipmentData = {};
         form.querySelectorAll('input').forEach(input => {
             input.addEventListener('change', ()=>showDiscrepancies(form));
         });
+        form.querySelectorAll('input').forEach(input => {
+            input.addEventListener('change', ()=>showWrongReferences(form));
+        });
     
         return form;
     }
@@ -917,6 +949,9 @@ let currentEquipmentData = {};
             lotoPointDiv.appendChild(label);
             lotoPointDiv.appendChild(input);
         });
+        const editButton = document.createElement('button');
+        editButton.textContent = 'Edit';
+        editButton.addEventListener('click', () => {editLotoPoint(lotoPointDiv)});
         lotoPointDiv.querySelectorAll('input, select').forEach(element => {
             addCopyListener(element);
         });
@@ -931,5 +966,107 @@ let currentEquipmentData = {};
         const lotoPointDiv = createLotoPointFields(equipmentId, formType, lotoPointIndex);
         lotoPointsContainer.appendChild(lotoPointDiv);
     }
+
+    function editLotoPoint(lotoPointDiv) {
+        // Create popup window
+        const popup = document.createElement('div');
+        popup.classList.add('popup');
+        popup.style.position = 'fixed';
+        popup.style.top = '50%';
+        popup.style.left = '50%';
+        popup.style.transform = 'translate(-50%, -50%)';
+        popup.style.backgroundColor = 'white';
+        popup.style.padding = '20px';
+        popup.style.border = '1px solid black';
+        popup.style.zIndex = '1000';
+    
+        // Create search input and button
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Search loto points...';
+        
+        const searchButton = document.createElement('button');
+        searchButton.textContent = 'Search';
+        
+        // Create results container
+        const resultsContainer = document.createElement('div');
+        resultsContainer.style.maxHeight = '300px';
+        resultsContainer.style.overflowY = 'auto';
+        resultsContainer.style.marginTop = '10px';
+    
+        // Add elements to popup
+        popup.appendChild(searchInput);
+        popup.appendChild(searchButton);
+        popup.appendChild(resultsContainer);
+    
+        // Add popup to body
+        document.body.appendChild(popup);
+    
+        // Search function
+        async function searchLotoPoints() {
+            const searchTerm = searchInput.value;
+            try {
+                const response = await fetch(`/api/loto-points/search?term=${encodeURIComponent(searchTerm)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').getAttribute('content')
+                    }
+                });
+    
+                if (response.ok) {
+                    const lotoPoints = await response.json();
+                    displaySearchResults(lotoPoints);
+                } else {
+                    throw new Error('Failed to fetch loto points');
+                }
+            } catch (error) {
+                console.error('Error searching loto points:', error);
+                alert('Failed to search loto points. Please try again.');
+            }
+        }
+    
+        // Display search results
+        function displaySearchResults(lotoPoints) {
+            resultsContainer.innerHTML = '';
+            lotoPoints.forEach(lotoPoint => {
+                const resultDiv = document.createElement('div');
+                resultDiv.textContent = `${lotoPoint.tagNumber} - ${lotoPoint.description}`;
+                
+                const selectButton = document.createElement('button');
+                selectButton.textContent = 'Select';
+                selectButton.onclick = () => {
+                    fillLotoPointData(lotoPoint);
+                    document.body.removeChild(popup);
+                };
+    
+                resultDiv.appendChild(selectButton);
+                resultsContainer.appendChild(resultDiv);
+            });
+        }
+    
+        // Fill loto point data into the form
+        function fillLotoPointData(lotoPoint) {
+            const fields = ['id', 'tagNumber', 'description', 'specificLocation', 'normalPosition', 'isolatedPosition'];
+            fields.forEach(field => {
+                const input = lotoPointDiv.querySelector(`input[name$=".${field}"]`);
+                if (input) {
+                    input.value = lotoPoint[field] || '';
+                }
+            });
+        }
+    
+        // Add event listener to search button
+        searchButton.addEventListener('click', searchLotoPoints);
+    
+        // Add event listener to allow searching on Enter key press
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchLotoPoints();
+            }
+        });
+    }
+
+
 
     
