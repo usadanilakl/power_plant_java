@@ -27,6 +27,7 @@ public class PointByPointRestController {
     private final LotoPointService lotoPointService;
     private final EquipmentService equipmentService;
     private final ConflictService conflictService;
+
     @PostMapping
     public void transferAll() throws IOException {
         lotoPointTransferService.transferAllLotoPoints();
@@ -38,16 +39,16 @@ public class PointByPointRestController {
     }
 
     @GetMapping
-    public ResponseEntity<List<LotoPointDto>> getAllNonTransferredPoints(){
+    public ResponseEntity<List<LotoPointDto>> getAllNonTransferredPoints() {
         List<LotoPointDto> all = lotoPointService.getAllNotTransferred().stream().map(lotoPointService::convertToDto).toList();
         return ResponseEntity.ok(all);
     }
 
     @GetMapping("/{fileId}")
-    public ResponseEntity<FileDto> getAllNonTransferredPointsByFileId(@PathVariable String fileId){
+    public ResponseEntity<FileDto> getAllNonTransferredPointsByFileId(@PathVariable String fileId) {
         FileObject file = fileService.getEntityById(fileId);
-        if(file == null) return ResponseEntity.notFound().build();
-        List<EquipmentDto> all = file.getPoints().stream().filter(e->e.getDataServiceItemId()==null && e.getLotoPoints()!=null && !e.getLotoPoints().isEmpty()).map(e->equipmentService.convertToDto(e)).collect(Collectors.toList());
+        if (file == null) return ResponseEntity.notFound().build();
+        List<EquipmentDto> all = file.getPoints().stream().filter(e -> e.getDataServiceItemId() == null && e.getLotoPoints() != null && !e.getLotoPoints().isEmpty()).map(e -> equipmentService.convertToDto(e)).collect(Collectors.toList());
 
         FileDto fileDto = fileService.convertToDto(file);
         fileDto.setPoints(new ArrayList<>(all));
@@ -55,11 +56,11 @@ public class PointByPointRestController {
     }
 
     @GetMapping("/files")
-    public ResponseEntity<List<FileDto>> getAllConflictedFiles(){
+    public ResponseEntity<List<FileDto>> getAllConflictedFiles() {
         List<FileDto> all = new ArrayList<>();
-        for(FileObject pid : fileService.getByFileType("PID")){
-            for(Equipment point : pid.getPoints()) {
-                if(point.getDataServiceItemId()==null){
+        for (FileObject pid : fileService.getByFileType("PID")) {
+            for (Equipment point : pid.getPoints()) {
+                if (point.getDataServiceItemId() == null) {
                     FileDto fileDto = new FileDto();
                     fileDto.setId(pid.getId());
                     fileDto.setFileLink(pid.getFileLink());
@@ -76,9 +77,9 @@ public class PointByPointRestController {
     }
 
     @GetMapping("/conflict/{id}")
-    public ResponseEntity<Map<String,Object>> getConflictedPointsById(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> getConflictedPointsById(@PathVariable String id) {
         try {
-            Map<String,Object> conflicts = new HashMap<>();
+            Map<String, Object> conflicts = new HashMap<>();
             Equipment eq = equipmentService.getEntityById(id);
 
             conflicts.put("point", eq);
@@ -88,9 +89,9 @@ public class PointByPointRestController {
 
             conflicts.put("duplicates", duplicates);
 
-            if(eq.getTagNumber().startsWith("01-") || eq.getTagNumber().startsWith("02-")){
+            if (eq.getTagNumber().startsWith("01-") || eq.getTagNumber().startsWith("02-")) {
                 String baseTagNumber = eq.getTagNumber().substring(2);
-                String otherUnitPrefix = eq.getTagNumber().startsWith("01-")? "02" : "01";
+                String otherUnitPrefix = eq.getTagNumber().startsWith("01-") ? "02" : "01";
                 String otherUnitTag = otherUnitPrefix + baseTagNumber;
                 List<Equipment> otherUnitEq = equipmentService.getByTagNumber(otherUnitTag);
                 conflicts.put("otherUnit", otherUnitEq);
@@ -106,8 +107,14 @@ public class PointByPointRestController {
     public ResponseEntity<String> transferPoint(@RequestBody EquipmentDto dto) throws IOException {
         Equipment equipment = equipmentService.convertToEntity(dto);
         Equipment updated = equipmentService.save(equipment);
-        if(lotoPointTransferService.transferOneLotoPointWithAssosiatedElementsTransactional(updated))
-        return ResponseEntity.ok("Point transferred successfully");
+        if (lotoPointTransferService.transferOneLotoPointWithAssosiatedElementsTransactional(updated))
+            return ResponseEntity.ok("Point transferred successfully");
         else return ResponseEntity.badRequest().body("Point transfer failed");
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<LotoPointDto>> searchLotoPoints(@RequestParam String term) {
+        List<LotoPointDto> searchResults = lotoPointService.getByTagNumber(term.trim());
+        return ResponseEntity.ok(searchResults);
     }
 }

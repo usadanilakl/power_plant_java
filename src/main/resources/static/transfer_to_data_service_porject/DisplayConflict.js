@@ -1,6 +1,7 @@
 let equipmentFormsPopup = document.getElementById('equipmentFormsPopup');
 let closePopup = document.getElementsByClassName('close-popup')[0];
 let currentEquipmentData = {};
+let copiedLotoPointInputs;
 
     // Function to open the popup
     function openEquipmentFormsPopup() {
@@ -949,9 +950,43 @@ let currentEquipmentData = {};
             lotoPointDiv.appendChild(label);
             lotoPointDiv.appendChild(input);
         });
+
+        //Edit button
         const editButton = document.createElement('button');
         editButton.textContent = 'Edit';
         editButton.addEventListener('click', () => {editLotoPoint(lotoPointDiv)});
+        editButton.type = 'button';
+        lotoPointDiv.appendChild(editButton);
+
+        //Copy button
+        const copyButton = document.createElement('button');
+        copyButton.textContent = 'Copy';
+        copyButton.addEventListener('click', () => {copyLotoPointFields(lotoPointDiv)});
+        copyButton.type = 'button';
+        lotoPointDiv.appendChild(copyButton);
+
+        //Past button
+        const pastButton = document.createElement('button');
+        pastButton.textContent = 'Past';
+        pastButton.addEventListener('click', () => {pasteLotoPointFields(lotoPointDiv)});
+        pastButton.type = 'button';
+        lotoPointDiv.appendChild(pastButton);
+
+        //Flip and paste
+        const flipButton = document.createElement('button');
+        flipButton.textContent = 'Flip';
+        flipButton.addEventListener('click', () => {flipAndPasteLotoPointFields(lotoPointDiv)});
+        flipButton.type = 'button';
+        lotoPointDiv.appendChild(flipButton);
+
+        //Remove button
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'Remove';
+        removeButton.addEventListener('click', () => {lotoPointDiv.remove();});
+        removeButton.type = 'button';
+        lotoPointDiv.appendChild(removeButton);
+
+
         lotoPointDiv.querySelectorAll('input, select').forEach(element => {
             addCopyListener(element);
         });
@@ -978,7 +1013,7 @@ let currentEquipmentData = {};
         popup.style.backgroundColor = 'white';
         popup.style.padding = '20px';
         popup.style.border = '1px solid black';
-        popup.style.zIndex = '1000';
+        popup.style.zIndex = '1002';
     
         // Create search input and button
         const searchInput = document.createElement('input');
@@ -1006,7 +1041,7 @@ let currentEquipmentData = {};
         async function searchLotoPoints() {
             const searchTerm = searchInput.value;
             try {
-                const response = await fetch(`/api/loto-points/search?term=${encodeURIComponent(searchTerm)}`, {
+                const response = await fetch(`/api/point-by-point/search?term=${encodeURIComponent(searchTerm)}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1065,6 +1100,84 @@ let currentEquipmentData = {};
                 searchLotoPoints();
             }
         });
+    }
+
+    function copyLotoPointFields(lotoPointDiv) {
+        copiedLotoPointInputs = lotoPointDiv.querySelectorAll('input, select');
+    }
+
+    function pasteLotoPointFields(lotoPointDiv) {
+        if (!copiedLotoPointInputs) {
+            console.warn('No loto point fields have been copied');
+            return;
+        }
+    
+        const targetInputs = lotoPointDiv.querySelectorAll('input, select');
+    
+        targetInputs.forEach((targetInput, index) => {
+            if (index < copiedLotoPointInputs.length) {
+                const sourceInput = copiedLotoPointInputs[index];
+                const fieldName = targetInput.name.split('.').pop(); // Get the field name
+    
+                // Skip the 'id' field
+                if (fieldName !== 'id') {
+                    targetInput.value = sourceInput.value;
+                }
+            }
+        });
+    }
+
+    function flipAndPasteLotoPointFields(lotoPointDiv) {
+        if (!copiedLotoPointInputs) {
+            console.warn('No loto point fields have been copied');
+            return;
+        }
+    
+        const targetInputs = lotoPointDiv.querySelectorAll('input, select');
+    
+        // Get the tag number from the copied inputs
+        const tagNumberInput = Array.from(copiedLotoPointInputs).find(input => input.name.endsWith('.tagNumber'));
+        if (!tagNumberInput) {
+            console.warn('No tag number found in copied fields');
+            return;
+        }
+    
+        const tagNumber = tagNumberInput.value;
+        let fromUnit, toUnit;
+    
+        if (tagNumber.startsWith('01')) {
+            fromUnit = '01';
+            toUnit = '02';
+        } else if (tagNumber.startsWith('02')) {
+            fromUnit = '02';
+            toUnit = '01';
+        } else {
+            console.warn('Invalid tag number format');
+            return;
+        }
+    
+        targetInputs.forEach((targetInput, index) => {
+            if (index < copiedLotoPointInputs.length) {
+                const sourceInput = copiedLotoPointInputs[index];
+                const fieldName = targetInput.name.split('.').pop(); // Get the field name
+    
+                // Skip the 'id' field
+                if (fieldName !== 'id') {
+                    let flippedValue = flipUnitReference(sourceInput.value, fromUnit, toUnit);
+                    targetInput.value = flippedValue;
+                }
+            }
+        });
+    }
+    
+    function flipUnitReference(value, fromUnit, toUnit){
+        return value.replace(new RegExp(`Unit${fromUnit[1]}`, 'gi'), `Unit${toUnit[1]}`)
+                                  .replace(new RegExp(`UNIT ${fromUnit[1]}`, 'gi'), `UNIT${toUnit[1]}`)
+                                  .replace(new RegExp(`UNIT${fromUnit[1]}`, 'gi'), `UNIT${toUnit[1]}`)
+                                  .replace(new RegExp(`Unit ${fromUnit[1]}`, 'gi'), `Unit ${toUnit[1]}`)
+                                  .replace(new RegExp(`U${fromUnit[1]}`, 'gi'), `U${toUnit[1]}`)
+                                  .replace(new RegExp(` ${fromUnit}`, 'g'), ` ${toUnit}`)
+                                  .replace(new RegExp(`${fromUnit}-`, 'g'), `${toUnit}-`);
     }
 
 
