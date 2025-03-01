@@ -418,17 +418,23 @@ let currentEquipmentData = {};
     
         // Function to swap unit references
         const swapUnitReferences = (value, fromUnit, toUnit) => {
-            const swappedValue = value.replace(new RegExp(`${fromUnit}`, 'gi'), toUnit)
-                                      .replace(new RegExp(`Unit${fromUnit[1]}`, 'gi'), `Unit${toUnit[1]}`)
+            const swappedValue = value.replace(new RegExp(`Unit${fromUnit[1]}`, 'gi'), `Unit${toUnit[1]}`)
                                       .replace(new RegExp(`UNIT ${fromUnit[1]}`, 'gi'), `UNIT${toUnit[1]}`)
                                       .replace(new RegExp(`UNIT${fromUnit[1]}`, 'gi'), `UNIT${toUnit[1]}`)
                                       .replace(new RegExp(`Unit ${fromUnit[1]}`, 'gi'), `Unit ${toUnit[1]}`)
-                                      .replace(new RegExp(`U${fromUnit[1]}`, 'gi'), `U${toUnit[1]}`);
+                                      .replace(new RegExp(`U${fromUnit[1]}`, 'gi'), `U${toUnit[1]}`)
+                                      .replace(new RegExp(` ${fromUnit}`, 'g'), ` ${toUnit}`)
+                                      .replace(new RegExp(`${fromUnit}-`, 'g'), `${toUnit}-`);
+
+            console.log(`Swapping references in value: ${swappedValue}`);
+            console.log(`original value: ${value}`);
+            console.log(`from: ${fromUnit}`);
+            console.log(`to: ${toUnit}`);
         
-            // Check for incorrect unit references after swapping
             const otherUnit = fromUnit === '01' ? '02' : '01';
             const incorrectReferences = [
-                `Unit${otherUnit[1]}`, `UNIT ${otherUnit[1]}`, `UNIT${otherUnit[1]}`, `Unit ${otherUnit[1]}`, `U${otherUnit[1]}`
+                `Unit${otherUnit[1]}`, `UNIT ${otherUnit[1]}`, `UNIT${otherUnit[1]}`, `Unit ${otherUnit[1]}`, `U${otherUnit[1]}`,
+                ` ${fromUnit}`, `${fromUnit}-`
             ];
         
             const hasIncorrectReference = incorrectReferences.some(ref => 
