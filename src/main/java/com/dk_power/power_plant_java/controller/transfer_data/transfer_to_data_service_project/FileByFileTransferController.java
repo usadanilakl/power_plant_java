@@ -48,8 +48,6 @@ public class FileByFileTransferController {
             EquipmentDto equipmentDto = equipmentService.convertToDto(entityById);
             fileDto.setPoints(new ArrayList<>(Collections.singletonList(equipmentDto)));
 
-            System.out.println(fileDto.getPoints().get(0).getTagNumber());
-
             model.addAttribute("file", fileDto);
 
             // Return the name of the HTML template to render

@@ -12,6 +12,7 @@
 
 </head>
 <body>
+        <button id="create-shape-button">Create Shape</button>
         <button id="toggle-menu">Toggle Menu</button>
         <div id="menu-container" style="display: none;"></div>
 
@@ -79,10 +80,15 @@
             document.getElementById('menu-container').appendChild(menu);
 
             const toggleButton = document.getElementById('toggle-menu');
+            const createShapeButton = document.getElementById('create-shape-button');
             const menuContainer = document.getElementById('menu-container');
             
             toggleButton.addEventListener('click', () => {
                 menuContainer.style.display = menuContainer.style.display === 'none' ? 'block' : 'none';
+            });
+
+            createShapeButton.addEventListener('click', () => {
+                createShapeWithPopup();
             });
 
         })
