@@ -705,14 +705,6 @@ let copiedLotoPointInputs;
     
         // Build form for current equipment
         const currentEquipmentForm = createEquipmentFormElement(equipment, 'current');
-        if(currentEquipmentForm){
-            // Add update coordinates button
-            const updateCoordsButton = document.createElement('button');
-            updateCoordsButton.type = 'button';
-            updateCoordsButton.textContent = 'Update Coordinates';
-            updateCoordsButton.onclick = () => updateCoordinates(currentShape);
-            currentEquipmentForm.appendChild(updateCoordsButton);
-        }
     
         // Append elements to the sections wrapper
         currentEquipmentSection.appendChild(currentEquipmentForm);
@@ -820,28 +812,42 @@ let copiedLotoPointInputs;
         }
         
         form.appendChild(lotoPointsContainer);
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.classList.add('button-container');
+        form.appendChild(buttonContainer);
     
         // Add buttons only for the current equipment form
         if (formType === 'current') {
-            const buttonContainer = document.createElement('div');
-            buttonContainer.classList.add('button-container');
-    
-            const addLotoPointButton = document.createElement('button');
-            addLotoPointButton.type = 'button';
-            addLotoPointButton.textContent = 'Add Loto Point';
-            addLotoPointButton.onclick = () => addLotoPointFields(equipment.id, formType);
-            buttonContainer.appendChild(addLotoPointButton);
-    
-            const submitButton = document.createElement('button');
-            submitButton.type = 'submit';
-            submitButton.textContent = 'Update Equipment and Loto Points';
-            buttonContainer.appendChild(submitButton);
-    
-            form.appendChild(buttonContainer);
-    
-            // Add form submission event listener
-            form.addEventListener('submit', handleFormSubmit);
+            // Add update coordinates button
+            const updateCoordsButton = document.createElement('button');
+            updateCoordsButton.type = 'button';
+            updateCoordsButton.textContent = 'Update Coordinates';
+            updateCoordsButton.onclick = () => updateCoordinates(currentShape);
+            buttonContainer.appendChild(updateCoordsButton);
+        }else{
+            // Add button to see other unit's eq details
+            const seeDetailsButton = document.createElement('button');
+            seeDetailsButton.type = 'button';
+            seeDetailsButton.textContent = 'Show other unit Equipment';
+            seeDetailsButton.onclick = () => showOtherUnitEqipment(equipment.id);
+            buttonContainer.appendChild(seeDetailsButton);
         }
+
+        const addLotoPointButton = document.createElement('button');
+        addLotoPointButton.type = 'button';
+        addLotoPointButton.textContent = 'Add Loto Point';
+        addLotoPointButton.onclick = () => addLotoPointFields(equipment.id, formType);
+        buttonContainer.appendChild(addLotoPointButton);
+
+        const submitButton = document.createElement('button');
+        submitButton.type = 'submit';
+        submitButton.textContent = 'Update Equipment and Loto Points';
+        buttonContainer.appendChild(submitButton);
+
+        // Add form submission event listener
+        form.addEventListener('submit', handleFormSubmit);
+
         
         form.querySelectorAll('input, select').forEach(element => {
             addCopyListener(element);
@@ -1014,6 +1020,18 @@ let copiedLotoPointInputs;
         popup.style.padding = '20px';
         popup.style.border = '1px solid black';
         popup.style.zIndex = '1002';
+
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'X';
+        closeButton.style.position = 'absolute';
+        closeButton.style.top = '5px';
+        closeButton.style.right = '5px';
+        closeButton.style.cursor = 'pointer';
+        closeButton.onclick = () => {
+            document.body.removeChild(popup);
+        };
+        popup.appendChild(closeButton);
     
         // Create search input and button
         const searchInput = document.createElement('input');
@@ -1178,6 +1196,114 @@ let copiedLotoPointInputs;
                                   .replace(new RegExp(`U${fromUnit[1]}`, 'gi'), `U${toUnit[1]}`)
                                   .replace(new RegExp(` ${fromUnit}`, 'g'), ` ${toUnit}`)
                                   .replace(new RegExp(`${fromUnit}-`, 'g'), `${toUnit}-`);
+    }
+
+
+    function showOtherUnitEqipment(equipmentId) {
+        // Construct the URL for fetching the HTML content
+        const url = `/other-unit-equipment?equipmentId=${equipmentId}`;
+    
+        // Open a new window with the content
+        // const windowFeatures = "width=1000,height=800";
+        const windowFeatures = "width=1000,height=800,resizable=yes,scrollbars=yes,toolbar=yes,menubar=yes,location=yes";
+        const newWindow = window.open(url, "OtherUnitEquipment", windowFeatures);
+    
+        // Ensure the new window is focused
+        if (newWindow) {
+            newWindow.focus();
+        } else {
+            alert("Pop-up blocker may have prevented opening the new window. Please allow pop-ups for this site.");
+        }
+    }
+    
+    function getOtherUnitPopUp(url, header) { // not used
+        // Create the popup container
+        const popup = document.createElement('div');
+        popup.classList.add('popup');
+        popup.style.position = 'fixed';
+        popup.style.top = '5%';
+        popup.style.left = '5%';
+        popup.style.width = '90%';
+        popup.style.height = '90%';
+        popup.style.backgroundColor = 'white';
+        popup.style.padding = '20px';
+        popup.style.border = '1px solid black';
+        popup.style.zIndex = '1003';
+        popup.style.overflow = 'auto';
+    
+        // Create the header
+        const headerElement = document.createElement('h2');
+        headerElement.textContent = header;
+        popup.appendChild(headerElement);
+    
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'X';
+        closeButton.style.position = 'absolute';
+        closeButton.style.top = '10px';
+        closeButton.style.right = '10px';
+        closeButton.style.cursor = 'pointer';
+        closeButton.onclick = () => {
+            document.body.removeChild(popup);
+        };
+        popup.appendChild(closeButton);
+    
+        // Create content container with unique IDs
+        const contentContainer = document.createElement('div');
+        contentContainer.id = 'other-unit-content';
+        contentContainer.innerHTML = `
+            <div id="popup-picture-container" class="view" data-file-id="">
+                <img src="" usemap="#popup_image_map" id="popup-picture">
+                <map name="popup_image_map" id="popup-map"></map>
+            </div>
+        `;
+        popup.appendChild(contentContainer);
+    
+        // Add popup to body
+        document.body.appendChild(popup);
+    
+        // Fetch and insert the HTML content
+        fetch(url)
+            .then(response => response.text())
+            .then(data => {
+                const parser = new DOMParser();
+                const htmlDoc = parser.parseFromString(data, 'text/html');
+                
+                // Extract the picture src and map data
+                const pictureSrc = htmlDoc.querySelector('#picture').src;
+                const mapData = htmlDoc.querySelector('#map').innerHTML;
+    
+                // Update the popup content
+                const popupPicture = popup.querySelector('#popup-picture');
+                popupPicture.src = pictureSrc;
+                popup.querySelector('#popup-map').innerHTML = mapData;
+    
+                // Setup event listeners
+                const popupPictureContainer = popup.querySelector('#popup-picture-container');
+                popupPictureContainer.addEventListener('mousedown', (event) => {
+                    if (event.button === 0) {
+                        event.preventDefault();
+                        relocateHighlightsWithPicture(event);
+                    }
+                });
+    
+                popupPictureContainer.addEventListener('touchstart', (event) => {
+                    if (event.target.tagName === "INPUT") return;
+                    event.preventDefault();
+                    relocateHighlightsWithPictureDoubleTap(event);
+                });
+    
+                const zoom = zoomPicture.bind(null, popupPicture);
+                popupPictureContainer.addEventListener('wheel', zoom);
+                popupPictureContainer.addEventListener('touchstart', zoomPictureTouch);
+    
+                // Load shapes and other interactive elements
+                loadShapes(popup.querySelector('#popup-map'));
+            })
+            .catch(error => {
+                console.error('Error fetching other unit equipment:', error);
+                contentContainer.innerHTML = '<p>Error loading content. Please try again.</p>';
+            });
     }
 
 
