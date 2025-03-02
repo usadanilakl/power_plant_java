@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.ConflictService;
 import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.LotoPointTransferService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
@@ -116,5 +117,12 @@ public class PointByPointRestController {
     public ResponseEntity<List<LotoPointDto>> searchLotoPoints(@RequestParam String term) {
         List<LotoPointDto> searchResults = lotoPointService.getByTagNumber(term.trim());
         return ResponseEntity.ok(searchResults);
+    }
+
+    @GetMapping("create-from-loto-point/{lpId}/{currentEqId}")
+    public ResponseEntity<EquipmentDto> createPointFromLotoPoint(@PathVariable String lpId, @PathVariable String currentEqId){
+        Equipment eq = equipmentService.createPointFromLotoPoint(lpId, currentEqId);
+        return ResponseEntity.ok(equipmentService.convertToDto(eq));
+
     }
 }

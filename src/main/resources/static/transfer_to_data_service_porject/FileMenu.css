@@ -1,8 +1,15 @@
-#toggle-menu {
+#topControls {
     position: fixed;
     top: 10px;
     left: 10px;
-    z-index: 1001;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 1000;
+}
+
+#toggle-menu {
     padding: 5px 10px;
     background-color: #007bff;
     color: white;
@@ -11,18 +18,30 @@
     cursor: pointer;
 }
 
+#shapeControls {
+    display: flex;
+    gap: 10px;
+}
+
+#shapeControls button {
+    padding: 5px 10px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
 #menu-container {
     position: fixed;
-    top: 50px; /* Positioned below the toggle button */
+    top: 50px;
     left: 10px;
-    z-index: 1000;
-    max-height: calc(100vh - 60px); /* Full height minus space for the button */
-    width: 250px;
-    overflow-y: auto;
-    background-color: rgba(255, 255, 255, 0.9);
+    z-index: 999;
+    background-color: white;
+    border: 1px solid #ddd;
     border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    display: none; /* Hidden by default */
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 .file-menu-class {

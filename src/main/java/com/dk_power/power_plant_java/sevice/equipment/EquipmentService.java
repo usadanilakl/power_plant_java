@@ -37,4 +37,6 @@ public interface EquipmentService extends CrudService<Equipment, EquipmentDto, E
     Collection<Equipment> getEntityByTagNumber(String otherUnitTag);
 
     List<Equipment> getByDataServiceItemIdIsNull();
+
+    Equipment createPointFromLotoPoint(String lpId, String currentEqId);
 }

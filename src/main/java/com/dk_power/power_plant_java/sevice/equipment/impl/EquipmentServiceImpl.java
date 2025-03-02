@@ -14,6 +14,7 @@ import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointMergeService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileServiceImpl;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,6 @@ public class EquipmentServiceImpl implements EquipmentService {
     private final FileServiceImpl fileService;
     private final LotoPointService lotoPointService;
     private final LotoPointMergeService lotoPointMergeService;
-
 
 
     @Override
@@ -61,7 +61,8 @@ public class EquipmentServiceImpl implements EquipmentService {
     public SessionFactory getSessionFactory() {
         return sessionFactory;
     }
-    public List<Equipment> getByCoords(String coord){
+
+    public List<Equipment> getByCoords(String coord) {
         return equipmentRepo.findByCoordinates(coord);
     }
 
@@ -70,34 +71,36 @@ public class EquipmentServiceImpl implements EquipmentService {
 
         List<Equipment> points = equipmentRepo.findByCoordinates(transfer.getCoordinates());
         for (Equipment point : points) {
-            if(
+            if (
                     point != null &&
-                    point.getTagNumber()!=null &&
-                    transfer.getTagNumber()!=null &&
-                    point.getTagNumber().equals(transfer.getTagNumber())
-                ) {
-                    transfer.setId(point.getId());
-                }
+                            point.getTagNumber() != null &&
+                            transfer.getTagNumber() != null &&
+                            point.getTagNumber().equals(transfer.getTagNumber())
+            ) {
+                transfer.setId(point.getId());
+            }
         }
 
-        if(transfer.getVendor()!=null) transfer.setVendor(valueService.valueSetup("Vendor",transfer.getVendor().getName()) );
-        if(transfer.getEqType()!=null) transfer.setEqType(valueService.valueSetup("Equipment Type",transfer.getEqType().getName()) );
+        if (transfer.getVendor() != null)
+            transfer.setVendor(valueService.valueSetup("Vendor", transfer.getVendor().getName()));
+        if (transfer.getEqType() != null)
+            transfer.setEqType(valueService.valueSetup("Equipment Type", transfer.getEqType().getName()));
 
 
         FileObject file = null;
         List<FileObject> files = fileService.getIfNumberContains(transfer.getPid());
 
-        if(files!=null && files.size()==1)  file = files.get(0);
-        else if(files!=null&&files.size()>1){
+        if (files != null && files.size() == 1) file = files.get(0);
+        else if (files != null && files.size() > 1) {
             for (FileObject e : files) {
-                if( e.getVendor().getName().equals(transfer.getVendor().getName())) file = e;
+                if (e.getVendor().getName().equals(transfer.getVendor().getName())) file = e;
             }
         }
 
-        if(file==null){
+        if (file == null) {
             file = new FileObject();
             file.setFileNumber(transfer.getPid());
-            System.out.println(file.getFileNumber()+" is null");
+            System.out.println(file.getFileNumber() + " is null");
         }
         file.addPoint(transfer);
         save(transfer);
@@ -112,19 +115,18 @@ public class EquipmentServiceImpl implements EquipmentService {
         List<Equipment> byTagNumber = equipmentRepo.findByTagNumber(tagNumber);
         String descr = "";
         String loc = "";
-        for(Equipment e:byTagNumber){
+        for (Equipment e : byTagNumber) {
 //            if(e.getDescription()!=null) System.out.println(e.getDescription());
 //            if(e.getEqType()!=null) System.out.println(e.getEqType().getId());
 //            if(e.getSystem()!=null) System.out.println(e.getSystem().getId());
 //            if(e.getSpecificLocation()!=null) System.out.println(e.getSpecificLocation());
-            if(e.getLocation()!=null) loc +=e.getLocation().getId()+", ";
-            descr += e.getDescription()+",";
+            if (e.getLocation() != null) loc += e.getLocation().getId() + ", ";
+            descr += e.getDescription() + ",";
 
         }
 
         System.out.println(descr);
         System.out.println(loc);
-
 
 
     }
@@ -134,7 +136,7 @@ public class EquipmentServiceImpl implements EquipmentService {
         return equipmentRepo.findByTagNumber(tag);
     }
 
-    public void saveAllForTransfer(List<Equipment> transfers){
+    public void saveAllForTransfer(List<Equipment> transfers) {
         transfers.forEach(this::saveForTransfer);
     }
 
@@ -142,6 +144,7 @@ public class EquipmentServiceImpl implements EquipmentService {
     public EquipmentDto convertToDto(Equipment entity) {
         return getMapper().convertToDto(entity);
     }
+
     @Override
     public Equipment convertToEntity(EquipmentDto dto) {
         return getMapper().convertToEntity(dto);
@@ -149,7 +152,7 @@ public class EquipmentServiceImpl implements EquipmentService {
 
     @Override
     public Equipment update(Equipment entity) {
-        if(entity!=null){
+        if (entity != null) {
             Set<LotoPoint> savedLotoPoints = new HashSet<>();
             for (LotoPoint lotoPoint : entity.getLotoPoints()) {
                 lotoPoint.getEquipmentList().add(entity);
@@ -163,6 +166,7 @@ public class EquipmentServiceImpl implements EquipmentService {
         }
         return save(entity);
     }
+
     @Override
     public Equipment update(String id) {
         return EquipmentService.super.update(id);
@@ -209,7 +213,7 @@ public class EquipmentServiceImpl implements EquipmentService {
 //        return equipmentRepo.save(entity);
 //    }
 
-//    @Override
+    //    @Override
 //    public Equipment save(EquipmentDto dto) {
 //        Equipment entity = convertToEntity(dto);
 //        return save(entity);
@@ -218,21 +222,25 @@ public class EquipmentServiceImpl implements EquipmentService {
     public List<Equipment> getByVendor(Value oldVal) {
         return equipmentRepo.findByVendor(oldVal);
     }
+
     @Override
     public List<Equipment> getByEqType(Value oldVal) {
         return equipmentRepo.findByEqType(oldVal);
     }
+
     @Override
-    public List<Equipment> getByEqType(String type){
-        Value value  = valueService.getByName(type).stream().filter(v -> v.getName().equals(type)).findFirst().orElse(null);
-        if(value==null) return new ArrayList<>();
+    public List<Equipment> getByEqType(String type) {
+        Value value = valueService.getByName(type).stream().filter(v -> v.getName().equals(type)).findFirst().orElse(null);
+        if (value == null) return new ArrayList<>();
         return equipmentRepo.findByEqType(value);
 
     }
+
     @Override
     public List<Equipment> getBySystem(Value oldVal) {
         return equipmentRepo.findBySystem(oldVal);
     }
+
     @Override
     public List<Equipment> getByLocation(Value oldVal) {
         return equipmentRepo.findByLocation(oldVal);
@@ -242,10 +250,10 @@ public class EquipmentServiceImpl implements EquipmentService {
     public List<Equipment> getByValue(Value val) {
         List<Equipment> result = new ArrayList<>();
         String cat = val.getCategory().getAlias();
-        if(cat.equals("vendor")) result.addAll(getByVendor(val));
-        if(cat.equals("system")) result.addAll(getBySystem(val));
-        if(cat.equals("eqType")) result.addAll(getByEqType(val));
-        if(cat.equals("location")) result.addAll(getByLocation(val));
+        if (cat.equals("vendor")) result.addAll(getByVendor(val));
+        if (cat.equals("system")) result.addAll(getBySystem(val));
+        if (cat.equals("eqType")) result.addAll(getByEqType(val));
+        if (cat.equals("location")) result.addAll(getByLocation(val));
         return result;
     }
 
@@ -266,51 +274,52 @@ public class EquipmentServiceImpl implements EquipmentService {
         String destDescription = "";
         String docNum = "";
 
-        if(sourceTagNumber.startsWith("01")){
-            if(sourcePoint.getVendor().getName().equalsIgnoreCase("kiewit")) docNum = sourcePoint.getMainFile().getFileNumber().replace('A','B');
-            destenationTagNumber = "02"+sourceTagNumber.substring(2);
-            if(sourcePoint.getDescription()!=null)destDescription = Arrays.stream(sourcePoint.getDescription().split(" ")).map(e->{
-                        if(e.startsWith("01")) return e = "02"+e.substring(2);
-                        else return e;
-                    }).toList().toString()
-                    .replaceAll("Unit1", "Unit2")
-                    .replaceAll("Unit 1", "Unit 2")
-                    .replaceAll("U1", "U2")
-                    .replace("[","")
-                    .replace("]","")
-                    .replace(",","");
-        }
-        else if (sourceTagNumber.startsWith("02")){
-            destenationTagNumber = "01"+sourceTagNumber.substring(2);
+        if (sourceTagNumber.startsWith("01")) {
+            if (sourcePoint.getVendor().getName().equalsIgnoreCase("kiewit"))
+                docNum = sourcePoint.getMainFile().getFileNumber().replace('A', 'B');
+            destenationTagNumber = "02" + sourceTagNumber.substring(2);
+            if (sourcePoint.getDescription() != null)
+                destDescription = Arrays.stream(sourcePoint.getDescription().split(" ")).map(e -> {
+                            if (e.startsWith("01")) return e = "02" + e.substring(2);
+                            else return e;
+                        }).toList().toString()
+                        .replaceAll("Unit1", "Unit2")
+                        .replaceAll("Unit 1", "Unit 2")
+                        .replaceAll("U1", "U2")
+                        .replace("[", "")
+                        .replace("]", "")
+                        .replace(",", "");
+        } else if (sourceTagNumber.startsWith("02")) {
+            destenationTagNumber = "01" + sourceTagNumber.substring(2);
 
-            if(sourcePoint.getDescription()!=null){
-                destDescription = Arrays.stream(sourcePoint.getDescription().split(" ")).map(e->{
-                            if(e.startsWith("02")) return e = "01"+e.substring(2);
+            if (sourcePoint.getDescription() != null) {
+                destDescription = Arrays.stream(sourcePoint.getDescription().split(" ")).map(e -> {
+                            if (e.startsWith("02")) return e = "01" + e.substring(2);
                             else return e;
                         }).toList().toString()
                         .replaceAll("Unit2", "Unit1")
                         .replaceAll("Unit 2", "Unit 1")
                         .replaceAll("U2", "U1")
-                        .replace("[","")
-                        .replace("]","")
-                        .replace(",","");
+                        .replace("[", "")
+                        .replace("]", "")
+                        .replace(",", "");
             }
         }
         processedEq.setTagNumber(destenationTagNumber);
         processedEq.setDescription(destDescription);
-        if(docNum!=""){
+        if (docNum != "") {
 //            List<FileObject> files = fileService.getIfNumberContains(docNum);
 //            if(files!=null && files.size()!=0)processedEq.setMainFile(files.get(0));
         }
         Set<LotoPoint> lotoPoints = sourcePoint.getLotoPoints();
-        if(lotoPoints!=null){
+        if (lotoPoints != null) {
             for (LotoPoint lp : lotoPoints) {
-                List<LotoPoint> points =(List<LotoPoint>) lotoPointMergeService.copyPointFromOtherUnit(lp.getId()).get("Match");
+                List<LotoPoint> points = (List<LotoPoint>) lotoPointMergeService.copyPointFromOtherUnit(lp.getId()).get("Match");
                 processedEq.getLotoPoints().addAll(points);
             }
         }
         List<Equipment> byTagNumber = getByTagNumber(destenationTagNumber);
-        if(byTagNumber==null || byTagNumber.size()==0) return save(processedEq);
+        if (byTagNumber == null || byTagNumber.size() == 0) return save(processedEq);
         else return null;
 
     }
@@ -338,19 +347,23 @@ public class EquipmentServiceImpl implements EquipmentService {
     @Override
     public void assignEqTypeByTagContaining() {
         for (Equipment e : getAll()) {
-            if(e.getEqType() == null){
-                if(e.getTagNumber().contains("-CPL-")) e.setEqType(valueService.valueSetup("Equipment Type","CONTROL PANEL"));
-                if(e.getTagNumber().contains("-MPM-") || e.getTagNumber().contains("-PMP-")) e.setEqType(valueService.valueSetup("Equipment Type","Pump"));
-                if(e.getTagNumber().contains("-SKD-") || e.getTagNumber().contains("-PMP-")) e.setEqType(valueService.valueSetup("Equipment Type","SKID"));
-                if(e.getTagNumber().contains("-VINA-") || e.getTagNumber().contains("-VPDR-")) e.setEqType(valueService.valueSetup("Equipment Type","Manual Valve"));
-                if(e.getTagNumber().contains("-TCV-") ||
+            if (e.getEqType() == null) {
+                if (e.getTagNumber().contains("-CPL-"))
+                    e.setEqType(valueService.valueSetup("Equipment Type", "CONTROL PANEL"));
+                if (e.getTagNumber().contains("-MPM-") || e.getTagNumber().contains("-PMP-"))
+                    e.setEqType(valueService.valueSetup("Equipment Type", "Pump"));
+                if (e.getTagNumber().contains("-SKD-") || e.getTagNumber().contains("-PMP-"))
+                    e.setEqType(valueService.valueSetup("Equipment Type", "SKID"));
+                if (e.getTagNumber().contains("-VINA-") || e.getTagNumber().contains("-VPDR-"))
+                    e.setEqType(valueService.valueSetup("Equipment Type", "Manual Valve"));
+                if (e.getTagNumber().contains("-TCV-") ||
                         e.getTagNumber().contains("-FCV-") ||
                         e.getTagNumber().contains("-PCV-") ||
                         e.getTagNumber().contains("-YV-") ||
                         e.getTagNumber().contains("-YCV-") ||
                         e.getTagNumber().contains("-LV-")
-                )e.setEqType(valueService.valueSetup("Equipment Type","AOV"));
-                if(e.getTagNumber().contains("-LV-")) e.setEqType(valueService.valueSetup("Equipment Type","FCV"));
+                ) e.setEqType(valueService.valueSetup("Equipment Type", "AOV"));
+                if (e.getTagNumber().contains("-LV-")) e.setEqType(valueService.valueSetup("Equipment Type", "FCV"));
             }
             save(e);
         }
@@ -367,13 +380,60 @@ public class EquipmentServiceImpl implements EquipmentService {
     }
 
     @Override
+    public Equipment createPointFromLotoPoint(String lpId, String currentEqId) {
+        LotoPoint lotoPoint = lotoPointService.getEntityById(lpId);
+        if (lotoPoint == null) {
+            throw new EntityNotFoundException("LotoPoint not found with id: " + lpId);
+        }
+        Equipment currentEq = getEntityById(currentEqId);
+        if (currentEq == null) {
+            throw new EntityNotFoundException("Equipment not found with id: " + currentEqId);
+        }
+
+        Equipment e = new Equipment();
+        e.setSystem(currentEq.getSystem());
+        e.setLocation(currentEq.getLocation());
+        e.setVendor(currentEq.getVendor());
+        e.setEqType(currentEq.getEqType());
+        e.setTagNumber(lotoPoint.getTagNumber());
+        e.setDescription(lotoPoint.getDescription());
+        e.setMainFile(currentEq.getMainFile());
+        e.setFiles(new ArrayList<>(currentEq.getFiles()));
+        e.setLotoPoints(new HashSet<>(Collections.singletonList(lotoPoint)));
+
+        String coordinates = currentEq.getCoordinates();
+        if (coordinates != null && !coordinates.isEmpty()) {
+            String[] parts = coordinates.split(",");
+            if (parts.length >= 1) {
+                parts[0] = "startX:0";
+                coordinates = String.join(",", parts);
+            }
+        }
+        e.setCoordinates(coordinates);
+        e.setOriginalPictureSize(currentEq.getOriginalPictureSize());
+
+        Equipment savedEquipment = save(e);
+
+        currentEq.getLotoPoints().remove(lotoPoint);
+        lotoPoint.getEquipmentList().remove(currentEq);
+        lotoPoint.getEquipmentList().add(savedEquipment);
+
+        save(currentEq);
+        lotoPointService.save(lotoPoint);
+        currentEq.getMainFile().addPoint(savedEquipment);
+        fileService.save(currentEq.getMainFile());
+
+        return savedEquipment;
+    }
+
+    @Override
     public void refactor(Value old, Value _new) {
         String cat = old.getCategory().getAlias();
         for (Equipment f : getByValue(old)) {
-            if(cat.equals("vendor"))f.setVendor(_new);
-            if(cat.equals("system"))f.setSystem(_new);
-            if(cat.equals("eqType"))f.setEqType(_new);
-            if(cat.equals("location"))f.setLocation(_new);
+            if (cat.equals("vendor")) f.setVendor(_new);
+            if (cat.equals("system")) f.setSystem(_new);
+            if (cat.equals("eqType")) f.setEqType(_new);
+            if (cat.equals("location")) f.setLocation(_new);
             save(f);
         }
     }

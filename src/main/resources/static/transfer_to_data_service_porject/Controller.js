@@ -51,3 +51,9 @@ async function getConflict(pointId){
     const data = await resp.json();
     return data;
 }
+
+async function createEquipmentFromLotoPoint(lpId, currentEquipmentId){
+    const resp = await fetch(`/api/point-by-point/create-from-loto-point/${lpId}/${currentEquipmentId}`);
+    if (!resp.ok) throw new Error('Failed to create equipment from LOTO point');
+    return resp.json();
+}

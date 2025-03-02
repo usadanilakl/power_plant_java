@@ -691,14 +691,19 @@ function createAreaElement(area){
     return newArea;
 }
 function getAreaCoordinates(coord){
-    let arr = coord.split(",");
-    let result = 
-    arr[0].substring(arr[0].indexOf(":")+1)+","+
-    arr[1].substring(arr[1].indexOf(":")+1)+","+
-    arr[2].substring(arr[2].indexOf(":")+1)+","+
-    arr[3].substring(arr[3].indexOf(":")+1);
+    try{
+        let arr = coord.split(",");
+        let result = 
+        arr[0].substring(arr[0].indexOf(":")+1)+","+
+        arr[1].substring(arr[1].indexOf(":")+1)+","+
+        arr[2].substring(arr[2].indexOf(":")+1)+","+
+        arr[3].substring(arr[3].indexOf(":")+1);
 
-    return result;
+        return result;
+    }catch(e){
+        console.error(e);
+        return "0,0,0,0";
+    }
 }
 function resizeAreas(){
     
@@ -801,6 +806,7 @@ function createHighlight(area){
                     console.log("Single click on highlight");
                     currentShape.shape = highlight;
                     currentShape.coordinates = getShapeCoordinatesOnPicture(highlight);
+                    currentShape.originalPictureSize = getOriginalPictureSize();
                     await displayEquipmentWithConflict(highlight.dataset.pointId);
                 }, clickDelay);
             } else {
@@ -820,11 +826,16 @@ function createHighlight(area){
     return highlight;
 }
 function getOriginalPictureSizes(originalPictureSize){
-    let arr = originalPictureSize.split(",");
-    let w = arr[0].substring(arr[0].indexOf(":")+1);
-    let h = arr[1].substring(arr[1].indexOf(":")+1);
-    originalWidth = w;
-    return {w:w,h:h}
+    try{
+        let arr = originalPictureSize.split(",");
+        let w = arr[0].substring(arr[0].indexOf(":")+1);
+        let h = arr[1].substring(arr[1].indexOf(":")+1);
+        originalWidth = w;
+        return {w:w,h:h}
+    }catch(e){
+        console.error("Error parsing original picture size: ",e);
+        return {w:0,h:0}
+    }
 }
 function removeAllHighlights(){
     document.querySelectorAll('.areaHighlights').forEach(e=>{

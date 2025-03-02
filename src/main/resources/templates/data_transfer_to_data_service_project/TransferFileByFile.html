@@ -12,9 +12,15 @@
 
 </head>
 <body>
-        <button id="create-shape-button">Create Shape</button>
+    <div id="topControls">
         <button id="toggle-menu">Toggle Menu</button>
-        <div id="menu-container" style="display: none;"></div>
+        <div id="shapeControls">
+            <button id="create-shape-button" onclick="createShapeWithPopup()">Create Shape</button>
+            <button id="rotate-shape-button" onclick="rotateSelectedShape()">Rotate Shape</button>
+            <button id="delete-shape-button" onclick="deleteSelectedShape()">Delete Shape</button>
+        </div>
+    </div>
+    <div id="menu-container" style="display: none;"></div>
 
         <main>
             
@@ -85,10 +91,6 @@
             
             toggleButton.addEventListener('click', () => {
                 menuContainer.style.display = menuContainer.style.display === 'none' ? 'block' : 'none';
-            });
-
-            createShapeButton.addEventListener('click', () => {
-                createShapeWithPopup();
             });
 
         })

@@ -1,5 +1,6 @@
 const originalPictureSize = {width:document.getElementById('picture').naturalWidth, height:document.getElementById('picture').naturalHeight};
 let shapeRelocationIsEnabled = false;
+let selectedShape = null;
 
 function getCurrentPictureSize(){
     return {width:document.getElementById('picture').width, height:document.getElementById('picture').height};
@@ -85,6 +86,9 @@ function enableShapeDrag(shape) {
     }
 }
 
+
+
+//DRAWING FUNCTIONS
 function createShapeWithPopup() {
     // Create and show the popup
     const popup = document.createElement('div');
@@ -141,6 +145,31 @@ function startDrawingShape(shapeType, shapeColor) {
         shape.style.border = `2px solid ${shapeColor}`;
         shape.style.backgroundColor = shapeColor + '40'; // 40 is for 25% opacity
         document.body.appendChild(shape);
+
+        let clickTimer = null;
+        let clickDelay = 300; // milliseconds
+
+        shape.addEventListener('click', async (event) => {
+            event.preventDefault();
+            if (clickTimer === null) {
+                clickTimer = setTimeout(async function() {
+                    clickTimer = null;
+                    selectedShape = shape;//USED FOR ROATION
+                    currentShape.shape = shape;
+                    currentShape.coordinates = getShapeCoordinatesOnPicture(shape);
+                    currentShape.originalPictureSize = getOriginalPictureSize();
+                }, clickDelay);
+            } else {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+                console.log("Double click on highlight");
+                shapeRelocationIsEnabled = !shapeRelocationIsEnabled;
+                console.log("Shape relocation is enabled " + shapeRelocationIsEnabled);
+            }
+        });
+    
+        enableShapeDrag(shape);
+        activeHighlights.push(shape);
     }
 
     function drawShape(e) {
@@ -231,6 +260,28 @@ function rotateShape(shape) {
         } else {
             shape.style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
         }
+    }
+}
+
+function rotateSelectedShape() {
+    if (selectedShape) {
+        rotateShape(selectedShape);
+    } else {
+        console.log("No shape selected");
+    }
+}
+
+function deleteShape(shape){
+    document.body.removeChild(shape);
+    console.log("Shape deleted");
+}
+
+function deleteSelectedShape(){
+    if (selectedShape) {
+        deleteShape(selectedShape);
+        selectedShape = null;
+    } else {
+        console.log("No shape selected");
     }
 }
 

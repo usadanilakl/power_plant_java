@@ -645,7 +645,7 @@ let copiedLotoPointInputs;
 
 
 
-    //New Form Building Functions
+    //Form Building Functions
 
     function buildEquipmentForm(equipment) {
         const container = document.getElementById('equipmentFormsContainer');
@@ -773,7 +773,9 @@ let copiedLotoPointInputs;
         fileLabel.htmlFor = `${equipment.id}_mainFile`;
         fileLabel.textContent = 'File Number:';
     
-        const filePath = equipment.files && equipment.files.length > 0 ? equipment.files[0].fileLink : '';
+        const file = equipment.files && equipment.files.length > 0 ? equipment.files[0] : null;
+        const filePath = equipment.mainFile? equipment.mainFile :  file ? file.fileLink : '';
+        // const filePath = equipment.files && equipment.files.length > 0 ? equipment.files[0].fileLink : '';
         const fileNumber = filePath.substring(filePath.lastIndexOf('/') + 1);
     
         const fileInput = document.createElement('input');
@@ -825,13 +827,15 @@ let copiedLotoPointInputs;
             updateCoordsButton.textContent = 'Update Coordinates';
             updateCoordsButton.onclick = () => updateCoordinates(currentShape);
             buttonContainer.appendChild(updateCoordsButton);
-        }else{
+        }else if(formType !== 'new')  {
             // Add button to see other unit's eq details
             const seeDetailsButton = document.createElement('button');
             seeDetailsButton.type = 'button';
             seeDetailsButton.textContent = 'Show other unit Equipment';
             seeDetailsButton.onclick = () => showOtherUnitEqipment(equipment.id);
             buttonContainer.appendChild(seeDetailsButton);
+        }else if(formType === 'new') {
+
         }
 
         const addLotoPointButton = document.createElement('button');
@@ -971,7 +975,7 @@ let copiedLotoPointInputs;
         copyButton.type = 'button';
         lotoPointDiv.appendChild(copyButton);
 
-        //Past button
+        //Paste button
         const pastButton = document.createElement('button');
         pastButton.textContent = 'Past';
         pastButton.addEventListener('click', () => {pasteLotoPointFields(lotoPointDiv)});
@@ -992,6 +996,15 @@ let copiedLotoPointInputs;
         removeButton.type = 'button';
         lotoPointDiv.appendChild(removeButton);
 
+        //Create ewuipment from loto point button
+        if(formType === 'current')  {       
+            const ewuipmentButton = document.createElement('button');
+            ewuipmentButton.textContent = 'Create Eq';
+            ewuipmentButton.addEventListener('click', async () => {await createNewEquipment(lotoPoint.id, equipmentId)});
+            ewuipmentButton.type = 'button';
+            lotoPointDiv.appendChild(ewuipmentButton);
+        }
+
 
         lotoPointDiv.querySelectorAll('input, select').forEach(element => {
             addCopyListener(element);
@@ -1007,6 +1020,8 @@ let copiedLotoPointInputs;
         const lotoPointDiv = createLotoPointFields(equipmentId, formType, lotoPointIndex);
         lotoPointsContainer.appendChild(lotoPointDiv);
     }
+
+    //LOTO POINT EDIT FUNCTIONS
 
     function editLotoPoint(lotoPointDiv) {
         // Create popup window
@@ -1198,6 +1213,7 @@ let copiedLotoPointInputs;
                                   .replace(new RegExp(`${fromUnit}-`, 'g'), `${toUnit}-`);
     }
 
+    //OTHER UNIT EQUIPMENT FUNCTIONS
 
     function showOtherUnitEqipment(equipmentId) {
         // Construct the URL for fetching the HTML content
@@ -1304,6 +1320,55 @@ let copiedLotoPointInputs;
                 console.error('Error fetching other unit equipment:', error);
                 contentContainer.innerHTML = '<p>Error loading content. Please try again.</p>';
             });
+    }
+
+    //NEW EQUIPMENT FUNCTIONS
+
+    async function createNewEquipment(lpId, currentEquipmentId){
+        //Remove existing popups
+        closeEquipmentFormsPopup();
+        //Send loto point id to server and Create new equipment on the server and Return new equipment to client
+        const newEquipment = await createEquipmentFromLotoPoint(lpId, currentEquipmentId);
+        //Show new equipment popup to user
+        console.log('New equipment created:', newEquipment);
+        showNewEquipmentPopup(newEquipment);
+        //allow user to draw and position new shape
+        //assign shape details to new equipment
+        //submit.
+    }
+
+    function showNewEquipmentPopup(equipment) {
+        // Create a popup container
+        const popup = document.createElement('div');
+        popup.id = 'newEquipmentPopup';
+        popup.style.position = 'fixed';
+        popup.style.right = '0';
+        popup.style.top = '0';
+        popup.style.width = '300px'; // Adjust width as needed
+        popup.style.height = '100%';
+        popup.style.backgroundColor = 'white';
+        popup.style.padding = '20px';
+        popup.style.border = '1px solid #ccc';
+        popup.style.boxShadow = '-2px 0 10px rgba(0,0,0,0.1)';
+        popup.style.zIndex = '1000';
+        popup.style.overflowY = 'auto';
+    
+        // Create and add the equipment form
+        const form = createEquipmentFormElement(equipment, 'new');
+        popup.appendChild(form);
+    
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'Close';
+        closeButton.style.marginTop = '10px';
+        closeButton.onclick = () => {
+            document.body.removeChild(popup);
+        };
+        popup.appendChild(closeButton);
+    
+        // Add popup to body
+        document.body.appendChild(popup);
+
     }
 
 
