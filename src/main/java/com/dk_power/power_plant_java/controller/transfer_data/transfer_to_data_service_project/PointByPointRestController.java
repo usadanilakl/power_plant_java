@@ -119,9 +119,9 @@ public class PointByPointRestController {
         return ResponseEntity.ok(searchResults);
     }
 
-    @GetMapping("create-from-loto-point/{lpId}/{currentEqId}")
-    public ResponseEntity<EquipmentDto> createPointFromLotoPoint(@PathVariable String lpId, @PathVariable String currentEqId){
-        Equipment eq = equipmentService.createPointFromLotoPoint(lpId, currentEqId);
+    @PostMapping("create-from-loto-point")
+    public ResponseEntity<EquipmentDto> createPointFromLotoPoint(@RequestBody Map<String, String> requestParams) {
+        Equipment eq = equipmentService.createPointFromLotoPoint(requestParams);
         return ResponseEntity.ok(equipmentService.convertToDto(eq));
 
     }

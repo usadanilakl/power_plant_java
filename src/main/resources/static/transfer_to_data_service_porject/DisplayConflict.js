@@ -2,6 +2,7 @@ let equipmentFormsPopup = document.getElementById('equipmentFormsPopup');
 let closePopup = document.getElementsByClassName('close-popup')[0];
 let currentEquipmentData = {};
 let copiedLotoPointInputs;
+let newEquipmentData = {};
 
     // Function to open the popup
     function openEquipmentFormsPopup() {
@@ -820,7 +821,7 @@ let copiedLotoPointInputs;
         form.appendChild(buttonContainer);
     
         // Add buttons only for the current equipment form
-        if (formType === 'current') {
+        if (formType === 'current' && formType === 'new') {
             // Add update coordinates button
             const updateCoordsButton = document.createElement('button');
             updateCoordsButton.type = 'button';
@@ -998,11 +999,15 @@ let copiedLotoPointInputs;
 
         //Create ewuipment from loto point button
         if(formType === 'current')  {       
-            const ewuipmentButton = document.createElement('button');
-            ewuipmentButton.textContent = 'Create Eq';
-            ewuipmentButton.addEventListener('click', async () => {await createNewEquipment(lotoPoint.id, equipmentId)});
-            ewuipmentButton.type = 'button';
-            lotoPointDiv.appendChild(ewuipmentButton);
+            const newuipmentButton = document.createElement('button');
+            newuipmentButton.textContent = 'Create Eq';
+            newuipmentButton.addEventListener('click', async () => {
+                saveLpIdAndEqId(lotoPoint.id, equipmentId);
+                closeEquipmentFormsPopup();
+                createShapeWithPopup(createNewEquipment);
+            });
+            newuipmentButton.type = 'button';
+            lotoPointDiv.appendChild(newuipmentButton);
         }
 
 
@@ -1324,17 +1329,20 @@ let copiedLotoPointInputs;
 
     //NEW EQUIPMENT FUNCTIONS
 
-    async function createNewEquipment(lpId, currentEquipmentId){
-        //Remove existing popups
-        closeEquipmentFormsPopup();
+    async function createNewEquipment(){
         //Send loto point id to server and Create new equipment on the server and Return new equipment to client
-        const newEquipment = await createEquipmentFromLotoPoint(lpId, currentEquipmentId);
-        //Show new equipment popup to user
-        console.log('New equipment created:', newEquipment);
+        const { shape, ...currentShapeWithoutShape } = deepClone(currentShape);
+        fullEquipmentData = {
+            ...deepClone(newEquipmentData),
+            ...currentShapeWithoutShape
+        };
+        const newEquipment = await createEquipmentFromLotoPoint(fullEquipmentData);
         showNewEquipmentPopup(newEquipment);
-        //allow user to draw and position new shape
-        //assign shape details to new equipment
-        //submit.
+    }
+
+    function saveLpIdAndEqId(lpId, eqId) {
+        newEquipmentData.lpId = lpId;
+        newEquipmentData.eqId = eqId;
     }
 
     function showNewEquipmentPopup(equipment) {
@@ -1369,6 +1377,25 @@ let copiedLotoPointInputs;
         // Add popup to body
         document.body.appendChild(popup);
 
+    }
+
+
+    function deepClone(obj) {
+        if (obj === null || typeof obj !== 'object') {
+            return obj;
+        }
+    
+        if (Array.isArray(obj)) {
+            return obj.map(deepClone);
+        }
+    
+        const clonedObj = {};
+        for (let key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                clonedObj[key] = deepClone(obj[key]);
+            }
+        }
+        return clonedObj;
     }
 
 

@@ -89,7 +89,7 @@ function enableShapeDrag(shape) {
 
 
 //DRAWING FUNCTIONS
-function createShapeWithPopup() {
+function createShapeWithPopup(callback) {
     // Create and show the popup
     const popup = document.createElement('div');
     popup.innerHTML = `
@@ -112,11 +112,11 @@ function createShapeWithPopup() {
         const shapeType = document.getElementById('shapeType').value;
         const shapeColor = document.getElementById('shapeColor').value;
         document.body.removeChild(popup);
-        startDrawingShape(shapeType, shapeColor);
+        startDrawingShape(shapeType, shapeColor,callback);
     });
 }
 
-function startDrawingShape(shapeType, shapeColor) {
+function startDrawingShape(shapeType, shapeColor, callback) {
     let isDrawing = false;
     let shape;
     let startX, startY;
@@ -133,7 +133,7 @@ function startDrawingShape(shapeType, shapeColor) {
 
     drawingLayer.addEventListener('mousedown', startShape);
     drawingLayer.addEventListener('mousemove', drawShape);
-    drawingLayer.addEventListener('mouseup', endShape);
+    drawingLayer.addEventListener('mouseup', async (e)=> await endShape(e));
 
     function startShape(e) {
         isDrawing = true;
@@ -212,7 +212,7 @@ function startDrawingShape(shapeType, shapeColor) {
         }
     }
 
-    function endShape() {
+    async function endShape(e) {
         isDrawing = false;
         document.body.removeChild(drawingLayer);
         // Here you can add code to save the shape or do further processing
@@ -221,6 +221,19 @@ function startDrawingShape(shapeType, shapeColor) {
             color: shapeColor,
             element: shape
         });
+
+        currentShape.coordinates = JSON.stringify(getShapeCoordinatesOnPicture(shape)).replace(/[{}"]/g, '');
+        currentShape.originalPictureSize =JSON.stringify(getOriginalPictureSize()).replace(/[{}"]/g, '');
+        currentShape.shape = shape;
+        currentShape.type = shapeType;
+        currentShape.color = shapeColor;
+        currentShape.clipPath = shape.style.clipPath;
+        currentShape.rotation = getRotation(shape);
+
+            // Execute the callback function if it exists
+        if (typeof callback === 'function') {
+            await callback();
+        }
     }
 }
 
@@ -269,6 +282,17 @@ function rotateSelectedShape() {
     } else {
         console.log("No shape selected");
     }
+}
+
+function getRotation(shape) {
+    if (shape.style.transform) {
+        const transformValue = shape.style.transform;
+        const rotateMatch = transformValue.match(/rotate\((-?\d+(?:\.\d+)?)deg\)/);
+        if (rotateMatch) {
+            return parseFloat(rotateMatch[1]);
+        }
+    }
+    return 0; // Default to 0 if no rotation is set
 }
 
 function deleteShape(shape){

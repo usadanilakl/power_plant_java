@@ -52,8 +52,15 @@ async function getConflict(pointId){
     return data;
 }
 
-async function createEquipmentFromLotoPoint(lpId, currentEquipmentId){
-    const resp = await fetch(`/api/point-by-point/create-from-loto-point/${lpId}/${currentEquipmentId}`);
+async function createEquipmentFromLotoPoint(data){
+    const resp = await fetch(`/api/point-by-point/create-from-loto-point`,{
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').getAttribute('content')
+        },
+        body: JSON.stringify(data)
+    });
     if (!resp.ok) throw new Error('Failed to create equipment from LOTO point');
     return resp.json();
 }

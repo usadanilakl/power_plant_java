@@ -380,7 +380,12 @@ public class EquipmentServiceImpl implements EquipmentService {
     }
 
     @Override
-    public Equipment createPointFromLotoPoint(String lpId, String currentEqId) {
+    public Equipment createPointFromLotoPoint(Map<String, String> data) {
+        String lpId = data.get("lpId");
+        String currentEqId = data.get("eqId");
+        String coordinates = data.get("coordinates");
+        String originalPictureSize = data.get("originalPictureSize");
+
         LotoPoint lotoPoint = lotoPointService.getEntityById(lpId);
         if (lotoPoint == null) {
             throw new EntityNotFoundException("LotoPoint not found with id: " + lpId);
@@ -400,17 +405,8 @@ public class EquipmentServiceImpl implements EquipmentService {
         e.setMainFile(currentEq.getMainFile());
         e.setFiles(new ArrayList<>(currentEq.getFiles()));
         e.setLotoPoints(new HashSet<>(Collections.singletonList(lotoPoint)));
-
-        String coordinates = currentEq.getCoordinates();
-        if (coordinates != null && !coordinates.isEmpty()) {
-            String[] parts = coordinates.split(",");
-            if (parts.length >= 1) {
-                parts[0] = "startX:0";
-                coordinates = String.join(",", parts);
-            }
-        }
         e.setCoordinates(coordinates);
-        e.setOriginalPictureSize(currentEq.getOriginalPictureSize());
+        e.setOriginalPictureSize(originalPictureSize);
 
         Equipment savedEquipment = save(e);
 

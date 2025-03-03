@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.sevice.base_services.RefactorService;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public interface EquipmentService extends CrudService<Equipment, EquipmentDto, EquipmentRepo, EquipmentMapper> , RefactorService {
     Equipment saveForTransfer(Equipment transfer);
@@ -38,5 +39,5 @@ public interface EquipmentService extends CrudService<Equipment, EquipmentDto, E
 
     List<Equipment> getByDataServiceItemIdIsNull();
 
-    Equipment createPointFromLotoPoint(String lpId, String currentEqId);
+    Equipment createPointFromLotoPoint(Map<String,String> data);
 }
