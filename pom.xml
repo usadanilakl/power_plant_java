@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.dk_power</groupId>
     <artifactId>power_plant_java</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1</version>
     <name>power_plant_java</name>
     <description>power_plant_java</description>
     <properties>
