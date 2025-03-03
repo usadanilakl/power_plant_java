@@ -665,6 +665,7 @@ function createAreaElement(area){
     let newArea = document.createElement('area');
     newArea.setAttribute('alt',area.tagNumber);
     newArea.setAttribute('title', area.tagNumber);
+    newArea.setAttribute('data-description', area.description);
     newArea.setAttribute('data-point-id', area.id);
     newArea.setAttribute('class',"ar");
     newArea.setAttribute('id',coord);
@@ -771,6 +772,7 @@ function createHighlight(area){
     highlight.setAttribute('data-point-id', area.getAttribute('data-point-id'));
     highlight.setAttribute('class','areaHighlights');
     highlight.setAttribute('name',area.getAttribute('title'))
+    highlight.setAttribute('data-description', area.dataset.description);
     document.body.appendChild(highlight);
     highlight.style.width = position.w;
     highlight.style.height = position.h;
@@ -1248,4 +1250,324 @@ async function offsetSizing(picture){
     coords.mouseOnPictureStart.y = Math.floor(coords.mouseOnPictureStart.y*coefficientX);
     coords.mouseOnPictureEnd.x = Math.floor(coords.mouseOnPictureEnd.x*coefficientX);
     coords.mouseOnPictureEnd.y = Math.floor(coords.mouseOnPictureEnd.y*coefficientX);
+}
+
+//DISPLAY EQ DESCRIPTIONS
+
+function showDescriptions(){
+    let highlights = getAllHighlightsInsView();
+    const data = [];
+    for(let i=0; i<highlights.length; i++){
+        data.push({
+            tagNumber: highlights[i].getAttribute('name'), 
+            description: highlights[i].getAttribute('data-description'),
+            eqId: highlights[i].getAttribute('data-point-id'),
+        })
+    }
+    displayDescriptionTable(data);
+}
+
+function getAllHighlightsInsView() {
+    const highlights = document.querySelectorAll('.areaHighlights');
+    const visibleHighlights = [];
+
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+    highlights.forEach(highlight => {
+        const rect = highlight.getBoundingClientRect();
+
+        // Check if the highlight is at least partially visible in the viewport
+        if (
+            rect.top < viewportHeight &&
+            rect.bottom > 0 &&
+            rect.left < viewportWidth &&
+            rect.right > 0
+        ) {
+            visibleHighlights.push(highlight);
+        }
+    });
+
+    return visibleHighlights;
+}
+
+
+function displayDescriptionTable(data) {
+    // Remove existing popup if any
+    const existingPopup = document.getElementById('descriptionPopup');
+    if (existingPopup) {
+        existingPopup.remove();
+    }
+
+    // Create popup container
+    const popup = document.createElement('div');
+    popup.id = 'descriptionPopup';
+    popup.style.cssText = `
+        position: fixed;
+        top: 50px;
+        left: 50px;
+        background-color: white;
+        border: 1px solid #ccc;
+        padding: 10px;
+        z-index: 1000;
+        cursor: move;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        max-width: 80%;
+        max-height: 80%;
+        overflow: auto;
+        resize: both;
+    `;
+
+    // Create table container
+    const tableContainer = document.createElement('div');
+    tableContainer.style.cssText = `
+        overflow: auto;
+        max-height: calc(100% - 40px); // Leave space for close button
+    `;
+
+    // Create table
+    const table = document.createElement('table');
+    table.style.cssText = `
+        width: 100%;
+        border-collapse: collapse;
+    `;
+
+    // Create table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['Tag Number', 'Description'].forEach(headerText => {
+        const th = document.createElement('th');
+        th.textContent = headerText;
+        th.style.cssText = `
+            padding: 10px;
+            background-color: #f2f2f2;
+            font-weight: bold;
+            text-align: left;
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+        `;
+        th.onclick = () => sortTable(table, Array.from(headerRow.children).indexOf(th));
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Create table body
+    const tbody = document.createElement('tbody');
+    data.forEach(item => {
+        const row = document.createElement('tr');
+        [item.tagNumber, item.description].forEach(text => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            td.style.cssText = `
+                padding: 8px;
+                border-bottom: 1px solid #ddd;
+            `;
+            row.appendChild(td);
+        });
+        row.dataset.eqId = item.eqId;
+        row.onclick = () => {
+            event.preventDefault();
+            editDescription(item.eqId);
+        };
+        tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+
+    // Add table to table container
+    tableContainer.appendChild(table);
+
+    // Add table container to popup
+    popup.appendChild(tableContainer);
+
+    // Add close button
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.style.cssText = `
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 5px 10px;
+        background-color: #f2f2f2;
+        border: none;
+        cursor: pointer;
+    `;
+    closeButton.onclick = () => popup.remove();
+    popup.appendChild(closeButton);
+
+    // Make popup draggable
+    let isDragging = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+
+    popup.addEventListener("mousedown", dragStart);
+    document.addEventListener("mousemove", drag);
+    document.addEventListener("mouseup", dragEnd);
+
+    function dragStart(e) {
+        initialX = e.clientX - xOffset;
+        initialY = e.clientY - yOffset;
+
+        if (e.target === popup) {
+            isDragging = true;
+        }
+    }
+
+    function drag(e) {
+        if (isDragging) {
+            e.preventDefault();
+            currentX = e.clientX - initialX;
+            currentY = e.clientY - initialY;
+
+            xOffset = currentX;
+            yOffset = currentY;
+
+            setTranslate(currentX, currentY, popup);
+        }
+    }
+
+    function setTranslate(xPos, yPos, el) {
+        el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+    }
+
+    function dragEnd(e) {
+        initialX = currentX;
+        initialY = currentY;
+
+        isDragging = false;
+    }
+
+    // Ensure popup stays in view
+    function adjustPopupPosition() {
+        const rect = popup.getBoundingClientRect();
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+        if (rect.right > viewportWidth) {
+            popup.style.left = (viewportWidth - rect.width) + 'px';
+        }
+        if (rect.bottom > viewportHeight) {
+            popup.style.top = (viewportHeight - rect.height) + 'px';
+        }
+        if (rect.left < 0) {
+            popup.style.left = '0px';
+        }
+        if (rect.top < 0) {
+            popup.style.top = '0px';
+        }
+    }
+
+    // Add popup to body and adjust its position
+    document.body.appendChild(popup);
+    adjustPopupPosition();
+
+    // Adjust position when window is resized
+    window.addEventListener('resize', adjustPopupPosition);
+}
+
+
+function sortTable(table, columnIndex) {
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const isAscending = table.querySelector('th:nth-child(' + (columnIndex + 1) + ')').classList.contains('asc');
+
+    rows.sort((a, b) => {
+        const aValue = a.cells[columnIndex].textContent.trim();
+        const bValue = b.cells[columnIndex].textContent.trim();
+        return isAscending ? bValue.localeCompare(aValue) : aValue.localeCompare(bValue);
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+
+    table.querySelectorAll('th').forEach(th => th.classList.remove('asc', 'desc'));
+    table.querySelector('th:nth-child(' + (columnIndex + 1) + ')').classList.toggle('asc', !isAscending);
+    table.querySelector('th:nth-child(' + (columnIndex + 1) + ')').classList.toggle('desc', isAscending);
+}
+
+function editDescription(eqId) {
+    // Remove existing edit popup if any
+    const existingPopup = document.getElementById('editDescriptionPopup');
+    if (existingPopup) {
+        existingPopup.remove();
+    }
+
+    // Find the equipment data
+    const row = document.querySelector(`tr[data-eq-id="${eqId}"]`);
+    const tagNumber = row.cells[0].textContent;
+    const description = row.cells[1].textContent;
+
+    // Create popup container
+    const popup = document.createElement('div');
+    popup.id = 'editDescriptionPopup';
+    popup.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        border: 1px solid #ccc;
+        padding: 20px;
+        z-index: 1001;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        max-width: 400px;
+        width: 100%;
+    `;
+
+    // Create form
+    const form = document.createElement('form');
+    form.innerHTML = `
+        <div style="margin-bottom: 15px;">
+            <label for="tagNumber" style="display: block; margin-bottom: 5px;">Tag Number:</label>
+            <input type="text" id="tagNumber" value="${tagNumber}" style="width: 100%; padding: 5px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label for="description" style="display: block; margin-bottom: 5px;">Description:</label>
+            <textarea id="description" style="width: 100%; height: 100px; padding: 5px;">${description}</textarea>
+        </div>
+        <div style="text-align: right;">
+            <button type="button" id="cancelBtn" style="margin-right: 10px; padding: 5px 10px;">Cancel</button>
+            <button type="submit" style="padding: 5px 10px;">Save</button>
+        </div>
+    `;
+
+    // Add form to popup
+    popup.appendChild(form);
+
+    // Add popup to body
+    document.body.appendChild(popup);
+
+    // Add event listeners
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const newTagNumber = document.getElementById('tagNumber').value;
+        const newDescription = document.getElementById('description').value;
+        updateDescription(eqId, newTagNumber, newDescription);
+        popup.remove();
+    };
+
+    document.getElementById('cancelBtn').onclick = () => {
+        popup.remove();
+    };
+}
+
+function updateDescription(eqId, newTagNumber, newDescription) {
+    // Update the table row
+    const row = document.querySelector(`tr[data-eq-id="${eqId}"]`);
+    row.cells[0].textContent = newTagNumber;
+    row.cells[1].textContent = newDescription;
+
+    // Update the highlight element
+    const highlight = document.querySelector(`.areaHighlights[data-point-id="${eqId}"]`);
+    if (highlight) {
+        highlight.setAttribute('name', newTagNumber);
+        highlight.setAttribute('data-description', newDescription);
+    }
+
+    updateEquipment(eqId, newTagNumber, newDescription);
 }

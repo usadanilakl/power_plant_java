@@ -138,10 +138,10 @@ public class LotoPointTransferService {
             System.out.println("Equipment is null for tag number: " + equipment.getTagNumber());
             return false;
         }
-        if(isEquipmentConflicted(equipment)){
-            System.out.println("Equipment is conflicted for tag number: " + equipment.getTagNumber());
-            return false;
-        }
+//        if(isEquipmentConflicted(equipment)){
+//            System.out.println("Equipment is conflicted for tag number: " + equipment.getTagNumber());
+//            return false;
+//        }
         FileObject mainFile = equipment.getMainFile();
         if(mainFile==null){
             System.out.println("No main file found for equipment with tag number: " + equipment.getTagNumber());

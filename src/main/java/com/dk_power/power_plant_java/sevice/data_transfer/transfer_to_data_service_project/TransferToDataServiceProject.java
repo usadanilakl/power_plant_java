@@ -62,7 +62,7 @@ public class TransferToDataServiceProject {
 //        fileObjectTransferService.cleanTransferStatus();
 //        fileElementTransferService.clearTransferStatus();
 //        lotoPointTransferService.clearTransferStatus();
-//
+
 //        lotoPointTransferService.transferAllLotoPoints();
 //        lotoPointTransferService.transferAllLotoPointsNew();
 

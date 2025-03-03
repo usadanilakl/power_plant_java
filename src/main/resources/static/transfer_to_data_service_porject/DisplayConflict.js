@@ -2,6 +2,8 @@ let equipmentFormsPopup = document.getElementById('equipmentFormsPopup');
 let closePopup = document.getElementsByClassName('close-popup')[0];
 let currentEquipmentData = {};
 let copiedLotoPointInputs;
+let copiedEquipmentForm;
+
 let newEquipmentData = {};
 
     // Function to open the popup
@@ -1236,6 +1238,27 @@ let newEquipmentData = {};
             alert("Pop-up blocker may have prevented opening the new window. Please allow pop-ups for this site.");
         }
     }
+
+    async function createOtherUnitEquipment(equipmentId) {
+        const newEq = await copyEquipmentToOtherUnit(equipmentId);
+        const otherUnitContainer = document.getElementById('otherUnitContainer');
+        if(newEq && otherUnitContainer) {
+            const formContainer = document.createElement('div');
+            formContainer.className = 'other-unit-form';
+            formContainer.id = `other-unit-0`;
+    
+            // Use the existing createEquipmentFormElement function
+            const equipmentForm = createEquipmentFormElement(newEq, 'conflict');
+            formContainer.appendChild(equipmentForm);
+    
+            otherUnitContainer.appendChild(formContainer);
+
+            if(equipmentForm){
+                showDiscrepancies(equipmentForm);
+                showWrongReferences(equipmentForm);
+            }
+        }
+    }
     
     function getOtherUnitPopUp(url, header) { // not used
         // Create the popup container
@@ -1325,6 +1348,51 @@ let newEquipmentData = {};
                 console.error('Error fetching other unit equipment:', error);
                 contentContainer.innerHTML = '<p>Error loading content. Please try again.</p>';
             });
+    }
+
+    function copyCurrentEquipmentForm(){ // not used
+        // Copy current equipment form
+        copiedEquipmentForm = document.querySelector('form[id^="equipmentForm_current_"]').cloneNode(true);
+    }
+
+    function flipAndPasteEquipmentForm(){ // not used
+        // Flip and paste current equipment form
+        const copiedEquipmentFormInputs = copiedEquipmentForm.querySelectorAll('input, select, textarea');
+        
+        // Get the tag number input
+        const tagNumberInput = copiedEquipmentForm.querySelector('input[name$=".tagNumber"]');
+        
+        if (!tagNumberInput) {
+            console.warn('No tag number found in copied fields');
+            return;
+        }
+    
+        const tagNumber = tagNumberInput.value;
+        let fromUnit, toUnit;
+    
+        if (tagNumber.startsWith('01')) {
+            fromUnit = '01';
+            toUnit = '02';
+        } else if (tagNumber.startsWith('02')) {
+            fromUnit = '02';
+            toUnit = '01';
+        } else {
+            console.warn('Invalid tag number format');
+            return;
+        }
+    
+        copiedEquipmentFormInputs.forEach(input => {
+            const targetInput = document.querySelector(`form[id^="equipmentForm_current_"] [name="${input.name}"]`);
+            if (targetInput) {
+                const fieldName = input.name.split('.').pop(); // Get the field name
+                
+                // Skip the 'id' field
+                if (fieldName !== 'id') {
+                    let flippedValue = flipUnitReference(input.value, fromUnit, toUnit);
+                    targetInput.value = flippedValue;
+                }
+            }
+        });
     }
 
     //NEW EQUIPMENT FUNCTIONS

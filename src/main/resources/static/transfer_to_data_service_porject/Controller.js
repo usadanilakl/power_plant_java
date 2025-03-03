@@ -64,3 +64,29 @@ async function createEquipmentFromLotoPoint(data){
     if (!resp.ok) throw new Error('Failed to create equipment from LOTO point');
     return resp.json();
 }
+
+async function updateEquipment(eqId, newTagNumber, newDescription){
+    const resp = await fetch(`/api/point-by-point/update-equipment`,{
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').getAttribute('content')
+        },
+        body: JSON.stringify({tagNumber: newTagNumber, description: newDescription, id:eqId})
+    });
+    if (!resp.ok) throw new Error('Failed to update equipment');
+    return resp.json();
+}
+
+async function copyEquipmentToOtherUnit(eqId){
+    const resp = await fetch(`/api/point-by-point/copy-to-other-unit/${eqId}`,{
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').getAttribute('content')
+        },
+        body: JSON.stringify({id:eqId})
+    });
+    if (!resp.ok) throw new Error('Failed to copy equipment to other unit');
+    return resp.json();
+}

@@ -72,6 +72,8 @@
 
 .vendor-tab.active .vendor-files-container {
     display: block;
+    max-height: 90vh;
+    overflow: scroll;
 }
 
 .vendor-files-container button {

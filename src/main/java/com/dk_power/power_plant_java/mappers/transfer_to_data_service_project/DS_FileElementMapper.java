@@ -91,7 +91,7 @@ public class DS_FileElementMapper {
 
         boolean heightAndWidthMatch = true;
         if (coordinates.containsKey("x2") && coordinates.containsKey("y2")) {
-            final float EPSILON = 5f; // Adjust this value based on your acceptable error margin
+            final float EPSILON = 10f; // Adjust this value based on your acceptable error margin
 
             float expectedX2 = coordinates.get("x") + coordinates.get("width");
             float expectedY2 = coordinates.get("y") + coordinates.get("height");

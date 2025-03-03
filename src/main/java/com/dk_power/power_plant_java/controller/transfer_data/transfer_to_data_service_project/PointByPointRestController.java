@@ -125,4 +125,21 @@ public class PointByPointRestController {
         return ResponseEntity.ok(equipmentService.convertToDto(eq));
 
     }
+
+    @PutMapping("/update-equipment")
+    public ResponseEntity<EquipmentDto> updateEquipment(@RequestBody EquipmentDto dto) {
+        Equipment eq = equipmentService.convertToEntity(dto);
+        Equipment updated = equipmentService.save(eq);
+        return ResponseEntity.ok(equipmentService.convertToDto(updated));
+    }
+
+    @PostMapping("/copy-to-other-unit/{eqId}")
+    public ResponseEntity<EquipmentDto> copyToOtherUnit(@PathVariable String eqId, @RequestBody EquipmentDto newEqDto) {
+        Equipment equipment = equipmentService.getEntityById(eqId);
+        Equipment equipment1 = equipmentService.copyEqFromAnotherUnit(equipment);
+        return ResponseEntity.ok(equipmentService.convertToDto(equipment1));
+    }
+
+
+
 }
