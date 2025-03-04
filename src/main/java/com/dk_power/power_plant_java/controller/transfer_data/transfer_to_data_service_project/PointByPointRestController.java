@@ -135,8 +135,7 @@ public class PointByPointRestController {
 
     @PostMapping("/copy-to-other-unit/{eqId}")
     public ResponseEntity<EquipmentDto> copyToOtherUnit(@PathVariable String eqId, @RequestBody EquipmentDto newEqDto) {
-        Equipment equipment = equipmentService.getEntityById(eqId);
-        Equipment equipment1 = equipmentService.copyEqFromAnotherUnit(equipment);
+        Equipment equipment1 = equipmentService.copyEqFromAnotherUnit(eqId);
         return ResponseEntity.ok(equipmentService.convertToDto(equipment1));
     }
 

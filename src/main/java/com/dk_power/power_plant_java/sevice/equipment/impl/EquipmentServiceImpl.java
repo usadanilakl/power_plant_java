@@ -326,11 +326,11 @@ public class EquipmentServiceImpl implements EquipmentService {
     }
 
     @Override
-    public Equipment copyEqFromAnotherUnit(String eqId, String fileNumber){
+    public Equipment copyEqFromAnotherUnit(String eqId){
         Equipment source = getEntityById(eqId);
         if(source==null) return null;
-        FileObject file = fileService.getIfNumberContains(fileNumber).getFirst();
-        if(file==null) return null;
+        FileObject sourceFile = source.getMainFile();
+        if(sourceFile==null) return null;
         Equipment newEquipment = new Equipment();
         newEquipment.setCoordinates(source.getCoordinates());
         newEquipment.setOriginalPictureSize(source.getOriginalPictureSize());
@@ -338,13 +338,31 @@ public class EquipmentServiceImpl implements EquipmentService {
         newEquipment.setLocation(source.getLocation());
         newEquipment.setVendor(source.getVendor());
         newEquipment.setEqType(source.getEqType());
-        newEquipment.setMainFile(file);
-        newEquipment.setFiles(Collections.singletonList(file));
         newEquipment.setLotoPoints(new HashSet<>());
 
         String sourceTagNumber = source.getTagNumber();
         String from = sourceTagNumber.substring(0, 2);
         String to = from.equals("01")? "02" : "01";
+
+
+        FileObject file = sourceFile;
+        if (file.getVendor() != null && file.getVendor().getName().equalsIgnoreCase("kiewit")) {
+            String fileNumber = file.getFileNumber();
+            int indexOfPd = fileNumber.indexOf("PD-");
+            if (indexOfPd != -1) {
+                String pdPart = fileNumber.substring(indexOfPd);
+                if (from.equals("01") && pdPart.matches("PD-.*A")) {
+                    fileNumber = pdPart.substring(0, pdPart.length() - 1) + "B";
+                    file.setFileNumber(fileNumber);
+                } else if (from.equals("02") && pdPart.matches("PD-.*B")) {
+                    fileNumber = pdPart.substring(0, pdPart.length() - 1) + "A";
+                    List<FileObject> ifNumberContains = fileService.getIfNumberContains(fileNumber);
+                    if (ifNumberContains!= null && ifNumberContains.size()!= 0) file = ifNumberContains.get(0);
+                }
+            }
+        }
+        newEquipment.setMainFile(file);
+        newEquipment.setFiles(Collections.singletonList(file));
 
         String flippedDescription = flipUnitReferences(source.getDescription(), from, to);
         String flippedTagNumber = flipUnitReferences(source.getTagNumber(), from, to);
