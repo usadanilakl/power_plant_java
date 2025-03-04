@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.equipment.impl;
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDtoLight;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
@@ -325,6 +326,68 @@ public class EquipmentServiceImpl implements EquipmentService {
     }
 
     @Override
+    public Equipment copyEqFromAnotherUnit(String eqId, String fileNumber){
+        Equipment source = getEntityById(eqId);
+        if(source==null) return null;
+        FileObject file = fileService.getIfNumberContains(fileNumber).getFirst();
+        if(file==null) return null;
+        Equipment newEquipment = new Equipment();
+        newEquipment.setCoordinates(source.getCoordinates());
+        newEquipment.setOriginalPictureSize(source.getOriginalPictureSize());
+        newEquipment.setSystem(source.getSystem());
+        newEquipment.setLocation(source.getLocation());
+        newEquipment.setVendor(source.getVendor());
+        newEquipment.setEqType(source.getEqType());
+        newEquipment.setMainFile(file);
+        newEquipment.setFiles(Collections.singletonList(file));
+        newEquipment.setLotoPoints(new HashSet<>());
+
+        String sourceTagNumber = source.getTagNumber();
+        String from = sourceTagNumber.substring(0, 2);
+        String to = from.equals("01")? "02" : "01";
+
+        String flippedDescription = flipUnitReferences(source.getDescription(), from, to);
+        String flippedTagNumber = flipUnitReferences(source.getTagNumber(), from, to);
+
+        newEquipment.setTagNumber(flippedTagNumber);
+        newEquipment.setDescription(flippedDescription);
+
+        save(newEquipment);
+
+        file.addPoint(newEquipment);
+        fileService.save(file);
+
+        if(source.getLotoPoints()!=null && source.getLotoPoints().size()==1){
+            LotoPoint lpSource = source.getLotoPoints().iterator().next();
+            List<LotoPointDto> byTagNumber = lotoPointService.getByTagNumber(flippedTagNumber);
+            LotoPoint newLp = null;
+            if(byTagNumber != null && byTagNumber.size() == 1){
+                newLp = lotoPointService.getEntityById(byTagNumber.get(0).getId());
+            }else if(byTagNumber == null || byTagNumber.size() == 0){
+                newLp = new LotoPoint();
+                newLp.setTagNumber(flippedTagNumber);
+                newLp.setNormPos(lpSource.getNormPos());
+                newLp.setIsoPos(lpSource.getIsoPos());
+                newLp.addEquipment(newEquipment);
+                newLp.setSpecificLocation(lpSource.getSpecificLocation());
+                newLp.setDescription(flippedDescription);
+                lotoPointService.save(newLp);
+            }
+
+            if(newLp!= null)  {
+                newEquipment.addLotoPoint(newLp);
+                save(newEquipment);
+            }
+
+
+
+
+        }
+
+        return newEquipment;
+
+    }
+    @Override
     public List<Equipment> getByTagNumberContains(String tag) {
         return equipmentRepo.findByTagNumberContaining(tag);
     }
@@ -444,4 +507,21 @@ public class EquipmentServiceImpl implements EquipmentService {
 //        FileObject mainFile = entity.getMainFile();
 //        mainFile.getPoints().stream().map(e->{if(e.getId() == entity.getId()) fileService.softDelete(e);})
 //    }
+
+    private String flipUnitReferences(String text, String fromUnit, String toUnit) {
+        return Arrays.stream(text.split(" "))
+                .map(word -> {
+                    if (word.startsWith(fromUnit)) {
+                        return toUnit + word.substring(2);
+                    } else {
+                        return word;
+                    }
+                })
+                .collect(Collectors.joining(" "))
+                .replace("Unit" + fromUnit.charAt(1), "Unit" + toUnit.charAt(1))
+                .replace("UNIT " + fromUnit.charAt(1), "UNIT" + toUnit.charAt(1))
+                .replace("UNIT" + fromUnit.charAt(1), "UNIT" + toUnit.charAt(1))
+                .replace("Unit " + fromUnit.charAt(1), "Unit " + toUnit.charAt(1))
+                .replace("U" + fromUnit.charAt(1), "U" + toUnit.charAt(1));
+    }
 }
