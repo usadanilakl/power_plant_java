@@ -362,7 +362,7 @@ public class EquipmentServiceImpl implements EquipmentService {
             }
         }
         newEquipment.setMainFile(file);
-        newEquipment.setFiles(Collections.singletonList(file));
+        newEquipment.setFiles(new ArrayList<>(Collections.singletonList(file)));
 
         String flippedDescription = flipUnitReferences(source.getDescription(), from, to);
         String flippedTagNumber = flipUnitReferences(source.getTagNumber(), from, to);

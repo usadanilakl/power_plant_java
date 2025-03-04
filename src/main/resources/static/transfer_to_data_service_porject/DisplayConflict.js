@@ -6,6 +6,8 @@ let copiedEquipmentForm;
 
 let newEquipmentData = {};
 
+let localFormClipboard = [];
+
     // Function to open the popup
     function openEquipmentFormsPopup() {
         equipmentFormsPopup.style.display = 'block';
@@ -369,6 +371,7 @@ let newEquipmentData = {};
 
     function showOtherUnitEq() {
         const otherUnit = currentEquipmentData.otherUnit;
+        if(!otherUnit) return;
         const container = document.getElementById('conflictsSection');
     
         // Create a container for the other unit equipment forms
@@ -398,7 +401,11 @@ let newEquipmentData = {};
         if (otherUnit.length === 0) {
             const noOtherUnitMessage = document.createElement('p');
             noOtherUnitMessage.textContent = 'No other unit equipment found.';
+            const copyEqButton = document.createElement('button');
+            copyEqButton.textContent = 'Copy from current equipment';
+            copyEqButton.onclick = () => {createOtherUnitEquipment(currentShape.shape.dataset.pointId)};
             otherUnitContainer.appendChild(noOtherUnitMessage);
+            otherUnitContainer.appendChild(copyEqButton);
         }
     }
 
@@ -575,9 +582,12 @@ let newEquipmentData = {};
         const shape = currentShape.shape;
         const id = shape.dataset.pointId;
         const coordinates = currentShape.coordinates;
+        const originalPictureSize = currentShape.originalPictureSize;
         console.log('Updating coordinates for point ID:', id);
         const coordinatesString = JSON.stringify(coordinates).replace(/[{}"]/g, '');
+        const originalPictureSizeString = JSON.stringify(originalPictureSize).replace(/[{}"]/g, '');
         document.getElementById(`${id}_coordinates`).value = coordinatesString;
+        document.getElementById(`${id}_originalPictureSize`).value = originalPictureSizeString;
     }
     
     function checkDataCompletion(equipment){
@@ -594,7 +604,7 @@ let newEquipmentData = {};
 
 
     /*******************************************************************
-     * CLIPBOARD FUNCTIONS
+     * CLIPBOARD FUNCTIONS - this works but only with https, not http
      * ****************************************************************/
 
 
@@ -643,6 +653,54 @@ let newEquipmentData = {};
             }
         });
     }
+
+
+        /*******************************************************************
+     * LOCAL CLIPBOARD FUNCTIONS - replaced code above with this code
+     * ****************************************************************/
+
+        function copyInputValue(input, clipboard) {
+            let name = clipboard ? clipboard : input.name;
+            let value = input.value;
+            
+            // Find the index of an existing entry with the same name
+            const existingIndex = localFormClipboard.findIndex(item => item.name === name);
+            
+            if (existingIndex !== -1) {
+                // If an entry with the same name exists, update its value
+                localFormClipboard[existingIndex].value = value;
+            } else {
+                // If no entry with the same name exists, add a new one
+                localFormClipboard.push({name: name, value: value});
+            }
+        }
+
+        function pasteFromLocalClipboard(input, clipboard){
+            const name = !clipboard ? input.name : clipboard;
+            const localCopy = localFormClipboard.find(copy => copy.name === name);
+            if(localCopy){
+                input.value = localCopy.value;
+            }
+            input.dispatchEvent(new Event('change', { bubbles: true }))
+        }
+
+        function addLocalCopyListener(input) {
+            input.addEventListener('click', async (e) => {
+                if (e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    copyInputValue(input, 'clipboard');
+                } else if (e.shiftKey && !e.altKey) {
+                    e.preventDefault();
+                    pasteFromLocalClipboard(input, 'clipboard');
+                } else if (e.ctrlKey && e.altKey) {
+                    e.preventDefault();
+                    copyInputValue(input);
+                } else if (e.shiftKey && e.altKey) {
+                    e.preventDefault();
+                    pasteFromLocalClipboard(input);
+                }
+            });
+        }
 
 
 
@@ -746,7 +804,7 @@ let newEquipmentData = {};
         title.textContent = formType === 'current' ? 'Current Equipment' : 'Conflict Equipment';
         form.appendChild(title);
     
-        const equipmentFields = ['tagNumber', 'description', 'specificLocation', 'coordinates'];
+        const equipmentFields = ['tagNumber', 'description', 'specificLocation', 'coordinates', 'originalPictureSize'];
     
         // Equipment fields
         equipmentFields.forEach(field => {
@@ -823,7 +881,7 @@ let newEquipmentData = {};
         form.appendChild(buttonContainer);
     
         // Add buttons only for the current equipment form
-        if (formType === 'current' && formType === 'new') {
+        if (formType === 'current' || formType === 'new') {
             // Add update coordinates button
             const updateCoordsButton = document.createElement('button');
             updateCoordsButton.type = 'button';
@@ -841,6 +899,12 @@ let newEquipmentData = {};
 
         }
 
+        const changeFileButton = document.createElement('button');
+        changeFileButton.type = 'button';
+        changeFileButton.textContent = 'Change File Number';
+        changeFileButton.onclick = () => updateFilePopup(equipment.id);
+        buttonContainer.appendChild(changeFileButton);
+
         const addLotoPointButton = document.createElement('button');
         addLotoPointButton.type = 'button';
         addLotoPointButton.textContent = 'Add Loto Point';
@@ -857,7 +921,7 @@ let newEquipmentData = {};
 
         
         form.querySelectorAll('input, select').forEach(element => {
-            addCopyListener(element);
+            addLocalCopyListener(element);
         });
 
         // Add event listeners to all input fields
@@ -896,6 +960,7 @@ let newEquipmentData = {};
             description: formData.get('equipment.description'),
             specificLocation: formData.get('equipment.specificLocation'),
             coordinates: formData.get('equipment.coordinates'),
+            originalPictureSize: formData.get('equipment.originalPictureSize'),
             lotoPoints: []
         };
     
@@ -936,7 +1001,18 @@ let newEquipmentData = {};
                 const result = await response.text();
                 console.log('Equipment and Loto Points updated:', result);
                 alert('Equipment and Loto Points updated successfully!');
-                // Optionally, refresh the current equipment display or close the form
+                const form = document.querySelector(`form[id*="${updatedEquipment.id}"]`);
+                const shape = document.querySelector(`[data-point-id="${updatedEquipment.id}"]`);
+                if (form) {
+                    form.remove();
+                    let forms = document.querySelectorAll('.equipment-form');
+                    if (forms.length === 0) {
+                        closeEquipmentFormsPopup();
+                        if(shape) shape.remove();
+                    }
+                } else {
+                    console.warn(`Form for equipment ${updatedEquipment.id} not found`);
+                }
             } else {
                 throw new Error('Failed to update equipment and loto points');
             }
@@ -1014,7 +1090,7 @@ let newEquipmentData = {};
 
 
         lotoPointDiv.querySelectorAll('input, select').forEach(element => {
-            addCopyListener(element);
+            addLocalCopyListener(element);
         });
     
         return lotoPointDiv;
@@ -1445,6 +1521,101 @@ let newEquipmentData = {};
         // Add popup to body
         document.body.appendChild(popup);
 
+    }
+
+    //FILE FUNCTIONS
+    function updateFilePopup(equipmentId) {
+        // Create popup container
+        const popup = document.createElement('div');
+        popup.classList.add('popup');
+        popup.style.position = 'fixed';
+        popup.style.top = '50%';
+        popup.style.left = '50%';
+        popup.style.transform = 'translate(-50%, -50%)';
+        popup.style.backgroundColor = 'white';
+        popup.style.padding = '20px';
+        popup.style.border = '1px solid black';
+        popup.style.zIndex = '1002';
+        popup.style.maxHeight = '80vh';
+        popup.style.overflowY = 'auto';
+    
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'X';
+        closeButton.style.position = 'absolute';
+        closeButton.style.top = '5px';
+        closeButton.style.right = '5px';
+        closeButton.style.cursor = 'pointer';
+        closeButton.onclick = () => {
+            document.body.removeChild(popup);
+        };
+        popup.appendChild(closeButton);
+    
+        // Create input field
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Enter search term';
+        popup.appendChild(input);
+    
+        // Create submit button
+        const submitButton = document.createElement('button');
+        submitButton.textContent = 'Search';
+        popup.appendChild(submitButton);
+    
+        // Create results container
+        const resultsContainer = document.createElement('div');
+        resultsContainer.style.marginTop = '10px';
+        popup.appendChild(resultsContainer);
+    
+        // Function to handle file search
+        async function searchFiles() {
+            const searchTerm = input.value;
+            try {
+                const response = await fetch(`/api/point-by-point/files/search?term=${encodeURIComponent(searchTerm)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').getAttribute('content')
+                    }
+                });
+    
+                if (response.ok) {
+                    const files = await response.json();
+                    displaySearchResults(files);
+                } else {
+                    throw new Error('Failed to fetch files');
+                }
+            } catch (error) {
+                console.error('Error searching files:', error);
+                alert('Failed to search files. Please try again.');
+            }
+        }
+    
+        // Function to display search results
+        function displaySearchResults(files) {
+            resultsContainer.innerHTML = '';
+            files.forEach(file => {
+                const fileRow = document.createElement('div');
+                fileRow.textContent = `${file.fileName} - ${file.fileNumber}`;
+                fileRow.style.cursor = 'pointer';
+                fileRow.dataset.fileId = file.id;
+                fileRow.onclick = () => updateFile(equipmentId, file.id);
+                resultsContainer.appendChild(fileRow);
+            });
+        }
+    
+        // Add event listener to submit button
+        submitButton.addEventListener('click', searchFiles);
+    
+        // Add event listener to allow searching on Enter key press
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchFiles();
+            }
+        });
+    
+        // Add popup to body
+        document.body.appendChild(popup);
     }
 
 

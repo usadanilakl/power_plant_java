@@ -90,3 +90,16 @@ async function copyEquipmentToOtherUnit(eqId){
     if (!resp.ok) throw new Error('Failed to copy equipment to other unit');
     return resp.json();
 }
+
+async function updateFile(eqId, fileId){
+    const resp = await fetch(`/api/point-by-point/update-file`,{
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').getAttribute('content')
+        },
+        body: JSON.stringify({eqId:eqId, fileId: fileId})
+    });
+    if (!resp.ok) throw new Error('Failed to update file');
+    return resp.json();
+}

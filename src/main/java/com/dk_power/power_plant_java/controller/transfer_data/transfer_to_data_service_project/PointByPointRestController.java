@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -138,7 +139,58 @@ public class PointByPointRestController {
         Equipment equipment1 = equipmentService.copyEqFromAnotherUnit(eqId);
         return ResponseEntity.ok(equipmentService.convertToDto(equipment1));
     }
+    
+    @PutMapping("/update-file")
+    public ResponseEntity<EquipmentDto> updateFile(@RequestBody Map<String, String> request) {
+        String eqId = request.get("eqId");
+        String fileId = request.get("fileId");
 
+        if (eqId == null || fileId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try {
+            Equipment equipment = equipmentService.getEntityById(eqId);
+            if (equipment == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            FileObject file = fileService.getEntityById(fileId);
+            if (file == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            FileObject currentFile = equipment.getMainFile();
+            currentFile.removePoint(equipment);
+
+            equipment.setMainFile(file);
+            equipment.setFiles(new ArrayList<>(Collections.singletonList(file)));
+
+            Equipment updatedEquipment = equipmentService.save(equipment);
+
+            file.addPoint(updatedEquipment);
+            fileService.save(file);
+            fileService.save(currentFile);
+
+            return ResponseEntity.ok(equipmentService.convertToDto(updatedEquipment));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/files/search")
+    public ResponseEntity<List<FileDto>> searchFiles(@RequestParam String term) {
+        try {
+            List<FileObject> searchResults = fileService.getIfNumberContains(term);
+            searchResults.addAll(fileService.getIfNameContains(term));
+            List<FileDto> fileDtos = searchResults.stream()
+                    .map(fileService::convertToDto)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(fileDtos);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
 
 }
