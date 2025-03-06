@@ -13,10 +13,10 @@ import java.util.Optional;
 
 
 @Configuration
-@EnableJpaAuditing(auditorAwareRef = "auditorProvider")
+//@EnableJpaAuditing(auditorAwareRef = "auditorProvider")
 public class AuditingConfig {
 
-    private static boolean auditingEnabled = false;
+    public static boolean auditingEnabled = false;
 
     @Bean
     public AuditorAware<String> auditorProvider() {
@@ -35,6 +35,7 @@ public class AuditingConfig {
 class AuditorAwareImpl implements AuditorAware<String> {
     @Override
     public Optional<String> getCurrentAuditor() {
+        if(AuditingConfig.auditingEnabled) return Optional.empty();
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             return Optional.empty();

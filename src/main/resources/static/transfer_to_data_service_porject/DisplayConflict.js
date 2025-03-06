@@ -1002,12 +1002,13 @@ let localFormClipboard = [];
                 console.log('Equipment and Loto Points updated:', result);
                 alert('Equipment and Loto Points updated successfully!');
                 const form = document.querySelector(`form[id*="${updatedEquipment.id}"]`);
-                const shape = document.querySelector(`[data-point-id="${updatedEquipment.id}"]`);
+                const shape = document.querySelector(`div[data-point-id="${currentEquipmentData.point.id}"]`);
                 if (form) {
                     form.remove();
                     let forms = document.querySelectorAll('.equipment-form');
                     if (forms.length === 0) {
                         closeEquipmentFormsPopup();
+                        console.log(shape);
                         if(shape) shape.remove();
                     }
                 } else {

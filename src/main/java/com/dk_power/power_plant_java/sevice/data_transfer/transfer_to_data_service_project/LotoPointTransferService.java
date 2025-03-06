@@ -321,8 +321,8 @@ public class LotoPointTransferService {
     public boolean isLotoPointConflicted(LotoPoint lotoPoint){
         if(
             lotoPoint==null ||
-            !bothUnitsHaveMatchingLotoPoints(lotoPoint) ||
-            !lotoPointHasMatchingEquipment(lotoPoint)||
+//            !bothUnitsHaveMatchingLotoPoints(lotoPoint) ||
+//            !lotoPointHasMatchingEquipment(lotoPoint)||
             !isLotoPointComplete(lotoPoint)
         ) return true;
         return false;
