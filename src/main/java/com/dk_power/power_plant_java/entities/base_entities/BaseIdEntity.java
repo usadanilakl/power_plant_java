@@ -17,7 +17,8 @@ import java.util.UUID;
 public class BaseIdEntity {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(generator = "device-prefixed")
+    @GenericGenerator(name = "device-prefixed", strategy = "com.dk_power.power_plant_java.config.DevicePrefixedIdGenerator")
     @Where(clause = "deleted = false")
     private Long id;
     private Boolean deleted = false;

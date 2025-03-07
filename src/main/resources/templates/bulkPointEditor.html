@@ -266,7 +266,15 @@
         //setEditMode(incompletePid[0].bulkEditStep); //it is in loadPictureWithLightFile now
         await getAllCategoryObjects();
         currentFileLight = incompletePid[0];
-        await loadPictureWithLightFile(incompletePid[0]);
+        let i = 0;
+        try{
+           await loadPictureWithLightFile(incompletePid[i]); 
+        }catch(e){
+            console.error("Error loading picture with file", incompletePid[i],e);
+            if(incompletePid.size>=i)await loadPictureWithLightFile(incompletePid[++i]);
+            else console.log("No loadable incomplet files left")
+        }
+        
 
         // getRevisedExcelPoints();
         await getCurrentLotoPoints();

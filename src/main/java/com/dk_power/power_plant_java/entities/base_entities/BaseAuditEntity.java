@@ -49,6 +49,17 @@ public class BaseAuditEntity extends BaseIdEntity {
         else return false;
     }
 
+    @PrePersist
+    protected void onCreate() {
+        dateCreated = LocalDateTime.now();
+        dateModified = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        dateModified = LocalDateTime.now();
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(getId());

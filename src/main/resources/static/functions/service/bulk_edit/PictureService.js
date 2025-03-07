@@ -8,7 +8,7 @@ let selectedAres = [];
 let selectedArea;
 let selectedBundle = [];
 let currentSizeCoefficient;
-let fileWithPoints;
+let fileWithPoints = {};
 let isGettingText = false;
 let highlightIsEnabled = false;
 // let eqFormInfo; //moved to global variables
@@ -56,7 +56,8 @@ async function loadPictureWithLightFile(file){
             await updateFileEditStep("skip");
             location.reload();
         }
-        picture.setAttribute('src','/'+file.fileLink)
+        // picture.setAttribute('src','/'+file.fileLink)
+        // throw new Error('Image not found');
     };
     picture.setAttribute('data-file-id', file.id);
     removeAllHighlights();
