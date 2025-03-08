@@ -7,6 +7,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -94,5 +95,18 @@ public interface CrudService<
         return list.stream().map(this::convertToEntity).toList();
     }
 
-
+    
+    //Synchronization methods
+    default List<E> getAllSince(LocalDateTime since){
+        return getRepo().findAllByDateModifiedAfter(since);
+    }
+    default void processSyncItem(E item){
+        if(item==null || item.getId() == null){
+            return;
+        }
+        getRepo().saveAndFlush(item);
+    }
+    default void processSyncItems(List<E> items){
+        items.forEach(this::processSyncItem);
+    }
 }
