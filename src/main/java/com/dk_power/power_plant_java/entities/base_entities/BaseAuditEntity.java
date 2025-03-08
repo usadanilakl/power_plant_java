@@ -17,17 +17,17 @@ import java.util.Objects;
 @MappedSuperclass
 @Getter
 @Setter
-@EntityListeners(AuditingEntityListener.class)
+//@EntityListeners(AuditingEntityListener.class)
 @Audited
 @Where(clause = "deleted=false")
 public class BaseAuditEntity extends BaseIdEntity {
-    @CreatedDate
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(updatable = false)
-    private LocalDateTime dateCreated;
-    @LastModifiedDate
-    @Temporal(TemporalType.TIMESTAMP)
-    private LocalDateTime dateModified;
+//    @CreatedDate
+//    @Temporal(TemporalType.TIMESTAMP)
+//    @Column(updatable = false)
+//    private LocalDateTime dateCreated;
+//    @LastModifiedDate
+//    @Temporal(TemporalType.TIMESTAMP)
+//    private LocalDateTime dateModified;
     @CreatedBy
     @Column(nullable = false)
     private String createdBy;
@@ -35,6 +35,19 @@ public class BaseAuditEntity extends BaseIdEntity {
     //@Column(nullable = false)
     private String modifiedBy;
 
+
+
+//    @PrePersist
+//    protected void onCreate() {
+//        dateCreated = LocalDateTime.now();
+//        dateModified = LocalDateTime.now();
+//    }
+//
+//    @PreUpdate
+//    protected void onUpdate() {
+//        System.out.println("updating...");
+//        this.setDateModified(LocalDateTime.now());
+//    }
 
     @Override
     public boolean equals(Object obj) {
@@ -47,17 +60,6 @@ public class BaseAuditEntity extends BaseIdEntity {
         BaseAuditEntity otherEntity = (BaseAuditEntity) obj;
         if(getId()!=null)return getId().equals(otherEntity.getId());
         else return false;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        dateCreated = LocalDateTime.now();
-        dateModified = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        dateModified = LocalDateTime.now();
     }
 
     @Override

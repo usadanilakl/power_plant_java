@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_LotoPointDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
+import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -37,12 +38,15 @@ public class SyncClient {
 
     public <T extends BaseIdEntity> void sendChangesToServer(String entityName, List<T> changes) {
         String url = baseUrl + "/api/sync/" + entityName;
-        executePost(url, changes, Void.class);
+        ResponseEntity<Void> voidResponseEntity = executePost(url, changes, Void.class);
+        System.out.println("Sent changes to server: " + voidResponseEntity);
     }
 
     public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since) {
         String url = baseUrl + "/api/sync/" + entityName + "?since=" + since;
+        System.out.println("getting data from: "+url);
         ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {});
+        System.out.println(response);
         return response != null ? response.getBody() : null;
     }
 

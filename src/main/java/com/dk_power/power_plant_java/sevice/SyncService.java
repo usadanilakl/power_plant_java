@@ -4,20 +4,10 @@ import com.dk_power.power_plant_java.api.SyncClient;
 import com.dk_power.power_plant_java.entities.SyncStatus;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.repository.SyncStatusRepository;
-import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
-import com.dk_power.power_plant_java.sevice.categories.CategoryService;
-import com.dk_power.power_plant_java.sevice.categories.ValueService;
-import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
-import com.dk_power.power_plant_java.sevice.file.FileService;
-import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.formula.functions.T;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,26 +16,24 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SyncService {
 
-    private final JpaRepository<BaseIdEntity, Long> repository;
-
     private final SyncClient syncClient;
     private final SyncStatusRepository syncStatusRepository;
-    private final EquipmentService equipmentService;
-    private final LotoPointService lotoPointService;
-    private final CategoryService categoryService;
-    private final ValueService valueService;
-    private final FileService fileService;
+    private final ServiceFacade serviceFacade;
 
     public void syncAll() {
-        syncEntity("Category", categoryService);
-        syncEntity("Value", valueService);
-        syncEntity("FileObject", fileService);
-        syncEntity("Equipment", equipmentService);
-        syncEntity("LotoPoint", lotoPointService);
+        syncEntity("Category", serviceFacade.getService("Category"));
+        syncEntity("Value", serviceFacade.getService("Value"));
+        syncEntity("FileObject", serviceFacade.getService("FileObject"));
+        syncEntity("Equipment", serviceFacade.getService("Equipment"));
+        syncEntity("LotoPoint", serviceFacade.getService("LotoPoint"));
     }
 
     public<T extends BaseIdEntity> void saveSyncItems(List<T> changes) {
-        repository.saveAllAndFlush(changes);
+        if(changes !=null && !changes.isEmpty()){
+            String objectType = changes.getFirst().getObjectType();
+            System.out.println("Saving " + objectType + " changes...");
+            serviceFacade.getService(objectType).processSyncItems(changes);
+        }
     }
 
     private <T extends BaseIdEntity, S extends CrudService> void syncEntity(String entityName, S service) {
@@ -53,10 +41,16 @@ public class SyncService {
             .orElse(new SyncStatus(entityName, LocalDateTime.MIN));
 
         List<T> localChanges = service.getAllSince(status.getLastSyncTime());
-        sendChangesToServer(entityName, localChanges);
+        if(localChanges!=null &&!localChanges.isEmpty()){
+            sendChangesToServer(entityName, localChanges);
+            System.out.println(localChanges.size() + " changes sent to server for " + entityName);
+        }
 
         List<T> serverChanges = getChangesFromServer(entityName, status.getLastSyncTime());
-        service.processSyncItems(serverChanges);
+        if(serverChanges!=null &&!serverChanges.isEmpty()){
+            service.processSyncItems(serverChanges);
+            System.out.println(serverChanges.size() + " changes received from server for " + entityName);
+        }
 
         status.setLastSyncTime(LocalDateTime.now());
         syncStatusRepository.save(status);

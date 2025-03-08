@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.equipment.HeatTraceRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
+import com.dk_power.power_plant_java.sevice.SyncService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
@@ -68,6 +69,7 @@ private final FileUploaderService fileUploaderService;
 private final ExcelReaderService excelReaderService;
 private final TransferToDataServiceProject transferToDataServiceProject;
 private final ConflictRepo conflictRepo;
+private final SyncService syncService;
 
 
     public static void main(String[] args) {
@@ -84,6 +86,7 @@ private final ConflictRepo conflictRepo;
     public void run(String... args) throws Exception {
 
         System.err.println("=====================================================");
+
 
 //        fileService.getAll().forEach(e->{
 //            if(e.getFileType().getId().equals(42954L) && e.getName()==null) e.setName(e.getFileNumber() + " - Picture");

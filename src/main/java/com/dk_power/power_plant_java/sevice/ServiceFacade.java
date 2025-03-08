@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice;
 
+import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
@@ -23,7 +24,7 @@ import java.util.Map;
 @Service
 public class ServiceFacade {
 
-    private final Map<String, CrudService<?, ?, ?, ?>> serviceMap = new HashMap<>();
+    private final Map<String, CrudService> serviceMap = new HashMap<>();
 
     public ServiceFacade(
             @Lazy EquipmentService equipmentService,
@@ -40,7 +41,7 @@ public class ServiceFacade {
         serviceMap.put(FileObject.class.getSimpleName(), fileService);
     }
 
-    public <T extends BaseIdEntity> CrudService<?,?,?,?> getService(String entityClass) {
+    public <T extends BaseAuditEntity> CrudService getService(String entityClass) {
         return serviceMap.get(entityClass);
     }
 }

@@ -107,6 +107,9 @@ public interface CrudService<
         getRepo().saveAndFlush(item);
     }
     default void processSyncItems(List<E> items){
+        if(items == null || items.isEmpty()){
+            return;
+        }
         items.forEach(this::processSyncItem);
     }
 }
