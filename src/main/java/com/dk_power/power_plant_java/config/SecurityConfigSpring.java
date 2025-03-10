@@ -16,36 +16,47 @@ public class SecurityConfigSpring {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers(
-                                "/",
-                                "/home",
-                                "/bootstrap-5.3.3-dist/**",
-                                "/functions/**",
-                                "/interact.js-main/**",
-                                "/my_styles/**",
-                                "/uploads**",
-                                "/h2-console/**",
-                                "/background/**"
-                        ).permitAll()
-                        //.requestMatchers("/**").hasRole("Admin")
-                        .anyRequest().authenticated()
-
+                        .anyRequest().permitAll()
                 )
                 .csrf(csrf->csrf.ignoringRequestMatchers("/h2-console/**"))
-                .headers(headers->headers.frameOptions(frame->frame.sameOrigin()))
-                .formLogin((form) -> form
-                        .loginPage("/login")
-                        .defaultSuccessUrl("/")
-                        .permitAll()
-                )
-                .logout((logout) -> logout.permitAll());
+                .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
         return http.build();
-
-
-
-
     }
+//    @Bean
+//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+//        http
+//                .authorizeHttpRequests((requests) -> requests
+//                        .requestMatchers(
+//                                "/",
+//                                "/home",
+//                                "/bootstrap-5.3.3-dist/**",
+//                                "/functions/**",
+//                                "/interact.js-main/**",
+//                                "/my_styles/**",
+//                                "/uploads**",
+//                                "/h2-console/**",
+//                                "/background/**"
+//                        ).permitAll()
+//                        //.requestMatchers("/**").hasRole("Admin")
+//                        .anyRequest().authenticated()
+//
+//                )
+//                .csrf(csrf->csrf.ignoringRequestMatchers("/h2-console/**"))
+//                .headers(headers->headers.frameOptions(frame->frame.sameOrigin()))
+//                .formLogin((form) -> form
+//                        .loginPage("/login")
+//                        .defaultSuccessUrl("/")
+//                        .permitAll()
+//                )
+//                .logout((logout) -> logout.permitAll());
+//
+//        return http.build();
+//
+//
+//
+//
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

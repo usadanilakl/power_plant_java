@@ -1,30 +1,18 @@
 package com.dk_power.power_plant_java.api;
 
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.ApiResponse;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_EquipmentDto;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment.DS_LotoPointDto;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
-import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileObjectDtoDS;
-import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.File;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -44,11 +32,31 @@ public class SyncClient {
 
     public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since) {
         String url = baseUrl + "/api/sync/" + entityName + "?since=" + since;
-        System.out.println("getting data from: "+url);
-        ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {});
+        System.out.println("getting data from: " + url);
+        ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {
+        });
         System.out.println(response);
         return response != null ? response.getBody() : null;
     }
+
+    public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since, int limit) {
+        String url = baseUrl + "/api/sync/" + entityName + "?since=" + since + "&limit=" + limit;
+        System.out.println("Getting data from: " + url);
+        ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {
+        });
+        System.out.println("Response status: " + (response != null ? response.getStatusCode() : "N/A"));
+        return response != null ? response.getBody() : null;
+    }
+
+    public <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since, int limit, LocalDateTime until) {
+        String url = baseUrl + "/api/sync/" + entityName + "?since=" + since + "&limit=" + limit + "&until=" + until;
+        System.out.println("Getting data from: " + url);
+        ResponseEntity<List<T>> response = executeGet(url, new ParameterizedTypeReference<List<T>>() {
+        });
+        System.out.println("Response status: " + (response != null ? response.getStatusCode() : "N/A"));
+        return response != null ? response.getBody() : null;
+    }
+
 
 
 

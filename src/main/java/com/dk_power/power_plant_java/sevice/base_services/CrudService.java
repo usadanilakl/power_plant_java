@@ -5,8 +5,10 @@ import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -111,5 +113,13 @@ public interface CrudService<
             return;
         }
         items.forEach(this::processSyncItem);
+    }
+
+    default Page<E> getAllSincePaginated(LocalDateTime lastSyncTime, Pageable pageable){
+        return getRepo().findAllByDateModifiedAfterOrderByDateModifiedAsc(lastSyncTime, pageable);
+    }
+
+    default Page<E> getAllSinceAndUntilPaginated(LocalDateTime since, LocalDateTime until, Pageable pageable){
+        return getRepo().findAllByDateModifiedBetween(since, until, pageable);
     }
 }

@@ -6,7 +6,9 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.repository.SyncStatusRepository;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.formula.functions.T;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -64,4 +66,60 @@ public class SyncService {
         return syncClient.getChangesFromServer(entityName, since);
     }
 
+
+    //PAGINATION AND LIMITATION
+    private static final int BATCH_SIZE = 1000; // Adjust this value based on your needs
+
+    private <T extends BaseIdEntity, S extends CrudService> void syncEntityPaginated(String entityName, S service) {
+        SyncStatus status = syncStatusRepository.findById(entityName)
+                .orElse(new SyncStatus(entityName, LocalDateTime.MIN));
+        LocalDateTime untilBeforeSync = LocalDateTime.now();
+
+        // Process local changes in batches
+        int page = 0;
+        while (true) {
+            Pageable pageable = PageRequest.of(page, BATCH_SIZE);
+            Page<T> localChangesPage = service.getAllSincePaginated(status.getLastSyncTime(), pageable);
+
+            if (localChangesPage.hasContent()) {
+                List<T> localChanges = localChangesPage.getContent();
+                sendChangesToServer(entityName, localChanges);
+                System.out.println(localChanges.size() + " changes sent to server for " + entityName + " (page " + (page + 1) + ")");
+            }
+
+            if (!localChangesPage.hasNext()) {
+                break;
+            }
+            page++;
+        }
+
+        // Process server changes in batches
+        LocalDateTime lastServerSync = status.getLastSyncTime();
+        while (true) {
+            List<T> serverChanges = getChangesFromServer(entityName, lastServerSync, BATCH_SIZE, untilBeforeSync);
+            if (serverChanges == null || serverChanges.isEmpty()) {
+                break;
+            }
+
+            service.processSyncItems(serverChanges);
+            System.out.println(serverChanges.size() + " changes received from server for " + entityName);
+
+            lastServerSync = serverChanges.stream()
+                    .map(BaseIdEntity::getDateModified)
+                    .max(LocalDateTime::compareTo)
+                    .orElse(lastServerSync);
+        }
+
+        status.setLastSyncTime(LocalDateTime.now());
+        syncStatusRepository.save(status);
+    }
+
+
+    private <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since, int limit) {
+        return syncClient.getChangesFromServer(entityName, since, limit);
+    }
+
+    private <T extends BaseIdEntity> List<T> getChangesFromServer(String entityName, LocalDateTime since, int limit, LocalDateTime until) {
+        return syncClient.getChangesFromServer(entityName, since, limit, until);
+    }
 }
