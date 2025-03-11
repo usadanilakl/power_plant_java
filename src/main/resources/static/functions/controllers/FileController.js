@@ -272,6 +272,7 @@ async function getIncompleteFiles(){
     const resp = await fetch('/file-api/incomplete');
     const data = await resp.json();
     incompletePid = data;
+    console.log(incompletePid);
 }
 
 async function updateFileStatus(id,status){

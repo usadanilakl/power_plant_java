@@ -57,9 +57,14 @@ public class SyncController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "1000000000") int size) {
 
+        System.out.println(page + " " + size);
+        System.out.println(since + " " + until);
+        System.out.println(entityName);
+
         Pageable pageable = PageRequest.of(page, size);
         List changes = serviceFacade.getService(entityName).getAllSinceAndUntilPaginated(since, until, pageable).stream().toList();
 
+        System.out.println("changes.size() = " + changes.size());
         if (changes.isEmpty()) {
             return ResponseEntity.noContent().build();
         }

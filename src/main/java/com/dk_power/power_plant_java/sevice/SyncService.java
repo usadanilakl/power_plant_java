@@ -40,7 +40,7 @@ public class SyncService {
 
     private <T extends BaseIdEntity, S extends CrudService> void syncEntity(String entityName, S service) {
         SyncStatus status = syncStatusRepository.findById(entityName)
-            .orElse(new SyncStatus(entityName, LocalDateTime.MIN));
+            .orElse(new SyncStatus(entityName, LocalDateTime.of(2000, 1, 1, 0, 0)));
 
         List<T> localChanges = service.getAllSince(status.getLastSyncTime());
         if(localChanges!=null &&!localChanges.isEmpty()){
