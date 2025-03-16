@@ -1,9 +1,10 @@
-package com.dk_power.power_plant_java.sevice;
+package com.dk_power.power_plant_java.sevice.sync_and_backup;
 
 import com.dk_power.power_plant_java.api.SyncClient;
 import com.dk_power.power_plant_java.entities.SyncStatus;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.repository.SyncStatusRepository;
+import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

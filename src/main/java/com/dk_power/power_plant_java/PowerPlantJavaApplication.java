@@ -1,13 +1,12 @@
 package com.dk_power.power_plant_java;
 
 
-import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.repository.ConflictRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.equipment.HeatTraceRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
-import com.dk_power.power_plant_java.sevice.SyncService;
+import com.dk_power.power_plant_java.sevice.sync_and_backup.SyncService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
@@ -30,11 +29,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @RequiredArgsConstructor
 @EnableJpaRepositories(basePackages = "com.dk_power.power_plant_java.repository")
 @EntityScan(basePackages = "com.dk_power.power_plant_java.entities")
+@EnableScheduling
 public class PowerPlantJavaApplication implements CommandLineRunner {
 //private final FileUploaderService fileUploaderService;
 //private final FileRepo fileRepo;

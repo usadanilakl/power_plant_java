@@ -1,8 +1,8 @@
-package com.dk_power.power_plant_java.controller;
+package com.dk_power.power_plant_java.controller.sync_and_backup;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
-import com.dk_power.power_plant_java.sevice.SyncService;
+import com.dk_power.power_plant_java.sevice.sync_and_backup.SyncService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

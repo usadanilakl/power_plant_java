@@ -80,4 +80,9 @@ public class HomeController {
 //        return "data_transfer_to_data_service_project/TransferFileByFile";
     }
 
+    @GetMapping("/backup")
+    public String backupPage() {
+        return "sync_backup";
+    }
+
 }

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta id="token" name="_csrf" th:content="${_csrf.token}"/>
     <title>Partials</title>
   <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
   <style>
@@ -79,7 +80,8 @@
           <a class="nav-link" href="/dev">Dev</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="/api/sync/all">Sync</a>
+          <!-- <a class="nav-link" href="/api/sync/all">Sync</a> -->
+          <a class="nav-link" href="/backup">Sync</a>
         </li>
         <li class="nav-item">
           <div th:if="${#authorization.expression('isAuthenticated()')}">
