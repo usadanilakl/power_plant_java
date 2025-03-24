@@ -22,11 +22,11 @@ let localFormClipboard = [];
     closePopup.onclick = closeEquipmentFormsPopup;
 
     // Close the popup when clicking outside of it
-    window.onclick = function(event) {
-        if (event.target == equipmentFormsPopup) {
-            closeEquipmentFormsPopup();
-        }
-    }
+    // window.onclick = function(event) {
+    //     if (event.target == equipmentFormsPopup) {
+    //         closeEquipmentFormsPopup();
+    //     }
+    // }
 
     async function displayEquipmentWithConflict(eqId) {
         console.log('Displaying equipment with conflict for eqId:', eqId);
@@ -357,6 +357,7 @@ let localFormClipboard = [];
             if(duplicateForm){
                 showDiscrepancies(duplicateForm);
                 showWrongReferences(duplicateForm);
+                showInvalidCoordiates(duplicateForm);
             }
         });
     
@@ -394,6 +395,7 @@ let localFormClipboard = [];
             if(equipmentForm){
                 showDiscrepancies(equipmentForm);
                 showWrongReferences(equipmentForm);
+                showInvalidCoordiates(equipmentForm);
             }
         });
     
@@ -572,6 +574,109 @@ let localFormClipboard = [];
                 }
             });
         }
+    }
+
+    function showInvalidCoordiates(form){
+        const coordinatesInput = form.querySelector('input[name="equipment.coordinates"]');
+        const coordinatesArray = coordinatesInput.value.split(',');
+        const coordinatesMap = coordinatesArray.map(coord => {
+            const arr = coord.split(':');
+            return{[arr[0]]:arr[1].trim()};
+        });
+        if(!validateCoordinates(coordinatesMap)){
+            console.error('Coordinates are invalid');
+            coordinatesInput.style.backgroundColor = 'orange';
+            coordinatesInput.title = 'Coordinates are invalid';
+            return false;
+        }
+    }
+
+    function validateCoordinates(coordinatesMap) {
+        const requiredFields = ['startX', 'startY', 'endX', 'endY', 'width', 'height'];
+        
+        // Check if all required fields are present
+        for (const field of requiredFields) {
+            if (!(field in coordinatesMap)) {
+                console.error(`Missing required field: ${field}`);
+                return false;
+            }
+        }
+    
+        // Check if there are any extra fields
+        for (const field in coordinatesMap) {
+            if (!requiredFields.includes(field)) {
+                console.error(`Extra field detected: ${field}`);
+                return false;
+            }
+        }
+    
+        // Parse values to integers
+        const coords = {};
+        for (const field in coordinatesMap) {
+            coords[field] = parseInt(coordinatesMap[field], 10);
+            if (isNaN(coords[field])) {
+                console.error(`Invalid value for ${field}: ${coordinatesMap[field]}`);
+                return false;
+            }
+        }
+    
+        // Validate width and height
+        const calculatedWidth = coords.endX - coords.startX;
+        const calculatedHeight = coords.endY - coords.startY;
+    
+        if (calculatedWidth !== coords.width) {
+            console.error(`Width mismatch: ${coords.width} (given) vs ${calculatedWidth} (calculated)`);
+            return false;
+        }
+    
+        if (calculatedHeight !== coords.height) {
+            console.error(`Height mismatch: ${coords.height} (given) vs ${calculatedHeight} (calculated)`);
+            return false;
+        }
+    
+        return true;
+    }
+
+    function formatCoordinates(form) {
+        const coordinatesInput = form.querySelector('input[name="equipment.coordinates"]');
+        if (!coordinatesInput) return;
+    
+        let coords = coordinatesInput.value;
+    
+        // Remove any extra characters
+        coords = coords.replace(/[{}"'\s]/g, '');
+    
+        // Split the string into key-value pairs
+        let pairs = coords.split(',');
+        let coordObj = {};
+    
+        // Parse each pair into the object
+        pairs.forEach(pair => {
+            let [key, value] = pair.split(':');
+            coordObj[key] = parseInt(value, 10);
+        });
+    
+        // Calculate width and height
+        let calculatedWidth = coordObj.endX - coordObj.startX;
+        let calculatedHeight = coordObj.endY - coordObj.startY;
+    
+        // Update width and height if they don't match calculated values
+        coordObj.width = calculatedWidth;
+        coordObj.height = calculatedHeight;
+    
+        // Construct the formatted string
+        let formattedCoords = [
+            `startX:${coordObj.startX}`,
+            `startY:${coordObj.startY}`,
+            `endX:${coordObj.endX}`,
+            `endY:${coordObj.endY}`,
+            `width:${coordObj.width}`,
+            `height:${coordObj.height}`
+        ].join(',');
+    
+        // Update the input value
+        coordinatesInput.value = formattedCoords;
+
     }
 
     /*******************************************************************
@@ -793,6 +898,7 @@ let localFormClipboard = [];
 
         showDiscrepancies(currentEquipmentForm);
         showWrongReferences(currentEquipmentForm);
+        showInvalidCoordiates(currentEquipmentForm);
     }
     
     function createEquipmentFormElement(equipment, formType) {
@@ -899,6 +1005,12 @@ let localFormClipboard = [];
 
         }
 
+        const formatCoordinatesBtn = document.createElement('button');
+        formatCoordinatesBtn.type = 'button';
+        formatCoordinatesBtn.textContent = 'Format Coordinates';
+        formatCoordinatesBtn.onclick = () => formatCoordinates(form);
+        buttonContainer.appendChild(formatCoordinatesBtn);
+
         const changeFileButton = document.createElement('button');
         changeFileButton.type = 'button';
         changeFileButton.textContent = 'Change File Number';
@@ -930,6 +1042,9 @@ let localFormClipboard = [];
         });
         form.querySelectorAll('input').forEach(input => {
             input.addEventListener('change', ()=>showWrongReferences(form));
+        });
+        form.querySelector('input[name="equipment.coordinates"]').addEventListener('change', () => {
+            showInvalidCoordiates(form);
         });
     
         return form;
@@ -1333,6 +1448,7 @@ let localFormClipboard = [];
             if(equipmentForm){
                 showDiscrepancies(equipmentForm);
                 showWrongReferences(equipmentForm);
+                showInvalidCoordiates(equipmentForm);
             }
         }
     }
