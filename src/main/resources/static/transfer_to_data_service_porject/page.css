@@ -44,4 +44,112 @@ html,body,main{
     z-index: 300;
 }
 
+#topControls {
+    position: fixed;
+    top: 200px; /* Adjust this value based on the height of your navbar */
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #f8f9fa;
+    z-index: 999;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #topControls {
+        flex-wrap: wrap;
+    }
+    
+    #shapeControls {
+        width: 100%;
+        margin-top: 10px;
+    }
+}
+
+
+#page-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background-color: #343a40; /* Dark background for the header */
+    color: white;
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#page-header .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#page-header .navbar-brand {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+#page-header .navbar-nav {
+    display: flex;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+#page-header .nav-item {
+    margin-left: 20px;
+}
+
+#page-header .nav-link {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+#page-header .nav-link:hover {
+    color: white;
+}
+
+#page-header .dropdown {
+    position: relative;
+}
+
+#page-header .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: white;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: 0.25rem;
+    padding: 0.5rem 0;
+    display: none;
+}
+
+#page-header .dropdown-menu.show {
+    display: block;
+}
+
+#page-header .dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 0.25rem 1.5rem;
+    clear: both;
+    font-weight: 400;
+    color: #212529;
+    text-align: inherit;
+    white-space: nowrap;
+    background-color: transparent;
+    border: 0;
+}
+
+#page-header .dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+
 

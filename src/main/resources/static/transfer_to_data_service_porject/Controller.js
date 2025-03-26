@@ -46,6 +46,38 @@ async function getFileWithConflictedPoints(fileId) {
     }
 }
 
+async function getFileWithTransferredPoints(fileId) {
+    try {
+        const response = await fetch(`/api/point-by-point/transferred/${fileId}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching file with conflicted points:', error);
+        throw error; // Re-throw the error for the caller to handle
+    }
+}
+
+async function getFileWithAllPoints(fileId) {
+    try {
+        const response = await fetch(`/api/point-by-point/all/${fileId}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching file with conflicted points:', error);
+        throw error; // Re-throw the error for the caller to handle
+    }
+}
+
 async function getConflict(pointId){
     const resp = await fetch(`/api/point-by-point/conflict/${pointId}`);
     const data = await resp.json();
@@ -102,4 +134,15 @@ async function updateFile(eqId, fileId){
     });
     if (!resp.ok) throw new Error('Failed to update file');
     return resp.json();
+}
+
+async function deleteEquipment(eqId){
+    const resp = await fetch(`/api/point-by-point/${eqId}`,{
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').getAttribute('content')
+        }
+    });
+    if (!resp.ok) throw new Error('Failed to delete equipment');
+    return resp.text();
 }

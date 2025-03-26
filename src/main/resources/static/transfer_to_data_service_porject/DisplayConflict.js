@@ -1025,8 +1025,15 @@ let localFormClipboard = [];
 
         const submitButton = document.createElement('button');
         submitButton.type = 'submit';
-        submitButton.textContent = 'Update Equipment and Loto Points';
+        submitButton.textContent = 'Submit';
+        submitButton.classList.add('submit-button', 'action-button');
         buttonContainer.appendChild(submitButton);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Delete';
+        deleteButton.classList.add('delete-button', 'action-button');
+        buttonContainer.appendChild(deleteButton);
 
         // Add form submission event listener
         form.addEventListener('submit', handleFormSubmit);
@@ -1046,6 +1053,17 @@ let localFormClipboard = [];
         form.querySelector('input[name="equipment.coordinates"]').addEventListener('change', () => {
             showInvalidCoordiates(form);
         });
+
+        deleteButton.addEventListener('click', async (e) => {await deleteEq(equipment)});
+
+        async function deleteEq(equipment) {
+            const confirmDelete = confirm(`Are you sure you want to delete equipment with ID: ${equipment.id} - ${equipment.description}?`);
+            if (confirmDelete) {
+                await deleteEquipment(equipment.id);
+            } else {
+                console.log('Equipment deletion cancelled');
+            }
+        }
     
         return form;
     }

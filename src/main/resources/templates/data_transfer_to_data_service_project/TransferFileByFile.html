@@ -12,9 +12,18 @@
 
 </head>
 <body>
+    
+    <div id="page-header">
+        <div th:replace="~{partials/index::header}"></div>
+    </div>
     <div id="topControls">
         <button id="toggle-menu">Toggle Menu</button>
         <button id="show-descriptions" onclick="showDescriptions()">Descriptions</button>
+        <select name="pointLoader" id="loadPointSelect" onchange="loadPoints(this.value)">
+            <option value="notTransferred">Not Transferred</option>
+            <option value="transferred">Transferred</option>
+            <option value="all">All</option>
+        </select>
         <div id="shapeControls">
             <button id="create-shape-button" onclick="createShapeWithPopup()">Create Shape</button>
             <button id="rotate-shape-button" onclick="rotateSelectedShape()">Rotate Shape</button>
