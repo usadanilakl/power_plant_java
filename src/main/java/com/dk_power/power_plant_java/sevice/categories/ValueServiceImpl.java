@@ -82,21 +82,24 @@ public class ValueServiceImpl implements ValueService{
         return value;
     }
 
-    @Override
-    public Value valueSetupWithAlias(String cat, String val) {
-        Category category = categoryService.getByAlias(cat);
-        if(category==null) category = new Category(cat);
-        Value value = category.getValueByName(val);
-        if(value!=null) return value;
-        else{
-            value = new Value(val);
-            value.setCategory(category);
-            category.addValue(value);
-            save(value);
-            categoryService.save(category);
-        }
-        return value;
+@Override
+public Value valueSetupWithAlias(String cat, String val) {
+    Category category = categoryService.getByAlias(cat);
+    if(category == null) {
+        category = new Category(cat);
+        categoryService.save(category);
     }
+    Value value = category.getValueByName(val);
+    if(value != null) return value;
+    else {
+        value = new Value(val);
+        value.setCategory(category);
+        category.addValue(value);
+        categoryService.save(category); // Save category first
+        save(value); // Then save value
+    }
+    return value;
+}
 
     @Override
     public ValueDto getValueFromCategory(String cat, String val) {
