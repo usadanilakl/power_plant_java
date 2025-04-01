@@ -147,6 +147,38 @@
     background-color: #0056b3;
 }
 
+.action-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: opacity 0.3s ease;
+}
+
+.action-button:hover {
+    opacity: 0.8;
+}
+
+.submit-button {
+    background-color: #4CAF50;  /* Green color */
+    color: white;
+    margin-right: 10px;
+}
+
+.delete-button {
+    background-color: #f44336;  /* Red color */
+    color: white;
+}
+
+.button-container {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 20px;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .equipment-form {

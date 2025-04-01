@@ -1,3 +1,5 @@
+let fileId;
+
 async function createFileMenu() {
     const files = await getFilesToVerify();
     const menu = document.createElement('div');
@@ -47,7 +49,22 @@ function createFileButton(file) {
     return btn;
 }
 
-async function loadFileFromMenu(fileId) {
-    const file = await getFileWithConflictedPoints(fileId);
+async function loadFileFromMenu(id) {
+    const file = await getFileWithConflictedPoints(id);
+    fileId = id;
     loadPictureWithFile(file);
+}
+
+async function loadPoints(type){
+    if(type === 'notTransferred'){
+        const file = await getFileWithConflictedPoints(fileId);
+        fileId = file.id;
+        loadPictureWithFile(file);
+    }else if(type === 'transferred'){
+        const file = await getFileWithTransferredPoints (fileId);
+        loadPictureWithFile(file);
+    }else{
+        const file = await getFileWithAllPoints (fileId);
+        loadPictureWithFile(file);
+    }
 }

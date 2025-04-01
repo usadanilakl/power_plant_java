@@ -57,6 +57,26 @@ public class PointByPointRestController {
         return ResponseEntity.ok(fileDto);
     }
 
+    @GetMapping("/all/{fileId}")
+    public ResponseEntity<FileDto> getAllPointsByFileId(@PathVariable String fileId) {
+        FileObject file = fileService.getEntityById(fileId);
+        if (file == null) return ResponseEntity.notFound().build();
+
+        FileDto fileDto = fileService.convertToDto(file);
+        return ResponseEntity.ok(fileDto);
+    }
+
+    @GetMapping("/transferred/{fileId}")
+    public ResponseEntity<FileDto> getAllTransferredPointsByFileId(@PathVariable String fileId) {
+        FileObject file = fileService.getEntityById(fileId);
+        if (file == null) return ResponseEntity.notFound().build();
+        List<EquipmentDto> all = file.getPoints().stream().filter(e -> e.getDataServiceItemId() != null && e.getLotoPoints() != null && !e.getLotoPoints().isEmpty()).map(e -> equipmentService.convertToDto(e)).collect(Collectors.toList());
+
+        FileDto fileDto = fileService.convertToDto(file);
+        fileDto.setPoints(new ArrayList<>(all));
+        return ResponseEntity.ok(fileDto);
+    }
+
     @GetMapping("/files")
     public ResponseEntity<List<FileDto>> getAllConflictedFiles() {
         List<FileDto> all = new ArrayList<>();
@@ -190,6 +210,14 @@ public class PointByPointRestController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteEquipment(@PathVariable String id) {
+        Equipment equipment = equipmentService.getEntityById(id);
+        if (equipment == null) return ResponseEntity.notFound().build();
+        equipmentService.softDelete(equipment);
+        return ResponseEntity.ok("Point deleted successfully");
     }
 
 
