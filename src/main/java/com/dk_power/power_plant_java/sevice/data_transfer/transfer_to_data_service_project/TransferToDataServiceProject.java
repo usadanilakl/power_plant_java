@@ -58,10 +58,10 @@ public class TransferToDataServiceProject {
 //        fileElementTransferService.initialCleanup();
 //        lotoPointTransferService.initialCleanup();
 //
-//        conflictRepo.deleteAll();
-//        fileObjectTransferService.cleanTransferStatus();
-//        fileElementTransferService.clearTransferStatus();
-//        lotoPointTransferService.clearTransferStatus();
+        conflictRepo.deleteAll();
+        fileObjectTransferService.cleanTransferStatus();
+        fileElementTransferService.clearTransferStatus();
+        lotoPointTransferService.clearTransferStatus();
 
 //        lotoPointTransferService.transferAllLotoPoints();
 //        lotoPointTransferService.transferAllLotoPointsNew();
