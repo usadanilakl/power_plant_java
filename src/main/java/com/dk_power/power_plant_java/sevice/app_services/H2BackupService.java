@@ -1,8 +1,7 @@
-package com.dk_power.power_plant_java.sevice.sync_and_backup;
+package com.dk_power.power_plant_java.sevice.app_services;
 
 import org.h2.tools.Restore;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -10,7 +9,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.FileTime;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -36,7 +34,7 @@ public class H2BackupService {
     @Value("${h2.backup.directory}")
     private String backupDirectory;
 
-    @Scheduled(cron = "0 0 1 * * ?") // Run at 1:00 AM every day
+    //@Scheduled(cron = "0 0 1 * * ?") // Run at 1:00 AM every day
     public void backupDatabase(){
         backupDatabase(null);
     }

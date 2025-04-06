@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.controller.sync_and_backup;
 
-import com.dk_power.power_plant_java.sevice.sync_and_backup.H2BackupService;
+import com.dk_power.power_plant_java.sevice.app_services.H2BackupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

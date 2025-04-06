@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class ElectronService {
+public class AppControlService {
     private final ElectronAppClient electronAppClient;
     private final ApplicationContext applicationContext;
 
@@ -29,8 +29,12 @@ public class ElectronService {
             String ping = electronAppClient.ping();
             if (!ping.equalsIgnoreCase("pong")) {
                 System.out.println("Electron is not running");
-                SpringApplication.exit(applicationContext, () -> 1);
+                stopApp();
             }
         }
+    }
+
+    public void stopApp(){
+        SpringApplication.exit(applicationContext, () -> 1);
     }
 }

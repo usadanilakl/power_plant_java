@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.sevice.sync_and_backup;
+package com.dk_power.power_plant_java.sevice.app_services;
 
 import com.dk_power.power_plant_java.api.SyncClient;
 import com.dk_power.power_plant_java.entities.SyncStatus;
