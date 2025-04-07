@@ -34,7 +34,7 @@ export class TagNumberTableComponent implements OnInit {
   }
 
   loadInitialItems() {
-    this.tagNumberService.getTagNumbers({}).subscribe(
+    this.tagNumberService.getTagNumbers().subscribe(
       (data) => {
         this.initialItems = data;
       },

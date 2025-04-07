@@ -34,6 +34,20 @@ export class TagNumberService {
     return of(testData);
   }
 
+  getTagNumbers(params?: { [key: string]: string | number | boolean | readonly (string | number | boolean)[] }): Observable<TagNumber[]> {
+    // return this.http.get<TagNumber[]>(this.apiUrl, { params });
+    const testData: TagNumber[] = [
+      { id: 1, number: 'TN001', description: 'Pump 1' },
+      { id: 2, number: 'TN002', description: 'Valve 2' },
+      { id: 3, number: 'TN003', description: 'Sensor 3' },
+      { id: 4, number: 'TN004', description: 'Motor 4' },
+      { id: 5, number: 'TN005', description: 'Switch 5' },
+    ];
+
+    // Return the test data as an Observable
+    return of(testData);
+  }
+
   // Get a single tag number by ID
   getTagNumberById(id: number): Observable<TagNumber> {
     return this.http.get<TagNumber>(`${this.apiUrl}/${id}`);
@@ -56,7 +70,17 @@ export class TagNumberService {
 
   // Search tag numbers
   searchTagNumbers(query: string): Observable<TagNumber[]> {
-    return this.http.get<TagNumber[]>(`${this.apiUrl}/search?q=${query}`);
+    // return this.http.get<TagNumber[]>(`${this.apiUrl}/search?q=${query}`);
+    const testData: TagNumber[] = [
+      { id: 1, number: 'TN001', description: 'Pump 1 - search' },
+      { id: 2, number: 'TN002', description: 'Valve 2' },
+      { id: 3, number: 'TN003', description: 'Sensor 3' },
+      { id: 4, number: 'TN004', description: 'Motor 4' },
+      { id: 5, number: 'TN005', description: 'Switch 5' },
+    ];
+
+    // Return the test data as an Observable
+    return of(testData);
   }
 
   // You can add more methods as needed, for example:
