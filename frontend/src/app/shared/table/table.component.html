@@ -1,0 +1,32 @@
+<div class="table-container" #tableContainer>
+  <input type="text" class="search-input" placeholder="Global Search..." [ngModel]="globalSearch$.value" (ngModelChange)="globalSearch$.next($event)">
+
+  <table>
+    <thead>
+      <tr>
+        @for (column of columns; track column.id) {
+          <th (click)="sortColumn(column)">
+            {{ column.header }}
+            <div class="resizer"></div>
+          </th>
+        }
+      </tr>
+      <tr>
+        @for (column of columns; track column.id) {
+          <th>
+            <input type="text" class="filter-input" [placeholder]="'Filter ' + column.header" [(ngModel)]="columnFilters[column.id]" (ngModelChange)="performColumnSearch()">
+          </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of filteredItems; track item.id) {
+        <tr>
+          @for (column of columns; track column.id) {
+            <td>{{ getCellValue(item, column) }}</td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

@@ -86,8 +86,7 @@ public class ValueServiceImpl implements ValueService{
 public Value valueSetupWithAlias(String cat, String val) {
     Category category = categoryService.getByAlias(cat);
     if(category == null) {
-        category = new Category(cat);
-        categoryService.save(category);
+        category = categoryService.save(new Category(cat));
     }
     Value value = category.getValueByName(val);
     if(value != null) return value;
@@ -95,8 +94,8 @@ public Value valueSetupWithAlias(String cat, String val) {
         value = new Value(val);
         value.setCategory(category);
         category.addValue(value);
-        categoryService.save(category); // Save category first
-        save(value); // Then save value
+        save(value);
+        categoryService.save(category);
     }
     return value;
 }

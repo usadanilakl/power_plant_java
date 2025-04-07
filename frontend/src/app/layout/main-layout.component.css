@@ -1,0 +1,41 @@
+.layout-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.header {
+  background-color: #3f51b5;
+  color: white;
+  padding: 1rem;
+}
+
+.content-wrapper {
+  display: flex;
+  flex: 1;
+}
+
+.left-menu {
+  width: 200px;
+  background-color: #f0f0f0;
+  padding: 1rem;
+}
+
+.left-menu ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.left-menu li {
+  margin-bottom: 0.5rem;
+}
+
+.left-menu a {
+  text-decoration: none;
+  color: #333;
+}
+
+.main-content {
+  flex: 1;
+  padding: 1rem;
+}

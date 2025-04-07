@@ -36,7 +36,8 @@ public class SecurityConfigSpring {
 //                                "/my_styles/**",
 //                                "/uploads**",
 //                                "/h2-console/**",
-//                                "/background/**"
+//                                "/background/**",
+//                                "/angular/**", "/app/**"
 //                        ).permitAll()
 //                        //.requestMatchers("/**").hasRole("Admin")
 //                        .anyRequest().authenticated()

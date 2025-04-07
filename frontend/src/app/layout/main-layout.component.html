@@ -1,0 +1,22 @@
+<div class="layout-container">
+  <header class="header">
+    <h1>My Angular App</h1>
+    <!-- Add any header content here -->
+  </header>
+
+  <div class="content-wrapper">
+    <nav class="left-menu">
+      <ul>
+        <li><a routerLink="/">Home</a></li>
+        <li><a routerLink="/loto">LOTO</a></li>
+        <li><a routerLink="/tag-number">Create New Tag</a></li>
+        <li><a routerLink="/pid">View P&IDs</a></li>
+        <!-- Add more menu items as needed -->
+      </ul>
+    </nav>
+
+    <main class="main-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
