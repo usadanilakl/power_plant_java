@@ -71,6 +71,7 @@ export class TagNumberService {
   // Search tag numbers
   searchTagNumbers(query: string): Observable<TagNumber[]> {
     // return this.http.get<TagNumber[]>(`${this.apiUrl}/search?q=${query}`);
+    console.log('Searching for:', query);
     const testData: TagNumber[] = [
       { id: 1, number: 'TN001', description: 'Pump 1 - search' },
       { id: 2, number: 'TN002', description: 'Valve 2' },

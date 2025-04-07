@@ -1,0 +1,14 @@
+<div class="checkbox-group">
+  <label>{{ label }}</label>
+  @for (option of options; track option.value) {
+    <div>
+      <input type="checkbox" 
+             [id]="option.value" 
+             [value]="option.value" 
+             [checked]="value.includes(option.value)"
+             (change)="onCheckboxChange(option, $event)"
+             #checkbox>
+      <label [for]="option.value">{{ option.label }}</label>
+    </div>
+  }
+</div>

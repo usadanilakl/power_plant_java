@@ -14,12 +14,13 @@ import { Column } from '../../../models/column.model';
       [initialItems]="initialItems"
       [loadMoreCallback]="loadMoreItems"
       [searchCallback]="searchItems"
+      [clickCallback]="onItemClick"
     ></app-shared-table>
   `
 })
 export class TagNumberTableComponent implements OnInit {
   columns: Column[] = [
-    { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
+    { id: 'tagNumber', header: 'Tag Number', accessorKey: 'number' },
     { id: 'description', header: 'Description', accessorKey: 'description' },
     { id: 'area', header: 'Area', accessorKey: 'area' },
     { id: 'system', header: 'System', accessorKey: 'system' }
@@ -69,4 +70,9 @@ export class TagNumberTableComponent implements OnInit {
       );
     });
   };
+
+  onItemClick(item: any) {
+    console.log('Clicked item:', item);
+    // Perform any action you want with the clicked item
+  }
 }

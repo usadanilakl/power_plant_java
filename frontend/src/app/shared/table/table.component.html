@@ -21,7 +21,7 @@
     </thead>
     <tbody>
       @for (item of filteredItems; track item.id) {
-        <tr>
+        <tr (click)="onRowClick(item)">
           @for (column of columns; track column.id) {
             <td>{{ getCellValue(item, column) }}</td>
           }

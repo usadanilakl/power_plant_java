@@ -16,6 +16,7 @@ export class TableComponent implements OnInit {
   @Input() initialItems: any[] = [];
   @Input() loadMoreCallback!: () => Promise<any[]>;
   @Input() searchCallback!: (criteria: any) => Promise<any[]>;
+  @Input() clickCallback!: (item: any) => void;
 
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
@@ -23,6 +24,9 @@ export class TableComponent implements OnInit {
   filteredItems: any[] = [];
   globalSearch$ = new BehaviorSubject<string>('');
   columnFilters: { [key: string]: string } = {};
+
+  currentSortColumn: string | null = null;
+  isAscending: boolean = true;
 
   constructor() {}
 
@@ -74,10 +78,27 @@ export class TableComponent implements OnInit {
   }
 
   sortColumn(column: Column) {
+    const columnKey = column.accessorKey || column.header;
+
+    // Check if we're sorting the same column
+    if (this.currentSortColumn === columnKey) {
+      // If it's the same column, reverse the sort order
+      this.isAscending = !this.isAscending;
+    } else {
+      // If it's a new column, set it to ascending
+      this.currentSortColumn = columnKey;
+      this.isAscending = true;
+    }
+
     this.filteredItems.sort((a, b) => {
       const aValue = this.getCellValue(a, column);
       const bValue = this.getCellValue(b, column);
-      return aValue.localeCompare(bValue);
+      
+      // Compare the values
+      const comparison = aValue.localeCompare(bValue);
+      
+      // Return the comparison result based on sort direction
+      return this.isAscending ? comparison : -comparison;
     });
   }
 
@@ -100,5 +121,11 @@ export class TableComponent implements OnInit {
       }
       return current[key] !== undefined ? current[key] : '';
     }, obj);
+  }
+
+  onRowClick(item: any) {
+    if (this.clickCallback) {
+      this.clickCallback(item);
+    }
   }
 }
