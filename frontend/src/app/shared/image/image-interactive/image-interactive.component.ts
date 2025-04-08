@@ -11,22 +11,23 @@ import { Subscription } from 'rxjs';
   selector: 'app-image-interactive',
   standalone: true,
   imports: [CommonModule, ImageCanvasComponent],
-  template: `
-    <div #container class="interactive-image-container">
-      <div class="interactive-image-content">
-        <img #img [src]="imagePath" [alt]="imageName" class="interactive-image-img">
-        <app-image-canvas
-          [width]="zoomService.pictureCurrentWidth"
-          [height]="zoomService.pictureCurrentHeight"
-          [shapes]="shapes"
-          [offsetX]="zoomService.offsetX"
-          [offsetY]="zoomService.offsetY"
-          [scale]="zoomService.scale">
-        </app-image-canvas>
-      </div>
-      <button (click)="openPopup()">Open in Popup</button>
-    </div>
-  `,
+  // template: `
+  //   <div #container class="interactive-image-container">
+  //     <div class="interactive-image-content">
+  //       <img #img [src]="imagePath" [alt]="imageName" class="interactive-image-img">
+  //       <app-image-canvas
+  //         [width]="zoomService.pictureCurrentWidth"
+  //         [height]="zoomService.pictureCurrentHeight"
+  //         [shapes]="shapes"
+  //         [offsetX]="zoomService.offsetX"
+  //         [offsetY]="zoomService.offsetY"
+  //         [scale]="zoomService.scale">
+  //       </app-image-canvas>
+  //     </div>
+  //     <button (click)="openPopup()">Open in Popup</button>
+  //   </div>
+  // `,
+  templateUrl: './image-interactive.component.html',
   styleUrls: ['./image-interactive.component.css'],
   providers: [ShapeService, ZoomService, DragService]
 })
@@ -191,7 +192,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
       const x = e.touches[0].clientX - rect.left;
       const y = e.touches[0].clientY - rect.top;
       this.dragService.drag(x, y);
-      this.zoomService.updateImagePosition();
+      this.zoomService.updateImageAndCanvasPosition();
       this.canvasComponent.drawShapes();
     }
   }

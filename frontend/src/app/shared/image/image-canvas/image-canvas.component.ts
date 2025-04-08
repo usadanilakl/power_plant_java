@@ -6,7 +6,8 @@ import { Shape } from '../../../models/shape.model';
   selector: 'app-image-canvas',
   standalone: true,
   template: '<canvas #canvas class="interactive-image-canvas"></canvas>',
-  styles: [':host { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }']
+  styleUrls: ['./image-canvas.component.css']
+  // styles: [':host { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }']
 })
 export class ImageCanvasComponent implements AfterViewInit, OnChanges {
   @ViewChild('canvas') canvasRef!: ElementRef<HTMLCanvasElement>;

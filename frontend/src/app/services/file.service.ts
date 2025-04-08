@@ -21,9 +21,50 @@ export class FileService {
     // return this.http.get<any[]>(this.apiUrl, { params: httpParams });
 
         // Mock data
+        const testElements = [
+          {
+            shapeType: { name: 'rectangle' },
+            color: '#FF0000',
+            shapeData: {
+              x: 1200,
+              y: 100,
+              width: 200,
+              height: 800
+            }
+          },
+          {
+            shapeType: { name: 'circle' },
+            color: '#00FF00',
+            shapeData: {
+              x: 2300,
+              y: 1300,
+              radius: 75
+            }
+          },
+          {
+            shapeType: { name: 'line' },
+            color: '#0000FF',
+            shapeData: {
+              x1: 50,
+              y1: 50,
+              x2: 250,
+              y2: 250
+            }
+          },
+          {
+            shapeType: { name: 'text' },
+            color: '#FFFF00',
+            shapeData: {
+              x: 400,
+              y: 400,
+              text: 'Sample Text',
+              fontSize: 20
+            }
+          }
+        ];
         const mockFiles = [
           { id: '1', name: 'Document1.pdf', type: 'pdf', size: '1.2 MB', uploadDate: '2023-05-15', category: 'document', tags: ['important']},
-          { id: '2', name: 'Image1.jpg', type: 'jpg', size: '3.5 MB', uploadDate: '2023-05-16', category: 'image', tags: ['archived'], url:'assets/images/Image1.jpg' },
+          { id: '2', name: 'Image1.jpg', type: 'jpg', size: '3.5 MB', uploadDate: '2023-05-16', category: 'image', tags: ['archived'], url:'assets/images/Image1.jpg', elements: testElements },
           { id: '3', name: 'Spreadsheet1.xlsx', type: 'xlsx', size: '0.8 MB', uploadDate: '2023-05-17', category: 'spreadsheet', tags: ['confidential'] },
           { id: '4', name: 'Document2.docx', type: 'docx', size: '2.1 MB', uploadDate: '2023-05-18', category: 'document', tags: ['important', 'confidential'] },
           { id: '5', name: 'Presentation1.pptx', type: 'pptx', size: '5.3 MB', uploadDate: '2023-05-19', category: 'other', tags: [] }

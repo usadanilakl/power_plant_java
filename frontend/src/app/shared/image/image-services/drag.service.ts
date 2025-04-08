@@ -34,7 +34,7 @@ export class DragService {
       this.zoomService.offsetX = newOffsetX;
       this.zoomService.offsetY = newOffsetY;
       
-      this.zoomService.updateImagePosition();
+      this.zoomService.updateImageAndCanvasPosition();
     }
   }
 
