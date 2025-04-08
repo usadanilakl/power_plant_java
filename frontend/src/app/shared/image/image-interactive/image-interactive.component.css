@@ -1,0 +1,28 @@
+.interactive-image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.interactive-image-content {
+  position: relative;
+}
+
+.interactive-image-img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+button {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
