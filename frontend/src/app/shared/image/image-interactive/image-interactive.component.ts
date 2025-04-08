@@ -1,9 +1,11 @@
-import { Component, Input, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ImageCanvasComponent } from '../image-canvas/image-canvas.component';
 import { ShapeService } from '../image-services/shape.service';
 import { ZoomService } from '../image-services/zoom.service';
 import { DragService } from '../image-services/drag.service';
+import { Shape } from '../../../models/shape.model';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-image-interactive',
@@ -13,14 +15,22 @@ import { DragService } from '../image-services/drag.service';
     <div #container class="interactive-image-container">
       <div class="interactive-image-content">
         <img #img [src]="imagePath" [alt]="imageName" class="interactive-image-img">
-        <app-image-canvas></app-image-canvas>
+        <app-image-canvas
+          [width]="zoomService.pictureCurrentWidth"
+          [height]="zoomService.pictureCurrentHeight"
+          [shapes]="shapes"
+          [offsetX]="zoomService.offsetX"
+          [offsetY]="zoomService.offsetY"
+          [scale]="zoomService.scale">
+        </app-image-canvas>
       </div>
       <button (click)="openPopup()">Open in Popup</button>
     </div>
   `,
-  styleUrls: ['./image-interactive.component.css']
+  styleUrls: ['./image-interactive.component.css'],
+  providers: [ShapeService, ZoomService, DragService]
 })
-export class ImageInteractiveComponent implements AfterViewInit {
+export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   @Input() imagePath!: string;
   @Input() imageName!: string;
   @Input() elements: any[] = [];
@@ -29,41 +39,125 @@ export class ImageInteractiveComponent implements AfterViewInit {
   @ViewChild('img') imgRef!: ElementRef;
   @ViewChild(ImageCanvasComponent) canvasComponent!: ImageCanvasComponent;
 
+  shapes: Shape[] = [];
+  private zoomSubscription!: Subscription;
+  private isInitialized = false;
+
   constructor(
     private shapeService: ShapeService,
-    private zoomService: ZoomService,
+    public zoomService: ZoomService,
     private dragService: DragService
   ) {}
 
   ngAfterViewInit() {
     const img = this.imgRef.nativeElement;
     const container = this.containerRef.nativeElement;
-
+  
     img.onload = () => {
       this.shapeService.initializeShapes(this.elements, img.naturalWidth, img.naturalHeight);
-      this.zoomService.initialize(container, img, this.canvasComponent.canvas);
-      this.dragService.initialize(container, img, this.canvasComponent.canvas);
-      this.setupEventListeners();
+      this.shapes = this.shapeService.shapes;
+      this.initializeServices(container, img);
+      
+      // Set up the subscription here
+      this.zoomSubscription = this.zoomService.zoomChanged.subscribe(() => {
+        if (this.isInitialized) {
+          this.updateShapes();
+        }
+      });
     };
+  }
+
+  private initializeServices(container: HTMLElement, img: HTMLImageElement) {
+    const initializeInterval = setInterval(() => {
+      const canvas = this.canvasComponent.getCanvas();
+      if (canvas) {
+        this.zoomService.initialize(container, img, canvas);
+        this.dragService.initialize(container, img, canvas);
+        clearInterval(initializeInterval);
+        this.setupEventListeners();
+        this.isInitialized = true;  // Set the flag here
+        this.updateShapes();  // Initial update
+      }
+    }, 100);
+  
+    setTimeout(() => clearInterval(initializeInterval), 5000);
+  }
+
+  ngOnDestroy() {
+    this.zoomSubscription.unsubscribe();
+  }
+
+  updateShapes() {
+    if (!this.isInitialized || !this.canvasComponent) return;
+  
+    this.shapes = this.shapeService.shapes.map(shape => 
+      this.shapeService.scaleShape(shape, this.zoomService.pictureCurrentWidth, this.zoomService.pictureCurrentHeight)
+    );
+    this.canvasComponent.drawShapes();
   }
 
   setupEventListeners() {
     const container = this.containerRef.nativeElement;
 
-    container.addEventListener('wheel', (e: WheelEvent) => {
-      e.preventDefault();
-      const rect = container.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left - this.zoomService.offsetX;
-      const mouseY = e.clientY - rect.top - this.zoomService.offsetY;
-      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-      this.zoomService.zoom(zoomFactor, mouseX, mouseY);
-      this.canvasComponent.drawShapes();
-    });
+    container.addEventListener('wheel', this.handleWheel.bind(this));
+    container.addEventListener('mousedown', this.handleMouseDown.bind(this));
+    container.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    container.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    container.addEventListener('mouseleave', this.handleMouseUp.bind(this));
 
-    // Add touch event listeners here (similar to the original code)
+    container.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+    container.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+    container.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
+  }
+
+  handleWheel(e: WheelEvent) {
+    e.preventDefault();
+    const rect = this.containerRef.nativeElement.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left - this.zoomService.offsetX;
+    const mouseY = e.clientY - rect.top - this.zoomService.offsetY;
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    this.zoomService.zoom(zoomFactor, mouseX, mouseY);
+  }
+
+  handleMouseDown(e: MouseEvent) {
+    this.dragService.startDrag(e.clientX, e.clientY);
+  }
+
+  handleMouseMove(e: MouseEvent) {
+    if (this.dragService.isDragging) {
+      this.dragService.drag(e.clientX, e.clientY);
+      this.zoomService.updateImagePosition();
+      this.canvasComponent.drawShapes();
+    }
+  }
+
+  handleMouseUp() {
+    this.dragService.endDrag();
+  }
+
+  handleTouchStart(e: TouchEvent) {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      this.dragService.startDrag(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }
+
+  handleTouchMove(e: TouchEvent) {
+    e.preventDefault();
+    if (e.touches.length === 1 && this.dragService.isDragging) {
+      this.dragService.drag(e.touches[0].clientX, e.touches[0].clientY);
+      this.zoomService.updateImagePosition();
+      this.canvasComponent.drawShapes();
+    }
+  }
+
+  handleTouchEnd(e: TouchEvent) {
+    e.preventDefault();
+    this.dragService.endDrag();
   }
 
   openPopup() {
     // Implement popup functionality
+    console.log('Open popup functionality to be implemented');
   }
 }

@@ -1,0 +1,8 @@
+<app-details-form
+  [fields]="fields"
+  [values]="values"
+  (formSubmit)="onFormSubmit($event)"
+  (formDelete)="onFormDelete()"
+  (openImage)="onOpenImage()">
+</app-details-form>
+<button type="button" (click)="onOpenImage()">Open Image</button>
