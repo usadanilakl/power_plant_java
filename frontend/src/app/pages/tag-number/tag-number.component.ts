@@ -3,6 +3,7 @@ import { TagNumberTableComponent } from "../../features/tag-number/tag-number-ta
 
 @Component({
   selector: 'app-tag-number',
+  standalone: true,
   imports: [TagNumberTableComponent],
   templateUrl: './tag-number.component.html',
   styleUrl: './tag-number.component.css'

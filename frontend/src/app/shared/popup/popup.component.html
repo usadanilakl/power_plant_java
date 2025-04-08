@@ -1,1 +1,11 @@
-<p>popup works!</p>
+<div *ngIf="isOpen" class="popup-overlay">
+  <div class="popup-content">
+    <div class="popup-header">
+      <h2>{{ title }}</h2>
+      <button (click)="onClose()" class="close-button">&times;</button>
+    </div>
+    <div class="popup-body">
+      <ng-container *ngComponentOutlet="contentComponent; inputs: contentInputs"></ng-container>
+    </div>
+  </div>
+</div>

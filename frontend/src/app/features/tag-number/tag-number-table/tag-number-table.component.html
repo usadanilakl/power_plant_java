@@ -1,1 +1,28 @@
-<p>tag-number-table works!</p>
+<app-shared-table
+[columns]="columns"
+[initialItems]="initialItems"
+[loadMoreCallback]="loadMoreItems"
+[searchCallback]="searchItems"
+[clickCallback]="onItemClick"
+></app-shared-table>
+
+<app-popup
+  [isOpen]="isPopupOpen"
+  [title]="'Tag Number Details'"
+  [contentComponent]="TagNumberDetailFormComponent"
+  [contentInputs]="{
+    values: selectedItem,
+    formSubmit: onFormSubmit.bind(this),
+    formDelete: onFormDelete.bind(this)
+  }"
+  (close)="closePopup()"
+></app-popup>
+
+<!-- @if (selectedItem) {
+  <app-tag-number-detail-form
+    [values]="selectedItem"
+    (formSubmit)="onFormSubmit($event)"
+    (formDelete)="onFormDelete()"
+  ></app-tag-number-detail-form>
+} -->
+

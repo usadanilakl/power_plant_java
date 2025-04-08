@@ -2,14 +2,10 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { environment } from '../../environments/environment'
+import { TagNumber } from '../models/tag-number.model';
 
 // Define an interface for the TagNumber entity
-export interface TagNumber {
-  id?: number;
-  number: string;
-  description: string;
-  // Add other properties as needed
-}
+
 
 @Injectable({
   providedIn: 'root'
