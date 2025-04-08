@@ -26,7 +26,11 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges {
     this.updateCanvasSize();
     this.drawShapes();
   }
-  public getCanvas(): HTMLCanvasElement | null {
+
+  getCanvas(): HTMLCanvasElement {
+    if (!this.canvas) {
+      throw new Error('Canvas not initialized');
+    }
     return this.canvas;
   }
 
@@ -41,11 +45,18 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges {
     }
   }
 
-  private updateCanvasSize() {
-    if (!this.isCanvasReady) return;
-    const canvas = this.canvasRef.nativeElement;
-    canvas.width = this.width;
-    canvas.height = this.height;
+  updateCanvasSize(width?: number, height?: number) {
+    this.width = width ?? this.width;
+    this.height = height ?? this.height;
+    
+    const canvas = this.canvas;
+    if (canvas) {
+      canvas.width = this.width;
+      canvas.height = this.height;
+      this.drawShapes();
+    } else {
+      console.error('Canvas not available for size update');
+    }
   }
 
   get canvas(): HTMLCanvasElement | null {

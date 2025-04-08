@@ -1,1 +1,31 @@
-<p>image-interactive works!</p>
+<div #container class="interactive-image-container">
+  <div class="interactive-image-content">
+    <img #img [src]="imagePath" [alt]="imageName" class="interactive-image-img"
+         [style.transform]="'scale(' + zoomService.scale + ') translate(' + zoomService.offsetX / zoomService.scale + 'px, ' + zoomService.offsetY / zoomService.scale + 'px)'">
+    <app-image-canvas
+      [width]="zoomService.pictureCurrentWidth"
+      [height]="zoomService.pictureCurrentHeight"
+      [shapes]="shapes"
+      [offsetX]="zoomService.offsetX"
+      [offsetY]="zoomService.offsetY"
+      [scale]="zoomService.scale">
+    </app-image-canvas>
+  </div>
+  <button (click)="openPopup()">Open in Popup</button>
+</div>
+
+<!-- <div #container class="interactive-image-container">
+  <div class="interactive-image-content">
+    <img #img [src]="imagePath" [alt]="imageName" class="interactive-image-img"
+         [style.transform]="'scale(' + zoomService.scale + ') translate(' + zoomService.offsetX / zoomService.scale + 'px, ' + zoomService.offsetY / zoomService.scale + 'px)'">
+    <app-image-canvas
+      [width]="zoomService.pictureCurrentWidth"
+      [height]="zoomService.pictureCurrentHeight"
+      [shapes]="shapes"
+      [offsetX]="zoomService.offsetX"
+      [offsetY]="zoomService.offsetY"
+      [scale]="zoomService.scale">
+    </app-image-canvas>
+  </div>
+  <button (click)="openPopup()">Open in Popup</button>
+</div> -->

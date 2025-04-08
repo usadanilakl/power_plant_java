@@ -28,8 +28,12 @@ export class DragService {
 
   drag(clientX: number, clientY: number) {
     if (this.isDragging) {
-      this.zoomService.offsetX = clientX - this.startX;
-      this.zoomService.offsetY = clientY - this.startY;
+      const newOffsetX = clientX - this.startX;
+      const newOffsetY = clientY - this.startY;
+      
+      this.zoomService.offsetX = newOffsetX;
+      this.zoomService.offsetY = newOffsetY;
+      
       this.zoomService.updateImagePosition();
     }
   }

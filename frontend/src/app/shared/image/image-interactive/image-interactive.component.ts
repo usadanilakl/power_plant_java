@@ -53,34 +53,67 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     const img = this.imgRef.nativeElement;
     const container = this.containerRef.nativeElement;
   
-    img.onload = () => {
-      this.shapeService.initializeShapes(this.elements, img.naturalWidth, img.naturalHeight);
-      this.shapes = this.shapeService.shapes;
-      this.initializeServices(container, img);
-      
-      // Set up the subscription here
-      this.zoomSubscription = this.zoomService.zoomChanged.subscribe(() => {
-        if (this.isInitialized) {
-          this.updateShapes();
-        }
-      });
-    };
+    if (img.complete) {
+      this.onImageLoad(img, container);
+    } else {
+      img.onload = () => this.onImageLoad(img, container);
+    }
+  }
+  
+  private onImageLoad(img: HTMLImageElement, container: HTMLElement) {
+    this.shapeService.initializeShapes(this.elements, img.naturalWidth, img.naturalHeight);
+    this.shapes = this.shapeService.shapes;
+    this.initializeServices(container, img);
+
+    // Set initial zoom to fit the container
+    this.setInitialZoom(container, img);
+    
+    this.zoomSubscription = this.zoomService.zoomChanged.subscribe((zoomLevel) => {
+      if (this.isInitialized) {
+        this.canvasComponent.updateCanvasSize(
+          this.zoomService.pictureCurrentWidth,
+          this.zoomService.pictureCurrentHeight
+        );
+        this.updateShapes();
+      }
+    });
+  }
+
+  private setInitialZoom(container: HTMLElement, img: HTMLImageElement) {
+    const containerAspectRatio = container.clientWidth / container.clientHeight;
+    const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+
+    let zoom;
+    if (containerAspectRatio > imageAspectRatio) {
+      // Fit to height
+      zoom = container.clientHeight / img.naturalHeight;
+    } else {
+      // Fit to width
+      zoom = container.clientWidth / img.naturalWidth;
+    }
+
+    this.zoomService.setZoom(zoom);
   }
 
   private initializeServices(container: HTMLElement, img: HTMLImageElement) {
-    const initializeInterval = setInterval(() => {
-      const canvas = this.canvasComponent.getCanvas();
-      if (canvas) {
-        this.zoomService.initialize(container, img, canvas);
-        this.dragService.initialize(container, img, canvas);
-        clearInterval(initializeInterval);
-        this.setupEventListeners();
-        this.isInitialized = true;  // Set the flag here
-        this.updateShapes();  // Initial update
-      }
-    }, 100);
+    const canvas = this.canvasComponent.getCanvas();
+    if (!canvas) {
+      console.error('Canvas not available. Services not initialized.');
+      return;
+    }
   
-    setTimeout(() => clearInterval(initializeInterval), 5000);
+    // Initialize ZoomService first
+    this.zoomService.initialize(container, img, canvas);
+  
+    // Now initialize canvas with correct dimensions
+    this.canvasComponent.updateCanvasSize(this.zoomService.pictureCurrentWidth, this.zoomService.pictureCurrentHeight);
+  
+    // Initialize DragService
+    this.dragService.initialize(container, img, canvas);
+  
+    this.setupEventListeners();
+    this.isInitialized = true;
+    this.updateShapes();
   }
 
   ngOnDestroy() {
@@ -93,6 +126,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     this.shapes = this.shapeService.shapes.map(shape => 
       this.shapeService.scaleShape(shape, this.zoomService.pictureCurrentWidth, this.zoomService.pictureCurrentHeight)
     );
+    this.canvasComponent.updateCanvasSize(this.zoomService.pictureCurrentWidth, this.zoomService.pictureCurrentHeight);
     this.canvasComponent.drawShapes();
   }
 
@@ -120,13 +154,18 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   }
 
   handleMouseDown(e: MouseEvent) {
-    this.dragService.startDrag(e.clientX, e.clientY);
+    const rect = this.containerRef.nativeElement.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    this.dragService.startDrag(x, y);
   }
-
+  
   handleMouseMove(e: MouseEvent) {
     if (this.dragService.isDragging) {
-      this.dragService.drag(e.clientX, e.clientY);
-      this.zoomService.updateImagePosition();
+      const rect = this.containerRef.nativeElement.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      this.dragService.drag(x, y);
       this.canvasComponent.drawShapes();
     }
   }
@@ -138,14 +177,20 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   handleTouchStart(e: TouchEvent) {
     e.preventDefault();
     if (e.touches.length === 1) {
-      this.dragService.startDrag(e.touches[0].clientX, e.touches[0].clientY);
+      const rect = this.containerRef.nativeElement.getBoundingClientRect();
+      const x = e.touches[0].clientX - rect.left;
+      const y = e.touches[0].clientY - rect.top;
+      this.dragService.startDrag(x, y);
     }
   }
-
+  
   handleTouchMove(e: TouchEvent) {
     e.preventDefault();
     if (e.touches.length === 1 && this.dragService.isDragging) {
-      this.dragService.drag(e.touches[0].clientX, e.touches[0].clientY);
+      const rect = this.containerRef.nativeElement.getBoundingClientRect();
+      const x = e.touches[0].clientX - rect.left;
+      const y = e.touches[0].clientY - rect.top;
+      this.dragService.drag(x, y);
       this.zoomService.updateImagePosition();
       this.canvasComponent.drawShapes();
     }

@@ -21,28 +21,17 @@ export class ZoomService {
   initialize(container: HTMLElement, img: HTMLImageElement, canvas: HTMLCanvasElement) {
     this.container = container;
     this.img = img;
-    this.canvas = canvas;
-    
-    this.img.onload = () => {
-      this.pictureOriginalWidth = this.img.naturalWidth;
-      this.pictureOriginalHeight = this.img.naturalHeight;
-      this.initializeZoom();
-    };
-
-    window.addEventListener('resize', () => this.initializeZoom());
-    this.initializeZoom();
+    this.canvas = canvas;  // Add this line
+    this.pictureOriginalWidth = img.naturalWidth;
+    this.pictureOriginalHeight = img.naturalHeight;
+    this.pictureCurrentWidth = this.pictureOriginalWidth;
+    this.pictureCurrentHeight = this.pictureOriginalHeight;
+    this.initializeZoom();  // Call initializeZoom instead of updateImageAndCanvasDimensions
   }
 
   initializeZoom() {
-    const containerAspectRatio = this.container.clientWidth / this.container.clientHeight;
-    const imageAspectRatio = this.pictureOriginalWidth / this.pictureOriginalHeight;
-
-    if (containerAspectRatio > imageAspectRatio) {
-      this.zoomLevel = this.container.clientHeight / this.pictureOriginalHeight;
-    } else {
-      this.zoomLevel = this.container.clientWidth / this.pictureOriginalWidth;
-    }
-
+    this.zoomLevel = this.container.clientHeight / this.pictureOriginalHeight;
+    
     this.updateImageAndCanvasDimensions();
     this.updateImagePosition();
     this.zoomChanged.next();
@@ -51,25 +40,31 @@ export class ZoomService {
   zoom(factor: number, mouseX: number, mouseY: number) {
     const oldZoom = this.zoomLevel;
     this.zoomLevel *= factor;
-
-    const minZoomX = this.container.clientWidth / this.pictureOriginalWidth;
-    const minZoomY = this.container.clientHeight / this.pictureOriginalHeight;
-    const minZoom = Math.min(minZoomX, minZoomY);
-
+  
+    // Only use height for minimum zoom
+    const minZoom = this.container.clientHeight / this.pictureOriginalHeight;
+  
     this.zoomLevel = Math.max(this.zoomLevel, minZoom * 0.9);
     this.zoomLevel = Math.min(this.zoomLevel, 5);
-
+  
     const mouseXRatio = mouseX / this.pictureCurrentWidth;
     const mouseYRatio = mouseY / this.pictureCurrentHeight;
-
+  
     this.updateImageAndCanvasDimensions();
-
+  
     const newMouseX = this.pictureCurrentWidth * mouseXRatio;
     const newMouseY = this.pictureCurrentHeight * mouseYRatio;
-
+  
     this.offsetX -= newMouseX - mouseX;
     this.offsetY -= newMouseY - mouseY;
+  
+    this.updateImagePosition();
+    this.zoomChanged.next();
+  }
 
+  setZoom(zoom: number) {
+    this.zoomLevel = zoom;
+    this.updateImageAndCanvasDimensions();
     this.updateImagePosition();
     this.zoomChanged.next();
   }
