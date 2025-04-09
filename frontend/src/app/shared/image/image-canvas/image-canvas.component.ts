@@ -1,6 +1,8 @@
-import { Component, ViewChild, ElementRef, AfterViewInit, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, ViewChild, ElementRef, AfterViewInit, Input, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
 import { ShapeService } from '../image-services/shape.service';
 import { Shape } from '../../../models/shape.model';
+import { DrawingService } from '../image-services/drawing.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-image-canvas',
@@ -9,7 +11,7 @@ import { Shape } from '../../../models/shape.model';
   styleUrls: ['./image-canvas.component.css']
   // styles: [':host { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }']
 })
-export class ImageCanvasComponent implements AfterViewInit, OnChanges {
+export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy {
   @ViewChild('canvas') canvasRef!: ElementRef<HTMLCanvasElement>;
   @Input() width!: number;
   @Input() height!: number;
@@ -19,8 +21,18 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges {
   @Input() scale = 1;
 
   private isCanvasReady = false;
+  private shapesSubscription: Subscription;
 
-  constructor(private shapeService: ShapeService) {}
+  constructor(private shapeService: ShapeService, private drawingService: DrawingService) {
+    this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
+      this.shapes = shapes;
+      this.drawShapes();
+    });
+  }
+
+  ngOnDestroy() {
+    this.shapesSubscription.unsubscribe();
+  }
 
   ngAfterViewInit() {
     this.isCanvasReady = true;

@@ -6,30 +6,15 @@ import { ZoomService } from '../image-services/zoom.service';
 import { DragService } from '../image-services/drag.service';
 import { Shape } from '../../../models/shape.model';
 import { Subscription } from 'rxjs';
+import { DrawingService } from '../image-services/drawing.service';
 
 @Component({
   selector: 'app-image-interactive',
   standalone: true,
   imports: [CommonModule, ImageCanvasComponent],
-  // template: `
-  //   <div #container class="interactive-image-container">
-  //     <div class="interactive-image-content">
-  //       <img #img [src]="imagePath" [alt]="imageName" class="interactive-image-img">
-  //       <app-image-canvas
-  //         [width]="zoomService.pictureCurrentWidth"
-  //         [height]="zoomService.pictureCurrentHeight"
-  //         [shapes]="shapes"
-  //         [offsetX]="zoomService.offsetX"
-  //         [offsetY]="zoomService.offsetY"
-  //         [scale]="zoomService.scale">
-  //       </app-image-canvas>
-  //     </div>
-  //     <button (click)="openPopup()">Open in Popup</button>
-  //   </div>
-  // `,
   templateUrl: './image-interactive.component.html',
   styleUrls: ['./image-interactive.component.css'],
-  providers: [ShapeService, ZoomService, DragService]
+  providers: [ShapeService, ZoomService, DragService, DrawingService]
 })
 export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   @Input() imagePath!: string;
@@ -47,7 +32,8 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   constructor(
     private shapeService: ShapeService,
     public zoomService: ZoomService,
-    private dragService: DragService
+    private dragService: DragService,
+    private drawingService: DrawingService
   ) {}
 
   ngAfterViewInit() {
@@ -115,6 +101,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     this.setupEventListeners();
     this.isInitialized = true;
     this.updateShapes();
+    this.drawingService.setOriginalPictureDimensions(img.naturalWidth, img.naturalHeight);
   }
 
   ngOnDestroy() {
@@ -155,11 +142,41 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     this.updateShapes();
   }
 
+  // handleMouseDown(e: MouseEvent) {
+  //   const rect = this.containerRef.nativeElement.getBoundingClientRect();
+  //   const x = e.clientX - rect.left;
+  //   const y = e.clientY - rect.top;
+
+  //   if(e.button === 2) {
+  //     this.drawingService.handleMouseDown({
+  //       offsetX: x - this.zoomService.offsetX,
+  //       offsetY: y - this.zoomService.offsetY
+  //     } as MouseEvent);
+  //   }else{
+  //     this.dragService.startDrag(x, y);
+  //   }
+  // }
+
   handleMouseDown(e: MouseEvent) {
+    e.preventDefault(); // Prevent default behavior, including context menu
+  
     const rect = this.containerRef.nativeElement.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    this.dragService.startDrag(x, y);
+  
+    // Calculate coordinates relative to the image, accounting for zoom and offset
+    const imageX = (x - this.zoomService.offsetX) / this.zoomService.scale;
+    const imageY = (y - this.zoomService.offsetY) / this.zoomService.scale;
+  
+    if (e.button === 2) { // Right click
+      this.drawingService.handleMouseDown({
+        offsetX: imageX,
+        offsetY: imageY,
+        button: e.button
+      } as MouseEvent);
+    } else if (e.button === 0) { // Left click
+      this.dragService.startDrag(x, y);
+    }
   }
   
   handleMouseMove(e: MouseEvent) {
