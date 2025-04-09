@@ -17,82 +17,68 @@ export class ShapeService {
     })) as Shape[];
   }
 
-  scaleShape(shape: Shape, currentWidth: number, currentHeight: number): Shape {
-    const scaleX = currentWidth / shape.originalPictureWidth;
-    const scaleY = currentHeight / shape.originalPictureHeight;
-
+  scaleShape(shape: Shape, scale: number): Shape {
     switch (shape.type) {
       case 'rectangle':
         return {
           ...shape,
-          x: shape.x * scaleX,
-          y: shape.y * scaleY,
-          width: shape.width * scaleX,
-          height: shape.height * scaleY
+          width: shape.width * scale,
+          height: shape.height * scale,
         };
       case 'circle':
         return {
           ...shape,
-          x: shape.x * scaleX,
-          y: shape.y * scaleY,
-          radius: shape.radius * Math.min(scaleX, scaleY)
+          radius: shape.radius * scale,
         };
       case 'line':
-        return {
-          ...shape,
-          startX: shape.startX * scaleX,
-          startY: shape.startY * scaleY,
-          endX: shape.endX * scaleX,
-          endY: shape.endY * scaleY
-        };
       case 'text':
-        return {
-          ...shape,
-          x: shape.x * scaleX,
-          y: shape.y * scaleY
-        };
+        return { ...shape };
+      default:
+        return shape;
     }
   }
-
-  drawShapes(ctx: CanvasRenderingContext2D, currentWidth: number, currentHeight: number) {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
+  
+  drawShapes(ctx: CanvasRenderingContext2D, scale: number) {
     this.shapes.forEach(shape => {
       ctx.strokeStyle = shape.color;
       ctx.fillStyle = shape.color;
       ctx.lineWidth = 2;
-
-      const scaledShape = this.scaleShape(shape, currentWidth, currentHeight);
-
+  
+      const scaledShape = this.scaleShape(shape, scale);
+  
       switch (scaledShape.type) {
         case 'rectangle':
+          const rect = scaledShape as RectangleShape;
           ctx.strokeRect(
-            scaledShape.x,
-            scaledShape.y,
-            scaledShape.width,
-            scaledShape.height
+            rect.x * scale,
+            rect.y * scale,
+            rect.width,
+            rect.height
           );
           break;
         case 'circle':
+          const circle = scaledShape as CircleShape;
           ctx.beginPath();
           ctx.arc(
-            scaledShape.x,
-            scaledShape.y,
-            scaledShape.radius,
+            circle.x * scale,
+            circle.y * scale,
+            circle.radius,
             0,
             2 * Math.PI
           );
           ctx.stroke();
           break;
         case 'line':
+          const line = scaledShape as LineShape;
           ctx.beginPath();
-          ctx.moveTo(scaledShape.startX, scaledShape.startY);
-          ctx.lineTo(scaledShape.endX, scaledShape.endY);
+          ctx.moveTo(line.startX * scale, line.startY * scale);
+          ctx.lineTo(line.endX * scale, line.endY * scale);
           ctx.stroke();
           break;
         case 'text':
-          ctx.font = '16px Arial';
-          ctx.fillText(scaledShape.text, scaledShape.x, scaledShape.y);
+          const text = scaledShape as TextShape;
+          ctx.font = `${16 * scale}px Arial`;
+          ctx.fillText(text.text, text.x * scale, text.y * scale);
           break;
       }
     });

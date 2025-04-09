@@ -124,10 +124,10 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   updateShapes() {
     if (!this.isInitialized || !this.canvasComponent) return;
   
-    this.shapes = this.shapeService.shapes.map(shape => 
-      this.shapeService.scaleShape(shape, this.zoomService.pictureCurrentWidth, this.zoomService.pictureCurrentHeight)
+    this.canvasComponent.updateCanvasSize(
+      this.zoomService.pictureCurrentWidth,
+      this.zoomService.pictureCurrentHeight
     );
-    this.canvasComponent.updateCanvasSize(this.zoomService.pictureCurrentWidth, this.zoomService.pictureCurrentHeight);
     this.canvasComponent.drawShapes();
   }
 
@@ -152,6 +152,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     const mouseY = e.clientY - rect.top - this.zoomService.offsetY;
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
     this.zoomService.zoom(zoomFactor, mouseX, mouseY);
+    this.updateShapes();
   }
 
   handleMouseDown(e: MouseEvent) {
@@ -167,7 +168,8 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       this.dragService.drag(x, y);
-      this.canvasComponent.drawShapes();
+      // this.canvasComponent.drawShapes();
+      this.updateShapes();
     }
   }
 

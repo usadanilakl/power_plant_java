@@ -68,18 +68,17 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges {
     if (!this.isCanvasReady) return;
     const canvas = this.canvas;
     if (!canvas) return;
-
+  
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
+  
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     ctx.save();
     ctx.translate(this.offsetX, this.offsetY);
-    ctx.scale(this.scale, this.scale);
-
-    this.shapeService.drawShapes(ctx, this.width, this.height);
-
+  
+    this.shapeService.drawShapes(ctx, this.scale);
+  
     ctx.restore();
   }
 }
