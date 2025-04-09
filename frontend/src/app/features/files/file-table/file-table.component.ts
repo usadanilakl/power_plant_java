@@ -6,6 +6,7 @@ import { FileDetailFormComponent } from "../file-detail-form/file-detail-form.co
 import { PopupComponent } from "../../../shared/popup/popup.component";
 import { FileService } from '../../../services/file.service';
 import { ImageInteractiveComponent } from "../../../shared/image/image-interactive/image-interactive.component";
+import { DrawingComponent } from '../../../shared/image/drawing/drawing.component';
 
 @Component({
   selector: 'app-file-table',
@@ -26,6 +27,7 @@ export class FileTableComponent implements OnInit {
   isPopupOpen: boolean = false;
   FileDetailFormComponent = FileDetailFormComponent;
   ImageInteractiveComponent = ImageInteractiveComponent;
+  DrawingComponent = DrawingComponent;
   isImagePopupOpen: boolean = false;
   selectedImagePath: string = '';
 

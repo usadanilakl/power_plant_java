@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { DrawingComponentComponent } from './drawing-component.component';
+import { DrawingComponent } from './drawing.component';
 
 describe('DrawingComponentComponent', () => {
-  let component: DrawingComponentComponent;
-  let fixture: ComponentFixture<DrawingComponentComponent>;
+  let component: DrawingComponent;
+  let fixture: ComponentFixture<DrawingComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DrawingComponentComponent]
+      imports: [DrawingComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(DrawingComponentComponent);
+    fixture = TestBed.createComponent(DrawingComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

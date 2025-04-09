@@ -1,0 +1,16 @@
+@if (shape) {
+  <div>
+    <h3>Shape Properties</h3>
+    <p>Type: {{ shape.type }}</p>
+    <p>Color: 
+      <input 
+        type="color" 
+        [ngModel]="shape.color" 
+        (ngModelChange)="shape.color = $event"
+        [disabled]="!shape.color">
+    </p>
+    <!-- Add more properties based on shape type -->
+  </div>
+}@else {
+  <p>No shape selected</p>
+}

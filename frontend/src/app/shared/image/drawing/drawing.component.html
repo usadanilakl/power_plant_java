@@ -1,0 +1,12 @@
+
+<app-toolbar (toolSelected)="onToolSelected($event)"></app-toolbar>
+<app-color-picker (colorSelected)="onColorSelected($event)"></app-color-picker>
+<app-image-interactive 
+  [imagePath]="imagePath" 
+  [imageName]="imageName"
+  [elements]="elements">
+</app-image-interactive>
+@if (selectedShape) {
+  <app-shape-properties [shape]="selectedShape"></app-shape-properties>
+}
+

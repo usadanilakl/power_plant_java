@@ -22,7 +22,7 @@
 <app-popup
   [isOpen]="isImagePopupOpen"
   [title]="'Image View'"
-  [contentComponent]="ImageInteractiveComponent"
+  [contentComponent]="DrawingComponent"
   [contentInputs]="{
     imagePath: selectedImagePath,
     imageName: selectedItem?.name,
@@ -31,10 +31,15 @@
   (close)="closeImagePopup()"
 ></app-popup>
 
-<!-- <app-popup *ngIf="isImagePopupOpen" (close)="closeImagePopup()">
-  <app-image-interactive
-    [imagePath]="selectedImagePath"
-    [imageName]="selectedItem?.name"
-    [elements]="[]">
-  </app-image-interactive>
-</app-popup> -->
+<!-- <app-popup
+  [isOpen]="isImagePopupOpen"
+  [title]="'Image View'"
+  [contentComponent]="ImageInteractiveComponent"
+  [contentInputs]="{
+    imagePath: selectedImagePath,
+    imageName: selectedItem?.name,
+    elements: selectedItem?.elements
+  }"
+  (close)="closeImagePopup()"
+></app-popup> -->
+
