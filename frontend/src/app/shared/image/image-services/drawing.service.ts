@@ -23,6 +23,8 @@ export class DrawingService {
     private shapeUtil: ShapeUtilService
   ) {}
 
+  isDraggingShape = false;
+
   setShapes(shapes: Shape[]) {
     this.shapes = shapes;
   }
@@ -54,6 +56,11 @@ export class DrawingService {
       // Handle other tools...
     }
   }
+
+  handleDoubleClick(event: MouseEvent) {
+    this.selectShape(event);
+  }
+
 
   private createRectangle(event: MouseEvent) {
     const newRect = this.shapeFactory.createRectangle(
@@ -101,5 +108,35 @@ export class DrawingService {
     }
 
     return this.shapeUtil.containsPoint(this.selectedShape, x, y);
+  }
+
+  dragSelectedShape(dx: number, dy: number): void {
+    if (!this.selectedShape) {
+      return;
+    }
+  
+    switch (this.selectedShape.type) {
+      case 'rectangle':
+        (this.selectedShape as any).x += dx;
+        (this.selectedShape as any).y += dy;
+        break;
+      case 'circle':
+        (this.selectedShape as any).x += dx;
+        (this.selectedShape as any).y += dy;
+        break;
+      case 'line':
+        (this.selectedShape as any).startX += dx;
+        (this.selectedShape as any).startY += dy;
+        (this.selectedShape as any).endX += dx;
+        (this.selectedShape as any).endY += dy;
+        break;
+      case 'text':
+        (this.selectedShape as any).x += dx;
+        (this.selectedShape as any).y += dy;
+        break;
+    }
+  
+    // Notify subscribers of the change
+    this.shapesSubject.next(this.shapes);
   }
 }

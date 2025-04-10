@@ -157,6 +157,8 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   
   handleMouseDown(e: MouseEvent) {
     e.preventDefault();
+    this.lastX = e.offsetX;
+    this.lastY = e.offsetY;
     const containerRect = this.containerRef.nativeElement.getBoundingClientRect();
     const imgRect = this.imgRef.nativeElement.getBoundingClientRect();
   
@@ -200,6 +202,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
       // Check if we're clicking on a shape
       if (this.drawingService.isClickWithinSelectedShape(imageX, imageY)) {
         console.log('Selected shape clicked');
+        this.drawingService.isDraggingShape = true;
       } else {
         const rect = this.containerRef.nativeElement.getBoundingClientRect();
         const dragX = e.clientX - rect.left;
@@ -212,36 +215,16 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   private handleDoubleClick(e: MouseEvent, imageX: number, imageY: number) {
     console.log('Double click detected');
     console.log('Drawing mode');
-    this.drawingService.handleMouseDown({
+    this.drawingService.handleDoubleClick({
       offsetX: imageX,
       offsetY: imageY,
       button: e.button
     } as MouseEvent);
 
   }
-
-  // handleMouseDown(e: MouseEvent) {
-  //   e.preventDefault();
-  //   const rect = this.containerRef.nativeElement.getBoundingClientRect();
-  //   const x = e.clientX - rect.left;
-  //   const y = e.clientY - rect.top;
   
-  //   // Calculate coordinates relative to the image, accounting for zoom and offset
-  //   const imageX = (x - this.zoomService.offsetX) / this.zoomService.scale;
-  //   const imageY = (y - this.zoomService.offsetY) / this.zoomService.scale;
-  
-  //   if (e.button === 2) {
-  //     console.log('Drawing mode');
-  //     this.drawingService.handleMouseDown({
-  //       offsetX: imageX,
-  //       offsetY: imageY,
-  //       button: e.button
-  //     } as MouseEvent);
-  //   } else if (e.button === 0) { // Left click
-  //     this.dragService.startDrag(x, y);
-  //   }
-  // }
-  
+  private lastX: number = 0;
+  private lastY: number = 0;
   handleMouseMove(e: MouseEvent) {
     if (this.dragService.isDragging) {
       const rect = this.containerRef.nativeElement.getBoundingClientRect();
@@ -250,11 +233,18 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
       this.dragService.drag(x, y);
       // this.canvasComponent.drawShapes();
       this.updateShapes();
+    }else if (this.drawingService.getSelectedShape() && this.drawingService.isDraggingShape) {    
+      const dx = e.offsetX - this.lastX;
+      const dy = e.offsetY - this.lastY;
+      this.drawingService.dragSelectedShape(dx, dy);
+      this.lastX = e.offsetX;
+      this.lastY = e.offsetY;
     }
   }
 
   handleMouseUp() {
     this.dragService.endDrag();
+    this.drawingService.isDraggingShape = false;
     clearTimeout(this.clickTimeout);
   }
 
