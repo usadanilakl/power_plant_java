@@ -91,15 +91,15 @@ export class DrawingService {
     console.log(this.selectedShape);
   }
 
-  // private selectShape(event: MouseEvent) {
-  //   console.log('Selecting shape');
-  //   this.selectedShape = this.shapes.find(shape => 
-  //     this.shapeUtil.containsPoint(shape, event.offsetX, event.offsetY)
-  //   ) || null;
-  //   console.log(this.selectedShape);
-  // }
-
   getSelectedShape(): Shape | null {
     return this.selectedShape;
+  }
+
+  isClickWithinSelectedShape(x: number, y: number): boolean {
+    if (!this.selectedShape) {
+      return false;
+    }
+
+    return this.shapeUtil.containsPoint(this.selectedShape, x, y);
   }
 }

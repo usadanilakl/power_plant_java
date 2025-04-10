@@ -150,17 +150,46 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     this.updateShapes();
   }
 
+  private clickTimeout: any;
+  private isDoubleClick: boolean = false;
+  private lastClickTime: number = 0;
+  private readonly DOUBLE_CLICK_DELAY = 300; // milliseconds
+  
   handleMouseDown(e: MouseEvent) {
     e.preventDefault();
-    const rect = this.containerRef.nativeElement.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const containerRect = this.containerRef.nativeElement.getBoundingClientRect();
+    const imgRect = this.imgRef.nativeElement.getBoundingClientRect();
   
-    // Calculate coordinates relative to the image, accounting for zoom and offset
-    const imageX = (x - this.zoomService.offsetX) / this.zoomService.scale;
-    const imageY = (y - this.zoomService.offsetY) / this.zoomService.scale;
+    // Calculate click position relative to the container
+    const containerX = e.clientX - containerRect.left;
+    const containerY = e.clientY - containerRect.top;
   
-    if (e.button === 2) {
+    // Calculate click position relative to the image, accounting for zoom and offset
+    const imageX = (containerX - (imgRect.left - containerRect.left)) / this.zoomService.scale;
+    const imageY = (containerY - (imgRect.top - containerRect.top)) / this.zoomService.scale;
+  
+    const currentTime = new Date().getTime();
+    const timeSinceLastClick = currentTime - this.lastClickTime;
+  
+    if (timeSinceLastClick < this.DOUBLE_CLICK_DELAY) {
+      // Double click detected
+      this.isDoubleClick = true;
+      clearTimeout(this.clickTimeout);
+      this.handleDoubleClick(e, imageX, imageY);
+    } else {
+      this.isDoubleClick = false;
+      this.clickTimeout = setTimeout(() => {
+        if (!this.isDoubleClick) {
+          this.handleSingleClick(e, imageX, imageY);
+        }
+      }, this.DOUBLE_CLICK_DELAY);
+    }
+  
+    this.lastClickTime = currentTime;
+  }
+  
+  private handleSingleClick(e: MouseEvent, imageX: number, imageY: number) {
+    if (e.button === 2) { // Right click
       console.log('Drawing mode');
       this.drawingService.handleMouseDown({
         offsetX: imageX,
@@ -168,9 +197,50 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
         button: e.button
       } as MouseEvent);
     } else if (e.button === 0) { // Left click
-      this.dragService.startDrag(x, y);
+      // Check if we're clicking on a shape
+      if (this.drawingService.isClickWithinSelectedShape(imageX, imageY)) {
+        console.log('Selected shape clicked');
+      } else {
+        const rect = this.containerRef.nativeElement.getBoundingClientRect();
+        const dragX = e.clientX - rect.left;
+        const dragY = e.clientY - rect.top;
+        this.dragService.startDrag(dragX, dragY);
+      }
     }
   }
+  
+  private handleDoubleClick(e: MouseEvent, imageX: number, imageY: number) {
+    console.log('Double click detected');
+    console.log('Drawing mode');
+    this.drawingService.handleMouseDown({
+      offsetX: imageX,
+      offsetY: imageY,
+      button: e.button
+    } as MouseEvent);
+
+  }
+
+  // handleMouseDown(e: MouseEvent) {
+  //   e.preventDefault();
+  //   const rect = this.containerRef.nativeElement.getBoundingClientRect();
+  //   const x = e.clientX - rect.left;
+  //   const y = e.clientY - rect.top;
+  
+  //   // Calculate coordinates relative to the image, accounting for zoom and offset
+  //   const imageX = (x - this.zoomService.offsetX) / this.zoomService.scale;
+  //   const imageY = (y - this.zoomService.offsetY) / this.zoomService.scale;
+  
+  //   if (e.button === 2) {
+  //     console.log('Drawing mode');
+  //     this.drawingService.handleMouseDown({
+  //       offsetX: imageX,
+  //       offsetY: imageY,
+  //       button: e.button
+  //     } as MouseEvent);
+  //   } else if (e.button === 0) { // Left click
+  //     this.dragService.startDrag(x, y);
+  //   }
+  // }
   
   handleMouseMove(e: MouseEvent) {
     if (this.dragService.isDragging) {
@@ -185,6 +255,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
 
   handleMouseUp() {
     this.dragService.endDrag();
+    clearTimeout(this.clickTimeout);
   }
 
   handleTouchStart(e: TouchEvent) {

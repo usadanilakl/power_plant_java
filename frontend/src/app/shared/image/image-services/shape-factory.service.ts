@@ -14,7 +14,8 @@ export class ShapeFactoryService {
       height,
       color,
       originalPictureWidth,
-      originalPictureHeight
+      originalPictureHeight,
+      isSelected: false,
     };
   }
 
@@ -26,7 +27,8 @@ export class ShapeFactoryService {
       radius,
       color,
       originalPictureWidth,
-      originalPictureHeight
+      originalPictureHeight,
+      isSelected: false,
     };
   }
 

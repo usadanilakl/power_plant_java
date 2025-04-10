@@ -33,6 +33,26 @@ export class FileService {
             }
           },
           {
+            shapeType: { name: 'rectangle' },
+            color: '#FF0000',
+            shapeData: {
+              x: 0,
+              y: 0,
+              width: 200,
+              height: 200
+            }
+          },
+          {
+            shapeType: { name: 'rectangle' },
+            color: '#FF0000',
+            shapeData: {
+              x: 7144,
+              y: 4552,
+              width: 200,
+              height: 200
+            }
+          },
+          {
             shapeType: { name: 'circle' },
             color: '#00FF00',
             shapeData: {
