@@ -3,6 +3,7 @@ export interface BaseShape {
   color: string;
   originalPictureWidth: number;
   originalPictureHeight: number;
+  isSelected: boolean;
 }
 
 export interface RectangleShape extends BaseShape {

@@ -1,6 +1,6 @@
 import { Component, ViewChild, ElementRef, AfterViewInit, Input, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
 import { ShapeService } from '../image-services/shape.service';
-import { Shape } from '../../../models/shape.model';
+import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../../models/shape.model';
 import { DrawingService } from '../image-services/drawing.service';
 import { Subscription } from 'rxjs';
 
@@ -26,6 +26,7 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   constructor(private shapeService: ShapeService, private drawingService: DrawingService) {
     this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
       this.shapes = shapes;
+      console.log('shapes updated:', shapes);
       this.drawShapes();
     });
   }
@@ -89,8 +90,135 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     ctx.save();
     ctx.translate(this.offsetX, this.offsetY);
   
-    this.shapeService.drawShapes(ctx, this.scale);
+    // this.shapeService.drawShapes(ctx, this.scale);
+    this.draw(ctx, this.scale);
   
     ctx.restore();
   }
+
+    draw(ctx: CanvasRenderingContext2D, scale: number) {
+      this.shapes.forEach(shape => {
+        ctx.strokeStyle = shape.color;
+        ctx.fillStyle = shape.color;
+        ctx.lineWidth = shape.isSelected ? 3 : 1;
+    
+        const scaledShape = this.scaleShape(shape, scale);
+    
+        switch (scaledShape.type) {
+          case 'rectangle':
+            const rect = scaledShape as RectangleShape;
+            ctx.strokeRect(
+              rect.x * scale,
+              rect.y * scale,
+              rect.width,
+              rect.height
+            );
+
+            if (shape.isSelected) {
+              // Draw selection handles
+              this.drawSelectionHandles(ctx, shape);
+            }
+            break;
+          case 'circle':
+            const circle = scaledShape as CircleShape;
+            ctx.beginPath();
+            ctx.arc(
+              circle.x * scale,
+              circle.y * scale,
+              circle.radius,
+              0,
+              2 * Math.PI
+            );
+            ctx.stroke();
+            break;
+          case 'line':
+            const line = scaledShape as LineShape;
+            ctx.beginPath();
+            ctx.moveTo(line.startX * scale, line.startY * scale);
+            ctx.lineTo(line.endX * scale, line.endY * scale);
+            ctx.stroke();
+            break;
+          case 'text':
+            const text = scaledShape as TextShape;
+            ctx.font = `${16 * scale}px Arial`;
+            ctx.fillText(text.text, text.x * scale, text.y * scale);
+            break;
+        }
+      });
+    }
+
+    private drawSelectionHandles(ctx: CanvasRenderingContext2D, shape: Shape) {
+      const handleSize = 8;
+      ctx.fillStyle = 'blue';
+    
+      let corners: [number, number][] = [];
+    
+      switch (shape.type) {
+        case 'rectangle':
+          const rect = shape as RectangleShape;
+          corners = [
+            [rect.x, rect.y],
+            [rect.x + rect.width, rect.y],
+            [rect.x, rect.y + rect.height],
+            [rect.x + rect.width, rect.y + rect.height]
+          ];
+          break;
+        case 'circle':
+          const circle = shape as CircleShape;
+          corners = [
+            [circle.x - circle.radius, circle.y - circle.radius],
+            [circle.x + circle.radius, circle.y - circle.radius],
+            [circle.x - circle.radius, circle.y + circle.radius],
+            [circle.x + circle.radius, circle.y + circle.radius]
+          ];
+          break;
+        case 'line':
+          const line = shape as LineShape;
+          corners = [
+            [line.startX, line.startY],
+            [line.endX, line.endY]
+          ];
+          break;
+        // case 'text':
+        //   const text = shape as TextShape;
+        //   // Assuming text has width and height properties, adjust if not
+        //   corners = [
+        //     [text.x, text.y],
+        //     [text.x + text.width, text.y],
+        //     [text.x, text.y + text.height],
+        //     [text.x + text.width, text.y + text.height]
+        //   ];
+        //   break;
+      }
+    
+      corners.forEach(([x, y]) => {
+        ctx.fillRect(
+          x * this.scale - handleSize / 2,
+          y * this.scale - handleSize / 2,
+          handleSize,
+          handleSize
+        );
+      });
+    }
+
+    scaleShape(shape: Shape, scale: number): Shape {
+      switch (shape.type) {
+        case 'rectangle':
+          return {
+            ...shape,
+            width: shape.width * scale,
+            height: shape.height * scale,
+          };
+        case 'circle':
+          return {
+            ...shape,
+            radius: shape.radius * scale,
+          };
+        case 'line':
+        case 'text':
+          return { ...shape };
+        default:
+          return shape;
+      }
+    }
 }

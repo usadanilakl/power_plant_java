@@ -1,0 +1,32 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  z-index: 10;
+}
+
+.drawing-controls {
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 5px;
+  padding: 10px;
+  margin: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+app-toolbar,
+app-color-picker,
+app-shape-properties {
+  margin-bottom: 10px;
+}
+
+app-toolbar:last-child,
+app-color-picker:last-child,
+app-shape-properties:last-child {
+  margin-bottom: 0;
+}

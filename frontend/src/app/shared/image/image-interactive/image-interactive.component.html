@@ -17,5 +17,32 @@
       </app-image-canvas>
     </div>
   </div>
+  <app-drawing
+    [imagePath]="imagePath"
+    [imageName]="imageName"
+    [elements]="elements">
+  </app-drawing>
   <button (click)="openPopup()">Open in Popup</button>
 </div>
+
+<!-- <div #container class="interactive-image-container">
+  <div class="interactive-image-content" 
+       [style.transform]="'translate(' + zoomService.offsetX + 'px, ' + zoomService.offsetY + 'px)'">
+    <div class="interactive-image-wrapper"
+         [style.width.px]="zoomService.pictureCurrentWidth"
+         [style.height.px]="zoomService.pictureCurrentHeight">
+      <img #img [src]="imagePath" [alt]="imageName" class="interactive-image-img"
+           [style.width.px]="zoomService.pictureCurrentWidth"
+           [style.height.px]="zoomService.pictureCurrentHeight">
+      <app-image-canvas
+        [width]="zoomService.pictureCurrentWidth"
+        [height]="zoomService.pictureCurrentHeight"
+        [shapes]="shapes"
+        [offsetX]="0"
+        [offsetY]="0"
+        [scale]="zoomService.scale">
+      </app-image-canvas>
+    </div>
+  </div>
+  <button (click)="openPopup()">Open in Popup</button>
+</div> -->

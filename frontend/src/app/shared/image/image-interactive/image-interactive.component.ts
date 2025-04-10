@@ -7,11 +7,12 @@ import { DragService } from '../image-services/drag.service';
 import { Shape } from '../../../models/shape.model';
 import { Subscription } from 'rxjs';
 import { DrawingService } from '../image-services/drawing.service';
+import { DrawingComponent } from '../drawing/drawing.component';
 
 @Component({
   selector: 'app-image-interactive',
   standalone: true,
-  imports: [CommonModule, ImageCanvasComponent],
+  imports: [CommonModule, ImageCanvasComponent, DrawingComponent],
   templateUrl: './image-interactive.component.html',
   styleUrls: ['./image-interactive.component.css'],
   providers: [ShapeService, ZoomService, DragService, DrawingService]
@@ -48,8 +49,9 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   }
   
   private onImageLoad(img: HTMLImageElement, container: HTMLElement) {
-    this.shapeService.initializeShapes(this.elements, img.naturalWidth, img.naturalHeight);
-    this.shapes = this.shapeService.shapes;
+    this.initializeShapes(this.elements, img.naturalWidth, img.naturalHeight);
+    this.drawingService.setShapes(this.shapes)
+    // this.shapes = this.shapeService.shapes;
     this.initializeServices(container, img);
 
     // Set initial zoom to fit the container
@@ -130,6 +132,12 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     container.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
     container.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
     container.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
+    container.addEventListener('contextmenu', this.handleContextMenu.bind(this));
+  }
+
+  handleContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    return false;
   }
 
   handleWheel(e: WheelEvent) {
@@ -142,24 +150,8 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     this.updateShapes();
   }
 
-  // handleMouseDown(e: MouseEvent) {
-  //   const rect = this.containerRef.nativeElement.getBoundingClientRect();
-  //   const x = e.clientX - rect.left;
-  //   const y = e.clientY - rect.top;
-
-  //   if(e.button === 2) {
-  //     this.drawingService.handleMouseDown({
-  //       offsetX: x - this.zoomService.offsetX,
-  //       offsetY: y - this.zoomService.offsetY
-  //     } as MouseEvent);
-  //   }else{
-  //     this.dragService.startDrag(x, y);
-  //   }
-  // }
-
   handleMouseDown(e: MouseEvent) {
-    e.preventDefault(); // Prevent default behavior, including context menu
-  
+    e.preventDefault();
     const rect = this.containerRef.nativeElement.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -168,7 +160,8 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     const imageX = (x - this.zoomService.offsetX) / this.zoomService.scale;
     const imageY = (y - this.zoomService.offsetY) / this.zoomService.scale;
   
-    if (e.button === 2) { // Right click
+    if (e.button === 2) {
+      console.log('Drawing mode');
       this.drawingService.handleMouseDown({
         offsetX: imageX,
         offsetY: imageY,
@@ -224,5 +217,15 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   openPopup() {
     // Implement popup functionality
     console.log('Open popup functionality to be implemented');
+  }
+
+  initializeShapes(elements: any[], originalWidth: number, originalHeight: number) {
+    this.shapes = elements.map(element => ({
+      type: element.shapeType.name,
+      color: element.color,
+      ...element.shapeData,
+      originalPictureWidth: originalWidth,
+      originalPictureHeight: originalHeight
+    })) as Shape[];
   }
 }
