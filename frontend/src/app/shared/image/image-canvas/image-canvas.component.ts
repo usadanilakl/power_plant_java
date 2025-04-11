@@ -221,4 +221,25 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
           return shape;
       }
     }
+
+    unScaleShape(shape: Shape, scale: number): Shape {
+      switch (shape.type) {
+        case'rectangle':
+          return {
+            ...shape,
+            width: shape.width / scale,
+            height: shape.height / scale,
+          };
+        case 'circle':
+          return {
+            ...shape,
+            radius: shape.radius / scale,
+          };
+        case 'line':
+        case 'text':
+          return { ...shape };
+        default:
+          return shape;
+      }
+    }
 }

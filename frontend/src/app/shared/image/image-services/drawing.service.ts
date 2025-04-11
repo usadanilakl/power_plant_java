@@ -4,6 +4,7 @@ import { Tool } from "../../../models/tool.model";
 import { ShapeFactoryService } from "./shape-factory.service";
 import { ShapeUtilService } from "./shape-util.service";
 import { BehaviorSubject } from "rxjs";
+import { ZoomService } from "./zoom.service";
 
 @Injectable({
   providedIn: 'root'
@@ -20,7 +21,8 @@ export class DrawingService {
 
   constructor(
     private shapeFactory: ShapeFactoryService,
-    private shapeUtil: ShapeUtilService
+    private shapeUtil: ShapeUtilService,
+    private zoomService: ZoomService
   ) {}
 
   isDraggingShape = false;
@@ -28,6 +30,9 @@ export class DrawingService {
   private initialMouseX = 0;
   private initialMouseY = 0;
   private isDrawingWithRightClick = false;
+  private isResizing = false;
+  private resizeCorner: 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null = null;
+
 
   setShapes(shapes: Shape[]) {
     this.shapes = shapes;
@@ -69,8 +74,12 @@ export class DrawingService {
     if (this.isDrawingWithRightClick && this.selectedShape) {
       this.resizeShape(event);
     }
+    if(this.isResizing) {
+      this.resizeShape(event);
+    }
 
   }
+
   handleMouseUp(event: MouseEvent) {
     this.isDraggingShape = false;
 
@@ -82,6 +91,7 @@ export class DrawingService {
       this.shapesSubject.next(this.shapes);
     }
   }
+
   handleRightClick(event: MouseEvent) {
     if (this.isRightClickDrawEnabled) {
       this.drawWithRightClick(event);
@@ -137,29 +147,53 @@ export class DrawingService {
     return this.shapeUtil.containsPoint(this.selectedShape, x, y);
   }
 
+  private isOverCorner(shape: Shape, x: number, y: number): 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null {
+
+    if (!this.selectedShape) {
+      return null;
+    }
+    const scale = this.zoomService.scale;
+    const cornerSize = 10 / scale; // Adjust this value to change the corner hit area
+
+    if (shape.type === 'rectangle') {
+      const rect = shape as any;
+      if (Math.abs(x - rect.x) <= cornerSize && Math.abs(y - rect.y) <= cornerSize) return 'topLeft';
+      if (Math.abs(x - (rect.x + rect.width)) <= cornerSize && Math.abs(y - rect.y) <= cornerSize) return 'topRight';
+      if (Math.abs(x - rect.x) <= cornerSize && Math.abs(y - (rect.y + rect.height)) <= cornerSize) return 'bottomLeft';
+      if (Math.abs(x - (rect.x + rect.width)) <= cornerSize && Math.abs(y - (rect.y + rect.height)) <= cornerSize) return 'bottomRight';
+    }
+    // Add similar checks for other shape types
+
+    return null;
+  }
+
   dragSelectedShape(dx: number, dy: number): void {
     if (!this.selectedShape) {
       return;
     }
+    const scale = this.zoomService.scale;
+    const _dx = dx / scale;
+    const _dy = dy / scale;
+
   
     switch (this.selectedShape.type) {
       case 'rectangle':
-        (this.selectedShape as any).x += dx;
-        (this.selectedShape as any).y += dy;
+        (this.selectedShape as any).x += _dx;
+        (this.selectedShape as any).y += _dy;
         break;
       case 'circle':
-        (this.selectedShape as any).x += dx;
-        (this.selectedShape as any).y += dy;
+        (this.selectedShape as any).x += _dx;
+        (this.selectedShape as any).y += _dy;
         break;
       case 'line':
-        (this.selectedShape as any).startX += dx;
-        (this.selectedShape as any).startY += dy;
-        (this.selectedShape as any).endX += dx;
-        (this.selectedShape as any).endY += dy;
+        (this.selectedShape as any).startX += _dx;
+        (this.selectedShape as any).startY += _dy;
+        (this.selectedShape as any).endX += _dx;
+        (this.selectedShape as any).endY += _dy;
         break;
       case 'text':
-        (this.selectedShape as any).x += dx;
-        (this.selectedShape as any).y += dy;
+        (this.selectedShape as any).x += _dx;
+        (this.selectedShape as any).y += _dy;
         break;
     }
   
@@ -169,33 +203,36 @@ export class DrawingService {
 
   private resizeShape(event: MouseEvent) {
     if (!this.selectedShape) return;
-  
-    const dx = event.offsetX - this.initialMouseX;
-    const dy = event.offsetY - this.initialMouseY;
-  
+
+    const scale = this.zoomService.scale;
+    const dx = (event.offsetX - this.initialMouseX) / scale;
+    const dy = (event.offsetY - this.initialMouseY) / scale;
+
     switch (this.selectedShape.type) {
       case 'rectangle':
-        (this.selectedShape as any).width = Math.abs(dx);
-        (this.selectedShape as any).height = Math.abs(dy);
-        if (dx < 0) (this.selectedShape as any).x = event.offsetX;
-        if (dy < 0) (this.selectedShape as any).y = event.offsetY;
+        const rect = this.selectedShape as any;
+        rect.width = Math.abs(dx);
+        rect.height = Math.abs(dy);
+        if (dx < 0) rect.x = this.initialMouseX / scale + dx;
+        if (dy < 0) rect.y = this.initialMouseY / scale + dy;
         break;
       // Add cases for other shape types as needed
     }
-  
+
     // Notify subscribers of the change
     this.shapesSubject.next(this.shapes);
   }
 
   drawWithRightClick(event: MouseEvent) {
     event.preventDefault(); // Prevent the default context menu
+    const scale = this.zoomService.scale;
     
     // Create a new shape on right mouse button down
     this.selectedShape = this.shapeFactory.createRectangle(
-      event.offsetX,
-      event.offsetY,
-      0, // Initial width
-      0, // Initial height
+      event.offsetX/scale,
+      event.offsetY/scale,
+      10, // Initial width
+      10, // Initial height
       this.currentColor,
       this.originalPictureWidth,
       this.originalPictureHeight

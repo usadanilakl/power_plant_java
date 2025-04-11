@@ -30,6 +30,14 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   private zoomSubscription!: Subscription;
   private isInitialized = false;
 
+  private clickTimeout: any;
+  private isDoubleClick: boolean = false;
+  private lastClickTime: number = 0;
+  private readonly DOUBLE_CLICK_DELAY = 300; // milliseconds
+  
+  private lastX: number = 0;
+  private lastY: number = 0;
+
   constructor(
     private shapeService: ShapeService,
     public zoomService: ZoomService,
@@ -149,11 +157,6 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     this.zoomService.zoom(zoomFactor, mouseX, mouseY);
     this.updateShapes();
   }
-
-  private clickTimeout: any;
-  private isDoubleClick: boolean = false;
-  private lastClickTime: number = 0;
-  private readonly DOUBLE_CLICK_DELAY = 300; // milliseconds
   
   handleMouseDown(e: MouseEvent) {
     e.preventDefault();
@@ -218,9 +221,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     } as MouseEvent);
 
   }
-  
-  private lastX: number = 0;
-  private lastY: number = 0;
+
   handleMouseMove(e: MouseEvent) {
     if (this.dragService.isDragging) {
       const rect = this.containerRef.nativeElement.getBoundingClientRect();
