@@ -9,14 +9,18 @@
   z-index: 10;
 }
 
+.drawing-controls-container {
+  position: absolute;
+  top: 10px;  /* Adjust this value to position it from the top */
+  left: 10px; /* Adjust this value to position it from the left */
+  z-index: 10000; /* High z-index to ensure it stays on top */
+}
+
 .drawing-controls {
-  display: flex;
-  flex-direction: column;
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 5px;
+  background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white background */
   padding: 10px;
-  margin: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Optional: adds a subtle shadow */
 }
 
 app-toolbar,

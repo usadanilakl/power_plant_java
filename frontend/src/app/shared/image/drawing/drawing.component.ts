@@ -32,4 +32,8 @@ export class DrawingComponent {
   updateSelectedShape() {
     this.selectedShape = this.drawingService.getSelectedShape();
   }
+
+  onEnableRightClickDraw(){
+    this.drawingService.isRightClickDrawEnabled=true;
+  }
 }

@@ -1,8 +1,10 @@
-<div class="drawing-controls">
-  <app-toolbar (toolSelected)="onToolSelected($event)"></app-toolbar>
-  <app-color-picker (colorSelected)="onColorSelected($event)"></app-color-picker>
-  @if (selectedShape) {
-    <app-shape-properties [shape]="selectedShape"></app-shape-properties>
-  }
+<div class="drawing-controls-container">
+  <div class="drawing-controls">
+    <app-toolbar (toolSelected)="onToolSelected($event)"></app-toolbar>
+    <app-color-picker (colorSelected)="onColorSelected($event)"></app-color-picker>
+    <button type="button" (click)="onEnableRightClickDraw()">Enable Right Click Draw</button>
+    @if (selectedShape) {
+      <app-shape-properties [shape]="selectedShape"></app-shape-properties>
+    }
+  </div>
 </div>
-

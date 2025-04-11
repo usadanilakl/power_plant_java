@@ -193,11 +193,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   private handleSingleClick(e: MouseEvent, imageX: number, imageY: number) {
     if (e.button === 2) { // Right click
       console.log('Drawing mode');
-      this.drawingService.handleMouseDown({
-        offsetX: imageX,
-        offsetY: imageY,
-        button: e.button
-      } as MouseEvent);
+      this.drawingService.handleRightClick(e);
     } else if (e.button === 0) { // Left click
       // Check if we're clicking on a shape
       if (this.drawingService.isClickWithinSelectedShape(imageX, imageY)) {
@@ -240,11 +236,14 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
       this.lastX = e.offsetX;
       this.lastY = e.offsetY;
     }
+
+    
+    this.drawingService.handleMouseMove(e);
   }
 
-  handleMouseUp() {
+  handleMouseUp(e: MouseEvent) {
     this.dragService.endDrag();
-    this.drawingService.isDraggingShape = false;
+    this.drawingService.handleMouseUp(e);
     clearTimeout(this.clickTimeout);
   }
 

@@ -24,6 +24,10 @@ export class DrawingService {
   ) {}
 
   isDraggingShape = false;
+  isRightClickDrawEnabled = false;
+  private initialMouseX = 0;
+  private initialMouseY = 0;
+  private isDrawingWithRightClick = false;
 
   setShapes(shapes: Shape[]) {
     this.shapes = shapes;
@@ -59,6 +63,29 @@ export class DrawingService {
 
   handleDoubleClick(event: MouseEvent) {
     this.selectShape(event);
+  }
+
+  handleMouseMove(event: MouseEvent) {
+    if (this.isDrawingWithRightClick && this.selectedShape) {
+      this.resizeShape(event);
+    }
+
+  }
+  handleMouseUp(event: MouseEvent) {
+    this.isDraggingShape = false;
+
+    
+    if (this.isDrawingWithRightClick) {
+      this.isDrawingWithRightClick = false;
+      this.selectedShape = null;
+      // The shape is already saved in the shapes array, so we just need to notify subscribers
+      this.shapesSubject.next(this.shapes);
+    }
+  }
+  handleRightClick(event: MouseEvent) {
+    if (this.isRightClickDrawEnabled) {
+      this.drawWithRightClick(event);
+    }
   }
 
 
@@ -139,4 +166,48 @@ export class DrawingService {
     // Notify subscribers of the change
     this.shapesSubject.next(this.shapes);
   }
+
+  private resizeShape(event: MouseEvent) {
+    if (!this.selectedShape) return;
+  
+    const dx = event.offsetX - this.initialMouseX;
+    const dy = event.offsetY - this.initialMouseY;
+  
+    switch (this.selectedShape.type) {
+      case 'rectangle':
+        (this.selectedShape as any).width = Math.abs(dx);
+        (this.selectedShape as any).height = Math.abs(dy);
+        if (dx < 0) (this.selectedShape as any).x = event.offsetX;
+        if (dy < 0) (this.selectedShape as any).y = event.offsetY;
+        break;
+      // Add cases for other shape types as needed
+    }
+  
+    // Notify subscribers of the change
+    this.shapesSubject.next(this.shapes);
+  }
+
+  drawWithRightClick(event: MouseEvent) {
+    event.preventDefault(); // Prevent the default context menu
+    
+    // Create a new shape on right mouse button down
+    this.selectedShape = this.shapeFactory.createRectangle(
+      event.offsetX,
+      event.offsetY,
+      0, // Initial width
+      0, // Initial height
+      this.currentColor,
+      this.originalPictureWidth,
+      this.originalPictureHeight
+    );
+    this.shapes.push(this.selectedShape);
+    this.isDrawingWithRightClick = true;
+    this.initialMouseX = event.offsetX;
+    this.initialMouseY = event.offsetY;
+  }
+
+  toggleRightClickDraw() {
+    this.isRightClickDrawEnabled = !this.isRightClickDrawEnabled;
+  }
+
 }

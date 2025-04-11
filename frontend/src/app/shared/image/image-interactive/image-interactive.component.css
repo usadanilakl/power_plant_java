@@ -1,4 +1,4 @@
-:host {
+/* :host {
   display: flex;
   width: 100%;
   height: 100%;
@@ -15,7 +15,6 @@
   position: absolute;
   top: 0;
   left: 0;
-  /* Remove width and height constraints */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -23,7 +22,6 @@
 
 .interactive-image-wrapper {
   position: relative;
-  /* The wrapper will determine the size */
 }
 
 .interactive-image-img,
@@ -49,56 +47,29 @@ button {
   z-index: 10;
 }
 
-
-
-/* .interactive-image-content {
-  position: relative;
+app-drawing {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
-.interactive-image-img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-} */
 
-/* .interactive-image-content {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+app-drawing > * {
+  pointer-events: auto;
+} */
+:host {
   display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.interactive-image-img {
-  object-fit: contain;
-  transform-origin: center;
-} */
-
-/* button {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  padding: 5px 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  z-index: 10;
-} */
-
-
-/* .interactive-image-container {
-  position: relative;
+  flex-direction: column; /* Changed to column layout */
   width: 100%;
   height: 100%;
+}
+
+.interactive-image-container {
+  position: relative;
+  width: 100%;
+  flex-grow: 1; /* Allow it to grow and take remaining space */
   overflow: hidden;
 }
 
@@ -113,15 +84,32 @@ button {
   align-items: center;
 }
 
-.interactive-image-img {
-  max-width: 100%;
-  max-height: 100%;
+.interactive-image-wrapper {
+  position: relative;
+  /* The wrapper will determine the size */
+}
+
+.interactive-image-img,
+app-image-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  transform-origin: center;
+}
+
+/* Updated: Positioning for app-drawing */
+app-drawing {
+  width: 100%;
+  /* Height will be determined by its content */
+  min-height: 50px; /* Adjust as needed */
+  background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+  z-index: 10; /* Ensure it's above the image */
 }
 
 button {
-  position: absolute;
+  position: absolute; /* Changed from fixed to absolute */
   bottom: 10px;
   right: 10px;
   padding: 5px 10px;
@@ -130,5 +118,5 @@ button {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  z-index: 10;
-} */
+  z-index: 11; /* Ensure it's above app-drawing */
+}
