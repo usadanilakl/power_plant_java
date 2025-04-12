@@ -113,4 +113,24 @@ export class ZoomService {
   get scale(): number {
     return this.zoomLevel;
   }
+
+  viewportToPictureCoordinates(viewportX: number, viewportY: number): { x: number, y: number } {
+
+    const containerRect = this.container.getBoundingClientRect();
+    const imgRect = this.img.getBoundingClientRect();
+  
+    // Calculate click position relative to the container
+    const containerX = viewportX - containerRect.left;
+    const containerY = viewportY - containerRect.top;
+  
+    // Calculate click position relative to the image, accounting for zoom and offset
+    const imageX = (containerX - (imgRect.left - containerRect.left)) / this.scale;
+    const imageY = (containerY - (imgRect.top - containerRect.top)) / this.scale;
+  
+  
+    return {
+      x: Math.round(imageX),
+      y: Math.round(imageY)
+    };
+  }
 }

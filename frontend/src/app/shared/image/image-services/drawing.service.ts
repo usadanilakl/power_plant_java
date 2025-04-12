@@ -5,6 +5,7 @@ import { ShapeFactoryService } from "./shape-factory.service";
 import { ShapeUtilService } from "./shape-util.service";
 import { BehaviorSubject } from "rxjs";
 import { ZoomService } from "./zoom.service";
+import e from "express";
 
 @Injectable({
   providedIn: 'root'
@@ -18,6 +19,8 @@ export class DrawingService {
   private originalPictureHeight: number = 0;
   private shapesSubject = new BehaviorSubject<Shape[]>([]);
   shapes$ = this.shapesSubject.asObservable();
+  private cursorSubject = new BehaviorSubject<string>('default');
+  cursor$ = this.cursorSubject.asObservable();
 
   constructor(
     private shapeFactory: ShapeFactoryService,
@@ -52,36 +55,57 @@ export class DrawingService {
     this.currentColor = color;
   }
 
-  handleMouseDown(event: MouseEvent) {
-    console.log(this.currentTool);
-    switch (this.currentTool) {
-      case Tool.Rectangle:
-        console.log('Creating rectangle');
-        this.createRectangle(event);
-        break;
-      case Tool.Select:
-        this.selectShape(event);
-        break;
-      // Handle other tools...
-    }
-  }
-
   handleDoubleClick(event: MouseEvent) {
     this.selectShape(event);
   }
 
+  handleLeftClick(event: MouseEvent, imageX: number, imageY: number) : boolean {
+    if(this.selectedShape){
+      if (this.isClickWithinSelectedShape(imageX, imageY)) {
+        this.isDraggingShape = true;
+        return true;
+      }else if(this.isOverCorner(this.selectedShape,imageX, imageY)!==null) {
+        const scale = this.zoomService.scale;
+        this.initialMouseX = event.offsetX;
+        this.initialMouseY = event.offsetY;
+        this.resizeCorner = this.isOverCorner(this.selectedShape,imageX, imageY);
+        this.isResizing = true;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  handleRightClick(event: MouseEvent) {
+    if (this.isRightClickDrawEnabled) {
+      this.drawWithRightClick(event);
+    }
+  }
+
   handleMouseMove(event: MouseEvent) {
+
+    const { x, y } = this.zoomService.viewportToPictureCoordinates(event.clientX, event.clientY);
     if (this.isDrawingWithRightClick && this.selectedShape) {
       this.resizeShape(event);
     }
     if(this.isResizing) {
-      this.resizeShape(event);
+      this.resizeExistingShape(event);
+    }
+
+    const cursorStyle = this.pointerChangingCornerDetector(x,y);
+    if(cursorStyle !== null) {
+      this.cursorSubject.next(cursorStyle);
+    } else if (this.isClickWithinSelectedShape(x, y)) {
+      this.cursorSubject.next('move');
+    } else {
+      this.cursorSubject.next('default');
     }
 
   }
 
   handleMouseUp(event: MouseEvent) {
     this.isDraggingShape = false;
+    this.isResizing = false;
 
     
     if (this.isDrawingWithRightClick) {
@@ -89,12 +113,6 @@ export class DrawingService {
       this.selectedShape = null;
       // The shape is already saved in the shapes array, so we just need to notify subscribers
       this.shapesSubject.next(this.shapes);
-    }
-  }
-
-  handleRightClick(event: MouseEvent) {
-    if (this.isRightClickDrawEnabled) {
-      this.drawWithRightClick(event);
     }
   }
 
@@ -167,6 +185,23 @@ export class DrawingService {
     return null;
   }
 
+  pointerChangingCornerDetector(x: number, y: number): string | null {
+    if (!this.selectedShape) return null;
+  
+    const corner = this.isOverCorner(this.selectedShape, x, y);
+    if (corner) {
+      switch (corner) {
+        case 'topLeft':
+        case 'bottomRight':
+          return 'nwse-resize';
+        case 'topRight':
+        case 'bottomLeft':
+          return 'nesw-resize';
+      }
+    }
+    return null;
+  }
+
   dragSelectedShape(dx: number, dy: number): void {
     if (!this.selectedShape) {
       return;
@@ -219,6 +254,61 @@ export class DrawingService {
       // Add cases for other shape types as needed
     }
 
+    // Notify subscribers of the change
+    this.shapesSubject.next(this.shapes);
+  }
+
+  private resizeExistingShape(event: MouseEvent) {
+    if (!this.selectedShape || !this.resizeCorner) return;
+  
+    const scale = this.zoomService.scale;
+    const dx = (event.offsetX - this.initialMouseX) / scale;
+    const dy = (event.offsetY - this.initialMouseY) / scale;
+  
+    switch (this.selectedShape.type) {
+      case 'rectangle':
+        const rect = this.selectedShape as any;
+        switch (this.resizeCorner) {
+          case 'topLeft':
+            rect.x += dx;
+            rect.y += dy;
+            rect.width -= dx;
+            rect.height -= dy;
+            break;
+          case 'topRight':
+            rect.y += dy;
+            rect.width += dx;
+            rect.height -= dy;
+            break;
+          case 'bottomLeft':
+            rect.x += dx;
+            rect.width -= dx;
+            rect.height += dy;
+            break;
+          case 'bottomRight':
+            rect.width += dx;
+            rect.height += dy;
+            break;
+        }
+        // Ensure width and height are always positive
+        if (rect.width < 0) {
+          rect.x += rect.width;
+          rect.width = Math.abs(rect.width);
+          this.resizeCorner = this.resizeCorner === 'topLeft' ? 'topRight' : 'bottomRight';
+        }
+        if (rect.height < 0) {
+          rect.y += rect.height;
+          rect.height = Math.abs(rect.height);
+          this.resizeCorner = this.resizeCorner === 'topLeft' ? 'bottomLeft' : 'bottomRight';
+        }
+        break;
+      // Add cases for other shape types as needed
+    }
+  
+    // Update initial mouse position for smooth resizing
+    this.initialMouseX = event.offsetX;
+    this.initialMouseY = event.offsetY;
+  
     // Notify subscribers of the change
     this.shapesSubject.next(this.shapes);
   }

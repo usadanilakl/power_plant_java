@@ -7,7 +7,7 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-image-canvas',
   standalone: true,
-  template: '<canvas #canvas class="interactive-image-canvas"></canvas>',
+  template: '<canvas #canvas class="interactive-image-canvas" [style.cursor]="cursor"></canvas>',
   styleUrls: ['./image-canvas.component.css']
   // styles: [':host { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }']
 })
@@ -22,6 +22,8 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private isCanvasReady = false;
   private shapesSubscription: Subscription;
+  private cursorSubscription!: Subscription;
+  cursor: string = 'default';
 
   constructor(private shapeService: ShapeService, private drawingService: DrawingService) {
     this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
@@ -33,12 +35,31 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
 
   ngOnDestroy() {
     this.shapesSubscription.unsubscribe();
+    if (this.cursorSubscription) {
+      this.cursorSubscription.unsubscribe();
+    }
   }
 
   ngAfterViewInit() {
     this.isCanvasReady = true;
     this.updateCanvasSize();
     this.drawShapes();
+    this.cursorSubscription = this.drawingService.cursor$.subscribe(cursorStyle => {
+      this.cursor = cursorStyle;  // Update the cursor property
+      this.updateCursor(cursorStyle);
+    });
+  }
+
+  private updateCursor(cursorStyle: string) {
+    console.log('Updating cursor style:', cursorStyle);
+    if (this.canvasRef && this.canvasRef.nativeElement) {
+      this.canvasRef.nativeElement.style.cursor = cursorStyle;
+      // Force a style update
+      this.canvasRef.nativeElement.style.cursor = '';
+      this.canvasRef.nativeElement.style.cursor = cursorStyle;
+    } else {
+      console.error('Canvas element not found');
+    }
   }
 
   getCanvas(): HTMLCanvasElement {

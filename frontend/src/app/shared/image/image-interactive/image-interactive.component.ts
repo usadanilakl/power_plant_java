@@ -38,6 +38,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   private lastX: number = 0;
   private lastY: number = 0;
 
+
   constructor(
     private shapeService: ShapeService,
     public zoomService: ZoomService,
@@ -55,6 +56,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
       img.onload = () => this.onImageLoad(img, container);
     }
   }
+
   
   private onImageLoad(img: HTMLImageElement, container: HTMLElement) {
     this.initializeShapes(this.elements, img.naturalWidth, img.naturalHeight);
@@ -198,16 +200,14 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
       console.log('Drawing mode');
       this.drawingService.handleRightClick(e);
     } else if (e.button === 0) { // Left click
-      // Check if we're clicking on a shape
-      if (this.drawingService.isClickWithinSelectedShape(imageX, imageY)) {
-        console.log('Selected shape clicked');
-        this.drawingService.isDraggingShape = true;
-      } else {
+
+      if(!this.drawingService.handleLeftClick(e, imageX, imageY)) {  
         const rect = this.containerRef.nativeElement.getBoundingClientRect();
         const dragX = e.clientX - rect.left;
         const dragY = e.clientY - rect.top;
         this.dragService.startDrag(dragX, dragY);
       }
+      
     }
   }
   
