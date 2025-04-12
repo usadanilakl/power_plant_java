@@ -49,6 +49,8 @@ export class ZoomService {
   zoom(factor: number, mouseX: number, mouseY: number) {
     const oldZoom = this.zoomLevel;
     this.zoomLevel *= factor;
+    // Get the coordinates of the mouse on the image before zooming
+    // const imageCoordsBefore = this.viewportToPictureCoordinates(mouseX,mouseY);
 
     const minZoomX = this.container.clientWidth / this.pictureOriginalWidth;
     const minZoomY = this.container.clientHeight / this.pictureOriginalHeight;
@@ -69,6 +71,8 @@ export class ZoomService {
     this.offsetY -= newMouseY - mouseY;
 
     this.updateImageAndCanvasPosition();
+    // Move the image so that the point under the mouse stays under the mouse
+    // this.moveImageElementToMouse(imageCoordsBefore, { x: mouseX, y: mouseY });
     this.zoomChanged.next();
   }
 
@@ -93,12 +97,6 @@ export class ZoomService {
   }
 
   updateImageAndCanvasPosition() {
-    const maxOffsetX = Math.max(0, (this.pictureCurrentWidth - this.container.clientWidth) / 2);
-    const maxOffsetY = Math.max(0, (this.pictureCurrentHeight - this.container.clientHeight) / 2);
-
-    this.offsetX = Math.round(Math.max(-maxOffsetX, Math.min(this.offsetX, maxOffsetX)));
-    this.offsetY = Math.round(Math.max(-maxOffsetY, Math.min(this.offsetY, maxOffsetY)));
-
     const transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
     this.img.style.transform = transform;
     this.canvas.style.transform = transform;
@@ -133,4 +131,67 @@ export class ZoomService {
       y: Math.round(imageY)
     };
   }
+
+  moveBy(dx: number, dy: number) {
+    this.offsetX += dx;
+    this.offsetY += dy;
+    this.updateImageAndCanvasPosition();
+  }
+
+  keepPictureInView() {
+    const containerRect = this.container.getBoundingClientRect();
+    const imageRect = this.img.getBoundingClientRect();
+  
+    let dx = 0;
+    let dy = 0;
+  
+    const minVisibleWidth = imageRect.width * 0.1;
+    const minVisibleHeight = imageRect.height * 0.1;
+  
+    // Horizontal adjustment
+    if (imageRect.right < containerRect.left + minVisibleWidth) {
+      dx = (containerRect.left + minVisibleWidth) - imageRect.right;
+    } else if (imageRect.left > containerRect.right - minVisibleWidth) {
+      dx = (containerRect.right - minVisibleWidth) - imageRect.left;
+    }
+  
+    // Vertical adjustment
+    if (imageRect.bottom < containerRect.top + minVisibleHeight) {
+      dy = (containerRect.top + minVisibleHeight) - imageRect.bottom;
+    } else if (imageRect.top > containerRect.bottom - minVisibleHeight) {
+      dy = (containerRect.bottom - minVisibleHeight) - imageRect.top;
+    }
+  
+    // If any adjustment is needed, use moveBy
+    if (dx !== 0 || dy !== 0) {
+      this.moveBy(dx, dy);
+    }
+  }
+
+  getMouseOnPictureCoordinates(event: MouseEvent): { x: number, y: number } {
+    const eventX = event.clientX;
+    const eventY = event.clientY;
+
+    return this.viewportToPictureCoordinates(eventX, eventY);
+  }
+  moveImageElementToMouse(imageCoords: { x: number, y: number }, viewPortCoords: { x: number, y: number }) {
+    // Get the current position of the image in the viewport
+    const containerRect = this.container.getBoundingClientRect();
+    const imgRect = this.img.getBoundingClientRect();
+  
+    // Calculate the current position of the image coordinates in the viewport
+    const currentViewportX = imgRect.left - containerRect.left + (imageCoords.x * this.scale);
+    const currentViewportY = imgRect.top - containerRect.top + (imageCoords.y * this.scale);
+  
+    // Calculate the difference between the current position and the desired position
+    const dx = viewPortCoords.x - currentViewportX;
+    const dy = viewPortCoords.y - currentViewportY;
+  
+    // Move the image by this difference
+    this.moveBy(dx, dy);
+  
+    // Ensure the image stays within the allowed bounds
+    this.keepPictureInView();
+  }
+  
 }

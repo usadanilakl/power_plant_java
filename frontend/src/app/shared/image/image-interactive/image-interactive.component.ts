@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, Input, ViewChild, ElementRef, AfterViewInit, OnDestroy, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ImageCanvasComponent } from '../image-canvas/image-canvas.component';
 import { ShapeService } from '../image-services/shape.service';
@@ -37,13 +37,14 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   
   private lastX: number = 0;
   private lastY: number = 0;
-
+  cursor: string = 'default';
 
   constructor(
     private shapeService: ShapeService,
     public zoomService: ZoomService,
     private dragService: DragService,
-    private drawingService: DrawingService
+    private drawingService: DrawingService,
+    private renderer: Renderer2
   ) {}
 
   ngAfterViewInit() {
@@ -152,12 +153,17 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
 
   handleWheel(e: WheelEvent) {
     e.preventDefault();
+
+    // const imageCoordsBeforeZoom = this.zoomService.getMouseOnPictureCoordinates(e)
+    
     const rect = this.containerRef.nativeElement.getBoundingClientRect();
     const mouseX = e.clientX - rect.left - this.zoomService.offsetX;
     const mouseY = e.clientY - rect.top - this.zoomService.offsetY;
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
     this.zoomService.zoom(zoomFactor, mouseX, mouseY);
     this.updateShapes();
+
+    // this.zoomService.moveImageElementToMouse(imageCoordsBeforeZoom,{x:e.clientX, y:e.clientY});
   }
   
   handleMouseDown(e: MouseEvent) {

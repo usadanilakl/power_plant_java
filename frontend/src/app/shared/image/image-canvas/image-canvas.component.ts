@@ -1,13 +1,14 @@
-import { Component, ViewChild, ElementRef, AfterViewInit, Input, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
+import { Component, ViewChild, ElementRef, AfterViewInit, Input, OnChanges, SimpleChanges, OnDestroy, Renderer2 } from '@angular/core';
 import { ShapeService } from '../image-services/shape.service';
 import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../../models/shape.model';
 import { DrawingService } from '../image-services/drawing.service';
 import { Subscription } from 'rxjs';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-image-canvas',
   standalone: true,
-  template: '<canvas #canvas class="interactive-image-canvas" [style.cursor]="cursor"></canvas>',
+    template: `<canvas #canvas class="interactive-image-canvas" [style.cursor]="cursor"></canvas>`,
   styleUrls: ['./image-canvas.component.css']
   // styles: [':host { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }']
 })
@@ -25,7 +26,12 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   private cursorSubscription!: Subscription;
   cursor: string = 'default';
 
-  constructor(private shapeService: ShapeService, private drawingService: DrawingService) {
+  constructor(
+    private shapeService: ShapeService, 
+    private drawingService: DrawingService,
+    private renderer: Renderer2,
+    private el: ElementRef
+  ) {
     this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
       this.shapes = shapes;
       console.log('shapes updated:', shapes);
@@ -50,17 +56,21 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
     });
   }
 
-  private updateCursor(cursorStyle: string) {
-    console.log('Updating cursor style:', cursorStyle);
-    if (this.canvasRef && this.canvasRef.nativeElement) {
-      this.canvasRef.nativeElement.style.cursor = cursorStyle;
-      // Force a style update
-      this.canvasRef.nativeElement.style.cursor = '';
-      this.canvasRef.nativeElement.style.cursor = cursorStyle;
-    } else {
-      console.error('Canvas element not found');
-    }
+  // private updateCursor(cursorStyle: string) {
+  //   console.log('Updating cursor style:', cursorStyle);
+  //   this.renderer.setStyle(this.el.nativeElement, 'cursor', cursorStyle);
+  // }
+
+
+private updateCursor(cursorStyle: string) {
+  console.log('Updating cursor style:', cursorStyle);
+  this.renderer.setStyle(this.el.nativeElement, 'cursor', cursorStyle);
+  if (this.canvasRef && this.canvasRef.nativeElement) {
+    this.renderer.setStyle(this.canvasRef.nativeElement, 'cursor', `${cursorStyle} !important`);
+  } else {
+    console.error('Canvas element not found');
   }
+}
 
   getCanvas(): HTMLCanvasElement {
     if (!this.canvas) {
