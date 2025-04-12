@@ -49,8 +49,6 @@ export class ZoomService {
   zoom(factor: number, mouseX: number, mouseY: number) {
     const oldZoom = this.zoomLevel;
     this.zoomLevel *= factor;
-    // Get the coordinates of the mouse on the image before zooming
-    // const imageCoordsBefore = this.viewportToPictureCoordinates(mouseX,mouseY);
 
     const minZoomX = this.container.clientWidth / this.pictureOriginalWidth;
     const minZoomY = this.container.clientHeight / this.pictureOriginalHeight;
@@ -71,8 +69,6 @@ export class ZoomService {
     this.offsetY -= newMouseY - mouseY;
 
     this.updateImageAndCanvasPosition();
-    // Move the image so that the point under the mouse stays under the mouse
-    // this.moveImageElementToMouse(imageCoordsBefore, { x: mouseX, y: mouseY });
     this.zoomChanged.next();
   }
 
