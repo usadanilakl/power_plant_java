@@ -151,19 +151,19 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     return false;
   }
 
+
+
   handleWheel(e: WheelEvent) {
     e.preventDefault();
-
-    // const imageCoordsBeforeZoom = this.zoomService.getMouseOnPictureCoordinates(e)
-    
+  
     const rect = this.containerRef.nativeElement.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left - this.zoomService.offsetX;
-    const mouseY = e.clientY - rect.top - this.zoomService.offsetY;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+  
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    this.zoomService.zoom(zoomFactor, mouseX, mouseY);
-    this.updateShapes();
-
-    // this.zoomService.moveImageElementToMouse(imageCoordsBeforeZoom,{x:e.clientX, y:e.clientY});
+    // this.zoomService.zoom(zoomFactor, mouseX, mouseY);
+    this.zoomService.zoomToMousePosition(zoomFactor, e.clientX, e.clientY);
+    // this.updateShapes();
   }
   
   handleMouseDown(e: MouseEvent) {
@@ -244,8 +244,13 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
       this.lastY = e.offsetY;
     }
 
-    
     this.drawingService.handleMouseMove(e);
+
+    const { x,y } = this.zoomService.viewportToPictureCoordinates(e.clientX, e.clientY);
+    const {x:x2, y:y2 } = this.zoomService.pictureToViewportCoordinates(x,y);
+    console.log(`IMG: (${x.toFixed(2)}, ${y.toFixed(2)})`);
+    console.log(`VPT: (${e.clientX}, ${e.clientY})`);
+    console.log(`PTV: (${x2.toFixed(2)}, ${y2.toFixed(2)})`);
   }
 
   handleMouseUp(e: MouseEvent) {

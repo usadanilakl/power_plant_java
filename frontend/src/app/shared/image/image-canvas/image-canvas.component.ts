@@ -63,7 +63,6 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
 
 
 private updateCursor(cursorStyle: string) {
-  console.log('Updating cursor style:', cursorStyle);
   this.renderer.setStyle(this.el.nativeElement, 'cursor', cursorStyle);
   if (this.canvasRef && this.canvasRef.nativeElement) {
     this.renderer.setStyle(this.canvasRef.nativeElement, 'cursor', `${cursorStyle} !important`);
