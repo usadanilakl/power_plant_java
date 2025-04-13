@@ -1,0 +1,10 @@
+<div #zoomOuter class="zoom-outer">
+    <div #zoomElement class="zoom" 
+    class="zoom" 
+    (mousedown)="onMousedownOld($event)"
+    (mouseup)="onMouseUpOld($event)"
+    (mousemove)="onMouseMove($event)"
+    (wheel)="onWheelOld($event)">
+        <img [src]="imageUrl()" />
+    </div>
+</div>

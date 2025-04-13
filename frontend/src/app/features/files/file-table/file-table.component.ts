@@ -127,6 +127,7 @@ export class FileTableComponent implements OnInit {
       );
     }
   }
+  
   onOpenImage() {
     console.log('Opening image popup');
     if (this.selectedItem && this.selectedItem.type.startsWith('jpg')) {

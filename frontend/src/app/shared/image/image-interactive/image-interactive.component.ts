@@ -44,7 +44,6 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     public zoomService: ZoomService,
     private dragService: DragService,
     private drawingService: DrawingService,
-    private renderer: Renderer2
   ) {}
 
   ngAfterViewInit() {
