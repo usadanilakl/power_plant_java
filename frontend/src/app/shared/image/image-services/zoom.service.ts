@@ -1,10 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ZoomService {
+  constructor(private ngZone: NgZone) {}
   zoomLevel = 1;
   offsetX = 0;
   offsetY = 0;
@@ -79,127 +80,74 @@ export class ZoomService {
     this.zoomChanged.next();
   }
 
+
+  // zoomToMousePosition(factor: number, x: number, y: number) {
+
+  //   const { x:imgX, y:imgY } = this.viewportToPictureCoordinates(x, y);
+
+  //   const oldOffsetX = this.offsetX;
+  //   const oldOffsetY = this.offsetY;
+  
+  //   // Update the zoom level
+  //   this.zoomLevel *= factor;
+  //   this.updateImageAndCanvasDimensions();
+
+  //   // this.offsetX = this.pictureCurrentWidth - imgX*this.zoomLevel;
+  //   // this.offsetY = this.pictureCurrentHeight - imgY*this.zoomLevel;
+
+  //   // this.moveImageElementToMouse({x:imgX, y:imgY},{x,y});
+  
+  //   // // Force a reflow to ensure the image dimensions are updated
+  //   // this.img.offsetHeight;
+  
+  //   setTimeout(() => {
+  //     const {x:newX, y: newY } = this.pictureToViewportCoordinates(imgX, imgY);
+  
+  //     // Calculate the required offset to keep the mouse position stable
+  //     const dx = newX - x;
+  //     const dy = newY - y;
+  
+  //     // Adjust the offset
+  //     this.offsetX -= dx;
+  //     this.offsetY -= dy;
+  
+  //     // Update the position of the image and canvas
+  //     // this.updateImageAndCanvasPosition();
+  
+  //     // Notify that zoom has changed
+  //     this.zoomChanged.next();
+  
+  //     console.log(`Zoom: ${this.zoomLevel}, OffsetX: ${this.offsetX}, OffsetY: ${this.offsetY}`);
+  //   }, 0);
+  // }
+
+
   zoomToMousePosition(factor: number, x: number, y: number) {
-    // Get the current dimensions and positions
-    const containerRect = this.container.getBoundingClientRect();
-    const imgRect = this.img.getBoundingClientRect();
-  
-    // Calculate the position of the mouse relative to the image's top-left corner
-    const mouseXRelative = x - (imgRect.left + this.offsetX);
-    const mouseYRelative = y - (imgRect.top + this.offsetY);
-  
-    // Calculate the mouse position as a fraction of the current image size
-    const mouseXFraction = mouseXRelative / this.pictureCurrentWidth;
-    const mouseYFraction = mouseYRelative / this.pictureCurrentHeight;
-  
-    // Calculate the new zoom level
-    const newZoom = this.zoomLevel * factor;
-  
-    // Constrain zoom level if needed
-    const minZoom = Math.min(containerRect.width / this.pictureOriginalWidth, containerRect.height / this.pictureOriginalHeight);
-    const constrainedZoom = Math.max(Math.min(newZoom, 5), minZoom); // Assuming 5x is max zoom
-  
-    // Calculate new image dimensions
-    const newImageWidth = this.pictureOriginalWidth * constrainedZoom;
-    const newImageHeight = this.pictureOriginalHeight * constrainedZoom;
-  
-    // Calculate new mouse position after zoom
-    const newMouseXRelative = newImageWidth * mouseXFraction;
-    const newMouseYRelative = newImageHeight * mouseYFraction;
-  
-    // Calculate new offset to keep the mouse point fixed
-    const newOffsetX = this.offsetX - (newMouseXRelative - mouseXRelative);
-    const newOffsetY = this.offsetY - (newMouseYRelative - mouseYRelative);
-  
-    // Update class properties
-    this.zoomLevel = constrainedZoom;
-    this.pictureCurrentWidth = newImageWidth;
-    this.pictureCurrentHeight = newImageHeight;
-    this.offsetX = newOffsetX;
-    this.offsetY = newOffsetY;
-  
-    // Apply new dimensions and position to the image and canvas
+    const { x: imgX, y: imgY } = this.viewportToPictureCoordinates(x, y);
+
+    this.zoomLevel *= factor;
     this.updateImageAndCanvasDimensions();
-    this.updateImageAndCanvasPosition();
-  
-    // Notify that zoom has changed
-    this.zoomChanged.next();
-  
-    console.log(`Zoom: ${this.zoomLevel.toFixed(2)}, Offset: (${this.offsetX.toFixed(2)}, ${this.offsetY.toFixed(2)})`);
-    console.log(`Mouse at viewport: (${x}, ${y}), Mouse fraction: (${mouseXFraction.toFixed(2)}, ${mouseYFraction.toFixed(2)})`);
+
+    this.ngZone.runOutsideAngular(() => {
+      requestAnimationFrame(() => {
+        const { x: newX, y: newY } = this.pictureToViewportCoordinates(imgX, imgY);
+
+        const dx = newX - x;
+        const dy = newY - y;
+
+        this.offsetX -= dx;
+        this.offsetY -= dy;
+
+        this.ngZone.run(() => {
+          // this.updateImageAndCanvasPosition();
+          this.zoomChanged.next();
+        });
+
+        console.log(`Zoom: ${this.zoomLevel}, OffsetX: ${this.offsetX}, OffsetY: ${this.offsetY}`);
+      });
+    });
   }
 
-
-  // zoomToMousePosition(factor: number, x: number, y: number) {
-
-  //   const { x:oldX, y:oldY } = this.viewportToPictureCoordinates(x, y);
-
-  //   const oldZoom = this.zoomLevel;
-  //   this.zoomLevel *= factor;
-  //   this.updateImageAndCanvasDimensions();
-
-
-  //   // const { x:newX, y:newY } = this.pictureToViewportCoordinates(oldX, oldY);
-
-
-
-  //   const dx = (newX - x);
-  //   const dy = (newY - y);
-    
-
-  //   this.offsetX += dx;
-  //   this.offsetY += dy;
-
-
-  //   console.log(`OffsetX: ${this.offsetX}, OffsetY: ${this.offsetY}`);
-  //   console.log(`image: ${oldX}, ${oldY}`);
-  //   console.log(`Original ViewportX: ${x}, Original ViewportY: ${y}`);
-  //   console.log(`New ViewportX: ${newX}, New ViewportY: ${newY}`);
-  //   // console.log(`dx: ${dx}, dy: ${dy}`);
-
-
-
-  //   this.updateImageAndCanvasPosition();
-  //   this.zoomChanged.next();
-
-    
-  // }
-
-  // zoomToMousePosition(factor: number, x: number, y: number) {
-  //   const containerRect = this.container.getBoundingClientRect();
-  //   const imgRect = this.img.getBoundingClientRect();
-  //   console.log(`Zooming to mouse position: ${x}, ${y} with factor ${factor}...`);
-    
-  //   // Calculate the position on the image before zooming
-  //   const mouseXRelativeToImage = x - (imgRect.left + this.offsetX);
-  //   const mouseYRelativeToImage = y - (imgRect.top + this.offsetY);
-    
-  //   // Calculate the ratio of the mouse position to the image dimensions
-  //   const mouseXRatio = mouseXRelativeToImage / this.pictureCurrentWidth;
-  //   const mouseYRatio = mouseYRelativeToImage / this.pictureCurrentHeight;
-    
-  //   // Update the zoom level
-  //   const oldZoom = this.zoomLevel;
-  //   this.zoomLevel *= factor;
-  //   console.log(`Old zoom level: ${oldZoom}, New zoom level: ${this.zoomLevel}`);
-  
-  //   // Update image dimensions based on new zoom level
-  //   this.updateImageAndCanvasDimensions();
-  
-  //   // Calculate the new position where the mouse should be after zooming
-  //   const newMouseXRelativeToImage = this.pictureCurrentWidth * mouseXRatio;
-  //   const newMouseYRelativeToImage = this.pictureCurrentHeight * mouseYRatio;
-  
-  //   // Adjust the offset to keep the mouse position stable
-  //   this.offsetX += mouseXRelativeToImage - newMouseXRelativeToImage;
-  //   this.offsetY += mouseYRelativeToImage - newMouseYRelativeToImage;
-  
-  //   // Update the position of the image and canvas
-  //   this.updateImageAndCanvasPosition();
-  //   this.zoomChanged.next();
-  
-  //   console.log(`New offset: (${this.offsetX}, ${this.offsetY})`);
-  // }
 
 
 
@@ -211,32 +159,33 @@ export class ZoomService {
   }
 
   updateImageAndCanvasDimensions() {
-    // this.pictureCurrentWidth = Math.round(this.pictureOriginalWidth * this.zoomLevel);
-    // this.pictureCurrentHeight = Math.round(this.pictureOriginalHeight * this.zoomLevel);
-    
     this.pictureCurrentWidth = this.pictureOriginalWidth * this.zoomLevel;
     this.pictureCurrentHeight = this.pictureOriginalHeight * this.zoomLevel;
-
+  
+    // Calculate the center point of the image before resizing
+    const centerX = this.offsetX + this.pictureCurrentWidth / 2;
+    const centerY = this.offsetY + this.pictureCurrentHeight / 2;
+  
+    // Update image dimensions
     this.img.style.width = `${this.pictureCurrentWidth}px`;
     this.img.style.height = `${this.pictureCurrentHeight}px`;
-
+  
+    // Update canvas dimensions
     this.canvas.width = this.pictureCurrentWidth;
     this.canvas.height = this.pictureCurrentHeight;
-
     this.canvas.style.width = `${this.pictureCurrentWidth}px`;
     this.canvas.style.height = `${this.pictureCurrentHeight}px`;
+  
+    // Recalculate offset to keep the center point stable
+    this.offsetX = centerX - this.pictureCurrentWidth / 2;
+    this.offsetY = centerY - this.pictureCurrentHeight / 2;
   }
 
   updateImageAndCanvasPosition() {
-    // const transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
-    // this.img.style.transform = transform;
-    // this.canvas.style.transform = transform;
-
-  this.img.style.left = `${this.offsetX}px`;
-  this.img.style.top = `${this.offsetY}px`;
-
-  this.canvas.style.left = `${this.offsetX}px`;
-  this.canvas.style.top = `${this.offsetY}px`;
+    const transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
+    this.img.style.transform = transform;
+    this.canvas.style.transform = transform;
+    console.log(`Updated Position: (${this.offsetX}, ${this.offsetY})`);
     
   }
 
@@ -287,7 +236,6 @@ export class ZoomService {
   }
 
 
-
   moveBy(dx: number, dy: number) {
     this.offsetX += dx;
     this.offsetY += dy;
@@ -325,23 +273,72 @@ export class ZoomService {
   }
 
   moveImageElementToMouse(imageCoords: { x: number, y: number }, viewPortCoords: { x: number, y: number }) {
-    // Get the current position of the image in the viewport
-    const containerRect = this.container.getBoundingClientRect();
-    const imgRect = this.img.getBoundingClientRect();
+    // Calculate the position of the point in the zoomed image
+    const zoomedX = imageCoords.x * this.zoomLevel;
+    const zoomedY = imageCoords.y * this.zoomLevel;
   
-    // Calculate the current position of the image coordinates in the viewport
-    const currentViewportX = imgRect.left - containerRect.left + (imageCoords.x * this.scale);
-    const currentViewportY = imgRect.top - containerRect.top + (imageCoords.y * this.scale);
+    // Calculate the new offsets
+    const newOffsetX = viewPortCoords.x - zoomedX;
+    const newOffsetY = viewPortCoords.y - zoomedY;
   
-    // Calculate the difference between the current position and the desired position
-    const dx = viewPortCoords.x - currentViewportX;
-    const dy = viewPortCoords.y - currentViewportY;
+    // Update the offsets
+    this.offsetX = newOffsetX;
+    this.offsetY = newOffsetY;
   
-    // Move the image by this difference
-    this.moveBy(dx, dy);
+    // Update the position of the image and canvas
+    this.updateImageAndCanvasPosition();
   
-    // Ensure the image stays within the allowed bounds
+    // Optionally, ensure the image stays within the allowed bounds
     // this.keepPictureInView();
+  }
+
+
+  calculateNewDimensions() {
+    const newWidth = this.pictureOriginalWidth * this.zoomLevel;
+    const newHeight = this.pictureOriginalHeight * this.zoomLevel;
+  
+    // Calculate the center point of the image before resizing
+    const centerX = this.offsetX + this.pictureCurrentWidth / 2;
+    const centerY = this.offsetY + this.pictureCurrentHeight / 2;
+  
+    // Calculate new offsets to keep the center point stable
+    const newOffsetX = centerX - newWidth / 2;
+    const newOffsetY = centerY - newHeight / 2;
+  
+    return {
+      width: newWidth,
+      height: newHeight,
+      offsetX: newOffsetX,
+      offsetY: newOffsetY
+    };
+  }
+
+  applyImageAndCanvasDimensions(applyVisually = true) {
+    const newDimensions = this.calculateNewDimensions();
+  
+    this.pictureCurrentWidth = newDimensions.width;
+    this.pictureCurrentHeight = newDimensions.height;
+    this.offsetX = newDimensions.offsetX;
+    this.offsetY = newDimensions.offsetY;
+  
+    if (applyVisually) {
+      this.applyVisualUpdate();
+    }
+  }
+
+  applyVisualUpdate() {
+    // Update image dimensions
+    this.img.style.width = `${this.pictureCurrentWidth}px`;
+    this.img.style.height = `${this.pictureCurrentHeight}px`;
+  
+    // Update canvas dimensions
+    this.canvas.width = this.pictureCurrentWidth;
+    this.canvas.height = this.pictureCurrentHeight;
+    this.canvas.style.width = `${this.pictureCurrentWidth}px`;
+    this.canvas.style.height = `${this.pictureCurrentHeight}px`;
+  
+    // Update position
+    this.updateImageAndCanvasPosition();
   }
 
 

@@ -163,7 +163,8 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
     // this.zoomService.zoom(zoomFactor, mouseX, mouseY);
     this.zoomService.zoomToMousePosition(zoomFactor, e.clientX, e.clientY);
-    // this.updateShapes();
+    // this.zoomService.zoomToMousePosition(zoomFactor, mouseX, mouseY);
+    this.updateShapes();
   }
   
   handleMouseDown(e: MouseEvent) {
@@ -246,11 +247,11 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
 
     this.drawingService.handleMouseMove(e);
 
-    const { x,y } = this.zoomService.viewportToPictureCoordinates(e.clientX, e.clientY);
-    const {x:x2, y:y2 } = this.zoomService.pictureToViewportCoordinates(x,y);
-    console.log(`IMG: (${x.toFixed(2)}, ${y.toFixed(2)})`);
-    console.log(`VPT: (${e.clientX}, ${e.clientY})`);
-    console.log(`PTV: (${x2.toFixed(2)}, ${y2.toFixed(2)})`);
+    // const { x,y } = this.zoomService.viewportToPictureCoordinates(e.clientX, e.clientY);
+    // const {x:x2, y:y2 } = this.zoomService.pictureToViewportCoordinates(x,y);
+    // console.log(`IMG: (${x.toFixed(2)}, ${y.toFixed(2)})`);
+    // console.log(`VPT: (${e.clientX}, ${e.clientY})`);
+    // console.log(`PTV: (${x2.toFixed(2)}, ${y2.toFixed(2)})`);
   }
 
   handleMouseUp(e: MouseEvent) {
