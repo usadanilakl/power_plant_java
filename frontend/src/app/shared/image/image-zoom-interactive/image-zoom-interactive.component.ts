@@ -1,12 +1,13 @@
 import { Component, ElementRef, input, ViewChild } from '@angular/core';
+import { Shape } from '../../../models/shape.model';
 
 @Component({
-  selector: 'app-image-zoom',
+  selector: 'app-image-zoom-interactive',
   imports: [],
-  templateUrl: './image-zoom.component.html',
-  styleUrl: './image-zoom.component.css'
+  templateUrl: './image-zoom-interactive.component.html',
+  styleUrl: './image-zoom-interactive.component.css'
 })
-export class ImageZoomComponent {
+export class ImageZoomInteractiveComponent {
   imageUrl = input<string>()
 
   constructor() { }
@@ -22,6 +23,9 @@ export class ImageZoomComponent {
   private isDoubleClick: boolean = false;
   private lastClickTime: number = 0;
   private readonly DOUBLE_CLICK_DELAY = 300; // milliseconds
+
+//Shape functionality variables
+  private shapes: Shape[] = [];
 
   @ViewChild('zoomElement') zoomElement!: ElementRef<HTMLDivElement>;
   @ViewChild('zoomOuter') zoomOuter!: ElementRef<HTMLDivElement>;
@@ -184,6 +188,15 @@ export class ImageZoomComponent {
 
 
 
+  initializeShapes(elements: any[], originalWidth: number, originalHeight: number) {
+    this.shapes = elements.map(element => ({
+      type: element.shapeType.name,
+      color: element.color,
+      ...element.shapeData,
+      originalPictureWidth: originalWidth,
+      originalPictureHeight: originalHeight
+    })) as Shape[];
+  }
 
 
 

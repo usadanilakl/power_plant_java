@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
-import { ImageZoomComponent } from "../../shared/image/image-zoom/image-zoom.component";
+import { ImageZoomInteractiveComponent } from "../../shared/image/image-zoom-interactive/image-zoom-interactive.component";
 
 @Component({
   selector: 'app-home',
-  imports: [ImageZoomComponent],
+  imports: [ImageZoomInteractiveComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
