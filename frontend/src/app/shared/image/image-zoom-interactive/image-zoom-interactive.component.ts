@@ -52,6 +52,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   pictureOriginalHeight = 0;
   pictureCurrentWidth = 0;
   pictureCurrentHeight = 0;
+  imageScale: number = 1;
 
 
   @ViewChild('zoomElement') private zoomElementRef!: ElementRef<HTMLDivElement>;
@@ -132,7 +133,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   setSubscriptions() {
     this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
       this.shapes = shapes;
-      console.log('shapes updated:', shapes);
+      // console.log('shapes updated:', shapes);
       this.drawShapes();
     });
 
@@ -151,6 +152,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   transform() {
     if (this.zoomElement && this.zoomElement) {
       this.zoomElement.style.transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
+      this.updateImageScale();
       // Call onZoomEnd after the transition is complete
       setTimeout(() => this.onZoomEnd(), 100);
     }
@@ -158,12 +160,19 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   updateCanvasSize() {
     if (this.canvas) {
-      this.canvas.width = this.img.width;
-      this.canvas.height = this.img.height;
+      // console.log('Updating canvas size');
+      const imgRect = this.img.getBoundingClientRect();
+      this.canvas.width = imgRect.width;
+      this.canvas.height = imgRect.height;
       this.drawShapes();
     } else {
       console.error('Canvas not available for size update');
     }
+  }
+
+  updateImageScale(){
+    this.imageScale = this.calculateCurrentScale();
+    this.drawingService.setScale(this.imageScale);
   }
 
 
@@ -178,13 +187,13 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   drawShape(ctx: CanvasRenderingContext2D, shape: Shape) {
+    const scale = this.calculateCurrentScale();
     ctx.strokeStyle = shape.color;
     ctx.fillStyle = shape.color;
-    ctx.lineWidth = shape.isSelected? 3 : 1;
+    ctx.lineWidth = (shape.isSelected? 3 : 1);
 
     const scaledShape = this.scaleShape(shape);
-    const scale = this.img.width / shape.originalPictureWidth;
-    console.log(JSON.stringify(scaledShape));
+    // console.log(JSON.stringify(scaledShape));
 
             switch (scaledShape.type) {
               case 'rectangle':
@@ -229,7 +238,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   scaleShape(shape: Shape): Shape {
-    const calculatedScale = this.img.width / shape.originalPictureWidth;
+    const calculatedScale = this.calculateCurrentScale();
     switch (shape.type) {
       case 'rectangle':
         return {
@@ -251,6 +260,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   private drawSelectionHandles(ctx: CanvasRenderingContext2D, shape: Shape) {
+    const scale = this.calculateCurrentScale();
     const handleSize = 8;
     ctx.fillStyle = 'blue';
   
@@ -296,8 +306,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   
     corners.forEach(([x, y]) => {
       ctx.fillRect(
-        x * this.scale - handleSize / 2,
-        y * this.scale - handleSize / 2,
+        x * scale - handleSize / 2,
+        y * scale - handleSize / 2,
         handleSize,
         handleSize
       );
@@ -315,6 +325,9 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   onMousedown(event: MouseEvent) {
     const currentTime = new Date().getTime();
     const timeSinceLastClick = currentTime - this.lastClickTime;
+
+    this.lastX = event.clientX;
+    this.lastY = event.clientY;
   
     if (timeSinceLastClick < this.DOUBLE_CLICK_DELAY) {
       this.isDoubleClick = true;
@@ -354,7 +367,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   onRightClick(event: MouseEvent) {
     console.log('rightclick');
-    this.drawingService.handleRightClick(event);
+    const { x, y } = this.viewportToPictureCoordinates(event.clientX, event.clientY);
+    this.drawingService.handleRightClick(event,x,y);
   }
   
   onDoubleClick(event: MouseEvent) {
@@ -410,11 +424,11 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       this.pointY = event.clientY - this.start.y;
       this.transform();
     }else if(this.drawingService.getSelectedShape() && this.drawingService.isDraggingShape){
-      const dx = event.offsetX - this.lastX;
-      const dy = event.offsetY - this.lastY;
+      const dx = event.clientX - this.lastX;
+      const dy = event.clientY - this.lastY;
       this.drawingService.dragSelectedShape(dx, dy);
-      this.lastX = event.offsetX;
-      this.lastY = event.offsetY;
+      this.lastX = event.clientX;
+      this.lastY = event.clientY;
     }
     this.drawingService.handleMouseMove(event,x,y);
   }
@@ -514,7 +528,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   calculateCurrentScale(): number {
     const imgRec = this.img.getBoundingClientRect();
-    return this.img.width / this.pictureOriginalWidth;
+    return imgRec.width / this.img.naturalWidth;
   }
 
 }

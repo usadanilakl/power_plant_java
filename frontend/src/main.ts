@@ -1,4 +1,5 @@
 import { bootstrapApplication } from '@angular/platform-browser';
+import { APP_BASE_HREF } from '@angular/common';
 import { appConfig } from './app/app.config';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
@@ -8,7 +9,8 @@ import { provideHttpClient } from '@angular/common/http';
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
-    provideHttpClient()
+    provideHttpClient(),
+    { provide: APP_BASE_HREF, useValue: '/app/' }
   ]
 })
   .catch((err) => console.error(err));

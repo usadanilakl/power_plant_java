@@ -14,6 +14,7 @@ export class DrawUtilService {
   private cursorSubject = new BehaviorSubject<string>('default');
   cursor$ = this.cursorSubject.asObservable();
   private img!: HTMLImageElement;
+  private scale = 1;
 
   constructor(
     private shapeFactory: ShapeFactoryService,
@@ -28,8 +29,9 @@ export class DrawUtilService {
   private isResizing = false;
   private resizeCorner: 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null = null;
 
-  get scale(): number {
-    return this.img.width / this.img.naturalWidth;
+
+  setScale(scale: number) {
+    this.scale = scale;
   }
 
   getImgCoordinates(x: number, y: number): { x: number, y: number } {
@@ -82,9 +84,9 @@ export class DrawUtilService {
     return false;
   }
 
-  handleRightClick(event: MouseEvent) {
+  handleRightClick(event: MouseEvent, imageX: number, imageY: number) {
     if (this.isRightClickDrawEnabled) {
-      this.drawWithRightClick(event);
+      this.drawWithRightClick(event, imageX, imageY);
     }
   }
 
@@ -141,10 +143,8 @@ export class DrawUtilService {
   private selectShape(event: MouseEvent) {
     console.log('Selecting shape');
     // Deselect all shapes
-    const { x, y } = this.getImgCoordinates(event.offsetX, event.offsetY);
-    console.log(`event: ${event.offsetX}, ${event.offsetY} `)
-    console.log(`image coords: ${x}, ${y} `)
-    console.log(this.shapes)
+    console.log(`event: ${event.offsetX}, ${event.offsetY} `);
+    console.log(this.shapes);
     this.shapes.forEach(shape => shape.isSelected = false);
     
     // Find and select the new shape
@@ -322,14 +322,14 @@ export class DrawUtilService {
     this.shapesSubject.next(this.shapes);
   }
 
-  drawWithRightClick(event: MouseEvent) {
+  drawWithRightClick(event: MouseEvent, imgX: number, imgY: number) {
     event.preventDefault(); // Prevent the default context menu
     const scale = this.scale;
     
     // Create a new shape on right mouse button down
     this.selectedShape = this.shapeFactory.createRectangle(
-      event.offsetX/scale,
-      event.offsetY/scale,
+      imgX,
+      imgY,
       10, // Initial width
       10, // Initial height
       this.currentColor,
