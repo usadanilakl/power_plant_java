@@ -1,6 +1,9 @@
-import { AfterViewInit, Component, ElementRef, inject, input, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, ElementRef, inject, input, OnDestroy, ViewChild } from '@angular/core';
 import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../../models/shape.model';
-import { DrawingService } from '../image-services/drawing.service';
+import { DrawUtilService } from '../image-services/draw-util.service';
+import { ShapeFactoryService } from '../image-services/shape-factory.service';
+import { ShapeUtilService } from '../image-services/shape-util.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-image-zoom-interactive',
@@ -8,15 +11,23 @@ import { DrawingService } from '../image-services/drawing.service';
   templateUrl: './image-zoom-interactive.component.html',
   styleUrl: './image-zoom-interactive.component.css'
 })
-export class ImageZoomInteractiveComponent implements AfterViewInit  {
+export class ImageZoomInteractiveComponent implements AfterViewInit {
   imageUrl = input<string>()
   imageName = input<string>()
   elements = input.required<any[]>();
 
-  constructor() { }
+  private shapeFactory = inject(ShapeFactoryService);
+  private shapeUtil = inject(ShapeUtilService);
+  private drawingService: DrawUtilService;
+  private destroyRef = inject(DestroyRef);
 
-//Services
-  private drawingService = inject(DrawingService);
+  constructor() {
+    this.drawingService = new DrawUtilService(this.shapeFactory, this.shapeUtil);
+  }
+
+//Subscriptions  
+    private shapesSubscription!: Subscription;
+    private cursorSubscription!: Subscription;
 
 //Zooming and panning functionality variables
   private scale: number = 1;
@@ -98,6 +109,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit  {
   
     this.initializeServices();
 
+    this.setSubscriptions();
+
     this.updateCanvasSize();
   
   }
@@ -113,8 +126,24 @@ export class ImageZoomInteractiveComponent implements AfterViewInit  {
   }
 
   initializeServices(){
-    this.drawingService.setOriginalPictureDimensions(this.img.naturalWidth, this.img.naturalHeight);
-    this.drawingService.setShapes(this.shapes)
+    this.drawingService.init(this.img, this.shapes);
+  }
+
+  setSubscriptions() {
+    this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
+      this.shapes = shapes;
+      console.log('shapes updated:', shapes);
+      this.drawShapes();
+    });
+
+    this.destroyRef.onDestroy(() => {
+      if (this.shapesSubscription) {
+        this.shapesSubscription.unsubscribe();
+      }
+      if (this.cursorSubscription) {
+        this.cursorSubscription.unsubscribe();
+      }
+    });
   }
 
 
@@ -155,6 +184,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit  {
 
     const scaledShape = this.scaleShape(shape);
     const scale = this.img.width / shape.originalPictureWidth;
+    console.log(JSON.stringify(scaledShape));
 
             switch (scaledShape.type) {
               case 'rectangle':
@@ -200,7 +230,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit  {
 
   scaleShape(shape: Shape): Shape {
     const calculatedScale = this.img.width / shape.originalPictureWidth;
-    console.log(`Original width: ${shape.originalPictureWidth}, crurrent width: ${this.img.width}, calculated scale: ${calculatedScale}`);
     switch (shape.type) {
       case 'rectangle':
         return {
@@ -329,7 +358,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit  {
   }
   
   onDoubleClick(event: MouseEvent) {
-    console.log('doubleclick');
     const { x, y } = this.viewportToPictureCoordinates(event.clientX, event.clientY);
     this.drawingService.handleDoubleClick({
       offsetX: x,
@@ -451,14 +479,15 @@ export class ImageZoomInteractiveComponent implements AfterViewInit  {
 
   viewportToPictureCoordinates(viewportX: number, viewportY: number): { x: number, y: number } {
     const imgRect = this.img.getBoundingClientRect();
+    const scale = this.calculateCurrentScale();
   
     // Calculate click position relative to the image
     const imageX = viewportX - imgRect.left;
     const imageY = viewportY - imgRect.top;
   
     // Convert to original image coordinates
-    const originalX = imageX / this.scale;
-    const originalY = imageY / this.scale;
+    const originalX = imageX / scale;
+    const originalY = imageY / scale;
   
     return {
       x: Math.round(originalX),

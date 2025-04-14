@@ -1,31 +1,23 @@
-import { Injectable } from "@angular/core";
 import { Shape } from "../../../models/shape.model";
 import { Tool } from "../../../models/tool.model";
 import { ShapeFactoryService } from "./shape-factory.service";
 import { ShapeUtilService } from "./shape-util.service";
 import { BehaviorSubject } from "rxjs";
-import { ZoomService } from "./zoom.service";
-import e from "express";
 
-@Injectable({
-  providedIn: 'root'
-})
-export class DrawingService {
+export class DrawUtilService {
   private shapes: Shape[] = [];
   private currentTool: Tool = Tool.Select;
   private currentColor: string = '#000000';
   private selectedShape: Shape | null = null;
-  private originalPictureWidth: number = 0;
-  private originalPictureHeight: number = 0;
   private shapesSubject = new BehaviorSubject<Shape[]>([]);
   shapes$ = this.shapesSubject.asObservable();
   private cursorSubject = new BehaviorSubject<string>('default');
   cursor$ = this.cursorSubject.asObservable();
+  private img!: HTMLImageElement;
 
   constructor(
     private shapeFactory: ShapeFactoryService,
-    private shapeUtil: ShapeUtilService,
-    private zoomService: ZoomService
+    private shapeUtil: ShapeUtilService
   ) {}
 
   isDraggingShape = false;
@@ -36,14 +28,29 @@ export class DrawingService {
   private isResizing = false;
   private resizeCorner: 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null = null;
 
+  get scale(): number {
+    return this.img.width / this.img.naturalWidth;
+  }
+
+  getImgCoordinates(x: number, y: number): { x: number, y: number } {
+    const imgRect = this.img.getBoundingClientRect()
+    return {
+      x: (x - imgRect.left) / this.scale,
+      y: (y - imgRect.top) / this.scale
+    };
+  }
+
+  init(img: HTMLImageElement, shapes: Shape[] = []): void {
+    this.img = img;
+    this.shapes = shapes;
+    this.shapesSubject.next(this.shapes);
+
+    console.log(`Image dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
+  }
 
   setShapes(shapes: Shape[]) {
     this.shapes = shapes;
-  }
-  
-  setOriginalPictureDimensions(width: number, height: number) {
-    this.originalPictureWidth = width;
-    this.originalPictureHeight = height;
+    this.shapesSubject.next(this.shapes);
   }
 
   setCurrentTool(tool: Tool) {
@@ -65,7 +72,6 @@ export class DrawingService {
         this.isDraggingShape = true;
         return true;
       }else if(this.isOverCorner(this.selectedShape,imageX, imageY)!==null) {
-        const scale = this.zoomService.scale;
         this.initialMouseX = event.offsetX;
         this.initialMouseY = event.offsetY;
         this.resizeCorner = this.isOverCorner(this.selectedShape,imageX, imageY);
@@ -123,8 +129,8 @@ export class DrawingService {
       50,
       100,
       this.currentColor,
-      this.originalPictureWidth,
-      this.originalPictureHeight
+      this.img.naturalWidth,
+      this.img.naturalHeight
     );
     newRect.isSelected = true;
     this.shapes.push(newRect);
@@ -135,9 +141,11 @@ export class DrawingService {
   private selectShape(event: MouseEvent) {
     console.log('Selecting shape');
     // Deselect all shapes
+    const { x, y } = this.getImgCoordinates(event.offsetX, event.offsetY);
+    console.log(`event: ${event.offsetX}, ${event.offsetY} `)
+    console.log(`image coords: ${x}, ${y} `)
+    console.log(this.shapes)
     this.shapes.forEach(shape => shape.isSelected = false);
-
-    console.log(`shapes: ${JSON.stringify(this.shapes)}, event.offsetX: ${event.offsetX}, event.offsetY: ${event.offsetY} `);
     
     // Find and select the new shape
     this.selectedShape = this.shapes.find(shape => 
@@ -171,8 +179,8 @@ export class DrawingService {
     if (!this.selectedShape) {
       return null;
     }
-    const scale = this.zoomService.scale;
-    const cornerSize = 10 / scale; // Adjust this value to change the corner hit area
+    
+    const cornerSize = 10 / this.scale; // Adjust this value to change the corner hit area
 
     if (shape.type === 'rectangle') {
       const rect = shape as any;
@@ -207,7 +215,7 @@ export class DrawingService {
     if (!this.selectedShape) {
       return;
     }
-    const scale = this.zoomService.scale;
+    const scale = this.scale;
     const _dx = dx / scale;
     const _dy = dy / scale;
 
@@ -240,7 +248,7 @@ export class DrawingService {
   private resizeShape(event: MouseEvent) {
     if (!this.selectedShape) return;
 
-    const scale = this.zoomService.scale;
+    const scale = this.scale;
     const dx = (event.offsetX - this.initialMouseX) / scale;
     const dy = (event.offsetY - this.initialMouseY) / scale;
 
@@ -262,7 +270,7 @@ export class DrawingService {
   private resizeExistingShape(event: MouseEvent) {
     if (!this.selectedShape || !this.resizeCorner) return;
   
-    const scale = this.zoomService.scale;
+    const scale = this.scale;
     const dx = (event.offsetX - this.initialMouseX) / scale;
     const dy = (event.offsetY - this.initialMouseY) / scale;
   
@@ -316,7 +324,7 @@ export class DrawingService {
 
   drawWithRightClick(event: MouseEvent) {
     event.preventDefault(); // Prevent the default context menu
-    const scale = this.zoomService.scale;
+    const scale = this.scale;
     
     // Create a new shape on right mouse button down
     this.selectedShape = this.shapeFactory.createRectangle(
@@ -325,8 +333,8 @@ export class DrawingService {
       10, // Initial width
       10, // Initial height
       this.currentColor,
-      this.originalPictureWidth,
-      this.originalPictureHeight
+      this.img.naturalWidth,
+      this.img.naturalHeight
     );
     this.shapes.push(this.selectedShape);
     this.isDrawingWithRightClick = true;
