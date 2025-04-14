@@ -18,9 +18,9 @@ import { ImageZoomInteractiveComponent } from '../../../shared/image/image-zoom-
 export class FileTableComponent implements OnInit {
   columns: Column[] = [
     { id: 'fileName', header: 'File Name', accessorKey: 'name' },
-    { id: 'fileType', header: 'File Type', accessorKey: 'type' },
-    { id: 'uploadDate', header: 'Upload Date', accessorKey: 'uploadDate' },
-    { id: 'fileSize', header: 'File Size', accessorKey: 'size' }
+    { id: 'fileType', header: 'File Type', accessorKey: 'fileType.name' },
+    { id: 'fileNumber', header: 'File Number', accessorKey: 'fileNumber' },
+    { id: 'relatedSystems', header: 'Systems', accessorKey: 'relatedSystems' }
   ];
 
   initialItems: any[] = [];
@@ -41,11 +41,22 @@ export class FileTableComponent implements OnInit {
 
   loadInitialItems() {
     this.fileService.getFiles().subscribe(
-      (data) => {
-        this.initialItems = data;
+      (response: any) => {
+        if (Array.isArray(response)) {
+          // If the response is already an array, use it directly
+          this.initialItems = response;
+        } else if (response && typeof response === 'object' && 'responseData' in response && 'content' in response.responseData) {
+          // If the response has the expected nested structure
+          this.initialItems = response.responseData.content;
+          console.log('Loaded initial items:', this.initialItems);
+        } else {
+          console.error('Unexpected response structure:', response);
+          this.initialItems = [];
+        }
       },
       (error) => {
         console.error('Error loading initial items:', error);
+        this.initialItems = [];
       }
     );
   }

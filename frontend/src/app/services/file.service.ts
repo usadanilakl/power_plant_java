@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -7,18 +7,57 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class FileService {
-  private apiUrl = `${environment.apiUrl}/files`;
+  private apiUrl = `${environment.apiUrl}/ng-files`;
 
   constructor(private http: HttpClient) {}
 
   getFiles(params?: any): Observable<any[]> {
-    // let httpParams = new HttpParams();
-    // if (params) {
-    //   Object.keys(params).forEach(key => {
-    //     httpParams = httpParams.append(key, params[key]);
-    //   });
-    // }
-    // return this.http.get<any[]>(this.apiUrl, { params: httpParams });
+    let httpParams = new HttpParams();
+    if (params) {
+      Object.keys(params).forEach(key => {
+        httpParams = httpParams.append(key, params[key]);
+      });
+    }
+    const url = `${this.apiUrl}/paginated`;
+    return this.http.get<any[]>(url, {
+      params: httpParams,
+      headers: new HttpHeaders({
+        'Accept': 'application/json'
+      })
+    });
+  }
+
+  searchFiles(criteria: any): Observable<any[]> {
+    return this.http.post<any[]>(`${this.apiUrl}/search`, criteria);
+  }
+
+  getFileById(id: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
+  }
+
+  createFile(file: any): Observable<any> {
+    return this.http.post<any>(this.apiUrl, file);
+  }
+
+  updateFile(id: string, file: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, file);
+  }
+
+  deleteFile(id: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
+  }
+
+  uploadFile(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    return this.http.post<any>(`${this.apiUrl}/upload`, formData);
+  }
+
+  downloadFile(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/download`, { responseType: 'blob' });
+  }
+
+  getMockFiles(params?: any): Observable<any[]> {
 
         // Mock data
         const testElements = [
@@ -101,35 +140,5 @@ export class FileService {
         return of(filteredFiles);
 
 
-  }
-
-  searchFiles(criteria: any): Observable<any[]> {
-    return this.http.post<any[]>(`${this.apiUrl}/search`, criteria);
-  }
-
-  getFileById(id: string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/${id}`);
-  }
-
-  createFile(file: any): Observable<any> {
-    return this.http.post<any>(this.apiUrl, file);
-  }
-
-  updateFile(id: string, file: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, file);
-  }
-
-  deleteFile(id: string): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/${id}`);
-  }
-
-  uploadFile(file: File): Observable<any> {
-    const formData = new FormData();
-    formData.append('file', file, file.name);
-    return this.http.post<any>(`${this.apiUrl}/upload`, formData);
-  }
-
-  downloadFile(id: string): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/${id}/download`, { responseType: 'blob' });
   }
 }

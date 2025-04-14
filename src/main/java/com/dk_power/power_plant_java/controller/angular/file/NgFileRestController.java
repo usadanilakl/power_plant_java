@@ -1,0 +1,42 @@
+package com.dk_power.power_plant_java.controller.angular.file;
+
+import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+
+@RestController
+@RequestMapping("/api/ng-files")
+@RequiredArgsConstructor
+public class NgFileRestController {
+    private final NgFileService ngFileService;
+    @GetMapping("/paginated")
+    public ResponseEntity<NgApiResponse<Page<FileDto>>> getPaginatedFiles(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+//            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
+            Page<FileDto> paginatedFiles = ngFileService.findAllWithProjectionPaginated(
+                    new ArrayList<>(Arrays.asList("id","fileNumber", "name", "relatedSystems", "fileLink", "fileType.id","fileType.name", "vendor.name", "vendor.id")),
+                    PageRequest.of(page-1, pageSize)).map(ngFileService::toDto);
+            NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+//            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+}

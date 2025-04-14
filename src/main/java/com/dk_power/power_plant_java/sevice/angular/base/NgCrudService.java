@@ -1,0 +1,170 @@
+package com.dk_power.power_plant_java.sevice.angular.base;
+
+import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
+import jakarta.persistence.criteria.Predicate;
+import org.hibernate.SessionFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+
+@Transactional
+public interface NgCrudService<
+        E extends BaseIdEntity,
+        D ,
+        R extends BaseRepository<E>,
+        M extends BaseMapper> extends FlexibleQueryInterface, ProjectionQueryInterface<E> {
+
+    R getRepo();
+
+    M getMapper();
+
+    SessionFactory getSessionFactory();
+
+    D getDto();
+
+    E getEntity();
+
+    //    E create(Map<String,Object> fields);
+    default List<E> getAll() {
+        return getRepo().findAll();
+    }
+
+    default Page<D> getAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<E> filePage = getRepo().findAll(pageable);
+        return filePage.map(this::toDto);
+    }
+
+    default Page<D> searchItems(String query, int page, int pageSize) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize); // Adjust page number to 0-based index
+        Page<E> searchResult = getRepo().findAll((root, criteriaQuery, criteriaBuilder) -> {
+            return criteriaBuilder.or(
+                    root.getModel().getDeclaredSingularAttributes().stream()
+                            .filter(attr -> attr.getJavaType() == String.class)
+                            .map(attr -> criteriaBuilder.like(criteriaBuilder.lower(root.get(attr.getName())), "%" + query.toLowerCase() + "%"))
+                            .toArray(Predicate[]::new)
+            );
+        }, pageable);
+        return searchResult.map(this::toDto);
+    }
+
+    default List<E> getAllSorted(String column) {
+        return getRepo().findAll(Sort.by(column));
+    }
+
+    default List<D> getAllDtos() {
+        return getAll().stream().map(e -> getMapper().convert(e, getDto())).toList();
+    }
+
+    default E getEntityById(Long id) {
+        return getRepo().findById(id).orElse(null);
+    }
+
+    default E getEntityById(String id) {
+        return getRepo().findById(Long.parseLong(id)).orElse(null);
+    }
+
+    default D getDtoById(String id) {
+        E entityById = getEntityById(id);
+        return toDto(entityById);
+    }
+
+    default D getDtoById(Long id) {
+        E entityById = getEntityById(id);
+        return toDto(entityById);
+    }
+
+    default List<E> getByCreatedBy(String name) {
+        return getRepo().findByCreatedBy(name);
+    }
+
+    default E save(E entity) {
+        return getRepo().save(entity);
+    }
+
+    default E save(D dto) {
+        E entity = toEntity(dto);
+        return save(entity);
+    }
+
+    default E update(E entity) {
+        return getRepo().save(entity);
+    }
+
+    default E update(String id) {
+        return getRepo().save(getEntityById(id));
+    }
+
+    default E softDelete(E entity) {
+        entity.setDeleted(true);
+        return save(entity);
+    }
+
+    default E softDelete(String id) {
+        return softDelete(getEntityById(id));
+    }
+
+    default E softDelete(Long id) {
+        return softDelete(getEntityById(id));
+    }
+
+    default E hardDelete(E entity) {
+        getRepo().delete(entity);
+        return entity;
+    }
+
+    default E toEntity(D dto) {
+        return getMapper().convert(dto, getEntity());
+    }
+
+    default D toDto(E entity) {
+        return getMapper().convert(entity, getDto());
+    }
+
+    default List<D> convertAllToDto(Collection<E> list) {
+        return list.stream().map(this::toDto).toList();
+    }
+
+    default List<E> convertAllToEntity(Collection<D> list) {
+        return list.stream().map(this::toEntity).toList();
+    }
+
+    default E create(D dto) {
+        return save(toEntity(dto));
+    }
+
+    default Boolean existsById(Long id) {
+        return getRepo().existsById(id);
+    }
+
+
+    default E getReferenceById(Long fileId) {
+        return getRepo().getReferenceById(fileId);
+    }
+
+    default Page<D> complexSearch(SearchCriteria criteria, int page, int size, String sortBy, String sortDirection, boolean andLogicIsEnabled) {
+        Sort.Direction direction = Sort.Direction.fromString(sortDirection);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        Page<E> itemsPage = complexSearchWithPagination(getRepo(), criteria, pageable, andLogicIsEnabled);
+
+        return itemsPage.map(this::toDto);
+    }
+
+    default Page<D> complexSearch(SearchCriteria criteria, int page, int size, String sortBy, String sortDirection, boolean andLogicIsEnabled, SearchCriteria baseCriteria) {
+        Sort.Direction direction = Sort.Direction.fromString(sortDirection);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        Page<E> itemsPage = complexSearchWithPagination(getRepo(), criteria, pageable, andLogicIsEnabled, baseCriteria);
+
+        return itemsPage.map(this::toDto);
+    }
+}
