@@ -244,7 +244,8 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
       this.lastY = e.offsetY;
     }
 
-    this.drawingService.handleMouseMove(e);
+    const { x, y } = this.zoomService.viewportToPictureCoordinates(e.clientX, e.clientY);
+    this.drawingService.handleMouseMove(e,x,y);
 
     // const { x,y } = this.zoomService.viewportToPictureCoordinates(e.clientX, e.clientY);
     // const {x:x2, y:y2 } = this.zoomService.pictureToViewportCoordinates(x,y);

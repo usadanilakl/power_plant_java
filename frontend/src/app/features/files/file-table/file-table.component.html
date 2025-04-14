@@ -19,12 +19,24 @@
   (close)="closePopup()"
 ></app-popup>
 
-<app-popup
+<!-- <app-popup
   [isOpen]="isImagePopupOpen"
   [title]="'Image View'"
   [contentComponent]="ImageInteractiveComponent"
   [contentInputs]="{
     imagePath: selectedImagePath,
+    imageName: selectedItem?.name,
+    elements: selectedItem?.elements
+  }"
+  (close)="closeImagePopup()"
+></app-popup> -->
+
+<app-popup
+  [isOpen]="isImagePopupOpen"
+  [title]="'Image View'"
+  [contentComponent]="ImageZoomInteractiveComponent"
+  [contentInputs]="{
+    imageUrl: selectedImagePath,
     imageName: selectedItem?.name,
     elements: selectedItem?.elements
   }"

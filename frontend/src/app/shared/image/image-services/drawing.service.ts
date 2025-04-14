@@ -29,7 +29,7 @@ export class DrawingService {
   ) {}
 
   isDraggingShape = false;
-  isRightClickDrawEnabled = false;
+  isRightClickDrawEnabled = true;
   private initialMouseX = 0;
   private initialMouseY = 0;
   private isDrawingWithRightClick = false;
@@ -82,9 +82,8 @@ export class DrawingService {
     }
   }
 
-  handleMouseMove(event: MouseEvent) {
+  handleMouseMove(event: MouseEvent, x: number, y: number) {
 
-    const { x, y } = this.zoomService.viewportToPictureCoordinates(event.clientX, event.clientY);
     if (this.isDrawingWithRightClick && this.selectedShape) {
       this.resizeShape(event);
     }
