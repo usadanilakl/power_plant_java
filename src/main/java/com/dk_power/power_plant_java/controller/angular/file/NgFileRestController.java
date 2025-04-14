@@ -8,10 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,4 +36,18 @@ public class NgFileRestController {
         }
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<FileDto>> getFileById(@PathVariable Long id) {
+        try {
+            FileDto fileDto = ngFileService.findById(id).orElse(null);
+            if (fileDto == null) {
+                return ResponseEntity.notFound().build();
+            }
+            NgApiResponse<FileDto> response = new NgApiResponse<>(fileDto, "File retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }

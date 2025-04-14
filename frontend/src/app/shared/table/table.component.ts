@@ -1,8 +1,9 @@
-import { Component, Input, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, Input, OnInit, ViewChild, ElementRef, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
-import { BehaviorSubject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable, Subscription } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-shared-table',
@@ -13,12 +14,22 @@ import { BehaviorSubject, debounceTime, distinctUntilChanged } from 'rxjs';
 })
 export class TableComponent implements OnInit {
   @Input() columns: Column[] = [];
-  @Input() initialItems: any[] = [];
   @Input() loadMoreCallback!: () => Promise<any[]>;
   @Input() searchCallback!: (criteria: any) => Promise<any[]>;
   @Input() clickCallback!: (item: any) => void;
 
   @ViewChild('tableContainer') tableContainer!: ElementRef;
+
+  private _initialItems: Observable<any[]> = new Observable<any[]>();
+  
+  @Input() set initialItems(value: Observable<any[]>) {
+    this._initialItems = value;
+    this.setupInitialItemsSubscription();
+  }
+  
+  get initialItems(): Observable<any[]> {
+    return this._initialItems;
+  }
 
   items: any[] = [];
   filteredItems: any[] = [];
@@ -30,18 +41,32 @@ export class TableComponent implements OnInit {
 
   constructor() {}
 
-  ngOnInit() {
-    this.items = [...this.initialItems];
-    this.filteredItems = [...this.items];
+  private destroyRef = inject(DestroyRef);
 
+  ngOnInit() {
+    this.setupInitialItemsSubscription();
+  
     this.globalSearch$.pipe(
       debounceTime(300),
-      distinctUntilChanged()
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(query => this.performGlobalSearch(query));
   }
 
   ngAfterViewInit() {
     this.tableContainer.nativeElement.addEventListener('scroll', this.handleScroll.bind(this));
+  }
+
+  private setupInitialItemsSubscription() {
+    if (this._initialItems) {
+      this._initialItems.pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe((items: any[]) => {
+        console.log('Initializing table with initial items:', items);
+        this.items = items;
+        this.filteredItems = [...this.items];
+      });
+    }
   }
 
   async performGlobalSearch(query: string) {

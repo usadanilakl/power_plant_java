@@ -3,7 +3,7 @@ import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../
 import { DrawUtilService } from '../image-services/draw-util.service';
 import { ShapeFactoryService } from '../image-services/shape-factory.service';
 import { ShapeUtilService } from '../image-services/shape-util.service';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-image-zoom-interactive',
@@ -14,7 +14,7 @@ import { Subscription } from 'rxjs';
 export class ImageZoomInteractiveComponent implements AfterViewInit {
   imageUrl = input<string>()
   imageName = input<string>()
-  elements = input.required<any[]>();
+  elements = input.required<Observable<any[]>>();
 
   private shapeFactory = inject(ShapeFactoryService);
   private shapeUtil = inject(ShapeUtilService);
@@ -28,6 +28,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 //Subscriptions  
     private shapesSubscription!: Subscription;
     private cursorSubscription!: Subscription;
+    private elementsSubscription: Subscription | undefined;
 
 //Zooming and panning functionality variables
   private scale: number = 1;
@@ -101,7 +102,10 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this._canvas = this.canvasRef.nativeElement;
 
     //Initialize shapes and picture dimensions
-    this.initializeShapes(this.elements(), img.naturalWidth, img.naturalHeight);
+    this.elements().subscribe(elements => {
+      this.initializeShapes(elements, this._img.naturalWidth, this._img.naturalHeight);
+      this.drawShapes();
+    });
     this.pictureOriginalWidth = img.naturalWidth;
     this.pictureOriginalHeight = img.naturalHeight;
     this.pictureCurrentWidth = this.img.width;
@@ -143,6 +147,9 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       }
       if (this.cursorSubscription) {
         this.cursorSubscription.unsubscribe();
+      }
+      if(this.elementsSubscription) {
+        this.elementsSubscription.unsubscribe();
       }
     });
   }

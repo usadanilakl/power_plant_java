@@ -11,12 +11,15 @@ import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo, FileMapper> {
     private final FileRepo fileRepo;
     private final FileMapper fileMapper;
@@ -68,5 +71,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
         sc.setFilters(searchCriteria);
 //        return complexSearch(sc).stream().map(this::toDto).toList();
         return complexSearch(sc, page, size, "fileNumber", "asc",false);
+    }
+
+    public Optional<FileDto> findById(Long id) {
+        Optional<FileObject> byId = fileRepo.findById(id);
+        return byId.map(this::toDto);
     }
 }

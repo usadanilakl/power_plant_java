@@ -1,6 +1,6 @@
 <app-shared-table
   [columns]="columns"
-  [initialItems]="initialItems"
+  [initialItems]="initialItems$"
   [loadMoreCallback]="loadMoreItems"
   [searchCallback]="searchItems"
   [clickCallback]="onItemClick">
@@ -38,7 +38,7 @@
   [contentInputs]="{
     imageUrl: selectedImagePath,
     imageName: selectedItem?.name,
-    elements: selectedItem?.elements
+    elements$: elements$
   }"
   (close)="closeImagePopup()"
 ></app-popup>
