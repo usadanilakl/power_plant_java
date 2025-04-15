@@ -1,5 +1,6 @@
 import { ValueDto } from '../value.model';
 import { LotoPointDto } from '../loto/loto-point.model';
+import { RectangleShape } from '../shape.model';
 
 export interface EquipmentModel {
   tagNumber: string;
@@ -94,6 +95,96 @@ export class EquipmentDto implements EquipmentModel {
       conflictStatus: json.conflictStatus,
       isVerified: json.isVerified
     });
+  }
+
+  toShapeObject(): RectangleShape {
+    try {
+      // Remove any backslashes and outer quotes if present
+      const cleanedCoords = this.coordinates.replace(/\\/g, '').replace(/^"(.*)"$/, '$1');
+  
+      // Try parsing as JSON, if it fails, split by commas
+      let coordsObj;
+      try {
+        coordsObj = JSON.parse(cleanedCoords);
+      } catch {
+        const parts = cleanedCoords.split(',');
+        coordsObj = {
+          startX: parts[0].split(':')[1],
+          startY: parts[1].split(':')[1],
+          endX: parts[2].split(':')[1],
+          endY: parts[3].split(':')[1],
+          width: parts[4].split(':')[1],
+          height: parts[5].split(':')[1]
+        };
+      }
+  
+      const startX = Number(coordsObj.startX);
+      const startY = Number(coordsObj.startY);
+      const endX = Number(coordsObj.endX);
+      const endY = Number(coordsObj.endY);
+  
+      if (isNaN(startX) || isNaN(startY) || isNaN(endX) || isNaN(endY)) {
+        throw new Error('Invalid coordinate values');
+      }
+  
+      const width = Math.abs(endX - startX);
+      const height = Math.abs(endY - startY);
+  
+      const [originalWidth, originalHeight] = this.originalPictureSize.split(',').map(Number);
+  
+      if (isNaN(originalWidth) || isNaN(originalHeight)) {
+        throw new Error('Invalid original picture size');
+      }
+  
+      return {
+        type: 'rectangle',
+        color: this.getShapeColor(),
+        originalPictureWidth: originalWidth,
+        originalPictureHeight: originalHeight,
+        isSelected: false,
+        x: Math.min(startX, endX),
+        y: Math.min(startY, endY),
+        width,
+        height
+      };
+    } catch (error) {
+      console.error('Error parsing coordinates:', error);
+      // Return a default shape or handle the error as appropriate for your application
+      return {
+        type: 'rectangle',
+        color: '#FF0000',
+        originalPictureWidth: 0,
+        originalPictureHeight: 0,
+        isSelected: false,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0
+      };
+    }
+  }
+  
+  private getShapeColor(): string {
+    // Example: color based on equipment type
+    switch (this.getNormalLotoPosition().toLowerCase().trim()) {
+      case 'open':
+        return '#FF0000'; // Red
+      case 'closed':
+        return '#00FF00'; // Green
+      case 'auto':
+        return '#FFFF00'; // Yellow
+      default:
+        return '#0000FF'; // Blue as default
+    }
+  }
+
+  private getNormalLotoPosition(): string {
+    // Example: position based on loto points
+    if (this.lotoPoints.size > 0) {
+      const firstLotoPoint = Array.from(this.lotoPoints)[0];
+      return firstLotoPoint.normPos.name;
+    }
+    return '';
   }
 
   // You can add methods here for any equipment-specific operations

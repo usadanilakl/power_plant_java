@@ -21,7 +21,7 @@ export interface FileModel {
 }
 
 // You might also want to create a class for more complex operations:
-export class File implements FileModel {
+export class FileDto implements FileModel {
   id: number;
   name: string;
   fileType: ValueDto;
@@ -81,8 +81,8 @@ export class File implements FileModel {
       }
     
       // Deserialization method (static)
-      static fromJson(json: any): File {
-        return new File({
+      static fromJson(json: any): FileDto {
+        return new FileDto({
           id: json.id,
           name: json.name,
           fileType: json.fileType,

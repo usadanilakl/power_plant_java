@@ -9,6 +9,9 @@ import { ImageInteractiveComponent } from "../../../shared/image/image-interacti
 import { DrawingComponent } from '../../../shared/image/drawing/drawing.component';
 import { ImageZoomInteractiveComponent } from '../../../shared/image/image-zoom-interactive/image-zoom-interactive.component';
 import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
+import { SpringApiResponse } from '../../../models/spring-api-response.model';
+import { FileDto } from '../../../models/file/file.model';
+import { EquipmentDto } from '../../../models/equipment/equipment.model';
 
 @Component({
   selector: 'app-file-table',
@@ -25,7 +28,7 @@ export class FileTableComponent implements OnInit {
   ];
 
 
-  selectedItem: any = null;
+  selectedItem: FileDto | null = null;
   isPopupOpen: boolean = false;
   FileDetailFormComponent = FileDetailFormComponent;
   ImageInteractiveComponent = ImageInteractiveComponent;
@@ -42,7 +45,7 @@ export class FileTableComponent implements OnInit {
   private initialItemsSubject = new BehaviorSubject<any[]>([]);
   initialItems$ = this.initialItemsSubject.asObservable();
 
-  private elementsSubject = new BehaviorSubject<any[]>([]);
+  private elementsSubject = new BehaviorSubject<EquipmentDto[]>([]);
   elements$ = this.elementsSubject.asObservable();
 
   ngOnInit() {
@@ -115,7 +118,7 @@ export class FileTableComponent implements OnInit {
 
   onItemClick = (item: any) => {
     this.selectedItem = item;
-    // this.selectedImagePath = item.fileLink;
+    this.selectedImagePath = item.fileLink;
     this.isPopupOpen = true;
   
     // Fetch elements
@@ -124,13 +127,13 @@ export class FileTableComponent implements OnInit {
   
   fetchElements(itemId: number) {
     this.fileService.getFileById(itemId.toString()).pipe(
-      tap(response => {
+      tap((response: SpringApiResponse<FileDto>) => {
         if (response && response.responseData) {
           // Update selectedItem with the full version
           this.selectedItem = response.responseData;
           
           // Extract elements from the points field
-          const elements = this.selectedItem.points || [];
+          const elements: EquipmentDto[] = this.selectedItem.points || [];
           this.elementsSubject.next(elements);
           console.log('Elements:', elements);
         } else {
@@ -162,14 +165,14 @@ export class FileTableComponent implements OnInit {
   
     // Update the item in the table
     const updatedItems = [...this.initialItemsSubject.value];
-    const index = updatedItems.findIndex(item => item.id === this.selectedItem.id);
+    const index = updatedItems.findIndex(item => item.id === this.selectedItem?.id);
     if (index !== -1) {
       updatedItems[index] = updatedItem;
       this.initialItemsSubject.next(updatedItems);
     }
   
     // Update in the backend
-    this.fileService.updateFile(this.selectedItem.id, updatedItem).subscribe(
+    this.fileService.updateFile(this.selectedItem.id.toString(), updatedItem).subscribe(
       (response) => {
         console.log('File updated successfully', response);
         this.selectedItem = null; // Close the form
@@ -188,10 +191,10 @@ export class FileTableComponent implements OnInit {
 
   onFormDelete() {
     if (this.selectedItem) {
-      this.fileService.deleteFile(this.selectedItem.id).subscribe(
+      this.fileService.deleteFile(this.selectedItem.id.toString()).subscribe(
         () => {
           console.log('File deleted successfully');
-          const updatedItems = this.initialItemsSubject.value.filter(item => item.id !== this.selectedItem.id);
+          const updatedItems = this.initialItemsSubject.value.filter(item => item.id !== this.selectedItem?.id);
           this.initialItemsSubject.next(updatedItems);
           this.selectedItem = null; // Close the form
         },

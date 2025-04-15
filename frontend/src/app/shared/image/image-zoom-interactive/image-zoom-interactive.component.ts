@@ -4,6 +4,7 @@ import { DrawUtilService } from '../image-services/draw-util.service';
 import { ShapeFactoryService } from '../image-services/shape-factory.service';
 import { ShapeUtilService } from '../image-services/shape-util.service';
 import { Observable, Subscription } from 'rxjs';
+import { EquipmentDto } from '../../../models/equipment/equipment.model';
 
 @Component({
   selector: 'app-image-zoom-interactive',
@@ -14,7 +15,7 @@ import { Observable, Subscription } from 'rxjs';
 export class ImageZoomInteractiveComponent implements AfterViewInit {
   imageUrl = input<string>()
   imageName = input<string>()
-  elements = input.required<Observable<any[]>>();
+  elements = input.required<Observable<EquipmentDto[]>>();
 
   private shapeFactory = inject(ShapeFactoryService);
   private shapeUtil = inject(ShapeUtilService);
@@ -120,14 +121,18 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   
   }
 
-  initializeShapes(elements: any[], originalWidth: number, originalHeight: number) {
-    this.shapes = elements.map(element => ({
-      type: 'rectangle',
-      color: 'green',
-      ...element.shapeData,
-      originalPictureWidth: originalWidth,
-      originalPictureHeight: originalHeight
-    })) as Shape[];
+  // initializeShapes(elements: any[], originalWidth: number, originalHeight: number) {
+  //   this.shapes = elements.map(element => ({
+  //     type: 'rectangle',
+  //     color: 'green',
+  //     ...element.shapeData,
+  //     originalPictureWidth: originalWidth,
+  //     originalPictureHeight: originalHeight
+  //   })) as Shape[];
+  // }
+
+  initializeShapes(elements: EquipmentDto[], originalWidth: number, originalHeight: number) {
+    this.shapes = elements.map(element => element.toShapeObject());
   }
 
   initializeServices(){

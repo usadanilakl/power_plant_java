@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { FileDto } from '../models/file/file.model';
+import { SpringApiResponse } from '../models/spring-api-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -31,7 +33,7 @@ export class FileService {
     return this.http.post<any[]>(`${this.apiUrl}/search`, criteria);
   }
 
-  getFileById(id: string): Observable<any> {
+  getFileById(id: string): Observable<SpringApiResponse<FileDto>> {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
