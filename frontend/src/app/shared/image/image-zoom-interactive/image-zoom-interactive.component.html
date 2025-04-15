@@ -16,7 +16,7 @@
     (mousemove)="onMouseMove($event)"
     (wheel)="onWheel($event)">
         <div class="image-canvas-container">
-            <img #imageElement [src]="imageUrl()" />
+            <img #imageElement [src]="'http://localhost:8082/' + imageUrl()" />
             <canvas #canvasElement></canvas>
         </div>
     </div>

@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
@@ -29,16 +30,16 @@ public class EquipmentMapper implements BaseMapper {
     private final HeatTraceMapper heatTraceMapper;
     private final HighlightMapper highlightMapper;
 
-    public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService, @Lazy FileService fileService, @Lazy EquipmentService equipmentService, @Lazy LotoPointService lotoPointService, @Lazy HeatTraceService heatTraceService, HeatTraceMapper heatTraceMapper, @Lazy HighlightMapper highlightMapper) {
-        this.modelMapper = modelMapper;
-        this.valueService = valueService;
-        this.fileService = fileService;
-        this.equipmentService = equipmentService;
-        this.lotoPointService = lotoPointService;
-        this.heatTraceService = heatTraceService;
-        this.heatTraceMapper = heatTraceMapper;
-        this.highlightMapper = highlightMapper;
-    }
+public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService, @Lazy FileService fileService, @Lazy EquipmentService equipmentService, @Lazy LotoPointService lotoPointService, @Lazy HeatTraceService heatTraceService, HeatTraceMapper heatTraceMapper, @Lazy HighlightMapper highlightMapper) {
+    this.modelMapper = modelMapper;
+    this.valueService = valueService;
+    this.fileService = fileService;
+    this.equipmentService = equipmentService;
+    this.lotoPointService = lotoPointService;
+    this.heatTraceService = heatTraceService;
+    this.heatTraceMapper = heatTraceMapper;
+    this.highlightMapper = highlightMapper;
+}
 
 
     public EquipmentDto convertToDto(Equipment entity) {

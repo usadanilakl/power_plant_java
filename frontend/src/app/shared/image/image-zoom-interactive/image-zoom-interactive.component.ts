@@ -122,8 +122,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   initializeShapes(elements: any[], originalWidth: number, originalHeight: number) {
     this.shapes = elements.map(element => ({
-      type: element.shapeType.name,
-      color: element.color,
+      type: 'rectangle',
+      color: 'green',
       ...element.shapeData,
       originalPictureWidth: originalWidth,
       originalPictureHeight: originalHeight

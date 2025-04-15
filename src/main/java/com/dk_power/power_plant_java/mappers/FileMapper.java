@@ -37,7 +37,7 @@ public class FileMapper implements BaseMapper{
 
     public FileDto convertToDto(FileObject file){
         FileDto fileDto = new FileDto();
-        fileDto.setFileLink(file.buildFileLink());
+        fileDto.setFileLink(file.getFileLink());
         fileDto.setFileNumber(file.getFileNumber());
         fileDto.setFolder(file.getFolder());
         fileDto.setBaseLink(file.getBaseLink());

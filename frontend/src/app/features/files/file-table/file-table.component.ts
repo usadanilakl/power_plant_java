@@ -115,19 +115,33 @@ export class FileTableComponent implements OnInit {
 
   onItemClick = (item: any) => {
     this.selectedItem = item;
-    this.selectedImagePath = item.path; // Assuming the path is stored in the 'path' property
-    this.isImagePopupOpen = true;
+    // this.selectedImagePath = item.fileLink;
+    this.isPopupOpen = true;
   
     // Fetch elements
     this.fetchElements(item.id);
   }
   
   fetchElements(itemId: number) {
-    this.fileService.getFileById(itemId).pipe(
-      tap(elements => this.elementsSubject.next(elements)),
+    this.fileService.getFileById(itemId.toString()).pipe(
+      tap(response => {
+        if (response && response.responseData) {
+          // Update selectedItem with the full version
+          this.selectedItem = response.responseData;
+          
+          // Extract elements from the points field
+          const elements = this.selectedItem.points || [];
+          this.elementsSubject.next(elements);
+          console.log('Elements:', elements);
+        } else {
+          console.error('Unexpected response structure:', response);
+          this.elementsSubject.next([]);
+        }
+      }),
       catchError(error => {
         console.error('Error fetching elements:', error);
-        return of([]);
+        this.elementsSubject.next([]);
+        return of(null);
       })
     ).subscribe();
   }
@@ -190,7 +204,7 @@ export class FileTableComponent implements OnInit {
     console.log('Opening image popup');
     if (this.selectedItem && this.selectedItem.fileLink) {
       console.log('Selected image:', this.selectedItem.fileLink);
-      this.selectedImagePath = 'http://localhost:8082/' + this.selectedItem.fileLink;
+      this.selectedImagePath = this.selectedItem.fileLink;
       this.isImagePopupOpen = true;
     } else {
       console.log('Selected file is not an image or no file is selected');

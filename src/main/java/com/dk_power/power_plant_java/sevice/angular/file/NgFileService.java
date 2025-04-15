@@ -61,6 +61,13 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
         return this.sessionFactory;
     }
 
+    @Override
+    public FileDto toDto(FileObject entity) {
+        return fileMapper.convertToDto(entity);
+    }
+
+
+
     public Page<FileDto> complexSearch(String searchString, int page, int size){
         Map<String,String> searchCriteria = new HashMap<>();
         searchCriteria.put("fileNumber", searchString);
