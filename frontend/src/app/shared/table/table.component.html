@@ -1,5 +1,7 @@
 <div class="table-container" #tableContainer>
-  <input type="text" class="search-input" placeholder="Global Search..." [ngModel]="globalSearchQuery" (ngModelChange)="performGlobalSearch()">
+  <input type="text" class="search-input" placeholder="Global Search..." 
+         [(ngModel)]="globalSearchQuery" 
+         (ngModelChange)="onGlobalSearchChange($event)">
 
   <table>
     <thead>
@@ -14,7 +16,10 @@
       <tr>
         @for (column of columns; track column.id) {
           <th>
-            <input type="text" class="filter-input" [placeholder]="'Filter ' + column.header" [(ngModel)]="columnFilters[column.id]" (ngModelChange)="performColumnSearch()">
+            <input type="text" class="filter-input" 
+                   [placeholder]="'Filter ' + column.header" 
+                   [(ngModel)]="columnFilters[column.id]" 
+                   (ngModelChange)="onColumnSearchChange()">
           </th>
         }
       </tr>

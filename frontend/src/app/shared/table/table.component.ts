@@ -2,7 +2,7 @@ import { Component, Input, OnInit, ViewChild, ElementRef, inject, DestroyRef, Ou
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
-import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, Observable, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
 
@@ -20,6 +20,8 @@ export class TableComponent implements OnInit {
 
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
+  private globalSearchSubject = new Subject<string>();
+  private columnSearchSubject = new Subject<{[key: string]: string}>();
   private _initialItems: Observable<any[]> = new Observable<any[]>();
   
   @Input() set initialItems(value: Observable<any[]>) {
@@ -51,6 +53,31 @@ export class TableComponent implements OnInit {
 
   ngOnInit() {
     this.setupInitialItemsSubscription();
+    
+    this.globalSearchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.performGlobalSearch());
+
+    this.columnSearchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.performColumnSearch());
+  }
+
+  onGlobalSearchChange(query: string) {
+    this.globalSearchSubject.next(query);
+  }
+
+  onColumnSearchChange() {
+    this.columnSearchSubject.next(this.columnFilters);
+  }
+
+  ngOnDestroy() {
+    this.globalSearchSubject.complete();
+    this.columnSearchSubject.complete();
   }
 
   ngAfterViewInit() {
