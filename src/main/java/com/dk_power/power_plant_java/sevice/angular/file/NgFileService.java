@@ -74,6 +74,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
         searchCriteria.put("name", searchString);
         searchCriteria.put("fileType.name", searchString);
         searchCriteria.put("vendor.name", searchString);
+        searchCriteria.put("relatedSystems", searchString);
         SearchCriteria sc = new SearchCriteria();
         sc.setFilters(searchCriteria);
 //        return complexSearch(sc).stream().map(this::toDto).toList();

@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.angular.file;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ng-files")
@@ -44,6 +46,26 @@ public class NgFileRestController {
                 return ResponseEntity.notFound().build();
             }
             NgApiResponse<FileDto> response = new NgApiResponse<>(fileDto, "File retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/search")
+    public ResponseEntity<NgApiResponse<Page<FileDto>>> searchFiles(
+            @RequestBody SearchCriteria criteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            Page<FileDto> searchResults = null;
+            if(criteria.getType().equals(SearchCriteria.SearchType.COLUMN)){
+                searchResults = ngFileService.complexSearch(criteria, page-1, pageSize, "fileNumber", "asc",true);
+            } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
+                searchResults = ngFileService.complexSearch(criteria.getQuery(), page-1, pageSize);
+            }
+            NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();

@@ -9,9 +9,11 @@ import { ImageInteractiveComponent } from "../../../shared/image/image-interacti
 import { DrawingComponent } from '../../../shared/image/drawing/drawing.component';
 import { ImageZoomInteractiveComponent } from '../../../shared/image/image-zoom-interactive/image-zoom-interactive.component';
 import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
-import { SpringApiResponse } from '../../../models/spring-api-response.model';
+import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { FileDto } from '../../../models/file/file.model';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
+import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
+import { SearchCriteria } from '../../../models/api/search-criteria.model';
 
 @Component({
   selector: 'app-file-table',
@@ -37,10 +39,13 @@ export class FileTableComponent implements OnInit {
   isImagePopupOpen: boolean = false;
   selectedImagePath: string = '';
 
+  private currentPage = 1;
+  private pageSize = 50;
+  private isLoading = false;
+
   constructor() {}
 
   private fileService = inject(FileService);
-  private cdr = inject(ChangeDetectorRef); 
 
   private initialItemsSubject = new BehaviorSubject<any[]>([]);
   initialItems$ = this.initialItemsSubject.asObservable();
@@ -48,73 +53,56 @@ export class FileTableComponent implements OnInit {
   private elementsSubject = new BehaviorSubject<EquipmentDto[]>([]);
   elements$ = this.elementsSubject.asObservable();
 
+
   ngOnInit() {
-    this.loadInitialItems();
+    this.loadItems();
   }
 
-  loadInitialItems() {
-    this.fileService.getFiles().pipe(
-      tap(response => console.log('Raw response:', response)),
-      map((response: any) => {
-        if (Array.isArray(response)) {
-          return response;
-        } else if (response && typeof response === 'object' && 'responseData' in response && 'content' in response.responseData) {
-          return response.responseData.content;
-        } else {
-          console.error('Unexpected response structure:', response);
-          return [];
-        }
-      }),
-      tap(items => {
-        console.log('Processed items:', items);
-        this.initialItemsSubject.next(items); // Update the BehaviorSubject
-        this.cdr.detectChanges(); // Trigger change detection
+  loadItems(): void {
+    if (this.isLoading) return;
+    this.isLoading = true;
+
+    this.fileService.getFiles(this.currentPage, this.pageSize).pipe(
+      map((response: SpringPaginatedResponse<FileDto[]>) => response.responseData.content),
+      tap(newItems => {
+        const currentItems = this.initialItemsSubject.value;
+        const updatedItems = this.currentPage === 1 ? newItems : [...currentItems, ...newItems];
+        this.initialItemsSubject.next(updatedItems);
+        this.currentPage++;
+        this.isLoading = false;
       }),
       catchError(error => {
         console.error('Error loading items:', error);
-        this.initialItemsSubject.next([]); // Update with empty array on error
+        this.isLoading = false;
         return of([]);
       })
     ).subscribe();
   }
 
+  // This method can be called when you need to load more items (e.g., on scroll)
+  loadMoreItems(): void {
+    this.loadItems();
+  }
 
-  loadMoreItems = async () => {
-    const currentItems = this.initialItemsSubject.value;
-    if (currentItems.length === 0) {
-      console.error('No items to load more from');
-      return [];
-    }
-    
-    const lastItem = currentItems[currentItems.length - 1];
-    const params = { lastId: lastItem.id };
-    
-    return new Promise<any[]>((resolve, reject) => {
-      this.fileService.getFiles(params).subscribe(
-        (data) => {
-          const updatedItems = [...currentItems, ...data];
-          this.initialItemsSubject.next(updatedItems);
-          resolve(data);
-        },
-        (error) => {
-          console.error('Error loading more items:', error);
-          reject([]);
-        }
-      );
-    });
-  };
+  // If you need to reset and load from the beginning
+  resetAndLoadItems(): void {
+    this.currentPage = 1;
+    this.initialItemsSubject.next([]);
+    this.loadItems();
+  }
 
-  searchItems = async (criteria: any) => {
-    return new Promise<any[]>((resolve, reject) => {
-      this.fileService.searchFiles(criteria).subscribe(
-        (data) => resolve(data),
-        (error) => {
-          console.error('Error searching items:', error);
-          reject([]);
-        }
-      );
-    });
-  };
+  onSearch(criteria: SearchCriteria) {
+    this.fileService.searchFiles(criteria).pipe(
+      tap(results => {
+        this.initialItemsSubject.next(results.responseData.content);
+        this.currentPage = 1; // Reset to first page after search
+      }),
+      catchError(error => {
+        console.error('Error performing search:', error);
+        return of(null);
+      })
+    ).subscribe();
+  }
 
   onItemClick = (item: any) => {
     this.selectedItem = item;

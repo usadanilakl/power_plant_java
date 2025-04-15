@@ -131,8 +131,12 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   //   })) as Shape[];
   // }
 
-  initializeShapes(elements: EquipmentDto[], originalWidth: number, originalHeight: number) {
-    this.shapes = elements.map(element => element.toShapeObject());
+  initializeShapes(elements: any[], originalWidth: number, originalHeight: number) {
+    this.shapes = elements.map(element => {
+      console.log('element:', element);
+      const equipmentDto = new EquipmentDto(element);
+      return equipmentDto.toShapeObject();
+    });
   }
 
   initializeServices(){

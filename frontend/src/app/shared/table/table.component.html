@@ -1,5 +1,5 @@
 <div class="table-container" #tableContainer>
-  <input type="text" class="search-input" placeholder="Global Search..." [ngModel]="globalSearch$.value" (ngModelChange)="globalSearch$.next($event)">
+  <input type="text" class="search-input" placeholder="Global Search..." [ngModel]="globalSearchQuery" (ngModelChange)="performGlobalSearch()">
 
   <table>
     <thead>

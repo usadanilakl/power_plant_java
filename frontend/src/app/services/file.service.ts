@@ -3,7 +3,9 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { FileDto } from '../models/file/file.model';
-import { SpringApiResponse } from '../models/spring-api-response.model';
+import { SpringApiResponse } from '../models/api/spring-api-response.model';
+import { SpringPaginatedResponse } from '../models/api/spring-pagenated.response.model';
+import { SearchCriteria } from '../models/api/search-criteria.model';
 
 @Injectable({
   providedIn: 'root'
@@ -13,28 +15,35 @@ export class FileService {
 
   constructor(private http: HttpClient) {}
 
-  getFiles(params?: any): Observable<any[]> {
-    let httpParams = new HttpParams();
-    if (params) {
-      Object.keys(params).forEach(key => {
-        httpParams = httpParams.append(key, params[key]);
-      });
-    }
-    const url = `${this.apiUrl}/paginated`;
-    return this.http.get<any[]>(url, {
-      params: httpParams,
-      headers: new HttpHeaders({
-        'Accept': 'application/json'
-      })
-    });
+  // getFiles(params?: any): Observable<SpringPaginatedResponse<FileDto[]>> {
+  //   let httpParams = new HttpParams();
+  //   if (params) {
+  //     Object.keys(params).forEach(key => {
+  //       httpParams = httpParams.append(key, params[key]);
+  //     });
+  //   }
+  //   const url = `${this.apiUrl}/paginated`;
+  //   return this.http.get<SpringPaginatedResponse<FileDto[]>>(url, {
+  //     params: httpParams,
+  //     headers: new HttpHeaders({
+  //       'Accept': 'application/json'
+  //     })
+  //   });
+  // }
+
+  getFiles(page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<FileDto[]>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+    return this.http.get<SpringPaginatedResponse<FileDto[]>>(`${this.apiUrl}/paginated`, { params });
   }
 
-  searchFiles(criteria: any): Observable<any[]> {
-    return this.http.post<any[]>(`${this.apiUrl}/search`, criteria);
+  searchFiles(criteria: SearchCriteria): Observable<SpringPaginatedResponse<FileDto[]>> {
+    return this.http.post<SpringPaginatedResponse<FileDto[]>>(`${this.apiUrl}/search`, criteria);
   }
 
   getFileById(id: string): Observable<SpringApiResponse<FileDto>> {
-    return this.http.get<any>(`${this.apiUrl}/${id}`);
+    return this.http.get<SpringApiResponse<FileDto>>(`${this.apiUrl}/${id}`);
   }
 
   createFile(file: any): Observable<any> {

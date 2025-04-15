@@ -130,10 +130,16 @@ export class EquipmentDto implements EquipmentModel {
       const width = Math.abs(endX - startX);
       const height = Math.abs(endY - startY);
   
-      const [originalWidth, originalHeight] = this.originalPictureSize.split(',').map(Number);
-  
+      const sizeMatch = this.originalPictureSize.match(/width:(\d+),height:(\d+)/);
+      if (!sizeMatch) {
+        throw new Error('Invalid original picture size format');
+      }
+      
+      const originalWidth = Number(sizeMatch[1]);
+      const originalHeight = Number(sizeMatch[2]);
+      
       if (isNaN(originalWidth) || isNaN(originalHeight)) {
-        throw new Error('Invalid original picture size');
+        throw new Error('Invalid original picture size values');
       }
   
       return {

@@ -1,9 +1,10 @@
-import { Component, Input, OnInit, ViewChild, ElementRef, inject, DestroyRef } from '@angular/core';
+import { Component, Input, OnInit, ViewChild, ElementRef, inject, DestroyRef, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
 import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable, Subscription } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SearchCriteria } from '../../models/api/search-criteria.model';
 
 @Component({
   selector: 'app-shared-table',
@@ -14,7 +15,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 })
 export class TableComponent implements OnInit {
   @Input() columns: Column[] = [];
-  @Input() loadMoreCallback!: () => Promise<any[]>;
   @Input() searchCallback!: (criteria: any) => Promise<any[]>;
   @Input() clickCallback!: (item: any) => void;
 
@@ -31,9 +31,12 @@ export class TableComponent implements OnInit {
     return this._initialItems;
   }
 
+  @Output() loadMoreItems = new EventEmitter<void>();
+  @Output() search = new EventEmitter<SearchCriteria>();
+
   items: any[] = [];
   filteredItems: any[] = [];
-  globalSearch$ = new BehaviorSubject<string>('');
+  globalSearchQuery: string = '';
   columnFilters: { [key: string]: string } = {};
 
   currentSortColumn: string | null = null;
@@ -45,12 +48,6 @@ export class TableComponent implements OnInit {
 
   ngOnInit() {
     this.setupInitialItemsSubscription();
-  
-    this.globalSearch$.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(query => this.performGlobalSearch(query));
   }
 
   ngAfterViewInit() {
@@ -69,36 +66,32 @@ export class TableComponent implements OnInit {
     }
   }
 
-  async performGlobalSearch(query: string) {
-    if (query === '') {
-      this.filteredItems = [...this.items];
-      return;
-    }
-
-    this.filteredItems = await this.searchCallback({ global: query });
+  performGlobalSearch() {
+    const searchCriteria: SearchCriteria = {
+      type: 'global',
+      query: this.globalSearchQuery,
+      filters: {}
+    };
+    this.search.emit(searchCriteria);
   }
-
-  async performColumnSearch() {
-    const filterCriteria = Object.entries(this.columnFilters)
+  
+  performColumnSearch() {
+    const filters = Object.entries(this.columnFilters)
       .filter(([_, value]) => value !== '')
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
-
-    if (Object.keys(filterCriteria).length === 0) {
-      this.filteredItems = [...this.items];
-      return;
-    }
-
-    this.filteredItems = await this.searchCallback({ columns: filterCriteria });
+  
+    const searchCriteria: SearchCriteria = {
+      type: 'column',
+      query: '',
+      filters: filters
+    };
+    this.search.emit(searchCriteria);
   }
 
   async handleScroll() {
     const { scrollTop, scrollHeight, clientHeight } = this.tableContainer.nativeElement;
     if (scrollHeight - scrollTop - clientHeight < 50) {
-      const newItems = await this.loadMoreCallback();
-      if (newItems && newItems.length > 0) {
-        this.items = [...this.items, ...newItems];
-        this.filteredItems = [...this.filteredItems, ...newItems];
-      }
+      this.loadMoreItems.emit();
     }
   }
 
