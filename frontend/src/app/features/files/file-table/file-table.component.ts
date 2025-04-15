@@ -23,8 +23,8 @@ import { SearchCriteria } from '../../../models/api/search-criteria.model';
 })
 export class FileTableComponent implements OnInit {
   columns: Column[] = [
-    { id: 'fileName', header: 'File Name', accessorKey: 'name' },
-    { id: 'fileType', header: 'File Type', accessorKey: 'fileType.name' },
+    { id: 'name', header: 'File Name', accessorKey: 'name' },
+    { id: 'fileType.name', header: 'File Type', accessorKey: 'fileType.name' },
     { id: 'fileNumber', header: 'File Number', accessorKey: 'fileNumber' },
     { id: 'relatedSystems', header: 'Systems', accessorKey: 'relatedSystems' }
   ];
@@ -79,11 +79,6 @@ export class FileTableComponent implements OnInit {
     ).subscribe();
   }
 
-  // This method can be called when you need to load more items (e.g., on scroll)
-  loadMoreItems(): void {
-    this.loadItems();
-  }
-
   // If you need to reset and load from the beginning
   resetAndLoadItems(): void {
     this.currentPage = 1;
@@ -92,10 +87,27 @@ export class FileTableComponent implements OnInit {
   }
 
   onSearch(criteria: SearchCriteria) {
-    this.fileService.searchFiles(criteria).pipe(
+    this.currentPage = 1;
+    this.performSearch(criteria);
+  }
+
+  loadMoreItems(criteria: SearchCriteria | void) {
+    if (criteria && 'page' in criteria) {
+      this.performSearch(criteria);
+    } else {
+      this.loadItems();
+    }
+  }
+
+  private performSearch(criteria: SearchCriteria) {
+    this.fileService.searchFiles(criteria, this.pageSize).pipe(
       tap(results => {
-        this.initialItemsSubject.next(results.responseData.content);
-        this.currentPage = 1; // Reset to first page after search
+        if (criteria.page === 1) {
+          this.initialItemsSubject.next(results.responseData.content);
+        } else {
+          const currentItems = this.initialItemsSubject.value;
+          this.initialItemsSubject.next([...currentItems, ...results.responseData.content]);
+        }
       }),
       catchError(error => {
         console.error('Error performing search:', error);

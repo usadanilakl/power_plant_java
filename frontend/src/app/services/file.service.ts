@@ -11,7 +11,7 @@ import { SearchCriteria } from '../models/api/search-criteria.model';
   providedIn: 'root'
 })
 export class FileService {
-  private apiUrl = `${environment.apiUrl}/ng-files`;
+  private apiUrl = `${environment.apiUrl}/files`;
 
   constructor(private http: HttpClient) {}
 
@@ -38,10 +38,13 @@ export class FileService {
     return this.http.get<SpringPaginatedResponse<FileDto[]>>(`${this.apiUrl}/paginated`, { params });
   }
 
-  searchFiles(criteria: SearchCriteria): Observable<SpringPaginatedResponse<FileDto[]>> {
-    return this.http.post<SpringPaginatedResponse<FileDto[]>>(`${this.apiUrl}/search`, criteria);
-  }
+  searchFiles(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<FileDto[]>> {
+    const params = new HttpParams()
+      .set('page', (criteria.page ?? 1).toString())
+      .set('pageSize', pageSize.toString());
 
+    return this.http.post<SpringPaginatedResponse<FileDto[]>>(`${this.apiUrl}/search`, criteria, { params });
+  }
   getFileById(id: string): Observable<SpringApiResponse<FileDto>> {
     return this.http.get<SpringApiResponse<FileDto>>(`${this.apiUrl}/${id}`);
   }

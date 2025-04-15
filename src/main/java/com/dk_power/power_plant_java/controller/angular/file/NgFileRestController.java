@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/ng-files")
+@RequestMapping("/ng/files")
 @RequiredArgsConstructor
 public class NgFileRestController {
     private final NgFileService ngFileService;

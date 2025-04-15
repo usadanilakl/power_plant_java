@@ -31,8 +31,11 @@ export class TableComponent implements OnInit {
     return this._initialItems;
   }
 
-  @Output() loadMoreItems = new EventEmitter<void>();
+  @Output() loadMoreItems = new EventEmitter<SearchCriteria>();
   @Output() search = new EventEmitter<SearchCriteria>();
+
+  currentSearchCriteria: SearchCriteria | null = null;
+  currentPage: number = 1;
 
   items: any[] = [];
   filteredItems: any[] = [];
@@ -67,12 +70,14 @@ export class TableComponent implements OnInit {
   }
 
   performGlobalSearch() {
-    const searchCriteria: SearchCriteria = {
+    this.currentSearchCriteria = {
       type: 'global',
       query: this.globalSearchQuery,
-      filters: {}
+      filters: {},
+      page: 1
     };
-    this.search.emit(searchCriteria);
+    this.currentPage = 1;
+    this.search.emit(this.currentSearchCriteria);
   }
   
   performColumnSearch() {
@@ -80,18 +85,28 @@ export class TableComponent implements OnInit {
       .filter(([_, value]) => value !== '')
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
   
-    const searchCriteria: SearchCriteria = {
+    this.currentSearchCriteria = {
       type: 'column',
       query: '',
-      filters: filters
+      filters: filters,
+      page: 1
     };
-    this.search.emit(searchCriteria);
+    this.currentPage = 1;
+    this.search.emit(this.currentSearchCriteria);
   }
 
   async handleScroll() {
     const { scrollTop, scrollHeight, clientHeight } = this.tableContainer.nativeElement;
     if (scrollHeight - scrollTop - clientHeight < 50) {
-      this.loadMoreItems.emit();
+      if (this.currentSearchCriteria) {
+        this.currentPage++;
+        this.loadMoreItems.emit({
+          ...this.currentSearchCriteria,
+          page: this.currentPage
+        });
+      } else {
+        this.loadMoreItems.emit();
+      }
     }
   }
 

@@ -2,12 +2,14 @@ export interface SearchCriteria {
   type?: 'global' | 'column';
   query?: string;
   filters?: { [key: string]: string };
+  page?: number;
 }
 
 export class SearchCriteriaDto implements SearchCriteria {
   type?: 'global' | 'column';
   query?: string;
   filters?: { [key: string]: string };
+  page?: number;
 
   constructor(data: Partial<SearchCriteria> = {}) {
     this.type = data.type;
