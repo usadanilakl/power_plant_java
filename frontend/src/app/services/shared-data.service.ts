@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
-import { shareReplay, tap } from 'rxjs/operators';
+import { map, shareReplay, tap } from 'rxjs/operators';
 import { ValueDto } from '../models/value.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { environment } from '../../environments/environment';
@@ -20,7 +20,7 @@ export class SharedDataService {
 
   private cachedSystems$: Observable<any[]> | null = null;
   private cachedEquipmentTypes$: Observable<any[]> | null = null;
-  private cachedFileTypes$: Observable<any[]> | null = null;
+  private cachedFileTypes$: Observable<ValueDto[]> | null = null;
 
   private url = environment.apiUrl+'/values';
 
@@ -47,16 +47,16 @@ export class SharedDataService {
     return this.cachedEquipmentTypes$;
   }
 
-  loadFileTypes(): Observable<any[]> {
+  loadFileTypes(): Observable<ValueDto[]> {
     if (!this.cachedFileTypes$) {
-      this.cachedFileTypes$ = this.http.get<any[]>(this.url+'/of-category/fileType').pipe(
+      this.cachedFileTypes$ = this.http.get<SpringApiResponse<ValueDto[]>>(this.url + '/of-category/fileType').pipe(
+        map(response => response.responseData),
         tap(data => this.fileTypeSubject.next(data)),
         shareReplay(1)
       );
     }
     return this.cachedFileTypes$;
   }
-
   updateSystems(systems: any[]) {
     this.systemsSubject.next(systems);
   }
@@ -65,7 +65,7 @@ export class SharedDataService {
     this.equipmentTypesSubject.next(types);
   }
 
-  updateFileTypes(fileTypes: any[]) {
+  updateFileTypes(fileTypes: ValueDto[]) {
     this.fileTypeSubject.next(fileTypes);
   }
 

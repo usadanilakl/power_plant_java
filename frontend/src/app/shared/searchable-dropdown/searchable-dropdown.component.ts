@@ -1,6 +1,7 @@
 import { Component, ElementRef, EventEmitter, HostListener, Input, Output, forwardRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FindPipe } from "../../pipes/find.pipe";
+import { Option } from '../../models/option.model';
 
 @Component({
   selector: 'app-searchable-dropdown',
@@ -18,13 +19,13 @@ import { FindPipe } from "../../pipes/find.pipe";
 })
 export class SearchableDropdownComponent implements ControlValueAccessor {
   @Input() label: string = '';
-  @Input() options: { value: any, label: string }[] = [];
+  @Input() options: Option[] = [];
 
   @Output() valueChange = new EventEmitter<any>();
 
   value: any;
   isOpen = false;
-  filteredOptions: any[] = [];
+  filteredOptions: Option[] = [];
 
   constructor(private elementRef: ElementRef) {}
 

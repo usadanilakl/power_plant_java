@@ -1,4 +1,5 @@
 import { CategoryDto } from './category.model';
+import { Option } from './option.model';
 
 export interface ValueModel {
   id: number;
@@ -15,6 +16,10 @@ export class ValueDto implements ValueModel {
     this.id = data.id || 0;
     this.name = data.name || '';
     this.category = data.category || new CategoryDto({ id: 0, name: '', alias: '' });
+  }
+
+  toOption(): Option {
+    return { value: this.id, label: this.name };
   }
 
   // Serialization method

@@ -2,7 +2,8 @@ import { Component, Output, EventEmitter, Input, OnInit, DestroyRef} from '@angu
 import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of } from 'rxjs';
+import { ValueDto } from '../../../models/value.model';
 
 @Component({
   selector: 'app-file-detail-form',
@@ -20,6 +21,8 @@ export class FileDetailFormComponent implements OnInit {
   @Output() formSubmitEvent = new EventEmitter<any>();
   @Output() formDeleteEvent = new EventEmitter<void>();
   @Output() openImageEvent = new EventEmitter<void>();
+
+  private fileTypeOptions = new BehaviorSubject<any[]>([]);
   
   fields: any[] = [];
   isFormReady = false;
@@ -31,8 +34,16 @@ export class FileDetailFormComponent implements OnInit {
 
   ngOnInit() {
     this.sharedDataService.loadFileTypes()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map((fileTypes: ValueDto[]) => fileTypes?.map(fileType => fileType.toOption()) || []),
+        catchError(error => {
+          console.error('Error loading file types:', error);
+          return of([]);
+        })
+      )
+      .subscribe(options => {
+        this.fileTypeOptions.next(options);
         this.initializeFields();
         this.isFormReady = true;
       });
@@ -41,7 +52,7 @@ export class FileDetailFormComponent implements OnInit {
   private initializeFields() {
     this.fields = [
       { name: 'name', label: 'File Name', type: 'text' },
-      { name: 'type', label: 'File Type', type: 'select', options: this.sharedDataService.fileTypes$ },
+      { name: 'type', label: 'File Type', type: 'select', options: this.fileTypeOptions },
       { name: 'file', label: 'File', type: 'file' },
       { name: 'size', label: 'File Size', type: 'text', readonly: true },
       { name: 'uploadDate', label: 'Upload Date', type: 'date', readonly: true },
