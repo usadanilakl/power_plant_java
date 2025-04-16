@@ -1,4 +1,6 @@
-<app-details-form
+
+@if (isFormReady) {
+  <app-details-form
   [fields]="fields"
   [values]="values"
   (formSubmit)="onFormSubmit($event)"
@@ -6,3 +8,6 @@
   (openImage)="onOpenImage()">
 </app-details-form>
 <button type="button" (click)="onOpenImage()">Open Image</button>
+} @else {
+  <p>Loading form...</p>
+}

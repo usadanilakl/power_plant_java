@@ -82,6 +82,31 @@ public class Util {
         }
         return output;
     }
+    public static String toCamelCase(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+
+        StringBuilder camelCase = new StringBuilder();
+        boolean nextUpperCase = false;
+
+        for (char c : input.toCharArray()) {
+            if (Character.isLetterOrDigit(c)) {
+                if (camelCase.length() == 0) {
+                    camelCase.append(Character.toLowerCase(c));
+                } else if (nextUpperCase) {
+                    camelCase.append(Character.toUpperCase(c));
+                    nextUpperCase = false;
+                } else {
+                    camelCase.append(Character.toLowerCase(c));
+                }
+            } else {
+                nextUpperCase = true;
+            }
+        }
+
+        return camelCase.toString();
+    }
 
 
 
