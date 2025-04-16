@@ -27,7 +27,7 @@
 }
 
 .dropdown-options {
-  position: absolute;
+  position: relative;
   top: 100%;
   left: 0;
   right: 0;
@@ -37,7 +37,7 @@
   border-radius: 0 0 4px 4px;
   max-height: 200px;
   overflow-y: auto;
-  z-index: 1000;
+  z-index: 1001;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 

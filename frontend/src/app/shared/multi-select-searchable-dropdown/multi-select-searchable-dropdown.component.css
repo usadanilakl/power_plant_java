@@ -1,0 +1,33 @@
+.multi-select-container {
+  font-family: Arial, sans-serif;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.multi-select-container > label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.selected-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.selected-option {
+  background-color: #e0e0e0;
+  padding: 5px 10px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.selected-option button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: 5px;
+}

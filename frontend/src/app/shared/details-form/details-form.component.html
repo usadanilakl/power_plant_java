@@ -16,6 +16,20 @@
             [formControlName]="field.name">
           </app-checkbox-group>
         }
+        @case('multi-select'){
+          <app-multi-select-searchable-dropdown
+            [options]="field.options"
+            [label]="field.label"
+            [formControlName]="field.name"
+          ></app-multi-select-searchable-dropdown>
+        }
+        @case('file'){
+          <app-file-input 
+            formControlName="file" 
+            label="Upload File" 
+            accept=".pdf,.doc,.docx,.img,.jpg,.jpeg">
+          </app-file-input>
+        }
         @default {
           <app-form-input
             [label]="field.label"

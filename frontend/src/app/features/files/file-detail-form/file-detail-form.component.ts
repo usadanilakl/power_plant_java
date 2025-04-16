@@ -21,6 +21,7 @@ export class FileDetailFormComponent {
   fields = [
     { name: 'name', label: 'File Name', type: 'text' },
     { name: 'type', label: 'File Type', type: 'text' },
+    { name: 'file', label: 'File', type: 'file' },
     { name: 'size', label: 'File Size', type: 'text', readonly: true },
     { name: 'uploadDate', label: 'Upload Date', type: 'date', readonly: true },
     { name: 'category', label: 'Category', type: 'select', options: [
@@ -34,7 +35,12 @@ export class FileDetailFormComponent {
       { value: 'archived', label: 'Archived' },
       { value: 'confidential', label: 'Confidential' }
     ]},
-    { name: 'description', label: 'Description', type: 'textarea' }
+    { name: 'description', label: 'Description', type: 'textarea' },
+    { name: 'systems', label: 'Systems', type: 'multi-select', options: [
+      { value: 'cnd', label: 'Condensate System' },
+      { value: 'bfw', label: 'Feed Water System' },
+      { value: 'fgs', label: 'Fule Gas System' }
+    ]},
   ];
 
   onFormSubmit(formData: any) {

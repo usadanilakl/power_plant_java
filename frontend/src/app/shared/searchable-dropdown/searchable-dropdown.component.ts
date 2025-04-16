@@ -1,6 +1,6 @@
-import { Component, Input, forwardRef } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Input, Output, forwardRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { FindPipe } from "../../pipes/find.pip";
+import { FindPipe } from "../../pipes/find.pipe";
 
 @Component({
   selector: 'app-searchable-dropdown',
@@ -20,9 +20,14 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
   @Input() label: string = '';
   @Input() options: { value: any, label: string }[] = [];
 
+  @Output() valueChange = new EventEmitter<any>();
+
   value: any;
   isOpen = false;
   filteredOptions: any[] = [];
+
+  constructor(private elementRef: ElementRef) {}
+
 
   onChange: (value: any) => void = () => {};
   onTouched: () => void = () => {};
@@ -39,15 +44,31 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
     this.onTouched = fn;
   }
 
-  toggleDropdown() {
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (!this.elementRef.nativeElement.contains(event.target)) {
+      this.closeDropdown();
+    }
+  }
+
+  closeDropdown() {
+    this.isOpen = false;
+  }
+
+  // Modify toggleDropdown to prevent immediate closure
+  toggleDropdown(event: Event) {
+    event.stopPropagation();
     this.isOpen = !this.isOpen;
     this.filteredOptions = this.options;
   }
 
-  selectOption(option: any) {
+  // Modify selectOption to stop propagation
+  selectOption(option: any, event: Event) {
+    event.stopPropagation();
     this.value = option.value;
     this.onChange(this.value);
     this.isOpen = false;
+    this.valueChange.emit(this.value);
   }
 
   filterOptions(event: any) {

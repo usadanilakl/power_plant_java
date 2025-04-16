@@ -1,13 +1,13 @@
 <div class="dropdown-container">
   <label>{{ label }}</label>
-  <div class="dropdown-input" (click)="toggleDropdown()">
+  <div class="dropdown-input" (click)="toggleDropdown($event)">
     {{ value ? (options | find: 'value': value)?.label : 'Select an option' }}
   </div>
   @if (isOpen) {
     <div class="dropdown-options">
       <input type="text" (input)="filterOptions($event)" placeholder="Search...">
       @for (option of filteredOptions; track option.value) {
-        <div (click)="selectOption(option)">
+        <div (click)="selectOption(option,$event)">
           {{ option.label }}
         </div>
       }
