@@ -1,5 +1,8 @@
-import { Component, Output, EventEmitter, Input} from '@angular/core';
+import { Component, Output, EventEmitter, Input, OnInit, DestroyRef} from '@angular/core';
 import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
+import { SharedDataService } from '../../../services/shared-data.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-file-detail-form',
@@ -8,7 +11,7 @@ import { DetailsFormComponent } from '../../../shared/details-form/details-form.
   templateUrl: './file-detail-form.component.html',
   styleUrl: './file-detail-form.component.css'
 })
-export class FileDetailFormComponent {
+export class FileDetailFormComponent implements OnInit {
   @Input() values: any = {};
   @Input() formSubmit!: (data: any) => void;
   @Input() formDelete!: () => void;
@@ -17,10 +20,19 @@ export class FileDetailFormComponent {
   @Output() formSubmitEvent = new EventEmitter<any>();
   @Output() formDeleteEvent = new EventEmitter<void>();
   @Output() openImageEvent = new EventEmitter<void>();
+  
+  get fileTypes$(): Observable<any[]> {
+    return this.sharedDataService.fileTypes$;
+  }
+
+  constructor(
+    private sharedDataService: SharedDataService,
+    private destroyRef: DestroyRef
+  ) {}
 
   fields = [
     { name: 'name', label: 'File Name', type: 'text' },
-    { name: 'type', label: 'File Type', type: 'text' },
+    { name: 'type', label: 'File Type', type: 'select', options: this.fileTypes$ },
     { name: 'file', label: 'File', type: 'file' },
     { name: 'size', label: 'File Size', type: 'text', readonly: true },
     { name: 'uploadDate', label: 'Upload Date', type: 'date', readonly: true },
@@ -42,6 +54,12 @@ export class FileDetailFormComponent {
       { value: 'fgs', label: 'Fule Gas System' }
     ]},
   ];
+
+  ngOnInit() {
+    this.sharedDataService.loadFileTypes()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
+  }
 
   onFormSubmit(formData: any) {
     if (this.formSubmit) {
