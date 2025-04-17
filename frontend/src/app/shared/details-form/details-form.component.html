@@ -30,6 +30,13 @@
             accept=".pdf,.doc,.docx,.img,.jpg,.jpeg">
           </app-file-input>
         }
+        @case('multi-input'){
+          <app-multi-input
+            type="text"
+            [label]="field.label"
+            [formControlName]="field.name"
+          ></app-multi-input>
+        }
         @default {
           <app-form-input
             [label]="field.label"

@@ -2,8 +2,9 @@ import { Component, Output, EventEmitter, Input, OnInit, DestroyRef} from '@angu
 import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, catchError, map, Observable, of } from 'rxjs';
+import { BehaviorSubject, catchError, finalize, forkJoin, map, Observable, of, tap } from 'rxjs';
 import { ValueDto } from '../../../models/value.model';
+import { Option } from '../../../models/option.model';
 
 @Component({
   selector: 'app-file-detail-form',
@@ -22,7 +23,9 @@ export class FileDetailFormComponent implements OnInit {
   @Output() formDeleteEvent = new EventEmitter<void>();
   @Output() openImageEvent = new EventEmitter<void>();
 
-  private fileTypeOptions = new BehaviorSubject<any[]>([]);
+  private fileTypeOptions = new BehaviorSubject<Option[]>([]);
+  private systemOptions = new BehaviorSubject<Option[]>([]);
+  private vendorOptions = new BehaviorSubject<Option[]>([]);
   
   fields: any[] = [];
   isFormReady = false;
@@ -31,22 +34,38 @@ export class FileDetailFormComponent implements OnInit {
     private sharedDataService: SharedDataService,
     private destroyRef: DestroyRef
   ) {}
-
+  
   ngOnInit() {
-    this.sharedDataService.loadFileTypes()
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        map((fileTypes: ValueDto[]) => fileTypes?.map(fileType => fileType.toOption()) || []),
-        catchError(error => {
-          console.error('Error loading file types:', error);
-          return of([]);
-        })
-      )
-      .subscribe(options => {
-        this.fileTypeOptions.next(options);
+    forkJoin({
+      fileTypes: this.loadOptions(this.sharedDataService.loadFileTypes()),
+      systems: this.loadOptions(this.sharedDataService.loadSystems()),
+      vendors: this.loadOptions(this.sharedDataService.loadVendors()),
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(({ fileTypes, systems, vendors }) => {
+        this.fileTypeOptions.next(fileTypes);
+        this.systemOptions.next(systems);
+        this.vendorOptions.next(vendors);
+      }),
+      finalize(() => {
         this.initializeFields();
         this.isFormReady = true;
-      });
+      }),
+      catchError(error => {
+        console.error('Error loading form data:', error);
+        return of({ fileTypes: [], systems: [] });
+      })
+    ).subscribe();
+  }
+  
+  private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
+    return source.pipe(
+      map(items => items.map(item => new ValueDto(item).toOption())),
+      catchError(error => {
+        console.error('Error loading options:', error);
+        return of([]);
+      })
+    );
   }
 
   private initializeFields() {
@@ -56,23 +75,9 @@ export class FileDetailFormComponent implements OnInit {
       { name: 'file', label: 'File', type: 'file' },
       { name: 'size', label: 'File Size', type: 'text', readonly: true },
       { name: 'uploadDate', label: 'Upload Date', type: 'date', readonly: true },
-      { name: 'category', label: 'Category', type: 'select', options: [
-        { value: 'document', label: 'Document' },
-        { value: 'image', label: 'Image' },
-        { value: 'spreadsheet', label: 'Spreadsheet' },
-        { value: 'other', label: 'Other' }
-      ]},
-      { name: 'tags', label: 'Tags', type: 'checkbox-group', options: [
-        { value: 'important', label: 'Important' },
-        { value: 'archived', label: 'Archived' },
-        { value: 'confidential', label: 'Confidential' }
-      ]},
-      { name: 'description', label: 'Description', type: 'textarea' },
-      { name: 'systems', label: 'Systems', type: 'multi-select', options: [
-        { value: 'cnd', label: 'Condensate System' },
-        { value: 'bfw', label: 'Feed Water System' },
-        { value: 'fgs', label: 'Fule Gas System' }
-      ]},
+      { name: 'vendor', label: 'Vendor', type: 'select', options: this.vendorOptions },
+      { name: 'fileNumber', label: 'File Numbers', type: 'multi-input' },
+      { name: 'systems', label: 'Systems', type: 'multi-select', options: this.systemOptions },
     ];
   }
 

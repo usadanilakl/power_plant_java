@@ -1,7 +1,7 @@
 <div class="dropdown-container">
   <label>{{ label }}</label>
   <div class="dropdown-input" (click)="toggleDropdown($event)">
-    {{ value ? (options | find: 'value': value)?.label : 'Select an option' }}
+    {{ selectedOption?.label || 'Select an option' }}
   </div>
   @if (isOpen) {
     <div class="dropdown-options">

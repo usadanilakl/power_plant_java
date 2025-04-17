@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -18,8 +19,8 @@ public class NgValueController {
     private final NgValueService ngValueService;
 
     @GetMapping("/of-category/{alias}")
-    public ResponseEntity<List<ValueDto>> getNgValues(@PathVariable String alias) {
+    public ResponseEntity<NgApiResponse<List<ValueDto>>> getNgValues(@PathVariable String alias) {
         List<ValueDto> list = ngValueService.getValuesByCategoryAlias(alias).stream().map(ngValueService::valueToDto).toList();
-        return ResponseEntity.ok(list);
+        return ResponseEntity.ok(new NgApiResponse<>(list, "Success", LocalDateTime.now()));
     }
 }

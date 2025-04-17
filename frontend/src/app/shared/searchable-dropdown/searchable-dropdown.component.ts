@@ -2,6 +2,7 @@ import { Component, ElementRef, EventEmitter, HostListener, Input, Output, forwa
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FindPipe } from "../../pipes/find.pipe";
 import { Option } from '../../models/option.model';
+import { Observable, Subscription, take } from 'rxjs';
 
 @Component({
   selector: 'app-searchable-dropdown',
@@ -19,9 +20,13 @@ import { Option } from '../../models/option.model';
 })
 export class SearchableDropdownComponent implements ControlValueAccessor {
   @Input() label: string = '';
-  @Input() options: Option[] = [];
+  @Input() options: Option[] | Observable<Option[]> = [];
+  @Input() closeOnSelect = true;
 
   @Output() valueChange = new EventEmitter<any>();
+
+  private optionsSubscription: Subscription | null = null;
+  selectedOption: Option | null = null;
 
   value: any;
   isOpen = false;
@@ -29,12 +34,47 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
 
   constructor(private elementRef: ElementRef) {}
 
+  ngOnInit() {
+    this.setupOptionsObservable();
+    this.updateSelectedOption();
+  }
+
+  ngOnDestroy() {
+    if (this.optionsSubscription) {
+      this.optionsSubscription.unsubscribe();
+    }
+  }
+
+  private setupOptionsObservable() {
+    if (this.options instanceof Observable) {
+      this.optionsSubscription = this.options.subscribe(
+        (newOptions: Option[]) => {
+          this.filteredOptions = newOptions;
+        }
+      );
+    } else {
+      this.filteredOptions = this.options;
+    }
+  }
+
 
   onChange: (value: any) => void = () => {};
   onTouched: () => void = () => {};
 
   writeValue(value: any): void {
     this.value = value;
+    this.updateSelectedOption();
+  }
+  
+  private updateSelectedOption() {
+    if (this.options instanceof Observable) {
+      this.options.pipe(take(1)).subscribe(opts => {
+        console.log('Updating selectedOption:', opts);
+        this.selectedOption = opts.find(opt => opt.value === this.value) || null;
+      });
+    } else {
+      this.selectedOption = this.options.find(opt => opt.value === this.value) || null;
+    }
   }
 
   registerOnChange(fn: any): void {
@@ -56,26 +96,42 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
     this.isOpen = false;
   }
 
-  // Modify toggleDropdown to prevent immediate closure
   toggleDropdown(event: Event) {
     event.stopPropagation();
     this.isOpen = !this.isOpen;
-    this.filteredOptions = this.options;
+    if (this.options instanceof Observable) {
+      // The filteredOptions will be updated by the subscription
+    } else {
+      this.filteredOptions = this.options;
+    }
   }
 
-  // Modify selectOption to stop propagation
-  selectOption(option: any, event: Event) {
+  selectOption(option: Option, event: Event) {
     event.stopPropagation();
     this.value = option.value;
+    this.selectedOption = option;
     this.onChange(this.value);
-    this.isOpen = false;
+    if(this.closeOnSelect)this.isOpen = false;
     this.valueChange.emit(this.value);
   }
 
   filterOptions(event: any) {
     const filterValue = event.target.value.toLowerCase();
-    this.filteredOptions = this.options.filter(option => 
-      option.label.toLowerCase().includes(filterValue)
-    );
+    if (this.options instanceof Observable) {
+      // If options is an Observable, we need to update the subscription
+      if (this.optionsSubscription) {
+        this.optionsSubscription.unsubscribe();
+      }
+      this.optionsSubscription = this.options.subscribe(options => {
+        this.filteredOptions = options.filter(option =>
+          option.label.toLowerCase().includes(filterValue)
+        );
+      });
+    } else {
+      // If options is an array, we can filter it directly
+      this.filteredOptions = this.options.filter(option =>
+        option.label.toLowerCase().includes(filterValue)
+      );
+    }
   }
 }

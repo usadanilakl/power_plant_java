@@ -10,38 +10,45 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class SharedDataService {
-  private systemsSubject = new BehaviorSubject<any[]>([]);
-  private equipmentTypesSubject = new BehaviorSubject<any[]>([]);
-  private fileTypeSubject = new BehaviorSubject<any[]>([]);
+  private systemsSubject = new BehaviorSubject<ValueDto[]>([]);
+  private equipmentTypesSubject = new BehaviorSubject<ValueDto[]>([]);
+  private fileTypeSubject = new BehaviorSubject<ValueDto[]>([]);
+  private vendorsSubject = new BehaviorSubject<ValueDto[]>([]);
 
-  systems$: Observable<any[]> = this.systemsSubject.asObservable();
-  equipmentTypes$: Observable<any[]> = this.equipmentTypesSubject.asObservable();
-  fileTypes$: Observable<any[]> = this.fileTypeSubject.asObservable();
+  systems$: Observable<ValueDto[]> = this.systemsSubject.asObservable();
+  equipmentTypes$: Observable<ValueDto[]> = this.equipmentTypesSubject.asObservable();
+  fileTypes$: Observable<ValueDto[]> = this.fileTypeSubject.asObservable();
+  vendors$: Observable<ValueDto[]> = this.vendorsSubject.asObservable();
 
-  private cachedSystems$: Observable<any[]> | null = null;
-  private cachedEquipmentTypes$: Observable<any[]> | null = null;
+  private cachedSystems$: Observable<ValueDto[]> | null = null;
+  private cachedEquipmentTypes$: Observable<ValueDto[]> | null = null;
   private cachedFileTypes$: Observable<ValueDto[]> | null = null;
+  private cachedVendors$: Observable<ValueDto[]> | null = null;
 
-  private url = environment.apiUrl+'/values';
+  private url = environment.apiUrl + '/values';
 
   constructor(private http: HttpClient) {}
 
+  private loadValuesOfCategory(category: string): Observable<ValueDto[]> {
+    return this.http.get<SpringApiResponse<ValueDto[]>>(this.url + `/of-category/${category}`).pipe(
+      map(response => response.responseData),
+      shareReplay(1)
+    );
+  }
 
-  loadSystems(): Observable<any[]> {
+  loadSystems(): Observable<ValueDto[]> {
     if (!this.cachedSystems$) {
-      this.cachedSystems$ = this.http.get<any[]>('/of-category/system').pipe(
-        tap(data => this.systemsSubject.next(data)),
-        shareReplay(1)
+      this.cachedSystems$ = this.loadValuesOfCategory('system').pipe(
+        tap(data => this.systemsSubject.next(data))
       );
     }
     return this.cachedSystems$;
   }
 
-  loadEquipmentTypes(): Observable<any[]> {
+  loadEquipmentTypes(): Observable<ValueDto[]> {
     if (!this.cachedEquipmentTypes$) {
-      this.cachedEquipmentTypes$ = this.http.get<any[]>('/of-category/equipmentType').pipe(
-        tap(data => this.equipmentTypesSubject.next(data)),
-        shareReplay(1)
+      this.cachedEquipmentTypes$ = this.loadValuesOfCategory('equipmentType').pipe(
+        tap(data => this.equipmentTypesSubject.next(data))
       );
     }
     return this.cachedEquipmentTypes$;
@@ -49,25 +56,41 @@ export class SharedDataService {
 
   loadFileTypes(): Observable<ValueDto[]> {
     if (!this.cachedFileTypes$) {
-      this.cachedFileTypes$ = this.http.get<SpringApiResponse<ValueDto[]>>(this.url + '/of-category/fileType').pipe(
-        map(response => response.responseData),
-        tap(data => this.fileTypeSubject.next(data)),
-        shareReplay(1)
+      this.cachedFileTypes$ = this.loadValuesOfCategory('fileType').pipe(
+        tap(data => this.fileTypeSubject.next(data))
       );
     }
     return this.cachedFileTypes$;
   }
-  updateSystems(systems: any[]) {
+
+  loadVendors(): Observable<ValueDto[]> {
+    if (!this.cachedVendors$) {
+      this.cachedVendors$ = this.loadValuesOfCategory('vendor').pipe(
+        tap(data => this.vendorsSubject.next(data))
+      );
+    }
+    return this.cachedVendors$;
+  }
+  
+
+
+  updateSystems(systems: ValueDto[]) {
     this.systemsSubject.next(systems);
   }
 
-  updateEquipmentTypes(types: any[]) {
+  updateEquipmentTypes(types: ValueDto[]) {
     this.equipmentTypesSubject.next(types);
   }
 
   updateFileTypes(fileTypes: ValueDto[]) {
     this.fileTypeSubject.next(fileTypes);
   }
+
+  updateVendors(vendors: ValueDto[]) {
+    this.fileTypeSubject.next(vendors);
+  }
+
+
 
   clearCache() {
     this.cachedSystems$ = null;

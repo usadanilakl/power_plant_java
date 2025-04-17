@@ -1,0 +1,18 @@
+
+<div class="multi-input-container">
+    <label>{{ label }}</label>
+    <div class="input-values">
+      @for (value of values; track value; let i = $index) {
+        <div class="input-value">
+          <app-form-input
+            [label]="''"
+            [type]="type"
+            [(ngModel)]="values[i]"
+            (ngModelChange)="onValueChange(i, $event)"
+          ></app-form-input>
+          <button type="button" (click)="removeValue(i)">X</button>
+        </div>
+      }
+    </div>
+    <button type="button" (click)="addValue()">Add</button>
+  </div>

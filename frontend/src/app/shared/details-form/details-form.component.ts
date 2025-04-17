@@ -11,6 +11,7 @@ import { CheckboxGroupComponent } from '../checkbox-group/checkbox-group.compone
 import { FormInputComponent } from '../form-input/form-input.component';
 import { MultiSelectSearchableDropdownComponent } from '../multi-select-searchable-dropdown/multi-select-searchable-dropdown.component';
 import { FileInputComponent } from '../file-input/file-input.component';
+import { MultiInputComponent } from '../multi-input/multi-input.component';
 
 @Component({
   selector: 'app-details-form',
@@ -24,6 +25,7 @@ import { FileInputComponent } from '../file-input/file-input.component';
     ReactiveFormsModule,
     MultiSelectSearchableDropdownComponent,
     FileInputComponent,
+    MultiInputComponent
   ],
 })
 export class DetailsFormComponent {

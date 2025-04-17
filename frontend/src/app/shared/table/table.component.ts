@@ -89,7 +89,7 @@ export class TableComponent implements OnInit {
       this._initialItems.pipe(
         takeUntilDestroyed(this.destroyRef)
       ).subscribe((items: any[]) => {
-        console.log('Initializing table with initial items:', items);
+        // console.log('Initializing table with initial items:', items);
         this.items = items;
         this.filteredItems = [...this.items];
       });
