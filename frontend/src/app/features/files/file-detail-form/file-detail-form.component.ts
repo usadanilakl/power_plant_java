@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, catchError, finalize, forkJoin, map, Observable, of, tap } from 'rxjs';
 import { ValueDto } from '../../../models/value.model';
 import { Option } from '../../../models/option.model';
+import { Validators } from '@angular/forms';
 
 @Component({
   selector: 'app-file-detail-form',
@@ -70,7 +71,7 @@ export class FileDetailFormComponent implements OnInit {
 
   private initializeFields() {
     this.fields = [
-      { name: 'name', label: 'File Name', type: 'text' },
+      { name: 'name', label: 'File Name', type: 'text', validators : [Validators.minLength(10)] },
       { name: 'type', label: 'File Type', type: 'select', options: this.fileTypeOptions },
       { name: 'file', label: 'File', type: 'file' },
       { name: 'size', label: 'File Size', type: 'text', readonly: true },

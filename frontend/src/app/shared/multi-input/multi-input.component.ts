@@ -1,12 +1,11 @@
-import { Component, EventEmitter, Input, Output, forwardRef, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, Output, forwardRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { FormInputComponent } from '../form-input/form-input.component';
 
 @Component({
   selector: 'app-multi-input',
   standalone: true,
-  imports: [CommonModule, FormsModule, FormInputComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: `./multi-input.component.html`,
   styleUrls: ['./multi-input.component.css'],
   providers: [
@@ -17,22 +16,22 @@ import { FormInputComponent } from '../form-input/form-input.component';
     }
   ]
 })
-export class MultiInputComponent implements ControlValueAccessor, OnInit {
+export class MultiInputComponent implements ControlValueAccessor {
   @Input() label: string = '';
   @Input() type: string = 'text';
   
   @Output() valuesChange = new EventEmitter<any[]>();
 
-  values: any[] = [];
-
-  ngOnInit() {
-    // Initialize component if needed
-  }
+  values: any[] = [''];  // Initialize with an empty string
 
   onValueChange(index: number, newValue: any) {
-    this.values[index] = newValue;
     this.onChange(this.values);
+  }
+
+  onInputBlur() {
+    this.onTouched();
     this.valuesChange.emit(this.values);
+    this.ensureMinimumInputs();
   }
 
   addValue() {
@@ -43,15 +42,23 @@ export class MultiInputComponent implements ControlValueAccessor, OnInit {
   
   removeValue(index: number) {
     this.values.splice(index, 1);
+    this.ensureMinimumInputs();
     this.onChange(this.values);
     this.valuesChange.emit(this.values);
   }
 
   writeValue(value: any[]): void {
-    if (Array.isArray(value)) {
+    if (Array.isArray(value) && value.length > 0) {
       this.values = [...value];
     } else {
-      this.values = [];
+      this.values = [''];  // Initialize with an empty string if no values
+    }
+    this.ensureMinimumInputs();
+  }
+
+  ensureMinimumInputs(): void {
+    if (this.values.length === 0) {
+      this.values.push('');
     }
   }
 

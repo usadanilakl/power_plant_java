@@ -66,7 +66,7 @@ export class DetailsFormComponent {
       }
   
       // Special handling for multi-select
-      if (field.type === 'multi-select') {
+      if (field.type === 'multi-select' || field.type === 'multi-input') {
         value = value || []; // Ensure it's an array
       }
   
