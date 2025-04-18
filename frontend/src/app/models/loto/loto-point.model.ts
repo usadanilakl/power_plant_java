@@ -64,50 +64,74 @@ export class LotoPointDto implements LotoPointModel {
   }
 
   // Serialization method
+  // Serialization method
   toJson(): any {
     return {
-      unit: this.unit,
-      tagged: this.tagged,
-      tagNumber: this.tagNumber,
-      description: this.description,
-      isoPos: this.isoPos.toJson(),
-      normPos: this.normPos.toJson(),
-      specificLocation: this.specificLocation,
-      standard: this.standard,
-      generalLocation: this.generalLocation,
-      equipmentIdList: this.equipmentIdList,
-      normalPosition: this.normalPosition,
-      isolatedPosition: this.isolatedPosition,
-      equipmentList: Array.from(this.equipmentList).map(equipment => equipment.toJson()),
-      oldId: this.oldId,
-      objectType: this.objectType,
-      isUpdated: this.isUpdated,
-      fileIds: this.fileIds,
-      conflictStatus: this.conflictStatus
+      unit: this.unit || '',
+      tagged: this.tagged || '',
+      tagNumber: this.tagNumber || '',
+      description: this.description || '',
+      isoPos: this.isoPos?.toJson() || null,
+      normPos: this.normPos?.toJson() || null,
+      specificLocation: this.specificLocation || '',
+      standard: this.standard || '',
+      generalLocation: this.generalLocation || '',
+      equipmentIdList: this.equipmentIdList || [],
+      normalPosition: this.normalPosition || '',
+      isolatedPosition: this.isolatedPosition || '',
+      equipmentList: this.equipmentList 
+        ? Array.from(this.equipmentList)
+            .filter(equipment => equipment != null)
+            .map(equipment => equipment.toJson())
+        : [],
+      oldId: this.oldId || '',
+      objectType: this.objectType || '',
+      isUpdated: this.isUpdated || 0,
+      fileIds: this.fileIds || '',
+      conflictStatus: this.conflictStatus || ''
     };
   }
 
   // Deserialization method (static)
   static fromJson(json: any): LotoPointDto {
+    if (!json) {
+      console.warn('Received null or undefined json in LotoPointDto.fromJson');
+      return new LotoPointDto();
+    }
+  
     return new LotoPointDto({
-      unit: json.unit,
-      tagged: json.tagged,
-      tagNumber: json.tagNumber,
-      description: json.description,
-      isoPos: ValueDto.fromJson(json.isoPos),
-      normPos: ValueDto.fromJson(json.normPos),
-      specificLocation: json.specificLocation,
-      standard: json.standard,
-      generalLocation: json.generalLocation,
-      equipmentIdList: json.equipmentIdList,
-      normalPosition: json.normalPosition,
-      isolatedPosition: json.isolatedPosition,
-      equipmentList: new Set(json.equipmentList.map((equipment: any) => EquipmentDto.fromJson(equipment))),
-      oldId: json.oldId,
-      objectType: json.objectType,
-      isUpdated: json.isUpdated,
-      fileIds: json.fileIds,
-      conflictStatus: json.conflictStatus
+      unit: json.unit || '',
+      tagged: json.tagged || '',
+      tagNumber: json.tagNumber || '',
+      description: json.description || '',
+      isoPos: json.isoPos ? ValueDto.fromJson(json.isoPos) : new ValueDto(),
+      normPos: json.normPos ? ValueDto.fromJson(json.normPos) : new ValueDto(),
+      specificLocation: json.specificLocation || '',
+      standard: json.standard || '',
+      generalLocation: json.generalLocation || '',
+      equipmentIdList: Array.isArray(json.equipmentIdList) ? json.equipmentIdList : [],
+      normalPosition: json.normalPosition || '',
+      isolatedPosition: json.isolatedPosition || '',
+      equipmentList: new Set(
+        Array.isArray(json.equipmentList)
+          ? json.equipmentList
+              .filter((equipment: any) => equipment != null)
+              .map((equipment: any) => {
+                try {
+                  return EquipmentDto.fromJson(equipment);
+                } catch (error) {
+                  console.warn('Error parsing EquipmentDto:', error);
+                  return null;
+                }
+              })
+              .filter((equipment: EquipmentDto | null) => equipment !== null)
+          : []
+      ),
+      oldId: json.oldId || '',
+      objectType: json.objectType || '',
+      isUpdated: json.isUpdated || 0,
+      fileIds: json.fileIds || '',
+      conflictStatus: json.conflictStatus || ''
     });
   }
 

@@ -14,16 +14,22 @@ export class SharedDataService {
   private equipmentTypesSubject = new BehaviorSubject<ValueDto[]>([]);
   private fileTypeSubject = new BehaviorSubject<ValueDto[]>([]);
   private vendorsSubject = new BehaviorSubject<ValueDto[]>([]);
+  private isoPositionsSubject = new BehaviorSubject<ValueDto[]>([]);
+  private normPositionsSubject = new BehaviorSubject<ValueDto[]>([]);
 
   systems$: Observable<ValueDto[]> = this.systemsSubject.asObservable();
   equipmentTypes$: Observable<ValueDto[]> = this.equipmentTypesSubject.asObservable();
   fileTypes$: Observable<ValueDto[]> = this.fileTypeSubject.asObservable();
   vendors$: Observable<ValueDto[]> = this.vendorsSubject.asObservable();
+  isoPositions$: Observable<ValueDto[]> = this.isoPositionsSubject.asObservable();
+  normPositions$: Observable<ValueDto[]> = this.normPositionsSubject.asObservable();
 
   private cachedSystems$: Observable<ValueDto[]> | null = null;
   private cachedEquipmentTypes$: Observable<ValueDto[]> | null = null;
   private cachedFileTypes$: Observable<ValueDto[]> | null = null;
   private cachedVendors$: Observable<ValueDto[]> | null = null;
+  private cachedIsoPositions$: Observable<ValueDto[]> | null = null;
+  private cachedNormPositions$: Observable<ValueDto[]> | null = null;
 
   private url = environment.apiUrl + '/values';
 
@@ -45,15 +51,6 @@ export class SharedDataService {
     return this.cachedSystems$;
   }
 
-  loadEquipmentTypes(): Observable<ValueDto[]> {
-    if (!this.cachedEquipmentTypes$) {
-      this.cachedEquipmentTypes$ = this.loadValuesOfCategory('equipmentType').pipe(
-        tap(data => this.equipmentTypesSubject.next(data))
-      );
-    }
-    return this.cachedEquipmentTypes$;
-  }
-
   loadFileTypes(): Observable<ValueDto[]> {
     if (!this.cachedFileTypes$) {
       this.cachedFileTypes$ = this.loadValuesOfCategory('fileType').pipe(
@@ -70,6 +67,25 @@ export class SharedDataService {
       );
     }
     return this.cachedVendors$;
+  }
+
+  
+  loadIsoPositions(): Observable<ValueDto[]> {
+    if (!this.cachedIsoPositions$) {
+      this.cachedIsoPositions$ = this.loadValuesOfCategory('isoPosition').pipe(
+        tap(data => this.isoPositionsSubject.next(data))
+      );
+    }
+    return this.cachedIsoPositions$;
+  }
+
+  loadNormPositions(): Observable<ValueDto[]> {
+    if (!this.cachedNormPositions$) {
+      this.cachedNormPositions$ = this.loadValuesOfCategory('normPosition').pipe(
+        tap(data => this.normPositionsSubject.next(data))
+      );
+    }
+    return this.cachedNormPositions$;
   }
   
 
@@ -90,11 +106,21 @@ export class SharedDataService {
     this.fileTypeSubject.next(vendors);
   }
 
+  updateIsoPositions(isoPositions: ValueDto[]) {
+    this.isoPositionsSubject.next(isoPositions);
+  }
+  
+  updateNormPositions(normPositions: ValueDto[]) {
+    this.normPositionsSubject.next(normPositions);
+  }
+
 
 
   clearCache() {
     this.cachedSystems$ = null;
     this.cachedEquipmentTypes$ = null;
     this.cachedFileTypes$ = null;
+    this.cachedIsoPositions$ = null;
+    this.cachedNormPositions$ = null;
   }
 }

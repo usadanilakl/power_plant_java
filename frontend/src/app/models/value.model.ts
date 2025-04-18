@@ -33,10 +33,11 @@ export class ValueDto implements ValueModel {
 
   // Deserialization method (static)
   static fromJson(json: any): ValueDto {
+    if (!json) return new ValueDto(); // Return a default ValueDto if json is null or undefined
     return new ValueDto({
-      id: json.id,
-      name: json.name,
-      category: json.category
+      id: json.id ?? 0, // Use nullish coalescing to provide a default value
+      name: json.name || '',
+      category: json.category ? CategoryDto.fromJson(json.category) : new CategoryDto()
     });
   }
 
