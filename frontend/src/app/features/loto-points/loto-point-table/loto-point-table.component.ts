@@ -19,6 +19,7 @@ import { SearchCriteria } from '../../../models/api/search-criteria.model';
 })
 export class LotoPointTableComponent implements OnInit {
   columns: Column[] = [
+    { id: 'id', header: 'ID', accessorKey: 'id' },
     { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
     { id: 'description', header: 'Description', accessorKey: 'description' },
     { id: 'unit', header: 'Unit', accessorKey: 'unit' },

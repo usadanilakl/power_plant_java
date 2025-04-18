@@ -1,7 +1,9 @@
 import { ValueDto } from '../value.model';
 import { EquipmentDto } from '../equipment/equipment.model';
+import { JsonpClientBackend } from '@angular/common/http';
 
 export interface LotoPointModel {
+  id: number;
   unit: string;
   tagged: string;
   tagNumber: string;
@@ -23,6 +25,7 @@ export interface LotoPointModel {
 }
 
 export class LotoPointDto implements LotoPointModel {
+  id: number;
   unit: string;
   tagged: string;
   tagNumber: string;
@@ -43,6 +46,7 @@ export class LotoPointDto implements LotoPointModel {
   conflictStatus: string;
 
   constructor(data: Partial<LotoPointModel> = {}) {
+    this.id = data.id || 0;
     this.unit = data.unit || '';
     this.tagged = data.tagged || '';
     this.tagNumber = data.tagNumber || '';
@@ -67,6 +71,7 @@ export class LotoPointDto implements LotoPointModel {
   // Serialization method
   toJson(): any {
     return {
+      id: this.id || 0,
       unit: this.unit || '',
       tagged: this.tagged || '',
       tagNumber: this.tagNumber || '',
@@ -100,6 +105,7 @@ export class LotoPointDto implements LotoPointModel {
     }
   
     return new LotoPointDto({
+      id: json.id || 0,
       unit: json.unit || '',
       tagged: json.tagged || '',
       tagNumber: json.tagNumber || '',
