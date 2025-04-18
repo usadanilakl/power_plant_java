@@ -49,4 +49,9 @@ export class LotoPointService {
   getLotoPointsByFileId(fileId: number): Observable<SpringApiResponse<LotoPointDto[]>> {
     return this.http.get<SpringApiResponse<LotoPointDto[]>>(`${this.apiUrl}/file/${fileId}`);
   }
+
+  
+  getRelatedImages(id: number): Observable<SpringApiResponse<string[]>> {
+    return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/${id}/related-images`);
+  }
 }

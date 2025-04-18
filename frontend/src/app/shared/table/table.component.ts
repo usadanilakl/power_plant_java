@@ -2,7 +2,7 @@ import { Component, Input, OnInit, ViewChild, ElementRef, inject, DestroyRef, Ou
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
-import { debounceTime, distinctUntilChanged, Observable, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, Observable, Subject, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
 
@@ -21,7 +21,7 @@ export class TableComponent implements OnInit {
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
   private globalSearchSubject = new Subject<string>();
-  private columnSearchSubject = new Subject<{[key: string]: string}>();
+  private columnSearchSubjects: { [key: string]: Subject<string> } = {};
   private _initialItems: Observable<any[]> = new Observable<any[]>();
   
   @Input() set initialItems(value: Observable<any[]>) {
@@ -51,6 +51,22 @@ export class TableComponent implements OnInit {
 
   private destroyRef = inject(DestroyRef);
 
+  // ngOnInit() {
+  //   this.setupInitialItemsSubscription();
+    
+  //   this.globalSearchSubject.pipe(
+  //     debounceTime(300),
+  //     distinctUntilChanged(),
+  //     takeUntilDestroyed(this.destroyRef)
+  //   ).subscribe(() => this.performGlobalSearch());
+
+  //   this.columnSearchSubject.pipe(
+  //     debounceTime(300),
+  //     distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
+  //     takeUntilDestroyed(this.destroyRef)
+  //   ).subscribe(() => this.performColumnSearch());
+  // }
+
   ngOnInit() {
     this.setupInitialItemsSubscription();
     
@@ -59,25 +75,31 @@ export class TableComponent implements OnInit {
       distinctUntilChanged(),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(() => this.performGlobalSearch());
-
-    this.columnSearchSubject.pipe(
-      debounceTime(300),
-      distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(() => this.performColumnSearch());
+  
+    this.columns.forEach(column => {
+      this.columnSearchSubjects[column.id] = new Subject<string>();
+      this.columnSearchSubjects[column.id].pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(() => this.performColumnSearch());
+    });
   }
 
   onGlobalSearchChange(query: string) {
     this.globalSearchSubject.next(query);
   }
 
-  onColumnSearchChange() {
-    this.columnSearchSubject.next(this.columnFilters);
+  onColumnSearchChange(column: string, value: string) {
+    this.columnFilters[column] = value;
+    if (this.columnSearchSubjects[column]) {
+      this.columnSearchSubjects[column].next(value);
+    }
   }
 
   ngOnDestroy() {
     this.globalSearchSubject.complete();
-    this.columnSearchSubject.complete();
+    Object.values(this.columnSearchSubjects).forEach(subject => subject.complete());
   }
 
   ngAfterViewInit() {
@@ -106,11 +128,13 @@ export class TableComponent implements OnInit {
     this.currentPage = 1;
     this.search.emit(this.currentSearchCriteria);
   }
-  
+
   performColumnSearch() {
     const filters = Object.entries(this.columnFilters)
       .filter(([_, value]) => value !== '')
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
+  
+    console.log('Performing column search with filters:', filters);
   
     this.currentSearchCriteria = {
       type: 'column',
@@ -121,6 +145,21 @@ export class TableComponent implements OnInit {
     this.currentPage = 1;
     this.search.emit(this.currentSearchCriteria);
   }
+  
+  // performColumnSearch() {
+  //   const filters = Object.entries(this.columnFilters)
+  //     .filter(([_, value]) => value !== '')
+  //     .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
+  
+  //   this.currentSearchCriteria = {
+  //     type: 'column',
+  //     query: '',
+  //     filters: filters,
+  //     page: 1
+  //   };
+  //   this.currentPage = 1;
+  //   this.search.emit(this.currentSearchCriteria);
+  // }
 
   async handleScroll() {
     const { scrollTop, scrollHeight, clientHeight } = this.tableContainer.nativeElement;

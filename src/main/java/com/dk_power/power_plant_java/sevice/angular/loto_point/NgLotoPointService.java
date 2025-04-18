@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.sevice.angular.loto_point;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
@@ -14,9 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -92,4 +92,25 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     public LotoPoint toEntity(LotoPointDto dto) {
         return this.lotoPointMapper.convertToEntity(dto);
     }
+
+    public List<String> getRelatedImages(Long id) {
+        Optional<LotoPoint> byId = findById(id);
+        if(byId.isPresent()){
+            LotoPoint lotoPoint = byId.get();
+            Set<Equipment> equipmentList = lotoPoint.getEquipmentList();
+            List<String> imageUrls = new ArrayList<>();
+            for (Equipment equipment : equipmentList) {
+                FileObject file = equipment.getMainFile();
+                if(file!= null){
+                    imageUrls.add(file.getFileLink());
+                }
+            }
+            if(imageUrls.isEmpty()){
+                throw new RuntimeException("No related images found for LotoPoint with id: " + id);
+            }
+            return imageUrls;
+        }
+        throw new RuntimeException("LotoPoint not found with id: " + id);
+    }
 }
+

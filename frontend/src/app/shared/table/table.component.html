@@ -19,7 +19,7 @@
             <input type="text" class="filter-input" 
                    [placeholder]="'Filter ' + column.header" 
                    [(ngModel)]="columnFilters[column.id]" 
-                   (ngModelChange)="onColumnSearchChange()">
+                   (ngModelChange)="onColumnSearchChange(column.id, $event)">
           </th>
         }
       </tr>

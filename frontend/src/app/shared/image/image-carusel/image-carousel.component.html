@@ -1,0 +1,19 @@
+<div class="carousel-container">
+  <button class="nav-button left" (click)="scrollToLeft()">&lt;</button>
+  <div class="carousel" #carousel>
+    @for (image of displayImages; track image) {
+      <img [src]="image" (click)="onImageClick(image)" alt="Carousel image">
+    }
+  </div>
+  <button class="nav-button right" (click)="scrollToRight()">&gt;</button>
+</div>
+
+<!-- <div class="carousel-container">
+  <button class="nav-button left" (click)="scrollToLeft()">&lt;</button>
+  <div class="carousel" #carousel>
+    @for (image of images; track image) {
+      <img [src]="image" (click)="onImageClick(image)" alt="Carousel image">
+    }
+  </div>
+  <button class="nav-button right" (click)="scrollToRight()">&gt;</button>
+</div> -->

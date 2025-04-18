@@ -72,7 +72,7 @@ export class SharedDataService {
   
   loadIsoPositions(): Observable<ValueDto[]> {
     if (!this.cachedIsoPositions$) {
-      this.cachedIsoPositions$ = this.loadValuesOfCategory('isoPosition').pipe(
+      this.cachedIsoPositions$ = this.loadValuesOfCategory('isoPos').pipe(
         tap(data => this.isoPositionsSubject.next(data))
       );
     }
@@ -81,7 +81,7 @@ export class SharedDataService {
 
   loadNormPositions(): Observable<ValueDto[]> {
     if (!this.cachedNormPositions$) {
-      this.cachedNormPositions$ = this.loadValuesOfCategory('normPosition').pipe(
+      this.cachedNormPositions$ = this.loadValuesOfCategory('normPos').pipe(
         tap(data => this.normPositionsSubject.next(data))
       );
     }

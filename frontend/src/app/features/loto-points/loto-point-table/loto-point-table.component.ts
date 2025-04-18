@@ -44,6 +44,9 @@ export class LotoPointTableComponent implements OnInit {
   private initialItemsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   initialItems$ = this.initialItemsSubject.asObservable();
 
+  private relatedImagesSubject = new BehaviorSubject<string[]>([]);
+  relatedImages$ = this.relatedImagesSubject.asObservable();
+
   ngOnInit() {
     this.loadItems();
   }
@@ -138,6 +141,20 @@ export class LotoPointTableComponent implements OnInit {
   onItemClick = (item: LotoPointDto) => {
     this.selectedItem = item;
     this.isPopupOpen = true;
+    this.lotoPointService.getRelatedImages(this.selectedItem.id).subscribe(
+      (response: SpringApiResponse<string[]>) => {
+        if (response.responseData) {
+          this.relatedImagesSubject.next(response.responseData);
+          console.log('Related images fetched successfully:', response.responseData);
+        } else {
+          this.relatedImagesSubject.next([]);
+        }
+      },
+      error => {
+        console.error('Error fetching related images:', error);
+        this.relatedImagesSubject.next([]);
+      }
+    );
   }
 
   closePopup() {
