@@ -6,11 +6,13 @@ import { BehaviorSubject, catchError, finalize, forkJoin, map, Observable, of, t
 import { ValueDto } from '../../../models/value.model';
 import { Option } from '../../../models/option.model';
 import { Validators } from '@angular/forms';
+import { ImageCarouselComponent } from "../../../shared/image/image-carusel/image-carousel.component";
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-loto-point-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent],
+  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule],
   templateUrl: './loto-point-detail-form.component.html',
   styleUrl: './loto-point-detail-form.component.css'
 })
@@ -19,6 +21,9 @@ export class LotoPointDetailFormComponent implements OnInit {
   @Input() formSubmit!: (data: any) => void;
   @Input() formDelete!: () => void;
   @Input() openImage!: () => void;
+  @Input() imageUrls$: Observable<string[]> = new Observable<string[]>();
+
+  
 
   @Output() openImageEvent = new EventEmitter<void>();
   @Output() formSubmitEvent = new EventEmitter<any>();

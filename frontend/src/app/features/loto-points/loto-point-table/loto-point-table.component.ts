@@ -144,8 +144,9 @@ export class LotoPointTableComponent implements OnInit {
     this.lotoPointService.getRelatedImages(this.selectedItem.id).subscribe(
       (response: SpringApiResponse<string[]>) => {
         if (response.responseData) {
-          this.relatedImagesSubject.next(response.responseData);
-          console.log('Related images fetched successfully:', response.responseData);
+          const fullUrls = response.responseData.map(url => `http://localhost:8082/${url}`);
+          this.relatedImagesSubject.next(fullUrls);
+          console.log('Related images fetched successfully:', fullUrls);
         } else {
           this.relatedImagesSubject.next([]);
         }

@@ -3,9 +3,16 @@
     [fields]="fields"
     [values]="values"
     (formSubmit)="onFormSubmit($event)"
-    (formDelete)="onFormDelete()"
-    (openImage)="onOpenImage()">
+    (formDelete)="onFormDelete()">
   </app-details-form>
+
+  @if (imageUrls$ | async; as imageUrls) {
+    <app-image-carousel
+      [images]="imageUrls"
+      (imageClick)="onOpenImage()">
+    </app-image-carousel>
+  }
+
   <button type="button" (click)="onOpenImage()">Open Image</button>
 } @else {
   <p>Loading form...</p>
