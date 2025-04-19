@@ -69,7 +69,7 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
   private updateSelectedOption() {
     if (this.options instanceof Observable) {
       this.options.pipe(take(1)).subscribe(opts => {
-        console.log('Updating selectedOption:', opts);
+        // console.log('Updating selectedOption:', opts);
         this.selectedOption = opts.find(opt => opt.value === this.value) || null;
       });
     } else {

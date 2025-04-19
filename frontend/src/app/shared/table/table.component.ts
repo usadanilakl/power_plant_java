@@ -134,7 +134,7 @@ export class TableComponent implements OnInit {
       .filter(([_, value]) => value !== '')
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
   
-    console.log('Performing column search with filters:', filters);
+    // console.log('Performing column search with filters:', filters);
   
     this.currentSearchCriteria = {
       type: 'column',

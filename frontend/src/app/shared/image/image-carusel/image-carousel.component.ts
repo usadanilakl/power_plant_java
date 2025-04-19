@@ -49,7 +49,7 @@ export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['equipmentFilter']) {
-      console.log('Equipment filter changed:', this.equipmentFilter);
+      // console.log('Equipment filter changed:', this.equipmentFilter);
       // Apply the filter or do whatever you need with the new filter
     }
   }
@@ -90,8 +90,8 @@ export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
               this.equipmentMatchesAllFilters(equipment, this.equipmentFilter)
             );
           }
-          console.log('Filtered equipment:', points);
-          console.log('filter was used:', this.equipmentFilter.map(filter => filter.key).join(',  '));
+          // console.log('Filtered equipment:', points);
+          // console.log('filter was used:', this.equipmentFilter.map(filter => filter.key).join(',  '));
           return points;
         })
       );
