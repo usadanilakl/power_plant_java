@@ -37,11 +37,26 @@ public class WebConfigurer implements WebMvcConfigurer {
                     }
                 });
 
+        // Configuration for Brady
+        registry.addResourceHandler("/brady/**")
+                .addResourceLocations("classpath:/static/brady/")
+                .setCachePeriod(3600)
+                .resourceChain(true)
+                .addResolver(new PathResourceResolver() {
+                    @Override
+                    protected Resource getResource(String resourcePath, Resource location) throws IOException {
+                        Resource requestedResource = location.createRelative(resourcePath);
+                        return requestedResource.exists() && requestedResource.isReadable() ? requestedResource
+                                : new ClassPathResource("/static/brady/index.html");
+                    }
+                });
+
     }
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addViewController("/app/**").setViewName("forward:/angular/browser/index.html");
+        registry.addViewController("/print/**").setViewName("forward:/brady/index.html");
     }
 
 

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="ip" th:content="${ip}">
+    <title>Files</title>
+    <script type="importmap">
+        { 
+            "imports": {
+                "brady-web-sdk": "/brady/node_modules/@bradycorporation/brady-web-sdk/dist/bundle.js"
+            }                   
+        }                     
+    </script>
+
+</head>
+<body>
+    <div th:replace="fragments/header :: header"></div>
+    
+    <main id="main">
+        <nav class="tagging-menu">
+            <ul>            
+                <li><a id="initTaggingPointTable" href="#">To Tag</a></li>
+                <li><a id="initTaggingVerificationTable" href="#">To Verify</a></li>
+                <li><a id="initTaggingedPointTable" href="#">Tagged</a></li>
+            </ul>
+        </nav>
+        <button id="print" class="print-button">Print</button>
+        <div class="content-wrapper">
+            <div id="tableContainer" class="table-container"></div>
+        </div>
+    </main>
+
+    <script src="/brady/Print.js" type="module"></script>
+
+<script>
+    
+</script>
+
+<script type="module">
+    import { printPopup } from '/brady/Print.js';
+
+    document.getElementById('print').addEventListener('click', () => {
+        const tagNumberInput = document.getElementById('tagNumber');
+        const descriptionInput = document.getElementById('description');
+
+        const tagNumber = tagNumberInput ? tagNumberInput.value : 'String 1';
+        const description = descriptionInput ? descriptionInput.value : 'String 2';
+
+        printPopup(tagNumber, description);
+    });
+</script>
+
+</body>
+
+</html>

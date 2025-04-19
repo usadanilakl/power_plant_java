@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printer Controls</title>
+    
+    <script type="importmap">
+        { 
+            "imports": {
+                "brady-web-sdk": "/brady/node_modules/@bradycorporation/brady-web-sdk/dist/bundle.js"
+            }                   
+        }                     
+    </script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #statusLabel {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #popupPreviewContainer {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #popupPreviewContainer canvas {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Printer Controls</h1>
+        
+        <div id="statusLabel"></div>
+        
+        <div class="control-group">
+            <label for="input1">Top Text:</label>
+            <input type="text" id="input1" placeholder="Enter top text">
+        </div>
+        
+        <div class="control-group">
+            <label for="input2">Bottom Text:</label>
+            <input type="text" id="input2" placeholder="Enter bottom text">
+        </div>
+        
+        <div id="popupPreviewContainer"></div>
+        
+        <div class="control-group">
+            <label for="numCopies">Number of Copies:</label>
+            <input type="number" id="numCopies" value="1" min="1">
+        </div>
+        
+        <div class="control-group">
+            <label for="cutOptions">Cut Options:</label>
+            <select id="cutOptions">
+                <option value="EndOfJob">Cut at End of Job</option>
+                <option value="EndOfLabel">Cut at End of Label</option>
+                <option value="Never">Never Cut</option>
+            </select>
+        </div>
+        
+        <button id="scanBtn">Scan for Printers</button>
+        <button id="printBtn">Print</button>
+        <button id="disconnectBtn">Disconnect</button>
+    </div>
+
+    <script type="module">
+        import { printPopup, scanForPrinters, createImageFromStrings } from '/brady/Print.js';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusLabel = document.getElementById('statusLabel');
+            const input1 = document.getElementById('input1');
+            const input2 = document.getElementById('input2');
+            const previewContainer = document.getElementById('popupPreviewContainer');
+            const scanBtn = document.getElementById('scanBtn');
+            const printBtn = document.getElementById('printBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+
+            async function updatePreview() {
+                const string1 = input1.value;
+                const string2 = input2.value;
+                const canvas = await createImageFromStrings(string1, string2);
+                previewContainer.innerHTML = '';
+                previewContainer.appendChild(canvas);
+                canvas.style.width = '100%';
+                canvas.style.height = 'auto';
+            }
+
+            input1.addEventListener('input', updatePreview);
+            input2.addEventListener('input', updatePreview);
+
+            scanBtn.addEventListener('click', scanForPrinters);
+
+            printBtn.addEventListener('click', function() {
+                printPopup(input1.value, input2.value);
+            });
+
+            disconnectBtn.addEventListener('click', async function() {
+                // Implement disconnect functionality here
+                // You may need to add a disconnect method to your bradySdk
+            });
+
+            // Initial preview
+            updatePreview();
+        });
+    </script>
+</body>
+</html>
