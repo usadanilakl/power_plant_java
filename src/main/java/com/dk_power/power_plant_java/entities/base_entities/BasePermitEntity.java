@@ -39,7 +39,7 @@ public class BasePermitEntity extends BaseAuditEntity {
     private User controlAuthority;
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name="permit_type_id")
-    private Value type;
+    private Value permitType;
     private Long docNum;
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name="permit_status_id")

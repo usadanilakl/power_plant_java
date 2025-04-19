@@ -40,3 +40,4 @@ public class Loto extends BasePermitEntity {
     }
 
 }
+

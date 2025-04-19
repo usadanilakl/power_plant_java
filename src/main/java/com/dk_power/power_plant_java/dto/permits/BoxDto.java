@@ -15,6 +15,5 @@ public class BoxDto extends BaseDto {
     private Integer number = 0;
     private LotoDto loto;
     private ValueDto lotoAccessoryStatus;
-    private Long id;
 
 }

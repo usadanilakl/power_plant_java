@@ -22,7 +22,7 @@ public class BasePermitDto extends BaseDto {
     private Set<EquipmentDto> equipment = new HashSet<>();
     private UserDto requestor;
     private UserDto controlAuthority;
-    private ValueDto type;
+    private ValueDto permitType;
     private Long docNum;
     private ValueDto permitStatus;
     private Boolean temp;

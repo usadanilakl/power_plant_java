@@ -1,6 +1,8 @@
 package com.dk_power.power_plant_java.sevice.angular.loto;
 
+import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.mappers.LotoMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
@@ -10,8 +12,13 @@ import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -56,5 +63,26 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     @Override
     public Class<Loto> getEntityClass() {
         return Loto.class;
+    }
+
+    public Optional<Loto> findById(Long id) {
+        return this.repo.findById(id);
+    }
+
+    public Optional<LotoDto> findDtoById(Long id) {
+        return this.findById(id).map(this::toDto);
+    }
+
+    public Page<LotoDto> complexSearch(String searchString, int page, int size){
+        Map<String,String> searchCriteria = new HashMap<>();
+        searchCriteria.put("docNum", searchString);
+        searchCriteria.put("workScope", searchString);
+        searchCriteria.put("system.name", searchString);
+        searchCriteria.put("permitStatus.name", searchString);
+        searchCriteria.put("permitType.name", searchString);
+        SearchCriteria sc = new SearchCriteria();
+        sc.setFilters(searchCriteria);
+//        return complexSearch(sc).stream().map(this::toDto).toList();
+        return complexSearch(sc, page, size, "socNum", "asc",false);
     }
 }

@@ -23,15 +23,15 @@ import java.util.Arrays;
 public class NgLotoController {
     private final NgLotoService ngLotoService;
     @GetMapping("/paginated")
-    public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> getPaginatedFiles(
+    public ResponseEntity<NgApiResponse<Page<LotoDto>>> getPaginatedFiles(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize) {
         try {
 //            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
-            Page<LotoDto> paginatedFiles = ngLotoService.findAllWithProjectionPaginated(
-                    new ArrayList<>(Arrays.asList("id", "tagNumber", "unit", "description", "specificLocation")),
-                    PageRequest.of(page - 1, pageSize)).map(ngLotoPointService::toDto);
-            NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
+            Page<LotoDto> paginatedLotos = ngLotoService.findAllWithProjectionPaginated(
+                    new ArrayList<>(Arrays.asList("id", "docNum", "equipment.id", "workScope", "permitStatus.id", "permitStatus.name", "permitType.id","permitType.name")),
+                    PageRequest.of(page - 1, pageSize)).map(ngLotoService::toDto);
+            NgApiResponse<Page<LotoDto>> response = new NgApiResponse<>(paginatedLotos, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
 //            return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -41,13 +41,13 @@ public class NgLotoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<NgApiResponse<LotoPointDto>> getFileById(@PathVariable Long id) {
+    public ResponseEntity<NgApiResponse<LotoDto>> getFileById(@PathVariable Long id) {
         try {
-            LotoPointDto lotoPointDto = ngLotoPointService.findDtoById(id).orElse(null);
-            if (lotoPointDto == null) {
+            LotoDto lotoDto = ngLotoService.findDtoById(id).orElse(null);
+            if (lotoDto == null) {
                 return ResponseEntity.notFound().build();
             }
-            NgApiResponse<LotoPointDto> response = new NgApiResponse<>(lotoPointDto, "File retrieved successfully", LocalDateTime.now());
+            NgApiResponse<LotoDto> response = new NgApiResponse<>(lotoDto, "LOTO retrieved successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -56,18 +56,18 @@ public class NgLotoController {
     }
 
     @PostMapping("/search")
-    public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> searchFiles(
+    public ResponseEntity<NgApiResponse<Page<LotoDto>>> searchFiles(
             @RequestBody SearchCriteria criteria,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize) {
         try {
-            Page<LotoPointDto> searchResults = null;
+            Page<LotoDto> searchResults = null;
             if (criteria.getType().equals(SearchCriteria.SearchType.COLUMN)) {
-                searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, "tagNumber", "asc", true);
+                searchResults = ngLotoService.complexSearch(criteria, page - 1, pageSize, "docNum", "asc", true);
             } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
-                searchResults = ngLotoPointService.complexSearch(criteria.getQuery(), page - 1, pageSize);
+                searchResults = ngLotoService.complexSearch(criteria.getQuery(), page - 1, pageSize);
             }
-            NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
+            NgApiResponse<Page<LotoDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();
