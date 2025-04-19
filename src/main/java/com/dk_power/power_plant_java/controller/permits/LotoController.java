@@ -90,8 +90,7 @@ public class LotoController {
     @PostMapping("/status/{id}")
     public String changeStatus(@PathVariable("id") String id, @RequestParam(name="status") String status){
         Long lotoId = Long.parseLong(id);
-        Status stat = Status.valueOf(status.toUpperCase());
-        Loto loto = lotoService.changeStatus(lotoId,stat);
+        Loto loto = lotoService.changeStatus(lotoId,status);
         lotoService.save(loto);
         return "redirect:/lotos/";
     }

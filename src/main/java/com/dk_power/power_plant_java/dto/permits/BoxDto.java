@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.dto.permits;
 
-import com.dk_power.power_plant_java.entities.loto.Loto;
-import com.dk_power.power_plant_java.enums.Status;
+import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,10 +11,10 @@ import lombok.Setter;
 @NoArgsConstructor
 @Setter
 @Getter
-public class BoxDto {
+public class BoxDto extends BaseDto {
     private Integer number = 0;
-    private Loto loto;
-    private Status status;
+    private LotoDto loto;
+    private ValueDto lotoAccessoryStatus;
     private Long id;
 
 }

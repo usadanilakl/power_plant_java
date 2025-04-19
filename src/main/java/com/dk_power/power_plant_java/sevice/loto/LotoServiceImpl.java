@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.users.impl.UserDetailsServiceImpl;
 import jakarta.persistence.EntityManagerFactory;
@@ -22,6 +23,12 @@ public class LotoServiceImpl implements LotoService {
     private final EntityManagerFactory entityManagerFactory;
     private final LotoPointService lotoPointService;
     private final SessionFactory sessionFactory;
+    private final NgValueService ngValueService;
+
+    @Override
+    public NgValueService getNgValueService() {
+        return this.ngValueService;
+    }
 
 
     @Override

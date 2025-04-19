@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.BoxRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -21,6 +22,7 @@ public class BoxServiceImpl implements BoxService {
     private final LotoService lotoService;
     private final UniversalMapper universalMapper;
     private final SessionFactory sessionFactory;
+    private final NgValueService ngValueService;
     @Override
     public List<Box> getAllBoxes() {
         return boxRepo.findAll();
@@ -47,9 +49,9 @@ public class BoxServiceImpl implements BoxService {
     @Override
     public void changeBoxStatus(Box box) {
         if(box.getLoto()==null){
-            box.setStatus(Status.AVAILABLE);
+            box.setLotoAccessoryStatus(ngValueService.createValue("LOTO Accessory Status", "Available"));
         }else{
-            box.setStatus(Status.IN_USE);
+            box.setLotoAccessoryStatus(ngValueService.createValue("LOTO Accessory Status", "In Use"));
         }
     }
     @Override

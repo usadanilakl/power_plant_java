@@ -1,10 +1,16 @@
 package com.dk_power.power_plant_java.entities.base_entities;
 
+import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.enums.PermitType;
 import com.dk_power.power_plant_java.enums.Status;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.envers.Audited;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @MappedSuperclass
 @Setter
@@ -15,14 +21,30 @@ import org.hibernate.envers.Audited;
 //@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
 public class BasePermitEntity extends BaseAuditEntity {
     private String workScope;
-    private String system;
-    private String equipment;
-    private String requestor;
-    private String controlAuthority;
-    @Enumerated(EnumType.STRING)
-    private PermitType type;
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name="system_id")
+    private Value system;
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+        name = "permit_equipment",
+        joinColumns = @JoinColumn(name = "permit_id"),
+        inverseJoinColumns = @JoinColumn(name = "equipment_id")
+    )
+    private Set<Equipment> equipment = new HashSet<>();
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name="requestor_id")
+    private User requestor;
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name="control_authority_id")
+    private User controlAuthority;
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name="permit_type_id")
+    private Value type;
     private Long docNum;
-    private Status status;
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name="permit_status_id")
+    private Value permitStatus;
     private Boolean temp;
 
 }
+

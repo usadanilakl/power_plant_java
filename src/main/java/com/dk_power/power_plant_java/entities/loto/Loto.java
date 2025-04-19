@@ -17,9 +17,7 @@ import java.util.List;
 @NoArgsConstructor
 @Audited
 public class Loto extends BasePermitEntity {
-    {
-        this.setType(PermitType.LOTO);
-    }
+
     public Integer boxNumber(){
         return this.getBox().getNumber();
     }
@@ -40,7 +38,5 @@ public class Loto extends BasePermitEntity {
         if(box!=null)return box;
         else return new Box();
     }
-
-
 
 }
