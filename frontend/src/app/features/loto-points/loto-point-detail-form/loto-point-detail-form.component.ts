@@ -7,13 +7,14 @@ import { ValueDto } from '../../../models/value.model';
 import { Option } from '../../../models/option.model';
 import { Validators } from '@angular/forms';
 import { ImageCarouselComponent } from "../../../shared/image/image-carusel/image-carousel.component";
-import { CommonModule } from '@angular/common';
+import { CommonModule  } from '@angular/common';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { NonNullablePipe } from "../../../pipes/nonNullable.pipe";
 
 @Component({
   selector: 'app-loto-point-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule],
+  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe],
   templateUrl: './loto-point-detail-form.component.html',
   styleUrl: './loto-point-detail-form.component.css'
 })
@@ -29,7 +30,8 @@ export class LotoPointDetailFormComponent implements OnInit {
     this._selectedItem = value;
     if (value) {
       this.initializeFilters();
-      this.isEquipmentFilterInitialized = true;
+    } else {
+      this.equipmentFilter$.next([]);  // Emit an empty array when there's no selected item
     }
   }
   
@@ -44,8 +46,7 @@ export class LotoPointDetailFormComponent implements OnInit {
 
   private isoPosOptions = new BehaviorSubject<Option[]>([]);
   private normPosOptions = new BehaviorSubject<Option[]>([]);
-  equipmentFilter: { key: string; filterFn: (value: any) => boolean }[] = [];
-  isEquipmentFilterInitialized = false;
+  equipmentFilter$ = new BehaviorSubject<{ key: string; filterFn: (value: any) => boolean }[]>([]);
 
   fields: any[] = [];
   isFormReady = false;
@@ -101,15 +102,16 @@ export class LotoPointDetailFormComponent implements OnInit {
     ];
   }
 
-  private initializeFilters(){
-    this.equipmentFilter = [
+  private initializeFilters() {
+    const newFilter = [
       {
         key: 'lotoPoints',
         filterFn: (value: LotoPointDto[]) => {
-          return value.some(lotoPoint => lotoPoint.id === this.selectedItem?.id);
+          return value.some(lotoPoint => lotoPoint.id === this._selectedItem?.id);
         }
       }
     ];
+    this.equipmentFilter$.next(newFilter);
   }
 
   onFormSubmit(formData: any) {

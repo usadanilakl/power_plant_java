@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit, inject, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit, inject, OnDestroy, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { catchError, map, Observable, of, Subscription } from 'rxjs';
 import { PopupComponent } from "../../popup/popup.component";
@@ -17,7 +17,7 @@ import { EquipmentDto } from '../../../models/equipment/equipment.model';
 export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
   @Input() images: string[] | Observable<string[]> = [];
   @Output() imageClick = new EventEmitter<string>();
-  @Input()   equipmentFilter: { key: string; filterFn: (value: any) => boolean }[] = [];
+  @Input() equipmentFilter: { key: string; filterFn: (value: any) => boolean }[] = [];
   @ViewChild('carousel') carouselRef!: ElementRef;
 
   displayImages: string[] = [];
@@ -44,6 +44,13 @@ export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy() {
     if (this.imagesSubscription) {
       this.imagesSubscription.unsubscribe();
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['equipmentFilter']) {
+      console.log('Equipment filter changed:', this.equipmentFilter);
+      // Apply the filter or do whatever you need with the new filter
     }
   }
 
