@@ -8,6 +8,7 @@ import { Option } from '../../../models/option.model';
 import { Validators } from '@angular/forms';
 import { ImageCarouselComponent } from "../../../shared/image/image-carusel/image-carousel.component";
 import { CommonModule } from '@angular/common';
+import { LotoPointDto } from '../../../models/loto/loto-point.model';
 
 @Component({
   selector: 'app-loto-point-detail-form',
@@ -22,7 +23,19 @@ export class LotoPointDetailFormComponent implements OnInit {
   @Input() formDelete!: () => void;
   @Input() openImage!: () => void;
   @Input() imageUrls$: Observable<string[]> = new Observable<string[]>();
-
+  private _selectedItem: LotoPointDto | null = null;
+  
+  @Input() set selectedItem(value: LotoPointDto | null) {
+    this._selectedItem = value;
+    if (value) {
+      this.initializeFilters();
+      this.isEquipmentFilterInitialized = true;
+    }
+  }
+  
+  get selectedItem(): LotoPointDto | null {
+    return this._selectedItem;
+  }
   
 
   @Output() openImageEvent = new EventEmitter<void>();
@@ -31,7 +44,9 @@ export class LotoPointDetailFormComponent implements OnInit {
 
   private isoPosOptions = new BehaviorSubject<Option[]>([]);
   private normPosOptions = new BehaviorSubject<Option[]>([]);
-  
+  equipmentFilter: { key: string; filterFn: (value: any) => boolean }[] = [];
+  isEquipmentFilterInitialized = false;
+
   fields: any[] = [];
   isFormReady = false;
 
@@ -83,6 +98,17 @@ export class LotoPointDetailFormComponent implements OnInit {
       { name: 'standard', label: 'Standard', type: 'text' },
       { name: 'generalLocation', label: 'General Location', type: 'text' },
       // { name: 'equipmentList', label: 'Equipment', type: 'multi-select', options: this.equipmentOptions },
+    ];
+  }
+
+  private initializeFilters(){
+    this.equipmentFilter = [
+      {
+        key: 'lotoPoints',
+        filterFn: (value: LotoPointDto[]) => {
+          return value.some(lotoPoint => lotoPoint.id === this.selectedItem?.id);
+        }
+      }
     ];
   }
 

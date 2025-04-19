@@ -49,6 +49,12 @@ export class FileService {
     return this.http.get<SpringApiResponse<FileDto>>(`${this.apiUrl}/${id}`);
   }
 
+  
+  getFileByUrl(imageUrl: string): Observable<SpringApiResponse<FileDto>> {
+    const body = { url: imageUrl };
+    return this.http.post<SpringApiResponse<FileDto>>(`${this.apiUrl}/by-url`, body);
+  }
+
   createFile(file: any): Observable<any> {
     return this.http.post<any>(this.apiUrl, file);
   }

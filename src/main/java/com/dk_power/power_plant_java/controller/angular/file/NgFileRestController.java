@@ -20,6 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NgFileRestController {
     private final NgFileService ngFileService;
+
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<FileDto>>> getPaginatedFiles(
             @RequestParam(defaultValue = "1") int page,
@@ -27,8 +28,8 @@ public class NgFileRestController {
         try {
 //            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
             Page<FileDto> paginatedFiles = ngFileService.findAllWithProjectionPaginated(
-                    new ArrayList<>(Arrays.asList("id","fileNumber", "name", "relatedSystems", "fileLink", "fileType.id","fileType.name", "vendor.name", "vendor.id")),
-                    PageRequest.of(page-1, pageSize)).map(ngFileService::toDto);
+                    new ArrayList<>(Arrays.asList("id", "fileNumber", "name", "relatedSystems", "fileLink", "fileType.id", "fileType.name", "vendor.name", "vendor.id")),
+                    PageRequest.of(page - 1, pageSize)).map(ngFileService::toDto);
             NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
 //            return ResponseEntity.ok(response);
@@ -52,7 +53,7 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
-    
+
     @PostMapping("/search")
     public ResponseEntity<NgApiResponse<Page<FileDto>>> searchFiles(
             @RequestBody SearchCriteria criteria,
@@ -60,12 +61,28 @@ public class NgFileRestController {
             @RequestParam(defaultValue = "50") int pageSize) {
         try {
             Page<FileDto> searchResults = null;
-            if(criteria.getType().equals(SearchCriteria.SearchType.COLUMN)){
-                searchResults = ngFileService.complexSearch(criteria, page-1, pageSize, "fileNumber", "asc",true);
+            if (criteria.getType().equals(SearchCriteria.SearchType.COLUMN)) {
+                searchResults = ngFileService.complexSearch(criteria, page - 1, pageSize, "fileNumber", "asc", true);
             } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
-                searchResults = ngFileService.complexSearch(criteria.getQuery(), page-1, pageSize);
+                searchResults = ngFileService.complexSearch(criteria.getQuery(), page - 1, pageSize);
             }
             NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/by-url")
+    public ResponseEntity<NgApiResponse<FileDto>> getFileByUrl(@RequestBody Map<String, String> body) {
+        String url = body.get("url");
+        try {
+            FileDto fileDto = ngFileService.findByFileLink(url);
+            if (fileDto == null) {
+                return ResponseEntity.notFound().build();
+            }
+            NgApiResponse<FileDto> response = new NgApiResponse<>(fileDto, "File retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();

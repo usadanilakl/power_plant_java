@@ -85,4 +85,13 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
         Optional<FileObject> byId = fileRepo.findById(id);
         return byId.map(this::toDto);
     }
+
+public FileDto findByFileLink(String imageUrl) {
+    // Remove "http://localhost:port/" if present
+    String url = imageUrl.trim().replaceFirst("^(https?://localhost(:\\d+)?)/", "");
+    FileObject byFileLink = fileRepo.findByFileLink(url);
+    if(byFileLink == null) throw new RuntimeException("File not found for link: " + imageUrl);
+    // Now use the cleaned url to find the FileObject
+    return this.toDto(byFileLink);
+}
 }

@@ -9,11 +9,11 @@
   @if (imageUrls$ | async; as imageUrls) {
     <app-image-carousel
       [images]="imageUrls"
-      (imageClick)="onOpenImage()">
+      [equipmentFilter]="isEquipmentFilterInitialized ? equipmentFilter : []">
     </app-image-carousel>
   }
 
-  <button type="button" (click)="onOpenImage()">Open Image</button>
+  <!-- <button type="button" (click)="onOpenImage()">Open Image</button> -->
 } @else {
   <p>Loading form...</p>
 }

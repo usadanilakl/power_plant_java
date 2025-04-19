@@ -8,6 +8,20 @@
   <button class="nav-button right" (click)="scrollToRight()">&gt;</button>
 </div>
 
+@if(isImagePopupOpen){
+  <app-popup
+    [isOpen]="isImagePopupOpen"
+    [title]="'Image View'"
+    [contentComponent]="ImageZoomInteractiveComponent"
+    [contentInputs]="{
+      imageUrl: (selectedImage$ | async)?.fileLink,
+      imageName: (selectedImage$ | async)?.name,
+      elements: elements$
+    }"
+    (close)="isImagePopupOpen = false"
+  ></app-popup>
+}
+
 <!-- <div class="carousel-container">
   <button class="nav-button left" (click)="scrollToLeft()">&lt;</button>
   <div class="carousel" #carousel>
