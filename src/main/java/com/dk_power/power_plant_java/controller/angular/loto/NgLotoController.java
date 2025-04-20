@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/ng/lotos")
@@ -78,10 +79,10 @@ public class NgLotoController {
 
 
     @GetMapping("/{id}/related-images")
-    public ResponseEntity<NgApiResponse<List<String>>> getRelatedImages(@PathVariable Long id) {
+    public ResponseEntity<NgApiResponse<Set<String>>> getRelatedImages(@PathVariable Long id) {
         try {
-            List<String> relatedImages = ngLotoService.getRelatedImages(id);
-            NgApiResponse<List<String>> response = new NgApiResponse<>(relatedImages, "Related images retrieved successfully");
+            Set<String> relatedImages = ngLotoService.getRelatedImages(id);
+            NgApiResponse<Set<String>> response = new NgApiResponse<>(relatedImages, "Related images retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();

@@ -84,13 +84,13 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return complexSearch(sc, page, size, "socNum", "asc", false);
     }
 
-    public List<String> getRelatedImages(Long id) {
+    public Set<String> getRelatedImages(Long id) {
         return repo.findById(id)
                 .map(loto -> loto.getLotoPoints().stream()
                         .map(l -> lotoPointService.getRelatedImages(l.getId()))
-                        .flatMap(List::stream)
-                        .collect(Collectors.toList()))
-                .orElse(Collections.emptyList());
+                        .flatMap(set -> set.stream())
+                        .collect(Collectors.toSet()))
+                .orElse(Collections.emptySet());
     }
 
     @Override

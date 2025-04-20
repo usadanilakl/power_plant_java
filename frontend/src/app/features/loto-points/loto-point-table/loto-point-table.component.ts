@@ -5,7 +5,7 @@ import { Column } from '../../../models/column.model';
 import { LotoPointDetailFormComponent } from "../loto-point-detail-form/loto-point-detail-form.component";
 import { PopupComponent } from "../../../shared/popup/popup.component";
 import { LotoPointService } from '../../../services/loto/loto-point.service';
-import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, Subject, take, takeUntil, tap } from 'rxjs';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
@@ -18,7 +18,12 @@ import { SearchCriteria } from '../../../models/api/search-criteria.model';
   templateUrl: './loto-point-table.component.html',
 })
 export class LotoPointTableComponent implements OnInit {
-  @Input() clientSideData: LotoPointDto[] | null = null;
+  private destroy$ = new Subject<void>();
+  // @Input() clientSideData: LotoPointDto[] | null = null;
+  @Input() submitCallback?: (data: any) => void;
+  @Input() deleteCallback?: (id: number) => void;
+
+  @Input() clientSideData$: Observable<LotoPointDto[]> | null = null;
 
   columns: Column[] = [
     { id: 'id', header: 'ID', accessorKey: 'id' },
@@ -50,24 +55,32 @@ export class LotoPointTableComponent implements OnInit {
   relatedImages$ = this.relatedImagesSubject.asObservable();
 
   ngOnInit() {
-    if (this.clientSideData) {
-      this.initializeClientSideData();
+    if (this.clientSideData$) {
+      this.clientSideData$.pipe(
+        takeUntil(this.destroy$) // Don't forget to implement OnDestroy and create this Subject
+      ).subscribe(data => {
+        if (data) {
+          this.initialItemsSubject.next(data);
+        }
+      });
     } else {
       this.loadItems();
     }
   }
 
-  private initializeClientSideData() {
-    this.initialItemsSubject.next(this.clientSideData || []);
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
+
   loadItems(): void {
-    if (this.clientSideData) {
+    if (this.clientSideData$) {
       this.updateClientSideData();
     } else {
       if (this.isLoading) return;
       this.isLoading = true;
-
+  
       this.lotoPointService.getLotoPoints(this.currentPage, this.pageSize).pipe(
         map((response: SpringPaginatedResponse<LotoPointDto[]>) => 
           response.responseData.content.map(item => LotoPointDto.fromJson(item))
@@ -89,7 +102,7 @@ export class LotoPointTableComponent implements OnInit {
   }
 
   private performSearch(criteria: SearchCriteria) {
-    if (this.clientSideData) {
+    if (this.clientSideData$) {
       this.updateClientSideData(criteria);
     } else {
       this.lotoPointService.searchLotoPoints(criteria, this.pageSize).pipe(
@@ -113,24 +126,25 @@ export class LotoPointTableComponent implements OnInit {
   }
 
   private updateClientSideData(criteria?: SearchCriteria) {
-    let filteredData = this.clientSideData || [];
-
-    if (criteria) {
-      filteredData = this.applySearchCriteria(filteredData, criteria);
-    }
-
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-    const paginatedData = filteredData.slice(startIndex, endIndex);
-
-    if (this.currentPage === 1) {
-      this.initialItemsSubject.next(paginatedData);
-    } else {
-      const currentItems = this.initialItemsSubject.value;
-      this.initialItemsSubject.next([...currentItems, ...paginatedData]);
-    }
+    if (!this.clientSideData$) return;
+  
+    this.clientSideData$.pipe(
+      take(1),
+      map(data => criteria ? this.applySearchCriteria(data, criteria) : data)
+    ).subscribe(filteredData => {
+      const startIndex = (this.currentPage - 1) * this.pageSize;
+      const endIndex = startIndex + this.pageSize;
+      const paginatedData = filteredData.slice(startIndex, endIndex);
+  
+      if (this.currentPage === 1) {
+        this.initialItemsSubject.next(paginatedData);
+      } else {
+        const currentItems = this.initialItemsSubject.value;
+        this.initialItemsSubject.next([...currentItems, ...paginatedData]);
+      }
+    });
   }
-
+  
   private applySearchCriteria(data: LotoPointDto[], criteria: SearchCriteria): LotoPointDto[] {
     return data.filter(item => {
       return Object.entries(criteria).every(([key, value]) => {
@@ -149,33 +163,45 @@ export class LotoPointTableComponent implements OnInit {
       console.error('No item selected for update');
       return;
     }
-
+  
     console.log('Form submitted with data:', formData);
-
-    // Implement update logic here
+  
+    if (this.submitCallback) {
+      // Use the provided callback
+      this.submitCallback(formData);
+    } else {
+      // Default behavior
+      const updatedItem = new LotoPointDto({ ...this.selectedItem, ...formData });
+      // Implement your default update logic here
+      console.log('Updating item with default behavior:', updatedItem);
+    }
+  
+    this.closePopup();
   }
 
   resetAndLoadItems(): void {
     this.currentPage = 1;
-    if (this.clientSideData) {
-      this.initializeClientSideData();
+    if (this.clientSideData$) {
+      this.clientSideData$.pipe(take(1)).subscribe(data => {
+        this.initialItemsSubject.next(data);
+      });
     } else {
       this.initialItemsSubject.next([]);
       this.loadItems();
     }
   }
-
+  
   onSearch(criteria: SearchCriteria) {
     this.currentPage = 1;
-    if (this.clientSideData) {
+    if (this.clientSideData$) {
       this.updateClientSideData(criteria);
     } else {
       this.performSearch(criteria);
     }
   }
-
+  
   loadMoreItems(criteria: SearchCriteria | void) {
-    if (this.clientSideData) {
+    if (this.clientSideData$) {
       this.currentPage++;
       this.updateClientSideData(criteria as SearchCriteria);
     } else {
@@ -214,7 +240,15 @@ export class LotoPointTableComponent implements OnInit {
 
   onFormDelete() {
     if (this.selectedItem) {
-      // Implement delete logic here
+      if (this.deleteCallback) {
+        // Use the provided callback
+        this.deleteCallback(this.selectedItem.id);
+      } else {
+        // Default behavior
+        console.log('Deleting item with default behavior:', this.selectedItem.id);
+        // Implement your default delete logic here
+      }
+      this.closePopup();
     }
   }
   

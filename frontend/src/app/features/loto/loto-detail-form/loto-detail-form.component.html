@@ -17,12 +17,15 @@
     <div class="modal-content">
       <div class="table-container left">
         <h2>All LOTO Points</h2>
-        <app-loto-point-table></app-loto-point-table>
+        <app-loto-point-table
+        [submitCallback]="onSelectPoint"
+        ></app-loto-point-table>
       </div>
       <div class="table-container right">
         <h2>Selected LOTO Points</h2>
         <app-loto-point-table
-          [clientSideData]="selectedLotoPoints"
+          [clientSideData$]="selectedLotoPoints$"
+          [deleteCallback]="onRemovePoint"
         ></app-loto-point-table>
       </div>
       <div class="modal-actions">

@@ -53,12 +53,16 @@ export class LotoDetailFormComponent implements OnInit {
   isFormReady = false;
 
   isAddPointsPopupOpen = false;
-  selectedLotoPoints: LotoPointDto[] = [];
+  private selectedLotoPointsSubject = new BehaviorSubject<LotoPointDto[]>([]);
+  selectedLotoPoints$ = this.selectedLotoPointsSubject.asObservable();
 
   constructor(
     private sharedDataService: SharedDataService,
     private destroyRef: DestroyRef
-  ) {}
+  ) {
+    this.onSelectPoint = this.onSelectPoint.bind(this);
+    this.onRemovePoint = this.onRemovePoint.bind(this);
+  }
   
   ngOnInit() {
     forkJoin({
@@ -116,6 +120,7 @@ export class LotoDetailFormComponent implements OnInit {
     if (this.formSubmit) {
       this.formSubmit(formData);
     }
+    console.log('Form submitted:', formData);
     this.formSubmitEvent.emit(formData);
   }
 
@@ -140,18 +145,25 @@ export class LotoDetailFormComponent implements OnInit {
   
 
   onSelectPoint(point: LotoPointDto) {
-    if (!this.selectedLotoPoints.some(p => p.id === point.id)) {
-      this.selectedLotoPoints.push(point);
+    const currentPoints = this.selectedLotoPointsSubject.value;
+    if (!currentPoints.some(p => p.id === point.id)) {
+      const updatedPoints = [...currentPoints, point];
+      this.selectedLotoPointsSubject.next(updatedPoints);
+      console.log('Selected points:', updatedPoints);
     }
   }
-
-  onRemovePoint(point: LotoPointDto) {
-    this.selectedLotoPoints = this.selectedLotoPoints.filter(p => p.id !== point.id);
+  
+  onRemovePoint(pointId: number) {
+    const currentPoints = this.selectedLotoPointsSubject.value;
+    const updatedPoints = currentPoints.filter(p => p.id !== pointId);
+    this.selectedLotoPointsSubject.next(updatedPoints);
+    console.log('Selected points after removal:', updatedPoints);
   }
 
   onSaveSelectedPoints() {
-    // Here you would typically save the selected points to your form or send to a service
-    console.log('Saving selected points:', this.selectedLotoPoints);
+    const selectedPoints = this.selectedLotoPointsSubject.value;
+    console.log('Saving selected points:', selectedPoints);
+    // Implement your save logic here
     this.isAddPointsPopupOpen = false;
   }
 
