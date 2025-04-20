@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import lombok.RequiredArgsConstructor;
@@ -89,4 +90,23 @@ public class NgLotoController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<NgApiResponse<LotoDto>> updateLoto(@PathVariable Long id, @RequestBody LotoDto lotoDto) {
+        try {
+            if (!id.equals(lotoDto.getId())) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "ID in path does not match ID in body"));
+            }
+
+            Loto updatedLoto = ngLotoService.update(lotoDto);
+            LotoDto updatedLotoDto = ngLotoService.toDto(updatedLoto);
+            NgApiResponse<LotoDto> response = new NgApiResponse<>(updatedLotoDto, "LOTO updated successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error updating LOTO: " + e.getMessage()));
+        }
+    }
+
+
 }

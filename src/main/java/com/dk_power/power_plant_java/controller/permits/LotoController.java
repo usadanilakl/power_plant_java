@@ -79,7 +79,7 @@ public class LotoController {
     }
     @PostMapping("/edit")
     public String updateLoto(@ModelAttribute LotoDto loto){
-        LotoBox lotoBox = boxService.getBoxById(loto.getBox().getId());
+        LotoBox lotoBox = boxService.getBoxById(loto.getLotoBox().getId());
         Loto entity = lotoService.convertToEntity(loto);
         entity.setLotoBox(lotoBox);
         lotoBox.setLoto(entity);

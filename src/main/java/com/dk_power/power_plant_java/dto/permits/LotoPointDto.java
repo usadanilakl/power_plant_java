@@ -3,6 +3,9 @@ package com.dk_power.power_plant_java.dto.permits;
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,6 +16,9 @@ import java.util.Set;
 @NoArgsConstructor
 @Getter
 @Setter
+@JsonIdentityInfo(
+        generator = ObjectIdGenerators.PropertyGenerator.class,
+        property = "id")
 public class LotoPointDto extends BaseDto {
     private String unit;
     private String tagged;
@@ -35,6 +41,7 @@ public class LotoPointDto extends BaseDto {
 //    private String electricalCheckStatus;
 //    private String redTagId;
 //    private Boolean inUse = false;
+//    @JsonBackReference
     private List<LotoDto> lotos;
     private Set<EquipmentDto> equipmentList;
     private String oldId;

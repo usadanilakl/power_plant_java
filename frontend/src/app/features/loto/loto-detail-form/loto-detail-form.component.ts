@@ -99,7 +99,7 @@ export class LotoDetailFormComponent implements OnInit {
 
   private initializeFields() {
     this.fields = [
-      { name: 'socNum', label: 'LOTO Number', type: 'text', validators: [Validators.required] },
+      { name: 'docNum', label: 'LOTO Number', type: 'text', validators: [Validators.required] },
       { name: 'workScope', label: 'Scope of work', type: 'text', validators: [Validators.required] },
       { name: 'status.name', label: 'Status', type: 'select', options: this.lotoStatusOptions },
       { name: 'requestor.name', label: 'Start Date', type: 'date' },

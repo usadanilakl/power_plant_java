@@ -101,6 +101,11 @@ public interface NgCrudService<
         return getRepo().save(entity);
     }
 
+    default E update(D dto) {
+        E entity = toEntity(dto);
+        return update(entity);
+    }
+
     default E update(String id) {
         return getRepo().save(getEntityById(id));
     }

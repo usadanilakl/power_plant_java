@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.sevice.angular.NgUserService;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
@@ -8,11 +9,11 @@ import com.dk_power.power_plant_java.sevice.angular.loto.NgLockService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoBoxService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
-import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -52,7 +53,7 @@ public LotoDto convertToDto(Loto loto){
     if(loto.getId()!=null) dto.setId(loto.getId());
     if(loto.getLotoPoints()!=null && !loto.getLotoPoints().isEmpty()) dto.setLotoPoints(loto.getLotoPoints().stream().map(lotoPointService::toDto).collect(Collectors.toList()));
     if(loto.getLocks()!=null && !loto.getLocks().isEmpty()) dto.setLocks(loto.getLocks().stream().map(lockService::toDto).collect(Collectors.toList()));
-    if(loto.getLotoBox()!=null) dto.setBox(lotoBoxService.toDto(loto.getLotoBox()));
+    if(loto.getLotoBox()!=null) dto.setLotoBox(lotoBoxService.toDto(loto.getLotoBox()));
     if(loto.getControlAuthority()!=null) dto.setControlAuthority(userService.toDto(loto.getControlAuthority()));
     
     // Adding the rest of the fields
@@ -77,7 +78,7 @@ public Loto convertToEntity(LotoDto lotoDto) {
         loto.setLotoPoints(lotoDto.getLotoPoints().stream().map(lotoPointService::toEntity).collect(Collectors.toList()));
     if (lotoDto.getLocks() != null && !lotoDto.getLocks().isEmpty()) 
         loto.setLocks(lotoDto.getLocks().stream().map(lockService::toEntity).collect(Collectors.toList()));
-    if (lotoDto.getBox() != null) loto.setLotoBox(lotoBoxService.toEntity(lotoDto.getBox()));
+    if (lotoDto.getLotoBox() != null) loto.setLotoBox(lotoBoxService.toEntity(lotoDto.getLotoBox()));
     if (lotoDto.getControlAuthority() != null) loto.setControlAuthority(userService.toEntity(lotoDto.getControlAuthority()));
     
     if (lotoDto.getWorkScope() != null) loto.setWorkScope(lotoDto.getWorkScope());
@@ -91,5 +92,57 @@ public Loto convertToEntity(LotoDto lotoDto) {
     if (lotoDto.getTemp() != null) loto.setTemp(lotoDto.getTemp());
     
     return loto;
+}
+
+public void updateEntityFromDto(LotoDto dto, Loto entity) {
+    if (dto == null || entity == null) {
+        return;
+    }
+
+    // Update basic fields
+    if (dto.getId() != null) entity.setId(dto.getId());
+    if (dto.getDeleted() != null) entity.setDeleted(dto.getDeleted());
+    if (dto.getName() != null) entity.setName(dto.getName());
+    if (dto.getNote() != null) entity.setNote(dto.getNote());
+    if (dto.getCreatedBy() != null) entity.setCreatedBy(dto.getCreatedBy());
+    if (dto.getObjectType() != null) entity.setObjectType(dto.getObjectType());
+    if (dto.getDataServiceItemId() != null) entity.setDataServiceItemId(dto.getDataServiceItemId());
+    if (dto.getRefactorNotes() != null) entity.setRefactorNotes(dto.getRefactorNotes());
+    if (dto.getDateCreated() != null) entity.setDateCreated(dto.getDateCreated());
+    if (dto.getDateModified() != null) entity.setDateModified(dto.getDateModified());
+
+    if (dto.getWorkScope() != null) entity.setWorkScope(dto.getWorkScope());
+    if (dto.getDocNum() != null) entity.setDocNum(dto.getDocNum());
+    if (dto.getTemp() != null) entity.setTemp(dto.getTemp());
+
+    // Update Value entities (assuming these are simple relationships)
+    if (dto.getSystem() != null) {
+        entity.setSystem(valueService.valueToEntity(dto.getSystem()));
+    }
+    if (dto.getPermitStatus() != null) {
+        entity.setPermitStatus(valueService.valueToEntity(dto.getPermitStatus()));
+    }
+    if (dto.getPermitType() != null) {
+        entity.setPermitType(valueService.valueToEntity(dto.getPermitType()));
+    }
+
+    // Update User entities
+    if (dto.getRequestor() != null) {
+        entity.setRequestor(userService.toEntity(dto.getRequestor()));
+    }
+    if (dto.getControlAuthority() != null) {
+        entity.setControlAuthority(userService.toEntity(dto.getControlAuthority()));
+    }
+
+    // Update Equipment set
+    if (dto.getEquipment() != null) {
+        Set<Equipment> updatedEquipment = dto.getEquipment().stream()
+                .map(equipmentService::convertToEntity)
+                .collect(Collectors.toSet());
+        entity.setEquipment(updatedEquipment);
+    }
+
+    // Don't update relationships here (LotoBox, Locks, LotoPoints)
+    // These are handled separately in the service layer
 }
 }

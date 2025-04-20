@@ -20,9 +20,9 @@ import { SearchCriteria } from '../../../models/api/search-criteria.model';
 export class LotoTableComponent implements OnInit {
   columns: Column[] = [
     { id: 'id', header: 'ID', accessorKey: 'id' },
-    { id: 'number', header: 'LOTO Number', accessorKey: 'number' },
-    { id: 'description', header: 'Description', accessorKey: 'description' },
-    { id: 'status', header: 'Status', accessorKey: 'status.name' },
+    { id: 'docNum', header: 'LOTO Number', accessorKey: 'docNum' },
+    { id: 'workScope', header: 'Description', accessorKey: 'workScope' },
+    { id: 'status.name', header: 'Status', accessorKey: 'status.name' },
     { id: 'startDate', header: 'Start Date', accessorKey: 'startDate' },
     { id: 'endDate', header: 'End Date', accessorKey: 'endDate' }
   ];
