@@ -10,11 +10,14 @@ import { ImageCarouselComponent } from "../../../shared/image/image-carusel/imag
 import { CommonModule  } from '@angular/common';
 import { LotoDto } from '../../../models/loto/loto.model';
 import { NonNullablePipe } from "../../../pipes/nonNullable.pipe";
+import { PopupComponent } from "../../../shared/popup/popup.component";
+import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
+import { LotoPointDto } from '../../../models/loto/loto-point.model';
 
 @Component({
   selector: 'app-loto-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe],
+  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, PopupComponent, LotoPointTableComponent],
   templateUrl: './loto-detail-form.component.html',
   styleUrl: './loto-detail-form.component.css'
 })
@@ -48,6 +51,9 @@ export class LotoDetailFormComponent implements OnInit {
 
   fields: any[] = [];
   isFormReady = false;
+
+  isAddPointsPopupOpen = false;
+  selectedLotoPoints: LotoPointDto[] = [];
 
   constructor(
     private sharedDataService: SharedDataService,
@@ -86,14 +92,10 @@ export class LotoDetailFormComponent implements OnInit {
   private initializeFields() {
     this.fields = [
       { name: 'socNum', label: 'LOTO Number', type: 'text', validators: [Validators.required] },
-      { name: 'description', label: 'Description', type: 'text', validators: [Validators.required] },
-      { name: 'status', label: 'Status', type: 'select', options: this.lotoStatusOptions },
-      { name: 'startDate', label: 'Start Date', type: 'date' },
-      { name: 'endDate', label: 'End Date', type: 'date' },
-      { name: 'createdBy', label: 'Created By', type: 'text', disabled: true },
-      { name: 'createdDate', label: 'Created Date', type: 'date', disabled: true },
-      { name: 'lastModifiedBy', label: 'Last Modified By', type: 'text', disabled: true },
-      { name: 'lastModifiedDate', label: 'Last Modified Date', type: 'date', disabled: true },
+      { name: 'workScope', label: 'Scope of work', type: 'text', validators: [Validators.required] },
+      { name: 'status.name', label: 'Status', type: 'select', options: this.lotoStatusOptions },
+      { name: 'requestor.name', label: 'Start Date', type: 'date' },
+      { name: 'controlAuthority.name', label: 'End Date', type: 'date' }
     ];
   }
 
@@ -129,5 +131,31 @@ export class LotoDetailFormComponent implements OnInit {
       this.openImage();
     }
     this.openImageEvent.emit();
+  }
+
+  onAddPoints(){
+    this.isAddPointsPopupOpen=true;
+  }
+
+  
+
+  onSelectPoint(point: LotoPointDto) {
+    if (!this.selectedLotoPoints.some(p => p.id === point.id)) {
+      this.selectedLotoPoints.push(point);
+    }
+  }
+
+  onRemovePoint(point: LotoPointDto) {
+    this.selectedLotoPoints = this.selectedLotoPoints.filter(p => p.id !== point.id);
+  }
+
+  onSaveSelectedPoints() {
+    // Here you would typically save the selected points to your form or send to a service
+    console.log('Saving selected points:', this.selectedLotoPoints);
+    this.isAddPointsPopupOpen = false;
+  }
+
+  onCloseModal() {
+    this.isAddPointsPopupOpen = false;
   }
 }

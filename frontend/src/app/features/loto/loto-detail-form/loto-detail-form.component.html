@@ -10,6 +10,29 @@
     [images]="imageUrls$ | async | nonNullable"
     [equipmentFilter]="lotoPointsFilter$ | async | nonNullable"
   ></app-image-carousel>
+
+  <button type="button" (click)="onAddPoints()">Add LOTO Points</button>
+
+@if(isAddPointsPopupOpen){  <div class="full-screen-overlay">
+    <div class="modal-content">
+      <div class="table-container left">
+        <h2>All LOTO Points</h2>
+        <app-loto-point-table></app-loto-point-table>
+      </div>
+      <div class="table-container right">
+        <h2>Selected LOTO Points</h2>
+        <app-loto-point-table
+          [clientSideData]="selectedLotoPoints"
+        ></app-loto-point-table>
+      </div>
+      <div class="modal-actions">
+        <button (click)="onSaveSelectedPoints()">Save</button>
+        <button (click)="onCloseModal()">Close</button>
+      </div>
+    </div>
+  </div>
+}
+
 } @else {
     <p>Loading form...</p>
   }
