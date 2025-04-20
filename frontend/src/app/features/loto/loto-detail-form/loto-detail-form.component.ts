@@ -33,8 +33,11 @@ export class LotoDetailFormComponent implements OnInit {
     this._selectedItem = value;
     if (value) {
       this.initializeFilters();
+      // Initialize selectedLotoPointsSubject with current LOTO points
+      this.selectedLotoPointsSubject.next(value.lotoPoints || []);
     } else {
-      this.lotoPointsFilter$.next([]);  // Emit an empty array when there's no selected item
+      this.lotoPointsFilter$.next([]);
+      this.selectedLotoPointsSubject.next([]);
     }
   }
   
@@ -45,6 +48,7 @@ export class LotoDetailFormComponent implements OnInit {
   @Output() openImageEvent = new EventEmitter<void>();
   @Output() formSubmitEvent = new EventEmitter<any>();
   @Output() formDeleteEvent = new EventEmitter<void>();
+  @Output() lotoUpdated = new EventEmitter<LotoDto>();
 
   private lotoStatusOptions = new BehaviorSubject<Option[]>([]);
   lotoPointsFilter$ = new BehaviorSubject<{ key: string; filterFn: (value: any) => boolean }[]>([]);
@@ -117,11 +121,17 @@ export class LotoDetailFormComponent implements OnInit {
   }
 
   onFormSubmit(formData: any) {
+    // The selectedItem already contains the updated LOTO points
+    const updatedFormData = {
+      ...formData,
+      lotoPoints: this.selectedItem?.lotoPoints || []
+    };
+  
     if (this.formSubmit) {
-      this.formSubmit(formData);
+      this.formSubmit(updatedFormData);
     }
-    console.log('Form submitted:', formData);
-    this.formSubmitEvent.emit(formData);
+    console.log('Form submitted:', updatedFormData);
+    this.formSubmitEvent.emit(updatedFormData);
   }
 
   onFormDelete() {
@@ -149,7 +159,6 @@ export class LotoDetailFormComponent implements OnInit {
     if (!currentPoints.some(p => p.id === point.id)) {
       const updatedPoints = [...currentPoints, point];
       this.selectedLotoPointsSubject.next(updatedPoints);
-      console.log('Selected points:', updatedPoints);
     }
   }
   
@@ -157,13 +166,25 @@ export class LotoDetailFormComponent implements OnInit {
     const currentPoints = this.selectedLotoPointsSubject.value;
     const updatedPoints = currentPoints.filter(p => p.id !== pointId);
     this.selectedLotoPointsSubject.next(updatedPoints);
-    console.log('Selected points after removal:', updatedPoints);
   }
 
+  
   onSaveSelectedPoints() {
     const selectedPoints = this.selectedLotoPointsSubject.value;
     console.log('Saving selected points:', selectedPoints);
-    // Implement your save logic here
+  
+    if (this.selectedItem) {
+      // Update the selectedItem with the new LOTO points
+      this.selectedItem.lotoPoints = selectedPoints;
+  
+      console.log('Updated LOTO points:', this.selectedItem.lotoPoints);
+  
+      // Emit an event to notify the parent component of the update
+      this.lotoUpdated.emit(this.selectedItem);
+    } else {
+      console.error('No LOTO item selected');
+    }
+  
     this.isAddPointsPopupOpen = false;
   }
 

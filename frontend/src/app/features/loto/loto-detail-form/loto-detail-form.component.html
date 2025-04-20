@@ -6,12 +6,28 @@
     (formDelete)="onFormDelete()"
   ></app-details-form>
 
-  <app-image-carousel
+  <!-- <app-image-carousel
     [images]="imageUrls$ | async | nonNullable"
     [equipmentFilter]="lotoPointsFilter$ | async | nonNullable"
-  ></app-image-carousel>
+  ></app-image-carousel> -->
+  @if (imageUrls$ | async; as imageUrls) {
+    @if (imageUrls.length > 0) {
+      <app-image-carousel
+        [images]="imageUrls"
+        [equipmentFilter]="lotoPointsFilter$ | async | nonNullable">
+      </app-image-carousel>
+    } @else {
+      <p>No images found.</p>
+    }
+  } @else {
+    <p>Loading images...</p>
+  }
 
   <button type="button" (click)="onAddPoints()">Add LOTO Points</button>
+  <app-loto-point-table
+    [clientSideData$]="selectedLotoPoints$"
+    [deleteCallback]="onRemovePoint"
+  ></app-loto-point-table>
 
 @if(isAddPointsPopupOpen){  <div class="full-screen-overlay">
     <div class="modal-content">

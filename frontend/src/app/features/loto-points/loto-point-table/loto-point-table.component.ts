@@ -167,8 +167,10 @@ export class LotoPointTableComponent implements OnInit {
     console.log('Form submitted with data:', formData);
   
     if (this.submitCallback) {
+      
+      const itemToAdd = new LotoPointDto({ ...this.selectedItem, ...formData });
       // Use the provided callback
-      this.submitCallback(formData);
+      this.submitCallback(itemToAdd);
     } else {
       // Default behavior
       const updatedItem = new LotoPointDto({ ...this.selectedItem, ...formData });

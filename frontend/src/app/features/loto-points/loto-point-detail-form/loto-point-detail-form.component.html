@@ -7,10 +7,16 @@
   </app-details-form>
 
   @if (imageUrls$ | async; as imageUrls) {
-    <app-image-carousel
-      [images]="imageUrls"
-      [equipmentFilter]="equipmentFilter$ | async | nonNullable">">
-    </app-image-carousel>
+    @if (imageUrls.length > 0) {
+      <app-image-carousel
+        [images]="imageUrls"
+        [equipmentFilter]="equipmentFilter$ | async | nonNullable">
+      </app-image-carousel>
+    } @else {
+      <p>No images found.</p>
+    }
+  } @else {
+    <p>Loading images...</p>
   }
 
   <!-- <button type="button" (click)="onOpenImage()">Open Image</button> -->
