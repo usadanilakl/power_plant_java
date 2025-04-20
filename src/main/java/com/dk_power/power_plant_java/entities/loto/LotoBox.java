@@ -2,7 +2,6 @@ package com.dk_power.power_plant_java.entities.loto;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.enums.Status;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.envers.Audited;
@@ -13,8 +12,8 @@ import org.hibernate.envers.Audited;
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
-
-public class Box extends BaseAuditEntity {
+@Table(name = "loto_boxes")
+public class LotoBox extends BaseAuditEntity {
     private Integer number = 0;
     @OneToOne
     @JoinColumn(name = "loto")

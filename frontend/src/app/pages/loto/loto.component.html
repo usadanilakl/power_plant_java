@@ -1,1 +1,7 @@
-<p>loto works!</p>
+<div class="loto-navigation">
+  @for (category of categories; track category.name) {
+    <button [routerLink]="category.route">{{ category.name }}</button>
+  }
+</div>
+
+<router-outlet></router-outlet>

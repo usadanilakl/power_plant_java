@@ -1,0 +1,8 @@
+@if (isFormReady) {
+  <app-details-form
+    [fields]="fields"
+    [values]="values"
+    (formSubmit)="onFormSubmit($event)"
+    (formDelete)="onFormDelete()"
+  ></app-details-form>
+}

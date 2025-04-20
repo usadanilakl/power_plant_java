@@ -9,7 +9,7 @@
   @if (imageUrls$ | async; as imageUrls) {
     <app-image-carousel
       [images]="imageUrls"
-            [equipmentFilter]="equipmentFilter$ | async | nonNullable">">
+      [equipmentFilter]="equipmentFilter$ | async | nonNullable">">
     </app-image-carousel>
   }
 

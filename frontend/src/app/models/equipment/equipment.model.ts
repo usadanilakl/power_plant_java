@@ -58,42 +58,49 @@ export class EquipmentDto implements EquipmentModel {
   // Serialization method
   toJson(): any {
     return {
-      tagNumber: this.tagNumber,
-      description: this.description,
-      specificLocation: this.specificLocation,
-      eqType: this.eqType.toJson(),
-      files: this.files,
-      vendor: this.vendor.toJson(),
-      location: this.location.toJson(),
-      system: this.system.toJson(),
-      coordinates: this.coordinates,
-      originalPictureSize: this.originalPictureSize,
-      mainFile: this.mainFile,
-      lotoPoints: Array.from(this.lotoPoints).map(point => point.toJson()),
-      isUpdated: this.isUpdated,
-      conflictStatus: this.conflictStatus,
-      isVerified: this.isVerified
+      tagNumber: this.tagNumber || '',
+      description: this.description || '',
+      specificLocation: this.specificLocation || '',
+      eqType: this.eqType ? this.eqType.toJson() : null,
+      files: Array.isArray(this.files) ? this.files : [],
+      vendor: this.vendor ? this.vendor.toJson() : null,
+      location: this.location ? this.location.toJson() : null,
+      system: this.system ? this.system.toJson() : null,
+      coordinates: this.coordinates || '',
+      originalPictureSize: this.originalPictureSize || '',
+      mainFile: this.mainFile || '',
+      lotoPoints: Array.from(this.lotoPoints || []).map(point => point ? point.toJson() : null).filter(Boolean),
+      isUpdated: this.isUpdated || '',
+      conflictStatus: this.conflictStatus || '',
+      isVerified: this.isVerified || false
     };
   }
 
   // Deserialization method (static)
   static fromJson(json: any): EquipmentDto {
+    if (!json) {
+      console.warn('Received null or undefined json in EquipmentDto.fromJson');
+      return new EquipmentDto();
+    }
+
     return new EquipmentDto({
-      tagNumber: json.tagNumber,
-      description: json.description,
-      specificLocation: json.specificLocation,
-      eqType: ValueDto.fromJson(json.eqType),
-      files: json.files,
-      vendor: ValueDto.fromJson(json.vendor),
-      location: ValueDto.fromJson(json.location),
-      system: ValueDto.fromJson(json.system),
-      coordinates: json.coordinates,
-      originalPictureSize: json.originalPictureSize,
-      mainFile: json.mainFile,
-      lotoPoints: new Set(json.lotoPoints.map((point: any) => LotoPointDto.fromJson(point))),
-      isUpdated: json.isUpdated,
-      conflictStatus: json.conflictStatus,
-      isVerified: json.isVerified
+      tagNumber: json.tagNumber || '',
+      description: json.description || '',
+      specificLocation: json.specificLocation || '',
+      eqType: json.eqType ? ValueDto.fromJson(json.eqType) : new ValueDto(),
+      files: Array.isArray(json.files) ? json.files : [],
+      vendor: json.vendor ? ValueDto.fromJson(json.vendor) : new ValueDto(),
+      location: json.location ? ValueDto.fromJson(json.location) : new ValueDto(),
+      system: json.system ? ValueDto.fromJson(json.system) : new ValueDto(),
+      coordinates: json.coordinates || '',
+      originalPictureSize: json.originalPictureSize || '',
+      mainFile: json.mainFile || '',
+      lotoPoints: new Set(Array.isArray(json.lotoPoints) 
+        ? json.lotoPoints.map((point: any) => LotoPointDto.fromJson(point))
+        : []),
+      isUpdated: json.isUpdated || '',
+      conflictStatus: json.conflictStatus || '',
+      isVerified: json.isVerified || false
     });
   }
 

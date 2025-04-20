@@ -4,7 +4,7 @@ import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
 import { LotoPointDetailFormComponent } from "../loto-point-detail-form/loto-point-detail-form.component";
 import { PopupComponent } from "../../../shared/popup/popup.component";
-import { LotoPointService } from '../../../services/loto-point.service';
+import { LotoPointService } from '../../../services/loto/loto-point.service';
 import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';

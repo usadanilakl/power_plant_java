@@ -1,0 +1,18 @@
+<app-shared-table
+  [columns]="columns"
+  [initialItems]="initialItems$"
+  (loadMoreItems)="loadMoreItems($event)"
+  (search)="onSearch($event)"
+  [clickCallback]="onItemClick">
+</app-shared-table>
+
+@if (isPopupOpen) {
+  <app-popup (close)="closePopup()">
+    <app-lock-detail-form
+      [values]="selectedItem"
+      [formSubmit]="onFormSubmit.bind(this)"
+      [formDelete]="onFormDelete.bind(this)"
+      [selectedItem]="selectedItem"
+    ></app-lock-detail-form>
+  </app-popup>
+}

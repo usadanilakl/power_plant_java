@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.entities.loto;
 
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
-import com.dk_power.power_plant_java.enums.PermitType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -19,11 +18,11 @@ import java.util.List;
 public class Loto extends BasePermitEntity {
 
     public Integer boxNumber(){
-        return this.getBox().getNumber();
+        return this.getLotoBox().getNumber();
     }
 
     @OneToOne(mappedBy = "loto")
-    private Box box;
+    private LotoBox lotoBox;
     @OneToMany(mappedBy = "loto")
     private List<Lock> locks;
     @JsonIgnore
@@ -34,9 +33,9 @@ public class Loto extends BasePermitEntity {
         lotoPoints.add(p);
     }
 
-    public Box getBox() {
-        if(box!=null)return box;
-        else return new Box();
+    public LotoBox getLotoBox() {
+        if(lotoBox !=null)return lotoBox;
+        else return new LotoBox();
     }
 
 }

@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { LotoBoxTableComponent } from './loto-box-table.component';
+import { LotoBoxTableComponent } from './loto-lotoBox-table.component';
 
 describe('LotoBoxTableComponent', () => {
   let component: LotoBoxTableComponent;

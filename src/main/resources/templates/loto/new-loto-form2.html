@@ -17,7 +17,7 @@
         }
         .orange{
           /* background-image: url(orange.jpg) !important; */
-          box-shadow: inset 0 0 0 1000px  orange;
+          lotoBox-shadow: inset 0 0 0 1000px  orange;
         }
         .green{
           background-color: rgb(140, 255, 0);
@@ -42,10 +42,10 @@
       }
       .orange{
           /* background-image: url(orange.jpg) !important; */
-          box-shadow: inset 0 0 0 1000px orange !important;
+          lotoBox-shadow: inset 0 0 0 1000px orange !important;
       }
       .green{
-        box-shadow: inset 0 0 0 1000px rgb(0, 255, 115) !important;
+        lotoBox-shadow: inset 0 0 0 1000px rgb(0, 255, 115) !important;
       }
     }
     </style>
@@ -83,10 +83,10 @@
                     <div class="col-xl-2 col-lg-2 col-md-2 col-sm-2 col-2 outline">
                         <div class="form-group">
                             <label for="boxDropdown">Box#</label>
-                            <select th:field="*{box}" id="boxDropdown" onchange="selectFunction()">
+                            <select th:field="*{lotoBox}" id="boxDropdown" onchange="selectFunction()">
                                 <option value="" >Select Box</option>
                                 <option
-                                        th:each="b:${boxes}"
+                                        th:each="b:${lotoBoxes}"
                                         th:text="${b.number}"
                                         th:value="${b.id}"
                                 ></option>
@@ -469,7 +469,7 @@
     });
 
     function createNewBoxPostRequest(){
-    fetch("/lotos/add-box", {
+    fetch("/lotos/add-lotoBox", {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': csrfToken,

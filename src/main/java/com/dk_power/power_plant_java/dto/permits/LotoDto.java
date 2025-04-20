@@ -11,9 +11,9 @@ import java.util.List;
 @Setter
 public class LotoDto extends BasePermitDto {
 
-    private List<LotoPoint> lotoPoints;
+    private List<LotoPointDto> lotoPoints;
     private List<LockDto> locks;
-    private BoxDto box;
+    private LotoBoxDto box;
 
 
 }

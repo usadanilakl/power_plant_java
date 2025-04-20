@@ -6,19 +6,19 @@ import { LotoBoxDto } from './loto-box.model';
 export interface LotoModel extends BasePermitModel {
   lotoPoints: LotoPointDto[];
   locks: LockDto[];
-  box: LotoBoxDto;
+  lotoBox: LotoBoxDto | null;
 }
 
 export class LotoDto extends BasePermitDto implements LotoModel {
   lotoPoints: LotoPointDto[];
   locks: LockDto[];
-  box: LotoBoxDto;
+  lotoBox: LotoBoxDto | null;
 
   constructor(data: Partial<LotoModel> = {}) {
     super(data);
     this.lotoPoints = data.lotoPoints?.map(point => new LotoPointDto(point)) ?? [];
     this.locks = data.locks?.map(lock => new LockDto(lock)) ?? [];
-    this.box = data.box ? new LotoBoxDto(data.box) : new LotoBoxDto();
+    this.lotoBox = data.lotoBox ? new LotoBoxDto(data.lotoBox, true) : null;
   }
 
   // Override toJson method
@@ -27,7 +27,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       ...super.toJson(),
       lotoPoints: this.lotoPoints.map(point => point.toJson()),
       locks: this.locks.map(lock => lock.toJson()),
-      box: this.box.toJson()
+      lotoBox: this.lotoBox?.toJson()
     };
   }
 
@@ -42,7 +42,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       ...super.fromJson(json),
       lotoPoints: (json.lotoPoints ?? []).map((point: any) => LotoPointDto.fromJson(point)),
       locks: (json.locks ?? []).map((lock: any) => LockDto.fromJson(lock)),
-      box: LotoBoxDto.fromJson(json.box)
+      lotoBox: json.lotoBox ? LotoBoxDto.fromJson(json.lotoBox, true) : null
     });
   }
 }

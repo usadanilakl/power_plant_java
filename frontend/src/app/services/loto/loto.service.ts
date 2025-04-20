@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
-import { LotoDto } from '../models/loto/loto.model';
-import { SpringApiResponse } from '../models/api/spring-api-response.model';
-import { SpringPaginatedResponse } from '../models/api/spring-pagenated.response.model';
-import { SearchCriteria } from '../models/api/search-criteria.model';
+import { environment } from '../../../environments/environment';
+import { LotoDto } from '../../models/loto/loto.model';
+import { SpringApiResponse } from '../../models/api/spring-api-response.model';
+import { SpringPaginatedResponse } from '../../models/api/spring-pagenated.response.model';
+import { SearchCriteria } from '../../models/api/search-criteria.model';
 
 @Injectable({
   providedIn: 'root'
@@ -52,5 +52,10 @@ export class LotoService {
 
   getRelatedDocuments(id: number): Observable<SpringApiResponse<string[]>> {
     return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/${id}/related-documents`);
+  }
+
+  
+  getRelatedImages(id: number): Observable<SpringApiResponse<string[]>> {
+    return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/${id}/related-images`);
   }
 }

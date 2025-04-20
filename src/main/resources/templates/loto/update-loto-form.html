@@ -56,10 +56,10 @@
                 </div>
                 <div class="form-group">
                     <label for="boxDropdown">Box</label>
-                    <select th:field="*{box}" id="boxDropdown" onchange="selectFunction()">
+                    <select th:field="*{lotoBox}" id="boxDropdown" onchange="selectFunction()">
                         <option value="" >Select Box</option>
                         <option
-                                th:each="b:${boxes}"
+                                th:each="b:${lotoBoxes}"
                                 th:text="${b.number+' '+b.equipment}"
                                 th:value="${b.id}"
                         ></option>
@@ -95,7 +95,7 @@ document.querySelectorAll('input').forEach(input => {
 
 function createNewBoxPostRequest(){
 
-fetch("/lotos/add-box", {
+fetch("/lotos/add-lotoBox", {
     method: 'POST',
     headers: {
         'X-CSRF-TOKEN': csrfToken,

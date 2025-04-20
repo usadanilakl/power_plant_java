@@ -1,1 +1,15 @@
-<p>loto-detail-form works!</p>
+@if (isFormReady) {
+  <app-details-form
+    [fields]="fields"
+    [values]="values"
+    (formSubmit)="onFormSubmit($event)"
+    (formDelete)="onFormDelete()"
+  ></app-details-form>
+
+  <app-image-carousel
+    [images]="imageUrls$ | async | nonNullable"
+    [equipmentFilter]="lotoPointsFilter$ | async | nonNullable"
+  ></app-image-carousel>
+} @else {
+    <p>Loading form...</p>
+  }

@@ -2,13 +2,11 @@ package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.mappers.LotoMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
-import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -16,9 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -29,6 +26,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     private final EntityManager entityManager;
     private final SessionFactory sessionFactory;
     private final NgValueService ngValueService;
+    private final NgLotoPointService lotoPointService;
 
     @Override
     public LotoRepo getRepo() {
@@ -73,8 +71,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return this.findById(id).map(this::toDto);
     }
 
-    public Page<LotoDto> complexSearch(String searchString, int page, int size){
-        Map<String,String> searchCriteria = new HashMap<>();
+    public Page<LotoDto> complexSearch(String searchString, int page, int size) {
+        Map<String, String> searchCriteria = new HashMap<>();
         searchCriteria.put("docNum", searchString);
         searchCriteria.put("workScope", searchString);
         searchCriteria.put("system.name", searchString);
@@ -83,6 +81,25 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         SearchCriteria sc = new SearchCriteria();
         sc.setFilters(searchCriteria);
 //        return complexSearch(sc).stream().map(this::toDto).toList();
-        return complexSearch(sc, page, size, "socNum", "asc",false);
+        return complexSearch(sc, page, size, "socNum", "asc", false);
+    }
+
+    public List<String> getRelatedImages(Long id) {
+        return repo.findById(id)
+                .map(loto -> loto.getLotoPoints().stream()
+                        .map(l -> lotoPointService.getRelatedImages(l.getId()))
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList()))
+                .orElse(Collections.emptyList());
+    }
+
+    @Override
+    public Loto toEntity(LotoDto dto) {
+        return mapper.convertToEntity(dto);
+    }
+
+    @Override
+    public LotoDto toDto(Loto entity) {
+        return mapper.convertToDto(entity);
     }
 }

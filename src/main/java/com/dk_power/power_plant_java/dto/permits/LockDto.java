@@ -16,7 +16,7 @@ import lombok.Setter;
 @Getter
 public class LockDto extends BaseDto {
     private Integer number = 0;
-    private Loto loto;
+    private LotoDto loto;
     private ValueDto lotoAccessoryStatus;
     private Long id;
 

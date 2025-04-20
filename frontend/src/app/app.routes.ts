@@ -5,10 +5,26 @@ import { TagNumberComponent } from './pages/tag-number/tag-number.component';
 import { PidComponent } from './pages/pid/pid.component';
 import { LotoPointComponent } from './pages/loto-point/loto-point.component';
 import { PrintComponent } from './pages/print/print.component';
+import { LotoTableComponent } from './features/loto/loto-table/loto-table.component';
+import { LotoPointTableComponent } from './features/loto-points/loto-point-table/loto-point-table.component';
+import { LockTableComponent } from './features/loto/lock-table/lock-table.component';
+import { LotoBoxTableComponent } from './features/loto/loto-box-table/loto-box-table.component';
 
 export const routes: Routes = [
     {path: '', component: HomeComponent},
-    {path: 'loto', component: LotoComponent},
+
+    {
+      path: 'loto',
+      component: LotoComponent,
+      children: [
+        { path: '', redirectTo: 'loto', pathMatch: 'full' },
+        { path: 'loto', component: LotoTableComponent },
+        { path: 'loto-points', component: LotoPointTableComponent },
+        { path: 'loto-boxes', component: LotoBoxTableComponent },
+        { path: 'locks', component: LockTableComponent }
+      ]
+    },
+
     {path: 'loto-points', component: LotoPointComponent},
     {path: 'tag-number', component: TagNumberComponent},
     {path: 'pid', component: PidComponent},

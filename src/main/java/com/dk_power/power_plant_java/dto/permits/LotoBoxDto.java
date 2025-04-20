@@ -11,7 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Setter
 @Getter
-public class BoxDto extends BaseDto {
+public class LotoBoxDto extends BaseDto {
     private Integer number = 0;
     private LotoDto loto;
     private ValueDto lotoAccessoryStatus;

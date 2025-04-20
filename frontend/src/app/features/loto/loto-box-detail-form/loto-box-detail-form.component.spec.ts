@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { LotBoxDetailFormComponent } from './lot-box-detail-form.component';
+import { LotoBoxDetailFormComponent } from './loto-lotoBox-detail-form.component';
 
 describe('LotBoxDetailFormComponent', () => {
-  let component: LotBoxDetailFormComponent;
-  let fixture: ComponentFixture<LotBoxDetailFormComponent>;
+  let component: LotoBoxDetailFormComponent;
+  let fixture: ComponentFixture<LotoBoxDetailFormComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LotBoxDetailFormComponent]
+      imports: [LotoBoxDetailFormComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(LotBoxDetailFormComponent);
+    fixture = TestBed.createComponent(LotoBoxDetailFormComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

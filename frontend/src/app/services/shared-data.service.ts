@@ -31,6 +31,16 @@ export class SharedDataService {
   private cachedIsoPositions$: Observable<ValueDto[]> | null = null;
   private cachedNormPositions$: Observable<ValueDto[]> | null = null;
 
+  private lotoAccessoryStatusesSubject = new BehaviorSubject<ValueDto[]>([]);
+  lotoAccessoryStatuses$: Observable<ValueDto[]> = this.lotoAccessoryStatusesSubject.asObservable();
+  private cachedLotoAccessoryStatuses$: Observable<ValueDto[]> | null = null;
+
+  private lotoStatusesSubject = new BehaviorSubject<ValueDto[]>([]);
+  lotoStatuses$: Observable<ValueDto[]> = this.lotoStatusesSubject.asObservable();
+  private cachedLotoStatuses$: Observable<ValueDto[]> | null = null;
+
+
+  
   private url = environment.apiUrl + '/values';
 
   constructor(private http: HttpClient) {}
@@ -87,7 +97,20 @@ export class SharedDataService {
     }
     return this.cachedNormPositions$;
   }
+
   
+  loadLotoAccessoryStatuses(): Observable<ValueDto[]> {
+    if (!this.cachedLotoAccessoryStatuses$) {
+      this.cachedLotoAccessoryStatuses$ = this.loadValuesOfCategory('lotoAccessoryStatus').pipe(
+        tap(data => this.lotoAccessoryStatusesSubject.next(data))
+      );
+    }
+    return this.cachedLotoAccessoryStatuses$;
+  }
+
+  updateLotoAccessoryStatuses(statuses: ValueDto[]) {
+    this.lotoAccessoryStatusesSubject.next(statuses);
+  }
 
 
   updateSystems(systems: ValueDto[]) {
@@ -114,6 +137,19 @@ export class SharedDataService {
     this.normPositionsSubject.next(normPositions);
   }
 
+  loadPermitStatuses(): Observable<ValueDto[]> {
+    if (!this.cachedLotoStatuses$) {
+      this.cachedLotoStatuses$ = this.loadValuesOfCategory('permitStatus').pipe(
+        tap(data => this.lotoStatusesSubject.next(data))
+      );
+    }
+    return this.cachedLotoStatuses$;
+  }
+
+  updateLotoStatuses(statuses: ValueDto[]) {
+    this.lotoStatusesSubject.next(statuses);
+  }
+
 
 
   clearCache() {
@@ -122,5 +158,7 @@ export class SharedDataService {
     this.cachedFileTypes$ = null;
     this.cachedIsoPositions$ = null;
     this.cachedNormPositions$ = null;
+    this.cachedLotoAccessoryStatuses$ = null;
+    this.cachedLotoStatuses$ = null;
   }
 }

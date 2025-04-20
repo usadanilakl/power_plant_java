@@ -2,7 +2,7 @@ package com.dk_power.power_plant_java.controller.permits;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
-import com.dk_power.power_plant_java.entities.loto.Box;
+import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
@@ -43,12 +43,12 @@ public class LotoController {
     public String createNewLoto(Model model){
         Loto loto = lotoService.getTempPermit();
         System.out.println(loto.getId());
-        List<Box> boxes = boxService.getAllBoxes();
-        Box box = boxService.getEmptyBox();
+        List<LotoBox> lotoBoxes = boxService.getAllBoxes();
+        LotoBox lotoBox = boxService.getEmptyBox();
         Set<ValueDto> allEqTypes = categoryService.getEqTypes();
         model.addAttribute("loto", loto);
-        model.addAttribute("boxes",boxes);
-        model.addAttribute("emptyBox", box);
+        model.addAttribute("lotoBoxes", lotoBoxes);
+        model.addAttribute("emptyBox", lotoBox);
         model.addAttribute("systems", categoryService.getSystems());
         model.addAttribute("eqTypes", allEqTypes);
         return "loto/new-loto-form2";
@@ -62,9 +62,9 @@ public class LotoController {
     @PostMapping("/create")
     public String createdNewLoto(@ModelAttribute("loto") LotoDto tempLoto){
         Loto loto = lotoService.createNew(tempLoto);
-        Box box = null;
-        if(loto.getBox()==null || loto.getBox().getNumber()==0) box = boxService.assignLoto(loto);
-        if (box==null) return "redirect:/lotos/create";
+        LotoBox lotoBox = null;
+        if(loto.getLotoBox()==null || loto.getLotoBox().getNumber()==0) lotoBox = boxService.assignLoto(loto);
+        if (lotoBox ==null) return "redirect:/lotos/create";
         lotoService.resetFields();
         return "redirect:/lotos/";
     }
@@ -72,18 +72,18 @@ public class LotoController {
     @GetMapping("/edit/{id}")
     public String editLoto(@PathVariable("id") String id, Model model){
         Loto loto = lotoService.getEntityById(Long.parseLong(id));
-        List<Box> boxes = boxService.getAllBoxes();
+        List<LotoBox> lotoBoxes = boxService.getAllBoxes();
         model.addAttribute("loto",loto);
-        model.addAttribute("boxes", boxes);
+        model.addAttribute("lotoBoxes", lotoBoxes);
         return "loto/update-loto-form2";
     }
     @PostMapping("/edit")
     public String updateLoto(@ModelAttribute LotoDto loto){
-        Box box = boxService.getBoxById(loto.getBox().getId());
+        LotoBox lotoBox = boxService.getBoxById(loto.getBox().getId());
         Loto entity = lotoService.convertToEntity(loto);
-        entity.setBox(box);
-        box.setLoto(entity);
-        boxService.saveBox(box);
+        entity.setLotoBox(lotoBox);
+        lotoBox.setLoto(entity);
+        boxService.saveBox(lotoBox);
         lotoService.save(entity);
         return "redirect:/lotos/";
     }

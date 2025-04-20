@@ -1,11 +1,10 @@
 package com.dk_power.power_plant_java.sevice.loto;
 
-import com.dk_power.power_plant_java.dto.permits.BoxDto;
-import com.dk_power.power_plant_java.entities.loto.Box;
+import com.dk_power.power_plant_java.dto.permits.LotoBoxDto;
+import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.entities.loto.Loto;
-import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
-import com.dk_power.power_plant_java.repository.loto.BoxRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -18,103 +17,103 @@ import java.util.List;
 @AllArgsConstructor
 @Transactional
 public class BoxServiceImpl implements BoxService {
-    private final BoxRepo boxRepo;
+    private final LotoBoxRepo lotoBoxRepo;
     private final LotoService lotoService;
     private final UniversalMapper universalMapper;
     private final SessionFactory sessionFactory;
     private final NgValueService ngValueService;
     @Override
-    public List<Box> getAllBoxes() {
-        return boxRepo.findAll();
+    public List<LotoBox> getAllBoxes() {
+        return lotoBoxRepo.findAll();
     }
     @Override
-    public List<Box> getEmptyBoxes() {
-        return boxRepo.getEmptyBoxes().toList();
+    public List<LotoBox> getEmptyBoxes() {
+        return lotoBoxRepo.getEmptyBoxes().toList();
     }
     @Override
     public void addNewBox() {
-        Integer number = boxRepo.getMaxNumber();
+        Integer number = lotoBoxRepo.getMaxNumber();
         if(number == null) number=1;
         else number++;
         System.out.println(number);
-        Box box = new Box();
-        box.setNumber(number);
-        changeBoxStatus(box);
-        boxRepo.save(box);
+        LotoBox lotoBox = new LotoBox();
+        lotoBox.setNumber(number);
+        changeBoxStatus(lotoBox);
+        lotoBoxRepo.save(lotoBox);
     }
     @Override
-    public Box getEmptyBox() {
-        return boxRepo.getEmptyBox();
+    public LotoBox getEmptyBox() {
+        return lotoBoxRepo.getEmptyBox();
     }
     @Override
-    public void changeBoxStatus(Box box) {
-        if(box.getLoto()==null){
-            box.setLotoAccessoryStatus(ngValueService.createValue("LOTO Accessory Status", "Available"));
+    public void changeBoxStatus(LotoBox lotoBox) {
+        if(lotoBox.getLoto()==null){
+            lotoBox.setLotoAccessoryStatus(ngValueService.createValue("LOTO Accessory Status", "Available"));
         }else{
-            box.setLotoAccessoryStatus(ngValueService.createValue("LOTO Accessory Status", "In Use"));
+            lotoBox.setLotoAccessoryStatus(ngValueService.createValue("LOTO Accessory Status", "In Use"));
         }
     }
     @Override
-    public Box assignLoto(Loto loto) {
-        Box box = getEmptyBox();
-        box.setLoto(loto);
-        loto.setBox(box);
-        changeBoxStatus(box);
-        boxRepo.save(box);
+    public LotoBox assignLoto(Loto loto) {
+        LotoBox lotoBox = getEmptyBox();
+        lotoBox.setLoto(loto);
+        loto.setLotoBox(lotoBox);
+        changeBoxStatus(lotoBox);
+        lotoBoxRepo.save(lotoBox);
         lotoService.save(loto);
-        return box;
+        return lotoBox;
     }
 
     @Override
-    public void resetLoto(Box box) {
-        box.setLoto(null);
-        changeBoxStatus(box);
+    public void resetLoto(LotoBox lotoBox) {
+        lotoBox.setLoto(null);
+        changeBoxStatus(lotoBox);
     }
 
     @Override
-    public BoxDto getBoxDtoById(Long id) {
-        Box box = boxRepo.findById(id).orElse(null);
-        return universalMapper.convert(box,new BoxDto());
+    public LotoBoxDto getBoxDtoById(Long id) {
+        LotoBox lotoBox = lotoBoxRepo.findById(id).orElse(null);
+        return universalMapper.convert(lotoBox,new LotoBoxDto());
     }
 
     @Override
-    public BoxDto getBoxDtoByNumber(String number) {
-        Box box = boxRepo.findByNumber(Integer.parseInt(number));
-        return universalMapper.convert(box,new BoxDto());
+    public LotoBoxDto getBoxDtoByNumber(String number) {
+        LotoBox lotoBox = lotoBoxRepo.findByNumber(Integer.parseInt(number));
+        return universalMapper.convert(lotoBox,new LotoBoxDto());
     }
 
     @Override
-    public Box getBoxById(Long id) {
-        return boxRepo.findById(id).orElse(null);
+    public LotoBox getBoxById(Long id) {
+        return lotoBoxRepo.findById(id).orElse(null);
     }
 
     @Override
-    public Box saveBox(Box box) {
-        return boxRepo.save(box);
+    public LotoBox saveBox(LotoBox lotoBox) {
+        return lotoBoxRepo.save(lotoBox);
     }
 
     @Override
-    public void assignBoxAndLoto(Box box, Loto loto) {
-        box.setLoto(loto);
-        loto.setBox(box);
-        changeBoxStatus(box);
-        boxRepo.save(box);
+    public void assignBoxAndLoto(LotoBox lotoBox, Loto loto) {
+        lotoBox.setLoto(loto);
+        loto.setLotoBox(lotoBox);
+        changeBoxStatus(lotoBox);
+        lotoBoxRepo.save(lotoBox);
         lotoService.save(loto);
     }
 
     @Override
-    public Box getEntity() {
-        return new Box();
+    public LotoBox getEntity() {
+        return new LotoBox();
     }
 
     @Override
-    public BoxDto getDto() {
-        return new BoxDto();
+    public LotoBoxDto getDto() {
+        return new LotoBoxDto();
     }
 
     @Override
-    public BoxRepo getRepo() {
-        return boxRepo;
+    public LotoBoxRepo getRepo() {
+        return lotoBoxRepo;
     }
 
     @Override
