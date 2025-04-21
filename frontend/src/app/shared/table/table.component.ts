@@ -17,6 +17,9 @@ export class TableComponent implements OnInit {
   @Input() columns: Column[] = [];
   @Input() searchCallback!: (criteria: any) => Promise<any[]>;
   @Input() clickCallback!: (item: any) => void;
+  @Input() doubleClickCallback?: (item: any) => void;
+  @Input() rightClickCallback?: (item: any) => void;
+  @Input() middleClickCallback?: (item: any) => void;
 
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
@@ -50,22 +53,6 @@ export class TableComponent implements OnInit {
   constructor() {}
 
   private destroyRef = inject(DestroyRef);
-
-  // ngOnInit() {
-  //   this.setupInitialItemsSubscription();
-    
-  //   this.globalSearchSubject.pipe(
-  //     debounceTime(300),
-  //     distinctUntilChanged(),
-  //     takeUntilDestroyed(this.destroyRef)
-  //   ).subscribe(() => this.performGlobalSearch());
-
-  //   this.columnSearchSubject.pipe(
-  //     debounceTime(300),
-  //     distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
-  //     takeUntilDestroyed(this.destroyRef)
-  //   ).subscribe(() => this.performColumnSearch());
-  // }
 
   ngOnInit() {
     this.setupInitialItemsSubscription();
@@ -146,20 +133,6 @@ export class TableComponent implements OnInit {
     this.search.emit(this.currentSearchCriteria);
   }
   
-  // performColumnSearch() {
-  //   const filters = Object.entries(this.columnFilters)
-  //     .filter(([_, value]) => value !== '')
-  //     .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
-  
-  //   this.currentSearchCriteria = {
-  //     type: 'column',
-  //     query: '',
-  //     filters: filters,
-  //     page: 1
-  //   };
-  //   this.currentPage = 1;
-  //   this.search.emit(this.currentSearchCriteria);
-  // }
 
   async handleScroll() {
     const { scrollTop, scrollHeight, clientHeight } = this.tableContainer.nativeElement;
@@ -222,9 +195,46 @@ export class TableComponent implements OnInit {
     }, obj);
   }
 
-  onRowClick(item: any) {
-    if (this.clickCallback) {
-      this.clickCallback(item);
+  // onRowClick(item: any) {
+  //   if (this.clickCallback) {
+  //     this.clickCallback(item);
+  //   }
+  // }
+
+  private clickTimer: any;
+  private clickDelay = 250; // milliseconds
+
+  onRowClick(item: any, event: MouseEvent) {
+    if (event.button === 0) { // Left click
+      if (this.clickTimer) {
+        // Double click detected
+        clearTimeout(this.clickTimer);
+        this.clickTimer = null;
+        this.onRowDoubleClick(item);
+      } else {
+        // Set a timer for potential double click
+        this.clickTimer = setTimeout(() => {
+          this.clickTimer = null;
+          if (this.clickCallback) {
+            this.clickCallback(item);
+          }
+        }, this.clickDelay);
+      }
+    } else if (event.button === 1 && this.middleClickCallback) { // Middle click
+      this.middleClickCallback(item);
+    }
+  }
+
+  onRowDoubleClick(item: any) {
+    if (this.doubleClickCallback) {
+      this.doubleClickCallback(item);
+    }
+  }
+  
+  onRowRightClick(item: any, event: MouseEvent) {
+    if (this.rightClickCallback) {
+      event.preventDefault(); // Prevent the default context menu
+      this.rightClickCallback(item);
     }
   }
 }

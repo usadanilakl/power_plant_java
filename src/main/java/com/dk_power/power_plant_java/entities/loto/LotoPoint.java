@@ -85,4 +85,11 @@ public class LotoPoint extends BaseAuditEntity {
         }
         conflictId += "," + id;
     }
+
+public void removeLoto(Loto loto) {
+    if (loto != null && this.lotos != null) {
+        this.lotos.remove(loto);
+        loto.getLotoPoints().remove(this);
+    }
+}
 }

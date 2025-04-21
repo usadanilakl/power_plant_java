@@ -1,9 +1,12 @@
 <app-shared-table
   [columns]="columns"
   [initialItems]="initialItems$"
+  [clickCallback]="onLeftClick.bind(this)"
+  [doubleClickCallback]="onDoubleClick.bind(this)"
+  [rightClickCallback]="onRightClick.bind(this)"
+  [middleClickCallback]="onMiddleClick.bind(this)"
   (loadMoreItems)="loadMoreItems($event)"
-  (search)="onSearch($event)"
-  [clickCallback]="onItemClick">
+  (search)="onSearch($event)">
 </app-shared-table>
 
 <app-popup

@@ -22,6 +22,10 @@ export class LotoPointTableComponent implements OnInit {
   // @Input() clientSideData: LotoPointDto[] | null = null;
   @Input() submitCallback?: (data: any) => void;
   @Input() deleteCallback?: (id: number) => void;
+  @Input() clickCallback?: (item: any) => void;
+  @Input() doubleClickCallback?: (item: any) => void;
+  @Input() rightClickCallback?: (item: any) => void;
+  @Input() middleClickCallback?: (item: any) => void;
 
   @Input() clientSideData$: Observable<LotoPointDto[]> | null = null;
 
@@ -233,6 +237,36 @@ export class LotoPointTableComponent implements OnInit {
         this.relatedImagesSubject.next([]);
       }
     );
+  }
+
+  onLeftClick(item: any) {
+    if (this.clickCallback) {
+      this.clickCallback(item);
+    } else {
+      this.onItemClick(item);
+    }
+  }
+  
+  onMiddleClick(item: any) {
+    if (this.middleClickCallback) {
+      this.middleClickCallback(item);
+    }
+  }
+  
+  onDoubleClick(item: any) {
+    if (this.doubleClickCallback) {
+      this.doubleClickCallback(item);
+    } else {
+      this.onItemClick(item);
+    }
+  }
+  
+  onRightClick(item: any) {
+    if (this.rightClickCallback) {
+      this.rightClickCallback(item);
+    } else {
+      this.onItemClick(item);
+    }
   }
 
   closePopup() {

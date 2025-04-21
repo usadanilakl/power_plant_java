@@ -35,6 +35,7 @@
         <h2>All LOTO Points</h2>
         <app-loto-point-table
         [submitCallback]="onSelectPoint"
+        [doubleClickCallback]="addOnDoubleClick.bind(this)"
         ></app-loto-point-table>
       </div>
       <div class="table-container right">
@@ -42,6 +43,7 @@
         <app-loto-point-table
           [clientSideData$]="selectedLotoPoints$"
           [deleteCallback]="onRemovePoint"
+          [doubleClickCallback]="removeOnDoubleClick"
         ></app-loto-point-table>
       </div>
       <div class="modal-actions">

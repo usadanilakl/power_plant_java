@@ -175,6 +175,21 @@ export class LotoTableComponent implements OnInit {
     );
   }
 
+  onItemDoubleClick = (item: any) => {
+    console.log('Double clicked item:', item);
+    // Implement your double-click logic here
+  }
+  
+  onItemRightClick = (item: any, event: MouseEvent) => {
+    console.log('Right clicked item:', item, 'at position:', event.clientX, event.clientY);
+    // Implement your right-click logic here, e.g., opening a context menu
+  }
+  
+  onItemMiddleClick = (item: any, event: MouseEvent) => {
+    console.log('Middle clicked item:', item);
+    // Implement your middle-click logic here
+  }
+
   // onItemClick = (item: LotoDto) => {
   //   this.selectedItem = item;
   //   this.isPopupOpen = true;

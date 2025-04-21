@@ -26,7 +26,11 @@
     </thead>
     <tbody>
       @for (item of filteredItems; track item.id) {
-        <tr (click)="onRowClick(item)">
+        <tr 
+        (click)="onRowClick(item, $event)"
+        (dblclick)="onRowDoubleClick(item)"
+        (contextmenu)="onRowRightClick(item, $event)"
+        (auxclick)="onRowClick(item, $event)">
           @for (column of columns; track column.id) {
             <td>{{ getCellValue(item, column) }}</td>
           }
