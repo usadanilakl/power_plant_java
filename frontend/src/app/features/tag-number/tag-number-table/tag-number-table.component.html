@@ -1,8 +1,7 @@
 <app-shared-table
 [columns]="columns"
-[initialItems]="initialItems$"
+[items]="initialItems$"
 (loadMore)="loadMoreItems()"
-[searchCallback]="searchItems"
 [clickCallback]="onItemClick"
 ></app-shared-table>
 

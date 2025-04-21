@@ -44,20 +44,16 @@ public class LotoPoint extends BaseAuditEntity {
     private String oldId;
     private Long isUpdated;
     private Boolean isProcessed;
-    private String fileIds ;
+    private String fileIds;
     @ManyToOne
     @JoinColumn(name = "isoPos_id")
     private Value isoPos;
     @ManyToOne
     @JoinColumn(name = "normPos_id")
     private Value normPos;
-    
-    @ManyToMany
-    @JoinTable(name = "loto_points",
-            joinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "loto_id", referencedColumnName = "id"))
-    //@JsonIgnore
-    private List<Loto> lotos;
+
+    @ManyToMany(mappedBy = "lotoPoints")
+    private Set<Loto> lotos = new HashSet<>();
     @ManyToMany(mappedBy = "lotoPoints")
     @JsonIgnore
     private Set<Equipment> equipmentList;
@@ -67,16 +63,17 @@ public class LotoPoint extends BaseAuditEntity {
     public void addLoto(Loto entity) {
         lotos.add(entity);
     }
-    public void addEquipment(Equipment equipment){
-        if(equipmentList == null) equipmentList = new HashSet<>();
-        if(equipment!=null){
-           equipmentList.add(equipment);
+
+    public void addEquipment(Equipment equipment) {
+        if (equipmentList == null) equipmentList = new HashSet<>();
+        if (equipment != null) {
+            equipmentList.add(equipment);
         }
 
     }
 
     public void removeEquipment(Equipment entity) {
-        equipmentList.removeIf(e->e.getId()==entity.getId());
+        equipmentList.removeIf(e -> e.getId() == entity.getId());
     }
 
     public void addConflictId(Long id) {
@@ -86,10 +83,10 @@ public class LotoPoint extends BaseAuditEntity {
         conflictId += "," + id;
     }
 
-public void removeLoto(Loto loto) {
-    if (loto != null && this.lotos != null) {
-        this.lotos.remove(loto);
-        loto.getLotoPoints().remove(this);
+    public void removeLoto(Loto loto) {
+        if (loto != null && this.lotos != null) {
+            this.lotos.remove(loto);
+            loto.getLotoPoints().remove(this);
+        }
     }
-}
 }

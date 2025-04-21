@@ -1,8 +1,8 @@
-<button (click)="createNewLoto()">Create New LOTO</button>
+<!-- <button (click)="createNewLoto()">Create New LOTO</button>
 
 <app-shared-table
   [columns]="columns"
-  [initialItems]="initialItems$"
+  [items]="initialItemsSubject"
   (loadMoreItems)="loadMoreItems($event)"
   (search)="onSearch($event)"
   [clickCallback]="onItemClick">
@@ -20,4 +20,30 @@
     selectedItem: selectedItem
   }"
   (close)="closePopup()"
+></app-popup> -->
+
+<app-shared-table
+  [columns]="columns"
+  [items]="items$"
+  (search)="onSearch($event)"
+  (loadMoreItems)="loadMoreItems($event)"
+  [clickCallback]="onItemClick"
+  [doubleClickCallback]="onItemDoubleClick"
+  [rightClickCallback]="onItemRightClick"
+  [middleClickCallback]="onItemMiddleClick"
+></app-shared-table>
+
+<app-popup
+  [isOpen]="isPopupOpen"
+  [title]="'LOTO Details'"
+  [contentComponent]="LotoDetailFormComponent"
+  [contentInputs]="{
+    values: selectedItem,
+    formSubmit: onFormSubmit.bind(this),
+    formDelete: onFormDelete.bind(this),
+    relatedImages: relatedImages$
+  }"
+  (close)="closePopup()"
 ></app-popup>
+
+<button (click)="createNewLoto()">Create New LOTO</button>

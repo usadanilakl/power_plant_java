@@ -84,7 +84,7 @@ public Loto convertToEntity(LotoDto lotoDto) {
     
     if (lotoDto.getId() != null) loto.setId(lotoDto.getId());
     if (lotoDto.getLotoPoints() != null && !lotoDto.getLotoPoints().isEmpty()) 
-        loto.setLotoPoints(lotoDto.getLotoPoints().stream().map(lotoPointService::toEntity).collect(Collectors.toList()));
+        loto.setLotoPoints(lotoDto.getLotoPoints().stream().map(lotoPointService::toEntity).collect(Collectors.toSet()));
     if (lotoDto.getLocks() != null && !lotoDto.getLocks().isEmpty()) 
         loto.setLocks(lotoDto.getLocks().stream().map(lockService::toEntity).collect(Collectors.toList()));
     if (lotoDto.getLotoBox() != null) loto.setLotoBox(lotoBoxService.toEntity(lotoDto.getLotoBox()));
@@ -198,7 +198,7 @@ public Loto convertIdDtoToEntity(LotoIdDto lotoDto) {
         loto.setLotoPoints(lotoDto.getLotoPoints().stream()
                 .map(id -> lotoPointService.findById(id).orElse(null))
                 .filter(Objects::nonNull)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toSet()));
     }
     if (lotoDto.getLocks() != null && !lotoDto.getLocks().isEmpty()) {
         loto.setLocks(lotoDto.getLocks().stream()
