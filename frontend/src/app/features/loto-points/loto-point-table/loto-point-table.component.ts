@@ -30,10 +30,21 @@ export class LotoPointTableComponent implements OnInit {
   @Input() clientSideData$: Observable<LotoPointDto[]> | null = null;
 
   columns: Column[] = [
-    { id: 'id', header: 'ID', accessorKey: 'id' },
+    { id: 'unit', header: 'Unit', accessorKey: 'unit' },
     { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
     { id: 'description', header: 'Description', accessorKey: 'description' },
-    { id: 'unit', header: 'Unit', accessorKey: 'unit' },
+    { 
+      id: 'lotos', 
+      header: 'LOTOs', 
+      accessorFn: (item: any) => {
+        if (Array.isArray(item.lotos)) {
+          return item.lotos.map((loto: any) => {
+            return loto.workScope;
+          }).join(', ');
+        }
+        return '';
+      }
+    },
     { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' }
   ];
 

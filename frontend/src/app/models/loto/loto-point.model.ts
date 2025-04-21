@@ -1,6 +1,7 @@
 import { ValueDto } from '../value.model';
 import { EquipmentDto } from '../equipment/equipment.model';
 import { JsonpClientBackend } from '@angular/common/http';
+import { LotoDto } from './loto.model';
 
 export interface LotoPointModel {
   id: number;
@@ -22,6 +23,7 @@ export interface LotoPointModel {
   isUpdated: number;
   fileIds: string;
   conflictStatus: string;
+  lotos: LotoDto[];
 }
 
 export class LotoPointDto implements LotoPointModel {
@@ -44,6 +46,7 @@ export class LotoPointDto implements LotoPointModel {
   isUpdated: number;
   fileIds: string;
   conflictStatus: string;
+  lotos: LotoDto[];
 
   constructor(data: Partial<LotoPointModel> = {}) {
     this.id = data.id || 0;
@@ -65,6 +68,7 @@ export class LotoPointDto implements LotoPointModel {
     this.isUpdated = data.isUpdated || 0;
     this.fileIds = data.fileIds || '';
     this.conflictStatus = data.conflictStatus || '';
+    this.lotos = data.lotos || [];
   }
 
   // Serialization method
@@ -93,7 +97,8 @@ export class LotoPointDto implements LotoPointModel {
       objectType: this.objectType || '',
       isUpdated: this.isUpdated || 0,
       fileIds: this.fileIds || '',
-      conflictStatus: this.conflictStatus || ''
+      conflictStatus: this.conflictStatus || '',
+      lotos: this.lotos.map(loto => loto.toJson())
     };
   }
 
@@ -137,7 +142,8 @@ export class LotoPointDto implements LotoPointModel {
       objectType: json.objectType || '',
       isUpdated: json.isUpdated || 0,
       fileIds: json.fileIds || '',
-      conflictStatus: json.conflictStatus || ''
+      conflictStatus: json.conflictStatus || '',
+      lotos: Array.isArray(json.lotos)? json.lotos.map((lotoJson: any) => LotoDto.fromJson(lotoJson)): []
     });
   }
 

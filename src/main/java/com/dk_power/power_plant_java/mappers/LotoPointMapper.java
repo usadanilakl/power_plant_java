@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.mappers;
 
+import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -66,6 +67,16 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
         if(entity.getFileIds()!=null) dto.setFileIds(entity.getFileIds());
         if(entity.getConflictStatus()!=null) dto.setConflictStatus(entity.getConflictStatus());
+        if (entity.getLotos() != null) {
+            dto.setLotos(entity.getLotos().stream()
+                .map(loto -> {
+                    LotoDto lotoDto = new LotoDto();
+                    lotoDto.setId(loto.getId());
+                    lotoDto.setWorkScope(loto.getWorkScope());
+                    return lotoDto;
+                })
+                .collect(Collectors.toList()));
+        }
         return dto;
     }
 

@@ -7,11 +7,13 @@ import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import { SpringPaginatedResponse } from '../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
 import { LotoIdDto } from '../../models/loto/loto-id.model';
+import { LotoPointDto } from '../../models/loto/loto-point.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LotoService {
+
   private apiUrl = `${environment.apiUrl}/lotos`;
 
   constructor(private http: HttpClient) {}
@@ -58,5 +60,8 @@ export class LotoService {
   
   getRelatedImages(id: number): Observable<SpringApiResponse<string[]>> {
     return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/${id}/related-images`);
+  }
+  getActiveLotoPoints(): Observable<SpringApiResponse<LotoPointDto[]>> {
+    return this.http.get<SpringApiResponse<LotoPointDto[]>>(`${this.apiUrl}/active`);
   }
 }

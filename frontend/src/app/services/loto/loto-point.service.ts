@@ -54,4 +54,6 @@ export class LotoPointService {
   getRelatedImages(id: number): Observable<SpringApiResponse<string[]>> {
     return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/${id}/related-images`);
   }
+
+  
 }

@@ -9,6 +9,7 @@ import { LotoTableComponent } from './features/loto/loto-table/loto-table.compon
 import { LotoPointTableComponent } from './features/loto-points/loto-point-table/loto-point-table.component';
 import { LockTableComponent } from './features/loto/lock-table/lock-table.component';
 import { LotoBoxTableComponent } from './features/loto/loto-box-table/loto-box-table.component';
+import { ActiveLotoPointsComponent } from './features/loto/active-loto-points/active-loto-points.component';
 
 export const routes: Routes = [
     {path: '', component: HomeComponent},
@@ -20,6 +21,7 @@ export const routes: Routes = [
         { path: '', redirectTo: 'loto', pathMatch: 'full' },
         { path: 'loto', component: LotoTableComponent },
         { path: 'loto-points', component: LotoPointTableComponent },
+        { path: 'loto-points-active', component: ActiveLotoPointsComponent },
         { path: 'loto-boxes', component: LotoBoxTableComponent },
         { path: 'locks', component: LockTableComponent }
       ]

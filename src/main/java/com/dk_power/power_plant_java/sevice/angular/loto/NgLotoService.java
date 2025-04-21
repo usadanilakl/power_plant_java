@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.angular.loto;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoMapper;
@@ -108,55 +109,166 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return mapper.convertToDto(entity);
     }
 
+//@Transactional
+//public Loto update(LotoIdDto dto) {
+//    Optional<Loto> byId = repo.findById(dto.getId());
+//    List<LotoPoint> pointsToRemove = new ArrayList<>();
+//    // Handle LotoPoints
+//    Set<Long> newLotoPointIds = dto.getLotoPoints() != null ? new HashSet<>(dto.getLotoPoints()) : new HashSet<>();
+//    if (byId.isPresent()) {
+//        pointsToRemove = byId.get().getLotoPoints().stream()
+//                .filter(lotoPoint -> !newLotoPointIds.contains(lotoPoint.getId()))
+//                .toList();
+//    }
+//
+//    Loto existingLoto = this.mapper.convertIdDtoToEntity(dto);
+//    existingLoto = repo.save(existingLoto);
+//    final Loto finalExistingLoto = existingLoto;
+//
+//    // Handle LotoBox
+//    if (finalExistingLoto.getLotoBox() != null) {
+//        lotoBoxService.save(finalExistingLoto.getLotoBox());
+//    }
+//
+//    // Handle Locks
+//    if (finalExistingLoto.getLocks() != null) {
+//        finalExistingLoto.getLocks().forEach(lock -> {
+//            if (lock != null) {
+//                lock.setLoto(finalExistingLoto);
+//                lockService.save(lock);
+//            }
+//        });
+//    }
+//
+//    pointsToRemove.forEach(lotoPoint -> {
+//        lotoPoint.removeLoto(finalExistingLoto);
+//        finalExistingLoto.getLotoPoints().remove(lotoPoint);
+//        lotoPointService.save(lotoPoint);
+//    });
+//
+//    // Add or update LotoPoints
+//    newLotoPointIds.forEach(id -> {
+//        LotoPoint lotoPoint = lotoPointService.findById(id)
+//                .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + id));
+//        
+//        if (!finalExistingLoto.getLotoPoints().contains(lotoPoint)) {
+//            finalExistingLoto.getLotoPoints().add(lotoPoint);
+//            lotoPoint.addLoto(finalExistingLoto);
+//        }
+//        lotoPointService.save(lotoPoint);
+//    });
+//
+//    return repo.save(finalExistingLoto);
+//}
+
 @Transactional
-public Loto update(LotoIdDto dto) {
-    Optional<Loto> byId = repo.findById(dto.getId());
-    List<LotoPoint> pointsToRemove = new ArrayList<>();
-    // Handle LotoPoints
-    Set<Long> newLotoPointIds = dto.getLotoPoints() != null ? new HashSet<>(dto.getLotoPoints()) : new HashSet<>();
-    if (byId.isPresent()) {
-        pointsToRemove = byId.get().getLotoPoints().stream()
-                .filter(lotoPoint -> !newLotoPointIds.contains(lotoPoint.getId()))
-                .toList();
+public void removeLotoPointsFromLoto(Loto loto, Set<Long> lotoPointIdsToRemove) {
+    if (loto == null || lotoPointIdsToRemove == null || lotoPointIdsToRemove.isEmpty()) {
+        return;
     }
 
-    Loto existingLoto = this.mapper.convertIdDtoToEntity(dto);
-    existingLoto = repo.save(existingLoto);
-    final Loto finalExistingLoto = existingLoto;
+    Set<LotoPoint> pointsToRemove = loto.getLotoPoints().stream()
+            .filter(point -> lotoPointIdsToRemove.contains(point.getId()))
+            .collect(Collectors.toSet());
 
-    // Handle LotoBox
-    if (finalExistingLoto.getLotoBox() != null) {
-        lotoBoxService.save(finalExistingLoto.getLotoBox());
+    for (LotoPoint point : pointsToRemove) {
+        point.getLotos().remove(loto);
+        loto.getLotoPoints().remove(point);
+        lotoPointService.save(point);
     }
 
-    // Handle Locks
-    if (finalExistingLoto.getLocks() != null) {
-        finalExistingLoto.getLocks().forEach(lock -> {
-            if (lock != null) {
-                lock.setLoto(finalExistingLoto);
-                lockService.save(lock);
-            }
-        });
+    repo.save(loto);
+}
+
+@Transactional
+public void addLotoPointsToLoto(Loto loto, Set<Long> lotoPointIdsToAdd) {
+    if (loto == null || lotoPointIdsToAdd == null || lotoPointIdsToAdd.isEmpty()) {
+        return;
     }
 
-    pointsToRemove.forEach(lotoPoint -> {
-        lotoPoint.removeLoto(finalExistingLoto);
-        finalExistingLoto.getLotoPoints().remove(lotoPoint);
-        lotoPointService.save(lotoPoint);
-    });
-
-    // Add or update LotoPoints
-    newLotoPointIds.forEach(id -> {
+    for (Long id : lotoPointIdsToAdd) {
         LotoPoint lotoPoint = lotoPointService.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + id));
         
-        if (!finalExistingLoto.getLotoPoints().contains(lotoPoint)) {
-            finalExistingLoto.getLotoPoints().add(lotoPoint);
-            lotoPoint.addLoto(finalExistingLoto);
+        if (!loto.getLotoPoints().contains(lotoPoint)) {
+            loto.getLotoPoints().add(lotoPoint);
+            lotoPoint.addLoto(loto);
+            lotoPointService.save(lotoPoint);
         }
-        lotoPointService.save(lotoPoint);
-    });
+    }
 
-    return repo.save(finalExistingLoto);
+    repo.save(loto);
 }
+
+@Transactional
+public Loto update(LotoIdDto dto) {
+    Loto loto;
+    boolean isNewLoto = dto.getId() == null || dto.getId() == 0;
+
+    if (isNewLoto) {
+        loto = new Loto();
+    } else {
+        loto = repo.findById(dto.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + dto.getId()));
+    }
+
+    Set<Long> newLotoPointIds = dto.getLotoPoints() != null ? new HashSet<>(dto.getLotoPoints()) : new HashSet<>();
+
+    if (!isNewLoto) {
+        if (loto.getLotoPoints() != null) {
+            // Remove LotoPoints that are no longer associated
+            Set<Long> lotoPointIdsToRemove = loto.getLotoPoints().stream()
+                    .map(LotoPoint::getId)
+                    .filter(id -> !newLotoPointIds.contains(id))
+                    .collect(Collectors.toSet());
+            removeLotoPointsFromLoto(loto, lotoPointIdsToRemove);
+        } else {
+            loto.setLotoPoints(new ArrayList<>());
+        }
+
+        // Refresh the loto entity
+        loto = repo.findById(dto.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + dto.getId()));
+    } else {
+        loto.setLotoPoints(new ArrayList<>());
+    }
+
+    // Update Loto with new data
+    mapper.updateLotoFromDto(dto, loto);
+
+    // Create a final reference to loto for use in the lambda
+    final Loto finalLoto = loto;
+
+    // Add new LotoPoints
+    Set<Long> lotoPointIdsToAdd = newLotoPointIds.stream()
+            .filter(id -> finalLoto.getLotoPoints() == null || 
+                          finalLoto.getLotoPoints().stream().map(LotoPoint::getId).noneMatch(id::equals))
+            .collect(Collectors.toSet());
+    addLotoPointsToLoto(finalLoto, lotoPointIdsToAdd);
+
+    // Handle LotoBox
+    if (finalLoto.getLotoBox() != null) {
+        lotoBoxService.save(finalLoto.getLotoBox());
+    }
+
+    // Handle Locks
+    if (finalLoto.getLocks() != null) {
+        for (var lock : finalLoto.getLocks()) {
+            if (lock != null) {
+                lock.setLoto(finalLoto);
+                lockService.save(lock);
+            }
+        }
+    }
+
+    return repo.save(finalLoto);
+}
+    public List<LotoPointDto> getActiveLotoPoints() {
+        return repo.findAll().stream()
+                .filter(loto -> loto.getLotoPoints() != null && !loto.getLotoPoints().isEmpty())
+                .flatMap(loto -> loto.getLotoPoints().stream())
+                .distinct()
+                .map(lotoPointService::toDto)
+                .collect(Collectors.toList());
+    }
 }

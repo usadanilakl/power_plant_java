@@ -29,7 +29,7 @@ public class NgLotoPointController {
         try {
 //            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
             Page<LotoPointDto> paginatedFiles = ngLotoPointService.findAllWithProjectionPaginated(
-                    new ArrayList<>(Arrays.asList("id", "tagNumber", "unit", "description", "specificLocation")),
+                    new ArrayList<>(Arrays.asList("id", "tagNumber", "unit", "description", "specificLocation", "lotos.workScope")),
                     PageRequest.of(page - 1, pageSize)).map(ngLotoPointService::toDto);
             NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);

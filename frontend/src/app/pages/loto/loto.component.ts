@@ -12,7 +12,8 @@ import { RouterModule } from '@angular/router';
 export class LotoComponent {
   categories = [
     { name: 'LOTO', route: './loto' },
-    { name: 'LOTO Points', route: './loto-points' },
+    { name: 'Active LOTO Points', route: './loto-points-active' },
+    { name: 'All LOTO Points', route: './loto-points' },
     { name: 'LOTO Boxes', route: './loto-boxes' },
     { name: 'Locks', route: './locks' }
   ];

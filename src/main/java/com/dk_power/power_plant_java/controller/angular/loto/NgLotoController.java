@@ -7,7 +7,6 @@ import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
-import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +25,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class NgLotoController {
     private final NgLotoService ngLotoService;
+
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<LotoDto>>> getPaginatedFiles(
             @RequestParam(defaultValue = "1") int page,
@@ -33,7 +33,7 @@ public class NgLotoController {
         try {
 //            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
             Page<LotoDto> paginatedLotos = ngLotoService.findAllWithProjectionPaginated(
-                    new ArrayList<>(Arrays.asList("id", "docNum", "equipment.id", "workScope", "permitStatus.id", "permitStatus.name", "permitType.id","permitType.name")),
+                    new ArrayList<>(Arrays.asList("id", "docNum", "equipment.id", "workScope", "permitStatus.id", "permitStatus.name", "permitType.id", "permitType.name")),
                     PageRequest.of(page - 1, pageSize)).map(ngLotoService::toDto);
             NgApiResponse<Page<LotoDto>> response = new NgApiResponse<>(paginatedLotos, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
@@ -93,7 +93,7 @@ public class NgLotoController {
     }
 
     @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<NgApiResponse<LotoDto>> updateLoto( @RequestBody LotoIdDto lotoDto) {
+    public ResponseEntity<NgApiResponse<LotoDto>> updateLoto(@RequestBody LotoIdDto lotoDto) {
         try {
             Loto updatedLoto = ngLotoService.update(lotoDto);
             LotoDto updatedLotoDto = ngLotoService.toDto(updatedLoto);
@@ -102,6 +102,18 @@ public class NgLotoController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error updating LOTO: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<NgApiResponse<List<LotoPointDto>>> getActiveLotoPoints() {
+        try {
+            List<LotoPointDto> activeLotoPoints = ngLotoService.getActiveLotoPoints();
+            NgApiResponse<List<LotoPointDto>> response = new NgApiResponse<>(activeLotoPoints, "Active LOTO points retrieved successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving active LOTO points: " + e.getMessage()));
         }
     }
 

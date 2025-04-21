@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.mappers;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.loto.Lock;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.NgUserService;
@@ -16,6 +17,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -157,14 +159,14 @@ public Loto convertIdDtoToEntity(LotoIdDto lotoDto) {
     if (lotoDto == null) return null;
 
     Loto loto;
-    if(lotoDto.getId() == null) {
+    if(lotoDto.getId() == null || lotoDto.getId() == 0) {
         loto = new Loto();
     }else {
         loto = lotoService.findById(lotoDto.getId()).orElse(new Loto());
     }
 
     // Set fields from BaseDto
-    if (lotoDto.getId() != null) loto.setId(lotoDto.getId());
+    if (lotoDto.getId() != null && lotoDto.getId()!=0) loto.setId(lotoDto.getId());
     if (lotoDto.getDeleted() != null) loto.setDeleted(lotoDto.getDeleted());
     if (lotoDto.getName() != null) loto.setName(lotoDto.getName());
     if (lotoDto.getNote() != null) loto.setNote(lotoDto.getNote());
@@ -207,5 +209,65 @@ public Loto convertIdDtoToEntity(LotoIdDto lotoDto) {
     if (lotoDto.getLotoBox() != null) loto.setLotoBox(lotoBoxService.findById(lotoDto.getLotoBox()).orElse(null));
 
     return loto;
+}
+
+public void updateLotoFromDto(LotoIdDto dto, Loto loto) {
+    if (dto == null || loto == null) {
+        return;
+    }
+
+    // Update basic fields
+    if (dto.getDocNum() != null) {
+        loto.setDocNum(dto.getDocNum());
+    }
+    if (dto.getWorkScope() != null) {
+        loto.setWorkScope(dto.getWorkScope());
+    }
+    if (dto.getTemp() != null) {
+        loto.setTemp(dto.getTemp());
+    }
+
+    // Update relationships
+    if (dto.getSystem() != null) {
+        loto.setSystem(valueService.findById(dto.getSystem()).orElse(null));
+    }
+    if (dto.getPermitStatus() != null) {
+        loto.setPermitStatus(valueService.findById(dto.getPermitStatus()).orElse(null));
+    }
+    if (dto.getPermitType() != null) {
+        loto.setPermitType(valueService.findById(dto.getPermitType()).orElse(null));
+    }
+    if (dto.getRequestor() != null) {
+        loto.setRequestor(userService.findById(dto.getRequestor()).orElse(null));
+    }
+    if (dto.getControlAuthority() != null) {
+        loto.setControlAuthority(userService.findById(dto.getControlAuthority()).orElse(null));
+    }
+
+    // Update Equipment
+    if (dto.getEquipment() != null && !dto.getEquipment().isEmpty()) {
+        Set<Equipment> updatedEquipment = dto.getEquipment().stream()
+                .map(id -> equipmentService.findById(id).orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        loto.setEquipment(updatedEquipment);
+    }
+
+    // Update LotoBox
+    if (dto.getLotoBox() != null) {
+        loto.setLotoBox(lotoBoxService.findById(dto.getLotoBox()).orElse(null));
+    }
+
+    // Update Locks
+    if (dto.getLocks() != null && !dto.getLocks().isEmpty()) {
+        List<Lock> updatedLocks = dto.getLocks().stream()
+                .map(id -> lockService.findById(id).orElse(null))
+                .filter(Objects::nonNull)
+                .peek(lock -> lock.setLoto(loto))
+                .collect(Collectors.toList());
+        loto.setLocks(updatedLocks);
+    }
+
+    // Don't update lotoPoints here, as it's handled separately in the service
 }
 }
