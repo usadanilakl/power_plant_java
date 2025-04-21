@@ -1,8 +1,9 @@
 import { ValueDto } from '../value.model';
 import { LotoPointDto } from '../loto/loto-point.model';
 import { RectangleShape } from '../shape.model';
+import { BaseDto, BaseModel } from '../base/base.model';
 
-export interface EquipmentModel {
+export interface EquipmentModel extends BaseModel  {
   tagNumber: string;
   description: string;
   specificLocation: string;
@@ -20,7 +21,7 @@ export interface EquipmentModel {
   isVerified: boolean;
 }
 
-export class EquipmentDto implements EquipmentModel {
+export class EquipmentDto extends BaseDto implements EquipmentModel {
   tagNumber: string;
   description: string;
   specificLocation: string;
@@ -38,6 +39,7 @@ export class EquipmentDto implements EquipmentModel {
   isVerified: boolean;
 
   constructor(data: Partial<EquipmentModel> = {}) {
+    super();
     this.tagNumber = data.tagNumber || '';
     this.description = data.description || '';
     this.specificLocation = data.specificLocation || '';
@@ -56,7 +58,7 @@ export class EquipmentDto implements EquipmentModel {
   }
 
   // Serialization method
-  toJson(): any {
+  override toJson(): any {
     return {
       tagNumber: this.tagNumber || '',
       description: this.description || '',
@@ -77,7 +79,7 @@ export class EquipmentDto implements EquipmentModel {
   }
 
   // Deserialization method (static)
-  static fromJson(json: any): EquipmentDto {
+  static override fromJson(json: any): EquipmentDto {
     if (!json) {
       console.warn('Received null or undefined json in EquipmentDto.fromJson');
       return new EquipmentDto();

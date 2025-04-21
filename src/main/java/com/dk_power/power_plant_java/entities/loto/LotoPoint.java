@@ -54,8 +54,8 @@ public class LotoPoint extends BaseAuditEntity {
     
     @ManyToMany
     @JoinTable(name = "loto_points",
-            joinColumns = @JoinColumn(name = "loto_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"))
+            joinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "loto_id", referencedColumnName = "id"))
     //@JsonIgnore
     private List<Loto> lotos;
     @ManyToMany(mappedBy = "lotoPoints")

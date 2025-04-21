@@ -35,7 +35,7 @@ public class EquipmentDto extends BaseEquipmentDto {
     private String originalPictureSize;
     private String mainFile;
     private Set<LotoPointDto> lotoPoints;
-    @JsonBackReference
+//    @JsonBackReference
     private List<HeatTraceDto> heatTraceList;
     private HighlightDto highlight;
     private String isUpdated;

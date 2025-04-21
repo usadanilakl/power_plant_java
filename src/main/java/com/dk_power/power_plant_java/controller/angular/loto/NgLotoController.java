@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.angular.loto;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
+import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
@@ -91,13 +92,9 @@ public class NgLotoController {
         }
     }
 
-    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<NgApiResponse<LotoDto>> updateLoto(@PathVariable Long id, @RequestBody LotoDto lotoDto) {
+    @PutMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<NgApiResponse<LotoDto>> updateLoto( @RequestBody LotoIdDto lotoDto) {
         try {
-            if (!id.equals(lotoDto.getId())) {
-                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "ID in path does not match ID in body"));
-            }
-
             Loto updatedLoto = ngLotoService.update(lotoDto);
             LotoDto updatedLotoDto = ngLotoService.toDto(updatedLoto);
             NgApiResponse<LotoDto> response = new NgApiResponse<>(updatedLotoDto, "LOTO updated successfully", LocalDateTime.now());

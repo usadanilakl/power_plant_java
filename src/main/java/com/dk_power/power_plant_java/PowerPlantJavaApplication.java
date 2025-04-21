@@ -2,12 +2,19 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.entities.loto.Lock;
+import com.dk_power.power_plant_java.entities.loto.LotoBox;
+import com.dk_power.power_plant_java.entities.users.User;
 import com.dk_power.power_plant_java.repository.ConflictRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.equipment.HeatTraceRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import com.dk_power.power_plant_java.sevice.FilePathService;
+import com.dk_power.power_plant_java.sevice.angular.NgUserService;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLockService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoBoxService;
 import com.dk_power.power_plant_java.sevice.app_services.SyncService;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
@@ -45,7 +52,10 @@ import java.util.Arrays;
 @EnableScheduling
 public class PowerPlantJavaApplication implements CommandLineRunner {
 
-    private final NgFileService ngFileService;
+    private final NgLockService ngLockService;
+    private final NgLotoBoxService ngLotoBoxService;
+    private final NgUserService userService;
+    private final NgValueService ngValueService;
 
 
 
@@ -61,6 +71,44 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+
+//        // Create 10 LotoBoxes
+//        for (int i = 1; i <= 10; i++) {
+//            LotoBox lotoBox = new LotoBox();
+//            lotoBox.setNumber(i);
+//            ngLotoBoxService.save(lotoBox);
+//        }
+//
+//        // Create 100 Locks
+//        for (int i = 1; i <= 100; i++) {
+//            Lock lock = new Lock();
+//            lock.setNumber(i);
+//            ngLockService.save(lock);
+//        }
+//
+//        // Create 10 Users with normal names
+//        String[] names = {
+//                "John Smith", "Emma Johnson", "Michael Brown", "Olivia Davis", "William Wilson",
+//                "Sophia Taylor", "James Anderson", "Isabella Thomas", "Robert Jackson", "Ava White"
+//        };
+//
+//        for (String name : names) {
+//            User user = new User();
+//            user.setName(name);
+//            user.setEmail(name.toLowerCase().replaceAll("\\s", "") + "@example.com");
+//            user.setPassword("123");
+//            user.setRole("USER");
+//            user.setIsActive(true);
+//            user.setUsername(name.toLowerCase().replaceAll("\\s", ""));
+//
+//            userService.save(user);
+//        }
+//
+//        ngValueService.createValue("Permit Type","LOTO");
+//        ngValueService.createValue("Permit Status","Active");
+//        ngValueService.createValue("Permit Status","Inactive");
+//        ngValueService.createValue("LOTO Accessory Status","In Use");
+//        ngValueService.createValue("LOTO Accessory Status","Available");
 
         System.err.println("=====================================================");
         System.out.println("App is Ready: open browser and type: http://localhost:8082");

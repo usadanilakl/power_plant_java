@@ -181,4 +181,8 @@ public class NgValueService {
     public List<Category> getAllCategories() {
         return categoryRepo.findAll();
     }
+
+    public Optional<Value> findById(Long system) {
+        return valueRepo.findById(system);
+    }
 }

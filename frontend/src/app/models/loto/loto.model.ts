@@ -2,6 +2,7 @@ import { BasePermitDto, BasePermitModel } from '../base/base-permit.model';
 import { LotoPointDto } from './loto-point.model';
 import { LockDto } from './lock.model';
 import { LotoBoxDto } from './loto-box.model';
+import { LotoIdDto } from './loto-id.model';
 
 export interface LotoModel extends BasePermitModel {
   lotoPoints: LotoPointDto[];
@@ -43,6 +44,16 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       lotoPoints: (json.lotoPoints ?? []).map((point: any) => LotoPointDto.fromJson(point)),
       locks: (json.locks ?? []).map((lock: any) => LockDto.fromJson(lock)),
       lotoBox: json.lotoBox ? LotoBoxDto.fromJson(json.lotoBox, true) : null
+    });
+  }
+
+  override toIdModel(): LotoIdDto {
+    const baseIdModel = super.toIdModel();
+    return new LotoIdDto({
+      ...baseIdModel,
+      lotoPoints: this.lotoPoints.map(point => point.id),
+      locks: this.locks.map(lock => lock.id),
+      lotoBox: this.lotoBox ? this.lotoBox.id : null
     });
   }
 }

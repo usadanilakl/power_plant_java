@@ -2,11 +2,12 @@ import { BaseDto, BaseModel } from './base.model';
 import { ValueDto } from '../value.model';
 import { EquipmentDto } from '../equipment/equipment.model';
 import { UserDto } from '../user.model';
+import { BasePermitIdDto } from './base-permit-id.model';
 
 export interface BasePermitModel extends BaseModel {
   workScope: string;
   system: ValueDto;
-  equipment: Set<EquipmentDto>;
+  equipment: EquipmentDto[];
   requestor: UserDto;
   controlAuthority: UserDto;
   permitType: ValueDto;
@@ -18,7 +19,7 @@ export interface BasePermitModel extends BaseModel {
 export class BasePermitDto extends BaseDto implements BasePermitModel {
   workScope: string;
   system: ValueDto;
-  equipment: Set<EquipmentDto>;
+  equipment: EquipmentDto[];
   requestor: UserDto;
   controlAuthority: UserDto;
   permitType: ValueDto;
@@ -30,7 +31,7 @@ export class BasePermitDto extends BaseDto implements BasePermitModel {
     super(data);
     this.workScope = data.workScope || '';
     this.system = data.system || new ValueDto();
-    this.equipment = data.equipment || new Set<EquipmentDto>();
+    this.equipment = data.equipment || [];
     this.requestor = data.requestor || new UserDto();
     this.controlAuthority = data.controlAuthority || new UserDto();
     this.permitType = data.permitType || new ValueDto();
@@ -45,7 +46,7 @@ export class BasePermitDto extends BaseDto implements BasePermitModel {
       ...super.toJson(),
       workScope: this.workScope,
       system: this.system.toJson(),
-      equipment: Array.from(this.equipment).map(eq => eq.toJson()),
+      equipment: this.equipment.map(eq => eq.toJson()),
       requestor: this.requestor.toJson(),
       controlAuthority: this.controlAuthority.toJson(),
       permitType: this.permitType.toJson(),
@@ -66,7 +67,7 @@ export class BasePermitDto extends BaseDto implements BasePermitModel {
       ...super.fromJson(json),
       workScope: json.workScope || '',
       system: ValueDto.fromJson(json.system),
-      equipment: new Set((json.equipment || []).map((eq: any) => EquipmentDto.fromJson(eq))),
+      equipment: (json.equipment || []).map((eq: any) => EquipmentDto.fromJson(eq)),
       requestor: UserDto.fromJson(json.requestor),
       controlAuthority: UserDto.fromJson(json.controlAuthority),
       permitType: ValueDto.fromJson(json.permitType),
@@ -75,4 +76,20 @@ export class BasePermitDto extends BaseDto implements BasePermitModel {
       temp: json.temp || false
     });
   }
+
+  toIdModel(): BasePermitIdDto {
+    return new BasePermitIdDto({
+      ...this.toJson(),
+      id: this.id,
+      name: this.name,
+      objectType: this.objectType,
+      system: this.system.id,
+      equipment: this.equipment.map(eq => eq.id),
+      requestor: this.requestor.id,
+      controlAuthority: this.controlAuthority.id,
+      permitType: this.permitType.id,
+      permitStatus: this.permitStatus.id
+    });
+  }
+
 }

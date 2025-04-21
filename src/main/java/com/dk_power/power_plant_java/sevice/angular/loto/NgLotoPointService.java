@@ -104,9 +104,10 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                     imageUrls.add(file.getFileLink());
                 }
             }
-            if(imageUrls.isEmpty()){
-                throw new RuntimeException("No related images found for LotoPoint with id: " + id);
-            }
+//            if(imageUrls.isEmpty()){
+//                throw new RuntimeException("No related images found for LotoPoint with id: " + id);
+//            }
+            System.out.println("Related images found for LotoPoint with id: " + id + " - " + imageUrls.size() + " images found. URLs: " + imageUrls);
             return imageUrls;
         }
         throw new RuntimeException("LotoPoint not found with id: " + id);

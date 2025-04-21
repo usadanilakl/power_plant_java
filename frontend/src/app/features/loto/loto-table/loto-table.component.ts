@@ -5,7 +5,7 @@ import { Column } from '../../../models/column.model';
 import { LotoDetailFormComponent } from "../loto-detail-form/loto-detail-form.component";
 import { PopupComponent } from "../../../shared/popup/popup.component";
 import { LotoService } from '../../../services/loto/loto.service';
-import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, switchMap, tap } from 'rxjs';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { LotoDto } from '../../../models/loto/loto.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
@@ -105,7 +105,7 @@ export class LotoTableComponent implements OnInit {
 
     const updatedItem = new LotoDto({ ...this.selectedItem, ...formData });
 
-    this.lotoService.updateLoto(this.selectedItem.id.toString(), updatedItem).subscribe(
+    this.lotoService.updateLoto(updatedItem.toIdModel()).subscribe(
       (response) => {
         console.log('LOTO updated successfully', response);
         const updatedItems = this.initialItemsSubject.value.map(item => 
@@ -140,12 +140,28 @@ export class LotoTableComponent implements OnInit {
   }
 
   onItemClick = (item: LotoDto) => {
+    // First, set the selectedItem to the simplified version from the table
     this.selectedItem = item;
+    
+    // Open the popup immediately to show a loading state
     this.isPopupOpen = true;
-    this.lotoService.getRelatedImages(this.selectedItem.id).subscribe(
-      (response: SpringApiResponse<string[]>) => {
+  
+    // Fetch the full DTO
+    this.lotoService.getLotoById(item.id.toString()).pipe(
+      tap((response: SpringApiResponse<LotoDto>) => {
         if (response.responseData) {
-          const fullUrls = response.responseData.map(url => `http://localhost:8082/${url}`);
+          // Update the selectedItem with the full DTO
+          this.selectedItem = LotoDto.fromJson(response.responseData);
+        } else {
+          console.error('No data received for LOTO:', item.id);
+        }
+      }),
+      // After getting the full DTO, fetch related images
+      switchMap(() => this.lotoService.getRelatedImages(item.id))
+    ).subscribe(
+      (imageResponse: SpringApiResponse<string[]>) => {
+        if (imageResponse.responseData) {
+          const fullUrls = imageResponse.responseData.map(url => `http://localhost:8082/${url}`);
           this.relatedImagesSubject.next(fullUrls);
           console.log('Related images fetched successfully:', fullUrls);
         } else {
@@ -153,11 +169,31 @@ export class LotoTableComponent implements OnInit {
         }
       },
       error => {
-        console.error('Error fetching related images:', error);
+        console.error('Error fetching LOTO details or related images:', error);
         this.relatedImagesSubject.next([]);
       }
     );
   }
+
+  // onItemClick = (item: LotoDto) => {
+  //   this.selectedItem = item;
+  //   this.isPopupOpen = true;
+  //   this.lotoService.getRelatedImages(this.selectedItem.id).subscribe(
+  //     (response: SpringApiResponse<string[]>) => {
+  //       if (response.responseData) {
+  //         const fullUrls = response.responseData.map(url => `http://localhost:8082/${url}`);
+  //         this.relatedImagesSubject.next(fullUrls);
+  //         console.log('Related images fetched successfully:', fullUrls);
+  //       } else {
+  //         this.relatedImagesSubject.next([]);
+  //       }
+  //     },
+  //     error => {
+  //       console.error('Error fetching related images:', error);
+  //       this.relatedImagesSubject.next([]);
+  //     }
+  //   );
+  // }
 
   closePopup() {
     this.isPopupOpen = false;
@@ -190,5 +226,10 @@ export class LotoTableComponent implements OnInit {
   closeImagePopup() {
     this.isImagePopupOpen = false;
     this.selectedImagePath = null;
+  }
+
+  createNewLoto() {
+    this.selectedItem = new LotoDto(); // Create a new empty LotoDto
+    this.isPopupOpen = true; // Open the popup
   }
 }
