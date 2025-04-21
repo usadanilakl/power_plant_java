@@ -120,7 +120,9 @@ export class LotoTableComponent implements OnInit {
   }
 
   onItemClick = (item: LotoDto) => {
+    console.log('Item clicked:', item);
     this.selectedItem = item;
+    console.log('selectedItem set:', this.selectedItem);
     this.isPopupOpen = true;
   
     this.lotoService.getLotoById(item.id.toString()).pipe(

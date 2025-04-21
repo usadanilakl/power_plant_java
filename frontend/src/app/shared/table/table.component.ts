@@ -113,13 +113,15 @@ export class TableComponent implements OnInit {
   }
 
   sortColumn(column: Column) {
+    console.log(column)
     const columnKey = column.accessorKey || column.id;
     this.isAscending = this.currentSortColumn === columnKey ? !this.isAscending : true;
     this.currentSortColumn = columnKey;
 
     this.filteredItems.sort((a, b) => {
-      const aValue = this.getCellValue(a, column);
-      const bValue = this.getCellValue(b, column);
+      const aValue = this.getCellValue(a, column).toString();
+      const bValue = this.getCellValue(b, column).toString();
+      console.log(aValue, bValue, this.isAscending);
       return this.isAscending ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
     });
   }

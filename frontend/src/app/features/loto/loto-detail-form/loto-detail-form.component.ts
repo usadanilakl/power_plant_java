@@ -121,6 +121,7 @@ export class LotoDetailFormComponent implements OnInit {
   }
 
   onFormSubmit(formData: any) {
+    console.log('selected item in the submit:', this.selectedItem);
     // The selectedItem already contains the updated LOTO points
     const updatedFormData = {
       ...formData,
@@ -172,6 +173,7 @@ export class LotoDetailFormComponent implements OnInit {
   onSaveSelectedPoints() {
     const selectedPoints = this.selectedLotoPointsSubject.value;
     console.log('Saving selected points:', selectedPoints);
+    console.log("selected item in the save loto points"+this.selectedItem)
   
     if (this.selectedItem) {
       // Update the selectedItem with the new LOTO points
