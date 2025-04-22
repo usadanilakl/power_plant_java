@@ -35,7 +35,7 @@ export class UserDto implements UserModel {
   // Deserialization method (static)
   static fromJson(json: any): UserDto {
     if (!json) {
-      console.warn('Received null or undefined json in UserDto.fromJson');
+      // console.warn('Received null or undefined json in UserDto.fromJson');
       return new UserDto();
     }
 

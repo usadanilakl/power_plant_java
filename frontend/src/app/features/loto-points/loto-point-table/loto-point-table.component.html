@@ -5,6 +5,7 @@
   [doubleClickCallback]="onDoubleClick.bind(this)"
   [rightClickCallback]="onRightClick.bind(this)"
   [middleClickCallback]="onMiddleClick.bind(this)"
+  [cellDoubleClickCallback]="onColumnDoubleClick.bind(this)"
   (loadMoreItems)="loadMoreItems($event)"
   (search)="onSearch($event)">
 </app-shared-table>

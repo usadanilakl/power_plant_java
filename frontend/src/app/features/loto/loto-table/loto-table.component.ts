@@ -39,12 +39,14 @@ export class LotoTableComponent implements OnInit {
   private currentPage = 1;
   private pageSize = 50;
 
-  private lotoService = inject(LotoService);
-
   items$: Observable<LotoDto[]> = of([]);
 
   private relatedImagesSubject = new BehaviorSubject<string[]>([]);
   relatedImages$ = this.relatedImagesSubject.asObservable();
+
+  constructor() {}
+
+  private lotoService = inject(LotoService);
 
   ngOnInit() {
     this.items$ = this.loadItems();

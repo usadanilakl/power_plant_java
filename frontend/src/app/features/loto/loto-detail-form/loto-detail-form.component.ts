@@ -13,6 +13,7 @@ import { NonNullablePipe } from "../../../pipes/nonNullable.pipe";
 import { PopupComponent } from "../../../shared/popup/popup.component";
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { Column } from '../../../models/column.model';
 
 @Component({
   selector: 'app-loto-detail-form',
@@ -214,5 +215,11 @@ export class LotoDetailFormComponent implements OnInit {
   onItemMiddleClick = (item: any, event: MouseEvent) => {
     console.log('Middle clicked item:', item);
     // Implement your middle-click logic here
+  }
+
+  onCellDoubleClick =(item: any, column: Column) => {
+    console.log('Cell double clicked item:', item);
+    console.log('Cell double clicked column:', column);
+    // Implement your cell double-click logic here
   }
 }

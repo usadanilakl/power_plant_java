@@ -27,6 +27,7 @@
   <app-loto-point-table
     [clientSideData$]="selectedLotoPoints$"
     [deleteCallback]="onRemovePoint"
+    [cellDoubleClickCallback]="onCellDoubleClick"
   ></app-loto-point-table>
 
 @if(isAddPointsPopupOpen){  <div class="full-screen-overlay">

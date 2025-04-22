@@ -32,7 +32,7 @@
         (contextmenu)="onRowRightClick(item, $event)"
         (auxclick)="onRowClick(item, $event)">
           @for (column of columns; track column.id) {
-            <td>{{ getCellValue(item, column) }}</td>
+            <td (click)="registerLastClickedCell(item,column,$event)">{{ getCellValue(item, column) }}</td>
           }
         </tr>
       }

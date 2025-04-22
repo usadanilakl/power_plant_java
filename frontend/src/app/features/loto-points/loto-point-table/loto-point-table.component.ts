@@ -26,6 +26,7 @@ export class LotoPointTableComponent implements OnInit {
   @Input() doubleClickCallback?: (item: any) => void;
   @Input() rightClickCallback?: (item: any) => void;
   @Input() middleClickCallback?: (item: any) => void;
+  @Input() cellDoubleClickCallback?: (item: any, column: Column) => void;
 
   @Input() clientSideData$: Observable<LotoPointDto[]> | null = null;
 
@@ -45,7 +46,8 @@ export class LotoPointTableComponent implements OnInit {
         return '';
       }
     },
-    { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' }
+    { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' },
+    { id: 'tagged', header: 'Tagging Status', accessorKey: 'tagged' },
   ];
 
   selectedItem: LotoPointDto | null = null;
@@ -143,13 +145,22 @@ export class LotoPointTableComponent implements OnInit {
   private updateClientSideData(criteria?: SearchCriteria) {
     if (!this.clientSideData$) return;
   
+    console.log('Updating client side data with criteria:', criteria);
+  
     this.clientSideData$.pipe(
       take(1),
-      map(data => criteria ? this.applySearchCriteria(data, criteria) : data)
+      map(data => {
+        console.log('Original data count:', data.length);
+        return criteria ? this.applySearchCriteria(data, criteria) : data;
+      })
     ).subscribe(filteredData => {
+      console.log('Filtered data count:', filteredData.length);
+  
       const startIndex = (this.currentPage - 1) * this.pageSize;
       const endIndex = startIndex + this.pageSize;
       const paginatedData = filteredData.slice(startIndex, endIndex);
+  
+      console.log('Paginated data count:', paginatedData.length);
   
       if (this.currentPage === 1) {
         this.initialItemsSubject.next(paginatedData);
@@ -157,18 +168,27 @@ export class LotoPointTableComponent implements OnInit {
         const currentItems = this.initialItemsSubject.value;
         this.initialItemsSubject.next([...currentItems, ...paginatedData]);
       }
+  
+      console.log('Final data count in subject:', this.initialItemsSubject.value.length);
     });
   }
-  
+
   private applySearchCriteria(data: LotoPointDto[], criteria: SearchCriteria): LotoPointDto[] {
+    console.log('Applying search criteria:', criteria);
+    console.log('Initial data count:', data.length);
+  
     return data.filter(item => {
-      return Object.entries(criteria).every(([key, value]) => {
-        if (key === 'page') return true;
-        if (item.hasOwnProperty(key)) {
-          const itemValue = item[key as keyof LotoPointDto];
-          return itemValue && itemValue.toString().toLowerCase().includes(value.toLowerCase());
-        }
-        return false;
+      return Object.entries(criteria).some(([key, value]) => {
+        if (key === 'page' || !value) return true;
+        if (typeof value !== 'string') return true;
+  
+        const searchValue = value.toLowerCase();
+        
+        return Object.entries(item).some(([itemKey, itemValue]) => {
+          if (itemValue == null) return false;
+          const stringValue = String(itemValue).toLowerCase();
+          return stringValue.includes(searchValue);
+        });
       });
     });
   }
@@ -267,6 +287,8 @@ export class LotoPointTableComponent implements OnInit {
   onDoubleClick(item: any) {
     if (this.doubleClickCallback) {
       this.doubleClickCallback(item);
+    }else if(this.cellDoubleClickCallback){
+
     } else {
       this.onItemClick(item);
     }
@@ -277,6 +299,12 @@ export class LotoPointTableComponent implements OnInit {
       this.rightClickCallback(item);
     } else {
       this.onItemClick(item);
+    }
+  }
+
+  onColumnDoubleClick(item: any, column: Column) {
+    if (this.cellDoubleClickCallback) {
+      this.cellDoubleClickCallback(item,column);
     }
   }
 
