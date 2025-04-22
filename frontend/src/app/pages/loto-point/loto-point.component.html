@@ -1,3 +1,21 @@
 <app-loto-point-table
     [cellDoubleClickCallback]="cellDoubleClick.bind(this)"
 ></app-loto-point-table>
+
+@if (isPopupOpen) {
+    <app-popup
+      [isOpen]="isPopupOpen"
+      [title]="'LOTO Point Details'"
+      [size]="'medium'"
+      (close)="onClosePopup()">
+      
+      <app-details-form
+        [fields]="fields"
+        [values]="lotoPointToEdit"
+        [layout]="'reactive'"
+        (formSubmit)="onFormSubmit($event)"
+        (formDelete)="onFormDelete()">
+      </app-details-form>
+    
+    </app-popup>
+}

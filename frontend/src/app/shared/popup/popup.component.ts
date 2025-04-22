@@ -13,9 +13,17 @@ export class PopupComponent {
   @Input() title: string = '';
   @Input() contentComponent!: Type<any>;
   @Input() contentInputs: { [key: string]: any } = {};
+  @Input() contentOutputs: { [key: string]: (event: any) => void } = {};
   @Output() close = new EventEmitter<void>();
+  @Input() size: 'small' | 'medium' | 'large' | 'auto' = 'auto';
 
   onClose() {
     this.close.emit();
+  }
+
+  onContentOutput(outputName: string, $event: any) {
+    if (this.contentOutputs[outputName]) {
+      this.contentOutputs[outputName]($event);
+    }
   }
 }

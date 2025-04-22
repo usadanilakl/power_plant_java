@@ -2,6 +2,10 @@ import { ValueDto } from '../value.model';
 import { EquipmentDto } from '../equipment/equipment.model';
 import { JsonpClientBackend } from '@angular/common/http';
 import { LotoDto } from './loto.model';
+import { ValidatorFn, Validators } from '@angular/forms';
+import { Option } from '../option.model';
+
+type LotoPointFieldName = keyof LotoPointModel;
 
 export interface LotoPointModel {
   id: number;
@@ -24,6 +28,15 @@ export interface LotoPointModel {
   fileIds: string;
   conflictStatus: string;
   lotos: LotoDto[];
+}
+
+export interface LotoPointFormField {
+  name: string;
+  label: string;
+  type: 'text' | 'select' | 'multi-select';
+  validators?: ValidatorFn[];
+  options?: { value: string; label: string }[];
+  initialValue?: any;
 }
 
 export class LotoPointDto implements LotoPointModel {
@@ -146,6 +159,64 @@ export class LotoPointDto implements LotoPointModel {
       lotos: Array.isArray(json.lotos)? json.lotos.map((lotoJson: any) => LotoDto.fromJson(lotoJson)): []
     });
   }
+
+  
+  static toFormFields(
+    dto: LotoPointDto, 
+    isoPosOptions: Option[], 
+    normPosOptions: Option[],
+    fields: LotoPointFieldName[] = ['tagNumber', 'description', 'unit', 'tagged', 'isoPos', 'normPos', 'specificLocation', 'standard', 'generalLocation']
+  ): LotoPointFormField[] {
+    const allFields: { [key in LotoPointFieldName]: LotoPointFormField } = {
+      tagNumber: { name: 'tagNumber', label: 'Tag Number', type: 'text', validators: [Validators.required], initialValue: dto.tagNumber },
+      description: { name: 'description', label: 'Description', type: 'text', validators: [Validators.required], initialValue: dto.description },
+      unit: { name: 'unit', label: 'Unit', type: 'text', initialValue: dto.unit },
+      tagged: { name: 'tagged', label: 'Tagged', type: 'text', initialValue: dto.tagged },
+      isoPos: {
+        name: 'isoPos',
+        label: 'Isolated Position',
+        type: 'select',
+        options: isoPosOptions,
+        initialValue: dto.isoPos?.id || null
+      },
+      normPos: {
+        name: 'normPos',
+        label: 'Normal Position',
+        type: 'select',
+        options: normPosOptions,
+        initialValue: dto.normPos?.id || null
+      },
+      specificLocation: { name: 'specificLocation', label: 'Specific Location', type: 'text', initialValue: dto.specificLocation },
+      standard: { name: 'standard', label: 'Standard', type: 'text', initialValue: dto.standard },
+      generalLocation: { name: 'generalLocation', label: 'General Location', type: 'text', initialValue: dto.generalLocation },
+      // Add other fields here...
+      id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
+      equipmentIdList: { name: 'equipmentIdList', label: 'Equipment IDs', type: 'multi-select', initialValue: dto.equipmentIdList },
+      normalPosition: { name: 'normalPosition', label: 'Normal Position', type: 'text', initialValue: dto.normalPosition },
+      isolatedPosition: { name: 'isolatedPosition', label: 'Isolated Position', type: 'text', initialValue: dto.isolatedPosition },
+      oldId: { name: 'oldId', label: 'Old ID', type: 'text', initialValue: dto.oldId },
+      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
+      isUpdated: { name: 'isUpdated', label: 'Is Updated', type: 'text', initialValue: dto.isUpdated },
+      fileIds: { name: 'fileIds', label: 'File IDs', type: 'text', initialValue: dto.fileIds },
+      conflictStatus: { name: 'conflictStatus', label: 'Conflict Status', type: 'text', initialValue: dto.conflictStatus },
+      equipmentList: { name: 'equipmentList', label: 'Equipment List', type: 'text',   },
+      lotos: { name: 'lotos', label: 'Lotos', type: 'text',   }
+    };
+  
+    return fields.map(fieldName => allFields[fieldName]);
+  }
+
+  static isValidKey(key: string): key is keyof LotoPointModel {
+    const validKeys: (keyof LotoPointModel)[] = [
+      'id', 'unit', 'tagged', 'tagNumber', 'description', 'isoPos', 'normPos',
+      'specificLocation', 'standard', 'generalLocation', 'equipmentIdList',
+      'normalPosition', 'isolatedPosition', 'equipmentList', 'oldId',
+      'objectType', 'isUpdated', 'fileIds', 'conflictStatus', 'lotos'
+    ];
+    return validKeys.includes(key as keyof LotoPointModel);
+  }
+
+
 
   // You can add methods here for any LOTO point-specific operations
 }

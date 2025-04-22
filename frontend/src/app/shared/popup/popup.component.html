@@ -1,5 +1,5 @@
 <div *ngIf="isOpen" class="popup-overlay">
-  <div class="popup-content">
+  <div class="popup-content" [ngClass]="'popup-' + size">
     <div class="popup-header">
       <h2>{{ title }}</h2>
       <button (click)="onClose()" class="close-button">&times;</button>

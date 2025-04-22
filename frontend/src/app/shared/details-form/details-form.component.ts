@@ -31,7 +31,7 @@ import { MultiInputComponent } from '../multi-input/multi-input.component';
 export class DetailsFormComponent {
   @Input() fields: any[] = [];
   @Input() values: any = {};
-  @Input() layout: 'row' | 'column' | 'reactive' = 'row';
+  @Input() layout: 'row' | 'column' | 'reactive' = 'reactive';
   @Output() formSubmit = new EventEmitter<any>();
   @Output() formDelete = new EventEmitter<void>();
 
