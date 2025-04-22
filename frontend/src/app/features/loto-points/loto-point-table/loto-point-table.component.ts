@@ -303,8 +303,14 @@ export class LotoPointTableComponent implements OnInit {
   }
 
   onColumnDoubleClick(item: any, column: Column) {
+    // console.log('Double-click on item: outside if', item);
+    // console.log('this.cellDoubleClickCallback:', this.cellDoubleClickCallback);
+    // console.log('typeof this.cellDoubleClickCallback:', typeof this.cellDoubleClickCallback);
     if (this.cellDoubleClickCallback) {
-      this.cellDoubleClickCallback(item,column);
+      // console.log('Double-click on column inside if:', column);
+      this.cellDoubleClickCallback(item, column);
+    } else {
+      console.log('cellDoubleClickCallback is not defined or is falsy');
     }
   }
 
