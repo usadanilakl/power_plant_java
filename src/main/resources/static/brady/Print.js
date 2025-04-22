@@ -440,14 +440,6 @@ function printPopup(textTop = '', textBottom = '') {
     autoScan();
 }
 
-// Export the printPopup function so it can be called from other files
-// ... (existing code)
-
-async function createImageFromStrings(string1, string2) {
-    // ... (existing implementation)
-}
-
-// ... (other functions)
 
 // Export the necessary functions
 export { printPopup, scanForPrinters, createImageFromStrings };

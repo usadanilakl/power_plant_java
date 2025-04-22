@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/ng/loto-points")
@@ -86,4 +88,41 @@ public class NgLotoPointController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
+@PostMapping(value = "/tagging", consumes = MediaType.APPLICATION_JSON_VALUE)
+public ResponseEntity<NgApiResponse<LotoPointDto>> updateLotoPoint(@RequestBody Map<String, Object> tagData) {
+    try {
+        // Validate input
+        Long id = Long.valueOf(tagData.get("id").toString());
+        if (id == null) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "LotoPoint ID is required"));
+        }
+
+        // Find the existing LotoPoint
+        LotoPointDto existingLotoPoint = ngLotoPointService.findDtoById(id)
+                .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + id));
+
+        // Update only the specified fields
+        if (tagData.containsKey("tagNumber")) {
+            existingLotoPoint.setTagNumber((String) tagData.get("tagNumber"));
+        }
+        if (tagData.containsKey("description")) {
+            existingLotoPoint.setDescription((String) tagData.get("description"));
+        }
+        if (tagData.containsKey("specificLocation")) {
+            existingLotoPoint.setSpecificLocation((String) tagData.get("specificLocation"));
+        }
+
+        // Save the updated LotoPoint
+        LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(existingLotoPoint));
+
+        NgApiResponse<LotoPointDto> response = new NgApiResponse<>(updatedLotoPoint, "LotoPoint updated successfully");
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+    } catch (EntityNotFoundException e) {
+        return ResponseEntity.notFound().build();
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+    }
+}
 }

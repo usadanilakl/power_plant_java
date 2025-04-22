@@ -1,0 +1,16 @@
+<form (ngSubmit)="onSubmit()">
+  <div>
+    <label for="tagNumber">Tag Number:</label>
+    <input id="tagNumber" [(ngModel)]="tagNumber" name="tagNumber" required>
+  </div>
+  <div>
+    <label for="description">Description:</label>
+    <textarea id="description" [(ngModel)]="description" name="description" required></textarea>
+  </div>
+  <div>
+    <label for="specificLocation">Specific Location:</label>
+    <input id="specificLocation" [(ngModel)]="specificLocation" name="specificLocation" required>
+  </div>
+  <button type="submit">Submit Tag Data</button>
+</form>
+<button (click)="printTag()">Print Tag</button>

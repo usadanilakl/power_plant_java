@@ -1,4 +1,18 @@
 <h2>Active LOTO Points</h2>
 <app-loto-point-table
   [clientSideData$]="activeLotoPoints$"
+  [clickCallback]="onRowClick"
 ></app-loto-point-table>
+
+@if (isPopupOpen) {
+  <app-popup
+    [isOpen]="isPopupOpen"
+    [title]="'Print Tag'"
+    [contentComponent]="PrintTagFormComponent"
+    [contentInputs]="{
+      lotoPoint: selectedItem
+    }"
+    (close)="closePopup()"
+  >
+  </app-popup>
+}

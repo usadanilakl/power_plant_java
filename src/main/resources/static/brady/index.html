@@ -121,6 +121,20 @@
             const printBtn = document.getElementById('printBtn');
             const disconnectBtn = document.getElementById('disconnectBtn');
 
+            // Fetch data from the /data endpoint
+            fetch('/print/data')
+                .then(response => response.json())
+                .then(data => {
+                    input1.value = data.tag || '';
+                    input2.value = data.description || '';
+                    updatePreview();
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    input1.value = '';
+                    input2.value = '';
+                });
+
             async function updatePreview() {
                 const string1 = input1.value;
                 const string2 = input2.value;
