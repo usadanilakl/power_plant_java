@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { LotoPointDto } from '../../models/loto/loto-point.model';
@@ -38,8 +38,9 @@ export class LotoPointService {
     return this.http.post<SpringApiResponse<LotoPointDto>>(this.apiUrl, lotoPoint);
   }
 
-  updateLotoPoint(id: string, lotoPoint: LotoPointDto): Observable<SpringApiResponse<LotoPointDto>> {
-    return this.http.put<SpringApiResponse<LotoPointDto>>(`${this.apiUrl}/${id}`, lotoPoint);
+  updateLotoPoint(lotoPoint: Partial<LotoPointDto>): Observable<SpringApiResponse<LotoPointDto>> {
+    const headers = new HttpHeaders().set('Content-Type', 'application/json');
+    return this.http.put<SpringApiResponse<LotoPointDto>>(`${this.apiUrl}`, lotoPoint, { headers });
   }
 
   deleteLotoPoint(id: string): Observable<SpringApiResponse<void>> {

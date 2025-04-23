@@ -34,6 +34,8 @@ export class LotoPointTableComponent implements OnInit {
     { id: 'unit', header: 'Unit', accessorKey: 'unit' },
     { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
     { id: 'description', header: 'Description', accessorKey: 'description' },
+    { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' },
+    { id: 'tagged', header: 'Tagging Status', accessorKey: 'tagged' },
     { 
       id: 'lotos', 
       header: 'LOTOs', 
@@ -46,8 +48,8 @@ export class LotoPointTableComponent implements OnInit {
         return '';
       }
     },
-    { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' },
-    { id: 'tagged', header: 'Tagging Status', accessorKey: 'tagged' },
+    { id: 'isoPos', header: 'ISO Pos', accessorKey: 'isoPos.name' },
+    { id: 'normPos', header: 'Norm Pos', accessorKey: 'normPos.name' },
   ];
 
   selectedItem: LotoPointDto | null = null;
@@ -201,17 +203,17 @@ export class LotoPointTableComponent implements OnInit {
   
     console.log('Form submitted with data:', formData);
   
-    if (this.submitCallback) {
+    // if (this.submitCallback) {
       
-      const itemToAdd = new LotoPointDto({ ...this.selectedItem, ...formData });
-      // Use the provided callback
-      this.submitCallback(itemToAdd);
-    } else {
-      // Default behavior
-      const updatedItem = new LotoPointDto({ ...this.selectedItem, ...formData });
-      // Implement your default update logic here
-      console.log('Updating item with default behavior:', updatedItem);
-    }
+    //   const itemToAdd = new LotoPointDto({ ...this.selectedItem, ...formData });
+    //   // Use the provided callback
+    //   this.submitCallback(itemToAdd);
+    // } else {
+    //   // Default behavior
+    //   const updatedItem = new LotoPointDto({ ...this.selectedItem, ...formData });
+    //   // Implement your default update logic here
+    //   console.log('Updating item with default behavior:', updatedItem);
+    // }
   
     this.closePopup();
   }

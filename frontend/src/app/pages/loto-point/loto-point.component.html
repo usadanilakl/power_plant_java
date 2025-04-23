@@ -3,7 +3,7 @@
 ></app-loto-point-table>
 
 @if (isPopupOpen) {
-    <app-popup
+    <app-popup-projection
       [isOpen]="isPopupOpen"
       [title]="'LOTO Point Details'"
       [size]="'medium'"
@@ -17,5 +17,5 @@
         (formDelete)="onFormDelete()">
       </app-details-form>
     
-    </app-popup>
+    </app-popup-projection>
 }

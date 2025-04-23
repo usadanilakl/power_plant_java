@@ -31,7 +31,7 @@ public class NgLotoPointController {
         try {
 //            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
             Page<LotoPointDto> paginatedFiles = ngLotoPointService.findAllWithProjectionPaginated(
-                    new ArrayList<>(Arrays.asList("id", "tagNumber", "unit", "description", "specificLocation", "lotos.workScope")),
+                    new ArrayList<>(Arrays.asList("id", "tagNumber", "unit", "description", "specificLocation", "lotos.workScope", "isoPos.name","isoPos.id","normPos.name","normPos.id")),
                     PageRequest.of(page - 1, pageSize)).map(ngLotoPointService::toDto);
             NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
@@ -89,40 +89,59 @@ public class NgLotoPointController {
         }
     }
 
-@PostMapping(value = "/tagging", consumes = MediaType.APPLICATION_JSON_VALUE)
-public ResponseEntity<NgApiResponse<LotoPointDto>> updateLotoPoint(@RequestBody Map<String, Object> tagData) {
-    try {
-        // Validate input
-        Long id = Long.valueOf(tagData.get("id").toString());
-        if (id == null) {
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "LotoPoint ID is required"));
-        }
+    @PostMapping(value = "/tagging", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<NgApiResponse<LotoPointDto>> updateLotoPoint(@RequestBody Map<String, Object> tagData) {
+        try {
+            // Validate input
+            Long id = Long.valueOf(tagData.get("id").toString());
+            if (id == null) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "LotoPoint ID is required"));
+            }
 
-        // Find the existing LotoPoint
-        LotoPointDto existingLotoPoint = ngLotoPointService.findDtoById(id)
-                .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + id));
+            // Find the existing LotoPoint
+            LotoPointDto existingLotoPoint = ngLotoPointService.findDtoById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + id));
 
-        // Update only the specified fields
-        if (tagData.containsKey("tagNumber")) {
-            existingLotoPoint.setTagNumber((String) tagData.get("tagNumber"));
-        }
-        if (tagData.containsKey("description")) {
-            existingLotoPoint.setDescription((String) tagData.get("description"));
-        }
-        if (tagData.containsKey("specificLocation")) {
-            existingLotoPoint.setSpecificLocation((String) tagData.get("specificLocation"));
-        }
+            // Update only the specified fields
+            if (tagData.containsKey("tagNumber")) {
+                existingLotoPoint.setTagNumber((String) tagData.get("tagNumber"));
+            }
+            if (tagData.containsKey("description")) {
+                existingLotoPoint.setDescription((String) tagData.get("description"));
+            }
+            if (tagData.containsKey("specificLocation")) {
+                existingLotoPoint.setSpecificLocation((String) tagData.get("specificLocation"));
+            }
 
-        // Save the updated LotoPoint
-        LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(existingLotoPoint));
+            // Save the updated LotoPoint
+            LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(existingLotoPoint));
 
-        NgApiResponse<LotoPointDto> response = new NgApiResponse<>(updatedLotoPoint, "LotoPoint updated successfully");
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
-    } catch (EntityNotFoundException e) {
-        return ResponseEntity.notFound().build();
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+            NgApiResponse<LotoPointDto> response = new NgApiResponse<>(updatedLotoPoint, "LotoPoint updated successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
     }
-}
+
+    @PutMapping
+    public ResponseEntity<NgApiResponse<LotoPointDto>> updateLotoPoint1(@RequestBody LotoPointDto lotoPoint) {
+        try {
+            if (lotoPoint.getId() == null || lotoPoint.getId() == 0) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "LotoPoint ID is required"));
+            }
+
+            LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(lotoPoint));
+
+            NgApiResponse<LotoPointDto> response = new NgApiResponse<>(updatedLotoPoint, "LotoPoint updated successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }

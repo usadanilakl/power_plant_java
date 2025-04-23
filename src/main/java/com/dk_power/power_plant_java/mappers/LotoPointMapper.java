@@ -85,7 +85,7 @@ public class LotoPointMapper implements BaseMapper{
             return null;
         }
         LotoPoint entity = null;
-        if(dto.getId()==null) entity = new LotoPoint();
+        if(dto.getId()==null || dto.getId()==0) entity = new LotoPoint();
         else entity = lotoPointService.getEntityById(dto.getId());
         if (dto.getUnit() != null) entity.setUnit(dto.getUnit());
         if (dto.getTagged() != null) entity.setTagged(dto.getTagged());

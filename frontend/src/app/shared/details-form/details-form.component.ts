@@ -41,6 +41,7 @@ export class DetailsFormComponent {
 
   ngOnInit() {
     this.createForm();
+    console.log('this.form:', this.form);
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -50,8 +51,11 @@ export class DetailsFormComponent {
   }
 
   createForm() {
+    // console.log('Creating form with fields:', this.fields);
+    // console.log("values:", this.values);
     const group: { [key: string]: any[] } = {};
     this.fields.forEach((field) => {
+      console.log('Field:', field);
       let value = this.values[field.name] || null;
       let validators = field.validators || [];
   
