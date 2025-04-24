@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LotoService } from '../../../services/loto/loto.service';
 import { LotoPointTableComponent } from '../../loto-points/loto-point-table/loto-point-table.component';
@@ -21,6 +21,8 @@ export class ActiveLotoPointsComponent implements OnInit {
   PrintTagFormComponent = PrintTagFormComponent;
 
   constructor(private lotoService: LotoService) {}
+  
+  private destroyRef = inject(DestroyRef);
 
   ngOnInit() {
     this.loadActiveLotoPoints();
