@@ -3,6 +3,8 @@ package com.dk_power.power_plant_java.controller.angular.loto;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -127,13 +129,15 @@ public class NgLotoPointController {
     }
 
     @PutMapping
-    public ResponseEntity<NgApiResponse<LotoPointDto>> updateLotoPoint1(@RequestBody LotoPointDto lotoPoint) {
+    public ResponseEntity<NgApiResponse<LotoPointDto>> updateLotoPoint(@RequestBody LotoPointIdDto lotoPoint) {
         try {
             if (lotoPoint.getId() == null || lotoPoint.getId() == 0) {
                 return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "LotoPoint ID is required"));
             }
 
-            LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(lotoPoint));
+            LotoPoint lp = ngLotoPointService.convertIdDtoToEntity(lotoPoint);
+
+            LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(lp));
 
             NgApiResponse<LotoPointDto> response = new NgApiResponse<>(updatedLotoPoint, "LotoPoint updated successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);

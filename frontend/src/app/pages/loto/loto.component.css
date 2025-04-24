@@ -1,4 +1,4 @@
-.loto-navigation {
+/* .loto-navigation {
   display: flex;
   justify-content: space-around;
   margin-bottom: 20px;
@@ -16,4 +16,37 @@ button {
 
 button:hover {
   background-color: #45a049;
+} */
+
+.loto-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.loto-navigation {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+  background-color: #f0f0f0;
+}
+
+.loto-navigation button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+
+.loto-navigation button:hover {
+  background-color: #45a049;
+}
+
+.loto-content {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
 }

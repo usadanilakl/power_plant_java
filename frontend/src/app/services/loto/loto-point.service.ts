@@ -6,6 +6,7 @@ import { LotoPointDto } from '../../models/loto/loto-point.model';
 import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import { SpringPaginatedResponse } from '../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
+import { LotoPointIdDto } from '../../models/loto/loto-point-id.model';
 
 @Injectable({
   providedIn: 'root'
@@ -38,9 +39,9 @@ export class LotoPointService {
     return this.http.post<SpringApiResponse<LotoPointDto>>(this.apiUrl, lotoPoint);
   }
 
-  updateLotoPoint(lotoPoint: Partial<LotoPointDto>): Observable<SpringApiResponse<LotoPointDto>> {
+  updateLotoPoint(lotoPoint: Partial<LotoPointIdDto>): Observable<SpringApiResponse<LotoPointIdDto>> {
     const headers = new HttpHeaders().set('Content-Type', 'application/json');
-    return this.http.put<SpringApiResponse<LotoPointDto>>(`${this.apiUrl}`, lotoPoint, { headers });
+    return this.http.put<SpringApiResponse<LotoPointIdDto>>(`${this.apiUrl}`, lotoPoint, { headers });
   }
 
   deleteLotoPoint(id: string): Observable<SpringApiResponse<void>> {

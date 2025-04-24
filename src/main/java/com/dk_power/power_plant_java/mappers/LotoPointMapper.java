@@ -2,9 +2,13 @@ package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
@@ -12,6 +16,9 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -23,14 +30,22 @@ public class LotoPointMapper implements BaseMapper{
     private final ValueService valueService;
     private final LotoPointService lotoPointService;
     private final EquipmentService equipmentService;
+    private final NgLotoService lotoService;
 
-    public LotoPointMapper(ModelMapper modelMapper, @Lazy EquipmentMapper equipmentMapper, LotoMapper lotoMapper, ValueService valueService, @Lazy LotoPointService lotoPointService, @Lazy EquipmentService equipmentService) {
+    public LotoPointMapper(ModelMapper modelMapper,
+                           @Lazy EquipmentMapper equipmentMapper,
+                           LotoMapper lotoMapper,
+                           ValueService valueService,
+                           @Lazy LotoPointService lotoPointService,
+                           @Lazy EquipmentService equipmentService,
+                           @Lazy NgLotoService lotoService) {
         this.modelMapper = modelMapper;
         this.equipmentMapper = equipmentMapper;
         this.lotoMapper = lotoMapper;
         this.valueService = valueService;
         this.lotoPointService = lotoPointService;
         this.equipmentService = equipmentService;
+        this.lotoService = lotoService;
     }
 
     public LotoPointDto convertToDto(LotoPoint entity) {
@@ -120,5 +135,66 @@ public class LotoPointMapper implements BaseMapper{
     @Override
     public ModelMapper getMapper() {
         return modelMapper;
+    }
+
+    public LotoPoint convertIdDtoToEntity(LotoPointIdDto dto) {
+        if (dto == null) return null;
+
+        LotoPoint lotoPoint;
+        if (dto.getId() == null || dto.getId() == 0) {
+            lotoPoint = new LotoPoint();
+        } else {
+            lotoPoint = lotoPointService.findById(dto.getId()).orElse(new LotoPoint());
+        }
+
+        // Set fields from BaseDto
+        if (dto.getId() != null && dto.getId() != 0) lotoPoint.setId(dto.getId());
+        if (dto.getDeleted() != null) lotoPoint.setDeleted(dto.getDeleted());
+        if (dto.getName() != null) lotoPoint.setName(dto.getName());
+        if (dto.getNote() != null) lotoPoint.setNote(dto.getNote());
+        if (dto.getCreatedBy() != null) lotoPoint.setCreatedBy(dto.getCreatedBy());
+        if (dto.getObjectType() != null) lotoPoint.setObjectType(dto.getObjectType());
+        if (dto.getDataServiceItemId() != null) lotoPoint.setDataServiceItemId(dto.getDataServiceItemId());
+        if (dto.getRefactorNotes() != null) lotoPoint.setRefactorNotes(dto.getRefactorNotes());
+        if (dto.getDateCreated() != null) lotoPoint.setDateCreated(dto.getDateCreated());
+        if (dto.getDateModified() != null) lotoPoint.setDateModified(dto.getDateModified());
+
+        // Set fields specific to LotoPointIdDto
+        if (dto.getUnit() != null) lotoPoint.setUnit(dto.getUnit());
+        if (dto.getTagged() != null) lotoPoint.setTagged(dto.getTagged());
+        if (dto.getTagNumber() != null) lotoPoint.setTagNumber(dto.getTagNumber());
+        if (dto.getDescription() != null) lotoPoint.setDescription(dto.getDescription());
+        if (dto.getIsoPos() != null) lotoPoint.setIsoPos(valueService.findById(dto.getIsoPos()).orElse(null));
+        if (dto.getNormPos() != null) lotoPoint.setNormPos(valueService.findById(dto.getNormPos()).orElse(null));
+        if (dto.getSpecificLocation() != null) lotoPoint.setSpecificLocation(dto.getSpecificLocation());
+        if (dto.getStandard() != null) lotoPoint.setStandard(dto.getStandard());
+        if (dto.getGeneralLocation() != null) lotoPoint.setGeneralLocation(dto.getGeneralLocation());
+        if (dto.getNormalPosition() != null) lotoPoint.setNormalPosition(dto.getNormalPosition());
+        if (dto.getIsolatedPosition() != null) lotoPoint.setIsolatedPosition(dto.getIsolatedPosition());
+        if (dto.getOldId() != null) lotoPoint.setOldId(dto.getOldId());
+        if (dto.getIsUpdated() != null) lotoPoint.setIsUpdated(dto.getIsUpdated());
+        if (dto.getFileIds() != null) lotoPoint.setFileIds(dto.getFileIds());
+        if (dto.getConflictStatus() != null) lotoPoint.setConflictStatus(dto.getConflictStatus());
+
+
+        // Handle equipmentList
+        if (dto.getEquipmentList() != null && !dto.getEquipmentList().isEmpty()) {
+            Set<Equipment> equipment = dto.getEquipmentList().stream()
+                    .map(id -> equipmentService.findById(id).orElse(null))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            lotoPoint.setEquipmentList(equipment);
+        }
+
+        // Handle lotos
+        if (dto.getLotos() != null && !dto.getLotos().isEmpty()) {
+            Set<Loto> lotos = dto.getLotos().stream()
+                    .map(id -> lotoService.findById(id).orElse(null))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            lotoPoint.setLotos(lotos);
+        }
+
+        return lotoPoint;
     }
 }

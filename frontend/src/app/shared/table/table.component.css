@@ -1,5 +1,5 @@
 .table-container {
-  height: 90vh; /* 90% of the viewport height */
+  height: 100%; /* 90% of the viewport height */
   overflow-y: auto;
   overflow-x: auto; /* Enable horizontal scrolling */
   width: 100%; /* Ensure the container takes full width of its parent */
@@ -48,6 +48,26 @@ tbody tr {
 
 tbody tr:hover {
   background-color: #f5f5f5;
+}
+
+
+/* Ensure scrollbar is always visible */
+.table-container::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background-color: rgba(0,0,0,.5);
+  -webkit-box-shadow: 0 0 1px rgba(255,255,255,.5);
+}
+
+/* For Firefox */
+.table-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,.5) transparent;
 }
 
 /* Remove the body padding as it's not necessary for the table component */

@@ -5,9 +5,10 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
-
+@Repository
 public interface ValueRepo extends BaseCategoryValueRepo<Value> {
     List<Value> findByCategory(Category category);
 //    @Query(

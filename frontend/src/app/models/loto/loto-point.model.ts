@@ -4,6 +4,7 @@ import { JsonpClientBackend } from '@angular/common/http';
 import { LotoDto } from './loto.model';
 import { ValidatorFn, Validators } from '@angular/forms';
 import { Option } from '../option.model';
+import { LotoPointIdDto } from './loto-point-id.model';
 
 type LotoPointFieldName = keyof LotoPointModel;
 
@@ -214,6 +215,30 @@ export class LotoPointDto implements LotoPointModel {
       'objectType', 'isUpdated', 'fileIds', 'conflictStatus', 'lotos'
     ];
     return validKeys.includes(key as keyof LotoPointModel);
+  }
+
+  toIdModel(): LotoPointIdDto {
+    return new LotoPointIdDto({
+      id: this.id,
+      unit: this.unit,
+      tagged: this.tagged,
+      tagNumber: this.tagNumber,
+      description: this.description,
+      isoPosId: this.isoPos?.id || null,
+      normPosId: this.normPos?.id || null,
+      specificLocation: this.specificLocation,
+      standard: this.standard,
+      generalLocation: this.generalLocation,
+      equipmentIdList: this.equipmentIdList,
+      normalPosition: this.normalPosition,
+      isolatedPosition: this.isolatedPosition,
+      oldId: this.oldId,
+      objectType: this.objectType,
+      isUpdated: this.isUpdated,
+      fileIds: this.fileIds.split(',').map(id => id.trim()).filter(id => id !== ''),
+      conflictStatus: this.conflictStatus,
+      lotoIds: this.lotos.map(loto => loto.id)
+    });
   }
 
 

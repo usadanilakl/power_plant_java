@@ -1,4 +1,4 @@
-.layout-container {
+/* .layout-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -38,4 +38,72 @@
 .main-content {
   flex: 1;
   padding: 1rem;
+} */
+
+.layout-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.header {
+  background-color: #3f51b5;
+  color: white;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toggle-menu-btn {
+  background-color: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.content-wrapper {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.left-menu {
+  background-color: #f0f0f0;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.left-menu.collapsed {
+  width: 0 !important;
+  padding: 0;
+  overflow: hidden;
+}
+
+.left-menu ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.left-menu li {
+  margin-bottom: 0.5rem;
+}
+
+.left-menu a {
+  text-decoration: none;
+  color: #333;
+}
+
+.resizer {
+  width: 5px;
+  background-color: #ccc;
+  cursor: col-resize;
+}
+
+.main-content {
+  flex: 1;
+  padding: 1rem;
+  overflow: auto;
 }

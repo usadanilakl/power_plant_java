@@ -10,6 +10,7 @@ import { ValueDto } from '../../models/value.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DetailsFormComponent } from '../../shared/details-form/details-form.component';
 import { PopupProjectionComponent } from '../../shared/popup-projection/popup-projection.component';
+import { LotoPointIdDto } from '../../models/loto/loto-point-id.model';
 
 @Component({
   selector: 'app-loto-point',
@@ -88,7 +89,7 @@ export class LotoPointComponent implements OnInit  {
       );
     }
 
-    onFormSubmit(lotoPoint: LotoPointDto) {
+    onFormSubmit(lotoPoint: LotoPointIdDto) {
       // Perform the required actions to save or update the loto point (e.g., save to the server)
       console.log('Form submitted:', lotoPoint);
       lotoPoint.id = this.lotoPointToEdit?.id || 0;

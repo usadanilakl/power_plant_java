@@ -1,7 +1,19 @@
-<div class="loto-navigation">
+<!-- <div class="loto-navigation">
   @for (category of categories; track category.name) {
     <button [routerLink]="category.route">{{ category.name }}</button>
   }
 </div>
 
-<router-outlet></router-outlet>
+<router-outlet></router-outlet> -->
+
+<div class="loto-container">
+  <nav class="loto-navigation">
+    @for (category of categories; track category.name) {
+      <button [routerLink]="category.route">{{ category.name }}</button>
+    }
+  </nav>
+
+  <div class="loto-content">
+    <router-outlet></router-outlet>
+  </div>
+</div>

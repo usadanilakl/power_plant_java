@@ -12,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
 public interface CrudService<
@@ -121,5 +123,9 @@ public interface CrudService<
 
     default Page<E> getAllSinceAndUntilPaginated(LocalDateTime since, LocalDateTime until, Pageable pageable){
         return getRepo().findAllByDateModifiedBetween(since, until, pageable);
+    }
+
+    default Optional<E> findById(Long id){
+        return getRepo().findById(id);
     }
 }

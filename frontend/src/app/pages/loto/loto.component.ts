@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { LotoPointTableComponent } from "../../features/loto-points/loto-point-table/loto-point-table.component";
 
 @Component({
   selector: 'app-loto',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, LotoPointTableComponent],
   templateUrl: './loto.component.html',
   styleUrl: './loto.component.css'
 })

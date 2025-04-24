@@ -1,7 +1,6 @@
-<div class="layout-container">
+<!-- <div class="layout-container">
   <header class="header">
     <h1>Jackson Generation</h1>
-    <!-- Add any header content here -->
   </header>
 
   <div class="content-wrapper">
@@ -13,11 +12,33 @@
         <li><a routerLink="/tag-number">Create New Tag</a></li>
         <li><a routerLink="/pid">View P&IDs</a></li>
         <li><a routerLink="/print">Print</a></li>
-        <!-- Add more menu items as needed -->
       </ul>
     </nav>
 
     <main class="main-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div> -->
+<div class="layout-container">
+  <header class="header">
+    <h1>Jackson Generation</h1>
+    <button class="toggle-menu-btn" (click)="toggleMenu()">Toggle Menu</button>
+  </header>
+
+  <div class="content-wrapper">
+    <nav class="left-menu" id="leftMenu" #leftMenu [style.width.px]="menuWidth">
+      <ul>
+        <li><a routerLink="/">Home</a></li>
+        <li><a routerLink="/loto">LOTO</a></li>
+        <li><a routerLink="/loto-points">LOTO Points</a></li>
+        <li><a routerLink="/tag-number">Create New Tag</a></li>
+        <li><a routerLink="/pid">View P&IDs</a></li>
+        <li><a routerLink="/print">Print</a></li>
+      </ul>
+    </nav>
+    <div class="resizer" id="resizer" #resizer (mousedown)="onResizerMouseDown($event)"></div>
+    <main class="main-content" #mainContent>
       <router-outlet></router-outlet>
     </main>
   </div>

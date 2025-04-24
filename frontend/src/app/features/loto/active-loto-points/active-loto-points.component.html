@@ -1,8 +1,12 @@
-<h2>Active LOTO Points</h2>
-<app-loto-point-table
-  [clientSideData$]="activeLotoPoints$"
-  [clickCallback]="onRowClick"
-></app-loto-point-table>
+<div class="active-loto-points-container">
+  <h2>Active LOTO Points</h2>
+  <div class="table-container">
+    <app-loto-point-table
+      [clientSideData$]="activeLotoPoints$"
+      [clickCallback]="onRowClick"
+    ></app-loto-point-table>
+  </div>
+</div>
 
 @if (isPopupOpen) {
   <app-popup
