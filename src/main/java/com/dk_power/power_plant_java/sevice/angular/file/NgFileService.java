@@ -6,13 +6,19 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.util.FileUtil;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -25,6 +31,9 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
     private final FileMapper fileMapper;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
+
+    @Value("${files.root.path}")
+    String filesRootPath;
 
     @Override
     public FileObject getEntity() {
@@ -94,4 +103,13 @@ public FileDto findByFileLink(String imageUrl) {
     // Now use the cleaned url to find the FileObject
     return this.toDto(byFileLink);
 }
+
+    public String uploadFile(MultipartFile file, String fileLink) throws IOException {
+        Path path = Paths.get(filesRootPath,fileLink);
+        return FileUtil.uploadFileToLocal(file, path.toString(), false);
+    }
+
+    public FileDto updateFile(FileDto fileDto) {
+
+    }
 }

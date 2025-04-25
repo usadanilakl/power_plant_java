@@ -179,7 +179,7 @@ export class FileTableComponent implements OnInit {
     }));
   
     // Update in the backend
-    this.fileService.updateFile(this.selectedItem.id.toString(), formDataToSend).subscribe(
+    this.fileService.updateFile(formDataToSend).subscribe(
       (response) => {
         console.log('File updated successfully', response);
         
