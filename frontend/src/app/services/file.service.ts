@@ -60,7 +60,7 @@ export class FileService {
   }
 
   updateFile(formData: FormData): Observable<SpringApiResponse<FileDto>> {
-    return this.http.put<SpringApiResponse<FileDto>>(`${this.apiUrl}/files/${id}`, formData);
+    return this.http.put<SpringApiResponse<FileDto>>(`${this.apiUrl}/files`, formData);
   }
 
   deleteFile(id: string): Observable<any> {

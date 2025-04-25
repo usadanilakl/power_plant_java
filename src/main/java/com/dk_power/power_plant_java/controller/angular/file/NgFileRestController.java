@@ -93,7 +93,7 @@ public class NgFileRestController {
         }
     }
 
-    @PutMapping("/{id}")
+    @PutMapping
     public ResponseEntity<ApiResponse<FileDto>> updateFile(@RequestPart("fileDto") FileDto fileDto,
                                                   @RequestPart(value = "file", required = false) MultipartFile file) {
         try{// Handle the file upload if a new file is provided
