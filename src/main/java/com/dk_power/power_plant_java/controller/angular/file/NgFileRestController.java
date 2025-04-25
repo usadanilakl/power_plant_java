@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -88,5 +89,21 @@ public class NgFileRestController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<FileDto> updateFile(@PathVariable Long id,
+                                              @RequestPart("fileDto") FileDto fileDto,
+                                              @RequestPart(value = "file", required = false) MultipartFile file) {
+        // Handle the file upload if a new file is provided
+        if (file != null && !file.isEmpty()) {
+            // Process the file upload
+            String fileLink = fileUploadService.uploadFile(file);
+            fileDto.setFileLink(fileLink);
+        }
+
+        // Update the file in the database
+        FileDto updatedFile = fileService.updateFile(id, fileDto);
+        return ResponseEntity.ok(updatedFile);
     }
 }

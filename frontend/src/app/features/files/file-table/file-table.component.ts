@@ -154,41 +154,49 @@ export class FileTableComponent implements OnInit {
     this.selectedItem = null;
   }
 
-  onFormSubmit(formData: any) {
+  onFormSubmit(formData: any, fileInput: File | null) {
     if (!this.selectedItem) {
       console.error('No item selected for update');
       return;
     }
-
+  
     console.log('Form submitted with data:', formData);
   
-    // // Merge the existing item data with the new form data
-    // const updatedItem = { ...this.selectedItem, ...formData };
+    // Create a FormData object to send both file and JSON data
+    const formDataToSend = new FormData();
   
-    // // Update the item in the table
-    // const updatedItems = [...this.initialItemsSubject.value];
-    // const index = updatedItems.findIndex(item => item.id === this.selectedItem?.id);
-    // if (index !== -1) {
-    //   updatedItems[index] = updatedItem;
-    //   this.initialItemsSubject.next(updatedItems);
-    // }
+    // Append the file if it exists
+    if (fileInput) {
+      formDataToSend.append('file', fileInput);
+    }
   
-    // // Update in the backend
-    // this.fileService.updateFile(this.selectedItem.id.toString(), updatedItem).subscribe(
-    //   (response) => {
-    //     console.log('File updated successfully', response);
-    //     this.selectedItem = null; // Close the form
-    //   },
-    //   error => {
-    //     console.error('Error updating file:', error);
-    //     // Revert the change in the local array if the server update fails
-    //     if (index !== -1) {
-    //       const revertedItems = [...this.initialItemsSubject.value];
-    //       revertedItems[index] = this.selectedItem;
-    //       this.initialItemsSubject.next(revertedItems);
-    //     }
-    //   }
-    // );
+    // Merge the existing item data with the new form data
+    const updatedItem = { ...this.selectedItem, ...formData };
+  
+    // Append the JSON data
+    formDataToSend.append('fileDto', new Blob([JSON.stringify(updatedItem)], {
+      type: "application/json"
+    }));
+  
+    // Update in the backend
+    this.fileService.updateFile(this.selectedItem.id.toString(), formDataToSend).subscribe(
+      (response) => {
+        console.log('File updated successfully', response);
+        
+        // Update the item in the table
+        const updatedItems = [...this.initialItemsSubject.value];
+        const index = updatedItems.findIndex(item => item.id === this.selectedItem?.id);
+        if (index !== -1) {
+          updatedItems[index] = response.responseData; // Assuming the response contains the updated file data
+          this.initialItemsSubject.next(updatedItems);
+        }
+  
+        this.selectedItem = null; // Close the form
+      },
+      error => {
+        console.error('Error updating file:', error);
+      }
+    );
   }
 
   onFormDelete() {

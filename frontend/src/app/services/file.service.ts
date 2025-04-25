@@ -59,8 +59,8 @@ export class FileService {
     return this.http.post<any>(this.apiUrl, file);
   }
 
-  updateFile(id: string, file: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, file);
+  updateFile(id: string, formData: FormData): Observable<SpringApiResponse<FileDto>> {
+    return this.http.put<SpringApiResponse<FileDto>>(`${this.apiUrl}/files/${id}`, formData);
   }
 
   deleteFile(id: string): Observable<any> {
