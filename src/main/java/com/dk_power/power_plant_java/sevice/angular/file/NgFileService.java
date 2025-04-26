@@ -110,6 +110,7 @@ public FileDto findByFileLink(String imageUrl) {
     }
 
     public FileDto updateFile(FileDto fileDto) {
+        throw new RuntimeException("Not implemented yet");
 
     }
 }

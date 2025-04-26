@@ -16,11 +16,10 @@ import java.util.Set;
 @NoArgsConstructor
 @Getter
 @Setter
-@JsonIdentityInfo(
-        generator = ObjectIdGenerators.PropertyGenerator.class,
-        property = "id")
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
+
 public class LotoPointDto extends BaseDto {
     private String unit;
     private String tagged;
@@ -44,9 +43,7 @@ public class LotoPointDto extends BaseDto {
 //    private String redTagId;
 //    private Boolean inUse = false;
 //    @JsonBackReference
-    @JsonIgnore
     private List<LotoDto> lotos;
-    @JsonIgnore
     private Set<EquipmentDto> equipmentList;
     private String oldId;
     private String objectType;

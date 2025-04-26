@@ -5,9 +5,7 @@ import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
 import com.dk_power.power_plant_java.dto.equipment.HighlightDto;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,6 +17,8 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
+
 public class FileDto extends BaseDto {
 
 
@@ -33,6 +33,7 @@ public class FileDto extends BaseDto {
     private String folder;
     private ValueDto system;
     @JsonProperty("systems")
+    @JsonIgnore
     private String relatedSystems;
     private String fileNumber;
     private ValueDto vendor;
@@ -40,6 +41,7 @@ public class FileDto extends BaseDto {
 //    private List<EquipmentDto> filePoints;
     private String objectType;
     private String extension;
+
     private List<HeatTraceDto> heatTraceList;
     private String bulkEditStep;
     private List<HighlightDto> highlights;
