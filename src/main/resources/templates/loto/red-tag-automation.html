@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>App Automation</title>
+</head>
+<body>
+    <h1>App Automation</h1>
+
+    <div th:if="${message}" th:text="${message}" style="color: green;"></div>
+    <div th:if="${error}" th:text="${error}" style="color: red;"></div>
+
+    <h2>Open Application</h2>
+    <form th:action="@{/red-tag-automation/open-app}" method="post">
+        <button type="submit">Open App</button>
+    </form>
+
+    <h2>Add New Device</h2>
+    <form th:action="@{/red-tag-automation/add-device}" th:object="${lotoPoint}" method="post">
+        <div>
+            <label for="description">Description:</label>
+            <input type="text" id="description" th:field="*{description}" required>
+        </div>
+        <div>
+            <label for="tagNumber">Tag Number:</label>
+            <input type="text" id="tagNumber" th:field="*{tagNumber}" required>
+        </div>
+        <div>
+            <label for="specificLocation">Specific Location:</label>
+            <input type="text" id="specificLocation" th:field="*{specificLocation}" required>
+        </div>
+        <div>
+            <label for="isoPos">Iso Position:</label>
+            <input type="text" id="isoPos" th:field="*{isoPos.name}" required>
+        </div>
+        <div>
+            <label for="normPos">Normal Position:</label>
+            <input type="text" id="normPos" th:field="*{normPos.name}" required>
+        </div>
+        <button type="submit">Add Device</button>
+    </form>
+</body>
+</html>
