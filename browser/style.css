@@ -1,0 +1,63 @@
+:root {
+    --bg-color: #ffffff;
+    --text-color: #333333;
+    --header-bg-color: #333333;
+    --header-text-color: #ffffff;
+    --button-bg-color: #f0f0f0;
+    --button-text-color: #333333;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+header {
+    background-color: var(--header-bg-color);
+    color: var(--header-text-color);
+    text-align: center;
+    padding: 1rem;
+}
+
+main {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.menu-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+button {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 4px;
+}
+
+.theme-switch {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+body.dark-theme {
+    --bg-color: #333333;
+    --text-color: #ffffff;
+    --header-bg-color: #1a1a1a;
+    --header-text-color: #ffffff;
+    --button-bg-color: #4a4a4a;
+    --button-text-color: #ffffff;
+}

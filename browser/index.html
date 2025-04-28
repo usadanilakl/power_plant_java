@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Page with Header and Menu</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="app/server/style.css">
+</head>
+<body>
+    <header>
+        <h1>My Simple Page</h1>
+        <div id="status">Checking server status...</div>
+        <button id="stop-server" onclick="stopServer()">Stop Server</button>
+    </header>
+    <main>
+        <div class="menu-buttons">
+            <button>Button 1</button>
+            <button>Button 2</button>
+            <button>Button 3</button>
+        </div>
+    </main>
+    <div class="theme-switch">
+        <label for="theme-toggle">Dark Theme</label>
+        <input type="checkbox" id="theme-toggle">
+    </div>
+    <script src="properties/static-resources.js"></script>
+    <script src="app/server/server-status.js"></script>
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle.addEventListener('change', () => {
+            document.body.classList.toggle('dark-theme');
+        });
+        checkServerStatus();
+    </script>
+</body>
+</html>
