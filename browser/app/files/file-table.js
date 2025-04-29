@@ -1,4 +1,5 @@
 const fileTable = {
+    selectedFile :{},
     buildFileTable: function(files) {
         // Define the columns we want to display
         const columns = ['id', 'name', 'fileType', 'system', 'relatedSystems', 'fileNumber', 'vendor'];
@@ -22,8 +23,11 @@ const fileTable = {
             if (row) {
                 const rowIndex = Array.from(row.parentNode.children).filter(child => child.classList.contains('row')).indexOf(row);
                 const fileLink = processedFiles[rowIndex].fileLink;
+                this.selectedFile = processedFiles[rowIndex];
                 if (fileLink) {
                     const imageZoom = new ImageZoomInteractive('../'+fileLink, 'image');
+                    const shapes = equipmentService.getShapes(this.selectedFile.points);
+                    // shapes.forEach(shape => imageZoom.addShape(shape));
                     // imageZoom.addShape({ type: 'rectangle', x: 100, y: 100, width: 50, height: 50, color: 'red' });
                 }
             }

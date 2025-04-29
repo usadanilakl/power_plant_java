@@ -120,12 +120,128 @@ class ImageZoomInteractive {
 
     drawShapes() {
         const ctx = this.canvas.getContext('2d');
+        if (!ctx) return;
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.shapes.forEach(shape => this.drawShape(ctx, shape));
+        this.shapes.forEach(shape => {
+            this.drawShape(ctx, shape);
+        });
     }
 
     drawShape(ctx, shape) {
-        // Implement shape drawing logic here
+        const scale = this.calculateCurrentScale();
+        ctx.strokeStyle = shape.color;
+        ctx.fillStyle = shape.color;
+        ctx.lineWidth = (shape.isSelected ? 3 : 1);
+
+        const scaledShape = this.scaleShape(shape);
+
+        switch (scaledShape.type) {
+            case 'rectangle':
+                const rect = scaledShape;
+                ctx.strokeRect(
+                    rect.x * scale,
+                    rect.y * scale,
+                    rect.width,
+                    rect.height
+                );
+
+                if (shape.isSelected) {
+                    this.drawSelectionHandles(ctx, shape);
+                }
+                break;
+            case 'circle':
+                const circle = scaledShape;
+                ctx.beginPath();
+                ctx.arc(
+                    circle.x * scale,
+                    circle.y * scale,
+                    circle.radius,
+                    0,
+                    2 * Math.PI
+                );
+                ctx.stroke();
+                break;
+            case 'line':
+                const line = scaledShape;
+                ctx.beginPath();
+                ctx.moveTo(line.startX * scale, line.startY * scale);
+                ctx.lineTo(line.endX * scale, line.endY * scale);
+                ctx.stroke();
+                break;
+            case 'text':
+                const text = scaledShape;
+                ctx.font = `${16 * scale}px Arial`;
+                ctx.fillText(text.text, text.x * scale, text.y * scale);
+                break;
+        }
+    }
+
+    scaleShape(shape) {
+        const calculatedScale = this.calculateCurrentScale();
+        switch (shape.type) {
+            case 'rectangle':
+                return {
+                    ...shape,
+                    width: shape.width * calculatedScale,
+                    height: shape.height * calculatedScale,
+                };
+            case 'circle':
+                return {
+                    ...shape,
+                    radius: shape.radius * calculatedScale,
+                };
+            case 'line':
+            case 'text':
+                return { ...shape };
+            default:
+                return shape;
+        }
+    }
+
+    drawSelectionHandles(ctx, shape) {
+        const scale = this.calculateCurrentScale();
+        const handleSize = 8;
+        ctx.fillStyle = 'blue';
+
+        let corners = [];
+
+        switch (shape.type) {
+            case 'rectangle':
+                corners = [
+                    [shape.x, shape.y],
+                    [shape.x + shape.width, shape.y],
+                    [shape.x, shape.y + shape.height],
+                    [shape.x + shape.width, shape.y + shape.height]
+                ];
+                break;
+            case 'circle':
+                corners = [
+                    [shape.x - shape.radius, shape.y - shape.radius],
+                    [shape.x + shape.radius, shape.y - shape.radius],
+                    [shape.x - shape.radius, shape.y + shape.radius],
+                    [shape.x + shape.radius, shape.y + shape.radius]
+                ];
+                break;
+            case 'line':
+                corners = [
+                    [shape.startX, shape.startY],
+                    [shape.endX, shape.endY]
+                ];
+                break;
+        }
+
+        corners.forEach(([x, y]) => {
+            ctx.fillRect(
+                x * scale - handleSize / 2,
+                y * scale - handleSize / 2,
+                handleSize,
+                handleSize
+            );
+        });
+    }
+
+    calculateCurrentScale() {
+        return this.scale;
     }
 
     updateCanvasSize() {
