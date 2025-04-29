@@ -7,10 +7,12 @@ const currentPath = currentScriptUrl ? new URL(currentScriptUrl).pathname.replac
 // Go up two levels from the current path
 const twoLevelsUp = currentPath.split('/').slice(0, -2).join('/') || '/';
 
-const directories = {
-    'propertiesPath': currentPath,
-    'mainProjectRoot': twoLevelsUp,
-    'filesPath': `${twoLevelsUp}/uploads`,
-}
+const properties = {
+    directories : {
+        'propertiesPath': currentPath,
+        'mainProjectRoot': twoLevelsUp,
+        'filesPath': `${twoLevelsUp}/uploads`,
+    },
 
-console.log(directories);
+    serverUrl : 'http://localhost:8082'
+}

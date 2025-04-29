@@ -14,6 +14,7 @@ public class AppController {
     private final AppControlService appControllerService;
     @GetMapping("/stop")
     public void stopApp(){
+        System.out.println("Stopping the application... \n");
         appControllerService.stopApp();
     }
     @GetMapping("/ping")

@@ -1,25 +1,35 @@
+let attemptCount = 0;
+let isServerRunning = false;
+const attemptsLimit = 30;  // Maximum number of attempts to connect to the server
+
 function checkServerStatus() {
-    fetch('http://localhost:8082/server/ping')
+    fetch(properties.serverUrl+'/server/ping')
         .then(response => {
             if (response.ok) {
                 document.getElementById('status').textContent = 'Server is up and running!';
                 document.getElementById('status').style.color = 'green';
+                isServerRunning = true;
+                attemptCount = 0;
+                update.checkForUpdates();
             } else {
                 throw new Error('Server is offline');
             }
         })
         .catch(error => {
-            document.getElementById('status').textContent = 'Server is not responding. Please wait...';
+            console.log('Failed to connect to server: ' + error.message);
+            document.getElementById('status').textContent = 'Connecting to server. Please wait...';
             document.getElementById('status').style.color = 'red';
-            setTimeout(checkServerStatus, 2000);  // Try again after 2 seconds
+            if(attemptCount<attemptsLimit)setTimeout(checkServerStatus, 2000);  // Try again after 2 seconds
+            else document.getElementById('status').textContent = 'Failed to connect to server after '+ attemptCount + ' attempts. You can try to close this window and reopen the app.';
+            attemptCount++;
         });
 
 
 }
 
 function stopServer() {
-    fetch('http://localhost:8082/server/stop', {
-        method: 'POST',
+    fetch(properties.serverUrl+'/server/stop', {
+        method: 'GET',
         headers: {
             'Content-Type': 'application/json',
         },
@@ -37,5 +47,10 @@ function stopServer() {
     .catch(error => {
         document.getElementById('status').textContent = 'Failed to stop server: ' + error.message;
         document.getElementById('status').style.color = 'red';
+        
+        // window.close();
+        window.location.href = 'about:blank';
     });
 }
+
+checkServerStatus();

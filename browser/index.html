@@ -3,35 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Page with Header and Menu</title>
+    <title>Jackson</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="app/server/style.css">
+    <link rel="stylesheet" href="app/dom/table/table-style.css">
 </head>
 <body>
-    <header>
-        <h1>My Simple Page</h1>
-        <div id="status">Checking server status...</div>
-        <button id="stop-server" onclick="stopServer()">Stop Server</button>
-    </header>
-    <main>
-        <div class="menu-buttons">
-            <button>Button 1</button>
-            <button>Button 2</button>
-            <button>Button 3</button>
+    <div class="container">
+        <header>
+            <h1>Jackson Generation</h1>
+            <div class="controls">
+                <div id="status">Checking server status...</div>
+                <button id="initUpdateButton" class="updates-available hidden" onclick="update.updateAll()">Update</button>
+                <div class="toggle-buttons">
+                    <button id="toggleLeft" class="toggle-button" title="Toggle Menu">
+                        &#9776;
+                    </button>
+                    <button id="themeToggle" class="toggle-button" title="Toggle Theme">
+                        &#9681;
+                    </button>
+                </div>
+            </div>
+            <div class="menu-buttons">
+                <button>Browse P&IDs</button>
+                <button>Browse Equipment</button>
+                <button class="server-dependent">Browse LOTO points</button>
+                <button class="server-dependent">Manage Tag Numbers</button>
+            </div>
+        </header>
+        <div class="content">
+            <div class="left-side" id="leftSide">
+                <div id="tableContainer"></div>
+            </div>
+            <div class="resizer" id="resizer"></div>
+            <div class="right-side">
+                <h2>Right Side</h2>
+                <p>This is the right side content.</p>
+            </div>
         </div>
-    </main>
-    <div class="theme-switch">
-        <label for="theme-toggle">Dark Theme</label>
-        <input type="checkbox" id="theme-toggle">
     </div>
+
     <script src="properties/static-resources.js"></script>
+
+    <script src="data/equipment.js"></script>
+    <script src="data/files.js"></script>
+
     <script src="app/server/server-status.js"></script>
-    <script>
-        const themeToggle = document.getElementById('theme-toggle');
-        themeToggle.addEventListener('change', () => {
-            document.body.classList.toggle('dark-theme');
-        });
-        checkServerStatus();
-    </script>
+    <script src="app/server/updates.js"></script>
+    <script src="app/utils/theme-switcher.js"></script>
+    <script src="app/utils/main-layout-resizer.js"></script>
+    <script src="app/dom/table/table.js"></script>
+    <script src="app/files/file-table.js"></script>
+
+
+
 </body>
 </html>

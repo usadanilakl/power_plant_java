@@ -7,7 +7,7 @@ cd ..
 start javaw -jar power_plant_java-1.jar
 
 :: Wait for a moment to allow the JAR to start
-timeout /t 5
+::timeout /t 5
 
 :: Change back to the original directory
 cd browser
