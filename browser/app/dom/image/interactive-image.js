@@ -121,6 +121,150 @@ class ImageZoomInteractive {
         this.img.src = this.imageUrl;
     }
 
+    calculateCurrentScale() {
+        const currentWidth = this.zoomElement.getBoundingClientRect().width;
+        return  currentWidth / this.img.naturalWidth;
+    }
+
+    addEventListeners() {
+        this.zoomOuter.addEventListener('mousedown', this.onMouseDown.bind(this));
+        this.zoomOuter.addEventListener('mousemove', this.onMouseMove.bind(this));
+        this.zoomOuter.addEventListener('mouseup', this.onMouseUp.bind(this));
+        this.zoomOuter.addEventListener('mouseleave', this.onMouseLeave.bind(this));
+        this.zoomOuter.addEventListener('wheel', this.onWheel.bind(this));
+        this.zoomOuter.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    onMouseDown(e) {
+        if (e.button === 0) { // Left click
+            e.preventDefault();
+            const rect = this.zoomOuter.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            
+            const clickedShape = this.clickedShape(clickX, clickY);
+            
+            if (clickedShape) {
+                // A shape was clicked
+                console.log('Clicked shape:', clickedShape);
+                // You can add more logic here, like selecting the shape
+                clickedShape.isSelected = true;
+                this.drawShapes(); // Redraw to show selection
+            } else {
+                // No shape was clicked, start panning
+                this.isDragging = true;
+                this.start = { x: e.clientX - this.pointX, y: e.clientY - this.pointY };
+                this.setCursor('grabbing');
+            }
+        }
+    }
+
+    onMouseMove(e) {
+        if (this.isDragging) {
+            e.preventDefault();
+            this.pointX = e.clientX - this.start.x;
+            this.pointY = e.clientY - this.start.y;
+            this.setTransform();
+        }
+    }
+
+    onMouseUp(e) {
+        if (this.isDragging) {
+            e.preventDefault();
+            this.isDragging = false;
+            this.setCursor('grab');
+        }
+    }
+
+    onMouseLeave(e) {
+        if (this.isDragging) {
+            this.isDragging = false;
+            this.setCursor('grab');
+        }
+    }
+
+    setCursor(cursorType) {
+        this.zoomOuter.style.cursor = cursorType;
+    }
+
+    onWheel(e) {
+        e.preventDefault();
+        const rect = this.zoomOuter.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+    
+        const wheelDelta = e.deltaY;
+        const zoomFactor = wheelDelta > 0 ? 0.9 : 1.1; // Zoom out (0.9) or in (1.1)
+    
+        const newScale = this.scale * zoomFactor;
+    
+        // Limit the scale
+        const limitedNewScale = Math.min(Math.max(0.1, newScale), 10);
+    
+        // Calculate the position of the mouse relative to the image
+        const imageX = (mouseX - this.initialLeft - this.pointX) / this.scale;
+        const imageY = (mouseY - this.initialTop - this.pointY) / this.scale;
+    
+        // Calculate new pointX and pointY
+        const newPointX = mouseX - this.initialLeft - imageX * limitedNewScale;
+        const newPointY = mouseY - this.initialTop - imageY * limitedNewScale;
+    
+        // Update the position and scale
+        this.pointX = newPointX;
+        this.pointY = newPointY;
+        this.scale = limitedNewScale;
+    
+        this.setTransform();
+    }
+
+    setTransform() {
+        const transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
+        this.zoomElement.style.transform = transform;
+        
+        // The canvas size remains constant, matching the image's natural dimensions
+        // We don't need to update the canvas size here
+
+        this.drawShapes();
+    }
+
+    toggleExtension() {
+        this.extension = this.extension === 'jpg'? 'pdf' : 'jpg';
+        this.init();
+    }
+
+    createImageMenu() {
+        const menuContainer = document.createElement('div');
+        menuContainer.className = 'image-menu';
+        menuContainer.style.position = 'absolute';
+        menuContainer.style.bottom = '10px';
+        menuContainer.style.left = '50%';
+        menuContainer.style.transform = 'translateX(-50%)';
+        menuContainer.style.zIndex = '1000'; // Ensure it's above other elements
+    
+        const toggleButton = document.createElement('button');
+        toggleButton.textContent = 'Toggle PDF/JPG';
+        toggleButton.onclick = () => this.toggleExtension();
+    
+        const placeholderButton = document.createElement('button');
+        placeholderButton.textContent = 'Placeholder';
+        placeholderButton.onclick = () => console.log('Placeholder button clicked');
+    
+        menuContainer.appendChild(toggleButton);
+        menuContainer.appendChild(placeholderButton);
+    
+        // Always append to the main container
+        this.container.appendChild(menuContainer);
+    }
+
+
+
+    //Shape functions
+
+    addShape(shape) {
+        this.shapes.push(shape);
+        this.drawShapes();
+    }
+
     drawShapes() {
         const ctx = this.canvas.getContext('2d');
         if (!ctx) return;
@@ -224,141 +368,87 @@ class ImageZoomInteractive {
         });
     }
 
-    calculateCurrentScale() {
-        return this.scale;
-    }
+    clickedShape(x, y) {
+        const scale = this.calculateCurrentScale();
+    
+        // Convert click coordinates to canvas coordinates
+        const canvasX = (x - this.initialLeft - this.pointX) / scale;
+        const canvasY = (y - this.initialTop - this.pointY) / scale;
 
-    updateCanvasSize() {
-        this.canvas.width = this.img.naturalWidth;
-        this.canvas.height = this.img.naturalHeight;
-    }
-
-    addEventListeners() {
-        this.zoomOuter.addEventListener('mousedown', this.onMouseDown.bind(this));
-        this.zoomOuter.addEventListener('mousemove', this.onMouseMove.bind(this));
-        this.zoomOuter.addEventListener('mouseup', this.onMouseUp.bind(this));
-        this.zoomOuter.addEventListener('mouseleave', this.onMouseLeave.bind(this));
-        this.zoomOuter.addEventListener('wheel', this.onWheel.bind(this));
-        this.zoomOuter.addEventListener('contextmenu', (e) => e.preventDefault());
-    }
-
-    onMouseDown(e) {
-        if (e.button === 0) { // Left click
-            e.preventDefault();
-            this.isDragging = true;
-            this.start = { x: e.clientX - this.pointX, y: e.clientY - this.pointY };
-            this.setCursor('grabbing');
+        console.log('x,y:' + x + ','+ y);
+        console.log('pointX, pointY:'+ this.pointX + ','+ this.pointY);
+        console.log(`Clicked shape at (${canvasX}, ${canvasY})`);
+        console.log('Calculated scale:', this.calculateCurrentScale());
+        console.log('shapes:', this.shapes);
+    
+    
+        for (let i = this.shapes.length - 1; i >= 0; i--) {
+            const shape = this.shapes[i];
+            switch (shape.type) {
+                case 'rectangle':
+                    if (canvasX >= shape.x && canvasX <= shape.x + shape.width &&
+                        canvasY >= shape.y && canvasY <= shape.y + shape.height) {
+                        return shape;
+                    }
+                    break;
+                case 'circle':
+                    const dx = canvasX - shape.x;
+                    const dy = canvasY - shape.y;
+                    if (dx * dx + dy * dy <= shape.radius * shape.radius) {
+                        return shape;
+                    }
+                    break;
+                case 'line':
+                    const lineThickness = 5; // Adjust this value to change click sensitivity
+                    const d = this.distanceToLine(canvasX, canvasY, shape.startX, shape.startY, shape.endX, shape.endY);
+                    if (d <= lineThickness) {
+                        return shape;
+                    }
+                    break;
+                case 'text':
+                    // For simplicity, we'll use a rectangular area around the text
+                    const textWidth = 100; // Adjust based on your text size
+                    const textHeight = 20; // Adjust based on your text size
+                    if (canvasX >= shape.x && canvasX <= shape.x + textWidth &&
+                        canvasY >= shape.y - textHeight && canvasY <= shape.y) {
+                        return shape;
+                    }
+                    break;
+            }
         }
+        return null; // No shape was clicked
     }
-
-    onMouseMove(e) {
-        if (this.isDragging) {
-            e.preventDefault();
-            this.pointX = e.clientX - this.start.x;
-            this.pointY = e.clientY - this.start.y;
-            this.setTransform();
+    
+    distanceToLine(x, y, x1, y1, x2, y2) {
+        const A = x - x1;
+        const B = y - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+    
+        const dot = A * C + B * D;
+        const len_sq = C * C + D * D;
+        let param = -1;
+        if (len_sq != 0) {
+            param = dot / len_sq;
         }
-    }
-
-    onMouseUp(e) {
-        if (this.isDragging) {
-            e.preventDefault();
-            this.isDragging = false;
-            this.setCursor('grab');
+    
+        let xx, yy;
+    
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
         }
-    }
-
-    onMouseLeave(e) {
-        if (this.isDragging) {
-            this.isDragging = false;
-            this.setCursor('grab');
+        else if (param > 1) {
+            xx = x2;
+            yy = y2;
         }
-    }
-
-    setCursor(cursorType) {
-        this.zoomOuter.style.cursor = cursorType;
-    }
-
-
-    onWheel(e) {
-        e.preventDefault();
-        const rect = this.zoomOuter.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
+        else {
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+        }
     
-        const wheelDelta = e.deltaY;
-        const zoomFactor = wheelDelta > 0 ? 0.9 : 1.1; // Zoom out (0.9) or in (1.1)
-    
-        const newScale = this.scale * zoomFactor;
-    
-        // Limit the scale
-        const limitedNewScale = Math.min(Math.max(0.1, newScale), 10);
-    
-        // Calculate the position of the mouse relative to the image
-        const imageX = (mouseX - this.initialLeft - this.pointX) / this.scale;
-        const imageY = (mouseY - this.initialTop - this.pointY) / this.scale;
-    
-        // Calculate new pointX and pointY
-        const newPointX = mouseX - this.initialLeft - imageX * limitedNewScale;
-        const newPointY = mouseY - this.initialTop - imageY * limitedNewScale;
-    
-        // Update the position and scale
-        this.pointX = newPointX;
-        this.pointY = newPointY;
-        this.scale = limitedNewScale;
-    
-        this.setTransform();
-    }
-
-    // setTransform() {
-    //     const transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
-    //     this.zoomElement.style.transform = transform;
-    //     this.updateCanvasSize();
-    //     // this.drawShapes();
-    // }
-
-
-setTransform() {
-    const transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
-    this.zoomElement.style.transform = transform;
-    
-    // The canvas size remains constant, matching the image's natural dimensions
-    // We don't need to update the canvas size here
-
-    this.drawShapes();
-}
-
-    addShape(shape) {
-        this.shapes.push(shape);
-        this.drawShapes();
-    }
-
-    toggleExtension() {
-        this.extension = this.extension === 'jpg'? 'pdf' : 'jpg';
-        this.init();
-    }
-
-    createImageMenu() {
-        const menuContainer = document.createElement('div');
-        menuContainer.className = 'image-menu';
-        menuContainer.style.position = 'absolute';
-        menuContainer.style.bottom = '10px';
-        menuContainer.style.left = '50%';
-        menuContainer.style.transform = 'translateX(-50%)';
-        menuContainer.style.zIndex = '1000'; // Ensure it's above other elements
-    
-        const toggleButton = document.createElement('button');
-        toggleButton.textContent = 'Toggle PDF/JPG';
-        toggleButton.onclick = () => this.toggleExtension();
-    
-        const placeholderButton = document.createElement('button');
-        placeholderButton.textContent = 'Placeholder';
-        placeholderButton.onclick = () => console.log('Placeholder button clicked');
-    
-        menuContainer.appendChild(toggleButton);
-        menuContainer.appendChild(placeholderButton);
-    
-        // Always append to the main container
-        this.container.appendChild(menuContainer);
+        const dx = x - xx;
+        const dy = y - yy;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 }
