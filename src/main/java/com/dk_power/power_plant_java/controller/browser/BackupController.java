@@ -87,7 +87,7 @@ public ResponseEntity<String> backupFileObjects() {
         try {
             List<BrEquipmentDto> allEq = equipmentService.getAllBrEquipment();
 
-            StringBuilder jsContent = new StringBuilder("const files = [\n");
+            StringBuilder jsContent = new StringBuilder("const equipment = [\n");
 
             for (int i = 0; i < allEq.size(); i++) {
                 String jsonObject = objectMapper.writeValueAsString(allEq.get(i));

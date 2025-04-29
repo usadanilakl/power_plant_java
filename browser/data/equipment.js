@@ -1,4 +1,4 @@
-const files = [
+const equipment = [
 {"tagNumber":"PD-020A","description":"","specificLocation":"","eqType":"Connector","files":[5258],"vendor":"Kiewit","location":"","system":"","coordinates":"startX:260,startY:2298,endX:650,endY:2346,width:390,height:48","originalPictureSize":"width:7344,height:4752","mainFile":"5258","lotoPoints":[]},
 {"tagNumber":"PD-304A","description":"","specificLocation":"","eqType":"Connector","files":[5258],"vendor":"Kiewit","location":"","system":"","coordinates":"startX:5441,startY:3048,endX:5838,endY:3102,width:397,height:53","originalPictureSize":"width:7344,height:4752","mainFile":"5258","lotoPoints":[]},
 {"tagNumber":"PD-061A","description":"","specificLocation":"","eqType":"Connector","files":[5257],"vendor":"Kiewit","location":"","system":"","coordinates":"startX:255,startY:884,endX:662,endY:941,width:406,height:56","originalPictureSize":"width:7344,height:4752","mainFile":"5257","lotoPoints":[]},

@@ -1,72 +1,122 @@
-.table-search {
-    margin-bottom: 20px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-.table-search input {
-    padding: 5px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
 .sortable-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
+    color: var(--text-color);
+    background-color: var(--bg-color);
 }
+
 .sortable-table th, .sortable-table td {
-    border: 1px solid #ddd;
+    border: 1px solid var(--resizer-bg);
     padding: 8px;
     text-align: left;
 }
+
 .sortable-table th {
-    background-color: #f2f2f2;
+    background-color: var(--header-bg);
+    color: var(--header-text);
     cursor: pointer;
 }
+
 .sortable-table th:hover {
-    background-color: #ddd;
+    background-color: var(--button-hover-bg-color);
 }
+
 .sortable-table th.th-sort-asc::after {
     content: " ▲";
 }
+
 .sortable-table th.th-sort-desc::after {
     content: " ▼";
 }
+
+.sortable-table tr {
+    background-color: var(--bg-color);
+}
+
 .sortable-table tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: var(--left-side-bg);
 }
+
 .sortable-table tr:hover {
-    background-color: #f5f5f5;
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
 }
 
+/* Styles for search inputs */
+.sortable-table thead tr:first-child th {
+    padding: 0;
+}
 
+.sortable-table .global-search {
+    width: 100%;
+    padding: 8px;
+    border: none;
+    background-color: var(--header-bg);
+    color: var(--header-text);
+    box-sizing: border-box;
+}
 
+.sortable-table .column-search {
+    width: 100%;
+    padding: 5px;
+    border: none;
+    border-top: 1px solid var(--resizer-bg);
+    background-color: var(--left-side-bg);
+    color: var(--text-color);
+    box-sizing: border-box;
+}
+
+.sortable-table .global-search:focus,
+.sortable-table .column-search:focus {
+    outline: none;
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
+}
+
+/* Sticky header styles */
+.sortable-table thead tr:nth-child(2) th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--header-bg);
+}
+
+.sortable-table thead tr:nth-child(3) th {
+    position: sticky;
+    top: 37px; /* Adjust based on your header row height */
+    z-index: 10;
+    background-color: var(--left-side-bg);
+}
+
+/* Table container styles */
 #tableContainer {
     height: 100%;
     overflow: auto;
-    border: 1px solid #ccc;
+    border: 1px solid var(--resizer-bg);
     border-radius: 4px;
+    background-color: var(--bg-color);
 }
 
 #tableContainer table {
     min-width: 100%;
 }
 
-/* Optional: Style scrollbars for webkit browsers */
+/* Scrollbar styles for webkit browsers */
 #tableContainer::-webkit-scrollbar {
     width: 10px;
     height: 10px;
 }
 
 #tableContainer::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--left-side-bg);
 }
 
 #tableContainer::-webkit-scrollbar-thumb {
-    background: #888;
+    background: var(--resizer-bg);
     border-radius: 5px;
 }
 
 #tableContainer::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: var(--button-bg-color);
 }

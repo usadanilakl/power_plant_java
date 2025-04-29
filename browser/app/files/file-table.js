@@ -18,17 +18,19 @@ const fileTable = {
         // Add event listener for row clicks to open the file
         const table = document.querySelector('#tableContainer table');
         table.addEventListener('click', (event) => {
-            const row = event.target.closest('tr');
+            const row = event.target.closest('tr.row');
             if (row) {
-                const fileLink = processedFiles[row.rowIndex - 1].fileLink;
+                const rowIndex = Array.from(row.parentNode.children).filter(child => child.classList.contains('row')).indexOf(row);
+                const fileLink = processedFiles[rowIndex].fileLink;
                 if (fileLink) {
-                    window.open(fileLink, '_blank');
+                    const imageZoom = new ImageZoomInteractive('../'+fileLink, 'image');
+                    // imageZoom.addShape({ type: 'rectangle', x: 100, y: 100, width: 50, height: 50, color: 'red' });
                 }
             }
         });
 
         // Style the table
-        this.styleFileTable();
+        // this.styleFileTable();
     },
 
     styleFileTable: function() {
