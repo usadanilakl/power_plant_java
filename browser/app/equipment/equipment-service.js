@@ -1,38 +1,43 @@
 const equipmentService = {
 
     createShapeFromEquipment(equipment) {
-        // Parse the coordinates string
-        const coordParts = equipment.coordinates.split(',');
+        // Clean up and parse the coordinates string
+        const cleanCoordinates = equipment.coordinates.replace(/["']/g, '').trim().replace(/,\s*$/, '');
+        const coordParts = cleanCoordinates.split(',');
         const coords = {};
         coordParts.forEach(part => {
             const [key, value] = part.split(':');
-            coords[key] = parseInt(value, 10);
+            coords[key.trim()] = parseInt(value.trim(), 10);
         });
     
-        // Parse the original picture size
-        const sizeParts = equipment.originalPictureSize.split(',');
+        // Clean up and parse the original picture size
+        const cleanSize = equipment.originalPictureSize.replace(/["']/g, '').trim().replace(/,\s*$/, '');
+        const sizeParts = cleanSize.split(',');
         const originalSize = {};
         sizeParts.forEach(part => {
             const [key, value] = part.split(':');
-            originalSize[key] = parseInt(value, 10);
+            originalSize[key.trim()] = parseInt(value.trim(), 10);
         });
     
         // Create the shape object
         const shape = {
             type: 'rectangle',
-            x: coords.startX,
-            y: coords.startY,
-            width: coords.endX - coords.startX,
-            height: coords.endY - coords.startY,
+            x: coords.startX || 0,
+            y: coords.startY || 0,
+            width: (coords.endX || 0) - (coords.startX || 0),
+            height: (coords.endY || 0) - (coords.startY || 0),
             color: 'blue',
             isSelected: false,
             tagNumber: equipment.tagNumber,
             description: equipment.description,
             eqType: equipment.eqType,
             vendor: equipment.vendor,
-            system: equipment.system
+            system: equipment.system,
+            location: equipment.location,
+            originalWidth: originalSize.width || 0,
+            originalHeight: originalSize.height || 0
         };
-
+    
         return shape;
     },
 

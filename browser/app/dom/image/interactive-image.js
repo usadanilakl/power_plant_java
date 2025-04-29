@@ -11,7 +11,14 @@ class ImageZoomInteractive {
         this.pointY = 0;
         this.start = { x: 0, y: 0 };
         this.shapes = [];
+        this.selectedShapes = [];
         this.extension = extension;
+        
+        this.moveThreshold = 5; // pixels
+        this.clickTimeout = 200; // milliseconds
+        this.mouseDownTime = 0;
+        this.mouseDownPos = { x: 0, y: 0 };
+        this.potentialClickedShape = null;
 
         this.init();
     }
@@ -142,29 +149,46 @@ class ImageZoomInteractive {
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
             
-            const clickedShape = this.clickedShape(clickX, clickY);
+            this.mouseDownTime = Date.now();
+            this.mouseDownPos = { x: clickX, y: clickY };
+            this.potentialClickedShape = this.clickedShape(clickX, clickY);
             
-            if (clickedShape) {
-                // A shape was clicked
-                console.log('Clicked shape:', clickedShape);
-                // You can add more logic here, like selecting the shape
-                clickedShape.isSelected = true;
-                this.drawShapes(); // Redraw to show selection
-            } else {
-                // No shape was clicked, start panning
-                this.isDragging = true;
-                this.start = { x: e.clientX - this.pointX, y: e.clientY - this.pointY };
-                this.setCursor('grabbing');
-            }
+            // Start panning setup
+            this.isDragging = true;
+            this.start = { x: e.clientX - this.pointX, y: e.clientY - this.pointY };
+            this.setCursor('grabbing');
         }
     }
 
     onMouseMove(e) {
+        const rect = this.zoomOuter.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+    
         if (this.isDragging) {
+            const dx = mouseX - this.mouseDownPos.x;
+            const dy = mouseY - this.mouseDownPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+    
+            if (distance > this.moveThreshold) {
+                // We've moved beyond the threshold, so this is definitely a drag
+                this.potentialClickedShape = null;
+            }
+    
             e.preventDefault();
             this.pointX = e.clientX - this.start.x;
             this.pointY = e.clientY - this.start.y;
             this.setTransform();
+        } else {
+            // Check if mouse is over a shape
+            const hoveredShape = this.clickedShape(mouseX, mouseY);
+            if (hoveredShape) {
+                this.setCursor('pointer');
+                this.handleHoverShape(hoveredShape);
+            } else {
+                this.setCursor('grab');
+                this.handleHoverShape(null);
+            }
         }
     }
 
@@ -173,7 +197,21 @@ class ImageZoomInteractive {
             e.preventDefault();
             this.isDragging = false;
             this.setCursor('grab');
+    
+            const clickDuration = Date.now() - this.mouseDownTime;
+            const rect = this.zoomOuter.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const dx = mouseX - this.mouseDownPos.x;
+            const dy = mouseY - this.mouseDownPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+    
+            if (clickDuration < this.clickTimeout && distance <= this.moveThreshold && this.potentialClickedShape) {
+                // This was a click on a shape
+                this.handleShapeClick(this.potentialClickedShape);
+            }
         }
+        this.potentialClickedShape = null;
     }
 
     onMouseLeave(e) {
@@ -328,7 +366,7 @@ class ImageZoomInteractive {
 
     drawSelectionHandles(ctx, shape) {
         const scale = this.calculateCurrentScale();
-        const handleSize = 8;
+        const handleSize = 8/scale;
         ctx.fillStyle = 'blue';
 
         let corners = [];
@@ -360,8 +398,8 @@ class ImageZoomInteractive {
 
         corners.forEach(([x, y]) => {
             ctx.fillRect(
-                x * scale - handleSize / 2,
-                y * scale - handleSize / 2,
+                x - handleSize / 2,
+                y - handleSize / 2,
                 handleSize,
                 handleSize
             );
@@ -451,4 +489,169 @@ class ImageZoomInteractive {
         const dy = y - yy;
         return Math.sqrt(dx * dx + dy * dy);
     }
+
+    handleShapeClick(clickedShape) {
+        // If the shape is already selected, deselect it
+        const index = this.selectedShapes.findIndex(shape => shape === clickedShape);
+        if (index !== -1) {
+            this.selectedShapes.splice(index, 1);
+            clickedShape.isSelected = false;
+        } else {
+            // If the shape is not selected, add it to the selection
+            this.selectedShapes.push(clickedShape);
+            clickedShape.isSelected = true;
+        }
+        
+        this.drawShapes();
+        this.showSelectedDetails();
+    }
+
+    showSelectedDetails() {
+        const existingPopup = document.getElementById('shape-details-popup');
+        if (this.selectedShapes.length > 0) {
+            // Remove any existing popup
+            if (existingPopup) {
+                existingPopup.remove();
+            }
+    
+            // Create popup container
+            const popup = document.createElement('div');
+            popup.id = 'shape-details-popup';
+            popup.style.position = 'absolute';
+            popup.style.top = '20px';
+            popup.style.right = '20px';
+            popup.style.backgroundColor = '#f0f0f0';  // Light gray background
+            popup.style.border = '1px solid #333';
+            popup.style.borderRadius = '5px';
+            popup.style.padding = '15px';
+            popup.style.zIndex = '1000';
+            popup.style.maxHeight = '80%';
+            popup.style.overflowY = 'auto';
+            popup.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    
+            // Create close button
+            const closeButton = document.createElement('button');
+            closeButton.textContent = 'X';
+            closeButton.style.float = 'right';
+            closeButton.style.border = 'none';
+            closeButton.style.background = '#ddd';
+            closeButton.style.color = '#333';
+            closeButton.style.padding = '5px 10px';
+            closeButton.style.cursor = 'pointer';
+            closeButton.style.borderRadius = '3px';
+            closeButton.onclick = () => popup.remove();
+            popup.appendChild(closeButton);
+    
+            // Add details for each selected shape
+            this.selectedShapes.forEach((shape, index) => {
+                const shapeDetails = document.createElement('div');
+                shapeDetails.style.marginBottom = '20px';
+                shapeDetails.style.clear = 'both';
+    
+                const title = document.createElement('h3');
+                title.textContent = `${index + 1}. Tag Number: ${shape.tagNumber}`;
+                title.style.marginBottom = '10px';
+                title.style.color = '#333';
+                shapeDetails.appendChild(title);
+    
+                const details = document.createElement('div');
+                const detailsList = document.createElement('ul');
+                detailsList.style.listStyleType = 'none';
+                detailsList.style.padding = '0';
+                detailsList.style.margin = '0';
+    
+                const detailsToShow = [
+                    { label: 'Tag Number', value: shape.tagNumber },
+                    { label: 'Description', value: shape.description },
+                    { label: 'Equipment Type', value: shape.eqType },
+                    { label: 'Vendor', value: shape.vendor },
+                    { label: 'System', value: shape.system },
+                    { label: 'Location', value: shape.location }
+                ];
+    
+                detailsToShow.forEach(detail => {
+                    if (detail.value) {
+                        const li = document.createElement('li');
+                        li.style.marginBottom = '5px';
+                        li.style.color = '#333';
+                        li.innerHTML = `<strong>${detail.label}:</strong> ${detail.value}`;
+                        detailsList.appendChild(li);
+                    }
+                });
+    
+                details.appendChild(detailsList);
+                shapeDetails.appendChild(details);
+    
+                popup.appendChild(shapeDetails);
+            });
+    
+            // Add popup to the container
+            this.container.appendChild(popup);
+        }else{
+            
+            if (existingPopup) {
+                existingPopup.remove();
+            }
+        }
+    }
+
+    handleHoverShape(shape) {
+        const existingHoverPopup = document.getElementById('shape-hover-popup');
+        if (existingHoverPopup) {
+            existingHoverPopup.remove();
+        }
+    
+        if (shape) {
+            // Create popup container
+            const popup = document.createElement('div');
+            popup.id = 'shape-hover-popup';
+            popup.style.position = 'absolute';
+            popup.style.top = '20px';
+            popup.style.left = '20px';
+            popup.style.backgroundColor = 'rgba(240, 240, 240, 0.9)';  // Light gray background with some transparency
+            popup.style.border = '1px solid #333';
+            popup.style.borderRadius = '5px';
+            popup.style.padding = '10px';
+            popup.style.zIndex = '1000';
+            popup.style.maxWidth = '300px';
+            popup.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    
+            // Add details for the hovered shape
+            const title = document.createElement('h4');
+            title.textContent = `Tag Number: ${shape.tagNumber}`;
+            title.style.marginTop = '0';
+            title.style.marginBottom = '10px';
+            title.style.color = '#333';
+            popup.appendChild(title);
+    
+            const detailsList = document.createElement('ul');
+            detailsList.style.listStyleType = 'none';
+            detailsList.style.padding = '0';
+            detailsList.style.margin = '0';
+    
+            const detailsToShow = [
+                { label: 'Description', value: shape.description },
+                { label: 'Equipment Type', value: shape.eqType },
+                { label: 'Vendor', value: shape.vendor },
+                { label: 'System', value: shape.system },
+                { label: 'Location', value: shape.location }
+            ];
+    
+            detailsToShow.forEach(detail => {
+                if (detail.value) {
+                    const li = document.createElement('li');
+                    li.style.marginBottom = '5px';
+                    li.style.color = '#333';
+                    li.innerHTML = `<strong>${detail.label}:</strong> ${detail.value}`;
+                    detailsList.appendChild(li);
+                }
+            });
+    
+            popup.appendChild(detailsList);
+    
+            // Add popup to the container
+            this.container.appendChild(popup);
+        }
+    }
+
 }
