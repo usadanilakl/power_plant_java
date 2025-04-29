@@ -32,7 +32,7 @@ const equipmentService = {
             vendor: equipment.vendor,
             system: equipment.system
         };
-    
+
         return shape;
     },
 
@@ -41,9 +41,10 @@ const equipmentService = {
     },
 
     getShapes(ids){
-        console.log('Fetching shapes for IDs:', ids);
         const shpes = [];
-        this.getEquipment(ids).forEach(eq => {
+        const equipment = this.getEquipment(ids);
+        console.log(equipment);
+        equipment.forEach(eq => {
             shpes.push(this.createShapeFromEquipment(eq));
         });
         return shpes;

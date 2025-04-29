@@ -14,6 +14,7 @@ import java.util.Set;
 @Getter
 @Setter
 public class BrEquipmentDto {
+    private Long id;
     private String tagNumber;
     private String description;
     private String specificLocation;

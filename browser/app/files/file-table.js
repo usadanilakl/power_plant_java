@@ -27,7 +27,7 @@ const fileTable = {
                 if (fileLink) {
                     const imageZoom = new ImageZoomInteractive('../'+fileLink, 'image');
                     const shapes = equipmentService.getShapes(this.selectedFile.points);
-                    // shapes.forEach(shape => imageZoom.addShape(shape));
+                    shapes.forEach(shape => imageZoom.addShape(shape));
                     // imageZoom.addShape({ type: 'rectangle', x: 100, y: 100, width: 50, height: 50, color: 'red' });
                 }
             }

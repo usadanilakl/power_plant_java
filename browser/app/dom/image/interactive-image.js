@@ -88,11 +88,6 @@ class ImageZoomInteractive {
         this.zoomElement.style.width = `${width}px`;
         this.zoomElement.style.height = `${height}px`;
     
-        this.canvas.width = this.img.naturalWidth;
-        this.canvas.height = this.img.naturalHeight;
-        this.canvas.style.width = `${width}px`;
-        this.canvas.style.height = `${height}px`;
-    
         // Center the zoomElement
         const left = (containerRect.width - width) / 2;
         const top = (containerRect.height - height) / 2;
@@ -104,6 +99,14 @@ class ImageZoomInteractive {
         this.initialTop = top;
         this.initialWidth = width;
         this.initialHeight = height;
+    
+        // Set canvas size to match the image's natural dimensions
+        this.canvas.width = this.img.naturalWidth;
+        this.canvas.height = this.img.naturalHeight;
+    
+        // Set canvas style to match the displayed image size
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
     
         this.scale = 1;
         this.pointX = 0;
@@ -128,56 +131,37 @@ class ImageZoomInteractive {
     }
 
     drawShape(ctx, shape) {
-        const scale = this.calculateCurrentScale();
         ctx.strokeStyle = shape.color;
         ctx.fillStyle = shape.color;
         ctx.lineWidth = (shape.isSelected ? 3 : 1);
-
-        const scaledShape = this.scaleShape(shape);
-
-        switch (scaledShape.type) {
+    
+        switch (shape.type) {
             case 'rectangle':
-                const rect = scaledShape;
-                ctx.strokeRect(
-                    rect.x * scale,
-                    rect.y * scale,
-                    rect.width,
-                    rect.height
-                );
-
+                ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
                 if (shape.isSelected) {
                     this.drawSelectionHandles(ctx, shape);
                 }
                 break;
             case 'circle':
-                const circle = scaledShape;
                 ctx.beginPath();
-                ctx.arc(
-                    circle.x * scale,
-                    circle.y * scale,
-                    circle.radius,
-                    0,
-                    2 * Math.PI
-                );
+                ctx.arc(shape.x, shape.y, shape.radius, 0, 2 * Math.PI);
                 ctx.stroke();
                 break;
             case 'line':
-                const line = scaledShape;
                 ctx.beginPath();
-                ctx.moveTo(line.startX * scale, line.startY * scale);
-                ctx.lineTo(line.endX * scale, line.endY * scale);
+                ctx.moveTo(shape.startX, shape.startY);
+                ctx.lineTo(shape.endX, shape.endY);
                 ctx.stroke();
                 break;
             case 'text':
-                const text = scaledShape;
-                ctx.font = `${16 * scale}px Arial`;
-                ctx.fillText(text.text, text.x * scale, text.y * scale);
+                ctx.font = '16px Arial';
+                ctx.fillText(shape.text, shape.x, shape.y);
                 break;
         }
     }
 
     scaleShape(shape) {
-        const calculatedScale = this.calculateCurrentScale();
+        const calculatedScale = shape.originalWidth / this.img.offsetWidth;
         switch (shape.type) {
             case 'rectangle':
                 return {
@@ -245,9 +229,8 @@ class ImageZoomInteractive {
     }
 
     updateCanvasSize() {
-        const rect = this.img.getBoundingClientRect();
-        this.canvas.width = this.img.naturalWidth*this.scale;
-        this.canvas.height = this.img.naturalHeight*this.scale;
+        this.canvas.width = this.img.naturalWidth;
+        this.canvas.height = this.img.naturalHeight;
     }
 
     addEventListeners() {
@@ -327,12 +310,23 @@ class ImageZoomInteractive {
         this.setTransform();
     }
 
-    setTransform() {
-        const transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
-        this.zoomElement.style.transform = transform;
-        this.updateCanvasSize();
-        this.drawShapes();
-    }
+    // setTransform() {
+    //     const transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
+    //     this.zoomElement.style.transform = transform;
+    //     this.updateCanvasSize();
+    //     // this.drawShapes();
+    // }
+
+
+setTransform() {
+    const transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
+    this.zoomElement.style.transform = transform;
+    
+    // The canvas size remains constant, matching the image's natural dimensions
+    // We don't need to update the canvas size here
+
+    this.drawShapes();
+}
 
     addShape(shape) {
         this.shapes.push(shape);

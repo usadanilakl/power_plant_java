@@ -19,6 +19,7 @@ public class BrEquipmentMapper {
 
         BrEquipmentDto dto = new BrEquipmentDto();
 
+        dto.setId(equipment.getId());
         dto.setTagNumber(Optional.ofNullable(equipment.getTagNumber()).orElse(""));
         dto.setDescription(Optional.ofNullable(equipment.getDescription()).orElse(""));
         dto.setSpecificLocation(Optional.ofNullable(equipment.getSpecificLocation()).orElse(""));
