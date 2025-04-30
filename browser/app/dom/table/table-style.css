@@ -120,3 +120,14 @@
 #tableContainer::-webkit-scrollbar-thumb:hover {
     background: var(--button-bg-color);
 }
+
+
+
+.highlighted-row {
+    background-color: var(--button-bg-color) !important;
+    color: var(--button-text-color) !important;
+}
+
+.highlighted-row:hover {
+    background-color: var(--button-hover-bg-color) !important;
+}

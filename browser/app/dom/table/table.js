@@ -2,9 +2,11 @@ const tableBuilder = {
     data: [],
     columns: [],
     containerId: '',
+    lastClickedRow: null,
 
     buildTable: function(data, columns, containerId) {
-        this.data = data;
+        this.originalData = data; // Store the original data
+        this.data = [...data]; // Create a copy for filtering and display
         this.columns = columns;
         this.containerId = containerId;
 
@@ -64,6 +66,28 @@ const tableBuilder = {
 
         // Initialize infinite scroll
         this.initInfiniteScroll();
+        table.addEventListener('click', (event) => this.handleRowClick(event));
+    },
+
+    handleRowClick: function(event) {
+        const row = event.target.closest('tr.row');
+        if (row) {
+            this.highlightClickedRow(row);
+            const rowIndex = Array.from(row.parentNode.children).filter(child => child.classList.contains('row')).indexOf(row);
+            const clickedData = this.data[rowIndex];
+            
+            // Dispatch a custom event with the clicked row data
+            const clickEvent = new CustomEvent('rowClick', { detail: clickedData });
+            document.dispatchEvent(clickEvent);
+        }
+    },
+
+    highlightClickedRow: function(clickedRow) {
+        if (this.lastClickedRow) {
+            this.lastClickedRow.classList.remove('highlighted-row');
+        }
+        clickedRow.classList.add('highlighted-row');
+        this.lastClickedRow = clickedRow;
     },
 
     initInfiniteScroll: function(chunkSize = 50) {
@@ -111,26 +135,34 @@ const tableBuilder = {
         const globalSearch = container.querySelector('.global-search');
         const columnSearches = Array.from(container.querySelectorAll('.column-search'));
     
-        const filteredData = this.data.filter(item => {
-            const globalMatch = globalSearch.value === '' || 
-                this.columns.some(column => 
-                    String(item[column]).toLowerCase().includes(globalSearch.value.toLowerCase())
+        const allInputsEmpty = globalSearch.value === '' && 
+            columnSearches.every(input => input.value === '');
+    
+        if (allInputsEmpty) {
+            // Reset to original data if all inputs are empty
+            this.data = [...this.originalData];
+        } else {
+            // Filter the data
+            this.data = this.originalData.filter(item => {
+                const globalMatch = globalSearch.value === '' || 
+                    this.columns.some(column => 
+                        String(item[column]).toLowerCase().includes(globalSearch.value.toLowerCase())
+                    );
+        
+                const columnMatch = columnSearches.every(input => 
+                    input.value === '' || 
+                    String(item[input.dataset.column]).toLowerCase().includes(input.value.toLowerCase())
                 );
-    
-            const columnMatch = columnSearches.every(input => 
-                input.value === '' || 
-                String(item[input.dataset.column]).toLowerCase().includes(input.value.toLowerCase())
-            );
-    
-            return globalMatch && columnMatch;
-        });
+        
+                return globalMatch && columnMatch;
+            });
+        }
     
         // Clear existing rows
         const tbody = container.querySelector('tbody');
         tbody.innerHTML = '';
-
-        // Update data and reinitialize infinite scroll
-        this.data = filteredData;
+    
+        // Reinitialize infinite scroll
         this.initInfiniteScroll();
     },
 

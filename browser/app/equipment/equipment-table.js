@@ -1,7 +1,7 @@
 const fileTable = {
     selectedFile: {},
     buildFileTable: function(files) {
-        const columns = ['name', 'fileNumber', 'fileType', 'system', 'relatedSystems', 'vendor'];
+        const columns = ['tagNumber', 'description', 'location', 'system', 'relatedSystems', 'vendor'];
 
         tableBuilder.buildTable(files, columns, 'tableContainer');
 
