@@ -192,6 +192,7 @@ button:hover {
 }
 
 .right-side {
+    position: relative;
     flex: 1;
     background-color: var(--right-side-bg);
     overflow-y: auto;

@@ -1,6 +1,6 @@
 const fileTable = {
     selectedFile: {},
-    buildFileTable: function(files) {
+    buildFileTable: function() {
         const columns = ['name', 'fileNumber', 'fileType', 'system', 'relatedSystems', 'vendor'];
 
         tableBuilder.buildTable(files, columns, 'tableContainer');
@@ -18,4 +18,4 @@ const fileTable = {
     }
 };
 
-fileTable.buildFileTable(files);
+fileTable.buildFileTable();

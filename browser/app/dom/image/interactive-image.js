@@ -412,12 +412,6 @@ class ImageZoomInteractive {
         // Convert click coordinates to canvas coordinates
         const canvasX = (x - this.initialLeft - this.pointX) / scale;
         const canvasY = (y - this.initialTop - this.pointY) / scale;
-
-        console.log('x,y:' + x + ','+ y);
-        console.log('pointX, pointY:'+ this.pointX + ','+ this.pointY);
-        console.log(`Clicked shape at (${canvasX}, ${canvasY})`);
-        console.log('Calculated scale:', this.calculateCurrentScale());
-        console.log('shapes:', this.shapes);
     
     
         for (let i = this.shapes.length - 1; i >= 0; i--) {

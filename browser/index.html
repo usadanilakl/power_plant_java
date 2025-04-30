@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="app/dom/table/table-style.css">
     <link rel="stylesheet" href="app/dom/image/interactive-image.css">
+    <link rel="stylesheet" href="app/dom/image/grid-image.css">
+    <link rel="stylesheet" href="app/dom/image/carousel-image.css">
 </head>
 <body>
     <div class="container">
@@ -25,10 +27,11 @@
                 </div>
             </div>
             <div class="menu-buttons">
-                <button>Browse P&IDs</button>
-                <button>Browse Equipment</button>
-                <button class="server-dependent">Browse LOTO points</button>
-                <button class="server-dependent">Manage Tag Numbers</button>
+                <button onclick="fileTable.buildFileTable()">Browse Files</button>
+                <button onclick="equipmentTable.buildEquipmentTable()">Browse Equipment</button>
+                <button class="server-dependent" onclick="angularApi.navigateToFiles()">Edit Files</button>
+                <button class="server-dependent" onclick="navigateTo('/edit-equipment')">Edit Equipment</button>
+                <button class="server-dependent" onclick="navigateTo('/manage-tag-numbers')">Manage Tag Numbers</button>
             </div>
         </header>
         <div class="content">
@@ -36,7 +39,10 @@
                 <div id="tableContainer"></div>
             </div>
             <div class="resizer" id="resizer"></div>
-            <div class="right-side">
+            <div id="main" class="right-side">
+                <div id="carousel-container">
+                    <div id="carousel"></div>
+                </div>
                 <div id="image"></div>
             </div>
         </div>
@@ -49,12 +55,18 @@
 
     <script src="app/server/server-status.js"></script>
     <script src="app/server/updates.js"></script>
+    <script src="app/server/angular-api.js"></script>
+
     <script src="app/utils/theme-switcher.js"></script>
     <script src="app/utils/main-layout-resizer.js"></script>
     <script src="app/dom/table/table.js"></script>
     <script src="app/files/file-table.js"></script>
+    <script src="app/files/file-service.js"></script>
     <script src="app/dom/image/interactive-image.js"></script>
+    <script src="app/dom/image/grid-image.js"></script>
+    <script src="app/dom/image/carousel-image.js"></script>
     <script src="app/equipment/equipment-service.js"></script>
+    <script src="app/equipment/equipment-table.js"></script>
 
 
 

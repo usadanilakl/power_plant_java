@@ -21,6 +21,7 @@ const equipmentService = {
     
         // Create the shape object
         const shape = {
+            id:equipment.id,
             type: 'rectangle',
             x: coords.startX || 0,
             y: coords.startY || 0,
@@ -48,12 +49,11 @@ const equipmentService = {
     getShapes(ids){
         const shpes = [];
         const equipment = this.getEquipment(ids);
-        console.log(equipment);
         equipment.forEach(eq => {
             shpes.push(this.createShapeFromEquipment(eq));
         });
         return shpes;
-    }
+    },
 
 
 }
