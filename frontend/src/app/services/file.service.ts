@@ -6,6 +6,7 @@ import { FileDto } from '../models/file/file.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { SpringPaginatedResponse } from '../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../models/api/search-criteria.model';
+import { FileIdDto } from '../models/file/file-id.model';
 
 @Injectable({
   providedIn: 'root'
@@ -60,7 +61,7 @@ export class FileService {
   }
 
   updateFile(formData: FormData): Observable<SpringApiResponse<FileDto>> {
-    return this.http.put<SpringApiResponse<FileDto>>(`${this.apiUrl}/files`, formData);
+    return this.http.put<SpringApiResponse<FileDto>>(`${this.apiUrl}`, formData);
   }
 
   deleteFile(id: string): Observable<any> {

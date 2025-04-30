@@ -14,11 +14,12 @@ import { FileDto } from '../../../models/file/file.model';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../../models/api/search-criteria.model';
+import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 
 @Component({
   selector: 'app-file-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, FileDetailFormComponent, PopupComponent, ImageInteractiveComponent],
+  imports: [CommonModule, TableComponent, FileDetailFormComponent, PopupComponent, ImageInteractiveComponent, PopupProjectionComponent],
   templateUrl: './file-table.component.html',
 })
 export class FileTableComponent implements OnInit {
@@ -174,7 +175,7 @@ export class FileTableComponent implements OnInit {
     const updatedItem = { ...this.selectedItem, ...formData };
   
     // Append the JSON data
-    formDataToSend.append('fileDto', new Blob([JSON.stringify(updatedItem)], {
+    formDataToSend.append('fileDto', new Blob([JSON.stringify(new FileDto(updatedItem).toIdModel())], {
       type: "application/json"
     }));
   

@@ -6,6 +6,21 @@
   [clickCallback]="onItemClick">
 </app-shared-table>
 
+<!-- <app-popup-projection
+  [isOpen]="isPopupOpen"
+  [title]="'File Details'"
+  [size]="'large'"
+  (close)="closePopup()">
+  
+  <app-file-detail-form
+    [values]="selectedItem"
+    [formDelete]="onFormDelete.bind(this)"
+    [openImage]="onOpenImage.bind(this)"
+    (formSubmitEvent)="onFormSubmit($event.formData, $event.file)"
+  ></app-file-detail-form>
+
+</app-popup-projection> -->
+
 <app-popup
   [isOpen]="isPopupOpen"
   [title]="'File Details'"
@@ -18,18 +33,6 @@
   }"
   (close)="closePopup()"
 ></app-popup>
-
-<!-- <app-popup
-  [isOpen]="isImagePopupOpen"
-  [title]="'Image View'"
-  [contentComponent]="ImageInteractiveComponent"
-  [contentInputs]="{
-    imagePath: selectedImagePath,
-    imageName: selectedItem?.name,
-    elements: selectedItem?.elements
-  }"
-  (close)="closeImagePopup()"
-></app-popup> -->
 
 <app-popup
   [isOpen]="isImagePopupOpen"

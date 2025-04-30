@@ -1,4 +1,3 @@
-import { BasePermitIdDto } from '../base/base-permit-id.model';
 import { BaseDto } from '../base/base.model';
 
 export class LotoPointIdDto extends BaseDto {

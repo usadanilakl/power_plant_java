@@ -1,5 +1,6 @@
 import { ValueDto } from '../value.model';
 import { EquipmentDto } from '../equipment/equipment.model';
+import { FileIdDto } from './file-id.model';
 
 export interface FileModel {
   id: number;
@@ -101,6 +102,27 @@ export class FileDto implements FileModel {
           isVerified: json.isVerified
         });
       }
+
+      toIdModel(): FileIdDto {
+        return new FileIdDto({
+          id: this.id,
+          fileType: this.fileType?.id || 0,
+          fileLink: this.fileLink,
+          baseLink: this.baseLink,
+          folder: this.folder,
+          system: this.system?.id || 0,
+          relatedSystems: this.relatedSystems,
+          fileNumber: this.fileNumber,
+          vendor: this.vendor?.id || 0,
+          points: this.points.map(point => point.id),
+          objectType: this.objectType,
+          extension: this.extension,
+          bulkEditStep: this.bulkEditStep,
+          docNum: this.docNum,
+          isVerified: this.isVerified
+        });
+      }
+
 
 
   // You can add methods here for any file-specific operations

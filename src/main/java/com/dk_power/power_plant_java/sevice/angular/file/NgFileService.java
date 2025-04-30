@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.angular.file;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.dto.files.FileIdDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
@@ -112,5 +113,9 @@ public FileDto findByFileLink(String imageUrl) {
     public FileDto updateFile(FileDto fileDto) {
         throw new RuntimeException("Not implemented yet");
 
+    }
+
+    public FileObject convertIdDtoToEntity(FileIdDto fileDto) {
+        return fileMapper.convertIdDtoToEntity(fileDto);
     }
 }

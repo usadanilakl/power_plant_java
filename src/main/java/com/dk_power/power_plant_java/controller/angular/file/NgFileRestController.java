@@ -4,8 +4,11 @@ import com.dk_power.power_plant_java.api.ApiResponse;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
+import com.dk_power.power_plant_java.dto.files.FileIdDto;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
@@ -23,6 +26,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NgFileRestController {
     private final NgFileService ngFileService;
+    @Value("${files.root.path}")
+    private String rootPath;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<FileDto>>> getPaginatedFiles(
@@ -94,26 +99,28 @@ public class NgFileRestController {
     }
 
     @PutMapping
-    public ResponseEntity<ApiResponse<FileDto>> updateFile(@RequestPart("fileDto") FileDto fileDto,
+    public ResponseEntity<ApiResponse<FileDto>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
                                                   @RequestPart(value = "file", required = false) MultipartFile file) {
         try{// Handle the file upload if a new file is provided
             if (file != null && !file.isEmpty()) {
 
+                FileObject fileEntity = ngFileService.convertIdDtoToEntity(fileDto);
+
                 //Build File link
                 String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
                 fileDto.setExtension(extension);
-                String fileLink = fileDto.buildFileLink();
+                String fileLink = fileEntity.buildFileLink();
 
                 // Process the file upload
                 fileLink = ngFileService.uploadFile(file, fileLink);
-                fileDto.setFileLink(fileLink);
-                fileDto.setFileLink(fileLink);
-                fileDto.setFileNumber(fileLink.substring(fileLink.lastIndexOf("/")));
-            }
+                fileEntity.setFileLink(fileLink);
+                fileEntity.setFileNumber(fileLink.substring(fileLink.lastIndexOf("/")));
 
-            // Update the file in the database
-            FileDto updatedFile = ngFileService.updateFile(fileDto);
-            return ResponseEntity.ok(new ApiResponse<>(updatedFile,"File uploaded successfully", LocalDateTime.now()));
+                // Update the file in the database
+                FileDto updatedFile = ngFileService.toDto(ngFileService.save(fileEntity));
+                return ResponseEntity.ok(new ApiResponse<>(updatedFile,"File uploaded successfully", LocalDateTime.now()));
+            }
+            return ResponseEntity.ok(new ApiResponse<>(null,"File was not uploaded - something went wrong.", LocalDateTime.now()));
         }catch (Exception e){
             return ResponseEntity.badRequest().body(new ApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
         }

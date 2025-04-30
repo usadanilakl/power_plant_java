@@ -16,17 +16,18 @@ import { Validators } from '@angular/forms';
 })
 export class FileDetailFormComponent implements OnInit {
   @Input() values: any = {};
-  @Input() formSubmit!: (data: any) => void;
+  @Input() formSubmit!: (data: any, file: File | null) => void;
   @Input() formDelete!: () => void;
   @Input() openImage!: () => void;
 
-  @Output() formSubmitEvent = new EventEmitter<any>();
+  @Output() formSubmitEvent = new EventEmitter<{formData: any, file: File | null}>();
   @Output() formDeleteEvent = new EventEmitter<void>();
   @Output() openImageEvent = new EventEmitter<void>();
 
   private fileTypeOptions = new BehaviorSubject<Option[]>([]);
   private systemOptions = new BehaviorSubject<Option[]>([]);
   private vendorOptions = new BehaviorSubject<Option[]>([]);
+  private fileInput: File | null = null;
   
   fields: any[] = [];
   isFormReady = false;
@@ -73,20 +74,29 @@ export class FileDetailFormComponent implements OnInit {
     this.fields = [
       { name: 'name', label: 'File Name', type: 'text', validators : [Validators.minLength(10)] },
       { name: 'type', label: 'File Type', type: 'select', options: this.fileTypeOptions },
-      { name: 'file', label: 'File', type: 'file' },
-      { name: 'size', label: 'File Size', type: 'text', readonly: true },
-      { name: 'uploadDate', label: 'Upload Date', type: 'date', readonly: true },
       { name: 'vendor', label: 'Vendor', type: 'select', options: this.vendorOptions },
       { name: 'fileNumber', label: 'File Numbers', type: 'multi-input' },
       { name: 'systems', label: 'Systems', type: 'multi-select', options: this.systemOptions },
+      { 
+        name: 'file', 
+        label: 'File', 
+        type: 'file', 
+        onChange: (event: Event) => this.onFileChange(event)
+      },
     ];
+  }
+
+
+  onFileChange(event: Event) {
+    const element = event.target as HTMLInputElement;
+    this.fileInput = element.files ? element.files[0] : null;
   }
 
   onFormSubmit(formData: any) {
     if (this.formSubmit) {
-      this.formSubmit(formData);
+      this.formSubmit(formData, this.fileInput);
     }
-    this.formSubmitEvent.emit(formData);
+    this.formSubmitEvent.emit({formData, file: this.fileInput});
   }
 
   onFormDelete() {
