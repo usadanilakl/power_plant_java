@@ -155,7 +155,7 @@ export class FileTableComponent implements OnInit {
     this.selectedItem = null;
   }
 
-  onFormSubmit(formData: any, fileInput: File | null) {
+  onFormSubmit(formData: any) {
     if (!this.selectedItem) {
       console.error('No item selected for update');
       return;
@@ -166,11 +166,22 @@ export class FileTableComponent implements OnInit {
     // Create a FormData object to send both file and JSON data
     const formDataToSend = new FormData();
   
-    // Append the file if it exists
-    if (fileInput) {
-      formDataToSend.append('file', fileInput);
+    // Extract file from formData and remove it from the object
+    let file: File | null = null;
+    if (formData.file instanceof File) {
+      file = formData.file;
+      delete formData.file; // Remove file from formData
     }
   
+    // Append the file if it exists
+    if (file) {
+      formDataToSend.append('file', file);
+    }
+  
+    // Now formData doesn't contain the file field
+    console.log('Form data after file extraction:', formData);
+  
+    // Continue with the rest of your logic...
     // Merge the existing item data with the new form data
     const updatedItem = { ...this.selectedItem, ...formData };
   

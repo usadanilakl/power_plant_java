@@ -101,6 +101,8 @@ public class NgFileRestController {
     @PutMapping
     public ResponseEntity<ApiResponse<FileDto>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
                                                   @RequestPart(value = "file", required = false) MultipartFile file) {
+        System.out.println(fileDto.getId());
+        System.out.println(file.getOriginalFilename());
         try{// Handle the file upload if a new file is provided
             if (file != null && !file.isEmpty()) {
 
@@ -122,6 +124,7 @@ public class NgFileRestController {
             }
             return ResponseEntity.ok(new ApiResponse<>(null,"File was not uploaded - something went wrong.", LocalDateTime.now()));
         }catch (Exception e){
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(new ApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
         }
     }

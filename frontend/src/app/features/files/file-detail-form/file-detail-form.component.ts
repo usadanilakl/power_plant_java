@@ -16,11 +16,11 @@ import { Validators } from '@angular/forms';
 })
 export class FileDetailFormComponent implements OnInit {
   @Input() values: any = {};
-  @Input() formSubmit!: (data: any, file: File | null) => void;
+  @Input() formSubmit!: (data: any) => void;
   @Input() formDelete!: () => void;
   @Input() openImage!: () => void;
 
-  @Output() formSubmitEvent = new EventEmitter<{formData: any, file: File | null}>();
+  @Output() formSubmitEvent = new EventEmitter<{ formData: any }>();
   @Output() formDeleteEvent = new EventEmitter<void>();
   @Output() openImageEvent = new EventEmitter<void>();
 
@@ -77,26 +77,16 @@ export class FileDetailFormComponent implements OnInit {
       { name: 'vendor', label: 'Vendor', type: 'select', options: this.vendorOptions },
       { name: 'fileNumber', label: 'File Numbers', type: 'multi-input' },
       { name: 'systems', label: 'Systems', type: 'multi-select', options: this.systemOptions },
-      { 
-        name: 'file', 
-        label: 'File', 
-        type: 'file', 
-        onChange: (event: Event) => this.onFileChange(event)
-      },
+      { name: 'file', label: 'File', type: 'file' },
     ];
   }
 
 
-  onFileChange(event: Event) {
-    const element = event.target as HTMLInputElement;
-    this.fileInput = element.files ? element.files[0] : null;
-  }
-
   onFormSubmit(formData: any) {
     if (this.formSubmit) {
-      this.formSubmit(formData, this.fileInput);
+      this.formSubmit(formData);
     }
-    this.formSubmitEvent.emit({formData, file: this.fileInput});
+    this.formSubmitEvent.emit({formData});
   }
 
   onFormDelete() {
