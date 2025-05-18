@@ -6,6 +6,7 @@ import org.sikuli.script.*;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+
 @Service
 public class RedTagAutomationService {
 
@@ -29,53 +30,53 @@ public class RedTagAutomationService {
         Settings.MoveMouseDelay = 0;
     }
 
-public void openApp() throws IOException, InterruptedException, FindFailed {
-    String appName = "Redtag.exe";
-    String appPath = "J://RedTag/Redtag.exe";
+    public void openApp() throws IOException, InterruptedException, FindFailed {
+        String appName = "Redtag.exe";
+        String appPath = "J://RedTag/Redtag.exe";
 
-    if (!isProcessRunning(appName)) {
-        System.out.println("Starting " + appName + "...");
-        Runtime.getRuntime().exec(appPath);
-        
-        // Wait for the application to start
-        Thread.sleep(10000);  // Adjust this delay as needed
-    } else {
-        System.out.println("Application is already running.");
-        maximizeWindow();
+        if (!isProcessRunning(appName)) {
+            System.out.println("Starting " + appName + "...");
+            Runtime.getRuntime().exec(appPath);
+
+            // Wait for the application to start
+            Thread.sleep(10000);  // Adjust this delay as needed
+        } else {
+            System.out.println("Application is already running.");
+            maximizeWindow();
+        }
     }
-}
 
-private boolean isProcessRunning(String processName) throws IOException {
-    ProcessBuilder processBuilder = new ProcessBuilder("tasklist.exe");
-    Process process = processBuilder.start();
-    String tasksList = new String(process.getInputStream().readAllBytes());
-    return tasksList.contains(processName);
-}
-
-private void maximizeWindow() throws FindFailed {
-    Pattern iconInactive = new Pattern(BASE_PATH + "RetTagIconInTaskBarInactive.png");
-    Pattern iconActive = new Pattern(BASE_PATH + "RetTagIconInTaskBarActive.png");
-
-    try {
-        // Check if the window is already maximized
-        screen.find(iconActive);
-        System.out.println("Window is already maximized.");
-        screen.click(iconActive);
-    } catch (FindFailed e) {
-        // If minimize button is not found, the window is not maximized
-        screen.click(iconInactive);
-        System.out.println("Window maximized.");
+    private boolean isProcessRunning(String processName) throws IOException {
+        ProcessBuilder processBuilder = new ProcessBuilder("tasklist.exe");
+        Process process = processBuilder.start();
+        String tasksList = new String(process.getInputStream().readAllBytes());
+        return tasksList.contains(processName);
     }
-}
+
+    private void maximizeWindow() throws FindFailed {
+        Pattern iconInactive = new Pattern(BASE_PATH + "RetTagIconInTaskBarInactive.png");
+        Pattern iconActive = new Pattern(BASE_PATH + "RetTagIconInTaskBarActive.png");
+
+        try {
+            // Check if the window is already maximized
+            screen.find(iconActive);
+            System.out.println("Window is already maximized.");
+            screen.click(iconActive);
+        } catch (FindFailed e) {
+            // If minimize button is not found, the window is not maximized
+            screen.click(iconInactive);
+            System.out.println("Window maximized.");
+        }
+    }
 
     public void findAndClickElement(Pattern pattern) throws FindFailed {
         Region element = appWindow.find(pattern);
-        element.offset(element.w/2-5, element.h/2-5).click();
+        element.offset(element.w / 2 - 5, element.h / 2 - 5).click();
     }
 
     public void typeIntoField(Pattern fieldPattern, String text) throws FindFailed {
         Region field = appWindow.find(fieldPattern);
-        field.offset(field.w-5, field.h-15).click();
+        field.offset(field.w - 5, field.h - 15).click();
         App.setClipboard(text);
         screen.type("v", KeyModifier.CTRL);
     }
@@ -98,8 +99,8 @@ private void maximizeWindow() throws FindFailed {
     private void handleLocableDropdown() throws FindFailed {
         Pattern locableDropdown = new Pattern(BASE_PATH + "locableDropdown.png");
         Region dropdown = appWindow.find(locableDropdown);
-        dropdown.offset(dropdown.w-5, dropdown.h/2-5).click();
-        dropdown.offset(dropdown.w-5, dropdown.h+5).click();
+        dropdown.offset(dropdown.w - 5, dropdown.h / 2 - 5).click();
+        dropdown.offset(dropdown.w - 5, dropdown.h + 5).click();
     }
 
 
