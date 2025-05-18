@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java;
 
 
 import com.dk_power.power_plant_java.controller.permits.automation.RedTagAutomationService;
+import com.dk_power.power_plant_java.entities.EtaProPoint;
+import com.dk_power.power_plant_java.sevice.EtaProService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -19,6 +21,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class PowerPlantJavaApplication implements CommandLineRunner {
 
     private final RedTagAutomationService redTagAutomationService;
+    private final EtaProService etaProService;
 
 
 
@@ -39,6 +42,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 
         String currentUser = System.getProperty("user.name");
         System.out.println("Current User: " + currentUser);
+
 
         System.err.println("=====================================================");
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
