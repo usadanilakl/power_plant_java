@@ -49,38 +49,38 @@ public class BackupController {
         return ResponseEntity.ok(response);
     }
 
-@GetMapping("/files")
-public ResponseEntity<String> backupFileObjects() {
-    try {
-        List<BrFileDto> allFiles = fileObjectService.getAllFiles();
-        
-        StringBuilder jsContent = new StringBuilder("const files = [\n");
-        
-        for (int i = 0; i < allFiles.size(); i++) {
-            String jsonObject = objectMapper.writeValueAsString(allFiles.get(i));
-            jsContent.append(jsonObject);
-            if (i < allFiles.size() - 1) {
-                jsContent.append(",\n");
-            } else {
-                jsContent.append("\n");
+    @GetMapping("/files")
+    public ResponseEntity<String> backupFileObjects() {
+        try {
+            List<BrFileDto> allFiles = fileObjectService.getAllFiles();
+
+            StringBuilder jsContent = new StringBuilder("const files = [\n");
+
+            for (int i = 0; i < allFiles.size(); i++) {
+                String jsonObject = objectMapper.writeValueAsString(allFiles.get(i));
+                jsContent.append(jsonObject);
+                if (i < allFiles.size() - 1) {
+                    jsContent.append(",\n");
+                } else {
+                    jsContent.append("\n");
+                }
             }
-        }
-        
-        jsContent.append("];");
 
-        File file = new File(backupFilePath);
-        file.getParentFile().mkdirs(); // Ensure the directory exists
-        
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.write(jsContent.toString());
-        }
+            jsContent.append("];");
 
-        return ResponseEntity.ok("Backup created successfully");
-    } catch (IOException e) {
-        e.printStackTrace();
-        return ResponseEntity.internalServerError().body("Failed to create backup: " + e.getMessage());
+            File file = new File(backupFilePath);
+            file.getParentFile().mkdirs(); // Ensure the directory exists
+
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write(jsContent.toString());
+            }
+
+            return ResponseEntity.ok("Backup created successfully");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Failed to create backup: " + e.getMessage());
+        }
     }
-}
 
     @GetMapping("/equipment")
     public ResponseEntity<String> backupEquipment() {
