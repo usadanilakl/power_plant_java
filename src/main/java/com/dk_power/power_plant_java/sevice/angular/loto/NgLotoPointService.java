@@ -117,5 +117,9 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     public LotoPoint convertIdDtoToEntity(LotoPointIdDto lotoPoint) {
         return getMapper().convertIdDtoToEntity(lotoPoint);
     }
+
+    public String generateTagNumber(String system) {
+
+    }
 }
 

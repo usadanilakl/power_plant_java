@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.UUID;
@@ -35,5 +36,11 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     List<LotoPoint> findByDataServiceItemIdIsNull();
 
     List<LotoPoint> findByDataServiceItemId(UUID dataServiceItemId);
+
+
+    @Query("SELECT DISTINCT l.tagNumber FROM LotoPoint l WHERE " +
+           "(:values IS NULL OR :values IS EMPTY OR " +
+           "l.tagNumber LIKE CONCAT('%', CONCAT(REPLACE(REPLACE(REPLACE(CAST(:values AS string), '[', ''), ']', ''), ',', '%'), '%')))")
+    List<String> findTagNumbersContainingAllValues(@Param("values") List<String> values);
 
 }

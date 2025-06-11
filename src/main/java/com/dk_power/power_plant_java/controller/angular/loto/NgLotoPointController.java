@@ -148,4 +148,16 @@ public class NgLotoPointController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
+    @GetMapping("/tag-number/{system}")
+    public ResponseEntity<NgApiResponse<String>> createNewTagNumber(@PathVariable String system) {
+        try {
+            String newTagNumber = ngLotoPointService.generateTagNumber(system);
+            NgApiResponse<String> response = new NgApiResponse<>(newTagNumber, "New tag number generated successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }
