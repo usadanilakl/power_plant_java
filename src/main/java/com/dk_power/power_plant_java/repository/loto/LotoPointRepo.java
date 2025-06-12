@@ -38,9 +38,9 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     List<LotoPoint> findByDataServiceItemId(UUID dataServiceItemId);
 
 
-    @Query("SELECT DISTINCT l.tagNumber FROM LotoPoint l WHERE " +
-           "(:values IS NULL OR :values IS EMPTY OR " +
-           "l.tagNumber LIKE CONCAT('%', CONCAT(REPLACE(REPLACE(REPLACE(CAST(:values AS string), '[', ''), ']', ''), ',', '%'), '%')))")
-    List<String> findTagNumbersContainingAllValues(@Param("values") List<String> values);
+//    @Query("SELECT DISTINCT l.tagNumber FROM LotoPoint l WHERE " +
+//           "(:values IS NULL OR :values IS EMPTY OR " +
+//           "l.tagNumber LIKE CONCAT('%', CONCAT(REPLACE(REPLACE(REPLACE(CAST(:values AS string), '[', ''), ']', ''), ',', '%'), '%')))")
+//    List<String> findTagNumbersContainingAllValues(@Param("values") List<String> values);
 
 }
