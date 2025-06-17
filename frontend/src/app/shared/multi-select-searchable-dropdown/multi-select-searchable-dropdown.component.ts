@@ -52,7 +52,7 @@ export class MultiSelectSearchableDropdownComponent implements ControlValueAcces
 
   private updateAvailableOptions() {
     if (this.options instanceof Observable) {
-      this.options.subscribe(options => {
+        this.options.subscribe(options => {
         this.optionsSubject.next(options);
       });
     } else {

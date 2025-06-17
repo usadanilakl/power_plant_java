@@ -10,6 +10,7 @@ import { LotoPointTableComponent } from './features/loto-points/loto-point-table
 import { LockTableComponent } from './features/loto/lock-table/lock-table.component';
 import { LotoBoxTableComponent } from './features/loto/loto-box-table/loto-box-table.component';
 import { ActiveLotoPointsComponent } from './features/loto/active-loto-points/active-loto-points.component';
+import { NewFileComponent } from './features/new/new-file/new-file.component';
 
 export const routes: Routes = [
     {path: '', component: HomeComponent},
@@ -31,4 +32,7 @@ export const routes: Routes = [
     {path: 'tag-number', component: TagNumberComponent},
     {path: 'pid', component: PidComponent},
     {path: 'print', component: PrintComponent},
+
+
+    {path: 'new-files', component: NewFileComponent},
 ];
