@@ -129,7 +129,24 @@ export class DetailsFormComponent {
 
   onSubmit() {
     if (this.form.valid) {
-      this.formSubmit.emit(this.form.value);
+      const formValue = this.form.value;
+      const result = {...this.values}; // Start with the original object
+      this.fields.forEach((field) => {
+        const parts = field.name.split('.');
+        let current: any = result;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!current[parts[i]]) {
+            current[parts[i]] = {};
+          }
+          current = current[parts[i]];
+        }
+        if (field.type === 'select' && typeof current[parts[parts.length - 1]] === 'object') {
+          current[parts[parts.length - 1]].id = formValue[field.name];
+        } else {
+          current[parts[parts.length - 1]] = formValue[field.name];
+        }
+      });
+      this.formSubmit.emit(result);
     }
   }
 

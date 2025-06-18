@@ -99,10 +99,10 @@ public class NgFileRestController {
     }
 
     @PutMapping
-    public ResponseEntity<ApiResponse<FileDto>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
+    public ResponseEntity<NgApiResponse<FileDto>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
                                                   @RequestPart(value = "file", required = false) MultipartFile file) {
-        System.out.println(fileDto.getId());
-        System.out.println(file.getOriginalFilename());
+//        System.out.println(fileDto.getId());
+//        System.out.println(file.getOriginalFilename());
         try{// Handle the file upload if a new file is provided
             if (file != null && !file.isEmpty()) {
 
@@ -113,19 +113,22 @@ public class NgFileRestController {
                 fileDto.setExtension(extension);
                 String fileLink = fileEntity.buildFileLink();
 
+                System.out.println("File link: " + fileLink);
+
                 // Process the file upload
-                fileLink = ngFileService.uploadFile(file, fileLink);
+                fileLink = ngFileService.uploadFile(file, "testUploads/" + file.getOriginalFilename());
                 fileEntity.setFileLink(fileLink);
+                System.out.println("File Link after upload: " + fileLink);
                 fileEntity.setFileNumber(fileLink.substring(fileLink.lastIndexOf("/")));
 
                 // Update the file in the database
                 FileDto updatedFile = ngFileService.toDto(ngFileService.save(fileEntity));
-                return ResponseEntity.ok(new ApiResponse<>(updatedFile,"File uploaded successfully", LocalDateTime.now()));
+                return ResponseEntity.ok(new NgApiResponse<>(updatedFile,"File uploaded successfully", LocalDateTime.now()));
             }
-            return ResponseEntity.ok(new ApiResponse<>(null,"File was not uploaded - something went wrong.", LocalDateTime.now()));
+            return ResponseEntity.ok(new NgApiResponse<>(null,"File was not uploaded - something went wrong.", LocalDateTime.now()));
         }catch (Exception e){
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(new ApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
+            return ResponseEntity.badRequest().body(new NgApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
         }
     }
 }
