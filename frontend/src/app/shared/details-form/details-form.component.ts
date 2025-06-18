@@ -51,12 +51,12 @@ export class DetailsFormComponent {
   }
 
   createForm() {
-    // console.log('Creating form with fields:', this.fields);
-    // console.log("values:", this.values);
+    console.log('Creating form with fields:', this.fields);
+    console.log("values:", this.values);
     const group: { [key: string]: any[] } = {};
     this.fields.forEach((field) => {
       console.log('Field:', field);
-      let value = this.values[field.name] || null;
+      let value = this.getNestedValue(this.values, field.name);
       let validators = field.validators || [];
   
       // Special handling for file inputs
@@ -74,6 +74,11 @@ export class DetailsFormComponent {
         value = value || []; // Ensure it's an array
       }
   
+      // For select fields with nested object values, use the id
+      if (field.type === 'select' && typeof value === 'object' && value !== null) {
+        value = value.id;
+      }
+  
       group[field.name] = [value, validators];
     });
     this.form = this.fb.group(group);
@@ -83,15 +88,25 @@ export class DetailsFormComponent {
     if (this.form) {
       this.fields.forEach((field) => {
         if (this.form.get(field.name)) {
-          let value = this.values[field.name];
+          let value = this.getNestedValue(this.values, field.name);
           
           // Don't update file inputs
           if (field.type !== 'file') {
+            // For select fields with nested object values, use the id
+            if (field.type === 'select' && typeof value === 'object' && value !== null) {
+              value = value.id;
+            }
             this.form.get(field.name)!.setValue(value || null);
           }
         }
       });
     }
+  }
+
+  private getNestedValue(obj: any, path: string): any {
+    return path.split('.').reduce((prev, curr) => {
+      return prev ? prev[curr] : null;
+    }, obj);
   }
 
   // createForm() {

@@ -73,7 +73,7 @@ export class FileDetailFormComponent implements OnInit {
   private initializeFields() {
     this.fields = [
       { name: 'name', label: 'File Name', type: 'text', validators : [Validators.minLength(10)] },
-      { name: 'type', label: 'File Type', type: 'select', options: this.fileTypeOptions },
+      { name: 'fileType', label: 'File Type', type: 'select', options: this.fileTypeOptions },
       { name: 'vendor', label: 'Vendor', type: 'select', options: this.vendorOptions },
       { name: 'fileNumber', label: 'File Numbers', type: 'multi-input' },
       { name: 'systems', label: 'Systems', type: 'multi-select', options: this.systemOptions },
