@@ -184,6 +184,9 @@ export class FileTableComponent implements OnInit {
     // Continue with the rest of your logic...
     // Merge the existing item data with the new form data
     const updatedItem = { ...this.selectedItem, ...formData };
+
+    
+    console.log('Data to be sent:', updatedItem);
   
     // Append the JSON data
     formDataToSend.append('fileDto', new Blob([JSON.stringify(new FileDto(updatedItem).toIdModel())], {

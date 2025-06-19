@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -111,15 +112,15 @@ public class NgFileRestController {
                 //Build File link
                 String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
                 fileDto.setExtension(extension);
-                String fileLink = fileEntity.buildFileLink();
+                String fileLink = fileEntity.buildFolder();
 
-                System.out.println("File link: " + fileLink);
+                System.out.println("File link: " + fileLink.replace("uploads/","").replace("uploads\\",""));
 
                 // Process the file upload
-                fileLink = ngFileService.uploadFile(file, "testUploads/" + file.getOriginalFilename());
-                fileEntity.setFileLink(fileLink);
-                System.out.println("File Link after upload: " + fileLink);
-                fileEntity.setFileNumber(fileLink.substring(fileLink.lastIndexOf("/")));
+                fileLink = ngFileService.uploadFile(file, fileLink.replace("uploads/","").replace("uploads\\",""));
+                String fileNameWithoutExtension = Paths.get(fileLink).getFileName().toString().replaceFirst("[.][^.]+$", "");
+                fileEntity.setFileNumber(fileNameWithoutExtension);
+                fileEntity.buildFileLink();
 
                 // Update the file in the database
                 FileDto updatedFile = ngFileService.toDto(ngFileService.save(fileEntity));
@@ -131,4 +132,7 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
         }
     }
+    
+    
+
 }
