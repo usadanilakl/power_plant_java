@@ -78,6 +78,7 @@ export class FileDetailFormComponent implements OnInit {
       { name: 'fileNumber', label: 'File Numbers', type: 'multi-input' },
       { name: 'systems', label: 'Systems', type: 'multi-select', options: this.systemOptions },
       { name: 'file', label: 'File', type: 'file' },
+      { name: 'overrideFile', label: 'If File already exists, then:', type: 'radio-group', options: [{ value: 'true', label: 'Override' }, { value: 'false', label: 'Revision' }] },
     ];
   }
 

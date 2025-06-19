@@ -27,7 +27,7 @@ export class FileTableComponent implements OnInit {
     { id: 'name', header: 'File Name', accessorKey: 'name' },
     { id: 'fileType.name', header: 'File Type', accessorKey: 'fileType.name' },
     { id: 'fileNumber', header: 'File Number', accessorKey: 'fileNumber' },
-    { id: 'relatedSystems', header: 'Systems', accessorKey: 'relatedSystems' }
+    { id: 'relatedSystems', header: 'Systems', accessorKey: 'relatedSystems' },
   ];
 
 
@@ -177,6 +177,12 @@ export class FileTableComponent implements OnInit {
     if (file) {
       formDataToSend.append('file', file);
     }
+
+      // Extract the override/revision checkbox value
+      const overrideFile = formData.overrideFile;
+      console.log('Override file:', overrideFile);
+      delete formData.overrideFile; // Remove it from formData as it's not part of the FileDto
+
   
     // Now formData doesn't contain the file field
     console.log('Form data after file extraction:', formData);
@@ -192,6 +198,12 @@ export class FileTableComponent implements OnInit {
     formDataToSend.append('fileDto', new Blob([JSON.stringify(new FileDto(updatedItem).toIdModel())], {
       type: "application/json"
     }));
+
+      // Append the override/revision flag
+      formDataToSend.append('overrideFile', overrideFile);
+
+
+    
   
     // Update in the backend
     this.fileService.updateFile(formDataToSend).subscribe(

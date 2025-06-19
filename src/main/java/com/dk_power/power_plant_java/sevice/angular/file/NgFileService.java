@@ -105,9 +105,9 @@ public FileDto findByFileLink(String imageUrl) {
     return this.toDto(byFileLink);
 }
 
-    public String uploadFile(MultipartFile file, String fileLink) throws IOException {
+    public String uploadFile(MultipartFile file, String fileLink, boolean override) throws IOException {
         Path path = Paths.get(filesRootPath,fileLink);
-        return FileUtil.uploadFileToLocal(file, path.toString(), false);
+        return FileUtil.uploadFileToLocal(file, path.toString(), override);
     }
 
     public FileDto updateFile(FileDto fileDto) {
@@ -117,5 +117,13 @@ public FileDto findByFileLink(String imageUrl) {
 
     public FileObject convertIdDtoToEntity(FileIdDto fileDto) {
         return fileMapper.convertIdDtoToEntity(fileDto);
+    }
+
+    public Map<String, Object> checkFileExists(String fileLink) {
+        boolean exists = FileUtil.checkFileExists(Paths.get(filesRootPath, fileLink));
+        Map<String, Object> result = new HashMap<>();
+        result.put("exists", exists);
+        result.put("fileLink", fileLink);
+        return result;
     }
 }

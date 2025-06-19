@@ -16,6 +16,13 @@
             [formControlName]="field.name">
           </app-checkbox-group>
         }
+        @case ('radio-group') {
+          <app-radio-group
+            [label]="field.label"
+            [options]="field.options"
+            [formControlName]="field.name">
+          </app-radio-group>
+        }
         @case('multi-select'){
           <app-multi-select-searchable-dropdown
             [options]="field.options"

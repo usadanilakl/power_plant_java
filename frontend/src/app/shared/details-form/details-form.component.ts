@@ -12,6 +12,7 @@ import { FormInputComponent } from '../form-input/form-input.component';
 import { MultiSelectSearchableDropdownComponent } from '../multi-select-searchable-dropdown/multi-select-searchable-dropdown.component';
 import { FileInputComponent } from '../file-input/file-input.component';
 import { MultiInputComponent } from '../multi-input/multi-input.component';
+import { RadioGroupComponent } from '../radio-group/radio-group.component';
 
 @Component({
   selector: 'app-details-form',
@@ -25,7 +26,8 @@ import { MultiInputComponent } from '../multi-input/multi-input.component';
     ReactiveFormsModule,
     MultiSelectSearchableDropdownComponent,
     FileInputComponent,
-    MultiInputComponent
+    MultiInputComponent,
+    RadioGroupComponent
   ],
 })
 export class DetailsFormComponent {
@@ -127,25 +129,40 @@ export class DetailsFormComponent {
   //   }
   // }
 
+  
   onSubmit() {
     if (this.form.valid) {
       const formValue = this.form.value;
+      console.log("Form Value:", formValue);
       const result = {...this.values}; // Start with the original object
+  
       this.fields.forEach((field) => {
         const parts = field.name.split('.');
         let current: any = result;
+  
+        // For nested properties
         for (let i = 0; i < parts.length - 1; i++) {
           if (!current[parts[i]]) {
             current[parts[i]] = {};
           }
           current = current[parts[i]];
         }
-        if (field.type === 'select' && typeof current[parts[parts.length - 1]] === 'object') {
-          current[parts[parts.length - 1]].id = formValue[field.name];
+  
+        const lastPart = parts[parts.length - 1];
+  
+        // Handle different field types
+        if (field.type === 'select' && typeof current[lastPart] === 'object') {
+          current[lastPart] = current[lastPart] || {};
+          current[lastPart].id = formValue[field.name];
+        } else if (field.type === 'file' && formValue[field.name] instanceof File) {
+          // Handle file input
+          current[lastPart] = formValue[field.name];
         } else {
-          current[parts[parts.length - 1]] = formValue[field.name];
+          // For all other fields, including 'overrideFile'
+          current[lastPart] = formValue[field.name];
         }
       });
+  
       this.formSubmit.emit(result);
     }
   }

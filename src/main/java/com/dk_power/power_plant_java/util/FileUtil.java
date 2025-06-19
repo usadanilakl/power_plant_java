@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -45,4 +46,13 @@ public class FileUtil {
 
         return filePath.toString();
     }
+
+    public static boolean checkFileExists(Path filePath) {
+        return Files.exists(filePath);
+    }
+
+    public static boolean checkFileExists(String filePath) {
+        return checkFileExists(Paths.get(filePath));
+    }
+
 }
