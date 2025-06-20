@@ -110,8 +110,9 @@ public class NgFileRestController {
             if (file != null && !file.isEmpty()) {
 
                 //Build File link
-                String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
-                fileDto.setExtension(extension);
+                String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")+1);
+                fileEntity.setExtension(extension);
+                fileEntity.setBaseLink("uploads");
                 String fileLink = fileEntity.buildFolder();
                 // Process the file upload
                 fileLink = ngFileService.uploadFile(file, fileLink.replace("uploads/","").replace("uploads\\",""),overrideFile);

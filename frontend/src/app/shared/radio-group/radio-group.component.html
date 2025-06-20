@@ -1,18 +1,19 @@
 
-
 <div class="radio-group">
-  <label>{{ label }}</label>
-  @for (option of options; track option.value) {
-    <div>
-      <input 
-        type="radio" 
-        [id]="option.value" 
-        [name]="name" 
-        [value]="option.value" 
-        [checked]="value === option.value"
-        (change)="onRadioChange(option)"
-      >
-      <label [for]="option.value">{{ option.label }}</label>
-    </div>
-  }
+  <span class="group-label">{{ label }}</span>
+  <div class="options-container">
+    @for (option of options; track option.value) {
+      <div class="option">
+        <input 
+          type="radio" 
+          [id]="option.value" 
+          [name]="name" 
+          [value]="option.value" 
+          [checked]="value === option.value"
+          (change)="onRadioChange(option)"
+        >
+        <label [for]="option.value">{{ option.label }}</label>
+      </div>
+    }
+  </div>
 </div>
