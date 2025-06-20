@@ -128,6 +128,14 @@ public interface NgCrudService<
         return entity;
     }
 
+    default E hardDelete(String id) {
+        return hardDelete(getEntityById(id));
+    }
+
+    default E hardDelete(Long id) {
+        return hardDelete(getEntityById(id));
+    }
+
     default E toEntity(D dto) {
         return getMapper().convert(dto, getEntity());
     }

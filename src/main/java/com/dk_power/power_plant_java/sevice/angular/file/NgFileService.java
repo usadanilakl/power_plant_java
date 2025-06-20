@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.util.FileUtil;
+import com.dk_power.power_plant_java.util.PdfConverter;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -17,12 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +35,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
 
     @Value("${files.root.path}")
     String filesRootPath;
+    @Value("${files.relative.path}")
+    String filesRelativePath;
 
     @Override
     public FileObject getEntity() {
@@ -110,9 +112,57 @@ public FileDto findByFileLink(String imageUrl) {
         return FileUtil.uploadFileToLocal(file, path.toString(), override);
     }
 
-    public FileDto updateFile(FileDto fileDto) {
-        throw new RuntimeException("Not implemented yet");
+    public String uploadFile(File file, String fileLink, boolean override) throws IOException {
+        Path path = Paths.get(filesRootPath,fileLink);
+        return FileUtil.uploadFileToLocal(file, path.toString(), override);
+    }
 
+    public List<String> separateAndUploadPdfFileWithConversion(MultipartFile file, String fileLink, boolean override) throws IOException {
+        if(!Objects.requireNonNull(file.getOriginalFilename()).endsWith(".pdf")) {
+            throw new RuntimeException("File must be a PDF");
+        }
+        List<File> files = PdfConverter.splitPdfIntoSinglePageFiles(file);
+        Path fileLinkPath = Paths.get(fileLink);
+        Path parentPath = fileLinkPath.getParent();
+        String pdfPath = parentPath != null ? parentPath.toString() : "";
+        String jpgPath = pdfPath.replaceAll("pdf","jpg");
+
+        List<String> fileLinks = new ArrayList<>();
+        for(File pdf : files) {
+            fileLinks.add(uploadFile(pdf, fileLink, override));
+            File jpg = PdfConverter.convertPdfToJpg(pdf);
+            fileLinks.add(uploadFile(jpg, jpgPath, override));
+        }
+
+        return fileLinks;
+    }
+
+    public FileDto updateFile(FileIdDto fileDto) {
+        FileObject entity = convertIdDtoToEntity(fileDto);
+        String extension = FileUtil.getFileExtension(entity.getFileLink());
+        entity.setBaseLink(filesRelativePath);
+        entity.setExtension(extension);
+        String folder = entity.buildFolder();
+        String fileLink = entity.buildFileLink();
+        return toDto(save(entity));
+    }
+
+    @Override
+    public FileObject create(FileDto dto) {
+        FileObject entity = toEntity(dto);
+        String extension = FileUtil.getFileExtension(entity.getFileLink());
+        entity.setBaseLink(filesRelativePath);
+        entity.setExtension(extension);
+        String folder = entity.buildFolder();
+        String fileLink = entity.buildFileLink();
+        return save(entity);
+    }
+
+    public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override) throws IOException {
+        String fileExtension = FileUtil.getFileExtension(fileDto.getFileLink());
+//        String folder = fileDto.buildFolder();
+        List<String> strings = separateAndUploadPdfFileWithConversion(file, fileDto.getFileLink(), override);
+        return null;
     }
 
     public FileObject convertIdDtoToEntity(FileIdDto fileDto) {
@@ -125,5 +175,16 @@ public FileDto findByFileLink(String imageUrl) {
         result.put("exists", exists);
         result.put("fileLink", fileLink);
         return result;
+    }
+
+    @Override
+    public FileObject hardDelete(Long id) {
+        FileObject file = getEntityById(id);
+        try {
+            FileUtil.deleteFile(Paths.get(file.getFileLink()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return NgCrudService.super.softDelete(file);
     }
 }

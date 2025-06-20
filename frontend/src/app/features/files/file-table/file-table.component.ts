@@ -237,6 +237,11 @@ export class FileTableComponent implements OnInit {
       file = formData.file;
       delete formData.file; // Remove file from formData
     }
+
+    if(file === null) {
+      console.error('No file selected to upload.');
+      return;
+    }
   
     // Append the file if it exists
     if (file) {
@@ -244,7 +249,7 @@ export class FileTableComponent implements OnInit {
     }
 
       // Extract the override/revision checkbox value
-      const overrideFile = formData.overrideFile;
+      const overrideFile = formData.overrideFile? formData.overrideFile : false;
       delete formData.overrideFile; // Remove it from formData as it's not part of the FileDto
 
       formData.fileNumber = formData.fileNumber[0] || "";

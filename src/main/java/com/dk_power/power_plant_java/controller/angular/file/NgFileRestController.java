@@ -146,6 +146,17 @@ public class NgFileRestController {
         }
     }
     
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> deleteFile(@PathVariable Long id) {
+        try {
+            ngFileService.hardDelete(id);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "File deleted successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error deleting file: " + e.getMessage()));
+        }
+    }
+    
     
 
 }
