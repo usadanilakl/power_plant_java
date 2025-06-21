@@ -29,7 +29,7 @@ public class FileDto extends BaseDto {
     private MultipartFile file;
     private ValueDto fileType;
     private String fileLink;
-    private String baseLink;
+    private String baseLink = "uploads";
     private String folder;
     private ValueDto system;
     @JsonProperty("systems")

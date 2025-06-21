@@ -50,7 +50,7 @@ public class FileObject extends BaseAuditEntity {
     private Value fileType;
 
     private String fileLink;
-    private String baseLink="";
+    private String baseLink = "uploads";
     private String folder;
 
     @ManyToOne(cascade = CascadeType.ALL)

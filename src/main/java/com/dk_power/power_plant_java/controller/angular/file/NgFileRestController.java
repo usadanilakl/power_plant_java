@@ -18,10 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 @RestController
 @RequestMapping("/ng/files")
@@ -101,32 +98,40 @@ public class NgFileRestController {
     }
 
     @PutMapping
-    public ResponseEntity<NgApiResponse<FileDto>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
+    public ResponseEntity<NgApiResponse<Object>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
                                                              @RequestPart(value = "file", required = false) MultipartFile file,
                                                              @RequestParam(value = "overrideFile", defaultValue = "false") boolean overrideFile) {
 
-        try{// Handle the file upload if a new file is provided
-            FileObject fileEntity = ngFileService.convertIdDtoToEntity(fileDto);
-            if (file != null && !file.isEmpty()) {
 
-                //Build File link
-                String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")+1);
-                fileEntity.setExtension(extension);
-                fileEntity.setBaseLink("uploads");
-                String fileLink = fileEntity.buildFolder();
-                // Process the file upload
-                fileLink = ngFileService.uploadFile(file, fileLink.replace("uploads/","").replace("uploads\\",""),overrideFile);
-                String fileNameWithoutExtension = Paths.get(fileLink).getFileName().toString().replaceFirst("[.][^.]+$", "");
-                fileEntity.setFileNumber(fileNameWithoutExtension);
-                fileEntity.buildFileLink();
-            }
-            // Update the file in the database
-            FileDto updatedFile = ngFileService.toDto(ngFileService.save(fileEntity));
-            return ResponseEntity.ok(new NgApiResponse<>(updatedFile,"File uploaded successfully", LocalDateTime.now()));
-        }catch (Exception e){
+        try {
+            List<FileDto> fileDtos = ngFileService.processPidFile(fileDto, file, overrideFile);
+            return ResponseEntity.ok(new NgApiResponse<>(fileDtos, "Files updated successfully", LocalDateTime.now()));
+        }catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(new NgApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
+//        try{// Handle the file upload if a new file is provided
+//            FileObject fileEntity = ngFileService.convertIdDtoToEntity(fileDto);
+//            if (file != null && !file.isEmpty()) {
+//
+//                //Build File link
+//                String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")+1);
+//                fileEntity.setExtension(extension);
+//                fileEntity.setBaseLink("uploads");
+//                String fileLink = fileEntity.buildFolder();
+//                // Process the file upload
+//                fileLink = ngFileService.uploadFile(file, fileLink.replace("uploads/","").replace("uploads\\",""),overrideFile);
+//                String fileNameWithoutExtension = Paths.get(fileLink).getFileName().toString().replaceFirst("[.][^.]+$", "");
+//                fileEntity.setFileNumber(fileNameWithoutExtension);
+//                fileEntity.buildFileLink();
+//            }
+//            // Update the file in the database
+//            FileDto updatedFile = ngFileService.toDto(ngFileService.save(fileEntity));
+//            return ResponseEntity.ok(new NgApiResponse<>(updatedFile,"File uploaded successfully", LocalDateTime.now()));
+//        }catch (Exception e){
+//            e.printStackTrace();
+//            return ResponseEntity.badRequest().body(new NgApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
+//        }
     }
 
     @PostMapping("/check")

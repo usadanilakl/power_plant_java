@@ -100,4 +100,9 @@ public class FileUtil {
         }
         return fileLink.substring(lastIndexOf + 1);
     }
+
+    public static String getNameFromPath(String path) {
+        int lastIndex = path.lastIndexOf(File.separator);
+        return (lastIndex!= -1)? path.substring(lastIndex + 1) : path;
+    }
 }

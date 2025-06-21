@@ -137,7 +137,7 @@ public FileDto findByFileLink(String imageUrl) {
         return fileLinks;
     }
 
-    public FileDto updateFile(FileIdDto fileDto) {
+    public FileDto create(FileIdDto fileDto) {
         FileObject entity = convertIdDtoToEntity(fileDto);
         String extension = FileUtil.getFileExtension(entity.getFileLink());
         entity.setBaseLink(filesRelativePath);
@@ -159,10 +159,26 @@ public FileDto findByFileLink(String imageUrl) {
     }
 
     public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override) throws IOException {
-        String fileExtension = FileUtil.getFileExtension(fileDto.getFileLink());
-//        String folder = fileDto.buildFolder();
-        List<String> strings = separateAndUploadPdfFileWithConversion(file, fileDto.getFileLink(), override);
-        return null;
+        String fileExtension = FileUtil.getFileExtension(file.getOriginalFilename());
+        FileObject fileObject = convertIdDtoToEntity(fileDto);
+        String fileLink = fileObject.buildFileLink();
+        String folder = fileObject.buildFolder();
+        List<String> strings = separateAndUploadPdfFileWithConversion(file, fileLink, override);
+
+        List<FileDto> fileDtos = new ArrayList<>();
+        for (String path : strings) {
+            String nameFromPath = FileUtil.getNameFromPath(path);
+            FileObject newFile = new FileObject();
+            newFile.setName(nameFromPath);
+            newFile.setFileType(fileObject.getFileType());
+            newFile.setVendor(fileObject.getVendor());
+            newFile.setExtension(FileUtil.getFileExtension(path));
+            newFile.buildFolder();
+            newFile.buildFileLink();
+            FileObject save = save(newFile);
+            fileDtos.add(toDto(save));
+        }
+        return fileDtos;
     }
 
     public FileObject convertIdDtoToEntity(FileIdDto fileDto) {
@@ -187,4 +203,8 @@ public FileDto findByFileLink(String imageUrl) {
         }
         return NgCrudService.super.softDelete(file);
     }
+
+
+
+
 }

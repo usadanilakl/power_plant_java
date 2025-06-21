@@ -33,4 +33,6 @@ public class FileIdDto extends BaseDto {
     private String bulkEditStep;
     private String docNum;
     private Boolean isVerified = false;
+
+
 }
