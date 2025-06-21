@@ -164,6 +164,7 @@ export class TableComponent implements OnInit {
           } else if (event.shiftKey) {
             this.onRowShiftClick(item, event);
           } else {
+            this.clearSelection();
             this.clickCallback(item, event);
           }
           }
@@ -251,14 +252,28 @@ export class TableComponent implements OnInit {
   }
 
   onDeleteSelectedItems() {
-    if(this.deleteItem && this.selectedItems.length > 0){
-      for(let item of this.selectedItems){
+    if (this.deleteItem && this.selectedItems.length > 0) {
+      const deletedIds = new Set();
+  
+      // Delete items and collect their IDs
+      for (let item of this.selectedItems) {
         this.deleteItem(item.id);
+        deletedIds.add(item.id);
       }
+  
+      // Remove deleted items from _items
+      const updatedItems = this._items.value.filter(item => !deletedIds.has(item.id));
+      this._items.next(updatedItems);
+  
+      // Clear selected items
+      this.selectedItems = [];
+  
+      // Update filtered items
+      this.updateFilteredItems();
+  
+      // Trigger change detection
+      this.cdr.detectChanges();
     }
-    this.selectedItems = [];
-    this.updateFilteredItems();
-    this.cdr.detectChanges();
   }
 
 }

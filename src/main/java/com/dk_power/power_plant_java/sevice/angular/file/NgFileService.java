@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.util.FileUtil;
 import com.dk_power.power_plant_java.util.PdfConverter;
+import com.dk_power.power_plant_java.util.RenamedMultipartFile;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -27,7 +28,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo, FileMapper> {
+public class NgFileService implements NgCrudService<FileObject, FileDto, FileRepo, FileMapper> {
     private final FileRepo fileRepo;
     private final FileMapper fileMapper;
     private final SessionFactory sessionFactory;
@@ -40,7 +41,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
 
     @Override
     public FileObject getEntity() {
-        return new FileObject()  ;
+        return new FileObject();
     }
 
     @Override
@@ -79,9 +80,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
     }
 
 
-
-    public Page<FileDto> complexSearch(String searchString, int page, int size){
-        Map<String,String> searchCriteria = new HashMap<>();
+    public Page<FileDto> complexSearch(String searchString, int page, int size) {
+        Map<String, String> searchCriteria = new HashMap<>();
         searchCriteria.put("fileNumber", searchString);
         searchCriteria.put("name", searchString);
         searchCriteria.put("fileType.name", searchString);
@@ -90,7 +90,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
         SearchCriteria sc = new SearchCriteria();
         sc.setFilters(searchCriteria);
 //        return complexSearch(sc).stream().map(this::toDto).toList();
-        return complexSearch(sc, page, size, "fileNumber", "asc",false);
+        return complexSearch(sc, page, size, "fileNumber", "asc", false);
     }
 
     public Optional<FileDto> findById(Long id) {
@@ -98,37 +98,37 @@ public class NgFileService implements NgCrudService<FileObject, FileDto,FileRepo
         return byId.map(this::toDto);
     }
 
-public FileDto findByFileLink(String imageUrl) {
-    // Remove "http://localhost:port/" if present
-    String url = imageUrl.trim().replaceFirst("^(https?://localhost(:\\d+)?)/", "");
-    FileObject byFileLink = fileRepo.findByFileLink(url);
-    if(byFileLink == null) throw new RuntimeException("File not found for link: " + imageUrl);
-    // Now use the cleaned url to find the FileObject
-    return this.toDto(byFileLink);
-}
+    public FileDto findByFileLink(String imageUrl) {
+        // Remove "http://localhost:port/" if present
+        String url = imageUrl.trim().replaceFirst("^(https?://localhost(:\\d+)?)/", "");
+        FileObject byFileLink = fileRepo.findByFileLink(url);
+        if (byFileLink == null) throw new RuntimeException("File not found for link: " + imageUrl);
+        // Now use the cleaned url to find the FileObject
+        return this.toDto(byFileLink);
+    }
 
     public String uploadFile(MultipartFile file, String fileLink, boolean override) throws IOException {
-        Path path = Paths.get(filesRootPath,fileLink);
+        Path path = Paths.get(filesRootPath, fileLink);
         return FileUtil.uploadFileToLocal(file, path.toString(), override);
     }
 
     public String uploadFile(File file, String fileLink, boolean override) throws IOException {
-        Path path = Paths.get(filesRootPath,fileLink);
+        Path path = Paths.get(filesRootPath, fileLink);
         return FileUtil.uploadFileToLocal(file, path.toString(), override);
     }
 
     public List<String> separateAndUploadPdfFileWithConversion(MultipartFile file, String fileLink, boolean override) throws IOException {
-        if(!Objects.requireNonNull(file.getOriginalFilename()).endsWith(".pdf")) {
+        if (!Objects.requireNonNull(file.getOriginalFilename()).endsWith(".pdf")) {
             throw new RuntimeException("File must be a PDF");
         }
         List<File> files = PdfConverter.splitPdfIntoSinglePageFiles(file);
         Path fileLinkPath = Paths.get(fileLink);
         Path parentPath = fileLinkPath.getParent();
         String pdfPath = parentPath != null ? parentPath.toString() : "";
-        String jpgPath = pdfPath.replaceAll("pdf","jpg");
+        String jpgPath = pdfPath.replaceAll("pdf", "jpg");
 
         List<String> fileLinks = new ArrayList<>();
-        for(File pdf : files) {
+        for (File pdf : files) {
             fileLinks.add(uploadFile(pdf, fileLink, override));
             File jpg = PdfConverter.convertPdfToJpg(pdf);
             fileLinks.add(uploadFile(jpg, jpgPath, override));
@@ -159,11 +159,25 @@ public FileDto findByFileLink(String imageUrl) {
     }
 
     public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override) throws IOException {
-        String fileExtension = FileUtil.getFileExtension(file.getOriginalFilename());
+
+        if (file == null) throw new RuntimeException("File is required");
+        System.out.println(file.getOriginalFilename() + " - file name");
+        System.out.println(fileDto.getFileNumber() + " - file number");
+
+        String originalFilename = file.getOriginalFilename();
+        String fileNumber = fileDto.getFileNumber();
+        if (originalFilename == null) {
+            throw new RuntimeException("Original filename is null");
+        }
+        String fileExtension = FileUtil.getFileExtension(originalFilename);
+        String fileName = fileNumber != null && !fileNumber.isEmpty() ? fileNumber : originalFilename;
         FileObject fileObject = convertIdDtoToEntity(fileDto);
         String fileLink = fileObject.buildFileLink();
         String folder = fileObject.buildFolder();
-        List<String> strings = separateAndUploadPdfFileWithConversion(file, fileLink, override);
+
+        MultipartFile renamedFile = new RenamedMultipartFile(file, fileName + "." + fileExtension);
+        System.out.println(renamedFile.getOriginalFilename() + " - renamed file name");
+        List<String> strings = separateAndUploadPdfFileWithConversion(renamedFile, fileLink, override);
 
         List<FileDto> fileDtos = new ArrayList<>();
         for (String path : strings) {
@@ -203,8 +217,6 @@ public FileDto findByFileLink(String imageUrl) {
         }
         return NgCrudService.super.softDelete(file);
     }
-
-
 
 
 }
