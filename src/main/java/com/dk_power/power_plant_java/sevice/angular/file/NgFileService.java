@@ -121,17 +121,19 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         if (!Objects.requireNonNull(file.getOriginalFilename()).endsWith(".pdf")) {
             throw new RuntimeException("File must be a PDF");
         }
-        List<File> files = PdfConverter.splitPdfIntoSinglePageFiles(file);
         Path fileLinkPath = Paths.get(fileLink);
         Path parentPath = fileLinkPath.getParent();
-        String pdfPath = parentPath != null ? parentPath.toString() : "";
+        String fileName = FileUtil.getNameFromPathWithoutExtension(fileLinkPath.getFileName().toString());
+        String pdfPath = parentPath != null ? parentPath.toString().replace("uploads/","") : "";
         String jpgPath = pdfPath.replaceAll("pdf", "jpg");
+        List<File> files = PdfConverter.splitPdfIntoSinglePageFiles(file,fileName);
 
         List<String> fileLinks = new ArrayList<>();
         for (File pdf : files) {
-            fileLinks.add(uploadFile(pdf, fileLink, override));
+            fileLinks.add(uploadFile(pdf, pdfPath, override));
             File jpg = PdfConverter.convertPdfToJpg(pdf);
             fileLinks.add(uploadFile(jpg, jpgPath, override));
+            pdf.delete();
         }
 
         return fileLinks;
@@ -172,6 +174,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         String fileExtension = FileUtil.getFileExtension(originalFilename);
         String fileName = fileNumber != null && !fileNumber.isEmpty() ? fileNumber : originalFilename;
         FileObject fileObject = convertIdDtoToEntity(fileDto);
+        fileObject.setExtension(fileExtension);
         String fileLink = fileObject.buildFileLink();
         String folder = fileObject.buildFolder();
 

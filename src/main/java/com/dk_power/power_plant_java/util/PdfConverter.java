@@ -54,12 +54,13 @@ public class PdfConverter {
         }
     }
 
-    public static List<File> splitPdfIntoSinglePageFiles(File file) throws IOException {
+    public static List<File> splitPdfIntoSinglePageFiles(File file, String baseName) throws IOException {
         String originalFileName = file.getName();
         int dotIndex = originalFileName.lastIndexOf('.');
         if (dotIndex > 0) {
             originalFileName = originalFileName.substring(0, dotIndex);
         }
+        String finalName = baseName !=null && !baseName.isEmpty()? baseName : originalFileName;
         PDDocument pdf = PDDocument.load(file);
         List<File> result = new ArrayList<>();
         try {
@@ -68,7 +69,7 @@ public class PdfConverter {
                 try {
                     PDPage page = pdf.getPage(i);
                     newDoc.addPage(page);
-                    String fileName = originalFileName + "_page_" + (i + 1) + ".pdf";
+                    String fileName = finalName + "_page_" + (i + 1) + ".pdf";
                     File outputFile = new File(fileName);
                     newDoc.save(outputFile);
                     result.add(outputFile);
@@ -92,13 +93,19 @@ public class PdfConverter {
         return result;
     }
 
-    public static List<File> splitPdfIntoSinglePageFiles(MultipartFile multipartFile) throws IOException {
+    public static List<File> splitPdfIntoSinglePageFiles(MultipartFile multipartFile, String baseName) throws IOException {
         // Create a temporary file from the MultipartFile
-        Path tempFile = Files.createTempFile("temp_pdf_", ".pdf");
+        if(multipartFile==null || multipartFile.getOriginalFilename().isEmpty()) {
+            throw new IOException("No file provided for conversion");
+        }
+        String originalFileName = multipartFile.getOriginalFilename();
+        String extension = FileUtil.getFileExtension(originalFileName);
+        originalFileName = originalFileName.substring(0, originalFileName.lastIndexOf('.'));
+        Path tempFile = Files.createTempFile(originalFileName, extension);
         multipartFile.transferTo(tempFile.toFile());
 
         // Call the existing method with the temporary file
-        List<File> result = splitPdfIntoSinglePageFiles(tempFile.toFile());
+        List<File> result = splitPdfIntoSinglePageFiles(tempFile.toFile(), baseName);
 
         // Delete the temporary file
         Files.delete(tempFile);

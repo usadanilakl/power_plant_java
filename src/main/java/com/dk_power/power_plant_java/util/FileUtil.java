@@ -105,4 +105,10 @@ public class FileUtil {
         int lastIndex = path.lastIndexOf(File.separator);
         return (lastIndex!= -1)? path.substring(lastIndex + 1) : path;
     }
+
+    public static String getNameFromPathWithoutExtension(String path) {
+        String extension = getFileExtension(path);
+        int lastIndex = path.lastIndexOf(File.separator);
+        return (lastIndex!= -1)? path.substring(lastIndex + 1).replace("."+extension,"") : path.replace("."+extension,"");
+    }
 }
