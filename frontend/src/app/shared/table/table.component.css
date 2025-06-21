@@ -70,6 +70,15 @@ tbody tr:hover {
   scrollbar-color: rgba(0,0,0,.5) transparent;
 }
 
+tr.selected {
+  background-color: #e0f7fa;
+  font-weight: bold;
+}
+
+tr.selected:hover {
+  background-color: #b2ebf2;
+}
+
 /* Remove the body padding as it's not necessary for the table component */
 /* body {
   padding-right: 15px;

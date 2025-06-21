@@ -4,7 +4,8 @@
   [items]="initialItems$"
   (loadMoreItems)="loadMoreItems($event)"
   (search)="onSearch($event)"
-  [clickCallback]="onItemClick">
+  [clickCallback]="onItemClick"
+  [deleteItem]="deleteFile.bind(this)">
 </app-shared-table>
 
 <!-- <app-popup-projection
