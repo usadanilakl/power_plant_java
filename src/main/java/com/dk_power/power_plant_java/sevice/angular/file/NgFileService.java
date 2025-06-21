@@ -192,6 +192,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             newFile.setExtension(FileUtil.getFileExtension(path));
             newFile.buildFolder();
             newFile.buildFileLink();
+            newFile.addExtension(".pdf");
+            newFile.addExtension(".jpg");
             FileObject save = save(newFile);
             fileDtos.add(toDto(save));
         }
