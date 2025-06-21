@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.repository.base_repositories;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;

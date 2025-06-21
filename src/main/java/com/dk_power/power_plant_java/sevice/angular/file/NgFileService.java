@@ -124,16 +124,22 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         Path fileLinkPath = Paths.get(fileLink);
         Path parentPath = fileLinkPath.getParent();
         String fileName = FileUtil.getNameFromPathWithoutExtension(fileLinkPath.getFileName().toString());
-        String pdfPath = parentPath != null ? parentPath.toString().replace("uploads/","") : "";
+        String pdfPath = parentPath != null ? parentPath.toString().replace("uploads/", "") : "";
         String jpgPath = pdfPath.replaceAll("pdf", "jpg");
-        List<File> files = PdfConverter.splitPdfIntoSinglePageFiles(file,fileName);
+        List<File> files = PdfConverter.splitPdfIntoSinglePageFiles(file, fileName);
 
         List<String> fileLinks = new ArrayList<>();
         for (File pdf : files) {
-            fileLinks.add(uploadFile(pdf, pdfPath, override));
-            File jpg = PdfConverter.convertPdfToJpg(pdf);
-            fileLinks.add(uploadFile(jpg, jpgPath, override));
-            pdf.delete();
+            try {
+                fileLinks.add(uploadFile(pdf, pdfPath, override));
+                File jpg = PdfConverter.convertPdfToJpg(pdf);
+                uploadFile(jpg, jpgPath, override);
+            } finally {
+                if (!pdf.delete()) {
+                    pdf.deleteOnExit(); // As a fallback, try to delete on JVM exit
+                    System.out.println("Warning: Failed to delete temporary file: " + pdf.getAbsolutePath());
+                }
+            }
         }
 
         return fileLinks;
@@ -186,7 +192,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         for (String path : strings) {
             String nameFromPath = FileUtil.getNameFromPath(path);
             FileObject newFile = new FileObject();
-            newFile.setName(nameFromPath);
+            newFile.setName(fileObject.getName());
             newFile.setFileType(fileObject.getFileType());
             newFile.setVendor(fileObject.getVendor());
             newFile.setExtension(FileUtil.getFileExtension(path));

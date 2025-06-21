@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -116,14 +117,38 @@ public interface CrudService<
                 field.setAccessible(true);
                 try {
                     Object value = field.get(entity);
-                    if (value instanceof Collection) {
-                        ((Collection<?>) value).clear();
+                    if (value instanceof Collection<?>) {
+                        Collection<?> collection = (Collection<?>) value;
+                        for (Object associatedEntity : new ArrayList<>(collection)) {
+                            removeAssociation(associatedEntity, entity);
+                        }
+                        collection.clear();
                     } else if (value != null) {
+                        removeAssociation(value, entity);
                         field.set(entity, null);
                     }
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException("Error breaking associations", e);
                 }
+            }
+        }
+    }
+
+    default void removeAssociation(Object associatedEntity, E entity) {
+        Class<?> associatedClass = associatedEntity.getClass();
+        Field[] associatedFields = associatedClass.getDeclaredFields();
+
+        for (Field associatedField : associatedFields) {
+            associatedField.setAccessible(true);
+            try {
+                Object fieldValue = associatedField.get(associatedEntity);
+                if (fieldValue == entity) {
+                    associatedField.set(associatedEntity, null);
+                } else if (fieldValue instanceof Collection) {
+                    ((Collection<?>) fieldValue).remove(entity);
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Error removing bidirectional association", e);
             }
         }
     }
