@@ -16,10 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping("/ng/files")
@@ -99,33 +98,70 @@ public class NgFileRestController {
     }
 
     @PutMapping
-    public ResponseEntity<ApiResponse<FileDto>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
-                                                  @RequestPart(value = "file", required = false) MultipartFile file) {
-        System.out.println(fileDto.getId());
-        System.out.println(file.getOriginalFilename());
-        try{// Handle the file upload if a new file is provided
-            if (file != null && !file.isEmpty()) {
+    public ResponseEntity<NgApiResponse<Object>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
+                                                             @RequestPart(value = "file", required = false) MultipartFile file,
+                                                             @RequestParam(value = "overrideFile", defaultValue = "false") boolean overrideFile) {
 
-                FileObject fileEntity = ngFileService.convertIdDtoToEntity(fileDto);
 
-                //Build File link
-                String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
-                fileDto.setExtension(extension);
-                String fileLink = fileEntity.buildFileLink();
-
-                // Process the file upload
-                fileLink = ngFileService.uploadFile(file, fileLink);
-                fileEntity.setFileLink(fileLink);
-                fileEntity.setFileNumber(fileLink.substring(fileLink.lastIndexOf("/")));
-
-                // Update the file in the database
-                FileDto updatedFile = ngFileService.toDto(ngFileService.save(fileEntity));
-                return ResponseEntity.ok(new ApiResponse<>(updatedFile,"File uploaded successfully", LocalDateTime.now()));
-            }
-            return ResponseEntity.ok(new ApiResponse<>(null,"File was not uploaded - something went wrong.", LocalDateTime.now()));
-        }catch (Exception e){
+        try {
+            List<FileDto> fileDtos = ngFileService.processPidFile(fileDto, file, overrideFile);
+            return ResponseEntity.ok(new NgApiResponse<>(fileDtos, "Files updated successfully", LocalDateTime.now()));
+        }catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(new ApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+//        try{// Handle the file upload if a new file is provided
+//            FileObject fileEntity = ngFileService.convertIdDtoToEntity(fileDto);
+//            if (file != null && !file.isEmpty()) {
+//
+//                //Build File link
+//                String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")+1);
+//                fileEntity.setExtension(extension);
+//                fileEntity.setBaseLink("uploads");
+//                String fileLink = fileEntity.buildFolder();
+//                // Process the file upload
+//                fileLink = ngFileService.uploadFile(file, fileLink.replace("uploads/","").replace("uploads\\",""),overrideFile);
+//                String fileNameWithoutExtension = Paths.get(fileLink).getFileName().toString().replaceFirst("[.][^.]+$", "");
+//                fileEntity.setFileNumber(fileNameWithoutExtension);
+//                fileEntity.buildFileLink();
+//            }
+//            // Update the file in the database
+//            FileDto updatedFile = ngFileService.toDto(ngFileService.save(fileEntity));
+//            return ResponseEntity.ok(new NgApiResponse<>(updatedFile,"File uploaded successfully", LocalDateTime.now()));
+//        }catch (Exception e){
+//            e.printStackTrace();
+//            return ResponseEntity.badRequest().body(new NgApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
+//        }
+    }
+
+    @PostMapping("/check")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> checkFile(@RequestPart("fileDto") FileIdDto fileDto,
+                                                                         @RequestPart("file") MultipartFile file) {
+        try {
+            FileObject fileEntity = ngFileService.convertIdDtoToEntity(fileDto);
+            String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
+            fileDto.setExtension(extension);
+            String fileLink = fileEntity.buildFolder();
+
+            Map<String, Object> result = ngFileService.checkFileExists(fileLink);
+
+            return ResponseEntity.ok(new NgApiResponse<>(result, "File check completed"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> deleteFile(@PathVariable Long id) {
+        try {
+            ngFileService.hardDelete(id);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "File deleted successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error deleting file: " + e.getMessage()));
+        }
+    }
+    
+    
+
 }

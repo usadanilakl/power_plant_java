@@ -18,9 +18,7 @@ import lombok.Setter;
 import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Getter
 @Setter
@@ -50,7 +48,7 @@ public class FileObject extends BaseAuditEntity {
     private Value fileType;
 
     private String fileLink;
-    private String baseLink="";
+    private String baseLink = "";
     private String folder;
 
     @ManyToOne(cascade = CascadeType.ALL)
@@ -61,6 +59,7 @@ public class FileObject extends BaseAuditEntity {
     private String relatedSystems;
     private String fileNumber;
     private String extension;
+    private String extensions;
 
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "vendor_id")
@@ -131,6 +130,23 @@ public class FileObject extends BaseAuditEntity {
     public void setRelatedSystems(String system){
         if(relatedSystems==null)relatedSystems = system;
         else relatedSystems+=","+system;
+    }
+
+    public void addExtension(String extension) {
+        if(extensions==null) extensions = extension;
+        else {
+            Set<String> exts = new HashSet<>(Arrays.asList(extensions.split(",")));
+            exts.add(extension);
+            extensions = String.join(",", exts);
+        }
+    }
+
+    public void removeExtension(String extension) {
+        if(extensions!=null){
+            Set<String> exts = new HashSet<>(Arrays.asList(extensions.split(",")));
+            exts.remove(extension);
+            extensions = String.join(",", exts);
+        }
     }
 
     @Override

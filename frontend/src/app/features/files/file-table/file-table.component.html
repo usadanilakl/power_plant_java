@@ -1,9 +1,11 @@
+<button (click)="createNewFile()">Add New File</button>
 <app-shared-table
   [columns]="columns"
   [items]="initialItems$"
   (loadMoreItems)="loadMoreItems($event)"
   (search)="onSearch($event)"
-  [clickCallback]="onItemClick">
+  [clickCallback]="onItemClick"
+  [deleteItem]="deleteFile.bind(this)">
 </app-shared-table>
 
 <!-- <app-popup-projection

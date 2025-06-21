@@ -11,6 +11,7 @@ import com.dk_power.power_plant_java.util.PropertyReader;
 import lombok.AllArgsConstructor;
 import org.apache.commons.io.IOUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.kohsuke.github.GHContent;
 import org.kohsuke.github.GHContentUpdateResponse;
@@ -27,9 +28,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.stream.Stream;
 
 @AllArgsConstructor
 @Service
@@ -46,53 +47,55 @@ public class FileUploaderServiceImpl implements FileUploaderService {
     private final ExcelReaderService excelReaderService;
 
 
-    public String uploadFilesToLocal(FileUploader files){
+    public String uploadFilesToLocal(FileUploader files) {
         String message = "Files are successfully uploaded.";
         try {
             for (MultipartFile file : files.getFiles()) {
                 String name = file.getOriginalFilename();
                 String baseLink = "/src/main/resources/static/uploads/";
-                String folder = baseLink+files.getFolder()+"/";
-                String rootFolder = "./uploads/"+files.getFolder()+"/";
+                String folder = baseLink + files.getFolder() + "/";
+                String rootFolder = "./uploads/" + files.getFolder() + "/";
                 String baseDir = System.getProperty("user.dir") + folder;
                 Path path = Paths.get(baseDir + name);
                 Files.createDirectories(path.getParent());
                 file.transferTo(path.toFile());
 
-               FileObject newFile = new FileObject();
-               newFile.setFileType(valueService.valueSetup("File Type",files.getType()));
-               newFile.setVendor(valueService.valueSetup("Vendor",files.getVendor()));
-               newFile.setFileNumber(name);
-               newFile.setFolder(files.getFolder());
-               newFile.setBaseLink(baseLink);
-               newFile.buildFileLink();
-               fileRepo.save(newFile);
+                FileObject newFile = new FileObject();
+                newFile.setFileType(valueService.valueSetup("File Type", files.getType()));
+                newFile.setVendor(valueService.valueSetup("Vendor", files.getVendor()));
+                newFile.setFileNumber(name);
+                newFile.setFolder(files.getFolder());
+                newFile.setBaseLink(baseLink);
+                newFile.buildFileLink();
+                fileRepo.save(newFile);
             }
-        }catch (IOException e){
+        } catch (IOException e) {
             //throw new RuntimeException("failedUpload");
             message = "Upload Failed";
         }
         return message;
     }
+
     @Override
     public String uploadFilesToGitHub(FileUploader files, String path) {
         try {
 
             for (MultipartFile file : files.getFiles()) {
-                uploadContent(file,path);
-                initialSave(file.getOriginalFilename(),path);
+                uploadContent(file, path);
+                initialSave(file.getOriginalFilename(), path);
             }
-        }catch (FileNotFoundException e) {
+        } catch (FileNotFoundException e) {
             createNewFolder(path);
             for (MultipartFile file : files.getFiles()) {
-                uploadContentHandled(file,path);
-                initialSave(file.getOriginalFilename(),path);
+                uploadContentHandled(file, path);
+                initialSave(file.getOriginalFilename(), path);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
         return "Message";
     }
+
     @Override
     public byte[] getFileFromGitHub(String path) {
         GitHub gitHub = connectToGitHub();
@@ -126,6 +129,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
             throw new RuntimeException(e);
         }
     }
+
     @Override
     public void PdfToJpgConverter() {
         try {
@@ -152,15 +156,16 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 document.close();
                 System.out.println("Images created");
             } else {
-                System.err.println(sourceFile.getName() +" File not exists");
+                System.err.println(sourceFile.getName() + " File not exists");
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
     public String PdfToJpgConverter(String pathToFile) {
         try {
-            String sourceDir = pathToFile.replaceAll("jpg","pdf"); // Pdf files are read from this folder
+            String sourceDir = pathToFile.replaceAll("jpg", "pdf"); // Pdf files are read from this folder
 //            String destinationDir = "uploads/"; // converted images from pdf would be saved here
             String destinationDir = pathToFile; // converted images from pdf would be saved here
 
@@ -187,7 +192,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 System.out.println(result);
                 return result;
             } else {
-                String result = sourceFile.toPath() +" File not found";
+                String result = sourceFile.toPath() + " File not found";
                 System.err.println(result);
                 return result;
             }
@@ -197,13 +202,51 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         }
     }
 
+    public List<File> splitPdfIntoSinglePageFiles(File file) throws IOException {
+        String originalFileName = file.getName();
+        int dotIndex = originalFileName.lastIndexOf('.');
+        if (dotIndex > 0) {
+            originalFileName = originalFileName.substring(0, dotIndex);
+        }
+        PDDocument pdf = PDDocument.load(file);
+        List<File> result = new ArrayList<>();
+        try {
+            for (int i = 0; i < pdf.getNumberOfPages(); i++) {
+                PDDocument newDoc = new PDDocument();
+                try {
+                    PDPage page = pdf.getPage(i);
+                    newDoc.addPage(page);
+                    String fileName = originalFileName + "_page_" + (i + 1) + ".pdf";
+                    File outputFile = new File(fileName);
+                    newDoc.save(outputFile);
+                    result.add(outputFile);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        newDoc.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } finally {
+            try {
+                pdf.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
+    }
+
     @Override
     public void convertAllToJpg() {
         List<FileObject> all = fileRepo.findAll();
-        all.forEach(f->{
+        all.forEach(f -> {
             String fileLink = f.getFileLink();
             File file = new File(fileLink);
-            if(!file.exists()){
+            if (!file.exists()) {
                 PdfToJpgConverter(fileLink);
             }
         });
@@ -212,10 +255,11 @@ public class FileUploaderServiceImpl implements FileUploaderService {
     @Override
     public FileObject initialSave(String number, String link) {
         FileObject fileObjectObj = new FileObject();
-        fileObjectObj.setFileLink(link+"/"+number);
+        fileObjectObj.setFileLink(link + "/" + number);
         fileObjectObj.setFileNumber(number);
         return fileRepo.save(fileObjectObj);
     }
+
     @Override
     public File[] getListOfFolders(String path) {
         File directory = new File(path);
@@ -233,13 +277,13 @@ public class FileUploaderServiceImpl implements FileUploaderService {
     @Override
     public void deleteFile(String filePath) {
         Path path = Paths.get(filePath);
-            try {
-                Files.delete(path);
-                System.out.println("File deleted successfully:" + path);
-            } catch (IOException e) {
-                System.out.println("An error occurred while deleting the file:" + path);
-                e.printStackTrace();
-            }
+        try {
+            Files.delete(path);
+            System.out.println("File deleted successfully:" + path);
+        } catch (IOException e) {
+            System.out.println("An error occurred while deleting the file:" + path);
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -249,19 +293,20 @@ public class FileUploaderServiceImpl implements FileUploaderService {
 
     @Override
     public void createObjectsFromDirectoryUsingMetaDataExcel(String dir) {
-        String root = System.getProperty("user.dir").replaceAll("\\\\","/");
-        String fullPath = root+"/"+dir;
+        String root = System.getProperty("user.dir").replaceAll("\\\\", "/");
+        String fullPath = root + "/" + dir;
         fileReaderService.getFilesInFolderUsingFilesList(fullPath);
 
     }
 
-    private GitHub connectToGitHub(){
+    private GitHub connectToGitHub() {
         try {
             return GitHub.connectUsingOAuth(new PropertyReader().token);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+
     private String uploadContent(MultipartFile file, String path) throws IOException {
         GitHub gitHub = connectToGitHub();
         byte[] bytes = IOUtils.toByteArray(file.getInputStream());
@@ -270,6 +315,7 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 .createContent(bytes, "automated file upload", path + "/" + file.getOriginalFilename());
         return "Message";
     }
+
     private String uploadContentHandled(MultipartFile file, String path) {
         try {
             GitHub gitHub = connectToGitHub();
@@ -284,18 +330,20 @@ public class FileUploaderServiceImpl implements FileUploaderService {
 
         return "Message";
     }
-    private String createNewFolder(String folderName){
+
+    private String createNewFolder(String folderName) {
         try {
             GitHub gitHub = connectToGitHub();
             GHContentUpdateResponse response = gitHub.getUser("usadanilakl")
                     .getRepository("power_plant_java")
-                    .createContent("", "Create new directory", folderName+"/.gitkeep");
+                    .createContent("", "Create new directory", folderName + "/.gitkeep");
 
         } catch (IOException e) {
             e.printStackTrace();
         }
         return "Message";
     }
+
     public void saveToFile(byte[] content, String fileName) {
         try {
             String userHome = System.getProperty("user.dir");

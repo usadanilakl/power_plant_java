@@ -14,15 +14,19 @@ import { SearchCriteria } from '../../models/api/search-criteria.model';
 })
 export class TableComponent implements OnInit {
   @Input() columns: Column[] = [];
-  @Input() clickCallback!: (item: any) => void;
+  @Input() clickCallback!: (item: any, event: MouseEvent) => void;
   @Input() doubleClickCallback?: (item: any) => void;
   @Input() rightClickCallback?: (item: any) => void;
   @Input() middleClickCallback?: (item: any) => void;
   @Input() cellDoubleClickCallback?: (item: any, column: Column) => void;
+  @Input() deleteItem?: (item: string) => void;
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
   @Output() loadMoreItems = new EventEmitter<SearchCriteria>();
   @Output() search = new EventEmitter<SearchCriteria>();
+
+  selectedItems: any[] = [];
+  lastClickedItem: any = null;
 
   private _items = new BehaviorSubject<any[]>([]);
   filteredItems: any[] = [];
@@ -155,7 +159,14 @@ export class TableComponent implements OnInit {
         this.clickTimer = setTimeout(() => {
           this.clickTimer = null;
           if (this.clickCallback) {
-            this.clickCallback(item);
+          if (event.ctrlKey) {
+            this.onRowCtrlClick(item, event);
+          } else if (event.shiftKey) {
+            this.onRowShiftClick(item, event);
+          } else {
+            this.clearSelection();
+            this.clickCallback(item, event);
+          }
           }
         }, this.clickDelay);
       }
@@ -187,10 +198,82 @@ export class TableComponent implements OnInit {
     }
   }
 
+  onRowCtrlClick(item: any, event: MouseEvent) {
+    const index = this.selectedItems.findIndex(i => i.id === item.id);
+    if (index > -1) {
+      this.selectedItems.splice(index, 1);
+    } else {
+      this.selectedItems.push(item);
+    }
+    this.lastClickedItem = item;
+  }
+
+  onRowShiftClick(item: any, event: MouseEvent) {
+    if (!this.lastClickedItem) {
+      this.lastClickedItem = item;
+      this.selectedItems = [item];
+      return;
+    }
+  
+    const allItems = this._items.value;
+    const lastIndex = allItems.findIndex(i => i.id === this.lastClickedItem.id);
+    const currentIndex = allItems.findIndex(i => i.id === item.id);
+  
+    if (lastIndex === -1 || currentIndex === -1) return;
+  
+    const start = Math.min(lastIndex, currentIndex);
+    const end = Math.max(lastIndex, currentIndex);
+  
+    const itemsToToggle = allItems.slice(start, end + 1);
+  
+    // Determine if we're selecting or unselecting based on the state of the current item
+    const isSelecting = !this.selectedItems.some(i => i.id === item.id);
+  
+    if (isSelecting) {
+      // Add items that are not already selected
+      this.selectedItems = [...new Set([...this.selectedItems, ...itemsToToggle])];
+    } else {
+      // Remove the toggled items from selection
+      this.selectedItems = this.selectedItems.filter(i => !itemsToToggle.some(ti => ti.id === i.id));
+    }
+  
+    this.lastClickedItem = item;
+  }
+
+  clearSelection() {
+    this.selectedItems = [];
+    this.lastClickedItem = null;
+  }
+
   lastClickedCell!: { item: any, column: Column };
 
   registerLastClickedCell(item: any, column: Column, event: MouseEvent) {
     this.lastClickedCell = { item, column };
+  }
+
+  onDeleteSelectedItems() {
+    if (this.deleteItem && this.selectedItems.length > 0) {
+      const deletedIds = new Set();
+  
+      // Delete items and collect their IDs
+      for (let item of this.selectedItems) {
+        this.deleteItem(item.id);
+        deletedIds.add(item.id);
+      }
+  
+      // Remove deleted items from _items
+      const updatedItems = this._items.value.filter(item => !deletedIds.has(item.id));
+      this._items.next(updatedItems);
+  
+      // Clear selected items
+      this.selectedItems = [];
+  
+      // Update filtered items
+      this.updateFilteredItems();
+  
+      // Trigger change detection
+      this.cdr.detectChanges();
+    }
   }
 
 }

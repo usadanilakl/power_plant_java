@@ -106,6 +106,7 @@ export class FileDto implements FileModel {
       toIdModel(): FileIdDto {
         return new FileIdDto({
           id: this.id,
+          name: this.name,
           fileType: this.fileType?.id || 0,
           fileLink: this.fileLink,
           baseLink: this.baseLink,

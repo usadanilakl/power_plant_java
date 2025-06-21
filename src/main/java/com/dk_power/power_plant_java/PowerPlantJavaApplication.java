@@ -4,6 +4,7 @@ package com.dk_power.power_plant_java;
 import com.dk_power.power_plant_java.controller.permits.automation.RedTagAutomationService;
 import com.dk_power.power_plant_java.entities.EtaProPoint;
 import com.dk_power.power_plant_java.sevice.EtaProService;
+import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -22,6 +23,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 
     private final RedTagAutomationService redTagAutomationService;
     private final EtaProService etaProService;
+    private final NgFileService ngFileService;
 
 
 
