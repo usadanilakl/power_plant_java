@@ -203,8 +203,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             newFile.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
             newFile.buildFolder();
             newFile.buildFileLink();
-            newFile.addExtension(".pdf");
-            newFile.addExtension(".jpg");
+            newFile.addExtension("pdf");
+            newFile.addExtension("jpg");
             FileObject save = save(newFile);
             fileDtos.add(toDto(save));
         }
@@ -225,13 +225,24 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     @Override
     public FileObject hardDelete(Long id) {
-        FileObject file = getEntityById(id);
+        FileObject file = null;
         try {
-            FileUtil.deleteFile(Paths.get(projectRootPath,file.getFileLink()));
+            file = deleteRelatedFiles(id);
         } catch (IOException e) {
             e.printStackTrace();
         }
+        if(file == null) throw new RuntimeException("Failed to delete related files");
         return NgCrudService.super.softDelete(file);
+    }
+
+    public FileObject deleteRelatedFiles(Long id) throws IOException {
+        FileObject file = getEntityById(id);
+        List<String> extensions = List.of(file.getExtensions().split(","));
+        for (String ext : extensions) {
+            String path = file.buildFileLink(ext);
+            FileUtil.deleteFile(Paths.get(projectRootPath, path));
+        }
+        return file;
     }
 
 

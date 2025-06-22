@@ -331,7 +331,7 @@ export class FileTableComponent implements OnInit {
     console.log('Opening image popup');
     if (this.selectedItem && this.selectedItem.fileLink) {
       console.log('Selected image:', this.selectedItem.fileLink);
-      this.selectedImagePath = this.selectedItem.fileLink;
+      this.selectedImagePath = this.selectedItem.fileLink.replaceAll("pdf","jpg");
       this.isImagePopupOpen = true;
     } else {
       console.log('Selected file is not an image or no file is selected');
