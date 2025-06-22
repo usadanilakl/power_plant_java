@@ -1,4 +1,6 @@
-<app-image-zoom-interactive
-[imageUrl]="currentFile()?.fileLink"
-[elements]="currentFileService.getElements()"
-></app-image-zoom-interactive>
+<div class="image-container">
+  <app-image-zoom-interactive
+    [imageUrl]="currentFile()?.fileLink"
+    [elements]="currentFileService.getElements()"
+  ></app-image-zoom-interactive>
+</div>
