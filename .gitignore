@@ -107,6 +107,7 @@ hs_err_pid*
 
 # Angular production build files
 /frontend/dist
+/.angular/cache/**
 
 # Spring Boot application properties
 /src/main/resources/application-*.properties

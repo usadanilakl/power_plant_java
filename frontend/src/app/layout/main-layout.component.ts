@@ -1,25 +1,13 @@
-// import { Component } from '@angular/core';
-// import { CommonModule } from '@angular/common';
-// import { RouterModule } from '@angular/router';
-
-// @Component({
-//   selector: 'app-main-layout',
-//   standalone: true,
-//   imports: [CommonModule, RouterModule],
-//   templateUrl: './main-layout.component.html',
-//   styleUrls: ['./main-layout.component.css']
-// })
-// export class MainLayoutComponent {
-//   // Component logic (if any) goes here
-// }
-import { Component, AfterViewInit, ElementRef, ViewChild, NgZone } from '@angular/core';
+import { Component, AfterViewInit, ElementRef, ViewChild, NgZone, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { MAIN_MENU_ITEMS, RouterMenuItems } from '../models/ui/router-menu.model';
+import { RouterMenuComponent } from "../shared/menu/router-menu/router-menu.component";
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, RouterMenuComponent],
   templateUrl: './main-layout.component.html',
   styleUrls: ['./main-layout.component.css']
 })
@@ -31,6 +19,8 @@ export class MainLayoutComponent implements AfterViewInit {
   isResizing = false;
   menuWidth = 200; // Initial width
 
+  menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
+  
   constructor(private ngZone: NgZone) {}
 
   ngAfterViewInit() {
@@ -71,4 +61,8 @@ export class MainLayoutComponent implements AfterViewInit {
       window.removeEventListener('mouseup', this.onMouseUp);
     });
   }
+}
+
+function withDefault(MAIN_MENU_ITEMS: any): RouterMenuItems {
+  throw new Error('Function not implemented.');
 }

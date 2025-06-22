@@ -1,0 +1,33 @@
+
+.router-menu ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.router-menu.column ul {
+  display: flex;
+  flex-direction: column;
+}
+
+.router-menu.row ul {
+  display: flex;
+  flex-direction: row;
+}
+
+.router-menu.row li {
+  margin-right: 15px;
+}
+
+.router-menu.column li {
+  margin-bottom: 10px;
+}
+
+.router-menu a {
+  text-decoration: none;
+  color: #333;
+}
+
+.router-menu a:hover {
+  color: #007bff;
+}
