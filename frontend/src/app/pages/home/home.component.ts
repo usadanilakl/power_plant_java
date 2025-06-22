@@ -1,10 +1,13 @@
 import { Component } from '@angular/core';
 import { ImageZoomInteractiveComponent } from "../../shared/image/image-zoom-interactive/image-zoom-interactive.component";
 import { ImageCarouselComponent } from "../../shared/image/image-carusel/image-carousel.component";
+import { MainLayoutComponent } from "../../layout/main-layout.component";
+import { RouterMenuComponent } from "../../shared/menu/router-menu/router-menu.component";
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-home',
-  imports: [ImageZoomInteractiveComponent, ImageCarouselComponent],
+  imports: [ImageZoomInteractiveComponent, ImageCarouselComponent, MainLayoutComponent, RouterMenuComponent, RouterModule],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })

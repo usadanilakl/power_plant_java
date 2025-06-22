@@ -6,11 +6,7 @@
 
   </ng-container>
   <ng-container main-content>
-    <app-image-carousel 
-    [images]="imageUrls" 
-    (imageClick)="onImageClick($event)">
-    </app-image-carousel>
+    <app-router-menu [menuItems]="fileNavMenuItems" [layout]="'row'"></app-router-menu>
     <router-outlet></router-outlet>
   </ng-container>
 </app-main-layout>
-

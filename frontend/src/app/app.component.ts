@@ -12,5 +12,5 @@ import { ActivatedRoute, RouterOutlet } from '@angular/router';
 })
 export class AppComponent {
   constructor(public route: ActivatedRoute) {}
-  title = 'frontend';
+  title = 'Jackson';
 }

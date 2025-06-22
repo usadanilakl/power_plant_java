@@ -12,9 +12,20 @@ import { LotoBoxTableComponent } from './features/loto/loto-box-table/loto-box-t
 import { ActiveLotoPointsComponent } from './features/loto/active-loto-points/active-loto-points.component';
 import { NewFileComponent } from './features/new/new-file/new-file.component';
 import { FileEditorComponent } from './features/files/file-editor/file-editor.component';
+import { FilePageComponent } from './pages/file-page/file-page.component';
+import { FileTableComponent } from './features/files/file-table/file-table.component';
 
 export const routes: Routes = [
     {path: '', component: HomeComponent, data: {menuType: 'main'}},
+    {
+      path: 'file', 
+      component: FilePageComponent,
+      children: [
+        { path: '', redirectTo: 'file', pathMatch: 'full' },
+        { path: 'edit', component: FileEditorComponent },
+        { path: 'table', component: FileTableComponent }
+      ]
+    },
 
     {
       path: 'loto',
@@ -32,7 +43,6 @@ export const routes: Routes = [
 
     {path: 'loto-points', component: LotoPointComponent},
     {path: 'tag-number', component: TagNumberComponent},
-    {path: 'pid', component: PidComponent},
     {path: 'print', component: PrintComponent},
 
 

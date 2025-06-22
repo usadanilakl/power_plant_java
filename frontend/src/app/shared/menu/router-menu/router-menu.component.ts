@@ -1,6 +1,6 @@
 
 import { Component, input } from '@angular/core';
-import { RouterMenuItems } from '../../../models/ui/router-menu.model';
+import { MAIN_MENU_ITEMS, RouterMenuItems } from '../../../models/ui/router-menu.model';
 import { RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
 
@@ -12,6 +12,6 @@ import { NgClass } from '@angular/common';
   styleUrl: './router-menu.component.css'
 })
 export class RouterMenuComponent {
-  menuItems = input<RouterMenuItems>();
+  menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
   layout = input<'column' | 'row'>('column'); // Default to column layout
 }

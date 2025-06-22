@@ -19,20 +19,9 @@ export class MainLayoutComponent implements AfterViewInit {
   isResizing = false;
   menuWidth = 200; // Initial width
 
+  header = input<string>();
+
   // menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
-
-    menuType = input<string>('main');
-
-  menuItems = computed(() => {
-    switch (this.menuType()) {
-      case 'loto':
-        return [];
-      case 'files':
-        return [];
-      default:
-        return MAIN_MENU_ITEMS;
-    }
-  });
   
   constructor(private ngZone: NgZone) {}
 
@@ -74,8 +63,4 @@ export class MainLayoutComponent implements AfterViewInit {
       window.removeEventListener('mouseup', this.onMouseUp);
     });
   }
-}
-
-function withDefault(MAIN_MENU_ITEMS: any): RouterMenuItems {
-  throw new Error('Function not implemented.');
 }
