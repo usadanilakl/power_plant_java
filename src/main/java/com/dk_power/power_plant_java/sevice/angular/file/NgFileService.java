@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -38,6 +39,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     String filesRootPath;
     @Value("${files.relative.path}")
     String filesRelativePath;
+    @Value("${project.root}")
+    String projectRootPath;
 
     @Override
     public FileObject getEntity() {
@@ -108,12 +111,12 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     public String uploadFile(MultipartFile file, String fileLink, boolean override) throws IOException {
-        Path path = Paths.get(filesRootPath, fileLink);
+        Path path = Paths.get(projectRootPath, fileLink);
         return FileUtil.uploadFileToLocal(file, path.toString(), override);
     }
 
     public String uploadFile(File file, String fileLink, boolean override) throws IOException {
-        Path path = Paths.get(filesRootPath, fileLink);
+        Path path = Paths.get(projectRootPath, fileLink);
         return FileUtil.uploadFileToLocal(file, path.toString(), override);
     }
 
@@ -124,7 +127,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         Path fileLinkPath = Paths.get(fileLink);
         Path parentPath = fileLinkPath.getParent();
         String fileName = FileUtil.getNameFromPathWithoutExtension(fileLinkPath.getFileName().toString());
-        String pdfPath = parentPath != null ? parentPath.toString().replace("uploads/", "") : "";
+        String pdfPath = parentPath != null ? parentPath.toString() : "";
         String jpgPath = pdfPath.replaceAll("pdf", "jpg");
         List<File> files = PdfConverter.splitPdfIntoSinglePageFiles(file, fileName);
 
@@ -134,11 +137,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 fileLinks.add(uploadFile(pdf, pdfPath, override));
                 File jpg = PdfConverter.convertPdfToJpg(pdf);
                 uploadFile(jpg, jpgPath, override);
-            } finally {
-                if (!pdf.delete()) {
-                    pdf.deleteOnExit(); // As a fallback, try to delete on JVM exit
-                    System.out.println("Warning: Failed to delete temporary file: " + pdf.getAbsolutePath());
-                }
+                Files.delete(pdf.toPath());
+                Files.delete(jpg.toPath());
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
 
@@ -184,6 +186,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         String fileLink = fileObject.buildFileLink();
         String folder = fileObject.buildFolder();
 
+        System.out.println("file link " + fileLink);
+
         MultipartFile renamedFile = new RenamedMultipartFile(file, fileName + "." + fileExtension);
         System.out.println(renamedFile.getOriginalFilename() + " - renamed file name");
         List<String> strings = separateAndUploadPdfFileWithConversion(renamedFile, fileLink, override);
@@ -196,6 +200,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             newFile.setFileType(fileObject.getFileType());
             newFile.setVendor(fileObject.getVendor());
             newFile.setExtension(FileUtil.getFileExtension(path));
+            newFile.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
             newFile.buildFolder();
             newFile.buildFileLink();
             newFile.addExtension(".pdf");
@@ -222,7 +227,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     public FileObject hardDelete(Long id) {
         FileObject file = getEntityById(id);
         try {
-            FileUtil.deleteFile(Paths.get(file.getFileLink()));
+            FileUtil.deleteFile(Paths.get(projectRootPath,file.getFileLink()));
         } catch (IOException e) {
             e.printStackTrace();
         }

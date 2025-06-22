@@ -90,6 +90,8 @@ public class FileUtil {
     }
 
     public static boolean deleteFile(Path path) throws IOException {
+        System.out.println("Deleting file: " + path);
+
         return Files.deleteIfExists(path);
     }
 
