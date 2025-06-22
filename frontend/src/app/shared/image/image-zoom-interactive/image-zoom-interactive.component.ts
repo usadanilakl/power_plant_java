@@ -193,7 +193,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   drawShape(ctx: CanvasRenderingContext2D, shape: Shape) {
-    const scale = this.calculateCurrentScale();
+    const scale = this.calculateShapeScale(shape);
     ctx.strokeStyle = shape.color;
     ctx.fillStyle = shape.color;
     ctx.lineWidth = (shape.isSelected? 3 : 1);
@@ -244,7 +244,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   scaleShape(shape: Shape): Shape {
-    const calculatedScale = this.calculateCurrentScale();
+    // const calculatedScale = this.calculateCurrentScale();
+    const calculatedScale = this.calculateShapeScale(shape);
     switch (shape.type) {
       case 'rectangle':
         return {
@@ -535,6 +536,20 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   calculateCurrentScale(): number {
     const imgRec = this.img.getBoundingClientRect();
     return imgRec.width / this.img.naturalWidth;
+  }
+
+  calculateShapeScale(shape: Shape): number {
+    const imgRect = this.img.getBoundingClientRect();
+    const currentImageScale = imgRect.width / this.img.naturalWidth;
+    const shapeToNaturalImageRatio = this.img.naturalWidth / shape.originalPictureWidth;
+    
+    // console.log('Current image width:', imgRect.width);
+    // console.log('Original shape image width:', shape.originalPictureWidth);
+    // console.log('Current image natural width:', this.img.naturalWidth);
+    // console.log('Current image scale:', currentImageScale);
+    // console.log('Shape to natural image ratio:', shapeToNaturalImageRatio);
+    
+    return currentImageScale * shapeToNaturalImageRatio;
   }
 
 }
