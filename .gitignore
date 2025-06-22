@@ -141,3 +141,7 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 /h2-backups/
+/src/main/resources/static/brady/**
+/uploads/**
+token.properties
+

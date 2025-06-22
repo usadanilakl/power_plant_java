@@ -204,4 +204,5 @@ public interface CrudService<
     default Optional<E> findById(Long id) {
         return getRepo().findById(id);
     }
+
 }
