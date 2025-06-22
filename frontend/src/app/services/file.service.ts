@@ -16,27 +16,15 @@ export class FileService {
 
   constructor(private http: HttpClient) {}
 
-  // getFiles(params?: any): Observable<SpringPaginatedResponse<FileDto[]>> {
-  //   let httpParams = new HttpParams();
-  //   if (params) {
-  //     Object.keys(params).forEach(key => {
-  //       httpParams = httpParams.append(key, params[key]);
-  //     });
-  //   }
-  //   const url = `${this.apiUrl}/paginated`;
-  //   return this.http.get<SpringPaginatedResponse<FileDto[]>>(url, {
-  //     params: httpParams,
-  //     headers: new HttpHeaders({
-  //       'Accept': 'application/json'
-  //     })
-  //   });
-  // }
-
   getFiles(page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<FileDto[]>> {
     const params = new HttpParams()
       .set('page', page.toString())
       .set('pageSize', pageSize.toString());
     return this.http.get<SpringPaginatedResponse<FileDto[]>>(`${this.apiUrl}/paginated`, { params });
+  }
+  
+  getByFileType(fileType: string) {
+    return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/by-type/${fileType}`);
   }
 
   searchFiles(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<FileDto[]>> {

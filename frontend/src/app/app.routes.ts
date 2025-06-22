@@ -14,11 +14,12 @@ import { NewFileComponent } from './features/new/new-file/new-file.component';
 import { FileEditorComponent } from './features/files/file-editor/file-editor.component';
 
 export const routes: Routes = [
-    {path: '', component: HomeComponent},
+    {path: '', component: HomeComponent, data: {menuType: 'main'}},
 
     {
       path: 'loto',
       component: LotoComponent,
+      data: {menuType: 'loto'},
       children: [
         { path: '', redirectTo: 'loto', pathMatch: 'full' },
         { path: 'loto', component: LotoTableComponent },
@@ -35,5 +36,5 @@ export const routes: Routes = [
     {path: 'print', component: PrintComponent},
 
 
-    {path: 'file-editor', component: FileEditorComponent},
+    {path: 'file-editor', component: FileEditorComponent, data: {menuType: 'main'}},
 ];

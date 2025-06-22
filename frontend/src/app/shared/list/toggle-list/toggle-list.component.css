@@ -1,0 +1,14 @@
+.toggle-list {
+  list-style-type: none;
+  padding-left: 20px;
+}
+
+.item {
+  cursor: pointer;
+  padding: 5px 0;
+}
+
+.toggle-icon {
+  display: inline-block;
+  width: 20px;
+}

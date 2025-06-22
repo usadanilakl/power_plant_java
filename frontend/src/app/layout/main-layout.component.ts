@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, ElementRef, ViewChild, NgZone, input } from '@angular/core';
+import { Component, AfterViewInit, ElementRef, ViewChild, NgZone, input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MAIN_MENU_ITEMS, RouterMenuItems } from '../models/ui/router-menu.model';
@@ -19,7 +19,20 @@ export class MainLayoutComponent implements AfterViewInit {
   isResizing = false;
   menuWidth = 200; // Initial width
 
-  menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
+  // menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
+
+    menuType = input<string>('main');
+
+  menuItems = computed(() => {
+    switch (this.menuType()) {
+      case 'loto':
+        return [];
+      case 'files':
+        return [];
+      default:
+        return MAIN_MENU_ITEMS;
+    }
+  });
   
   constructor(private ngZone: NgZone) {}
 

@@ -1,0 +1,10 @@
+
+  @if (menuItems().length > 0) {
+    <app-toggle-list 
+    [items]="menuItems()"
+    (itemDoubleClicked)="onItemDoubleClicked($event)"
+    (itemRightClicked)="onItemRightClicked($event)"
+    (itemMiddleClicked)="onItemMiddleClicked($event)"></app-toggle-list>
+  } @else {
+    <p>No categories found.</p>
+  }

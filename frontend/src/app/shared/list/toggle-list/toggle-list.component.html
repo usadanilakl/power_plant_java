@@ -1,0 +1,26 @@
+<ul class="toggle-list">
+  @for (item of items(); track item.id) {
+    <li>
+      <div class="item" 
+           (click)="onClick($event, item)"
+           (contextmenu)="onRightClick($event, item)"
+           (mousedown)="onMiddleClick($event, item)">
+        <span class="toggle-icon">
+          @if (item.values && item.values.length > 0) {
+            {{ item.isExpanded ? '▼' : '▶' }}
+          }
+        </span>
+        {{ item.name }}
+      </div>
+      @if (item.isExpanded && item.values) {
+        <app-toggle-list 
+          [items]="item.values"
+          (itemClicked)="onNestedItemClicked($event)"
+          (itemDoubleClicked)="onNestedItemDoubleClicked($event)"
+          (itemRightClicked)="onNestedItemRightClicked($event)"
+          (itemMiddleClicked)="onNestedItemMiddleClicked($event)">
+        </app-toggle-list>
+      }
+    </li>
+  }
+</ul>

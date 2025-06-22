@@ -99,14 +99,14 @@ public class NgFileRestController {
 
     @PutMapping
     public ResponseEntity<NgApiResponse<Object>> updateFile(@RequestPart("fileDto") FileIdDto fileDto,
-                                                             @RequestPart(value = "file", required = false) MultipartFile file,
-                                                             @RequestParam(value = "overrideFile", defaultValue = "false") boolean overrideFile) {
+                                                            @RequestPart(value = "file", required = false) MultipartFile file,
+                                                            @RequestParam(value = "overrideFile", defaultValue = "false") boolean overrideFile) {
 
 
         try {
             List<FileDto> fileDtos = ngFileService.processPidFile(fileDto, file, overrideFile);
             return ResponseEntity.ok(new NgApiResponse<>(fileDtos, "Files updated successfully", LocalDateTime.now()));
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
@@ -136,7 +136,7 @@ public class NgFileRestController {
 
     @PostMapping("/check")
     public ResponseEntity<NgApiResponse<Map<String, Object>>> checkFile(@RequestPart("fileDto") FileIdDto fileDto,
-                                                                         @RequestPart("file") MultipartFile file) {
+                                                                        @RequestPart("file") MultipartFile file) {
         try {
             FileObject fileEntity = ngFileService.convertIdDtoToEntity(fileDto);
             String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
@@ -150,7 +150,7 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
-    
+
     @DeleteMapping("/{id}")
     public ResponseEntity<NgApiResponse<Void>> deleteFile(@PathVariable Long id) {
         try {
@@ -161,7 +161,16 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error deleting file: " + e.getMessage()));
         }
     }
-    
-    
+
+    @GetMapping("/by-type/{fileType}")
+    public ResponseEntity<NgApiResponse<List<FileDto>>> getByFileType(@PathVariable String fileType) {
+        try {
+            List<FileDto> files = ngFileService.getByFileType(fileType);
+            return ResponseEntity.ok(new NgApiResponse<>(files, "Files retrieved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving files: " + e.getMessage()));
+        }
+    }
 
 }

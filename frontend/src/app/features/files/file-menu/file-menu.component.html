@@ -1,0 +1,13 @@
+<div class="file-menu-container">
+  <h2>File Menu</h2>
+  
+  @if (isLoading()) {
+    <div>Loading...</div>
+  } @else if (error()) {
+    <div>Error: {{ error() }}</div>
+  } @else {
+    <app-toggle-menu
+      [menuItems]="menuItems()"
+    ></app-toggle-menu>
+  }
+</div>
