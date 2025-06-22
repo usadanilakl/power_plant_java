@@ -1,1 +1,4 @@
-<p>file-editor works!</p>
+<app-image-zoom-interactive
+[imageUrl]="currentFile()?.fileLink"
+[elements]="currentFileService.getElements()"
+></app-image-zoom-interactive>

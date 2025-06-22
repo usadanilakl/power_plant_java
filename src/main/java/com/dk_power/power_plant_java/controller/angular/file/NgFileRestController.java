@@ -165,7 +165,7 @@ public class NgFileRestController {
     @GetMapping("/by-type/{fileType}")
     public ResponseEntity<NgApiResponse<List<FileDto>>> getByFileType(@PathVariable String fileType) {
         try {
-            List<FileDto> files = ngFileService.getByFileType(fileType);
+            List<FileDto> files = ngFileService.getByFileType(fileType, FileObject.lightDto);
             return ResponseEntity.ok(new NgApiResponse<>(files, "Files retrieved successfully"));
         } catch (Exception e) {
             e.printStackTrace();

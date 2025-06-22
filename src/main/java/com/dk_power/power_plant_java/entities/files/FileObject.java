@@ -86,6 +86,11 @@ public class FileObject extends BaseAuditEntity {
 
 
 
+    public static final List<String> lightDto = List.of(
+            "id", "name", "fileType", "vendor", "fileLink", "extensions", "fileNumber"
+    );
+
+
 
 
 

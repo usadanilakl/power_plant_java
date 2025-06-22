@@ -1,4 +1,4 @@
-import { Component, input, OnInit, signal } from '@angular/core';
+import { Component, input, OnInit, output, signal } from '@angular/core';
 import { NestedItem } from '../../../models/ui/nested-item.model';
 import { ToggleListComponent } from "../../list/toggle-list/toggle-list.component";
 import { FileService } from '../../../services/file.service';
@@ -13,6 +13,8 @@ export class ToggleMenuComponent{
 
   menuItems = input<NestedItem[]>([]);
 
+  itemClick = output<NestedItem>();
+
 
   onItemDoubleClicked (item: NestedItem) {
     console.log(`Double clicked on item: ${item.name}`);
@@ -23,5 +25,9 @@ export class ToggleMenuComponent{
 
   onItemMiddleClicked(item: NestedItem) {
     console.log(`Middle clicked on item: ${item.name}`);
+  }
+
+  onItemClick(item: NestedItem) {
+    this.itemClick.emit(item);
   }
 }

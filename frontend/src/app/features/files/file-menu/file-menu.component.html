@@ -8,6 +8,7 @@
   } @else {
     <app-toggle-menu
       [menuItems]="menuItems()"
+      (itemClick)="onItemClick($event)"
     ></app-toggle-menu>
   }
 </div>

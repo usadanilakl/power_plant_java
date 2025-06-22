@@ -249,4 +249,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     public List<FileDto> getByFileType(String fileType) {
         return fileRepo.findByFileType_Name(fileType).stream().map(this::toDto).toList();
     }
+
+    public List<FileDto> getByFileType(String fileType, List<String> fields){
+        return findAllWithProjection(fields).stream().map(this::toDto).toList();
+    }
+
+
 }

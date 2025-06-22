@@ -1,9 +1,11 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, signal } from '@angular/core';
 import { NestedItem, NestedItemImpl } from '../../../models/ui/nested-item.model';
 import { FileService } from '../../../services/file.service';
 import { ToggleMenuComponent } from "../../../shared/menu/toggle-menu/toggle-menu.component";
 import { FileDto } from '../../../models/file/file.model';
-import { ValueDto } from '../../../models/value.model';
+import { RouteService } from '../../../services/util/rout.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { CurrentFileService } from '../../../services/current-file.service';
 
 @Component({
   selector: 'app-file-menu',
@@ -11,16 +13,31 @@ import { ValueDto } from '../../../models/value.model';
   templateUrl: './file-menu.component.html',
   styleUrl: './file-menu.component.css'
 })
-export class FileMenuComponent implements OnInit {
+export class FileMenuComponent implements OnInit{
 
   menuItems = signal<NestedItem[]>([]);
   isLoading = signal(false);
   error = signal<string | null>(null);
 
-  constructor(private fileService: FileService) {}
+constructor(
+  private fileService: FileService, 
+  private routService: RouteService,
+  private destroyRef: DestroyRef,
+  private currentFileService: CurrentFileService,
+) {}
+
+  currentRoute = signal("");
 
   ngOnInit(): void {
     this.loadFiles();
+    this.currentRoute.set(this.routService.getCurrentRouteInfo().path);
+    this.routService.onRouteChange().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      const routeInfo = this.routService.getCurrentRouteInfo();
+      this.currentRoute.set(routeInfo.path || '');
+      console.log('Current route:', routeInfo);
+    });
   }
 
   loadFiles(): void {
@@ -30,6 +47,7 @@ export class FileMenuComponent implements OnInit {
         this.isLoading.set(false);
         // Choose 'vendor', 'system', or 'fileType' as the grouping criteria
         const nestedItems = this.createListOfNestedItems(response.responseData, 'vendor');
+        // console.log('Files loaded successfully:', nestedItems);
         this.menuItems.set(nestedItems);
       },
       (error) => {
@@ -41,15 +59,21 @@ export class FileMenuComponent implements OnInit {
 
   private createListOfNestedItems(data: FileDto[], groupBy: 'vendor' | 'system' | 'fileType'): NestedItem[] {
     const groupFiles = (files: FileDto[], key: 'vendor' | 'system' | 'fileType'): Record<string, FileDto[]> => {
-      return files.reduce((acc, file) => {
+    
+      return files.reduce((acc, file, index) => {
+        
         const groupValue = file[key];
-        if (groupValue instanceof ValueDto) {
-          const groupName = groupValue.name;
+    
+        if (groupValue && typeof groupValue === 'object' && 'name' in groupValue) {
+          const groupName = groupValue.name;    
           if (!acc[groupName]) {
             acc[groupName] = [];
           }
           acc[groupName].push(file);
+        } else {
+          console.warn(`File ${index} has invalid or missing ${key}:`, groupValue);
         }
+    
         return acc;
       }, {} as Record<string, FileDto[]>);
     };
@@ -74,6 +98,48 @@ export class FileMenuComponent implements OnInit {
       return parentItem;
     });
   }
+
+  onItemClick(item: NestedItem): void {
+    switch (this.currentRoute()) {
+      case 'table':
+        this.handleFileTableClick(item);
+        break;
+      case 'edit':
+        this.handleFileEditClick(item);
+        break;
+      case 'files/tree':
+        this.handleFileTreeClick(item);
+        break;
+      default:
+        console.log('Unhandled route for item click:', this.currentRoute());
+    }
+  }
+  
+  private handleFileTableClick(item: NestedItem): void {
+    console.log('Handling click for table route', item);
+    // Implement table-specific click logic here
+  }
+  
+  private handleFileEditClick(item: NestedItem): void {
+    if (item.values && item.values.length > 0) return;
+    console.log('Handling click for edit route', item);
+
+    this.fileService.getFileById(item.id.toString()).subscribe(
+      (response) => {
+        const file = FileDto.fromJson(response.responseData);
+        this.currentFileService.setCurrentFile(file);
+      },
+      (error) => {
+        console.error('Error getting file for edit:', error);
+      }
+    );
+  }
+  
+  private handleFileTreeClick(item: NestedItem): void {
+    console.log('Handling click for files/tree route', item);
+    // Implement tree-specific click logic here
+  }
+
 
 
 }

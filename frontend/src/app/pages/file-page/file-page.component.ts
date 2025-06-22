@@ -4,10 +4,11 @@ import { RouterMenuComponent } from "../../shared/menu/router-menu/router-menu.c
 import { RouterModule } from '@angular/router';
 import { RouterMenuItems } from '../../models/ui/router-menu.model';
 import { FILE_NAV_MENU_ITEMS } from '../../models/ui/router-menu.model';
+import { FileMenuComponent } from "../../features/files/file-menu/file-menu.component";
 
 @Component({
   selector: 'app-file-page',
-  imports: [MainLayoutComponent, RouterMenuComponent, RouterModule],
+  imports: [MainLayoutComponent, RouterMenuComponent, RouterModule, FileMenuComponent],
   templateUrl: './file-page.component.html',
   styleUrl: './file-page.component.css'
 })
