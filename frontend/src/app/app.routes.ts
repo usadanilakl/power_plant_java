@@ -22,7 +22,7 @@ export const routes: Routes = [
       component: FilePageComponent,
       children: [
         { path: '', redirectTo: 'file', pathMatch: 'full' },
-        { path: 'edit', component: FileEditorComponent },
+        { path: 'edit', component: FileEditorComponent, data: {bottomMenu: FileTableComponent} },
         { path: 'table', component: FileTableComponent }
       ]
     },

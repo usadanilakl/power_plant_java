@@ -146,3 +146,4 @@ Thumbs.db
 /uploads/**
 token.properties
 
+/frontend/.angular/

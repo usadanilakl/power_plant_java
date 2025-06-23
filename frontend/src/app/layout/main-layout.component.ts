@@ -26,6 +26,7 @@ export class MainLayoutComponent implements AfterViewInit {
   bottomMenu = input<string | null>(null);
   initialFooterHeight = 0;
   initialMouseY = 0;
+  mainContentHeight: number = 0; // Initialize with a default value or calculate it
 
   // menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
   
@@ -84,6 +85,7 @@ export class MainLayoutComponent implements AfterViewInit {
       window.addEventListener('mouseup', this.onFooterMouseUp);
     });
   }
+
 
   onFooterMouseMove = (event: MouseEvent) => {
     if (!this.isFooterResizing) return;

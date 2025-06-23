@@ -1,31 +1,100 @@
+.table-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* .table-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+}
+
+.default-controls {
+  display: flex;
+  gap: 10px;
+} */
+
 .table-container {
-  height: 100%; /* 90% of the viewport height */
-  overflow-y: auto;
-  overflow-x: auto; /* Enable horizontal scrolling */
-  width: 100%; /* Ensure the container takes full width of its parent */
-  max-width: 100%; /* Prevent the container from exceeding its parent's width */
+  flex: 1;
+  overflow: auto;
+  overflow-x: auto;
+  max-height: calc(100vh - 150px);
 }
 
 table {
-  width: auto; /* Allow the table to expand beyond container width */
-  min-width: 100%; /* Ensure the table is at least as wide as its container */
+  width: auto;
+  min-width: 100%;
   border-collapse: collapse;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: #f8f8f8;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f8f8;
+  z-index: 1;
+  box-shadow: 0 1px 0 0 #ddd;
+  cursor: pointer;
+}
+
+thead tr:nth-child(2) th {
+  top: 41px; /* Adjust based on the height of your first header row */
 }
 
 th, td {
   border: 1px solid #ddd;
   padding: 8px;
   text-align: left;
-  white-space: nowrap; /* Prevent text wrapping in cells */
+  white-space: nowrap;
 }
 
-th {
-  position: sticky; /* Make headers sticky */
-  top: 0; /* Stick to the top of the container */
-  background-color: #f8f8f8; /* Add a background color to headers */
-  z-index: 1; /* Ensure headers appear above table content */
-  cursor: pointer;
+
+.table-controls {
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ddd;
 }
+
+.default-controls {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.button-row button {
+  margin-right: 10px;
+}
+
+.search-row {
+  width: 100%;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+
 
 .resizer {
   position: absolute;
@@ -78,52 +147,3 @@ tr.selected {
 tr.selected:hover {
   background-color: #b2ebf2;
 }
-
-/* Remove the body padding as it's not necessary for the table component */
-/* body {
-  padding-right: 15px;
-} */
-
-/* .table-container {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th, td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-
-th {
-  position: relative;
-  cursor: pointer;
-}
-
-.resizer {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 5px;
-  cursor: col-resize;
-}
-
-.search-input, .filter-input {
-  width: 100%;
-  padding: 5px;
-  margin-bottom: 10px;
-}
-
-tbody tr {
-  cursor: pointer;
-}
-
-tbody tr:hover {
-  background-color: #f5f5f5;
-} */

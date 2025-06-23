@@ -59,9 +59,9 @@ export class TableComponent implements OnInit {
     });
   }
 
-  ngAfterViewInit() {
-    this.tableContainer.nativeElement.addEventListener('scroll', this.handleScroll.bind(this));
-  }
+  // ngAfterViewInit() {
+  //   this.tableContainer.nativeElement.addEventListener('scroll', this.handleScroll.bind(this));
+  // }
 
   updateItems(newItems: any[]) {
     this._items.next(newItems);
@@ -109,8 +109,16 @@ export class TableComponent implements OnInit {
     }
   }
 
-  handleScroll() {
-    const { scrollTop, scrollHeight, clientHeight } = this.tableContainer.nativeElement;
+  // handleScroll() {
+  //   const { scrollTop, scrollHeight, clientHeight } = this.tableContainer.nativeElement;
+  //   if (scrollHeight - scrollTop - clientHeight < 50) {
+  //     this.loadMoreItems.emit();
+  //   }
+  // }
+
+  handleScroll(event: Event) {
+    const target = event.target as HTMLElement;
+    const { scrollTop, scrollHeight, clientHeight } = target;
     if (scrollHeight - scrollTop - clientHeight < 50) {
       this.loadMoreItems.emit();
     }
