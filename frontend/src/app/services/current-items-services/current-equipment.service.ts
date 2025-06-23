@@ -82,7 +82,7 @@ export class CurrentEquipmentService {
         page: 1
       };
     
-      this.equipmentService.searchEquipment(equipmentSearchCriteria, 1, 50).subscribe(
+      this.equipmentService.searchEqByBaseTagNumber(equipmentSearchCriteria, 1, 50).subscribe(
         response => {
           if (response.responseData) {
             // this.relatedEquipmentSubject.next(response.responseData.content);
@@ -103,7 +103,7 @@ export class CurrentEquipmentService {
         page: 1
       };
     
-      this.lotoPointService.searchLotoPoints(lotoPointSearchCriteria, 50).subscribe(
+      this.lotoPointService.searchLpByBaseTagNumber(lotoPointSearchCriteria, 50).subscribe(
         response => {
           if (response.responseData) {
             // this.relatedLotoPointsSubject.next(response.responseData.content);

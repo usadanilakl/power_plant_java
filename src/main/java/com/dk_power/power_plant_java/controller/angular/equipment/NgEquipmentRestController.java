@@ -105,4 +105,30 @@ public class NgEquipmentRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving equipment: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/search-by-base-tag-number")
+    public ResponseEntity<NgApiResponse<Page<EquipmentDto>>> searchByBaseTagNumber(
+            @RequestBody SearchCriteria criteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            if(!SearchCriteria.SearchType.GLOBAL.equals(criteria.getType())){
+                throw new IllegalArgumentException("Invalid search type. Only global search is supported for base tag number.");
+            }
+            if (criteria.getQuery() == null || criteria.getQuery().isEmpty()) {
+                throw new IllegalArgumentException("Base tag number is required for global search.");
+            }
+            String baseTagNumber = NgEquipmentService.getTagNumberBase(criteria.getQuery());
+            if(baseTagNumber == null || baseTagNumber.isEmpty()){
+                throw new IllegalArgumentException("Base tag number not found.");
+            }
+            Page<EquipmentDto> searchResults = ngEquipmentService.complexSearch(criteria.getQuery(), page - 1, pageSize);
+
+            NgApiResponse<Page<EquipmentDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }

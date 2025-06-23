@@ -125,37 +125,25 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
                 .collect(Collectors.toList());
     }
 
-    public String getTagNumberBase(String tagNumber) {
+    public static String getTagNumberBase(String tagNumber) {
         if (tagNumber == null || tagNumber.isEmpty()) {
             return "";
         }
 
         // Remove all spaces and convert to uppercase
-        String cleanedTag = tagNumber.replaceAll("\\s+", "").toUpperCase();
-
-        // Regular expression to match the pattern
-        String regex = "\\d{2}-?[A-Z]+-?([A-Z]{2,4})(\\d{3,4})";
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
-        java.util.regex.Matcher matcher = pattern.matcher(cleanedTag);
-
-        if (matcher.find()) {
-            String system = matcher.group(1);
-            String number = matcher.group(2);
-            return system + number;
-        }
-
-        // If no match found, try a more lenient approach
-        String lenientRegex = "([A-Z]{2,4})(\\d{3,4})";
-        pattern = java.util.regex.Pattern.compile(lenientRegex);
-        matcher = pattern.matcher(cleanedTag);
-
-        if (matcher.find()) {
-            String system = matcher.group(1);
-            String number = matcher.group(2);
-            return system + number;
+        String cleanedTag = tagNumber.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+        List<String> systems = EquipmentDto.SYSTEMS;
+        
+        int index = 0;
+        for (String system : systems) {
+            int systemIndex = cleanedTag.indexOf(system);
+            if (systemIndex >= 0) {
+                index = systemIndex;
+                break;
+            }
         }
 
         // If still no match, return the original string
-        return tagNumber;
+        return cleanedTag.substring(index, index + 6);
     }
 }

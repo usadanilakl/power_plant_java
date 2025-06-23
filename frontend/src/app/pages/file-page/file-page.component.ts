@@ -15,4 +15,6 @@ import { FileMenuComponent } from "../../features/files/file-menu/file-menu.comp
 export class FilePageComponent {
   fileNavMenuItems: RouterMenuItems = FILE_NAV_MENU_ITEMS;
 
+  constructor() {}
+
 }

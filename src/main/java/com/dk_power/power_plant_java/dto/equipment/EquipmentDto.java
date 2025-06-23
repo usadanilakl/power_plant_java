@@ -36,6 +36,9 @@ public class EquipmentDto extends BaseEquipmentDto {
     private String conflictStatus;
     private Boolean isVerified = false;
 
+    public static final List<String> SYSTEMS = List.of(
+            "BFW","CND","CCW","INA","FGS","DWS","DWT","SWS","STP","CTP"
+            );
 
     @Override
     public String toString() {

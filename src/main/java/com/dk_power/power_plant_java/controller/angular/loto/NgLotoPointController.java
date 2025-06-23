@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +34,7 @@ public class NgLotoPointController {
         try {
 //            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
             Page<LotoPointDto> paginatedFiles = ngLotoPointService.findAllWithProjectionPaginated(
-                    new ArrayList<>(Arrays.asList("id", "tagNumber", "unit", "description", "specificLocation", "lotos.workScope", "isoPos.name","isoPos.id","normPos.name","normPos.id")),
+                    new ArrayList<>(Arrays.asList("id", "tagNumber", "unit", "description", "specificLocation", "lotos.workScope", "isoPos.name", "isoPos.id", "normPos.name", "normPos.id")),
                     PageRequest.of(page - 1, pageSize)).map(ngLotoPointService::toDto);
             NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
@@ -71,6 +72,32 @@ public class NgLotoPointController {
             } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
                 searchResults = ngLotoPointService.complexSearch(criteria.getQuery(), page - 1, pageSize);
             }
+            NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/search-by-base-tag-number")
+    public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> searchByBaseTagNumber(
+            @RequestBody SearchCriteria criteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            if (!SearchCriteria.SearchType.GLOBAL.equals(criteria.getType())) {
+                throw new IllegalArgumentException("Invalid search type. Only global search is supported for base tag number.");
+            }
+            if (criteria.getQuery() == null || criteria.getQuery().isEmpty()) {
+                throw new IllegalArgumentException("Base tag number is required for global search.");
+            }
+            String baseTagNumber = NgEquipmentService.getTagNumberBase(criteria.getQuery());
+            if (baseTagNumber == null || baseTagNumber.isEmpty()) {
+                throw new IllegalArgumentException("Base tag number not found.");
+            }
+            Page<LotoPointDto> searchResults = ngLotoPointService.complexSearch(baseTagNumber, page - 1, pageSize);
+
             NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
