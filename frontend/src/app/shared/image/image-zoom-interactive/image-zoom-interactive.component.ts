@@ -18,6 +18,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   elements = input.required<Observable<EquipmentDto[]>>();
 
   newShapeCreated = output<Shape | null>()
+  shapeSelected = output<Shape | null>()
 
   private shapeFactory = inject(ShapeFactoryService);
   private shapeUtil = inject(ShapeUtilService);
@@ -33,6 +34,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     private cursorSubscription!: Subscription;
     private elementsSubscription: Subscription | undefined;
     private newShapeSubscription!: Subscription;
+    private selectedShapeSubscription!: Subscription;
 
 //Zooming and panning functionality variables
   private scale: number = 1;
@@ -126,7 +128,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   initializeShapes(elements: any[], originalWidth: number, originalHeight: number) {
     this.shapes = elements.map(element => {
-      // console.log('element:', element);
       const equipmentDto = new EquipmentDto(element);
       const sh = equipmentDto.toShapeObject();
       sh.currentImgWidth = originalWidth;
@@ -154,6 +155,10 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       this.newShapeCreated.emit(newShape);
     });
 
+    this.selectedShapeSubscription = this.drawingService.selectedShape$.subscribe(selectedShape => {
+      this.shapeSelected.emit(selectedShape);
+    });
+
     this.destroyRef.onDestroy(() => {
       if (this.shapesSubscription) {
         this.shapesSubscription.unsubscribe();
@@ -166,6 +171,9 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       }
       if(this.newShapeSubscription) {
         this.newShapeSubscription.unsubscribe();
+      }
+      if(this.selectedShapeSubscription) {
+        this.selectedShapeSubscription.unsubscribe();
       }
     });
   }

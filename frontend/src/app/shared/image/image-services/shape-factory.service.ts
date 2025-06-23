@@ -7,6 +7,7 @@ import { RectangleShape, CircleShape, LineShape, TextShape, Shape } from '../../
 export class ShapeFactoryService {
   createRectangle(x: number, y: number, width: number, height: number, color: string, originalPictureWidth: number, originalPictureHeight: number): RectangleShape {
     return {
+      id: 0,
       type: 'rectangle',
       x,
       y,
@@ -24,6 +25,7 @@ export class ShapeFactoryService {
 
   createCircle(x: number, y: number, radius: number, color: string, originalPictureWidth: number, originalPictureHeight: number): CircleShape {
     return {
+      id: 0,
       type: 'circle',
       x,
       y,

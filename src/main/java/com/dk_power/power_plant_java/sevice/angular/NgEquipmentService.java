@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -72,7 +73,7 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
         Map<String, String> searchCriteria = new HashMap<>();
         searchCriteria.put("tagNumber", searchString);
         searchCriteria.put("description", searchString);
-        searchCriteria.put("location", searchString);
+        searchCriteria.put("location.name", searchString);
         SearchCriteria sc = new SearchCriteria();
         sc.setFilters(searchCriteria);
         return complexSearch(sc, page, size, "tagNumber", "asc", false);
@@ -116,5 +117,45 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
             return imageUrls;
         }
         throw new RuntimeException("Equipment not found with id: " + id);
+    }
+
+    public List<EquipmentDto> getByEquipmentType(String equipmentType) {
+        return equipmentRepo.getByEqType_name(equipmentType).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public String getTagNumberBase(String tagNumber) {
+        if (tagNumber == null || tagNumber.isEmpty()) {
+            return "";
+        }
+
+        // Remove all spaces and convert to uppercase
+        String cleanedTag = tagNumber.replaceAll("\\s+", "").toUpperCase();
+
+        // Regular expression to match the pattern
+        String regex = "\\d{2}-?[A-Z]+-?([A-Z]{2,4})(\\d{3,4})";
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
+        java.util.regex.Matcher matcher = pattern.matcher(cleanedTag);
+
+        if (matcher.find()) {
+            String system = matcher.group(1);
+            String number = matcher.group(2);
+            return system + number;
+        }
+
+        // If no match found, try a more lenient approach
+        String lenientRegex = "([A-Z]{2,4})(\\d{3,4})";
+        pattern = java.util.regex.Pattern.compile(lenientRegex);
+        matcher = pattern.matcher(cleanedTag);
+
+        if (matcher.find()) {
+            String system = matcher.group(1);
+            String number = matcher.group(2);
+            return system + number;
+        }
+
+        // If still no match, return the original string
+        return tagNumber;
     }
 }

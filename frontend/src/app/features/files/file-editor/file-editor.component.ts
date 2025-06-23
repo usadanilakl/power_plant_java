@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 import { CurrentFileService } from '../../../services/current-file.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ImageService } from '../../../services/text-recognition.service';
+import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 
 @Component({
   selector: 'app-file-editor',
@@ -18,6 +19,7 @@ export class FileEditorComponent {
 
   constructor(
     protected currentFileService: CurrentFileService,
+    private currentEquipmentService: CurrentEquipmentService,
     private destroyRef: DestroyRef,
     private imageService: ImageService
   ) {}
@@ -43,6 +45,11 @@ export class FileEditorComponent {
       },
       error => console.error('Error recognizing text:', error)
     )
+  }
+
+  onShapeSelected(shape: any) {
+    console.log('Shape selected:', shape);
+    this.currentEquipmentService.setCurrentShape(shape);
   }
 
 }

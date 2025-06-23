@@ -19,6 +19,8 @@ export class CurrentFileService {
         // Extract elements from the points field
         const elements: EquipmentDto[] = file?.points || [];
         this.elementsSubject.next(elements);
+
+        // console.log('current elements',elements);
     }
 
     getCurrentFile(): FileDto | null {

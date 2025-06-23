@@ -1,4 +1,5 @@
 export interface BaseShape {
+  id: number;
   type: string;
   color: string;
   originalPictureWidth: number;

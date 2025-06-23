@@ -51,4 +51,6 @@ List<EquipmentDtoLight> getAllLight();
 
     @Query("SELECT e FROM Equipment e WHERE e.dataServiceItemId IS NULL")
     List<Equipment> findByNullDataServiceItemId();
+
+    List<Equipment> getByEqType_name(String equipmentType);
 }

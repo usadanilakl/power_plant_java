@@ -19,6 +19,9 @@ export class DrawUtilService {
   private newShapeSubject = new Subject<Shape | null>();
   newShape$ = this.newShapeSubject.asObservable();
 
+  private selectedShapeSubject = new Subject<Shape | null>();
+  selectedShape$ = this.selectedShapeSubject.asObservable();
+
   constructor(
     private shapeFactory: ShapeFactoryService,
     private shapeUtil: ShapeUtilService
@@ -155,6 +158,7 @@ export class DrawUtilService {
     
     if (this.selectedShape) {
       this.selectedShape.isSelected = true;
+      this.selectedShapeSubject.next(this.selectedShape);
     }
     
     // Notify subscribers of the change

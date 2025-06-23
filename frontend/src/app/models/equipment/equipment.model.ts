@@ -15,7 +15,7 @@ export interface EquipmentModel extends BaseModel  {
   coordinates: string;
   originalPictureSize: string;
   mainFile: string;
-  lotoPoints: Set<LotoPointDto>;
+  lotoPoints: LotoPointDto[];
   isUpdated: string;
   conflictStatus: string;
   isVerified: boolean;
@@ -33,13 +33,13 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   coordinates: string;
   originalPictureSize: string;
   mainFile: string;
-  lotoPoints: Set<LotoPointDto>;
+  lotoPoints: LotoPointDto[];
   isUpdated: string;
   conflictStatus: string;
   isVerified: boolean;
 
   constructor(data: Partial<EquipmentModel> = {}) {
-    super();
+    super(data);
     this.tagNumber = data.tagNumber || '';
     this.description = data.description || '';
     this.specificLocation = data.specificLocation || '';
@@ -51,7 +51,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     this.coordinates = data.coordinates || '';
     this.originalPictureSize = data.originalPictureSize || '';
     this.mainFile = data.mainFile || '';
-    this.lotoPoints = data.lotoPoints || new Set<LotoPointDto>();
+    this.lotoPoints = data.lotoPoints || [];
     this.isUpdated = data.isUpdated || '';
     this.conflictStatus = data.conflictStatus || '';
     this.isVerified = data.isVerified || false;
@@ -71,7 +71,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       coordinates: this.coordinates || '',
       originalPictureSize: this.originalPictureSize || '',
       mainFile: this.mainFile || '',
-      lotoPoints: Array.from(this.lotoPoints || []).map(point => point ? point.toJson() : null).filter(Boolean),
+      lotoPoints: this.lotoPoints.map(point => point ? point.toJson() : null).filter(Boolean),
       isUpdated: this.isUpdated || '',
       conflictStatus: this.conflictStatus || '',
       isVerified: this.isVerified || false
@@ -97,9 +97,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       coordinates: json.coordinates || '',
       originalPictureSize: json.originalPictureSize || '',
       mainFile: json.mainFile || '',
-      lotoPoints: new Set(Array.isArray(json.lotoPoints) 
-        ? json.lotoPoints.map((point: any) => LotoPointDto.fromJson(point))
-        : []),
+      lotoPoints: json.lotoPoints ? json.lotoPoints.map((point: any) => LotoPointDto.fromJson(point)) : [],
       isUpdated: json.isUpdated || '',
       conflictStatus: json.conflictStatus || '',
       isVerified: json.isVerified || false
@@ -152,6 +150,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       }
   
       return {
+        id: this.id,
         type: 'rectangle',
         color: this.getShapeColor(),
         originalPictureWidth: originalWidth,
@@ -169,6 +168,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       console.error('Error parsing coordinates:', error);
       // Return a default shape or handle the error as appropriate for your application
       return {
+        id: this.id,
         type: 'rectangle',
         color: '#FF0000',
         originalPictureWidth: 0,
@@ -201,7 +201,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
 
   private getNormalLotoPosition(): string {
     // Example: position based on loto points
-    if (this.lotoPoints.size > 0) {
+    if (this.lotoPoints.length > 0) {
       const firstLotoPoint = Array.from(this.lotoPoints)[0];
       return firstLotoPoint.normPos.name;
     }
