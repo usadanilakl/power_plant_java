@@ -2,7 +2,7 @@ import { Shape } from "../../../models/shape.model";
 import { Tool } from "../../../models/tool.model";
 import { ShapeFactoryService } from "./shape-factory.service";
 import { ShapeUtilService } from "./shape-util.service";
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject, Subject } from "rxjs";
 
 export class DrawUtilService {
   private shapes: Shape[] = [];
@@ -15,6 +15,9 @@ export class DrawUtilService {
   cursor$ = this.cursorSubject.asObservable();
   private img!: HTMLImageElement;
   private scale = 1;
+
+  private newShapeSubject = new Subject<Shape | null>();
+  newShape$ = this.newShapeSubject.asObservable();
 
   constructor(
     private shapeFactory: ShapeFactoryService,
@@ -117,6 +120,7 @@ export class DrawUtilService {
     
     if (this.isDrawingWithRightClick) {
       this.isDrawingWithRightClick = false;
+      this.newShapeSubject.next(this.selectedShape);
       this.selectedShape = null;
       // The shape is already saved in the shapes array, so we just need to notify subscribers
       this.shapesSubject.next(this.shapes);

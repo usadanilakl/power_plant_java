@@ -31,4 +31,8 @@ export class FileEditorComponent {
     });
   }
 
+  onNewShapeCreated(shape: any) {
+    console.log('New shape created:', shape);
+  }
+
 }

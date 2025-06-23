@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, ElementRef, inject, input, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, ElementRef, inject, input, OnDestroy, output, ViewChild } from '@angular/core';
 import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../../models/shape.model';
 import { DrawUtilService } from '../image-services/draw-util.service';
 import { ShapeFactoryService } from '../image-services/shape-factory.service';
@@ -17,6 +17,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   imageName = input<string>()
   elements = input.required<Observable<EquipmentDto[]>>();
 
+  newShapeCreated = output<Shape | null>()
+
   private shapeFactory = inject(ShapeFactoryService);
   private shapeUtil = inject(ShapeUtilService);
   private drawingService: DrawUtilService;
@@ -30,6 +32,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     private shapesSubscription!: Subscription;
     private cursorSubscription!: Subscription;
     private elementsSubscription: Subscription | undefined;
+    private newShapeSubscription!: Subscription;
 
 //Zooming and panning functionality variables
   private scale: number = 1;
@@ -147,6 +150,10 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       this.drawShapes();
     });
 
+    this.shapesSubscription = this.drawingService.newShape$.subscribe(newShape => {
+      this.newShapeCreated.emit(newShape);
+    });
+
     this.destroyRef.onDestroy(() => {
       if (this.shapesSubscription) {
         this.shapesSubscription.unsubscribe();
@@ -156,6 +163,9 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       }
       if(this.elementsSubscription) {
         this.elementsSubscription.unsubscribe();
+      }
+      if(this.newShapeSubscription) {
+        this.newShapeSubscription.unsubscribe();
       }
     });
   }

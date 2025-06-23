@@ -2,5 +2,6 @@
   <app-image-zoom-interactive
     [imageUrl]="currentFile()?.fileLink"
     [elements]="currentFileService.getElements()"
+    (newShapeCreated)="onNewShapeCreated($event)">
   ></app-image-zoom-interactive>
 </div>
