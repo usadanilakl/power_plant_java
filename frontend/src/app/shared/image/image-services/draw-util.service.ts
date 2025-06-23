@@ -141,10 +141,7 @@ export class DrawUtilService {
   }
 
   private selectShape(event: MouseEvent) {
-    console.log('Selecting shape');
     // Deselect all shapes
-    console.log(`event: ${event.offsetX}, ${event.offsetY} `);
-    console.log(this.shapes);
     this.shapes.forEach(shape => shape.isSelected = false);
     
     // Find and select the new shape
