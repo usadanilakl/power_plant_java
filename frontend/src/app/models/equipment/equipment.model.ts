@@ -160,7 +160,10 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
         x: Math.min(startX, endX),
         y: Math.min(startY, endY),
         width,
-        height
+        height,
+        scaleToCurrentImage: 1,
+        currentImgHeigth: 1,
+        currentImgWidth: 1
       };
     } catch (error) {
       console.error('Error parsing coordinates:', error);
@@ -174,7 +177,10 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
         x: 0,
         y: 0,
         width: 0,
-        height: 0
+        height: 0,
+        scaleToCurrentImage: 0,
+        currentImgHeigth: 0,
+        currentImgWidth: 0
       };
     }
   }

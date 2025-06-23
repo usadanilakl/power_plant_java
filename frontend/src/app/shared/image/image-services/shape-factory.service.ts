@@ -16,6 +16,9 @@ export class ShapeFactoryService {
       originalPictureWidth,
       originalPictureHeight,
       isSelected: false,
+      scaleToCurrentImage: 1,
+      currentImgHeigth: 1,
+      currentImgWidth: 1
     };
   }
 
@@ -29,6 +32,9 @@ export class ShapeFactoryService {
       originalPictureWidth,
       originalPictureHeight,
       isSelected: false,
+      scaleToCurrentImage: 1,
+      currentImgHeigth: 1,
+      currentImgWidth: 1
     };
   }
 

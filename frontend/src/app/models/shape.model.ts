@@ -4,6 +4,9 @@ export interface BaseShape {
   originalPictureWidth: number;
   originalPictureHeight: number;
   isSelected: boolean;
+  currentImgWidth: number;
+  currentImgHeigth: number;
+  scaleToCurrentImage: number;
 }
 
 export interface RectangleShape extends BaseShape {

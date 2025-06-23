@@ -242,24 +242,36 @@ export class DrawUtilService {
     this.shapesSubject.next(this.shapes);
   }
 
+
   private resizeShape(event: MouseEvent) {
     if (!this.selectedShape) return;
-
-    const scale = this.scale;
-    const dx = (event.offsetX - this.initialMouseX) / scale;
-    const dy = (event.offsetY - this.initialMouseY) / scale;
-
+  
+    const scale = this.calculateScale();
+    const imgRect = this.img.getBoundingClientRect();
+    
+    // Calculate the mouse position relative to the image
+    const mouseX = (event.clientX - imgRect.left) / scale;
+    const mouseY = (event.clientY - imgRect.top) / scale;
+  
     switch (this.selectedShape.type) {
       case 'rectangle':
         const rect = this.selectedShape as any;
-        rect.width = Math.abs(dx);
-        rect.height = Math.abs(dy);
-        if (dx < 0) rect.x = this.initialMouseX / scale + dx;
-        if (dy < 0) rect.y = this.initialMouseY / scale + dy;
+        
+        // Calculate new width and height based on mouse position
+        const newWidth = mouseX - rect.x;
+        const newHeight = mouseY - rect.y;
+  
+        // Update rectangle dimensions
+        rect.width = Math.abs(newWidth);
+        rect.height = Math.abs(newHeight);
+  
+        // Adjust position if necessary
+        if (newWidth < 0) rect.x = mouseX;
+        if (newHeight < 0) rect.y = mouseY;
         break;
       // Add cases for other shape types as needed
     }
-
+  
     // Notify subscribers of the change
     this.shapesSubject.next(this.shapes);
   }
@@ -267,61 +279,139 @@ export class DrawUtilService {
   private resizeExistingShape(event: MouseEvent) {
     if (!this.selectedShape || !this.resizeCorner) return;
   
-    const scale = this.scale;
-    const dx = (event.offsetX - this.initialMouseX) / scale;
-    const dy = (event.offsetY - this.initialMouseY) / scale;
+    const scale = this.calculateScale();
+    const imgRect = this.img.getBoundingClientRect();
+    
+    // Calculate the mouse position relative to the image
+    const mouseX = (event.clientX - imgRect.left) / scale;
+    const mouseY = (event.clientY - imgRect.top) / scale;
   
     switch (this.selectedShape.type) {
       case 'rectangle':
         const rect = this.selectedShape as any;
         switch (this.resizeCorner) {
           case 'topLeft':
-            rect.x += dx;
-            rect.y += dy;
-            rect.width -= dx;
-            rect.height -= dy;
+            rect.width = rect.x + rect.width - mouseX;
+            rect.height = rect.y + rect.height - mouseY;
+            rect.x = mouseX;
+            rect.y = mouseY;
             break;
           case 'topRight':
-            rect.y += dy;
-            rect.width += dx;
-            rect.height -= dy;
+            rect.width = mouseX - rect.x;
+            rect.height = rect.y + rect.height - mouseY;
+            rect.y = mouseY;
             break;
           case 'bottomLeft':
-            rect.x += dx;
-            rect.width -= dx;
-            rect.height += dy;
+            rect.width = rect.x + rect.width - mouseX;
+            rect.height = mouseY - rect.y;
+            rect.x = mouseX;
             break;
           case 'bottomRight':
-            rect.width += dx;
-            rect.height += dy;
+            rect.width = mouseX - rect.x;
+            rect.height = mouseY - rect.y;
             break;
         }
         // Ensure width and height are always positive
         if (rect.width < 0) {
           rect.x += rect.width;
           rect.width = Math.abs(rect.width);
-          this.resizeCorner = this.resizeCorner === 'topLeft' ? 'topRight' : 'bottomRight';
+          this.resizeCorner = this.resizeCorner === 'topLeft' ? 'topRight' : 
+                              this.resizeCorner === 'bottomLeft' ? 'bottomRight' : this.resizeCorner;
         }
         if (rect.height < 0) {
           rect.y += rect.height;
           rect.height = Math.abs(rect.height);
-          this.resizeCorner = this.resizeCorner === 'topLeft' ? 'bottomLeft' : 'bottomRight';
+          this.resizeCorner = this.resizeCorner === 'topLeft' ? 'bottomLeft' : 
+                              this.resizeCorner === 'topRight' ? 'bottomRight' : this.resizeCorner;
         }
         break;
       // Add cases for other shape types as needed
     }
   
-    // Update initial mouse position for smooth resizing
-    this.initialMouseX = event.offsetX;
-    this.initialMouseY = event.offsetY;
-  
     // Notify subscribers of the change
     this.shapesSubject.next(this.shapes);
   }
 
+  // private resizeShape(event: MouseEvent) {
+  //   if (!this.selectedShape) return;
+
+  //   const scale = this.calculateScale();
+  //   const dx = (event.offsetX - this.initialMouseX) // scale;
+  //   const dy = (event.offsetY - this.initialMouseY) // scale;
+
+  //   switch (this.selectedShape.type) {
+  //     case 'rectangle':
+  //       const rect = this.selectedShape as any;
+  //       rect.width = Math.abs(dx);
+  //       rect.height = Math.abs(dy);
+  //       if (dx < 0) rect.x = this.initialMouseX  + dx;
+  //       if (dy < 0) rect.y = this.initialMouseY  + dy;
+  //       break;
+  //     // Add cases for other shape types as needed
+  //   }
+
+  //   // Notify subscribers of the change
+  //   this.shapesSubject.next(this.shapes);
+  // }
+
+  // private resizeExistingShape(event: MouseEvent) {
+  //   if (!this.selectedShape || !this.resizeCorner) return;
+  
+  //   const scale = this.scale;
+  //   const dx = (event.offsetX - this.initialMouseX) / scale;
+  //   const dy = (event.offsetY - this.initialMouseY) / scale;
+  
+  //   switch (this.selectedShape.type) {
+  //     case 'rectangle':
+  //       const rect = this.selectedShape as any;
+  //       switch (this.resizeCorner) {
+  //         case 'topLeft':
+  //           rect.x += dx;
+  //           rect.y += dy;
+  //           rect.width -= dx;
+  //           rect.height -= dy;
+  //           break;
+  //         case 'topRight':
+  //           rect.y += dy;
+  //           rect.width += dx;
+  //           rect.height -= dy;
+  //           break;
+  //         case 'bottomLeft':
+  //           rect.x += dx;
+  //           rect.width -= dx;
+  //           rect.height += dy;
+  //           break;
+  //         case 'bottomRight':
+  //           rect.width += dx;
+  //           rect.height += dy;
+  //           break;
+  //       }
+  //       // Ensure width and height are always positive
+  //       if (rect.width < 0) {
+  //         rect.x += rect.width;
+  //         rect.width = Math.abs(rect.width);
+  //         this.resizeCorner = this.resizeCorner === 'topLeft' ? 'topRight' : 'bottomRight';
+  //       }
+  //       if (rect.height < 0) {
+  //         rect.y += rect.height;
+  //         rect.height = Math.abs(rect.height);
+  //         this.resizeCorner = this.resizeCorner === 'topLeft' ? 'bottomLeft' : 'bottomRight';
+  //       }
+  //       break;
+  //     // Add cases for other shape types as needed
+  //   }
+  
+  //   // Update initial mouse position for smooth resizing
+  //   this.initialMouseX = event.offsetX;
+  //   this.initialMouseY = event.offsetY;
+  
+  //   // Notify subscribers of the change
+  //   this.shapesSubject.next(this.shapes);
+  // }
+
   drawWithRightClick(event: MouseEvent, imgX: number, imgY: number) {
     event.preventDefault(); // Prevent the default context menu
-    const scale = this.scale;
+    const scale = this.calculateScale();
     
     // Create a new shape on right mouse button down
     this.selectedShape = this.shapeFactory.createRectangle(
@@ -341,6 +431,13 @@ export class DrawUtilService {
 
   toggleRightClickDraw() {
     this.isRightClickDrawEnabled = !this.isRightClickDrawEnabled;
+  }
+
+  calculateScale(): number{
+    const naturalWidth = this.img.naturalWidth;
+    const currentWidth = this.img.getBoundingClientRect().width;
+    return currentWidth / naturalWidth;
+    // return naturalWidth / currentWidth;
   }
 
 }

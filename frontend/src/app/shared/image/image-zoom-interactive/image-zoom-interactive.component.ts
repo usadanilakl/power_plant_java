@@ -46,7 +46,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   private clickTimeout: any;
   private isDoubleClick: boolean = false;
   private lastClickTime: number = 0;
-  private readonly DOUBLE_CLICK_DELAY = 300; // milliseconds
+  private readonly DOUBLE_CLICK_DELAY = 200; // milliseconds
 
 //Shape/Image functionality variables
   private shapes: Shape[] = [];
@@ -125,7 +125,14 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this.shapes = elements.map(element => {
       // console.log('element:', element);
       const equipmentDto = new EquipmentDto(element);
-      return equipmentDto.toShapeObject();
+      const sh = equipmentDto.toShapeObject();
+      sh.currentImgWidth = originalWidth;
+      sh.currentImgHeigth = originalHeight;
+      sh.scaleToCurrentImage = this.img.naturalWidth / sh.originalPictureWidth;
+      if(sh.scaleToCurrentImage !== 1){
+        this.scaleShapeToCurrentImage(sh);
+      }
+      return sh;
     });
   }
 
@@ -181,6 +188,12 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this.drawingService.setScale(this.imageScale);
   }
 
+  private stopPanning() {
+    this.panning = false;
+    this.toggleDraggingClass(false);
+    this.setTransition('0.1s'); // Restore transition after dragging
+  }
+
 
   //Shape functionalities
   drawShapes(){
@@ -193,7 +206,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   drawShape(ctx: CanvasRenderingContext2D, shape: Shape) {
-    const scale = this.calculateShapeScale(shape);
+    const scale = this.calculateCurrentScale();
     ctx.strokeStyle = shape.color;
     ctx.fillStyle = shape.color;
     ctx.lineWidth = (shape.isSelected? 3 : 1);
@@ -244,8 +257,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   scaleShape(shape: Shape): Shape {
-    // const calculatedScale = this.calculateCurrentScale();
-    const calculatedScale = this.calculateShapeScale(shape);
+    const calculatedScale = this.calculateCurrentScale();
+    // const calculatedScale = this.calculateShapeScale(shape);
     switch (shape.type) {
       case 'rectangle':
         return {
@@ -329,6 +342,30 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     return false;
   }
 
+  onMouseLeave(event: MouseEvent) {
+    if (this.panning) {
+      this.stopPanning();
+    }
+  }
+
+  onMouseMove(event: MouseEvent) {
+    event.preventDefault();
+    const { x, y } = this.viewportToPictureCoordinates(event.clientX, event.clientY);
+    if (this.panning) {
+      this.setTransition('0s'); // Ensure no transition during dragging
+      this.pointX = event.clientX - this.start.x;
+      this.pointY = event.clientY - this.start.y;
+      this.transform();
+    }else if(this.drawingService.getSelectedShape() && this.drawingService.isDraggingShape){
+      const dx = event.clientX - this.lastX;
+      const dy = event.clientY - this.lastY;
+      this.drawingService.dragSelectedShape(dx, dy);
+      this.lastX = event.clientX;
+      this.lastY = event.clientY;
+    }
+    this.drawingService.handleMouseMove(event,x,y);
+  }
+
   onMousedown(event: MouseEvent) {
     const currentTime = new Date().getTime();
     const timeSinceLastClick = currentTime - this.lastClickTime;
@@ -388,11 +425,10 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   onMouseUp(event: MouseEvent) {
-    this.panning = false;
-    this.toggleDraggingClass(false);
-    this.setTransition('0.1s'); // Restore transition after dragging
+    if (this.panning) {
+      this.stopPanning();
+    }
     this.drawingService.handleMouseUp(event);
-    
     clearTimeout(this.clickTimeout);
   }
   
@@ -420,24 +456,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   
     // Remove transition after zooming
     setTimeout(() => this.setTransition('0s'), 100);
-  }
-
-  onMouseMove(event: MouseEvent) {
-    event.preventDefault();
-    const { x, y } = this.viewportToPictureCoordinates(event.clientX, event.clientY);
-    if (this.panning) {
-      this.setTransition('0s'); // Ensure no transition during dragging
-      this.pointX = event.clientX - this.start.x;
-      this.pointY = event.clientY - this.start.y;
-      this.transform();
-    }else if(this.drawingService.getSelectedShape() && this.drawingService.isDraggingShape){
-      const dx = event.clientX - this.lastX;
-      const dy = event.clientY - this.lastY;
-      this.drawingService.dragSelectedShape(dx, dy);
-      this.lastX = event.clientX;
-      this.lastY = event.clientY;
-    }
-    this.drawingService.handleMouseMove(event,x,y);
   }
 
   private onZoomEnd() {
@@ -538,7 +556,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     return imgRec.width / this.img.naturalWidth;
   }
 
-  calculateShapeScale(shape: Shape): number {
+  calculateShapeScale(shape: Shape): number {//now each shapes is scaled to current image size when init
     const imgRect = this.img.getBoundingClientRect();
     const currentImageScale = imgRect.width / this.img.naturalWidth;
     const shapeToNaturalImageRatio = this.img.naturalWidth / shape.originalPictureWidth;
@@ -550,6 +568,14 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     // console.log('Shape to natural image ratio:', shapeToNaturalImageRatio);
     
     return currentImageScale * shapeToNaturalImageRatio;
+  }
+
+  scaleShapeToCurrentImage(shape: RectangleShape){ 
+    const scale = shape.scaleToCurrentImage;
+    shape.width *= scale;
+    shape.height *= scale;
+    shape.x *= scale;
+    shape.y *= scale;
   }
 
 }
