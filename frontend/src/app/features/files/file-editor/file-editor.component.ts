@@ -4,6 +4,7 @@ import { FileDto } from '../../../models/file/file.model';
 import { Subscription } from 'rxjs';
 import { CurrentFileService } from '../../../services/current-file.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ImageService } from '../../../services/text-recognition.service';
 
 @Component({
   selector: 'app-file-editor',
@@ -13,10 +14,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 })
 export class FileEditorComponent {
   currentFile = signal<FileDto | null>(null);
+  recognizedText = signal<string | null>(null);
 
   constructor(
     protected currentFileService: CurrentFileService,
-    private destroyRef: DestroyRef
+    private destroyRef: DestroyRef,
+    private imageService: ImageService
   ) {}
 
   ngOnInit() {
@@ -33,6 +36,13 @@ export class FileEditorComponent {
 
   onNewShapeCreated(shape: any) {
     console.log('New shape created:', shape);
+    this.imageService.getText(this.currentFile()?.fileLink, shape).subscribe(
+      text => {
+        console.log('Recognized text:', text);
+        this.recognizedText.set(text);
+      },
+      error => console.error('Error recognizing text:', error)
+    )
   }
 
 }

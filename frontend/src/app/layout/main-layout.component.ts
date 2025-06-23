@@ -15,11 +15,17 @@ export class MainLayoutComponent implements AfterViewInit {
   @ViewChild('leftMenu') leftMenu!: ElementRef;
   @ViewChild('resizer') resizer!: ElementRef;
   @ViewChild('mainContent') mainContent!: ElementRef;
+  @ViewChild('footer') footer!: ElementRef;
 
   isResizing = false;
+  isFooterResizing = false;
   menuWidth = 200; // Initial width
+  footerHeight = 100; // Initial height
 
   header = input<string>();
+  bottomMenu = input<string | null>(null);
+  initialFooterHeight = 0;
+  initialMouseY = 0;
 
   // menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
   
@@ -27,6 +33,9 @@ export class MainLayoutComponent implements AfterViewInit {
 
   ngAfterViewInit() {
     this.menuWidth = this.leftMenu.nativeElement.offsetWidth;
+    if (this.footer) {
+      this.footerHeight = this.footer.nativeElement.offsetHeight;
+    }
   }
 
   toggleMenu() {
@@ -61,6 +70,37 @@ export class MainLayoutComponent implements AfterViewInit {
     this.ngZone.runOutsideAngular(() => {
       window.removeEventListener('mousemove', this.onMouseMove);
       window.removeEventListener('mouseup', this.onMouseUp);
+    });
+  }
+
+  onFooterResizerMouseDown(event: MouseEvent) {
+    event.preventDefault();
+    this.isFooterResizing = true;
+    this.initialFooterHeight = this.footerHeight;
+    this.initialMouseY = event.clientY;
+    
+    this.ngZone.runOutsideAngular(() => {
+      window.addEventListener('mousemove', this.onFooterMouseMove);
+      window.addEventListener('mouseup', this.onFooterMouseUp);
+    });
+  }
+
+  onFooterMouseMove = (event: MouseEvent) => {
+    if (!this.isFooterResizing) return;
+    
+    this.ngZone.run(() => {
+      const deltaY = this.initialMouseY - event.clientY;
+      const newHeight = this.initialFooterHeight + deltaY;
+      const maxHeight = this.mainContent.nativeElement.offsetHeight - 50; // Minimum 50px for main content
+      this.footerHeight = Math.max(50, Math.min(newHeight, maxHeight));
+    });
+  }
+
+  onFooterMouseUp = () => {
+    this.isFooterResizing = false;
+    this.ngZone.runOutsideAngular(() => {
+      window.removeEventListener('mousemove', this.onFooterMouseMove);
+      window.removeEventListener('mouseup', this.onFooterMouseUp);
     });
   }
 }
