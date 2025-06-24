@@ -1,0 +1,59 @@
+<div class="bottom-menu-container">
+  <div class="menu-section">
+    <h3>Current Equipment</h3>
+    <div class="content">
+      @if (currentEquipment(); as equipment) {
+        <p>Tag Number: {{ equipment.tagNumber }}</p>
+        <p>Description: {{ equipment.description }}</p>
+        <!-- Add more equipment details as needed -->
+      } @else {
+        <p>No equipment selected</p>
+      }
+    </div>
+  </div>
+  
+  <div class="menu-section">
+    <h3>Current LOTO Points</h3>
+    <div class="content">
+      @if (currentLotoPoints().length) {
+        <ul>
+          @for (point of currentLotoPoints(); track point.tagNumber) {
+            <li>{{ point.tagNumber }} - {{ point.description }}</li>
+          }
+        </ul>
+      } @else {
+        <p>No LOTO points available</p>
+      }
+    </div>
+  </div>
+  
+  <div class="menu-section">
+    <h3>Related Equipment</h3>
+    <div class="content">
+      @if (relatedEquipment().length) {
+        <ul>
+          @for (eq of relatedEquipment(); track eq.tagNumber) {
+            <li>{{ eq.tagNumber }} - {{ eq.description }}</li>
+          }
+        </ul>
+      } @else {
+        <p>No related equipment found</p>
+      }
+    </div>
+  </div>
+  
+  <div class="menu-section">
+    <h3>Related LOTO Points</h3>
+    <div class="content">
+      @if (relatedLotoPoints().length) {
+        <ul>
+          @for (point of relatedLotoPoints(); track point.tagNumber) {
+            <li>{{ point.tagNumber }} - {{ point.description }}</li>
+          }
+        </ul>
+      } @else {
+        <p>No related LOTO points found</p>
+      }
+    </div>
+  </div>
+</div>

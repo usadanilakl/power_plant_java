@@ -114,16 +114,26 @@ export class CurrentEquipmentService {
       );
     }
 
-    getCurrentEquipment(): EquipmentDto | null {
-        return this.currentEquipmentSubject.getValue();
+    getCurrentEquipment(): Observable<EquipmentDto | null> {
+        return this.currentEquipment$;
     }
 
     getlotoPoints(): Observable<LotoPointDto[]> {
         return this.lotoPoints$;
     }
 
+    getRelatedEquipment(): Observable<EquipmentDto[]> {
+        return this.relatedEquipment$;
+    }
+
+    getRelatedLotoPoints(): Observable<LotoPointDto[]> {
+        return this.relatedLotoPoints$;
+    }
+
     clearCurrentEquipment(): void {
         this.currentEquipmentSubject.next(null);
         this.lotoPointSubject.next([]);
+        this.relatedEquipmentSubject.next([]);
+        this.relatedLotoPointsSubject.next([]);
     }
 }

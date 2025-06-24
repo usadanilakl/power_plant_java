@@ -1,45 +1,63 @@
-import { Component, OnInit, ViewChild, ViewContainerRef, ComponentFactoryResolver } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
-import { filter, map, mergeMap } from 'rxjs/operators';
+
+import { Component, OnInit, ViewChild, ViewContainerRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
+import { ActivatedRoute, NavigationEnd, Router, Event } from '@angular/router';
+import { filter, map, mergeMap, startWith } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 
 interface RouteData {
-  bottomMenu?: any; // Replace 'any' with the actual type of your bottom menu components if possible
+  bottomMenu?: any;
 }
 
 @Component({
   selector: 'app-bottom-menu-outlet',
   template: '<ng-container #bottomMenuHost></ng-container>'
 })
-export class BottomMenuOutletComponent implements OnInit {
-  @ViewChild('bottomMenuHost', { read: ViewContainerRef, static: true }) bottomMenuHost!: ViewContainerRef;
+export class BottomMenuOutletComponent implements OnInit, AfterViewInit {
+  @ViewChild('bottomMenuHost', { read: ViewContainerRef, static: false }) bottomMenuHost!: ViewContainerRef;
+
+  private routeData$!: Observable<RouteData>;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private componentFactoryResolver: ComponentFactoryResolver
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd),
-      map(() => this.route),
-      map(route => {
-        while (route.firstChild) route = route.firstChild;
-        return route;
-      }),
+    this.routeData$ = this.router.events.pipe(
+      filter((event: Event): event is NavigationEnd => event instanceof NavigationEnd),
+      startWith(null), // This will trigger the pipeline on initial load
+      map(() => this.getChildRoute(this.route)),
       mergeMap(route => route.data)
-    ).subscribe((data: RouteData) => {
-      this.bottomMenuHost.clear(); // Always clear the previous content
+    );
+  }
+
+  ngAfterViewInit() {
+    this.routeData$.subscribe((data: RouteData) => {
+      this.renderComponent(data);
+      this.cdr.detectChanges(); // Force change detection
+    });
+  }
+
+  private getChildRoute(route: ActivatedRoute): ActivatedRoute {
+    while (route.firstChild) {
+      route = route.firstChild;
+    }
+    return route;
+  }
+
+  private renderComponent(data: RouteData) {
+    if (this.bottomMenuHost) {
+      this.bottomMenuHost.clear();
       
       if (data && data.bottomMenu) {
         try {
-          const componentFactory = this.componentFactoryResolver.resolveComponentFactory(data.bottomMenu);
-          this.bottomMenuHost.createComponent(componentFactory);
+          const componentRef = this.bottomMenuHost.createComponent(data.bottomMenu);
+          componentRef.changeDetectorRef.detectChanges(); // Force change detection on the created component
         } catch (error) {
           console.error('Error creating bottom menu component:', error);
-          // Optionally, you could display a default component or error message here
         }
       }
-    });
+    }
   }
 }

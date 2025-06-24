@@ -94,7 +94,7 @@ public class NgLotoPointController {
             }
             String baseTagNumber = NgEquipmentService.getTagNumberBase(criteria.getQuery());
             if (baseTagNumber == null || baseTagNumber.isEmpty()) {
-                throw new IllegalArgumentException("Base tag number not found.");
+                baseTagNumber = criteria.getQuery();
             }
             Page<LotoPointDto> searchResults = ngLotoPointService.complexSearch(baseTagNumber, page - 1, pageSize);
 

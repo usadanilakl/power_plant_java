@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home.component';
 import { LotoComponent } from './pages/loto/loto.component';
 import { TagNumberComponent } from './pages/tag-number/tag-number.component';
-import { PidComponent } from './pages/pid/pid.component';
 import { LotoPointComponent } from './pages/loto-point/loto-point.component';
 import { PrintComponent } from './pages/print/print.component';
 import { LotoTableComponent } from './features/loto/loto-table/loto-table.component';
@@ -10,10 +9,10 @@ import { LotoPointTableComponent } from './features/loto-points/loto-point-table
 import { LockTableComponent } from './features/loto/lock-table/lock-table.component';
 import { LotoBoxTableComponent } from './features/loto/loto-box-table/loto-box-table.component';
 import { ActiveLotoPointsComponent } from './features/loto/active-loto-points/active-loto-points.component';
-import { NewFileComponent } from './features/new/new-file/new-file.component';
 import { FileEditorComponent } from './features/files/file-editor/file-editor.component';
 import { FilePageComponent } from './pages/file-page/file-page.component';
 import { FileTableComponent } from './features/files/file-table/file-table.component';
+import { FileEditorBottomMenuComponent } from './features/files/file-editor/file-editor-bottom-menu/file-editor-bottom-menu.component';
 
 export const routes: Routes = [
     {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -22,7 +21,7 @@ export const routes: Routes = [
       component: FilePageComponent,
       children: [
         { path: '', redirectTo: 'file', pathMatch: 'full' },
-        { path: 'edit', component: FileEditorComponent, data: {bottomMenu: FileTableComponent} },
+        { path: 'edit', component: FileEditorComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
         { path: 'table', component: FileTableComponent }
       ]
     },
