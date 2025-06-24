@@ -6,16 +6,20 @@ import { CurrentFileService } from '../../../services/current-file.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ImageService } from '../../../services/text-recognition.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
+import { FileBulkEditorMenuComponent } from "./file-bulk-editor-menu/file-bulk-editor-menu.component";
+import { Shape } from '../../../models/shape.model';
 
 @Component({
   selector: 'app-file-editor',
-  imports: [ImageZoomInteractiveComponent],
+  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent],
   templateUrl: './file-editor.component.html',
   styleUrl: './file-editor.component.css'
 })
 export class FileEditorComponent {
+
   currentFile = signal<FileDto | null>(null);
   recognizedText = signal<string | null>(null);
+  visibleShapes = signal<Shape[]>([]);
 
   constructor(
     protected currentFileService: CurrentFileService,
@@ -50,6 +54,10 @@ export class FileEditorComponent {
   onShapeSelected(shape: any) {
     console.log('Shape selected:', shape);
     this.currentEquipmentService.setCurrentShape(shape);
+  }
+
+  handleVisibleShapes($event: Shape[]) {
+    this.visibleShapes.set($event);
   }
 
 }

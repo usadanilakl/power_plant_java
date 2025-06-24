@@ -1,0 +1,10 @@
+<div #menuContainer class="floating-menu">
+  <div class="menu-header">
+    <h3>{{ title }}</h3>
+    <button class="close-button" (click)="closeMenu()">×</button>
+  </div>
+  <div class="menu-content">
+    <ng-content></ng-content>
+  </div>
+  <div class="resize-handle"></div>
+</div>

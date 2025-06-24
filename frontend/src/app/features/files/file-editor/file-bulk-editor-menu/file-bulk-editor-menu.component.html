@@ -1,0 +1,13 @@
+<app-floating-menu 
+  [title]="'Custom Menu'" 
+  [width]="30" 
+  [height]="40" 
+  [position]="MenuPosition.TopRight"
+  (close)="handleClose()">
+  
+  @if(shapes().length > 0) {
+    @for(shape of shapes(); track shape.id) {
+      <p>{{shape.id}}</p>
+    }
+  }
+</app-floating-menu>
