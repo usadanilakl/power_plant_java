@@ -33,7 +33,7 @@ export class MainLayoutComponent implements AfterViewInit {
   constructor(private ngZone: NgZone) {}
 
   ngAfterViewInit() {
-    this.menuWidth = this.leftMenu.nativeElement.offsetWidth;
+    // this.menuWidth = this.leftMenu.nativeElement.offsetWidth;
     if (this.footer) {
       this.footerHeight = this.footer.nativeElement.offsetHeight;
     }

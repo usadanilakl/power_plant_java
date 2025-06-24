@@ -11,6 +11,10 @@ import { NestedItem, NestedItemImpl } from '../../../models/ui/nested-item.model
 })
 export class ToggleListComponent {
   items = input<NestedItem[]>([]);
+  highlightOnHover = input<boolean>(false);
+  trackLastClicked = input<boolean>(false);
+  trackAllClicked = input<boolean>(false);
+  colorLevels = input<boolean>(false);
 
   itemClicked = output<NestedItem>();
   itemDoubleClicked = output<NestedItem>();
@@ -20,6 +24,9 @@ export class ToggleListComponent {
   private clickTimeout: any = null;
   private lastClickTime: number = 0;
   private readonly doubleClickDelay: number = 250; // milliseconds
+
+  private lastClickedItem: NestedItem | null = null;
+  private clickedItems: Set<NestedItem> = new Set();
 
   onClick(event: MouseEvent, item: NestedItem): void {
     event.stopPropagation(); // Prevent event from bubbling up
@@ -71,6 +78,14 @@ export class ToggleListComponent {
   // New methods to handle nested item events
   onNestedItemClicked(item: NestedItem): void {
     this.itemClicked.emit(item);
+
+    if (this.trackLastClicked()) {
+      this.lastClickedItem = item;
+    }
+    if (this.trackAllClicked()) {
+      this.clickedItems.add(item);
+    }
+      
   }
 
   onNestedItemDoubleClicked(item: NestedItem): void {
@@ -89,5 +104,26 @@ export class ToggleListComponent {
     if (this.clickTimeout !== null) {
       clearTimeout(this.clickTimeout);
     }
+  }
+
+  isItemClicked(item: NestedItem): boolean {
+    return this.trackLastClicked() ? this.lastClickedItem === item : this.clickedItems.has(item);
+  }
+  
+  getItemLevel(item: NestedItem): number {
+    return this.items().reduce((level, rootItem) => this.findItemLevel(rootItem, item, 0, level), 0);
+  }
+  
+  private findItemLevel(currentItem: NestedItem, targetItem: NestedItem, currentLevel: number, maxLevel: number): number {
+    if (currentItem === targetItem) {
+      return Math.max(currentLevel, maxLevel);
+    }
+    if (currentItem.values) {
+      return currentItem.values.reduce(
+        (level, childItem) => this.findItemLevel(childItem, targetItem, currentLevel + 1, level),
+        maxLevel
+      );
+    }
+    return maxLevel;
   }
 }

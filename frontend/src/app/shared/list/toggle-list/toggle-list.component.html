@@ -1,4 +1,4 @@
-<ul class="toggle-list">
+<!-- <ul class="toggle-list">
   @for (item of items(); track item.id) {
     <li>
       <div class="item" 
@@ -15,6 +15,44 @@
       @if (item.isExpanded && item.values) {
         <app-toggle-list 
           [items]="item.values"
+          (itemClicked)="onNestedItemClicked($event)"
+          (itemDoubleClicked)="onNestedItemDoubleClicked($event)"
+          (itemRightClicked)="onNestedItemRightClicked($event)"
+          (itemMiddleClicked)="onNestedItemMiddleClicked($event)">
+        </app-toggle-list>
+      }
+    </li>
+  }
+</ul> -->
+
+<ul class="toggle-list">
+  @for (item of items(); track item.id) {
+    <li [ngClass]="{
+          'highlighted': highlightOnHover(),
+          'clicked': isItemClicked(item),
+          'level-1': colorLevels() && getItemLevel(item) === 0,
+          'level-2': colorLevels() && getItemLevel(item) === 1,
+          'level-3': colorLevels() && getItemLevel(item) === 2
+        }"
+        (click)="onClick($event, item)"
+        (dblclick)="onDoubleClick(item)"
+        (contextmenu)="onRightClick($event, item)"
+        (mousedown)="onMiddleClick($event, item)">
+      <div class="item">
+        <span class="toggle-icon">
+          @if (item.values && item.values.length > 0) {
+            {{ item.isExpanded ? '▼' : '▶' }}
+          }
+        </span>
+        {{ item.name }}
+      </div>
+      @if (item.isExpanded && item.values && item.values.length > 0) {
+        <app-toggle-list
+          [items]="item.values"
+          [highlightOnHover]="highlightOnHover()"
+          [trackLastClicked]="trackLastClicked()"
+          [trackAllClicked]="trackAllClicked()"
+          [colorLevels]="colorLevels()"
           (itemClicked)="onNestedItemClicked($event)"
           (itemDoubleClicked)="onNestedItemDoubleClicked($event)"
           (itemRightClicked)="onNestedItemRightClicked($event)"

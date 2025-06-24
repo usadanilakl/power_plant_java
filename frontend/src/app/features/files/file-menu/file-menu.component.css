@@ -4,6 +4,7 @@
   border-radius: 5px;
   height: 99%;
   width: 99%;
+  overflow-y: auto;
 }
 
 h2 {

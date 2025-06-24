@@ -12,3 +12,23 @@
   display: inline-block;
   width: 20px;
 }
+
+.highlighted:hover {
+  background-color: #f0f0f0;
+}
+
+.clicked {
+  background-color: #e0e0e0;
+}
+
+.level-1 {
+  background-color: #f8f8f8;
+}
+
+.level-2 {
+  background-color: #f0f0f0;
+}
+
+.level-3 {
+  background-color: #e8e8e8;
+}
