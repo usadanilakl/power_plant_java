@@ -13,12 +13,13 @@ import { EquipmentDto } from '../../../models/equipment/equipment.model';
   styleUrl: './image-zoom-interactive.component.css'
 })
 export class ImageZoomInteractiveComponent implements AfterViewInit {
-  imageUrl = input<string>()
-  imageName = input<string>()
+  imageUrl = input<string>();
+  imageName = input<string>();
   elements = input.required<Observable<EquipmentDto[]>>();
 
-  newShapeCreated = output<Shape | null>()
-  shapeSelected = output<Shape | null>()
+  newShapeCreated = output<Shape | null>();
+  shapeSelected = output<Shape | null>();
+  visibleShapes = output<Shape[]>();
 
   private shapeFactory = inject(ShapeFactoryService);
   private shapeUtil = inject(ShapeUtilService);
@@ -212,7 +213,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this.setTransition('0.1s'); // Restore transition after dragging
     // const visibleShapes = this.getShapesInViewPort();
     const visibleShapes = this.getShapesInContainerBounds();
-    console.log('Visible shapes:', visibleShapes);
+    this.visibleShapes.emit(visibleShapes);
   }
 
 
@@ -482,6 +483,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   private onZoomEnd() {
     this.setTransition('0s');
     this.updateCanvasSize();
+    const visibleShapes = this.getShapesInContainerBounds();
+    this.visibleShapes.emit(visibleShapes);
   }
 
 
