@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, ElementRef, inject, input, OnDestroy, output, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, ElementRef, inject, input, output, ViewChild } from '@angular/core';
 import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../../models/shape.model';
 import { DrawUtilService } from '../image-services/draw-util.service';
 import { ShapeFactoryService } from '../image-services/shape-factory.service';
@@ -124,6 +124,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this.setSubscriptions();
 
     this.updateCanvasSize();
+    // this.updateImageAndCanvasSize();
   
   }
 
@@ -192,7 +193,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   updateCanvasSize() {
     if (this.canvas) {
-      // console.log('Updating canvas size');
       const imgRect = this.img.getBoundingClientRect();
       this.canvas.width = imgRect.width;
       this.canvas.height = imgRect.height;
@@ -278,29 +278,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
             }
   }
 
-  scaleShape(shape: Shape): Shape {
-    const calculatedScale = this.calculateCurrentScale();
-    // const calculatedScale = this.calculateShapeScale(shape);
-    switch (shape.type) {
-      case 'rectangle':
-        return {
-          ...shape,
-          width: shape.width * calculatedScale,
-          height: shape.height * calculatedScale,
-        };
-      case 'circle':
-        return {
-          ...shape,
-          radius: shape.radius * calculatedScale,
-        };
-      case 'line':
-      case 'text':
-        return { ...shape };
-      default:
-        return shape;
-    }
-  }
-
   private drawSelectionHandles(ctx: CanvasRenderingContext2D, shape: Shape) {
     const scale = this.calculateCurrentScale();
     const handleSize = 8;
@@ -354,6 +331,29 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
         handleSize
       );
     });
+  }
+
+  scaleShape(shape: Shape): Shape {
+    const calculatedScale = this.calculateCurrentScale();
+    // const calculatedScale = this.calculateShapeScale(shape);
+    switch (shape.type) {
+      case 'rectangle':
+        return {
+          ...shape,
+          width: shape.width * calculatedScale,
+          height: shape.height * calculatedScale,
+        };
+      case 'circle':
+        return {
+          ...shape,
+          radius: shape.radius * calculatedScale,
+        };
+      case 'line':
+      case 'text':
+        return { ...shape };
+      default:
+        return shape;
+    }
   }
 
 
@@ -691,155 +691,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       text.y + estimatedHeight > bounds.top
     );
   }
-
-
-  
-
-// getShapesInViewPort(): Shape[] {
-//   const visibleShapes: Shape[] = [];
-//   const viewportRect = this.canvas.getBoundingClientRect();
-//   const scale = this.calculateCurrentScale();
-
-//   // Calculate the visible area in image coordinates
-//   const visibleArea = {
-//     left: -this.pointX / scale,
-//     top: -this.pointY / scale,
-//     right: (-this.pointX + viewportRect.width) / scale,
-//     bottom: (-this.pointY + viewportRect.height) / scale
-//   };
-
-//   for (const shape of this.shapes) {
-//     let isVisible = false;
-
-//     switch (shape.type) {
-//       case 'rectangle':
-//         isVisible = this.isRectangleVisible(shape as RectangleShape, visibleArea);
-//         break;
-//       case 'circle':
-//         isVisible = this.isCircleVisible(shape as CircleShape, visibleArea);
-//         break;
-//       case 'line':
-//         isVisible = this.isLineVisible(shape as LineShape, visibleArea);
-//         break;
-//       case 'text':
-//         isVisible = this.isTextVisible(shape as TextShape, visibleArea);
-//         break;
-//     }
-
-//     if (isVisible) {
-//       visibleShapes.push(shape);
-//     }
-//   }
-
-//   return visibleShapes;
-// }
-
-// private getShapeBoundingBox(shape: Shape): { left: number, top: number, right: number, bottom: number } | null {
-//   switch (shape.type) {
-//     case 'rectangle':
-//       const rect = shape as RectangleShape;
-//       return {
-//         left: rect.x,
-//         top: rect.y,
-//         right: rect.x + rect.width,
-//         bottom: rect.y + rect.height
-//       };
-//     case 'circle':
-//       const circle = shape as CircleShape;
-//       return {
-//         left: circle.x - circle.radius,
-//         top: circle.y - circle.radius,
-//         right: circle.x + circle.radius,
-//         bottom: circle.y + circle.radius
-//       };
-//     case 'line':
-//       const line = shape as LineShape;
-//       return {
-//         left: Math.min(line.startX, line.endX),
-//         top: Math.min(line.startY, line.endY),
-//         right: Math.max(line.startX, line.endX),
-//         bottom: Math.max(line.startY, line.endY)
-//       };
-//     case 'text':
-//       const text = shape as TextShape;
-//       // Assuming a rough estimate for text dimensions
-//       const estimatedWidth = text.text.length * 8;
-//       const estimatedHeight = 16;
-//       return {
-//         left: text.x,
-//         top: text.y,
-//         right: text.x + estimatedWidth,
-//         bottom: text.y + estimatedHeight
-//       };
-//     default:
-//       return null;
-//   }
-// }
-
-// private isRectangleVisible(rect: RectangleShape, visibleArea: any): boolean {
-//   return (
-//     rect.x < visibleArea.right &&
-//     rect.x + rect.width > visibleArea.left &&
-//     rect.y < visibleArea.bottom &&
-//     rect.y + rect.height > visibleArea.top
-//   );
-// }
-
-// private isCircleVisible(circle: CircleShape, visibleArea: any): boolean {
-//   return (
-//     circle.x + circle.radius > visibleArea.left &&
-//     circle.x - circle.radius < visibleArea.right &&
-//     circle.y + circle.radius > visibleArea.top &&
-//     circle.y - circle.radius < visibleArea.bottom
-//   );
-// }
-
-// private isLineVisible(line: LineShape, visibleArea: any): boolean {
-//   return (
-//     (line.startX >= visibleArea.left && line.startX <= visibleArea.right &&
-//      line.startY >= visibleArea.top && line.startY <= visibleArea.bottom) ||
-//     (line.endX >= visibleArea.left && line.endX <= visibleArea.right &&
-//      line.endY >= visibleArea.top && line.endY <= visibleArea.bottom) ||
-//     this.lineIntersectsRectangle(line, visibleArea)
-//   );
-// }
-
-// private isTextVisible(text: TextShape, visibleArea: any): boolean {
-//   const estimatedWidth = text.text.length * 8; // Rough estimate of text width
-//   const estimatedHeight = 16; // Assuming 16px font size
-//   return (
-//     text.x < visibleArea.right &&
-//     text.x + estimatedWidth > visibleArea.left &&
-//     text.y < visibleArea.bottom &&
-//     text.y + estimatedHeight > visibleArea.top
-//   );
-// }
-
-// private lineIntersectsRectangle(line: LineShape, rect: any): boolean {
-//   const left = rect.left;
-//   const right = rect.right;
-//   const top = rect.top;
-//   const bottom = rect.bottom;
-
-//   // Check if the line intersects any of the rectangle's edges
-//   return (
-//     this.lineIntersectsLine(line.startX, line.startY, line.endX, line.endY, left, top, right, top) ||
-//     this.lineIntersectsLine(line.startX, line.startY, line.endX, line.endY, right, top, right, bottom) ||
-//     this.lineIntersectsLine(line.startX, line.startY, line.endX, line.endY, right, bottom, left, bottom) ||
-//     this.lineIntersectsLine(line.startX, line.startY, line.endX, line.endY, left, bottom, left, top)
-//   );
-// }
-
-// private lineIntersectsLine(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number): boolean {
-//   const det = (x2 - x1) * (y4 - y3) - (x4 - x3) * (y2 - y1);
-//   if (det === 0) {
-//     return false;
-//   } else {
-//     const lambda = ((y4 - y3) * (x4 - x1) + (x3 - x4) * (y4 - y1)) / det;
-//     const gamma = ((y1 - y2) * (x4 - x1) + (x2 - x1) * (y4 - y1)) / det;
-//     return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
-//   }
-// }
 
 }
 

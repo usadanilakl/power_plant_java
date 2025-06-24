@@ -1,4 +1,4 @@
-import { Component, DestroyRef, signal } from '@angular/core';
+import { Component, DestroyRef, output, signal } from '@angular/core';
 import { ImageZoomInteractiveComponent } from "../../../shared/image/image-zoom-interactive/image-zoom-interactive.component";
 import { FileDto } from '../../../models/file/file.model';
 import { Subscription } from 'rxjs';
@@ -17,9 +17,12 @@ import { Shape } from '../../../models/shape.model';
 })
 export class FileEditorComponent {
 
+  openMenu = output<boolean>();
+
   currentFile = signal<FileDto | null>(null);
   recognizedText = signal<string | null>(null);
   visibleShapes = signal<Shape[]>([]);
+  isMenuOpen = signal<boolean>(false);;
 
   constructor(
     protected currentFileService: CurrentFileService,
@@ -58,6 +61,10 @@ export class FileEditorComponent {
 
   handleVisibleShapes($event: Shape[]) {
     this.visibleShapes.set($event);
+  }  
+  onMenuOpen(): void {
+    this.isMenuOpen.set(!this.isMenuOpen())  ;
+    this.openMenu.emit(this.isMenuOpen());
   }
-
 }
+

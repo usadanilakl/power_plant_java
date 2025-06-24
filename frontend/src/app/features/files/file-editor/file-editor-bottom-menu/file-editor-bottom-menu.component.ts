@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, OnDestroy } from '@angular/core';
+import { Component, OnInit, signal, OnDestroy, output } from '@angular/core';
 import { AsyncPipe, NgIf, NgFor, CommonModule } from '@angular/common';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
@@ -18,6 +18,9 @@ export class FileEditorBottomMenuComponent implements OnInit, OnDestroy {
   currentLotoPoints = signal<LotoPointDto[]>([]);
   relatedEquipment = signal<EquipmentDto[]>([]);
   relatedLotoPoints = signal<LotoPointDto[]>([]);
+
+  openMenu = output<boolean>();
+  private isMenuOpen = false;
 
   private subscriptions: Subscription = new Subscription();
 
@@ -51,5 +54,10 @@ export class FileEditorBottomMenuComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.unsubscribe();
+  }
+
+  onMenuOpen(): void {
+    this.isMenuOpen =!this.isMenuOpen;
+    this.openMenu.emit(this.isMenuOpen);
   }
 }

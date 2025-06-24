@@ -6,7 +6,19 @@
     (shapeSelected)="onShapeSelected($event)"
     (newShapeCreated)="onNewShapeCreated($event)">
   </app-image-zoom-interactive>
+  
+  <!-- New control section added at the bottom of the image container -->
+  <div class="control-section">
+    <div class="button-row">
+      <button (click)="onMenuOpen()" class="control-button">Bulk Edit</button>
+      <button class="control-button">Delete</button>
+      <button class="control-button">Add LOTO Point</button>
+      <button class="control-button">Link Equipment</button>
+    </div>
+  </div>
 </div>
+
 <app-file-bulk-editor-menu
+[isOpen]="isMenuOpen()"
 [shapes]="visibleShapes()">
 </app-file-bulk-editor-menu>

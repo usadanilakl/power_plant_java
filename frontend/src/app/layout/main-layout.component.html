@@ -3,7 +3,7 @@
       <header class="header">
         @if (header()) {
           <h1>{{ header() }}</h1>
-        } @else {
+        }@else {
           <h1>Jackson Generation</h1>  
         }
         <ng-content select="[header]"></ng-content>
@@ -19,13 +19,13 @@
           <main class="main-content" #mainContent>
             <ng-content select="[main-content]"></ng-content>
           </main>
-          @if(bottomMenu()!==null){
             <div class="footer-resizer" #footerResizer (mousedown)="onFooterResizerMouseDown($event)"></div>
             <footer class="footer" #footer [style.height.px]="footerHeight">
-              <h1>{{ bottomMenu() }}</h1>
+              @if(bottomMenu()!==null){
+                <h1>{{ bottomMenu() }}</h1>
+              }
               <ng-content select="[bottom-menu]"></ng-content>
             </footer>
-          }
         </div>
       </div>
     </div>

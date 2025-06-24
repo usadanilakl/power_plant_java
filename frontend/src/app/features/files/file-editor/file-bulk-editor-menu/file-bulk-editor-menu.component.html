@@ -3,7 +3,16 @@
   [width]="30" 
   [height]="40" 
   [position]="MenuPosition.TopRight"
+  [open]="isOpen()"
   (close)="handleClose()">
+
+  <!-- Row of control buttons -->
+  <div class="control-buttons">
+    <button (click)="getVisibleShapes()">Show Visible Shapes</button>
+    <button (click)="getAllShapes()">Show All Shapes</button>
+    <button >Save</button>
+    <button >Cancel</button>
+  </div>
   
   @if(shapes().length > 0) {
     @for(shape of shapes(); track shape.id) {

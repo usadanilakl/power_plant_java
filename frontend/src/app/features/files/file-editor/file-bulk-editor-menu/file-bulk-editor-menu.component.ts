@@ -11,11 +11,20 @@ import { Shape } from '../../../../models/shape.model';
 export class FileBulkEditorMenuComponent {
   
   shapes = input<Shape[]>([]);
+  isOpen = input<boolean>(false);
 
 
   MenuPosition = MenuPosition;
 handleClose() {
   // Handle menu close
+}
+
+getVisibleShapes():void {
+
+}
+
+getAllShapes(): void {
+  
 }
 
 }

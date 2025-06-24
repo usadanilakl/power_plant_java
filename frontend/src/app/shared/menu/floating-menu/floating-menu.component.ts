@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, output, input } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, output, input, signal, SimpleChanges } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 
 export enum MenuPosition {
@@ -23,6 +23,7 @@ export class FloatingMenuComponent implements AfterViewInit {
   height = input<number>(50);
   width = input<number>(25);
   position = input<MenuPosition>(MenuPosition.Center);
+  open = input<boolean>(false);
 
   close = output<void>();
 
@@ -31,12 +32,24 @@ export class FloatingMenuComponent implements AfterViewInit {
   private dragOffset = { x: 0, y: 0 };
   private resizeStartPos = { x: 0, y: 0 };
   private initialSize = { width: 0, height: 0 };
+  private resizingHandle: string | null = null;
 
   ngAfterViewInit() {
-    this.setupDragging();
-    this.setupResizing();
-    this.applyInitialDimensions();
-    this.applyPosition();
+    // this.setupDragging();
+    // this.setupResizing();
+    // this.applyInitialDimensions();
+    // this.applyPosition();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['open'] && !changes['open'].firstChange && changes['open'].currentValue) {
+      setTimeout(() => {
+        this.setupDragging();
+        this.setupResizing();
+        this.applyInitialDimensions();
+        this.applyPosition();
+      });
+    }
   }
 
   private applyInitialDimensions() {
@@ -89,13 +102,6 @@ export class FloatingMenuComponent implements AfterViewInit {
     document.addEventListener('mouseup', this.stopDragging.bind(this));
   }
 
-  private setupResizing() {
-    const resizeHandle = this.menuContainer.nativeElement.querySelector('.resize-handle');
-    resizeHandle.addEventListener('mousedown', this.startResizing.bind(this));
-    document.addEventListener('mousemove', this.resize.bind(this));
-    document.addEventListener('mouseup', this.stopResizing.bind(this));
-  }
-
   private startDragging(e: MouseEvent) {
     this.isDragging = true;
     const rect = this.menuContainer.nativeElement.getBoundingClientRect();
@@ -115,6 +121,16 @@ export class FloatingMenuComponent implements AfterViewInit {
 
   private stopDragging() {
     this.isDragging = false;
+  }
+
+
+
+
+  private setupResizing() {
+    const resizeHandle = this.menuContainer.nativeElement.querySelector('.resize-handle');
+    resizeHandle.addEventListener('mousedown', this.startResizing.bind(this));
+    document.addEventListener('mousemove', this.resize.bind(this));
+    document.addEventListener('mouseup', this.stopResizing.bind(this));
   }
 
   private startResizing(e: MouseEvent) {
