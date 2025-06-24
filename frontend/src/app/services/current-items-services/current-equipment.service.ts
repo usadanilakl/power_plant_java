@@ -85,7 +85,7 @@ export class CurrentEquipmentService {
       this.equipmentService.searchEqByBaseTagNumber(equipmentSearchCriteria, 1, 50).subscribe(
         response => {
           if (response.responseData) {
-            // this.relatedEquipmentSubject.next(response.responseData.content);
+            this.relatedEquipmentSubject.next(response.responseData.content);
             console.log('Related equipment fetched successfully:', response.responseData.content);
           }
         },
@@ -106,7 +106,7 @@ export class CurrentEquipmentService {
       this.lotoPointService.searchLpByBaseTagNumber(lotoPointSearchCriteria, 50).subscribe(
         response => {
           if (response.responseData) {
-            // this.relatedLotoPointsSubject.next(response.responseData.content);
+            this.relatedLotoPointsSubject.next(response.responseData.content);
             console.log('Related LOTO points fetched successfully:', response.responseData.content);
           }
         },

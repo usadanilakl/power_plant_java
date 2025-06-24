@@ -30,12 +30,12 @@ export class LotoPointService {
 
     return this.http.post<SpringPaginatedResponse<LotoPointDto[]>>(`${this.apiUrl}/search`, criteria, { params });
   }
-  searchLpByBaseTagNumber(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<LotoPointDto[]>> {
+  searchLpByBaseTagNumber(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<LotoPointDto>> {
     const params = new HttpParams()
       .set('page', (criteria.page ?? 1).toString())
       .set('pageSize', pageSize.toString());
 
-    return this.http.post<SpringPaginatedResponse<LotoPointDto[]>>(`${this.apiUrl}/search-by-base-tag-number`, criteria, { params });
+    return this.http.post<SpringPaginatedResponse<LotoPointDto>>(`${this.apiUrl}/search-by-base-tag-number`, criteria, { params });
   }
 
   getLotoPointById(id: string): Observable<SpringApiResponse<LotoPointDto>> {
