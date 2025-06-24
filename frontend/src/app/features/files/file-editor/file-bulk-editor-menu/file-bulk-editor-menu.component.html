@@ -6,17 +6,36 @@
   [open]="isOpen()"
   (close)="handleClose()">
 
-  <!-- Row of control buttons -->
-  <div class="control-buttons">
-    <button (click)="getVisibleShapes()">Show Visible Shapes</button>
-    <button (click)="getAllShapes()">Show All Shapes</button>
-    <button >Save</button>
-    <button >Cancel</button>
+  <div class="button-groups">
+    <div class="control-buttons">
+      <h3>Control Buttons</h3>
+      <div class="button-row">
+        <button (click)="setDataToDisplay('tagNumber')">Tag Number</button>
+        <button (click)="setDataToDisplay('description')">Description</button>
+        <button (click)="setDataToDisplay('location.name')">Location</button>
+        <button (click)="setDataToDisplay('normPos.name')">Normal Position</button>
+        <button (click)="setDataToDisplay('isoPos.name')">Iso Position</button>
+        <button (click)="setDataToDisplay('system.name')">System</button>
+        <button (click)="setDataToDisplay('eqType.name')">Equipment Type</button>
+      </div>
+    </div>
+    <!-- <div class="edit-buttons">
+      <h3>Edit Buttons</h3>
+      <div class="button-row">
+        <button (click)="getVisibleShapes()">Tag Number</button>
+        <button (click)="getAllShapes()">Description</button>
+        <button>Location</button>
+        <button>Normal Position</button>
+        <button>Iso Position</button>
+        <button>System</button>
+        <button>Equipment Type</button>
+      </div>
+    </div> -->
   </div>
-  
-  @if(shapes().length > 0) {
-    @for(shape of shapes(); track shape.id) {
-      <p>{{shape.id}}</p>
+
+  @if(displayData().length > 0) {
+    @for(data of displayData(); track data.id) {
+      <p>{{data.data}}</p>
     }
   }
 </app-floating-menu>

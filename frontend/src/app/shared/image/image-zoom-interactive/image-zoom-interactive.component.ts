@@ -212,8 +212,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this.toggleDraggingClass(false);
     this.setTransition('0.1s'); // Restore transition after dragging
     // const visibleShapes = this.getShapesInViewPort();
-    const visibleShapes = this.getShapesInContainerBounds();
-    this.visibleShapes.emit(visibleShapes);
+    // const visibleShapes = this.getShapesInContainerBounds();
+    // this.visibleShapes.emit(visibleShapes);
   }
 
 
@@ -483,8 +483,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   private onZoomEnd() {
     this.setTransition('0s');
     this.updateCanvasSize();
-    const visibleShapes = this.getShapesInContainerBounds();
-    this.visibleShapes.emit(visibleShapes);
+    // const visibleShapes = this.getShapesInContainerBounds();
+    // this.visibleShapes.emit(visibleShapes);
   }
 
 

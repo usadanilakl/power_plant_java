@@ -13,6 +13,9 @@ export class CurrentFileService {
     private elementsSubject = new BehaviorSubject<EquipmentDto[]>([]);
     elements$ = this.elementsSubject.asObservable();
 
+    private elementsToRenderSubject = new BehaviorSubject<EquipmentDto[]>([]);
+    elementsToRender$ = this.elementsToRenderSubject.asObservable();
+
     setCurrentFile(file: FileDto | null): void {
         this.currentFileSubject.next(file);
           
@@ -21,6 +24,10 @@ export class CurrentFileService {
         this.elementsSubject.next(elements);
 
         // console.log('current elements',elements);
+    }
+
+    setElementsToRender(elements: EquipmentDto[]): void {
+        this.elementsToRenderSubject.next(elements);
     }
 
     getCurrentFile(): FileDto | null {
@@ -34,5 +41,9 @@ export class CurrentFileService {
     clearCurrentFile(): void {
         this.currentFileSubject.next(null);
         this.elementsSubject.next([]);
+    }
+
+    getElementsToRender(): Observable<EquipmentDto[]> {
+        return this.elementsToRender$;
     }
 }

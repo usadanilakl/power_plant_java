@@ -1,17 +1,108 @@
-.control-buttons {
+/* .button-groups {
   display: flex;
-  justify-content: space-around;
-  margin-bottom: 10px;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.control-buttons button {
-  padding: 5px 10px;
+.control-buttons,
+.edit-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.button-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.button-row {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+button {
+  padding: 8px 12px;
+  border: none;
   background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.3s;
+  flex: 1;
+  white-space: nowrap;
 }
 
-.control-buttons button:hover {
+button:hover {
   background-color: #e0e0e0;
 }
+
+h3 {
+  margin-bottom: 10px;
+  font-size: 1.1em;
+  font-weight: bold;
+} */
+ .button-groups {
+   display: flex;
+   flex-direction: column;
+   gap: 20px;
+ }
+ 
+ .control-buttons,
+ .edit-buttons {
+   display: flex;
+   flex-direction: column;
+   gap: 10px;
+ }
+ 
+ .button-rows {
+   display: flex;
+   flex-direction: column;
+   gap: 10px;
+ }
+ 
+ .button-row {
+   display: flex;
+   flex-direction: row;
+   gap: 10px;
+ }
+ 
+ button {
+   padding: 2px 2px;
+   border: none;
+   background-color: #f0f0f0;
+   cursor: pointer;
+   transition: background-color 0.3s, font-size 0.3s;
+   flex: 1;
+   white-space: normal; /* Allow text to wrap */
+   word-wrap: break-word; /* Break long words if necessary */
+   overflow-wrap: break-word; /* Ensures long words wrap */
+   word-break: break-all; /* Force break for very long words */
+   font-size: 14px; /* Starting font size */
+   min-height: 60px; /* Minimum height to ensure consistent button size */
+   max-height: 100px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   text-align: center;
+   line-height: 1.2; /* Improve readability for wrapped text */
+   hyphens: auto; /* Enable automatic hyphenation */
+ }
+ 
+ button:hover {
+   background-color: #e0e0e0;
+ }
+ 
+ /* Media query for smaller screens or when buttons get too small */
+ @media (max-width: 600px) or (max-height: 400px) {
+   button {
+     font-size: 12px; /* Smaller font size for smaller screens or buttons */
+     padding: 6px 8px; /* Slightly reduced padding */
+   }
+ }
+ 
+ h3 {
+   margin-bottom: 10px;
+   font-size: 1.1em;
+   font-weight: bold;
+ }

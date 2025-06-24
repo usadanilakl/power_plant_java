@@ -15,6 +15,16 @@
       <button class="control-button">Add LOTO Point</button>
       <button class="control-button">Link Equipment</button>
     </div>
+    <div class="checkbox-row">
+      @for (eqType of selectedEqTypes(); track eqType.type) {
+        <label class="checkbox-label">
+          <input type="checkbox" 
+                 [checked]="eqType.selected" 
+                 (change)="onEqTypeChange(eqType)">
+          {{ eqType.type }}
+        </label>
+      }
+    </div>
   </div>
 </div>
 
