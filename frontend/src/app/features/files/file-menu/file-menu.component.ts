@@ -92,7 +92,8 @@ constructor(
         id: file.id.toString(),
         name: file.name,
         isExpanded: false,
-        objectType: 'file'
+        objectType: file.objectType,
+        color: this.setFileItemColor(file)
       }));
   
       return parentItem;
@@ -138,6 +139,16 @@ constructor(
   private handleFileTreeClick(item: NestedItem): void {
     console.log('Handling click for files/tree route', item);
     // Implement tree-specific click logic here
+  }
+
+  private setFileItemColor(item: FileDto): string{
+    if(!item.name || item.name === ''){
+      return 'red';
+    }
+    if(!item.isVerified){
+      return 'yellow';
+    }
+    return 'green';
   }
 
 

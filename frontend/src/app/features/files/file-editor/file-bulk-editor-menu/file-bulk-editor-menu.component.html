@@ -35,7 +35,7 @@
 
   @if(displayData().length > 0) {
     @for(data of displayData(); track data.id) {
-      <p (click)="updateSelectedShape(data.id)">{{data.data}}</p>
+      <p (mouseenter)="updateSelectedShape(data.id)">{{data.data}}</p>
     }
   }
 </app-floating-menu>

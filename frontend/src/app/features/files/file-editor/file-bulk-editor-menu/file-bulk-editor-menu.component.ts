@@ -4,6 +4,7 @@ import { Shape } from '../../../../models/shape.model';
 import { CurrentFileService } from '../../../../services/current-file.service';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
 import { CurrentEquipmentService } from '../../../../services/current-items-services/current-equipment.service';
+import { debounceTime, Subject } from 'rxjs';
 
 
   type DisplayData = {
@@ -20,6 +21,8 @@ export class FileBulkEditorMenuComponent {
 
   private currentFileService = inject(CurrentFileService);
   private currentEquipmentService = inject(CurrentEquipmentService);
+
+  private hoverSubject = new Subject<number | null>();
   
   shapes = input<Shape[]>([]);
   isOpen = input<boolean>(false);
@@ -30,6 +33,14 @@ export class FileBulkEditorMenuComponent {
 
   private lastSelectedKey: string | null = null;
   private isAscending = true;
+
+  constructor() {
+    this.hoverSubject.pipe(
+      debounceTime(200)  // Adjust this value as needed (200ms debounce time)
+    ).subscribe(shapeId => {
+      this.currentEquipmentService.setCurrentShapeWithId(shapeId);
+    });
+  }
 
 handleClose() {
   // Handle menu close
@@ -42,7 +53,7 @@ setDataToDisplay(key: string) {
     this.isAscending = true;
   }
   
-  this.currentFileService.getElements().subscribe(elements => {
+  this.currentFileService.getElementsToRender().subscribe(elements => {
     const newDisplayData = elements.map(el => ({
       id: el.id,
       data: this.getNestedValue(el, key)
@@ -67,10 +78,8 @@ private getNestedValue(obj: any, path: string): string {
     return prev ? prev[curr] : '';
   }, obj) || '';
 }
-
-  // Add this new method
   updateSelectedShape(shapeId: number | null) {
-    this.currentEquipmentService.setCurrentShapeWithId(shapeId);
+    this.hoverSubject.next(shapeId);
   }
 
 }

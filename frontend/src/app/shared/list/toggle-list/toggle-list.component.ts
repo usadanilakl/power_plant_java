@@ -2,6 +2,12 @@ import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NestedItem, NestedItemImpl } from '../../../models/ui/nested-item.model';
 
+
+interface ColorCondition {
+  condition: (item: NestedItem) => boolean;
+  color: string;
+}
+
 @Component({
   selector: 'app-toggle-list',
   standalone: true,
@@ -15,6 +21,7 @@ export class ToggleListComponent {
   trackLastClicked = input<boolean>(false);
   trackAllClicked = input<boolean>(false);
   colorLevels = input<boolean>(false);
+
 
   itemClicked = output<NestedItem>();
   itemDoubleClicked = output<NestedItem>();
@@ -126,4 +133,9 @@ export class ToggleListComponent {
     }
     return maxLevel;
   }
+
+  getItemColor(item: NestedItem): string | null {
+    return item.color || null;
+  }
+
 }

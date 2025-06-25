@@ -4,6 +4,7 @@ export interface NestedItem {
   values?: NestedItem[];
   isExpanded?: boolean;
   objectType: string;
+  color: string;
 }
 
 export class NestedItemImpl implements NestedItem {
@@ -12,6 +13,7 @@ export class NestedItemImpl implements NestedItem {
   values?: NestedItem[];
   isExpanded: boolean;
   objectType: string;
+  color: string;
 
   constructor(data: Partial<NestedItem> = {}) {
     this.id = data.id ?? '';
@@ -19,6 +21,7 @@ export class NestedItemImpl implements NestedItem {
     this.values = data.values?.map(item => new NestedItemImpl(item)) ?? [];
     this.isExpanded = data.isExpanded ?? false;
     this.objectType = data.objectType?? '';
+    this.color = data.color?? '';
   }
 
   addChild(child: NestedItem): void {
