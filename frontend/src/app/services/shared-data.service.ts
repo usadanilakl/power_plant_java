@@ -16,6 +16,7 @@ export class SharedDataService {
   private vendorsSubject = new BehaviorSubject<ValueDto[]>([]);
   private isoPositionsSubject = new BehaviorSubject<ValueDto[]>([]);
   private normPositionsSubject = new BehaviorSubject<ValueDto[]>([]);
+  private locationsSubject = new BehaviorSubject<ValueDto[]>([]);
 
   systems$: Observable<ValueDto[]> = this.systemsSubject.asObservable();
   equipmentTypes$: Observable<ValueDto[]> = this.equipmentTypesSubject.asObservable();
@@ -23,6 +24,7 @@ export class SharedDataService {
   vendors$: Observable<ValueDto[]> = this.vendorsSubject.asObservable();
   isoPositions$: Observable<ValueDto[]> = this.isoPositionsSubject.asObservable();
   normPositions$: Observable<ValueDto[]> = this.normPositionsSubject.asObservable();
+  locations$: Observable<ValueDto[]> = this.locationsSubject.asObservable();
 
   private cachedSystems$: Observable<ValueDto[]> | null = null;
   private cachedEquipmentTypes$: Observable<ValueDto[]> | null = null;
@@ -30,6 +32,7 @@ export class SharedDataService {
   private cachedVendors$: Observable<ValueDto[]> | null = null;
   private cachedIsoPositions$: Observable<ValueDto[]> | null = null;
   private cachedNormPositions$: Observable<ValueDto[]> | null = null;
+  private cachedLocations$: Observable<ValueDto[]> | null = null;
 
   private lotoAccessoryStatusesSubject = new BehaviorSubject<ValueDto[]>([]);
   lotoAccessoryStatuses$: Observable<ValueDto[]> = this.lotoAccessoryStatusesSubject.asObservable();
@@ -79,6 +82,23 @@ export class SharedDataService {
     return this.cachedVendors$;
   }
 
+  loadLocations(): Observable<ValueDto[]> {
+    if (!this.cachedLocations$) {
+      this.cachedLocations$ = this.loadValuesOfCategory('location').pipe(
+        tap(data => this.locationsSubject.next(data))
+      );
+    }
+    return this.cachedLocations$;
+  }
+
+  loadEqTypes(): Observable<ValueDto[]> {
+    if (!this.cachedEquipmentTypes$) {
+      this.cachedEquipmentTypes$ = this.loadValuesOfCategory('eqType').pipe(
+        tap(data => this.equipmentTypesSubject.next(data))
+      );
+    }
+    return this.cachedEquipmentTypes$;
+  }
   
   loadIsoPositions(): Observable<ValueDto[]> {
     if (!this.cachedIsoPositions$) {
@@ -97,7 +117,6 @@ export class SharedDataService {
     }
     return this.cachedNormPositions$;
   }
-
   
   loadLotoAccessoryStatuses(): Observable<ValueDto[]> {
     if (!this.cachedLotoAccessoryStatuses$) {
@@ -111,7 +130,6 @@ export class SharedDataService {
   updateLotoAccessoryStatuses(statuses: ValueDto[]) {
     this.lotoAccessoryStatusesSubject.next(statuses);
   }
-
 
   updateSystems(systems: ValueDto[]) {
     this.systemsSubject.next(systems);
@@ -160,5 +178,7 @@ export class SharedDataService {
     this.cachedNormPositions$ = null;
     this.cachedLotoAccessoryStatuses$ = null;
     this.cachedLotoStatuses$ = null;
+    this.cachedVendors$ = null;
+
   }
 }

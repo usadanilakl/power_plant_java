@@ -6,45 +6,30 @@
   [open]="isOpen()"
   (close)="handleClose()">
 
-  <!-- <div class="button-groups">
-    <div class="control-buttons">
-      <h3>Control Buttons</h3>
-      <div class="button-row">
-        <button (click)="setDataToDisplay('tagNumber')">Tag Number</button>
-        <button (click)="setDataToDisplay('description')">Description</button>
-        <button (click)="setDataToDisplay('location.name')">Location</button>
-        <button (click)="setDataToDisplay('normPos.name')">Normal Position</button>
-        <button (click)="setDataToDisplay('isoPos.name')">Iso Position</button>
-        <button (click)="setDataToDisplay('system.name')">System</button>
-        <button (click)="setDataToDisplay('eqType.name')">Equipment Type</button>
-      </div>
-    </div>
-    <div class="edit-buttons">
-      <h3>Edit Buttons</h3>
-      <div class="button-row">
-        <button (click)="getVisibleShapes()">Tag Number</button>
-        <button (click)="getAllShapes()">Description</button>
-        <button>Location</button>
-        <button>Normal Position</button>
-        <button>Iso Position</button>
-        <button>System</button>
-        <button>Equipment Type</button>
-      </div>
-    </div>
-  </div>
-
-  @if(displayData().length > 0) {
-    @for(data of displayData(); track data.id) {
-      <p (mouseenter)="updateSelectedShape(data.id)">{{data.data}}</p>
-    }
-  } -->
-
   <app-equipment-table
   [equipmentList]="equipmentData()"
   (equipmentClicked)="onEquipmentSelected($event)"
-  (equipmentDoubleClicked)="onEquipmentEdit($event)"
+  (equipmentDoubleClicked)="onEquipmentEdit($event.item, $event.column)"
   (equipmentRightClicked)="onEquipmentContextMenu($event)"
   (equipmentHovered)="onEquipmentHover($event)"
   (equipmentDeleted)="onEquipmentDelete($event)"
 ></app-equipment-table>
 </app-floating-menu>
+
+@if (isPopupOpen) {
+    <app-popup-projection
+      [isOpen]="isPopupOpen"
+      [title]="'LOTO Point Details'"
+      [size]="'medium'"
+      (close)="onClosePopup()">
+      
+      <app-details-form
+        [fields]="fields"
+        [values]="itemToEdit()"
+        [layout]="'reactive'"
+        (formSubmit)="onFormSubmit($event)"
+        (formDelete)="onFormDelete()">
+      </app-details-form>
+    
+    </app-popup-projection>
+}

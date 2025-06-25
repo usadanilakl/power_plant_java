@@ -14,7 +14,7 @@ import { Column } from '../../../models/column.model';
       [columns]="columns"
       [items]="equipmentList"
       [clickCallback]="onEquipmentClick"
-      [doubleClickCallback]="onEquipmentDoubleClick"
+      [cellDoubleClickCallback]="onEquipmentDoubleClick"
       [rightClickCallback]="onEquipmentRightClick"
       [deleteItem]="onDeleteEquipment"
       (rowHoveredEvent)="onEquipmentHover($event)"
@@ -24,7 +24,7 @@ import { Column } from '../../../models/column.model';
 export class EquipmentTableComponent {
   @Input() equipmentList: EquipmentDto[] = [];
   @Output() equipmentClicked = new EventEmitter<EquipmentDto>();
-  @Output() equipmentDoubleClicked = new EventEmitter<EquipmentDto>();
+  @Output() equipmentDoubleClicked = new EventEmitter<{item: EquipmentDto, column: Column}>();
   @Output() equipmentRightClicked = new EventEmitter<EquipmentDto>();
   @Output() equipmentHovered = new EventEmitter<EquipmentDto>();
   @Output() equipmentDeleted = new EventEmitter<string>();
@@ -47,8 +47,8 @@ export class EquipmentTableComponent {
     this.equipmentClicked.emit(item);
   }
 
-  onEquipmentDoubleClick = (item: EquipmentDto) => {
-    this.equipmentDoubleClicked.emit(item);
+  onEquipmentDoubleClick = (item: EquipmentDto, column: Column) => {
+    this.equipmentDoubleClicked.emit({item, column});
   }
 
   onEquipmentRightClick = (item: EquipmentDto) => {

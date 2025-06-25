@@ -2,6 +2,19 @@ import { ValueDto } from '../value.model';
 import { LotoPointDto } from '../loto/loto-point.model';
 import { RectangleShape } from '../shape.model';
 import { BaseDto, BaseModel } from '../base/base.model';
+import { ValidatorFn, Validators } from '@angular/forms';
+import { Option } from '../option.model';
+
+export type EquipmentFieldName = keyof EquipmentModel;
+
+export interface EquipmentFormField {
+  name: string;
+  label: string;
+  type: 'text' | 'select' | 'multi-select';
+  validators?: ValidatorFn[];
+  options?: { value: string; label: string }[];
+  initialValue?: any;
+}
 
 export interface EquipmentModel extends BaseModel  {
   tagNumber: string;
@@ -208,5 +221,79 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     return '';
   }
 
-  // You can add methods here for any equipment-specific operations
+    static isValidKey(key: string): key is keyof EquipmentModel {
+      const validKeys: (keyof EquipmentModel)[] = [
+        'id', 'tagNumber', 'description', 'specificLocation', 'eqType',
+        'files', 'vendor', 'location', 'system', 'coordinates',
+        'originalPictureSize', 'mainFile', 'lotoPoints', 'isUpdated',
+        'conflictStatus', 'isVerified'
+      ];
+      return validKeys.includes(key as keyof EquipmentModel);
+    }
+
+  static toFormFields(
+    dto: EquipmentDto,
+    eqTypeOptions: Option[],
+    vendorOptions: Option[],
+    locationOptions: Option[],
+    systemOptions: Option[],
+    fields: EquipmentFieldName[] = ['tagNumber', 'description', 'specificLocation', 'eqType', 'vendor', 'location', 'system']
+  ): EquipmentFormField[] {
+    const allFields: { [key in EquipmentFieldName]: EquipmentFormField } = {
+      id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
+      tagNumber: { name: 'tagNumber', label: 'Tag Number', type: 'text', validators: [Validators.required], initialValue: dto.tagNumber },
+      description: { name: 'description', label: 'Description', type: 'text', validators: [Validators.required], initialValue: dto.description },
+      specificLocation: { name: 'specificLocation', label: 'Specific Location', type: 'text', initialValue: dto.specificLocation },
+      eqType: {
+        name: 'eqType',
+        label: 'Equipment Type',
+        type: 'select',
+        options: eqTypeOptions,
+        initialValue: dto.eqType?.id || null
+      },
+      files: { name: 'files', label: 'Files', type: 'multi-select', initialValue: dto.files },
+      vendor: {
+        name: 'vendor',
+        label: 'Vendor',
+        type: 'select',
+        options: vendorOptions,
+        initialValue: dto.vendor?.id || null
+      },
+      location: {
+        name: 'location',
+        label: 'Location',
+        type: 'select',
+        options: locationOptions,
+        initialValue: dto.location?.id || null
+      },
+      system: {
+        name: 'system',
+        label: 'System',
+        type: 'select',
+        options: systemOptions,
+        initialValue: dto.system?.id || null
+      },
+      coordinates: { name: 'coordinates', label: 'Coordinates', type: 'text', initialValue: dto.coordinates },
+      originalPictureSize: { name: 'originalPictureSize', label: 'Original Picture Size', type: 'text', initialValue: dto.originalPictureSize },
+      mainFile: { name: 'mainFile', label: 'Main File', type: 'text', initialValue: dto.mainFile },
+      lotoPoints: { name: 'lotoPoints', label: 'LOTO Points', type: 'multi-select', initialValue: dto.lotoPoints.map(point => point.id) },
+      isUpdated: { name: 'isUpdated', label: 'Is Updated', type: 'text', initialValue: dto.isUpdated },
+      conflictStatus: { name: 'conflictStatus', label: 'Conflict Status', type: 'text', initialValue: dto.conflictStatus },
+      isVerified: { 
+        name: 'isVerified', 
+        label: 'Is Verified', 
+        type: 'select', 
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' }
+        ], 
+        initialValue: dto.isVerified.toString() 
+      },
+      name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
+      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType }
+    };
+  
+    return fields.map(fieldName => allFields[fieldName]);
+  }
+    
 }

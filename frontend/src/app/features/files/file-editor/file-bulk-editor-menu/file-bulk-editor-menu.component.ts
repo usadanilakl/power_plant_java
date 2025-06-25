@@ -1,20 +1,22 @@
-import { Component, inject, input, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, input, OnInit, signal } from '@angular/core';
 import { FloatingMenuComponent, MenuPosition } from "../../../../shared/menu/floating-menu/floating-menu.component";
 import { Shape } from '../../../../models/shape.model';
 import { CurrentFileService } from '../../../../services/current-file.service';
-import { EquipmentDto } from '../../../../models/equipment/equipment.model';
+import { EquipmentDto, EquipmentFormField } from '../../../../models/equipment/equipment.model';
 import { CurrentEquipmentService } from '../../../../services/current-items-services/current-equipment.service';
-import { debounceTime, Subject } from 'rxjs';
+import { catchError, debounceTime, forkJoin, map, Observable, of, Subject, tap } from 'rxjs';
 import { EquipmentTableComponent } from "../../../equipment/equipment-table/equipment-table.component";
+import { PopupProjectionComponent } from "../../../../shared/popup-projection/popup-projection.component";
+import { DetailsFormComponent } from "../../../../shared/details-form/details-form.component";
+import { Column } from '../../../../models/column.model';
+import { ValueDto } from '../../../../models/value.model';
+import { Option } from '../../../../models/option.model';
+import { SharedDataService } from '../../../../services/shared-data.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-
-  type DisplayData = {
-    id: number;
-    data: string;
-  }
 @Component({
   selector: 'app-file-bulk-editor-menu',
-  imports: [FloatingMenuComponent, EquipmentTableComponent],
+  imports: [FloatingMenuComponent, EquipmentTableComponent, PopupProjectionComponent, DetailsFormComponent],
   templateUrl: './file-bulk-editor-menu.component.html',
   styleUrl: './file-bulk-editor-menu.component.css'
 })
@@ -22,95 +24,122 @@ export class FileBulkEditorMenuComponent implements OnInit {
 
   private currentFileService = inject(CurrentFileService);
   private currentEquipmentService = inject(CurrentEquipmentService);
+  private sharedDataService = inject(SharedDataService);
+  private destroyRef = inject(DestroyRef);
 
   private hoverSubject = new Subject<number | null>();
   
   shapes = input<Shape[]>([]);
   isOpen = input<boolean>(false);
+  
+  equipmentData = signal<EquipmentDto[]>([]);
+  itemToEdit = signal<EquipmentDto | null>(null);
+  fields: EquipmentFormField[] = [];
+  isPopupOpen = false;
+  isFormReady = false;
+  DetailsFormComponent = DetailsFormComponent;
 
-  displayData = signal<DisplayData[]>([]);
+  systems = signal<Option[]>([]);
+  locations = signal<Option[]>([]);
+  vendors = signal<Option[]>([]);
+  eqTypes = signal<Option[]>([]);
 
   MenuPosition = MenuPosition;
 
-  private lastSelectedKey: string | null = null;
-  private isAscending = true;
-
-  constructor() {
-    this.hoverSubject.pipe(
-      debounceTime(200)  // Adjust this value as needed (200ms debounce time)
-    ).subscribe(shapeId => {
-      this.currentEquipmentService.setCurrentShapeWithId(shapeId);
-    });
-  }
   ngOnInit(): void {
     this.currentFileService.getElementsToRender().subscribe(equipmentList => {
       this.equipmentData.set(equipmentList);
     });
+    forkJoin({
+      systems: this.loadOptions(this.sharedDataService.loadSystems()),
+      locations: this.loadOptions(this.sharedDataService.loadLocations()),
+      vendors: this.loadOptions(this.sharedDataService.loadVendors()),
+      eqTypes: this.loadOptions(this.sharedDataService.loadEqTypes()),
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(({ systems, locations, vendors, eqTypes }) => {
+        this.systems.set(systems);
+        this.locations.set(locations);
+        this.vendors.set(vendors);
+        this.eqTypes.set(eqTypes);
+      }),
+      catchError(error => {
+        console.error('Error loading form data:', error);
+        return of({ isoPositions: [], normPositions: [] });
+      })
+    ).subscribe();
   }
 
-handleClose() {
-  // Handle menu close
-}
-
-setDataToDisplay(key: string) {
-  if (this.lastSelectedKey === key) {
-    this.isAscending = !this.isAscending;
-  } else {
-    this.isAscending = true;
+  handleClose() {
+    // Handle menu close
   }
-  
-  this.currentFileService.getElementsToRender().subscribe(elements => {
-    const newDisplayData = elements.map(el => ({
-      id: el.id,
-      data: this.getNestedValue(el, key)
-    }));
-    this.displayData.set(newDisplayData);
-    this.sortDataToDisplay(this.isAscending);
-  });
-  
-  this.lastSelectedKey = key;
-}
-
-sortDataToDisplay(isAscending: boolean = true): void {
-  console.log('Sorting data to display ' + isAscending);
-  const sortedData = [...this.displayData()].sort((a, b) => 
-    isAscending ? a.data.localeCompare(b.data) : b.data.localeCompare(a.data)
-  );
-  this.displayData.set(sortedData);
-}
-
-private getNestedValue(obj: any, path: string): string {
-  return path.split('.').reduce((prev, curr) => {
-    return prev ? prev[curr] : '';
-  }, obj) || '';
-}
   updateSelectedShape(shapeId: number | null) {
     this.hoverSubject.next(shapeId);
   }
 
+  onClosePopup() {
+    this.isPopupOpen = false;
+    this.itemToEdit.set(null);
+    this.fields = [];
+    this.isFormReady = false;
+  }
+
+  onFormSubmit(formData: any) {
+
+  }
+
+  onFormDelete(){}
 
 
   //Table related methods
-  equipmentData = signal<EquipmentDto[]>([]);
 
-onEquipmentSelected(equipment: EquipmentDto) {
-  // Handle equipment selection
-}
+  onEquipmentSelected(item: EquipmentDto) {
+  }
 
-onEquipmentEdit(equipment: EquipmentDto) {
-  // Handle equipment edit (e.g., open edit form)
-}
+  onEquipmentEdit(equipment: EquipmentDto, column: Column) {
+    this.itemToEdit.set(equipment);
+    this.setupEditFields(equipment, column);
+    this.isPopupOpen = true;
+  }
 
-onEquipmentContextMenu(equipment: EquipmentDto) {
-  // Handle right-click context menu
-}
+  onEquipmentContextMenu(equipment: EquipmentDto) {
+    // Handle right-click context menu
+  }
 
-onEquipmentHover(equipment: EquipmentDto) {
-  this.currentEquipmentService.setCurrentEquipment(equipment);
-}
+  onEquipmentHover(equipment: EquipmentDto) {
+    this.currentEquipmentService.setCurrentEquipment(equipment);
+  }
 
-onEquipmentDelete(id: string) {
-  // Handle equipment deletion
-}
+  onEquipmentDelete(id: string) {
+    // Handle equipment deletion
+  }
+
+
+  
+  
+    private setupEditFields(item: EquipmentDto, column: Column) {
+      if (EquipmentDto.isValidKey(column.id)) {
+        this.fields = EquipmentDto.toFormFields(
+          item,
+          this.locations(),
+          this.systems(),
+          this.vendors(),
+          this.eqTypes(),
+          [column.id]
+        );
+        this.isFormReady = true;
+      } else {
+        console.error(`Invalid column id: ${column.id}`);
+        // Handle the error case, maybe set a default field or show an error message
+      }
+    }    private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
+          return source.pipe(
+            map(items => items.map(item => new ValueDto(item).toOption())),
+            catchError(error => {
+              console.error('Error loading options:', error);
+              return of([]);
+            })
+          );
+        }
 
 }
