@@ -9,10 +9,11 @@ import { FileBulkEditorMenuComponent } from "./file-bulk-editor-menu/file-bulk-e
 import { Shape } from '../../../models/shape.model';
 import { map } from 'rxjs';
 import { CommonModule } from '@angular/common';
+import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
 
 @Component({
   selector: 'app-file-editor',
-  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule],
+  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent],
   templateUrl: './file-editor.component.html',
   styleUrl: './file-editor.component.css',
   standalone: true,
@@ -27,6 +28,8 @@ export class FileEditorComponent {
   visibleShapes = signal<Shape[]>([]);
   isMenuOpen = signal<boolean>(false);
   selectedEqTypes = signal<{type: string, selected: boolean}[]>([]);
+  uniqueEquipmentTypes = signal<string[]>([]);
+  isFilterMenuOpen = signal<boolean>(false);
 
 
 
@@ -37,6 +40,25 @@ export class FileEditorComponent {
     private imageService: ImageService
   ) {}
 
+  // ngOnInit() {
+  //   this.currentFileService.currentFile$.pipe(
+  //     takeUntilDestroyed(this.destroyRef)
+  //   ).subscribe(file => {
+  //     this.currentFile.set(file);
+  //     if (file) {
+  //       // Handle the new file data, e.g., populate form fields
+  //       // console.log('Current file:', file);
+  //     }
+  //   });
+
+
+  //   this.currentFileService.getUniqueEquipmentTypes().pipe(
+  //     takeUntilDestroyed(this.destroyRef)
+  //   ).subscribe(types => {
+  //     this.uniqueEquipmentTypes.set(types);
+  //   });
+  // }
+
   ngOnInit() {
     this.currentFileService.currentFile$.pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -44,10 +66,16 @@ export class FileEditorComponent {
       this.currentFile.set(file);
       if (file) {
         // Handle the new file data, e.g., populate form fields
-        // console.log('Current file:', file);
       }
     });
-    this.setEquipmentTypes();
+  
+    this.currentFileService.getUniqueEquipmentTypes().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(types => {
+      this.uniqueEquipmentTypes.set(types);
+      this.initializeSelectedEqTypes();
+      this.updateFilteredEquipment();
+    });
   }
 
   onNewShapeCreated(shape: any) {
@@ -75,31 +103,35 @@ export class FileEditorComponent {
     this.openMenu.emit(this.isMenuOpen());
   }
 
-  setEquipmentTypes() {
-    this.currentFileService.getElements().subscribe(elements => {
-      const equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
-      
-      // Create a Set of unique equipment types
-      const uniqueEqTypes = new Set(elements.map(el => el.eqType.name));
-      
-      // Convert the Set back to an array and map it to the required structure
-      const eqTypes = Array.from(uniqueEqTypes).map(type => ({
-        type: type,
-        selected: !equipmentNotSelectedByDefault.includes(type.toLowerCase())
-      }));
-      
-      this.selectedEqTypes.set(eqTypes);
-    });
+  onFilterMenuOpen(): void {
+    this.isFilterMenuOpen.set(!this.isFilterMenuOpen());
   }
 
 onEqTypeChange(eqType: {type: string, selected: boolean}) {
-  eqType.selected = !eqType.selected;
+  const updatedTypes = this.selectedEqTypes().map(et => 
+    et.type === eqType.type ? {...et, selected: !et.selected} : et
+  );
+  this.selectedEqTypes.set(updatedTypes);
+  this.updateFilteredEquipment();
+}
+
+initializeSelectedEqTypes() {
+  const equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
+  this.selectedEqTypes.set(
+    this.uniqueEquipmentTypes().map(type => ({
+      type,
+      selected: !equipmentNotSelectedByDefault.includes(type.toLowerCase())
+    }))
+  );
+}
+
+updateFilteredEquipment() {
   const selectedTypes = this.selectedEqTypes()
     .filter(eq => eq.selected)
     .map(eq => eq.type);
 
   this.currentFileService.getElements().pipe(
-    map(elements => elements.filter(el => selectedTypes.includes(el.eqType.name)))
+    map(elements => elements.filter(el => el.eqType && el.eqType.name && selectedTypes.includes(el.eqType.name)))
   ).subscribe(filteredEquipments => {
     this.currentFileService.setElementsToRender(filteredEquipments);
   });

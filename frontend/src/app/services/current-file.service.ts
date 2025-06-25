@@ -15,6 +15,23 @@ export class CurrentFileService {
 
     private elementsToRenderSubject = new BehaviorSubject<EquipmentDto[]>([]);
     elementsToRender$ = this.elementsToRenderSubject.asObservable();
+    
+    private uniqueEquipmentTypesSubject = new BehaviorSubject<string[]>([]);
+    uniqueEquipmentTypes$ = this.uniqueEquipmentTypesSubject.asObservable();
+
+    private equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
+
+    // setCurrentFile(file: FileDto | null): void {
+    //     this.currentFileSubject.next(file);
+          
+    //     // Extract elements from the points field
+    //     const elements: EquipmentDto[] = file?.points || [];
+    //     this.elementsSubject.next(elements);
+    //     if(file && file.points)this.uniqueEquipmentTypes = this.getUniqueEqTypes();
+    //     this.updateElementsToRender(this.equipmentNotSelectedByDefault);
+
+    //     // console.log('current elements',elements);
+    // }
 
     setCurrentFile(file: FileDto | null): void {
         this.currentFileSubject.next(file);
@@ -22,8 +39,15 @@ export class CurrentFileService {
         // Extract elements from the points field
         const elements: EquipmentDto[] = file?.points || [];
         this.elementsSubject.next(elements);
-
-        // console.log('current elements',elements);
+        
+        if (file && file.points) {
+            const uniqueTypes = this.getUniqueEqTypes();
+            this.uniqueEquipmentTypesSubject.next(uniqueTypes);
+        } else {
+            this.uniqueEquipmentTypesSubject.next([]);
+        }
+        
+        this.updateElementsToRender(this.equipmentNotSelectedByDefault);
     }
 
     setElementsToRender(elements: EquipmentDto[]): void {
@@ -38,6 +62,10 @@ export class CurrentFileService {
         return this.elements$;
     }
 
+    getUniqueEquipmentTypes(): Observable<string[]> {
+        return this.uniqueEquipmentTypes$;
+    }
+
     clearCurrentFile(): void {
         this.currentFileSubject.next(null);
         this.elementsSubject.next([]);
@@ -46,4 +74,29 @@ export class CurrentFileService {
     getElementsToRender(): Observable<EquipmentDto[]> {
         return this.elementsToRender$;
     }
+
+    private filterByEquipmentType(exclude: string[]): EquipmentDto[] {
+      const currentElements = this.elementsSubject.getValue();
+      return currentElements.filter(element => 
+        element && element.eqType && element.eqType.name && 
+        !exclude.includes(element.eqType.name.toLowerCase())
+      );
+    }
+    
+    // Public method for components to call
+    updateElementsToRender(excludeTypes: string[]): void {
+      const filteredElements = this.filterByEquipmentType(excludeTypes);
+      this.elementsToRenderSubject.next(filteredElements);
+    }
+    
+    private getUniqueEqTypes(): string[] {      
+      const elements = this.elementsSubject.getValue();
+      const uniqueEqTypes = new Set(
+        elements
+          .filter(el => el && el.eqType && el.eqType.name)
+          .map(el => el.eqType.name)
+      );
+      return Array.from(uniqueEqTypes);
+    }
+
 }

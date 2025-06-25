@@ -1,7 +1,7 @@
 <div class="image-container">
   <app-image-zoom-interactive
     [imageUrl]="currentFile()?.fileLink"
-    [elements]="currentFileService.getElements()"
+    [elements]="currentFileService.getElementsToRender()"
     (visibleShapes)="handleVisibleShapes($event)"
     (shapeSelected)="onShapeSelected($event)"
     (newShapeCreated)="onNewShapeCreated($event)">
@@ -11,10 +11,21 @@
   <div class="control-section">
     <div class="button-row">
       <button (click)="onMenuOpen()" class="control-button">Bulk Edit</button>
-      <button class="control-button">Delete</button>
+      <button (click)="onFilterMenuOpen()" class="control-button">Equipment Filter</button>
       <button class="control-button">Add LOTO Point</button>
       <button class="control-button">Link Equipment</button>
     </div>
+  </div>
+</div>
+
+<app-file-bulk-editor-menu
+[isOpen]="isMenuOpen()"
+[shapes]="visibleShapes()">
+</app-file-bulk-editor-menu>
+
+<app-floating-menu 
+[title]="'Equipmnet Filter'"
+[open]="isFilterMenuOpen()">
     <div class="checkbox-row">
       @for (eqType of selectedEqTypes(); track eqType.type) {
         <label class="checkbox-label">
@@ -24,11 +35,4 @@
           {{ eqType.type }}
         </label>
       }
-    </div>
-  </div>
-</div>
-
-<app-file-bulk-editor-menu
-[isOpen]="isMenuOpen()"
-[shapes]="visibleShapes()">
-</app-file-bulk-editor-menu>
+  </div></app-floating-menu>
