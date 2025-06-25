@@ -1,9 +1,10 @@
-import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef, output, input, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
-import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable } from 'rxjs';
+import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable, Subject, Subscription } from 'rxjs';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-shared-table',
@@ -13,6 +14,9 @@ import { SearchCriteria } from '../../models/api/search-criteria.model';
   styleUrls: ['./table.component.css']
 })
 export class TableComponent implements OnInit {
+
+  private destroyRef = inject(DestroyRef);
+
   @Input() columns: Column[] = [];
   @Input() clickCallback!: (item: any, event: MouseEvent) => void;
   @Input() doubleClickCallback?: (item: any) => void;
@@ -20,10 +24,13 @@ export class TableComponent implements OnInit {
   @Input() middleClickCallback?: (item: any) => void;
   @Input() cellDoubleClickCallback?: (item: any, column: Column) => void;
   @Input() deleteItem?: (item: string) => void;
+  hoverDebounceTime = input<number>(0);
+
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
   @Output() loadMoreItems = new EventEmitter<SearchCriteria>();
   @Output() search = new EventEmitter<SearchCriteria>();
+  rowHoveredEvent = output<any>();
 
   selectedItems: any[] = [];
   lastClickedItem: any = null;
@@ -38,26 +45,48 @@ export class TableComponent implements OnInit {
 
   private clickTimer: any;
   private clickDelay = 250; // milliseconds
+  private hoverSubject = new Subject<any>();
 
   constructor(private cdr: ChangeDetectorRef) {}
 
+  // @Input() set items(value: any[] | Observable<any[]>) {
+  //   if (Array.isArray(value)) {
+  //     this._items.next(value);
+  //   } else if (value instanceof Observable) {
+  //     value.subscribe(items => this._items.next(items));
+  //   }
+  // }
+
+  private itemsSubscription: Subscription | null = null;
+  
   @Input() set items(value: any[] | Observable<any[]>) {
     if (Array.isArray(value)) {
       this._items.next(value);
     } else if (value instanceof Observable) {
-      value.subscribe(items => this._items.next(items));
+      this.itemsSubscription?.unsubscribe();
+      this.itemsSubscription = value.pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(items => this._items.next(items));
     }
   }
 
-  ngOnInit() {
-    this._items.pipe(
-      debounceTime(0),
-      distinctUntilChanged()
-    ).subscribe(() => {
-      this.updateFilteredItems();
-      this.cdr.detectChanges();
-    });
-  }
+ngOnInit() {
+  this._items.pipe(
+    debounceTime(0),
+    distinctUntilChanged(),
+    takeUntilDestroyed(this.destroyRef)
+  ).subscribe(() => {
+    this.updateFilteredItems();
+    this.cdr.detectChanges();
+  });
+
+  this.hoverSubject.pipe(
+    debounceTime(this.hoverDebounceTime()),
+    takeUntilDestroyed(this.destroyRef)
+  ).subscribe(item => {
+    this.rowHoveredEvent.emit(item);
+  });
+}
 
   // ngAfterViewInit() {
   //   this.tableContainer.nativeElement.addEventListener('scroll', this.handleScroll.bind(this));
@@ -109,13 +138,6 @@ export class TableComponent implements OnInit {
     }
   }
 
-  // handleScroll() {
-  //   const { scrollTop, scrollHeight, clientHeight } = this.tableContainer.nativeElement;
-  //   if (scrollHeight - scrollTop - clientHeight < 50) {
-  //     this.loadMoreItems.emit();
-  //   }
-  // }
-
   handleScroll(event: Event) {
     const target = event.target as HTMLElement;
     const { scrollTop, scrollHeight, clientHeight } = target;
@@ -139,8 +161,7 @@ export class TableComponent implements OnInit {
   }
 
   getCellValue(item: any, column: Column): string {
-    return column.accessorFn ? column.accessorFn(item) : 
-           column.accessorKey ? this.getNestedProperty(item, column.accessorKey) : '';
+    return column.accessorFn ? column.accessorFn(item) : column.accessorKey ? this.getNestedProperty(item, column.accessorKey) : '';
   }
 
   getNestedProperty(obj: any, path: string): string {
@@ -246,6 +267,10 @@ export class TableComponent implements OnInit {
     }
   
     this.lastClickedItem = item;
+  }
+
+  onRowHover(item: any) {
+    this.hoverSubject.next(item);
   }
 
   clearSelection() {

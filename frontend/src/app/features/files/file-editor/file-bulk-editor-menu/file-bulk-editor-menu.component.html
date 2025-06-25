@@ -6,7 +6,7 @@
   [open]="isOpen()"
   (close)="handleClose()">
 
-  <div class="button-groups">
+  <!-- <div class="button-groups">
     <div class="control-buttons">
       <h3>Control Buttons</h3>
       <div class="button-row">
@@ -19,7 +19,7 @@
         <button (click)="setDataToDisplay('eqType.name')">Equipment Type</button>
       </div>
     </div>
-    <!-- <div class="edit-buttons">
+    <div class="edit-buttons">
       <h3>Edit Buttons</h3>
       <div class="button-row">
         <button (click)="getVisibleShapes()">Tag Number</button>
@@ -30,12 +30,21 @@
         <button>System</button>
         <button>Equipment Type</button>
       </div>
-    </div> -->
+    </div>
   </div>
 
   @if(displayData().length > 0) {
     @for(data of displayData(); track data.id) {
       <p (mouseenter)="updateSelectedShape(data.id)">{{data.data}}</p>
     }
-  }
+  } -->
+
+  <app-equipment-table
+  [equipmentList]="equipmentData()"
+  (equipmentClicked)="onEquipmentSelected($event)"
+  (equipmentDoubleClicked)="onEquipmentEdit($event)"
+  (equipmentRightClicked)="onEquipmentContextMenu($event)"
+  (equipmentHovered)="onEquipmentHover($event)"
+  (equipmentDeleted)="onEquipmentDelete($event)"
+></app-equipment-table>
 </app-floating-menu>

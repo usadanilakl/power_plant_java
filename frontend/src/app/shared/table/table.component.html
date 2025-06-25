@@ -1,47 +1,3 @@
-<!-- <div class="table-container" #tableContainer>
-  
-<button (click)="onDeleteSelectedItems()">Delete Selected</button>
-  <input type="text" class="search-input" placeholder="Global Search..." 
-         [(ngModel)]="globalSearchQuery" 
-         (ngModelChange)="onGlobalSearchChange()">
-
-  <table>
-    <thead>
-      <tr>
-        @for (column of columns; track column.id) {
-          <th (click)="sortColumn(column)">
-            {{ column.header }}
-            <div class="resizer"></div>
-          </th>
-        }
-      </tr>
-      <tr>
-        @for (column of columns; track column.id) {
-          <th>
-            <input type="text" class="filter-input" 
-                   [placeholder]="'Filter ' + column.header" 
-                   [(ngModel)]="columnFilters[column.id]" 
-                   (ngModelChange)="onColumnSearchChange()">
-          </th>
-        }
-      </tr>
-    </thead>
-    <tbody>
-      @for (item of filteredItems; track item.id) {
-        <tr 
-        (click)="onRowClick(item, $event)"
-        (dblclick)="onRowDoubleClick(item)"
-        (contextmenu)="onRowRightClick(item, $event)"
-        (auxclick)="onRowClick(item, $event)"
-        [class.selected]="selectedItems.includes(item)">
-          @for (column of columns; track column.id) {
-            <td (click)="registerLastClickedCell(item,column,$event)">{{ getCellValue(item, column) }}</td>
-          }
-        </tr>
-      }
-    </tbody>
-  </table>
-</div> -->
 <div class="table-wrapper">
   <div class="table-controls">
     <div class="default-controls">
@@ -82,6 +38,7 @@
       <tbody>
         @for (item of filteredItems; track item.id) {
           <tr 
+          (mouseenter)="onRowHover(item)"
           (click)="onRowClick(item, $event)"
           (dblclick)="onRowDoubleClick(item)"
           (contextmenu)="onRowRightClick(item, $event)"
