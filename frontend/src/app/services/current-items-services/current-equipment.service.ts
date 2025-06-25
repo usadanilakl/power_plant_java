@@ -17,6 +17,9 @@ export class CurrentEquipmentService {
 
     constructor() { }
 
+    private allShapesSubject = new BehaviorSubject<Shape[]>([]);
+    allShapes$ = this.allShapesSubject.asObservable();
+
     //shape comes from client-side
     private shapeSubject = new BehaviorSubject<Shape | null>(null);
     currentShape$ = this.shapeSubject.asObservable();
@@ -44,6 +47,26 @@ export class CurrentEquipmentService {
       } else {
         this.clearCurrentEquipment();
       }
+    }
+    setCurrentShapeWithId(shapeId: number | null): void {
+      if (shapeId === null) {
+        this.setCurrentShape(null);
+        return;
+      }
+    
+      // Find the shape with the given ID from the current shapes
+      const shape = this.allShapesSubject.getValue()?.find(s => s.id === shapeId) || null;
+    
+      if (shape) {
+        this.setCurrentShape(shape);
+      } else {
+        // If the shape is not found in the current set, create a minimal shape object
+        // const minimalShape: Shape = { id: shapeId, type: 'rectangle' };
+        // this.setCurrentShape(minimalShape);
+      }
+    
+      // Fetch the equipment data regardless of whether we found the shape or not
+      this.fetchEquipmentById(shapeId);
     }
 
     private fetchEquipmentById(id: number): void {
@@ -128,6 +151,14 @@ export class CurrentEquipmentService {
 
     getRelatedLotoPoints(): Observable<LotoPointDto[]> {
         return this.relatedLotoPoints$;
+    }
+
+    getAllShapes(): Observable<Shape[]> {
+      return this.allShapesSubject.asObservable();
+    }
+
+    setAllShapes(shapes: Shape[]): void {
+      this.allShapesSubject.next(shapes);
     }
 
     clearCurrentEquipment(): void {

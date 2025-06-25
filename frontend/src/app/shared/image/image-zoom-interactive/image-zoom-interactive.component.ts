@@ -5,6 +5,7 @@ import { ShapeFactoryService } from '../image-services/shape-factory.service';
 import { ShapeUtilService } from '../image-services/shape-util.service';
 import { Observable, Subscription } from 'rxjs';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
+import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 
 @Component({
   selector: 'app-image-zoom-interactive',
@@ -24,6 +25,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   private shapeFactory = inject(ShapeFactoryService);
   private shapeUtil = inject(ShapeUtilService);
   private drawingService: DrawUtilService;
+  private currentEquipmentService = inject(CurrentEquipmentService);
   private destroyRef = inject(DestroyRef);
 
   constructor() {
@@ -36,6 +38,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     private elementsSubscription: Subscription | undefined;
     private newShapeSubscription!: Subscription;
     private selectedShapeSubscription!: Subscription;
+    private currentEquipmentSubscription: Subscription |undefined;
 
 //Zooming and panning functionality variables
   private scale: number = 1;
@@ -140,6 +143,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       }
       return sh;
     });
+    this.currentEquipmentService.setAllShapes(this.shapes);
   }
 
   initializeServices(){
@@ -161,6 +165,13 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       this.shapeSelected.emit(selectedShape);
     });
 
+    this.currentEquipmentSubscription = this.currentEquipmentService.currentShape$.subscribe(shape => {
+      if (shape !== this.drawingService.getSelectedShape()) {
+        this.drawingService.updateSelectedShape(shape);
+        this.drawShapes();
+      }
+    });
+
     this.destroyRef.onDestroy(() => {
       if (this.shapesSubscription) {
         this.shapesSubscription.unsubscribe();
@@ -176,6 +187,9 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       }
       if(this.selectedShapeSubscription) {
         this.selectedShapeSubscription.unsubscribe();
+      }
+      if(this.currentEquipmentSubscription) {
+        this.currentEquipmentSubscription.unsubscribe();
       }
     });
   }

@@ -3,6 +3,7 @@ import { FloatingMenuComponent, MenuPosition } from "../../../../shared/menu/flo
 import { Shape } from '../../../../models/shape.model';
 import { CurrentFileService } from '../../../../services/current-file.service';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
+import { CurrentEquipmentService } from '../../../../services/current-items-services/current-equipment.service';
 
 
   type DisplayData = {
@@ -18,6 +19,7 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
 export class FileBulkEditorMenuComponent {
 
   private currentFileService = inject(CurrentFileService);
+  private currentEquipmentService = inject(CurrentEquipmentService);
   
   shapes = input<Shape[]>([]);
   isOpen = input<boolean>(false);
@@ -65,5 +67,10 @@ private getNestedValue(obj: any, path: string): string {
     return prev ? prev[curr] : '';
   }, obj) || '';
 }
+
+  // Add this new method
+  updateSelectedShape(shapeId: number | null) {
+    this.currentEquipmentService.setCurrentShapeWithId(shapeId);
+  }
 
 }

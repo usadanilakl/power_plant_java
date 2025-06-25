@@ -167,6 +167,21 @@ export class DrawUtilService {
     console.log(this.selectedShape);
   }
 
+  public updateSelectedShape(shape: Shape | null) {
+    // Deselect all shapes
+    this.shapes.forEach(s => s.isSelected = false);
+  
+    // Set the new selected shape
+    this.selectedShape = shape;
+  
+    if (this.selectedShape) {
+      this.selectedShape.isSelected = true;
+    }
+  
+    // Notify subscribers of the change
+    this.shapesSubject.next(this.shapes);
+  }
+
   getSelectedShape(): Shape | null {
     return this.selectedShape;
   }
