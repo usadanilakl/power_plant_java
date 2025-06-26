@@ -107,7 +107,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
   }
 
   onEquipmentHover(equipment: EquipmentDto) {
-    this.currentEquipmentService.setCurrentEquipment(equipment);
+    this.currentEquipmentService.setCurrentShapeWithId(equipment.id);
   }
 
   onEquipmentDelete(id: string) {
