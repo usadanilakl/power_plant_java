@@ -6,6 +6,7 @@ import { LotoPointDto } from '../../models/loto/loto-point.model';
 import { Shape } from '../../models/shape.model';
 import { LotoPointService } from '../loto/loto-point.service';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
+import { DataPresetDto } from '../../models/equipment/data-preset.model';
 
 @Injectable({
   providedIn: 'root'
@@ -39,6 +40,9 @@ export class CurrentEquipmentService {
     //Using tag-number and description of current equipment search db for related loto points
     private relatedLotoPointsSubject = new BehaviorSubject<LotoPointDto[]>([]);
     relatedLotoPoints$ = this.relatedLotoPointsSubject.asObservable();
+
+    private currentPresetDataSubject = new BehaviorSubject<DataPresetDto>(new DataPresetDto());
+    currentPresetData$: Observable<DataPresetDto> = this.currentPresetDataSubject.asObservable();
 
     setCurrentShape(shape: Shape | null): void {
       this.shapeSubject.next(shape);
@@ -160,6 +164,13 @@ export class CurrentEquipmentService {
 
     setAllShapes(shapes: Shape[]): void {
       this.allShapesSubject.next(shapes);
+    }
+
+    setCurrentPresetData(data: DataPresetDto): void {
+      this.currentPresetDataSubject.next(data);
+    }
+    getCurrentPresetData(): Observable<DataPresetDto> {
+      return this.currentPresetData$;
     }
 
     clearCurrentEquipment(): void {

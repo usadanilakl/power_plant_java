@@ -10,10 +10,11 @@ import { Shape } from '../../../models/shape.model';
 import { map } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
+import { DataPresetMenuComponent } from "./data-preset-menu/data-preset-menu.component";
 
 @Component({
   selector: 'app-file-editor',
-  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent],
+  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent],
   templateUrl: './file-editor.component.html',
   styleUrl: './file-editor.component.css',
   standalone: true,
@@ -30,6 +31,7 @@ export class FileEditorComponent {
   selectedEqTypes = signal<{type: string, selected: boolean}[]>([]);
   uniqueEquipmentTypes = signal<string[]>([]);
   isFilterMenuOpen = signal<boolean>(false);
+  isDataPresetMenuOpen = signal<boolean>(false);
 
 
 
@@ -88,6 +90,10 @@ export class FileEditorComponent {
     this.isFilterMenuOpen.set(!this.isFilterMenuOpen());
   }
 
+  onDataPresetMenuOpen(): void {
+    this.isDataPresetMenuOpen.set(!this.isDataPresetMenuOpen());
+  }
+
   onEqTypeChange(eqType: {type: string, selected: boolean}) {
     const updatedTypes = this.selectedEqTypes().map(et => 
       et.type === eqType.type ? {...et, selected: !et.selected} : et
@@ -116,6 +122,19 @@ export class FileEditorComponent {
     ).subscribe(filteredEquipments => {
       this.currentFileService.setElementsToRender(filteredEquipments);
     });
+  }
+
+  onCloseEquipmentFilterMenu() {
+    this.isFilterMenuOpen.set(false);
+  }
+
+  onCloseBulkEditMenu(){
+    this.isMenuOpen.set(false);
+    this.openMenu.emit(false);
+  }
+
+  onCloseDataPresetMenu(): void {
+    this.isDataPresetMenuOpen.set(false);
   }
 
 

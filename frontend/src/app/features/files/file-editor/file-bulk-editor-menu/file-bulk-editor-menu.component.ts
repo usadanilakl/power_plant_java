@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, input, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
 import { FloatingMenuComponent, MenuPosition } from "../../../../shared/menu/floating-menu/floating-menu.component";
 import { Shape } from '../../../../models/shape.model';
 import { CurrentFileService } from '../../../../services/current-file.service';
@@ -31,6 +31,8 @@ export class FileBulkEditorMenuComponent implements OnInit {
   
   shapes = input<Shape[]>([]);
   isOpen = input<boolean>(false);
+
+  closeEvent = output<void>();
   
   equipmentData = signal<EquipmentDto[]>([]);
   itemToEdit = signal<EquipmentDto | null>(null);
@@ -71,7 +73,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
   }
 
   handleClose() {
-    // Handle menu close
+    this.closeEvent.emit();
   }
   updateSelectedShape(shapeId: number | null) {
     this.hoverSubject.next(shapeId);
@@ -135,13 +137,13 @@ export class FileBulkEditorMenuComponent implements OnInit {
     }    
     
     private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
-          return source.pipe(
-            map(items => items.map(item => new ValueDto(item).toOption())),
-            catchError(error => {
-              console.error('Error loading options:', error);
-              return of([]);
-            })
-          );
-        }
+      return source.pipe(
+        map(items => items.map(item => new ValueDto(item).toOption())),
+        catchError(error => {
+          console.error('Error loading options:', error);
+          return of([]);
+        })
+      );
+    }
 
 }

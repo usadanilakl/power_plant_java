@@ -1,0 +1,17 @@
+<app-floating-menu 
+  [title]="'Bulk Edit Menu'" 
+  [width]="30" 
+  [height]="40" 
+  [position]="MenuPosition.TopLeft"
+  [open]="isOpen()"
+  (close)="handleClose()">
+
+    <app-details-form
+    [fields]="fields()"
+    [values]="currentValues()"
+    [layout]="'reactive'"
+    (formSubmit)="onFormSubmit($event)">
+    </app-details-form>
+
+
+</app-floating-menu>
