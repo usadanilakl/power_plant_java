@@ -48,6 +48,7 @@ export class CurrentEquipmentService {
         this.clearCurrentEquipment();
       }
     }
+    
     setCurrentShapeWithId(shapeId: number | null): void {
       if (shapeId === null) {
         this.setCurrentShape(null);

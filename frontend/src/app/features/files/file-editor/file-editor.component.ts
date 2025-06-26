@@ -40,25 +40,6 @@ export class FileEditorComponent {
     private imageService: ImageService
   ) {}
 
-  // ngOnInit() {
-  //   this.currentFileService.currentFile$.pipe(
-  //     takeUntilDestroyed(this.destroyRef)
-  //   ).subscribe(file => {
-  //     this.currentFile.set(file);
-  //     if (file) {
-  //       // Handle the new file data, e.g., populate form fields
-  //       // console.log('Current file:', file);
-  //     }
-  //   });
-
-
-  //   this.currentFileService.getUniqueEquipmentTypes().pipe(
-  //     takeUntilDestroyed(this.destroyRef)
-  //   ).subscribe(types => {
-  //     this.uniqueEquipmentTypes.set(types);
-  //   });
-  // }
-
   ngOnInit() {
     this.currentFileService.currentFile$.pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -107,35 +88,35 @@ export class FileEditorComponent {
     this.isFilterMenuOpen.set(!this.isFilterMenuOpen());
   }
 
-onEqTypeChange(eqType: {type: string, selected: boolean}) {
-  const updatedTypes = this.selectedEqTypes().map(et => 
-    et.type === eqType.type ? {...et, selected: !et.selected} : et
-  );
-  this.selectedEqTypes.set(updatedTypes);
-  this.updateFilteredEquipment();
-}
+  onEqTypeChange(eqType: {type: string, selected: boolean}) {
+    const updatedTypes = this.selectedEqTypes().map(et => 
+      et.type === eqType.type ? {...et, selected: !et.selected} : et
+    );
+    this.selectedEqTypes.set(updatedTypes);
+    this.updateFilteredEquipment();
+  }
 
-initializeSelectedEqTypes() {
-  const equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
-  this.selectedEqTypes.set(
-    this.uniqueEquipmentTypes().map(type => ({
-      type,
-      selected: !equipmentNotSelectedByDefault.includes(type.toLowerCase())
-    }))
-  );
-}
+  initializeSelectedEqTypes() {
+    const equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
+    this.selectedEqTypes.set(
+      this.uniqueEquipmentTypes().map(type => ({
+        type,
+        selected: !equipmentNotSelectedByDefault.includes(type.toLowerCase())
+      }))
+    );
+  }
 
-updateFilteredEquipment() {
-  const selectedTypes = this.selectedEqTypes()
-    .filter(eq => eq.selected)
-    .map(eq => eq.type);
+  updateFilteredEquipment() {
+    const selectedTypes = this.selectedEqTypes()
+      .filter(eq => eq.selected)
+      .map(eq => eq.type);
 
-  this.currentFileService.getElements().pipe(
-    map(elements => elements.filter(el => el.eqType && el.eqType.name && selectedTypes.includes(el.eqType.name)))
-  ).subscribe(filteredEquipments => {
-    this.currentFileService.setElementsToRender(filteredEquipments);
-  });
-}
+    this.currentFileService.getElements().pipe(
+      map(elements => elements.filter(el => el.eqType && el.eqType.name && selectedTypes.includes(el.eqType.name)))
+    ).subscribe(filteredEquipments => {
+      this.currentFileService.setElementsToRender(filteredEquipments);
+    });
+  }
 
 
 

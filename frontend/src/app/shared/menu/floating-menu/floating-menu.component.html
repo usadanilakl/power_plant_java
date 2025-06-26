@@ -1,7 +1,7 @@
 @if(open()){
   <div #menuContainer class="floating-menu">
     <div class="menu-header">
-      <h3>{{ title }}</h3>
+      <h3>{{ title() }}</h3>
       <button class="close-button" (click)="closeMenu()">×</button>
     </div>
     <div class="menu-content">

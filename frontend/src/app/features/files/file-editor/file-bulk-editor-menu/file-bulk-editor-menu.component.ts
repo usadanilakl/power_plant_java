@@ -121,10 +121,10 @@ export class FileBulkEditorMenuComponent implements OnInit {
       if (EquipmentDto.isValidKey(column.id)) {
         this.fields = EquipmentDto.toFormFields(
           item,
+          this.eqTypes(),
+          this.vendors(),
           this.locations(),
           this.systems(),
-          this.vendors(),
-          this.eqTypes(),
           [column.id]
         );
         this.isFormReady = true;
@@ -132,7 +132,9 @@ export class FileBulkEditorMenuComponent implements OnInit {
         console.error(`Invalid column id: ${column.id}`);
         // Handle the error case, maybe set a default field or show an error message
       }
-    }    private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
+    }    
+    
+    private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
           return source.pipe(
             map(items => items.map(item => new ValueDto(item).toOption())),
             catchError(error => {

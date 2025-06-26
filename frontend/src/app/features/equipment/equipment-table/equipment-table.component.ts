@@ -1,5 +1,5 @@
 
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { TableComponent } from '../../../shared/table/table.component';
@@ -13,6 +13,7 @@ import { Column } from '../../../models/column.model';
     <app-shared-table
       [columns]="columns"
       [items]="equipmentList"
+      [hoverDebounceTime]="debounceTime()"
       [clickCallback]="onEquipmentClick"
       [cellDoubleClickCallback]="onEquipmentDoubleClick"
       [rightClickCallback]="onEquipmentRightClick"
@@ -23,6 +24,7 @@ import { Column } from '../../../models/column.model';
 })
 export class EquipmentTableComponent {
   @Input() equipmentList: EquipmentDto[] = [];
+  debounceTime = input<number>(300);
   @Output() equipmentClicked = new EventEmitter<EquipmentDto>();
   @Output() equipmentDoubleClicked = new EventEmitter<{item: EquipmentDto, column: Column}>();
   @Output() equipmentRightClicked = new EventEmitter<EquipmentDto>();

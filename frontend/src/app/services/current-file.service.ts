@@ -21,17 +21,6 @@ export class CurrentFileService {
 
     private equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
 
-    // setCurrentFile(file: FileDto | null): void {
-    //     this.currentFileSubject.next(file);
-          
-    //     // Extract elements from the points field
-    //     const elements: EquipmentDto[] = file?.points || [];
-    //     this.elementsSubject.next(elements);
-    //     if(file && file.points)this.uniqueEquipmentTypes = this.getUniqueEqTypes();
-    //     this.updateElementsToRender(this.equipmentNotSelectedByDefault);
-
-    //     // console.log('current elements',elements);
-    // }
 
     setCurrentFile(file: FileDto | null): void {
         this.currentFileSubject.next(file);
@@ -51,6 +40,7 @@ export class CurrentFileService {
     }
 
     setElementsToRender(elements: EquipmentDto[]): void {
+      console.log('Setting elements to render:', elements);
         this.elementsToRenderSubject.next(elements);
     }
 
@@ -76,6 +66,7 @@ export class CurrentFileService {
     }
 
     private filterByEquipmentType(exclude: string[]): EquipmentDto[] {
+      console.log('Filtering elements by type:', exclude);
       const currentElements = this.elementsSubject.getValue();
       return currentElements.filter(element => 
         element && element.eqType && element.eqType.name && 

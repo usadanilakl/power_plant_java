@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, ElementRef, inject, input, output, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, effect, ElementRef, inject, input, output, signal, ViewChild } from '@angular/core';
 import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../../models/shape.model';
 import { DrawUtilService } from '../image-services/draw-util.service';
 import { ShapeFactoryService } from '../image-services/shape-factory.service';
@@ -30,6 +30,11 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   constructor() {
     this.drawingService = new DrawUtilService(this.shapeFactory, this.shapeUtil);
+    // effect(() => {
+    // if (this.canvas) {
+    //   this.updateShapes(this.shapes());
+    // }
+    // });
   }
 
 //Subscriptions  
@@ -58,7 +63,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   private readonly DOUBLE_CLICK_DELAY = 200; // milliseconds
 
 //Shape/Image functionality variables
-  private shapes: Shape[] = [];
+  private shapes = signal<Shape[]>([]);
   pictureOriginalWidth = 0;
   pictureOriginalHeight = 0;
   pictureCurrentWidth = 0;
@@ -116,6 +121,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       this.initializeShapes(elements, this._img.naturalWidth, this._img.naturalHeight);
       this.drawShapes();
     });
+    console.log(this.shapes());
     this.pictureOriginalWidth = img.naturalWidth;
     this.pictureOriginalHeight = img.naturalHeight;
     this.pictureCurrentWidth = this.img.width;
@@ -123,16 +129,19 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this.zoomElementRef.nativeElement.addEventListener('contextmenu', this.onContextMenu.bind(this));
   
     this.initializeServices();
+    console.log(this.shapes());
 
     this.setSubscriptions();
 
+    console.log(this.shapes());
     this.updateCanvasSize();
+    console.log(this.shapes());
     // this.updateImageAndCanvasSize();
   
   }
 
   initializeShapes(elements: any[], originalWidth: number, originalHeight: number) {
-    this.shapes = elements.map(element => {
+    const converted = elements.map(element => {
       const equipmentDto = new EquipmentDto(element);
       const sh = equipmentDto.toShapeObject();
       sh.currentImgWidth = originalWidth;
@@ -143,19 +152,20 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       }
       return sh;
     });
-    this.currentEquipmentService.setAllShapes(this.shapes);
+    this.shapes.set(converted);
+    this.currentEquipmentService.setAllShapes(converted);
   }
 
   initializeServices(){
-    this.drawingService.init(this.img, this.shapes);
+    this.drawingService.init(this.img, this.shapes());
   }
 
   setSubscriptions() {
-    this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
-      this.shapes = shapes;
-      // console.log('shapes updated:', shapes);
-      this.drawShapes();
-    });
+    // this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
+    //   this.shapes.set(shapes);
+    //   // console.log('shapes updated:', shapes);
+    //   this.drawShapes();
+    // });
 
     this.shapesSubscription = this.drawingService.newShape$.subscribe(newShape => {
       this.newShapeCreated.emit(newShape);
@@ -170,6 +180,10 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
         this.drawingService.updateSelectedShape(shape);
         this.drawShapes();
       }
+    });
+    this.currentEquipmentService.allShapes$.subscribe(shapes => {
+      this.drawingService.setShapes(shapes);
+      this.shapes.set(shapes);
     });
 
     this.destroyRef.onDestroy(() => {
@@ -236,7 +250,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     const ctx = this._canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-    this.shapes.forEach(shape => {
+    this.shapes().forEach(shape => {
       this.drawShape(ctx, shape);
     });
   }
@@ -367,6 +381,13 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
         return { ...shape };
       default:
         return shape;
+    }
+  }
+
+  private updateShapes(shapes: Shape[]) {
+    if (shapes) {
+      this.drawingService.setShapes(shapes);
+      // this.drawShapes();
     }
   }
 
@@ -636,7 +657,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   
     console.log('Container Bounds:', containerBounds);
   
-    for (const shape of this.shapes) {
+    for (const shape of this.shapes()) {
       let isInContainerBounds = false;
   
       console.log('Checking shape:', shape);
