@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, map, Observable, take } from 'rxjs';
 import { FileDto } from '../models/file/file.model';
 import { EquipmentDto } from '../models/equipment/equipment.model';
+import { SpringApiResponse } from '../models/api/spring-api-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -63,6 +64,37 @@ export class CurrentFileService {
 
     getElementsToRender(): Observable<EquipmentDto[]> {
         return this.elementsToRender$;
+    }
+
+    updateEquipmentInList(updatedEquipment: EquipmentDto) {
+      // Update elementsSubject
+      this.elementsSubject.pipe(
+        take(1),
+        map(equipmentList => equipmentList.map(item => 
+          item.id === updatedEquipment.id ? updatedEquipment : item
+        ))
+      ).subscribe(updatedList => {
+        this.elementsSubject.next(updatedList);
+      });
+    
+      // Update elementsToRender$
+      this.elementsToRender$.pipe(
+        take(1),
+        map(equipmentList => equipmentList.map(item => 
+          item.id === updatedEquipment.id ? updatedEquipment : item
+        ))
+      ).subscribe(updatedList => {
+        this.elementsToRenderSubject.next(updatedList);
+      });
+    
+      // Update the current file if it exists
+      const currentFile = this.currentFileSubject.getValue();
+      if (currentFile && currentFile.points) {
+        const updatedPoints = currentFile.points.map(item => 
+          item.id === updatedEquipment.id ? updatedEquipment : item
+        );
+        this.currentFileSubject.next(new FileDto({...currentFile, points: updatedPoints}));
+      }
     }
 
     private filterByEquipmentType(exclude: string[]): EquipmentDto[] {

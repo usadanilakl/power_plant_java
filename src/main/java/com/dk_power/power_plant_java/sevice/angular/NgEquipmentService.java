@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.angular;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentIdDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
@@ -145,5 +146,9 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
 
         // If still no match, return the original string
         return cleanedTag.substring(index, index + 6);
+    }
+
+    public Equipment idDtoToEntity(EquipmentIdDto equipmentDto) {
+        return equipmentMapper.convertIdDtoToEntity(equipmentDto);
     }
 }

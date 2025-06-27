@@ -4,6 +4,7 @@ import { RectangleShape } from '../shape.model';
 import { BaseDto, BaseModel } from '../base/base.model';
 import { ValidatorFn, Validators } from '@angular/forms';
 import { Option } from '../option.model';
+import { EquipmentIdDto } from './equipment-id.model';
 
 export type EquipmentFieldName = keyof EquipmentModel;
 
@@ -114,6 +115,29 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       isUpdated: json.isUpdated || '',
       conflictStatus: json.conflictStatus || '',
       isVerified: json.isVerified || false
+    });
+  }
+
+  
+
+  toIdModel(): EquipmentIdDto {
+    return new EquipmentIdDto({
+      id: this.id,
+      tagNumber: this.tagNumber,
+      description: this.description,
+      specificLocation: this.specificLocation,
+      eqTypeId: this.eqType?.id || 0,
+      files: this.files,
+      vendorId: this.vendor?.id || 0,
+      locationId: this.location?.id || 0,
+      systemId: this.system?.id || 0,
+      coordinates: this.coordinates,
+      originalPictureSize: this.originalPictureSize,
+      mainFile: this.mainFile,
+      lotoPointIds: this.lotoPoints.map(point => point.id),
+      isUpdated: this.isUpdated,
+      conflictStatus: this.conflictStatus,
+      isVerified: this.isVerified
     });
   }
 

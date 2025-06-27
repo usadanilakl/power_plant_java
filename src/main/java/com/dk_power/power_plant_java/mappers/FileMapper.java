@@ -177,4 +177,5 @@ public class FileMapper implements BaseMapper {
 
         return fileObject;
     }
+
 }

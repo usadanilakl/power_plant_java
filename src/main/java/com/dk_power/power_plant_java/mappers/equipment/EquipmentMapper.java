@@ -2,8 +2,11 @@ package com.dk_power.power_plant_java.mappers.equipment;
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentIdDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
@@ -14,8 +17,10 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -286,6 +291,72 @@ public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService,
         }
         return entity;
     }
+    
+    public Equipment convertIdDtoToEntity(EquipmentIdDto dto) {
+    if (dto == null) return null;
+
+    Equipment equipment;
+    if (dto.getId() == null || dto.getId() == 0) {
+        equipment = new Equipment();
+    } else {
+        equipment = equipmentService.findById(dto.getId()).orElse(new Equipment());
+    }
+
+    // Set fields from BaseEquipmentDto
+    if (dto.getId() != null && dto.getId() != 0) equipment.setId(dto.getId());
+    if (dto.getDeleted() != null) equipment.setDeleted(dto.getDeleted());
+    if (dto.getName() != null) equipment.setName(dto.getName());
+    if (dto.getNote() != null) equipment.setNote(dto.getNote());
+    if (dto.getCreatedBy() != null) equipment.setCreatedBy(dto.getCreatedBy());
+    if (dto.getObjectType() != null) equipment.setObjectType(dto.getObjectType());
+    if (dto.getDataServiceItemId() != null) equipment.setDataServiceItemId(dto.getDataServiceItemId());
+    if (dto.getRefactorNotes() != null) equipment.setRefactorNotes(dto.getRefactorNotes());
+    if (dto.getDateCreated() != null) equipment.setDateCreated(dto.getDateCreated());
+    if (dto.getDateModified() != null) equipment.setDateModified(dto.getDateModified());
+
+    // Set fields specific to EquipmentIdDto
+    if (dto.getTagNumber() != null) equipment.setTagNumber(dto.getTagNumber());
+    if (dto.getDescription() != null) equipment.setDescription(dto.getDescription());
+    if (dto.getSpecificLocation() != null) equipment.setSpecificLocation(dto.getSpecificLocation());
+    if (dto.getEqTypeId() != null) equipment.setEqType(valueService.findById(dto.getEqTypeId()).orElse(null));
+    if (dto.getVendorId() != null) equipment.setVendor(valueService.findById(dto.getVendorId()).orElse(null));
+    if (dto.getLocationId() != null) equipment.setLocation(valueService.findById(dto.getLocationId()).orElse(null));
+    if (dto.getSystemId() != null) equipment.setSystem(valueService.findById(dto.getSystemId()).orElse(null));
+    if (dto.getCoordinates() != null) equipment.setCoordinates(dto.getCoordinates());
+    if (dto.getOriginalPictureSize() != null) equipment.setOriginalPictureSize(dto.getOriginalPictureSize());
+    if (dto.getMainFile() != null) equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
+    if (dto.getConflictStatus() != null) equipment.setConflictStatus(dto.getConflictStatus());
+    if (dto.getIsVerified() != null) equipment.setIsVerified(dto.getIsVerified());
+
+    // Handle files
+    if (dto.getFiles() != null && !dto.getFiles().isEmpty()) {
+        List<FileObject> files = dto.getFiles().stream()
+                .map(fileService::getByFileLink)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        equipment.setFiles(files);
+    }
+
+    // Handle lotoPoints
+    if (dto.getLotoPointIds() != null && !dto.getLotoPointIds().isEmpty()) {
+        Set<LotoPoint> lotoPoints = dto.getLotoPointIds().stream()
+                .map(id -> lotoPointService.findById(id).orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        equipment.setLotoPoints(lotoPoints);
+    }
+
+    // Handle heatTraces
+    if (dto.getHeatTraceIds() != null && !dto.getHeatTraceIds().isEmpty()) {
+        List<HeatTrace> heatTraces = dto.getHeatTraceIds().stream()
+                .map(id -> heatTraceService.findById(id).orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        equipment.setHeatTraceList(heatTraces);
+    }
+
+    return equipment;
+}
 
 @Override
 public ModelMapper getMapper() {

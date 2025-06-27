@@ -13,6 +13,7 @@ import { ValueDto } from '../../../../models/value.model';
 import { Option } from '../../../../models/option.model';
 import { SharedDataService } from '../../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EquipmentService } from '../../../../services/equipment.service';
 
 @Component({
   selector: 'app-file-bulk-editor-menu',
@@ -25,6 +26,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
   private currentFileService = inject(CurrentFileService);
   private currentEquipmentService = inject(CurrentEquipmentService);
   private sharedDataService = inject(SharedDataService);
+  private equipmentService = inject(EquipmentService);
   private destroyRef = inject(DestroyRef);
 
   private hoverSubject = new Subject<number | null>();
@@ -87,10 +89,48 @@ export class FileBulkEditorMenuComponent implements OnInit {
   }
 
   onFormSubmit(formData: any) {
+    if (this.itemToEdit()) {
+      // Create a new object with the updated fields
+      const updatedEquipment = new EquipmentDto(this.itemToEdit()!);
+  
+      // Update the fields that were changed in the form
+      Object.keys(formData).forEach(key => {
+        if (EquipmentDto.isValidKey(key)) {
+          // Handle special cases for nested objects
+          if (key === 'eqType' || key === 'vendor' || key === 'location' || key === 'system') {
+            updatedEquipment[key] = new ValueDto(formData[key]);
+          } else if(key === 'description' || key === 'tagNumber' || key ==='specificLocation') {
+            updatedEquipment[key] = formData[key];
+          }
+        }
+      });
 
+  
+      // Update the itemToEdit signal
+      this.itemToEdit.set(updatedEquipment);
+  
+      // Update on the server
+      this.equipmentService.updateEquipment(updatedEquipment).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap(updatedItem => {
+          console.log('Equipment updated successfully:', updatedItem);
+          // Update the equipment in the equipmentData list
+        this.currentFileService.updateEquipmentInList(updatedItem.responseData);
+          // Close the popup
+          this.onClosePopup();
+        }),
+        catchError(error => {
+          console.error('Error updating equipment:', error);
+          // Handle error (e.g., show error message to user)
+          return of(null);
+        })
+      ).subscribe();
+    }
   }
 
-  onFormDelete(){}
+  onFormDelete(){
+
+  }
 
 
   //Table related methods

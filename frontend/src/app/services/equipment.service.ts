@@ -43,7 +43,7 @@ export class EquipmentService {
   }
 
   updateEquipment(equipment: EquipmentDto): Observable<SpringApiResponse<EquipmentDto>> {
-    return this.http.put<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}`, equipment);
+    return this.http.put<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}`, equipment.toIdModel());
   }
 
   deleteEquipment(id: number): Observable<SpringApiResponse<void>> {
