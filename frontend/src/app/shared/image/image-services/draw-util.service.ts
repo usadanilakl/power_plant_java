@@ -158,11 +158,11 @@ export class DrawUtilService {
     
     if (this.selectedShape) {
       this.selectedShape.isSelected = true;
-      this.selectedShapeSubject.next(this.selectedShape);
     }
     
     // Notify subscribers of the change
     this.shapesSubject.next(this.shapes);
+    this.selectedShapeSubject.next(this.selectedShape);
     
     console.log(this.selectedShape);
   }
@@ -354,83 +354,6 @@ export class DrawUtilService {
     // Notify subscribers of the change
     this.shapesSubject.next(this.shapes);
   }
-
-  // private resizeShape(event: MouseEvent) {
-  //   if (!this.selectedShape) return;
-
-  //   const scale = this.calculateScale();
-  //   const dx = (event.offsetX - this.initialMouseX) // scale;
-  //   const dy = (event.offsetY - this.initialMouseY) // scale;
-
-  //   switch (this.selectedShape.type) {
-  //     case 'rectangle':
-  //       const rect = this.selectedShape as any;
-  //       rect.width = Math.abs(dx);
-  //       rect.height = Math.abs(dy);
-  //       if (dx < 0) rect.x = this.initialMouseX  + dx;
-  //       if (dy < 0) rect.y = this.initialMouseY  + dy;
-  //       break;
-  //     // Add cases for other shape types as needed
-  //   }
-
-  //   // Notify subscribers of the change
-  //   this.shapesSubject.next(this.shapes);
-  // }
-
-  // private resizeExistingShape(event: MouseEvent) {
-  //   if (!this.selectedShape || !this.resizeCorner) return;
-  
-  //   const scale = this.scale;
-  //   const dx = (event.offsetX - this.initialMouseX) / scale;
-  //   const dy = (event.offsetY - this.initialMouseY) / scale;
-  
-  //   switch (this.selectedShape.type) {
-  //     case 'rectangle':
-  //       const rect = this.selectedShape as any;
-  //       switch (this.resizeCorner) {
-  //         case 'topLeft':
-  //           rect.x += dx;
-  //           rect.y += dy;
-  //           rect.width -= dx;
-  //           rect.height -= dy;
-  //           break;
-  //         case 'topRight':
-  //           rect.y += dy;
-  //           rect.width += dx;
-  //           rect.height -= dy;
-  //           break;
-  //         case 'bottomLeft':
-  //           rect.x += dx;
-  //           rect.width -= dx;
-  //           rect.height += dy;
-  //           break;
-  //         case 'bottomRight':
-  //           rect.width += dx;
-  //           rect.height += dy;
-  //           break;
-  //       }
-  //       // Ensure width and height are always positive
-  //       if (rect.width < 0) {
-  //         rect.x += rect.width;
-  //         rect.width = Math.abs(rect.width);
-  //         this.resizeCorner = this.resizeCorner === 'topLeft' ? 'topRight' : 'bottomRight';
-  //       }
-  //       if (rect.height < 0) {
-  //         rect.y += rect.height;
-  //         rect.height = Math.abs(rect.height);
-  //         this.resizeCorner = this.resizeCorner === 'topLeft' ? 'bottomLeft' : 'bottomRight';
-  //       }
-  //       break;
-  //     // Add cases for other shape types as needed
-  //   }
-  
-  //   // Update initial mouse position for smooth resizing
-  //   this.initialMouseX = event.offsetX;
-  //   this.initialMouseY = event.offsetY;
-  
-  //   // Notify subscribers of the change
-  //   this.shapesSubject.next(this.shapes);
-  // }
 
   drawWithRightClick(event: MouseEvent, imgX: number, imgY: number) {
     event.preventDefault(); // Prevent the default context menu

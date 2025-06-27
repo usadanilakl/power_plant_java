@@ -35,6 +35,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
   isOpen = input<boolean>(false);
 
   closeEvent = output<void>();
+  selectedItemsEvent = output<EquipmentDto[]>();
   
   equipmentData = signal<EquipmentDto[]>([]);
   itemToEdit = signal<EquipmentDto | null>(null);
@@ -93,23 +94,10 @@ export class FileBulkEditorMenuComponent implements OnInit {
     if (this.itemToEdit()) {
       // Create a new object with the updated fields
       const updatedEquipment = new EquipmentDto({...this.itemToEdit(), ...formData});
-  
-      // Update the fields that were changed in the form
-      // Object.keys(formData).forEach(key => {
-      //   if (EquipmentDto.isValidKey(key)) {
-      //     // Handle special cases for nested objects
-      //     if (key === 'eqType' || key === 'vendor' || key === 'location' || key === 'system') {
-      //       updatedEquipment[key] = new ValueDto(formData[key]);
-      //     } else if(key === 'description' || key === 'tagNumber' || key ==='specificLocation') {
-      //       updatedEquipment[key] = formData[key];
-      //     }
-      //   }
-      // });
 
       console.log('Equipment updated:', updatedEquipment);
       console.log('Form submitted with data:', formData);
 
-  
       // Update the itemToEdit signal
       this.itemToEdit.set(updatedEquipment);
   

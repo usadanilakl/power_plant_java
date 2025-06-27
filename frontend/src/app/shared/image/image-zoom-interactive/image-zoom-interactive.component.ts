@@ -161,11 +161,11 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   setSubscriptions() {
-    // this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
-    //   this.shapes.set(shapes);
-    //   // console.log('shapes updated:', shapes);
-    //   this.drawShapes();
-    // });
+    this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
+      this.shapes.set(shapes);
+      // console.log('shapes updated:', shapes);
+      this.drawShapes();
+    });
 
     this.shapesSubscription = this.drawingService.newShape$.subscribe(newShape => {
       this.newShapeCreated.emit(newShape);
@@ -387,7 +387,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   private updateShapes(shapes: Shape[]) {
     if (shapes) {
       this.drawingService.setShapes(shapes);
-      // this.drawShapes();
+      this.drawShapes();
     }
   }
 
