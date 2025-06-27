@@ -77,6 +77,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
   handleClose() {
     this.closeEvent.emit();
   }
+
   updateSelectedShape(shapeId: number | null) {
     this.hoverSubject.next(shapeId);
   }
@@ -91,19 +92,22 @@ export class FileBulkEditorMenuComponent implements OnInit {
   onFormSubmit(formData: any) {
     if (this.itemToEdit()) {
       // Create a new object with the updated fields
-      const updatedEquipment = new EquipmentDto(this.itemToEdit()!);
+      const updatedEquipment = new EquipmentDto({...this.itemToEdit(), ...formData});
   
       // Update the fields that were changed in the form
-      Object.keys(formData).forEach(key => {
-        if (EquipmentDto.isValidKey(key)) {
-          // Handle special cases for nested objects
-          if (key === 'eqType' || key === 'vendor' || key === 'location' || key === 'system') {
-            updatedEquipment[key] = new ValueDto(formData[key]);
-          } else if(key === 'description' || key === 'tagNumber' || key ==='specificLocation') {
-            updatedEquipment[key] = formData[key];
-          }
-        }
-      });
+      // Object.keys(formData).forEach(key => {
+      //   if (EquipmentDto.isValidKey(key)) {
+      //     // Handle special cases for nested objects
+      //     if (key === 'eqType' || key === 'vendor' || key === 'location' || key === 'system') {
+      //       updatedEquipment[key] = new ValueDto(formData[key]);
+      //     } else if(key === 'description' || key === 'tagNumber' || key ==='specificLocation') {
+      //       updatedEquipment[key] = formData[key];
+      //     }
+      //   }
+      // });
+
+      console.log('Equipment updated:', updatedEquipment);
+      console.log('Form submitted with data:', formData);
 
   
       // Update the itemToEdit signal
@@ -128,10 +132,6 @@ export class FileBulkEditorMenuComponent implements OnInit {
     }
   }
 
-  onFormDelete(){
-
-  }
-
 
   //Table related methods
 
@@ -154,6 +154,10 @@ export class FileBulkEditorMenuComponent implements OnInit {
 
   onEquipmentDelete(id: string) {
     // Handle equipment deletion
+  }
+
+  onSelectedItems(items: EquipmentDto[]) {
+    console.log('Selected items:', items);
   }
 
 

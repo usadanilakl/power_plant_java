@@ -13,6 +13,7 @@
   (equipmentRightClicked)="onEquipmentContextMenu($event)"
   (equipmentHovered)="onEquipmentHover($event)"
   (equipmentDeleted)="onEquipmentDelete($event)"
+  (selectedItemsEvent)="onSelectedItems($event)"
 ></app-equipment-table>
 </app-floating-menu>
 
@@ -27,8 +28,7 @@
         [fields]="fields"
         [values]="itemToEdit()"
         [layout]="'reactive'"
-        (formSubmit)="onFormSubmit($event)"
-        (formDelete)="onFormDelete()">
+        (formSubmit)="onFormSubmit($event)">
       </app-details-form>
     
     </app-popup-projection>

@@ -1,5 +1,5 @@
 
-import { Component, Input, Output, EventEmitter, input } from '@angular/core';
+import { Component, Input, Output, EventEmitter, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { TableComponent } from '../../../shared/table/table.component';
@@ -18,18 +18,20 @@ import { Column } from '../../../models/column.model';
       [cellDoubleClickCallback]="onEquipmentDoubleClick"
       [rightClickCallback]="onEquipmentRightClick"
       [deleteItem]="onDeleteEquipment"
+      (selectedItemsEvent)="onSelectedItems($event)"
       (rowHoveredEvent)="onEquipmentHover($event)"
     ></app-shared-table>
   `
 })
 export class EquipmentTableComponent {
   @Input() equipmentList: EquipmentDto[] = [];
-  debounceTime = input<number>(300);
+  debounceTime = input<number>(500);
   @Output() equipmentClicked = new EventEmitter<EquipmentDto>();
   @Output() equipmentDoubleClicked = new EventEmitter<{item: EquipmentDto, column: Column}>();
   @Output() equipmentRightClicked = new EventEmitter<EquipmentDto>();
   @Output() equipmentHovered = new EventEmitter<EquipmentDto>();
   @Output() equipmentDeleted = new EventEmitter<string>();
+  selectedItemsEvent = output<EquipmentDto[]>();
 
   columns: Column[] = [
     { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
@@ -64,4 +66,8 @@ export class EquipmentTableComponent {
   onDeleteEquipment = (id: string) => {
     this.equipmentDeleted.emit(id);
   }
+
+    onSelectedItems = (items: EquipmentDto[]) => {
+      this.selectedItemsEvent.emit(items);
+    }
 }

@@ -31,6 +31,7 @@ export class TableComponent implements OnInit {
   @Output() loadMoreItems = new EventEmitter<SearchCriteria>();
   @Output() search = new EventEmitter<SearchCriteria>();
   rowHoveredEvent = output<any>();
+  selectedItemsEvent = output<any[]>();
 
   selectedItems: any[] = [];
   lastClickedItem: any = null;
@@ -235,6 +236,7 @@ ngOnInit() {
       this.selectedItems.push(item);
     }
     this.lastClickedItem = item;
+    this.selectedItemsEvent.emit(this.selectedItems);
   }
 
   onRowShiftClick(item: any, event: MouseEvent) {
@@ -267,6 +269,7 @@ ngOnInit() {
     }
   
     this.lastClickedItem = item;
+    this.selectedItemsEvent.emit(this.selectedItems);
   }
 
   onRowHover(item: any) {
