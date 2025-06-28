@@ -9,10 +9,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormField } from '../../../models/ui/form-field.model';
 import { ValueDto } from '../../../models/value.model';
 import { DetailsFormComponent } from "../../../shared/details-form/details-form.component";
+import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
+import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
 
 @Component({
   selector: 'app-equipment-form',
-  imports: [DetailsFormComponent],
+  imports: [DetailsFormComponent, LotoPointTableComponent, LotoPointSimpleTableComponent],
   templateUrl: './equipment-form.component.html',
   styleUrl: './equipment-form.component.css'
 })
@@ -36,6 +39,8 @@ export class EquipmentFormComponent implements OnInit {
 
   isFormReady = signal<boolean>(true);
   fields = computed(() => this.createFields());
+
+  lotoPoints$ = this.currentEquipmentService.getlotoPoints();
 
   ngOnInit(): void {
     forkJoin({

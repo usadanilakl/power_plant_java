@@ -5,6 +5,7 @@ import { LotoDto } from './loto.model';
 import { ValidatorFn, Validators } from '@angular/forms';
 import { Option } from '../option.model';
 import { LotoPointIdDto } from './loto-point-id.model';
+import { Column } from '../column.model';
 
 type LotoPointFieldName = keyof LotoPointModel;
 
@@ -206,6 +207,45 @@ export class LotoPointDto implements LotoPointModel {
   
     return fields.map(fieldName => allFields[fieldName]);
   }
+
+// Add this method to the LotoPointDto class
+static toTableColumns(
+  fields: LotoPointFieldName[] = ['unit', 'tagNumber', 'description', 'specificLocation', 'tagged', 'lotos', 'isoPos', 'normPos']
+): Column[] {
+  const allColumns: { [key in LotoPointFieldName]: Column } = {
+    unit: { id: 'unit', header: 'Unit', accessorKey: 'unit' },
+    tagNumber: { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
+    description: { id: 'description', header: 'Description', accessorKey: 'description' },
+    specificLocation: { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' },
+    tagged: { id: 'tagged', header: 'Tagging Status', accessorKey: 'tagged' },
+    lotos: { 
+      id: 'lotos', 
+      header: 'LOTOs', 
+      accessorFn: (item: any) => {
+        if (Array.isArray(item.lotos)) {
+          return item.lotos.map((loto: any) => loto.workScope).join(', ');
+        }
+        return '';
+      }
+    },
+    isoPos: { id: 'isoPos', header: 'ISO Pos', accessorKey: 'isoPos.name' },
+    normPos: { id: 'normPos', header: 'Norm Pos', accessorKey: 'normPos.name' },
+    id: { id: 'id', header: 'ID', accessorKey: 'id' },
+    standard: { id: 'standard', header: 'Standard', accessorKey: 'standard' },
+    generalLocation: { id: 'generalLocation', header: 'General Location', accessorKey: 'generalLocation' },
+    equipmentIdList: { id: 'equipmentIdList', header: 'Equipment IDs', accessorKey: 'equipmentIdList' },
+    normalPosition: { id: 'normalPosition', header: 'Normal Position', accessorKey: 'normalPosition' },
+    isolatedPosition: { id: 'isolatedPosition', header: 'Isolated Position', accessorKey: 'isolatedPosition' },
+    oldId: { id: 'oldId', header: 'Old ID', accessorKey: 'oldId' },
+    objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType' },
+    isUpdated: { id: 'isUpdated', header: 'Is Updated', accessorKey: 'isUpdated' },
+    fileIds: { id: 'fileIds', header: 'File IDs', accessorKey: 'fileIds' },
+    conflictStatus: { id: 'conflictStatus', header: 'Conflict Status', accessorKey: 'conflictStatus' },
+    equipmentList: { id: 'equipmentList', header: 'Equipment List', accessorKey: 'equipmentList' }
+  };
+
+  return fields.map(fieldName => allColumns[fieldName]);
+}
 
   static isValidKey(key: string): key is keyof LotoPointModel {
     const validKeys: (keyof LotoPointModel)[] = [
