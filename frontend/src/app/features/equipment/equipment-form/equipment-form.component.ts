@@ -46,6 +46,9 @@ export class EquipmentFormComponent implements OnInit {
 
   lotoPoints$ = this.currentEquipmentService.getlotoPoints();
 
+  lotoPointRowRightClickEvent = output<LotoPointDto>();
+
+
   ngOnInit(): void {
     forkJoin({
       systems: this.loadOptions(this.sharedDataService.loadSystems()),
@@ -69,7 +72,7 @@ export class EquipmentFormComponent implements OnInit {
   }
 
 
-
+//Equipment form
   private createFields(): FormField[] {
     const currentPresetData = this.values();
     return [
@@ -149,18 +152,85 @@ export class EquipmentFormComponent implements OnInit {
     );
   }
 
+  //Loto Point Table
   onExistingLotoPointDoubleClick(lotoPoint: LotoPointDto) {
-    const eq = new EquipmentDto({... this.values() });
-    eq.lotoPoints = eq.lotoPoints.filter(lp => lp.id!== lotoPoint.id);
-    this.equipmentService.updateEquipment(eq).subscribe(resp => {
-      this.currentEquipmentService.setCurrentEquipment(new EquipmentDto(resp.responseData));
+    if (!lotoPoint || !lotoPoint.id) {
+      console.error('Invalid LOTO point');
+      return;
+    }
+  
+    const currentEquipment = this.values();
+    if (!currentEquipment || !currentEquipment.id) {
+      console.error('No current equipment selected');
+      return;
+    }
+  
+    const updatedEquipment = new EquipmentDto({
+      ...currentEquipment,
+      lotoPoints: currentEquipment.lotoPoints.filter(lp => lp.id !== lotoPoint.id)
     });
+  
+    this.equipmentService.updateEquipment(updatedEquipment).pipe(
+      tap(resp => {
+        if (resp && resp.responseData) {
+          const updatedEquipmentDto = new EquipmentDto(resp.responseData);
+          this.currentEquipmentService.setCurrentEquipment(updatedEquipmentDto);
+          this.valuesChange.emit(updatedEquipmentDto);
+        } else {
+          throw new Error('Invalid response from server');
+        }
+      }),
+      catchError(error => {
+        console.error('Error updating equipment:', error);
+        // Optionally, you can emit an error event or show a user-friendly error message
+        return of(null);
+      })
+    ).subscribe();
   }
 
   onSearchedLotoPointDoubleClick(lotoPoint: LotoPointDto) {
-    const eq = new EquipmentDto({... this.values() });
-    eq.lotoPoints.push(lotoPoint);
-    // this.currentEquipmentService.setCurrentEquipment(eq)
+    if (!lotoPoint || !lotoPoint.id) {
+      console.error('Invalid LOTO point');
+      return;
+    }
+  
+    const currentEquipment = this.values();
+    if (!currentEquipment || !currentEquipment.id) {
+      console.error('No current equipment selected');
+      return;
+    }
+  
+    // Check if the LOTO point is already in the equipment's list
+    if (currentEquipment.lotoPoints.some(lp => lp.id === lotoPoint.id)) {
+      console.warn('LOTO point already exists in the equipment');
+      return;
+    }
+  
+    const updatedEquipment = new EquipmentDto({
+      ...currentEquipment,
+      lotoPoints: [...currentEquipment.lotoPoints, lotoPoint]
+    });
+  
+    this.equipmentService.updateEquipment(updatedEquipment).pipe(
+      tap(resp => {
+        if (resp && resp.responseData) {
+          const updatedEquipmentDto = new EquipmentDto(resp.responseData);
+          this.currentEquipmentService.setCurrentEquipment(updatedEquipmentDto);
+          this.valuesChange.emit(updatedEquipmentDto);
+        } else {
+          throw new Error('Invalid response from server');
+        }
+      }),
+      catchError(error => {
+        console.error('Error updating equipment:', error);
+        // Optionally, you can emit an error event or show a user-friendly error message
+        return of(null);
+      })
+    ).subscribe();
+  }
+
+  onLotoPointRowRightClick(lotoPoint: LotoPointDto) {
+    this.lotoPointRowRightClickEvent.emit(lotoPoint);
   }
 
 

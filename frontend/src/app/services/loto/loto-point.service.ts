@@ -46,9 +46,27 @@ export class LotoPointService {
     return this.http.post<SpringApiResponse<LotoPointDto>>(this.apiUrl, lotoPoint);
   }
 
-  updateLotoPoint(lotoPoint: Partial<LotoPointIdDto>): Observable<SpringApiResponse<LotoPointIdDto>> {
+  updateLotoPoint(lotoPoint: Partial<LotoPointIdDto | LotoPointDto>): Observable<SpringApiResponse<LotoPointDto>> {
+    let lotoPointIdDto: LotoPointIdDto;
+  
+    if (lotoPoint instanceof LotoPointDto) {
+      lotoPointIdDto = lotoPoint.toIdModel();
+    } else if (this.isLotoPointIdDto(lotoPoint)) {
+      lotoPointIdDto = lotoPoint;
+    } else {
+      // If it's neither, create a new LotoPointDto and convert it
+      const fullLotoPoint = new LotoPointDto();
+      Object.assign(fullLotoPoint, lotoPoint);
+      lotoPointIdDto = fullLotoPoint.toIdModel();
+    }
+  
     const headers = new HttpHeaders().set('Content-Type', 'application/json');
-    return this.http.put<SpringApiResponse<LotoPointIdDto>>(`${this.apiUrl}`, lotoPoint, { headers });
+    return this.http.put<SpringApiResponse<LotoPointDto>>(`${this.apiUrl}`, lotoPointIdDto, { headers });
+  }
+  
+  // Type guard function
+  private isLotoPointIdDto(object: any): object is LotoPointIdDto {
+    return 'id' in object && 'tagNumber' in object; // Add more properties if needed
   }
 
   deleteLotoPoint(id: string): Observable<SpringApiResponse<void>> {

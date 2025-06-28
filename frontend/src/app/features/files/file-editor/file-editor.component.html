@@ -46,12 +46,27 @@
 
   <app-popup-projection
     [isOpen]="isEqFormOpen()"
-    [title]="'File Details'"
+    [title]="'Equipment Details'"
     [size]="'large'"
     (close)="closeEqForm()">
     
       <app-equipment-form
-      [values]="currentEquipment()">
+        [values]="currentEquipment()"
+        (lotoPointRowRightClickEvent)="onLotoPointFormOpen($event)">
       </app-equipment-form>
 
+  </app-popup-projection>
+
+  <app-popup-projection
+    [isOpen]="isLotoPointFormOpen()"
+    [title]="'Loto Point Details'"
+    [size]="'large'"
+    (close)="onLotoPointFormClose()">
+
+      <app-loto-detail-form
+        [values]="lpToEdit()"
+        (formSubmitEvent)="onLotoPointFormSubmit($event)">
+
+      </app-loto-detail-form>
+    
   </app-popup-projection>

@@ -14,10 +14,13 @@ import { DataPresetMenuComponent } from "./data-preset-menu/data-preset-menu.com
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { EquipmentFormComponent } from "../../equipment/equipment-form/equipment-form.component";
+import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { LotoDetailFormComponent } from "../../loto/loto-detail-form/loto-detail-form.component";
+import { LotoPointService } from '../../../services/loto/loto-point.service';
 
 @Component({
   selector: 'app-file-editor',
-  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent],
+  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent, LotoDetailFormComponent],
   templateUrl: './file-editor.component.html',
   styleUrl: './file-editor.component.css',
   standalone: true,
@@ -38,12 +41,15 @@ export class FileEditorComponent {
   isDataPresetMenuOpen = signal<boolean>(false);
 
   isEqFormOpen = signal<boolean>(false);
+  isLotoPointFormOpen = signal<boolean>(false);
 
+  lpToEdit = signal<LotoPointDto | null>(null);
 
 
   constructor(
     protected currentFileService: CurrentFileService,
     private currentEquipmentService: CurrentEquipmentService,
+    private lotoPointService: LotoPointService,
     private destroyRef: DestroyRef,
     private imageService: ImageService
   ) {}
@@ -193,6 +199,58 @@ export class FileEditorComponent {
 
   onCloseDataPresetMenu(): void {
     this.isDataPresetMenuOpen.set(false);
+  }
+
+  //Loto Point form
+
+  onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
+    if (!lotoPoint || !lotoPoint.id) {
+      console.error('Invalid LOTO point');
+      return;
+    }
+
+    this.lotoPointService.updateLotoPoint(lotoPoint).pipe(
+      tap(resp => {
+        if (resp && resp.responseData) {
+          const updatedLotoPoint = new LotoPointDto(resp.responseData);
+          
+          // Update the LOTO point in the current equipment
+          const currentEquipment = this.currentEquipment();
+          if (currentEquipment && currentEquipment.id) {
+            const updatedEquipment = new EquipmentDto({
+              ...currentEquipment,
+              lotoPoints: currentEquipment.lotoPoints.map(lp => 
+                lp.id === updatedLotoPoint.id ? updatedLotoPoint : lp
+              )
+            });
+            
+            this.currentEquipmentService.setCurrentEquipment(updatedEquipment);
+          }
+          
+          // Optionally, you can emit an event or update a local state to reflect the change
+          console.log('LOTO point updated successfully', updatedLotoPoint);
+        } else {
+          throw new Error('Invalid response from server');
+        }
+      }),
+      catchError(error => {
+        console.error('Error updating LOTO point:', error);
+        // Optionally, you can emit an error event or show a user-friendly error message
+        return of(null);
+      })
+    ).subscribe();
+
+  }
+
+  onLotoPointFormDelete(lotoPoint: LotoPointDto) {}
+
+  onLotoPointFormOpen(lotoPoint: LotoPointDto) {
+    this.lpToEdit.set(lotoPoint);
+    this.isLotoPointFormOpen.set(true);
+  }
+  onLotoPointFormClose() {
+    this.lpToEdit.set(null);
+    this.isLotoPointFormOpen.set(false);
   }
 
 
