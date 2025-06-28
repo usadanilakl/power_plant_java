@@ -12,6 +12,8 @@ import { DetailsFormComponent } from "../../../shared/details-form/details-form.
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
+import { LotoPointService } from '../../../services/loto/loto-point.service';
+import { EquipmentService } from '../../../services/equipment.service';
 
 @Component({
   selector: 'app-equipment-form',
@@ -24,6 +26,8 @@ export class EquipmentFormComponent implements OnInit {
   private sharedDataService = inject(SharedDataService);
   private currentFileService = inject(CurrentFileService);
   private currentEquipmentService = inject(CurrentEquipmentService);
+  private lotoPointService = inject(LotoPointService);
+  private equipmentService = inject(EquipmentService);
   private destroyRef = inject(DestroyRef);
 
   values = input<EquipmentDto>(new EquipmentDto());
@@ -135,15 +139,29 @@ export class EquipmentFormComponent implements OnInit {
     this.formDelete.emit();
   }
         
-    private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
-      return source.pipe(
-        map(items => items.map(item => new ValueDto(item).toOption())),
-        catchError(error => {
-          console.error('Error loading options:', error);
-          return of([]);
-        })
-      );
-    }
+  private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
+    return source.pipe(
+      map(items => items.map(item => new ValueDto(item).toOption())),
+      catchError(error => {
+        console.error('Error loading options:', error);
+        return of([]);
+      })
+    );
+  }
+
+  onExistingLotoPointDoubleClick(lotoPoint: LotoPointDto) {
+    const eq = new EquipmentDto({... this.values() });
+    eq.lotoPoints = eq.lotoPoints.filter(lp => lp.id!== lotoPoint.id);
+    this.equipmentService.updateEquipment(eq).subscribe(resp => {
+      this.currentEquipmentService.setCurrentEquipment(new EquipmentDto(resp.responseData));
+    });
+  }
+
+  onSearchedLotoPointDoubleClick(lotoPoint: LotoPointDto) {
+    const eq = new EquipmentDto({... this.values() });
+    eq.lotoPoints.push(lotoPoint);
+    // this.currentEquipmentService.setCurrentEquipment(eq)
+  }
 
 
 

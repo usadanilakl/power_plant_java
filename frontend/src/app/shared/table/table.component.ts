@@ -50,14 +50,6 @@ export class TableComponent implements OnInit {
 
   constructor(private cdr: ChangeDetectorRef) {}
 
-  // @Input() set items(value: any[] | Observable<any[]>) {
-  //   if (Array.isArray(value)) {
-  //     this._items.next(value);
-  //   } else if (value instanceof Observable) {
-  //     value.subscribe(items => this._items.next(items));
-  //   }
-  // }
-
   private itemsSubscription: Subscription | null = null;
   
   @Input() set items(value: any[] | Observable<any[]>) {

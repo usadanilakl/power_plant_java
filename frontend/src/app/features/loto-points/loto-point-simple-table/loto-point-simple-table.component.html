@@ -1,5 +1,6 @@
 <app-shared-table 
   [items]="items$" 
+  [doubleClickCallback]="onRowDoubleClick.bind(this)" 
   [columns]="columns()"
   (search)="onSearch($event)">
 </app-shared-table>

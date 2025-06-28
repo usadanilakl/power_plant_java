@@ -27,6 +27,7 @@ export class LotoPointSimpleTableComponent implements OnInit {
   columns = computed(() => LotoPointDto.toTableColumns(['tagNumber', 'description', 'specificLocation']));
 
   itemsUpdated = output<LotoPointDto[]>();
+  doubleClickEvent = output<LotoPointDto>();
 
   ngOnInit() {
     const initialItems = this.initialItems();
@@ -59,5 +60,9 @@ export class LotoPointSimpleTableComponent implements OnInit {
         // Handle error (e.g., show an error message to the user)
       }
     });
+  }
+
+  onRowDoubleClick(item: LotoPointDto) {
+    this.doubleClickEvent.emit(item);
   }
 }

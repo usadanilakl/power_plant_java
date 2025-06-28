@@ -14,10 +14,18 @@
   </div>
   <div class="tables-container">
     <div class="table-wrapper">
-      <app-loto-point-simple-table [initialItems]="lotoPoints$"></app-loto-point-simple-table>
+      <h3>Associated LOTO Points</h3>
+      <app-loto-point-simple-table 
+        [initialItems]="lotoPoints$"
+        (doubleClickEvent)="onExistingLotoPointDoubleClick($event)">
+    </app-loto-point-simple-table>
     </div>
     <div class="table-wrapper">
-      <app-loto-point-simple-table [enableSearch]="true"></app-loto-point-simple-table>
+      <h3>Search LOTO Points</h3>
+      <app-loto-point-simple-table 
+        [enableSearch]="true"
+        (doubleClickEvent)="onSearchedLotoPointDoubleClick($event)">
+      </app-loto-point-simple-table>
     </div>
   </div>
 </div>
