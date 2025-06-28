@@ -144,7 +144,7 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
             }
         }
 
-        // If still no match, return the original string
+        if(index == 0) return tagNumber;
         return cleanedTag.substring(index, index + 6);
     }
 

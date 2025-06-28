@@ -43,7 +43,7 @@ export class DetailsFormComponent {
 
   ngOnInit() {
     this.createForm();
-    console.log('this.form:', this.form);
+    // console.log('this.form:', this.form);
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -53,11 +53,11 @@ export class DetailsFormComponent {
   }
 
   createForm() {
-    console.log('Creating form with fields:', this.fields);
-    console.log("values:", this.values);
+    // console.log('Creating form with fields:', this.fields);
+    // console.log("values:", this.values);
     const group: { [key: string]: any[] } = {};
     this.fields.forEach((field) => {
-      console.log('Field:', field);
+      // console.log('Field:', field);
       let value = this.getNestedValue(this.values, field.name);
       let validators = field.validators || [];
   
@@ -87,6 +87,7 @@ export class DetailsFormComponent {
   }
 
   updateForm() {
+    console.log('Updating form with fields:', this.fields);
     if (this.form) {
       this.fields.forEach((field) => {
         if (this.form.get(field.name)) {

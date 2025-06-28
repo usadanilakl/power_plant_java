@@ -53,7 +53,7 @@ export class DrawUtilService {
     this.shapes = shapes;
     this.shapesSubject.next(this.shapes);
 
-    console.log(`Image dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
+    // console.log(`Image dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
   }
 
   setShapes(shapes: Shape[]) {

@@ -7,14 +7,17 @@ import { ImageService } from '../../../services/text-recognition.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { FileBulkEditorMenuComponent } from "./file-bulk-editor-menu/file-bulk-editor-menu.component";
 import { Shape } from '../../../models/shape.model';
-import { map } from 'rxjs';
+import { catchError, map, of, tap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
 import { DataPresetMenuComponent } from "./data-preset-menu/data-preset-menu.component";
+import { EquipmentDto } from '../../../models/equipment/equipment.model';
+import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
+import { EquipmentFormComponent } from "../../equipment/equipment-form/equipment-form.component";
 
 @Component({
   selector: 'app-file-editor',
-  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent],
+  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent],
   templateUrl: './file-editor.component.html',
   styleUrl: './file-editor.component.css',
   standalone: true,
@@ -25,6 +28,7 @@ export class FileEditorComponent {
   openMenu = output<boolean>();
 
   currentFile = signal<FileDto | null>(null);
+  currentEquipment = signal<EquipmentDto>(new EquipmentDto());
   recognizedText = signal<string | null>(null);
   visibleShapes = signal<Shape[]>([]);
   isMenuOpen = signal<boolean>(false);
@@ -32,6 +36,8 @@ export class FileEditorComponent {
   uniqueEquipmentTypes = signal<string[]>([]);
   isFilterMenuOpen = signal<boolean>(false);
   isDataPresetMenuOpen = signal<boolean>(false);
+
+  isEqFormOpen = signal<boolean>(false);
 
 
 
@@ -59,17 +65,99 @@ export class FileEditorComponent {
       this.initializeSelectedEqTypes();
       this.updateFilteredEquipment();
     });
+
+    this.currentEquipmentService.currentEquipment$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(equipment => {
+      this.currentEquipment.set(equipment?? new EquipmentDto());
+      if (equipment) {
+        // Handle the new equipment data, e.g., update form fields
+        // console.log('Current equipment was updated in subscription:', equipment);
+      }
+    });
   }
 
   onNewShapeCreated(shape: any) {
     console.log('New shape created:', shape);
-    this.imageService.getText(this.currentFile()?.fileLink, shape).subscribe(
-      text => {
+    
+    this.currentEquipmentService.getCurrentPresetData().pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(presetData => {
+        const newEq: EquipmentDto = EquipmentDto.createEquipmentFromShape(shape);
+        
+        // Set a default tag number
+        newEq.tagNumber = `EQ-${shape.id}`;
+        
+        // Apply preset data if available
+        if (presetData) {
+          // Merge preset data with newEq
+          Object.assign(newEq, presetData);
+        }
+        
+        // Set the current equipment and open the form immediately
+        this.currentEquipmentService.setCurrentShape(shape);
+        this.currentEquipmentService.setCurrentEquipment(newEq);
+        this.isEqFormOpen.set(true);
+      
+        // Start the text recognition process
+        this.startTextRecognition(shape, newEq);
+      })
+    ).subscribe();
+  }
+  
+  private startTextRecognition(shape: any, newEq: EquipmentDto) {
+    this.imageService.getText(this.currentFile()?.fileLink, shape).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(text => {
         console.log('Recognized text:', text);
-        this.recognizedText.set(text);
-      },
-      error => console.error('Error recognizing text:', error)
-    )
+        if (text) {
+          // Update the tag number when text is recognized
+          newEq.tagNumber = text.trim();
+          this.currentEquipmentService.setCurrentEquipment(newEq);
+          this.recognizedText.set(text.trim());
+        }
+      }),
+      catchError(error => {
+        console.error('Error recognizing text:', error);
+        return of(null);
+      })
+    ).subscribe();
+  }
+
+  // onNewShapeCreated(shape: any) {
+  //   console.log('New shape created:', shape);
+  //   const newEq: EquipmentDto = EquipmentDto.createEquipmentFromShape(shape);
+    
+  //   // Set a default tag number
+  //   newEq.tagNumber = `EQ-${shape.id}`;
+    
+  //   // Set the current equipment and open the form immediately
+  //   this.currentEquipmentService.setCurrentShape(shape);
+  //   this.currentEquipmentService.setCurrentEquipment(newEq);
+  //   this.isEqFormOpen.set(true);
+  
+  //   // Start the text recognition process
+  //   this.imageService.getText(this.currentFile()?.fileLink, shape).pipe(
+  //     takeUntilDestroyed(this.destroyRef),
+  //     tap(text => {
+  //       console.log('Recognized text:', text);
+  //       if (text) {
+  //         // Update the tag number when text is recognized
+  //         newEq.tagNumber = text.trim();
+  //         this.currentEquipmentService.setCurrentEquipment(newEq);
+  //         this.recognizedText.set(text.trim());
+  //       }
+  //     }),
+  //     catchError(error => {
+  //       console.error('Error recognizing text:', error);
+  //       return of(null);
+  //     })
+  //   ).subscribe();
+  // }
+
+  closeEqForm(){
+    this.isEqFormOpen.set(false);
+    this.currentEquipmentService.clearCurrentEquipment();
   }
 
   onShapeSelected(shape: any) {

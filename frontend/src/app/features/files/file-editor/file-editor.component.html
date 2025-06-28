@@ -43,3 +43,14 @@
   [isOpen]="isDataPresetMenuOpen()"
   (closeEvent)="onDataPresetMenuOpen()">
   </app-data-preset-menu>
+
+  <app-popup-projection
+  [isOpen]="isEqFormOpen()"
+  [title]="'File Details'"
+  [size]="'large'"
+  (close)="closeEqForm()">
+  
+  <app-equipment-form
+  [values]="currentEquipment()"></app-equipment-form>
+
+</app-popup-projection>

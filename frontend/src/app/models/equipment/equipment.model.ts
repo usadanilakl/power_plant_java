@@ -221,7 +221,44 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       };
     }
   }
+
+  static createEquipmentFromShape(shape: RectangleShape): EquipmentDto {
+    if (shape.type !== 'rectangle') {
+      throw new Error('Only rectangle shapes are supported for equipment');
+    }
   
+    const coordinates = JSON.stringify({
+      startX: shape.x,
+      startY: shape.y,
+      endX: shape.x + shape.width,
+      endY: shape.y + shape.height,
+      width: shape.width,
+      height: shape.height
+    });
+  
+    const originalPictureSize = `width:${shape.originalPictureWidth},height:${shape.originalPictureHeight}`;
+  
+    return new EquipmentDto({
+      id: shape.id,
+      tagNumber: `EQ-${shape.id}`, // Generate a default tag number
+      description: `Equipment ${shape.id}`, // Generate a default description
+      specificLocation: '', // This might be set later
+      eqType: new ValueDto(), // This should be set properly later
+      files: [],
+      vendor: new ValueDto(),
+      location: new ValueDto(),
+      system: new ValueDto(),
+      coordinates: coordinates,
+      originalPictureSize: originalPictureSize,
+      mainFile: '', // This might be set later
+      lotoPoints: [],
+      isUpdated: '',
+      conflictStatus: '',
+      isVerified: false,
+      name: `Equipment ${shape.id}`, // Generate a default name
+      objectType: 'Equipment'
+    });
+  }
   private getShapeColor(): string {
     // Example: color based on equipment type
     switch (this.getNormalLotoPosition().toLowerCase().trim()) {
@@ -237,10 +274,11 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   }
 
   private getNormalLotoPosition(): string {
-    // Example: position based on loto points
-    if (this.lotoPoints.length > 0) {
-      const firstLotoPoint = Array.from(this.lotoPoints)[0];
-      return firstLotoPoint.normPos.name;
+    if (this.lotoPoints && this.lotoPoints.length > 0) {
+      const firstLotoPoint = this.lotoPoints[0];
+      if (firstLotoPoint && firstLotoPoint.normPos && firstLotoPoint.normPos.name) {
+        return firstLotoPoint.normPos.name;
+      }
     }
     return '';
   }
@@ -318,6 +356,43 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     };
   
     return fields.map(fieldName => allFields[fieldName]);
+  }
+
+  static removeDefaultValues(equipment: EquipmentDto): Partial<EquipmentModel> {
+    const result: Partial<EquipmentModel> = {};
+  
+    // Helper function to check if a value is "empty"
+    const isEmpty = (value: any): boolean => {
+      if (value === null || value === undefined) return true;
+      if (typeof value === 'string' && value.trim() === '') return true;
+      if (Array.isArray(value) && value.length === 0) return true;
+      if (typeof value === 'object') {
+        if ('id' in value && value.id !== 0) return false;
+      }
+      return false;
+    };
+  
+    // Check each property and add to result if not empty
+    if (!isEmpty(equipment.id) && equipment.id !== 0) result.id = equipment.id;
+    if (!isEmpty(equipment.tagNumber)) result.tagNumber = equipment.tagNumber;
+    if (!isEmpty(equipment.description)) result.description = equipment.description;
+    if (!isEmpty(equipment.specificLocation)) result.specificLocation = equipment.specificLocation;
+    if (!isEmpty(equipment.eqType) && !isEmpty(equipment.eqType.id)) result.eqType = equipment.eqType;
+    if (!isEmpty(equipment.files)) result.files = equipment.files;
+    if (!isEmpty(equipment.vendor) && !isEmpty(equipment.vendor.id)) result.vendor = equipment.vendor;
+    if (!isEmpty(equipment.location) && !isEmpty(equipment.location.id)) result.location = equipment.location;
+    if (!isEmpty(equipment.system) && !isEmpty(equipment.system.id)) result.system = equipment.system;
+    if (!isEmpty(equipment.coordinates)) result.coordinates = equipment.coordinates;
+    if (!isEmpty(equipment.originalPictureSize)) result.originalPictureSize = equipment.originalPictureSize;
+    if (!isEmpty(equipment.mainFile)) result.mainFile = equipment.mainFile;
+    if (!isEmpty(equipment.lotoPoints)) result.lotoPoints = equipment.lotoPoints;
+    if (!isEmpty(equipment.isUpdated)) result.isUpdated = equipment.isUpdated;
+    if (!isEmpty(equipment.conflictStatus)) result.conflictStatus = equipment.conflictStatus;
+    if (equipment.isVerified !== false) result.isVerified = equipment.isVerified;
+    if (!isEmpty(equipment.name)) result.name = equipment.name;
+    if (!isEmpty(equipment.objectType)) result.objectType = equipment.objectType;
+  
+    return result;
   }
     
 }

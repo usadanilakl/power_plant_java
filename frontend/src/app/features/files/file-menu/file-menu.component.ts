@@ -36,7 +36,7 @@ constructor(
     ).subscribe(() => {
       const routeInfo = this.routService.getCurrentRouteInfo();
       this.currentRoute.set(routeInfo.path || '');
-      console.log('Current route:', routeInfo);
+      // console.log('Current route:', routeInfo);
     });
   }
 
@@ -123,7 +123,7 @@ constructor(
   
   private handleFileEditClick(item: NestedItem): void {
     if (item.values && item.values.length > 0) return;
-    console.log('Handling click for edit route', item);
+    // console.log('Handling click for edit route', item);
 
     this.fileService.getFileById(item.id.toString()).subscribe(
       (response) => {

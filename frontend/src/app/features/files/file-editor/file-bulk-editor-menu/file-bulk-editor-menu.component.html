@@ -14,7 +14,14 @@
   (equipmentHovered)="onEquipmentHover($event)"
   (equipmentDeleted)="onEquipmentDelete($event)"
   (selectedItemsEvent)="onSelectedItems($event)"
-></app-equipment-table>
+>
+  @if(selectedItems().length > 0) {
+    <div table-controls>
+      <button (click)="applyPresetValues()">Apply Preset Values</button>
+    </div>
+  }
+</app-equipment-table>
+
 </app-floating-menu>
 
 @if (isPopupOpen) {

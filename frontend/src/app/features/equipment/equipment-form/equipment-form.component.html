@@ -1,0 +1,11 @@
+@if (isFormReady()) {
+  <app-details-form
+  [fields]="fields()"
+  [values]="values()"
+  layout="reactive"
+  (formSubmit)="onFormSubmit($event)"
+  (formDelete)="onFormDelete()">
+</app-details-form>
+} @else {
+  <p>Loading form...</p>
+}

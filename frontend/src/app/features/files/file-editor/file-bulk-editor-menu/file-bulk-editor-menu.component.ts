@@ -51,6 +51,8 @@ export class FileBulkEditorMenuComponent implements OnInit {
 
   MenuPosition = MenuPosition;
 
+  selectedItems = signal<EquipmentDto[]>([]);
+
   ngOnInit(): void {
     this.currentFileService.getElementsToRender().subscribe(equipmentList => {
       this.equipmentData.set(equipmentList);
@@ -145,7 +147,62 @@ export class FileBulkEditorMenuComponent implements OnInit {
   }
 
   onSelectedItems(items: EquipmentDto[]) {
-    console.log('Selected items:', items);
+    this.selectedItems.set(items);
+  }
+
+  applyPresetValues() {
+    this.currentEquipmentService.getCurrentPresetData().pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(presetData => {
+        if (presetData) {
+          console.log("Selected items: ",this.selectedItems())
+          console.log("PresetData: ", presetData);
+          const updatedItems = this.selectedItems().map(item => (new EquipmentDto({
+            ...item,
+            ...EquipmentDto.removeDefaultValues(presetData),
+          })));
+  
+          // Update the selected items in the component
+          this.selectedItems.set(updatedItems);
+  
+          // Update the items in the equipmentData
+          const updatedEquipmentData = this.equipmentData().map(item => 
+            updatedItems.find(updatedItem => updatedItem.id === item.id) || item
+          );
+          this.equipmentData.set(updatedEquipmentData);
+  
+          // Optionally, update the items on the server
+          // this.updateItemsOnServer(updatedItems);
+          console.log('Applied preset values to selected items:', updatedItems);
+        }
+      }),
+      catchError(error => {
+        console.error('Error applying preset values:', error);
+        // Handle the error (e.g., show an error message to the user)
+        return of(null);
+      })
+    ).subscribe();
+  }
+  
+  private updateItemsOnServer(items: EquipmentDto[]) {
+    // Create an array of observables for each item update
+    const updateObservables = items.map(item => 
+      this.equipmentService.updateEquipment(item)
+    );
+  
+    // Use forkJoin to execute all updates in parallel
+    forkJoin(updateObservables).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(results => {
+        console.log('All items updated successfully:', results);
+        // Optionally, you can update the local data with the server responses here
+      }),
+      catchError(error => {
+        console.error('Error updating items on server:', error);
+        // Handle the error (e.g., show an error message to the user)
+        return of(null);
+      })
+    ).subscribe();
   }
 
 

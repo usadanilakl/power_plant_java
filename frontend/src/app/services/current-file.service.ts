@@ -41,7 +41,6 @@ export class CurrentFileService {
     }
 
     setElementsToRender(elements: EquipmentDto[]): void {
-      console.log('Setting elements to render:', elements);
         this.elementsToRenderSubject.next(elements);
     }
 
@@ -98,7 +97,7 @@ export class CurrentFileService {
     }
 
     private filterByEquipmentType(exclude: string[]): EquipmentDto[] {
-      console.log('Filtering elements by type:', exclude);
+      // console.log('Filtering elements by type:', exclude);
       const currentElements = this.elementsSubject.getValue();
       return currentElements.filter(element => 
         element && element.eqType && element.eqType.name && 

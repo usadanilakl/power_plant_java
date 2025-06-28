@@ -121,7 +121,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       this.initializeShapes(elements, this._img.naturalWidth, this._img.naturalHeight);
       this.drawShapes();
     });
-    console.log(this.shapes());
+    // console.log(this.shapes());
     this.pictureOriginalWidth = img.naturalWidth;
     this.pictureOriginalHeight = img.naturalHeight;
     this.pictureCurrentWidth = this.img.width;
@@ -129,13 +129,10 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this.zoomElementRef.nativeElement.addEventListener('contextmenu', this.onContextMenu.bind(this));
   
     this.initializeServices();
-    console.log(this.shapes());
 
     this.setSubscriptions();
 
-    console.log(this.shapes());
     this.updateCanvasSize();
-    console.log(this.shapes());
     // this.updateImageAndCanvasSize();
   
   }
@@ -467,7 +464,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   onRightClick(event: MouseEvent) {
-    console.log('rightclick');
+    // console.log('rightclick');
     const { x, y } = this.viewportToPictureCoordinates(event.clientX, event.clientY);
     this.drawingService.handleRightClick(event,x,y);
   }
@@ -644,8 +641,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     const containerRect = this.zoomOuter.getBoundingClientRect();
     const scale = this.calculateCurrentScale();
   
-    console.log('Container Rect:', containerRect);
-    console.log('Scale:', scale);
+    // console.log('Container Rect:', containerRect);
+    // console.log('Scale:', scale);
   
     // Calculate the container bounds in image coordinates
     const containerBounds = {
@@ -655,12 +652,12 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       bottom: (-this.pointY + containerRect.height) / scale
     };
   
-    console.log('Container Bounds:', containerBounds);
+    // console.log('Container Bounds:', containerBounds);
   
     for (const shape of this.shapes()) {
       let isInContainerBounds = false;
   
-      console.log('Checking shape:', shape);
+      // console.log('Checking shape:', shape);
   
       switch (shape.type) {
         case 'rectangle':
@@ -677,14 +674,14 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
           break;
       }
   
-      console.log('Is in container bounds:', isInContainerBounds);
+      // console.log('Is in container bounds:', isInContainerBounds);
   
       if (isInContainerBounds) {
         visibleShapes.push(shape);
       }
     }
   
-    console.log('Shapes in container bounds:', visibleShapes);
+    // console.log('Shapes in container bounds:', visibleShapes);
     return visibleShapes;
   }
   

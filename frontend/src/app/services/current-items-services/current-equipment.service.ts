@@ -41,8 +41,8 @@ export class CurrentEquipmentService {
     private relatedLotoPointsSubject = new BehaviorSubject<LotoPointDto[]>([]);
     relatedLotoPoints$ = this.relatedLotoPointsSubject.asObservable();
 
-    private currentPresetDataSubject = new BehaviorSubject<DataPresetDto>(new DataPresetDto());
-    currentPresetData$: Observable<DataPresetDto> = this.currentPresetDataSubject.asObservable();
+    private currentPresetDataSubject = new BehaviorSubject<EquipmentDto>(new EquipmentDto());
+    currentPresetData$: Observable<EquipmentDto> = this.currentPresetDataSubject.asObservable();
 
     setCurrentShape(shape: Shape | null): void {
       this.shapeSubject.next(shape);
@@ -89,7 +89,7 @@ export class CurrentEquipmentService {
     }
 
     setCurrentEquipment(eq: EquipmentDto | null): void {
-      this.currentEquipmentSubject.next(eq);
+      this.currentEquipmentSubject.next(new EquipmentDto(eq || new EquipmentDto()));
       if (eq) {
         this.lotoPointSubject.next(eq.lotoPoints);
         this.fetchRelatedEquipmentAndLotoPoints(eq);
@@ -99,7 +99,11 @@ export class CurrentEquipmentService {
     }
 
     private fetchRelatedEquipmentAndLotoPoints(equipment: EquipmentDto): void {
-      // Fetch related equipment
+      if(!equipment ||!equipment.tagNumber || equipment.tagNumber.trim()==='') {
+        this.relatedEquipmentSubject.next([]);
+        this.relatedLotoPointsSubject.next([]);
+        return;
+      }
       const equipmentSearchCriteria: SearchCriteria = {
         type: 'global',
         query: equipment.tagNumber,
@@ -166,10 +170,10 @@ export class CurrentEquipmentService {
       this.allShapesSubject.next(shapes);
     }
 
-    setCurrentPresetData(data: DataPresetDto): void {
+    setCurrentPresetData(data: EquipmentDto): void {
       this.currentPresetDataSubject.next(data);
     }
-    getCurrentPresetData(): Observable<DataPresetDto> {
+    getCurrentPresetData(): Observable<EquipmentDto> {
       return this.currentPresetData$;
     }
 

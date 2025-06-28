@@ -20,7 +20,11 @@ import { Column } from '../../../models/column.model';
       [deleteItem]="onDeleteEquipment"
       (selectedItemsEvent)="onSelectedItems($event)"
       (rowHoveredEvent)="onEquipmentHover($event)"
-    ></app-shared-table>
+    >
+      <div table-controls>
+        <ng-content select="[table-controls]"></ng-content>
+      </div>
+  </app-shared-table>
   `
 })
 export class EquipmentTableComponent {

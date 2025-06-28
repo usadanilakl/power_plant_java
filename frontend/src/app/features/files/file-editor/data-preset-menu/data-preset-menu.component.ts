@@ -10,6 +10,7 @@ import { DetailsFormComponent } from "../../../../shared/details-form/details-fo
 import { CurrentFileService } from '../../../../services/current-file.service';
 import { CurrentEquipmentService } from '../../../../services/current-items-services/current-equipment.service';
 import { DataPresetDto } from '../../../../models/equipment/data-preset.model';
+import { EquipmentDto } from '../../../../models/equipment/equipment.model';
 
 
 @Component({
@@ -38,7 +39,7 @@ export class DataPresetMenuComponent implements OnInit {
   eqTypes = signal<Option[]>([]);
 
   fields = computed(() => this.createFields());
-  currentValues = signal<DataPresetDto>(new DataPresetDto());
+  currentValues = signal<EquipmentDto>(new EquipmentDto());
 
   ngOnInit(): void {
     forkJoin({
@@ -76,29 +77,29 @@ export class DataPresetMenuComponent implements OnInit {
         name: 'system',
         label: 'System',
         type: 'select',
-        options: this.systems(),
-        initialValue: currentPresetData.system?.value || null
+        options: this.addDefaultOption(this.systems(), 'Skip System'),
+        initialValue: currentPresetData.system?.id || ''
       },
       {
         name: 'location',
         label: 'Location',
         type: 'select',
-        options: this.locations(),
-        initialValue: currentPresetData.location?.value || null
+        options: this.addDefaultOption(this.locations(), 'Skip Location'),
+        initialValue: currentPresetData.location?.id || ''
       },
       {
         name: 'vendor',
         label: 'Vendor',
         type: 'select',
-        options: this.vendors(),
-        initialValue: currentPresetData.vendor?.value || null
+        options: this.addDefaultOption(this.vendors(), 'Skip Vendor'),
+        initialValue: currentPresetData.vendor?.id || ''
       },
       {
         name: 'eqType',
         label: 'Equipment Type',
         type: 'select',
-        options: this.eqTypes(),
-        initialValue: currentPresetData.eqType?.value || null
+        options: this.addDefaultOption(this.eqTypes(), 'Skip Equipment Type'),
+        initialValue: currentPresetData.eqType?.id || ''
       },
       {
         name: 'description',
@@ -117,13 +118,17 @@ export class DataPresetMenuComponent implements OnInit {
     ];
   }
 
+  private addDefaultOption(options: Option[], defaultLabel: string): Option[] {
+    return [{ value: '', label: defaultLabel }, ...options];
+  }
+
 
   handleClose() {
     this.closeEvent.emit();
   }    
 
-  onFormSubmit(values: DataPresetDto) {
-    this.currentEquipmentService.setCurrentPresetData(values);
+  onFormSubmit(values: EquipmentDto) {
+    this.currentEquipmentService.setCurrentPresetData(new EquipmentDto({ ...values }));
   }
       
   private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
