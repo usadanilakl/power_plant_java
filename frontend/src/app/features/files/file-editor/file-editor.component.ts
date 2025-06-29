@@ -17,10 +17,11 @@ import { EquipmentFormComponent } from "../../equipment/equipment-form/equipment
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { LotoPointService } from '../../../services/loto/loto-point.service';
 import { LotoPointDetailFormComponent } from "../../loto-points/loto-point-detail-form/loto-point-detail-form.component";
+import { PdfDisplayIframeComponent } from "../../../shared/pdf-dislplay-iframe/pdf-dislplay-iframe.component";
 
 @Component({
   selector: 'app-file-editor',
-  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent, LotoPointDetailFormComponent],
+  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent, LotoPointDetailFormComponent, PdfDisplayIframeComponent],
   templateUrl: './file-editor.component.html',
   styleUrl: './file-editor.component.css',
   standalone: true,
@@ -81,6 +82,12 @@ export class FileEditorComponent {
         // console.log('Current equipment was updated in subscription:', equipment);
       }
     });
+  }
+
+  onToggleFileFormat(){
+    const currentExtension = this.currentFile()?.fileLink?.split('.').pop();
+    const newExtension = currentExtension === 'pdf'? 'jpg' : 'pdf';
+    this.currentFileService.switchFileFormat(newExtension);
   }
 
   onNewShapeCreated(shape: any) {
@@ -175,18 +182,6 @@ export class FileEditorComponent {
       }))
     );
   }
-
-  // updateFilteredEquipment() {
-  //   const selectedTypes = this.selectedEqTypes()
-  //     .filter(eq => eq.selected)
-  //     .map(eq => eq.type);
-
-  //   this.currentFileService.getElements().pipe(
-  //     map(elements => elements.filter(el => el.eqType && el.eqType.name && selectedTypes.includes(el.eqType.name)))
-  //   ).subscribe(filteredEquipments => {
-  //     this.currentFileService.setElementsToRender(filteredEquipments);
-  //   });
-  // }
 
   updateFilteredEquipment() {
     const selectedTypes = this.selectedEqTypes()

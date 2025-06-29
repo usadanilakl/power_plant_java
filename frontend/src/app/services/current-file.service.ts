@@ -124,14 +124,30 @@ export class CurrentFileService {
       return Array.from(uniqueEqTypes);
     }
     
-    // private getUniqueEqTypes(): string[] {      
-    //   const elements = this.elementsSubject.getValue();
-    //   const uniqueEqTypes = new Set(
-    //     elements
-    //       .filter(el => el && el.eqType && el.eqType.name)
-    //       .map(el => el.eqType.name)
-    //   );
-    //   return Array.from(uniqueEqTypes);
-    // }
+    switchFileFormat(extension: string): void {
+      const currentFile = this.currentFileSubject.getValue();
+      if (!currentFile) return;
+    
+      // Create a new FileDto instance
+      const newFile = new FileDto({
+        ...currentFile,
+        extension: extension,
+        fileLink: this.updateFileLink(currentFile.fileLink, currentFile.extension, extension)
+      });
+    
+      // Update the current file
+      this.currentFileSubject.next(newFile);
+    }
+    
+    private updateFileLink(fileLink: string, oldExtension: string, newExtension: string): string {
+      // Ensure the old extension is at the end of the file link
+      if (!fileLink.endsWith(oldExtension)) {
+        console.warn('Current file link does not end with the expected extension');
+        return fileLink;
+      }
+    
+      // Replace only the extension at the end of the file link
+      return fileLink.replaceAll(oldExtension, newExtension);
+    }
 
 }

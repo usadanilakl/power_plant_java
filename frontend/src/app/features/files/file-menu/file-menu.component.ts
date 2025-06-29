@@ -117,8 +117,9 @@ constructor(
   }
   
   private handleFileTableClick(item: NestedItem): void {
-    console.log('Handling click for table route', item);
+    // console.log('Handling click for table route', item);
     // Implement table-specific click logic here
+    this.handleFileEditClick(item);
   }
   
   private handleFileEditClick(item: NestedItem): void {
@@ -128,6 +129,7 @@ constructor(
     this.fileService.getFileById(item.id.toString()).subscribe(
       (response) => {
         const file = FileDto.fromJson(response.responseData);
+        file.fileLink = file.fileLink.replaceAll('pdf','jpg');
         this.currentFileService.setCurrentFile(file);
       },
       (error) => {

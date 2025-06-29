@@ -55,7 +55,7 @@ public class WebConfigurer implements WebMvcConfigurer {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addViewController("/app/**").setViewName("forward:/angular/browser/index.html");
+        registry.addViewController("/app/**").setViewName("forward:/angular/browser/index.csr.html");
         registry.addViewController("/print/**").setViewName("forward:/brady/index.html");
     }
 

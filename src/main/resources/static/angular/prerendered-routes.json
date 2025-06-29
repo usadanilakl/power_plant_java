@@ -1,6 +1,10 @@
 {
   "routes": {
     "/angular/browser": {},
+    "/angular/browser/file": {},
+    "/angular/browser/file-editor": {},
+    "/angular/browser/file/edit": {},
+    "/angular/browser/file/table": {},
     "/angular/browser/loto": {},
     "/angular/browser/loto-points": {},
     "/angular/browser/loto/locks": {},
@@ -8,7 +12,6 @@
     "/angular/browser/loto/loto-boxes": {},
     "/angular/browser/loto/loto-points": {},
     "/angular/browser/loto/loto-points-active": {},
-    "/angular/browser/pid": {},
     "/angular/browser/print": {},
     "/angular/browser/tag-number": {}
   }
