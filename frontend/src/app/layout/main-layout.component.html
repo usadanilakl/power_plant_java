@@ -1,13 +1,17 @@
 
     <div class="layout-container">
       <header class="header">
-        @if (header()) {
-          <h1>{{ header() }}</h1>
-        }@else {
-          <h1>Jackson Generation</h1>  
-        }
-        <ng-content select="[header]"></ng-content>
-        <button class="toggle-menu-btn" (click)="toggleMenu()">Toggle Menu</button>
+        <div class="header-content">
+          @if (header()) {
+            <h1>{{ header() }}</h1>
+          }@else {
+            <h1>Jackson Generation</h1>  
+          }
+          <ng-content select="[header]"></ng-content>
+        </div>
+        <button class="toggle-menu-btn" (click)="toggleMenu()">
+          {{ isMenuVisible ? 'Hide Menu' : 'Show Menu' }}
+        </button>
       </header>
     
       <div class="content-wrapper">

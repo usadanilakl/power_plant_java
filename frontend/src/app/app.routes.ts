@@ -15,12 +15,13 @@ import { FileTableComponent } from './features/files/file-table/file-table.compo
 import { FileEditorBottomMenuComponent } from './features/files/file-editor/file-editor-bottom-menu/file-editor-bottom-menu.component';
 
 export const routes: Routes = [
-    {path: '', component: HomeComponent, data: {menuType: 'main'}},
+    // {path: '', component: HomeComponent, data: {menuType: 'main'}},
+    { path: '', redirectTo: '/file/edit', pathMatch: 'full' },
     {
-      path: 'file', 
+      path: 'file',
       component: FilePageComponent,
       children: [
-        { path: '', redirectTo: 'file', pathMatch: 'full' },
+        { path: '', redirectTo: 'table', pathMatch: 'full' },
         { path: 'edit', component: FileEditorComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
         { path: 'table', component: FileTableComponent }
       ]

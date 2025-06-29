@@ -1,11 +1,27 @@
 <div class="image-container">
-  <app-image-zoom-interactive
+  <!-- <app-image-zoom-interactive
     [imageUrl]="currentFile()?.fileLink"
     [elements]="currentFileService.getElementsToRender()"
     (visibleShapes)="handleVisibleShapes($event)"
     (shapeSelected)="onShapeSelected($event)"
     (newShapeCreated)="onNewShapeCreated($event)">
-  </app-image-zoom-interactive>
+  </app-image-zoom-interactive> -->
+  @if (currentFile()) {
+    <app-image-zoom-interactive
+      [imageUrl]="currentFile()?.fileLink"
+      [elements]="currentFileService.getElementsToRender()"
+      (visibleShapes)="handleVisibleShapes($event)"
+      (shapeSelected)="onShapeSelected($event)"
+      (newShapeCreated)="onNewShapeCreated($event)">
+    </app-image-zoom-interactive>
+  } @else {
+    <div class="no-file-selected">
+      <p>No file selected. Please select a file to view and edit.</p>
+      <!-- You can add a button or other UI elements here to guide the user -->
+      <!-- <button (click)="onSelectFile()" class="select-file-button">Select a File</button> -->
+    </div>
+  }
+
   
   <!-- New control section added at the bottom of the image container -->
   <div class="control-section">

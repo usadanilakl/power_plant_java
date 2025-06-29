@@ -26,7 +26,8 @@ export class MainLayoutComponent implements AfterViewInit {
   bottomMenu = input<string | null>(null);
   initialFooterHeight = 0;
   initialMouseY = 0;
-  mainContentHeight: number = 0; // Initialize with a default value or calculate it
+  mainContentHeight: number = 0;
+  isMenuVisible: boolean = true; // Assuming the menu is visible by default
 
   // menuItems = input<RouterMenuItems>(MAIN_MENU_ITEMS);
   
@@ -40,6 +41,7 @@ export class MainLayoutComponent implements AfterViewInit {
   }
 
   toggleMenu() {
+    this.isMenuVisible = !this.isMenuVisible;
     this.leftMenu.nativeElement.classList.toggle('collapsed');
     if (this.leftMenu.nativeElement.classList.contains('collapsed')) {
       this.menuWidth = 0;
