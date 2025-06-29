@@ -318,13 +318,13 @@ public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService,
     if (dto.getTagNumber() != null) equipment.setTagNumber(dto.getTagNumber());
     if (dto.getDescription() != null) equipment.setDescription(dto.getDescription());
     if (dto.getSpecificLocation() != null) equipment.setSpecificLocation(dto.getSpecificLocation());
-    if (dto.getEqTypeId() != null) equipment.setEqType(valueService.findById(dto.getEqTypeId()).orElse(null));
-    if (dto.getVendorId() != null) equipment.setVendor(valueService.findById(dto.getVendorId()).orElse(null));
-    if (dto.getLocationId() != null) equipment.setLocation(valueService.findById(dto.getLocationId()).orElse(null));
-    if (dto.getSystemId() != null) equipment.setSystem(valueService.findById(dto.getSystemId()).orElse(null));
+    if (dto.getEqTypeId() != null && dto.getEqTypeId()!=0) equipment.setEqType(valueService.findById(dto.getEqTypeId()).orElse(null));
+    if (dto.getVendorId() != null && dto.getVendorId()!=0) equipment.setVendor(valueService.findById(dto.getVendorId()).orElse(null));
+    if (dto.getLocationId() != null && dto.getLocationId()!=0) equipment.setLocation(valueService.findById(dto.getLocationId()).orElse(null));
+    if (dto.getSystemId() != null && dto.getSystemId()!=0) equipment.setSystem(valueService.findById(dto.getSystemId()).orElse(null));
     if (dto.getCoordinates() != null) equipment.setCoordinates(dto.getCoordinates());
     if (dto.getOriginalPictureSize() != null) equipment.setOriginalPictureSize(dto.getOriginalPictureSize());
-    if (dto.getMainFile() != null) equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
+    if (dto.getMainFile() != null && !dto.getMainFile().isEmpty()) equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
     if (dto.getConflictStatus() != null) equipment.setConflictStatus(dto.getConflictStatus());
     if (dto.getIsVerified() != null) equipment.setIsVerified(dto.getIsVerified());
 

@@ -50,10 +50,13 @@ export class LotoPointService {
     let lotoPointIdDto: LotoPointIdDto;
   
     if (lotoPoint instanceof LotoPointDto) {
+      console.log('LotoPointDto given as parameter');
       lotoPointIdDto = lotoPoint.toIdModel();
     } else if (this.isLotoPointIdDto(lotoPoint)) {
+      console.log('LotoPointIdDto given as parameter');
       lotoPointIdDto = lotoPoint;
     } else {
+      console.error('Invalid parameter type, expected LotoPointDto or LotoPointIdDto');
       // If it's neither, create a new LotoPointDto and convert it
       const fullLotoPoint = new LotoPointDto();
       Object.assign(fullLotoPoint, lotoPoint);
@@ -66,7 +69,18 @@ export class LotoPointService {
   
   // Type guard function
   private isLotoPointIdDto(object: any): object is LotoPointIdDto {
-    return 'id' in object && 'tagNumber' in object; // Add more properties if needed
+    // Iterate over all fields
+    for (const key in object) {
+      if (Object.prototype.hasOwnProperty.call(object, key)) {
+        const value = object[key];
+        // Check if the value is an object, but not an array or null
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          return false; // Found a nested object, so it's not a LotoPointIdDto
+        }
+      }
+    }
+  
+    return true; // No nested objects found, likely a LotoPointIdDto
   }
 
   deleteLotoPoint(id: string): Observable<SpringApiResponse<void>> {

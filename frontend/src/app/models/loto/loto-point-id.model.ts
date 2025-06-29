@@ -5,7 +5,7 @@ export class LotoPointIdDto extends BaseDto {
   tagged: string;
   tagNumber: string;
   description: string;
-  isoPosId: number | null;
+  isoPos: number | null;
   normPosId: number | null;
   specificLocation: string;
   standard: string;
@@ -15,7 +15,7 @@ export class LotoPointIdDto extends BaseDto {
   isolatedPosition: string;
   oldId: string;
   isUpdated: number;
-  fileIds: string[];
+  fileIds: string;
   conflictStatus: string;
   lotoIds: number[];
 
@@ -25,7 +25,7 @@ export class LotoPointIdDto extends BaseDto {
     this.tagged = data.tagged || '';
     this.tagNumber = data.tagNumber || '';
     this.description = data.description || '';
-    this.isoPosId = data.isoPosId || null;
+    this.isoPos = data.isoPos || null;
     this.normPosId = data.normPosId || null;
     this.specificLocation = data.specificLocation || '';
     this.standard = data.standard || '';
@@ -36,7 +36,7 @@ export class LotoPointIdDto extends BaseDto {
     this.oldId = data.oldId || '';
     this.objectType = data.objectType || '';
     this.isUpdated = data.isUpdated || 0;
-    this.fileIds = data.fileIds || [];
+    this.fileIds = data.fileIds || '';
     this.conflictStatus = data.conflictStatus || '';
     this.lotoIds = data.lotoIds || [];
   }
@@ -48,7 +48,7 @@ export class LotoPointIdDto extends BaseDto {
       tagged: this.tagged,
       tagNumber: this.tagNumber,
       description: this.description,
-      isoPosId: this.isoPosId,
+      isoPos: this.isoPos,
       normPosId: this.normPosId,
       specificLocation: this.specificLocation,
       standard: this.standard,
@@ -77,7 +77,7 @@ export class LotoPointIdDto extends BaseDto {
       tagged: json.tagged,
       tagNumber: json.tagNumber,
       description: json.description,
-      isoPosId: json.isoPosId,
+      isoPos: json.isoPos,
       normPosId: json.normPosId,
       specificLocation: json.specificLocation,
       standard: json.standard,
@@ -88,7 +88,7 @@ export class LotoPointIdDto extends BaseDto {
       oldId: json.oldId,
       objectType: json.objectType,
       isUpdated: json.isUpdated,
-      fileIds: json.fileIds || [],
+      fileIds: json.fileIds || "",
       conflictStatus: json.conflictStatus,
       lotoIds: json.lotoIds || []
     });

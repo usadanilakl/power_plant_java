@@ -157,6 +157,13 @@ ngOnInit() {
     return column.accessorFn ? column.accessorFn(item) : column.accessorKey ? this.getNestedProperty(item, column.accessorKey) : '';
   }
 
+  getCellStyle(item: any, column: any): { [key: string]: string } {
+    if (column.conditionalStyling) {
+      return column.conditionalStyling(item, column);
+    }
+    return {};
+  }
+
   getNestedProperty(obj: any, path: string): string {
     return path.split('.').reduce((current, key) => {
       if (current == null) return '';

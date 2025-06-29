@@ -10,23 +10,19 @@ import { FormField } from '../../../models/ui/form-field.model';
 import { ValueDto } from '../../../models/value.model';
 import { DetailsFormComponent } from "../../../shared/details-form/details-form.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
-import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
-import { LotoPointService } from '../../../services/loto/loto-point.service';
 import { EquipmentService } from '../../../services/equipment.service';
 
 @Component({
   selector: 'app-equipment-form',
-  imports: [DetailsFormComponent, LotoPointTableComponent, LotoPointSimpleTableComponent],
+  imports: [DetailsFormComponent, LotoPointSimpleTableComponent],
   templateUrl: './equipment-form.component.html',
   styleUrl: './equipment-form.component.css'
 })
 export class EquipmentFormComponent implements OnInit {
 
   private sharedDataService = inject(SharedDataService);
-  private currentFileService = inject(CurrentFileService);
   private currentEquipmentService = inject(CurrentEquipmentService);
-  private lotoPointService = inject(LotoPointService);
   private equipmentService = inject(EquipmentService);
   private destroyRef = inject(DestroyRef);
 

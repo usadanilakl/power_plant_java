@@ -110,15 +110,28 @@ export class CurrentFileService {
       const filteredElements = this.filterByEquipmentType(excludeTypes);
       this.elementsToRenderSubject.next(filteredElements);
     }
-    
-    private getUniqueEqTypes(): string[] {      
+
+    private getUniqueEqTypes(): string[] {
       const elements = this.elementsSubject.getValue();
       const uniqueEqTypes = new Set(
-        elements
-          .filter(el => el && el.eqType && el.eqType.name)
-          .map(el => el.eqType.name)
+        elements.map(el => {
+          if (!el || !el.eqType || !el.eqType.name) {
+            return 'Unknown';
+          }
+          return el.eqType.name;
+        })
       );
       return Array.from(uniqueEqTypes);
     }
+    
+    // private getUniqueEqTypes(): string[] {      
+    //   const elements = this.elementsSubject.getValue();
+    //   const uniqueEqTypes = new Set(
+    //     elements
+    //       .filter(el => el && el.eqType && el.eqType.name)
+    //       .map(el => el.eqType.name)
+    //   );
+    //   return Array.from(uniqueEqTypes);
+    // }
 
 }

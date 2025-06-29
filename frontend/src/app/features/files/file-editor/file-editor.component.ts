@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, output, signal } from '@angular/core';
+import { Component, DestroyRef, output, signal } from '@angular/core';
 import { ImageZoomInteractiveComponent } from "../../../shared/image/image-zoom-interactive/image-zoom-interactive.component";
 import { FileDto } from '../../../models/file/file.model';
 import { CurrentFileService } from '../../../services/current-file.service';
@@ -15,12 +15,12 @@ import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { EquipmentFormComponent } from "../../equipment/equipment-form/equipment-form.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
-import { LotoDetailFormComponent } from "../../loto/loto-detail-form/loto-detail-form.component";
 import { LotoPointService } from '../../../services/loto/loto-point.service';
+import { LotoPointDetailFormComponent } from "../../loto-points/loto-point-detail-form/loto-point-detail-form.component";
 
 @Component({
   selector: 'app-file-editor',
-  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent, LotoDetailFormComponent],
+  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent, LotoPointDetailFormComponent],
   templateUrl: './file-editor.component.html',
   styleUrl: './file-editor.component.css',
   standalone: true,
@@ -176,13 +176,30 @@ export class FileEditorComponent {
     );
   }
 
+  // updateFilteredEquipment() {
+  //   const selectedTypes = this.selectedEqTypes()
+  //     .filter(eq => eq.selected)
+  //     .map(eq => eq.type);
+
+  //   this.currentFileService.getElements().pipe(
+  //     map(elements => elements.filter(el => el.eqType && el.eqType.name && selectedTypes.includes(el.eqType.name)))
+  //   ).subscribe(filteredEquipments => {
+  //     this.currentFileService.setElementsToRender(filteredEquipments);
+  //   });
+  // }
+
   updateFilteredEquipment() {
     const selectedTypes = this.selectedEqTypes()
       .filter(eq => eq.selected)
       .map(eq => eq.type);
-
+  
     this.currentFileService.getElements().pipe(
-      map(elements => elements.filter(el => el.eqType && el.eqType.name && selectedTypes.includes(el.eqType.name)))
+      map(elements => elements.filter(el => {
+        if (!el.eqType || !el.eqType.name) {
+          return selectedTypes.includes('Unknown');
+        }
+        return selectedTypes.includes(el.eqType.name);
+      }))
     ).subscribe(filteredEquipments => {
       this.currentFileService.setElementsToRender(filteredEquipments);
     });
@@ -209,7 +226,7 @@ export class FileEditorComponent {
       return;
     }
 
-    this.lotoPointService.updateLotoPoint(lotoPoint).pipe(
+    this.lotoPointService.updateLotoPoint(new LotoPointDto(lotoPoint)).pipe(
       tap(resp => {
         if (resp && resp.responseData) {
           const updatedLotoPoint = new LotoPointDto(resp.responseData);
@@ -238,7 +255,20 @@ export class FileEditorComponent {
         // Optionally, you can emit an error event or show a user-friendly error message
         return of(null);
       })
-    ).subscribe();
+    ).subscribe({
+      next: () => {
+        // Close the form after successful update
+        this.isLotoPointFormOpen.set(false);
+      },
+      error: () => {
+        // Close the form even if there was an error
+        this.isLotoPointFormOpen.set(false);
+      },
+      complete: () => {
+        // Ensure the form is closed when the observable completes
+        this.isLotoPointFormOpen.set(false);
+      }
+    });
 
   }
 

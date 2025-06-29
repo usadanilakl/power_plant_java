@@ -45,7 +45,12 @@
           (auxclick)="onRowClick(item, $event)"
           [class.selected]="selectedItems.includes(item)">
             @for (column of columns; track column.id) {
-              <td (click)="registerLastClickedCell(item,column,$event)">{{ getCellValue(item, column) }}</td>
+              <td 
+                (click)="registerLastClickedCell(item,column,$event)"
+                [ngStyle]="getCellStyle(item, column)"
+              >
+                {{ getCellValue(item, column) }}
+              </td>
             }
           </tr>
         }

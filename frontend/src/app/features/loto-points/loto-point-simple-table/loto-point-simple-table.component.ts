@@ -28,6 +28,7 @@ export class LotoPointSimpleTableComponent implements OnInit {
 
   itemsUpdated = output<LotoPointDto[]>();
   doubleClickEvent = output<LotoPointDto>();
+  rightClickEvent = output<LotoPointDto>();
 
   ngOnInit() {
     const initialItems = this.initialItems();
@@ -64,5 +65,9 @@ export class LotoPointSimpleTableComponent implements OnInit {
 
   onRowDoubleClick(item: LotoPointDto) {
     this.doubleClickEvent.emit(item);
+  }
+
+  onRowRightClick(item: LotoPointDto) {
+    this.rightClickEvent.emit(item);
   }
 }

@@ -3,4 +3,5 @@ export interface Column {
   header: string;
   accessorKey?: string;
   accessorFn?: (item: any) => string;
+  conditionalStyling?: (item: any, column: Column) => { [key: string]: string };
 }

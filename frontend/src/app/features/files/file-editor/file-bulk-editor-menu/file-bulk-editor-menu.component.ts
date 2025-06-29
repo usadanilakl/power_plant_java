@@ -126,6 +126,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
   //Table related methods
 
   onEquipmentSelected(item: EquipmentDto) {
+    this.currentEquipmentService.setCurrentShapeWithId(item.id);
   }
 
   onEquipmentEdit(equipment: EquipmentDto, column: Column) {
@@ -139,7 +140,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
   }
 
   onEquipmentHover(equipment: EquipmentDto) {
-    this.currentEquipmentService.setCurrentShapeWithId(equipment.id);
+    // this.currentEquipmentService.setCurrentShapeWithId(equipment.id);
   }
 
   onEquipmentDelete(id: string) {
@@ -172,7 +173,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
           this.equipmentData.set(updatedEquipmentData);
   
           // Optionally, update the items on the server
-          // this.updateItemsOnServer(updatedItems);
+          this.updateItemsOnServer(updatedItems);
           console.log('Applied preset values to selected items:', updatedItems);
         }
       }),

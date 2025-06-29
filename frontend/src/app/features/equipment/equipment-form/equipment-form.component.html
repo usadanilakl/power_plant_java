@@ -17,6 +17,7 @@
       <h3>Associated LOTO Points</h3>
       <app-loto-point-simple-table 
         [initialItems]="lotoPoints$"
+        (rightClickEvent)="onLotoPointRowRightClick($event)"
         (doubleClickEvent)="onExistingLotoPointDoubleClick($event)">
     </app-loto-point-simple-table>
     </div>
@@ -24,6 +25,7 @@
       <h3>Search LOTO Points</h3>
       <app-loto-point-simple-table 
         [enableSearch]="true"
+        (rightClickEvent)="onLotoPointRowRightClick($event)"
         (doubleClickEvent)="onSearchedLotoPointDoubleClick($event)">
       </app-loto-point-simple-table>
     </div>

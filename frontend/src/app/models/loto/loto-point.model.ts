@@ -264,7 +264,7 @@ static toTableColumns(
       tagged: this.tagged,
       tagNumber: this.tagNumber,
       description: this.description,
-      isoPosId: this.isoPos?.id || null,
+      isoPos: this.isoPos?.id || null,
       normPosId: this.normPos?.id || null,
       specificLocation: this.specificLocation,
       standard: this.standard,
@@ -275,7 +275,8 @@ static toTableColumns(
       oldId: this.oldId,
       objectType: this.objectType,
       isUpdated: this.isUpdated,
-      fileIds: this.fileIds.split(',').map(id => id.trim()).filter(id => id !== ''),
+      // fileIds: this.fileIds.split(',').map(id => id.trim()).filter(id => id !== ''),
+      fileIds: this.fileIds,
       conflictStatus: this.conflictStatus,
       lotoIds: this.lotos.map(loto => loto.id)
     });

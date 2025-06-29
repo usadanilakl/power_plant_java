@@ -37,18 +37,98 @@ export class EquipmentTableComponent {
   @Output() equipmentDeleted = new EventEmitter<string>();
   selectedItemsEvent = output<EquipmentDto[]>();
 
+  // columns: Column[] = [
+  //   { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
+  //   { id: 'description', header: 'Description', accessorKey: 'description' },
+  //   { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' },
+  //   { id: 'eqType', header: 'Equipment Type', accessorKey: 'eqType.name' },
+  //   { id: 'vendor', header: 'Vendor', accessorKey: 'vendor.name' },
+  //   { id: 'location', header: 'Location', accessorKey: 'location.name' },
+  //   { id: 'system', header: 'System', accessorKey: 'system.name' },
+  //   { id: 'coordinates', header: 'Coordinates', accessorKey: 'coordinates' },
+  //   { id: 'isVerified', header: 'Verified', accessorFn: (item: EquipmentDto) => item.isVerified ? 'Yes' : 'No' },
+  //   { id: 'conflictStatus', header: 'Conflict Status', accessorKey: 'conflictStatus' },
+  //   { id: 'lotoPointsCount', header: 'LOTO Points', accessorFn: (item: EquipmentDto) => item.lotoPoints.length.toString() }
+  // ];
+
   columns: Column[] = [
-    { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
-    { id: 'description', header: 'Description', accessorKey: 'description' },
-    { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' },
-    { id: 'eqType', header: 'Equipment Type', accessorKey: 'eqType.name' },
-    { id: 'vendor', header: 'Vendor', accessorKey: 'vendor.name' },
-    { id: 'location', header: 'Location', accessorKey: 'location.name' },
-    { id: 'system', header: 'System', accessorKey: 'system.name' },
-    { id: 'coordinates', header: 'Coordinates', accessorKey: 'coordinates' },
-    { id: 'isVerified', header: 'Verified', accessorFn: (item: EquipmentDto) => item.isVerified ? 'Yes' : 'No' },
-    { id: 'conflictStatus', header: 'Conflict Status', accessorKey: 'conflictStatus' },
-    { id: 'lotoPointsCount', header: 'LOTO Points', accessorFn: (item: EquipmentDto) => item.lotoPoints.length.toString() }
+    {
+      id: 'tagNumber',
+      header: 'Tag Number',
+      accessorKey: 'tagNumber',
+      conditionalStyling: (item: any, column: Column) => 
+        !item.tagNumber ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'description',
+      header: 'Description',
+      accessorKey: 'description',
+      conditionalStyling: (item: any, column: Column) => 
+        !item.description ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'specificLocation',
+      header: 'Specific Location',
+      accessorKey: 'specificLocation',
+      conditionalStyling: (item: any, column: Column) => 
+        !item.specificLocation ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'eqType',
+      header: 'Equipment Type',
+      accessorKey: 'eqType.name',
+      conditionalStyling: (item: any, column: Column) => 
+        !item.eqType?.name ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'vendor',
+      header: 'Vendor',
+      accessorKey: 'vendor.name',
+      conditionalStyling: (item: any, column: Column) => 
+        !item.vendor?.name ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'location',
+      header: 'Location',
+      accessorKey: 'location.name',
+      conditionalStyling: (item: any, column: Column) => 
+        !item.location?.name ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'system',
+      header: 'System',
+      accessorKey: 'system.name',
+      conditionalStyling: (item: any, column: Column) => 
+        !item.system?.name ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'coordinates',
+      header: 'Coordinates',
+      accessorKey: 'coordinates',
+      conditionalStyling: (item: any, column: Column) => 
+        !item.coordinates ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'isVerified',
+      header: 'Verified',
+      accessorFn: (item: EquipmentDto) => item.isVerified ? 'Yes' : 'No',
+      conditionalStyling: (item: any, column: Column) => 
+        item.isVerified === undefined ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'conflictStatus',
+      header: 'Conflict Status',
+      accessorKey: 'conflictStatus',
+      conditionalStyling: (item: any, column: Column) => 
+        !item.conflictStatus ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    },
+    {
+      id: 'lotoPointsCount',
+      header: 'LOTO Points',
+      accessorFn: (item: EquipmentDto) => item.lotoPoints.length.toString(),
+      conditionalStyling: (item: any, column: Column) => 
+        item.lotoPoints.length === 0 ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    }
   ];
 
   onEquipmentClick = (item: EquipmentDto, event: MouseEvent) => {
