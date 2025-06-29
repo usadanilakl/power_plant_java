@@ -117,15 +117,6 @@ export class FileTableComponent implements OnInit {
       })
     ).subscribe();
   }
-
-  // onItemClick = (item: any) => {
-  //   this.selectedItem = item;
-  //   this.selectedImagePath = item.fileLink;
-  //   this.isPopupOpen = true;
-  
-  //   // Fetch elements
-  //   this.fetchElements(item.id);
-  // }
     onItemClick = (item: any, event: MouseEvent) => {
     if (event.ctrlKey) {
       // Ctrl is held down

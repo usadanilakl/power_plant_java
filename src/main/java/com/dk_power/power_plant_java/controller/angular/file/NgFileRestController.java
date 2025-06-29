@@ -110,28 +110,6 @@ public class NgFileRestController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
-//        try{// Handle the file upload if a new file is provided
-//            FileObject fileEntity = ngFileService.convertIdDtoToEntity(fileDto);
-//            if (file != null && !file.isEmpty()) {
-//
-//                //Build File link
-//                String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")+1);
-//                fileEntity.setExtension(extension);
-//                fileEntity.setBaseLink("uploads");
-//                String fileLink = fileEntity.buildFolder();
-//                // Process the file upload
-//                fileLink = ngFileService.uploadFile(file, fileLink.replace("uploads/","").replace("uploads\\",""),overrideFile);
-//                String fileNameWithoutExtension = Paths.get(fileLink).getFileName().toString().replaceFirst("[.][^.]+$", "");
-//                fileEntity.setFileNumber(fileNameWithoutExtension);
-//                fileEntity.buildFileLink();
-//            }
-//            // Update the file in the database
-//            FileDto updatedFile = ngFileService.toDto(ngFileService.save(fileEntity));
-//            return ResponseEntity.ok(new NgApiResponse<>(updatedFile,"File uploaded successfully", LocalDateTime.now()));
-//        }catch (Exception e){
-//            e.printStackTrace();
-//            return ResponseEntity.badRequest().body(new NgApiResponse<FileDto>(null, e.getMessage(), LocalDateTime.now()));
-//        }
     }
 
     @PostMapping("/check")
@@ -150,7 +128,6 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<NgApiResponse<Void>> deleteFile(@PathVariable Long id) {
         try {
