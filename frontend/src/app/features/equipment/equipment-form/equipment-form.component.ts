@@ -11,10 +11,11 @@ import { DetailsFormComponent } from "../../../shared/details-form/details-form.
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
 import { EquipmentService } from '../../../services/equipment.service';
+import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-form.component";
 
 @Component({
   selector: 'app-equipment-form',
-  imports: [DetailsFormComponent, LotoPointSimpleTableComponent],
+  imports: [DetailsFormComponent, LotoPointSimpleTableComponent, ReactiveFormComponent],
   templateUrl: './equipment-form.component.html',
   styleUrl: './equipment-form.component.css'
 })

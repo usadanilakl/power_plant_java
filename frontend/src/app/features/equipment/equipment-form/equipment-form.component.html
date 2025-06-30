@@ -1,13 +1,20 @@
 <div class="container">
   <div class="form-container">
     @if (isFormReady()) {
-      <app-details-form
+      <!-- <app-details-form
         [fields]="fields()"
         [values]="values()"
         layout="reactive"
         (formSubmit)="onFormSubmit($event)"
         (formDelete)="onFormDelete()">
-      </app-details-form>
+      </app-details-form> -->
+      <app-reactive-form
+        [fields]="fields()"
+        [values]="values()"
+        [layout]="'reactive'"
+        (formSubmit)="onFormSubmit($event)"
+        (formDelete)="onFormDelete()">
+      </app-reactive-form>
     } @else {
       <p>Loading form...</p>
     }

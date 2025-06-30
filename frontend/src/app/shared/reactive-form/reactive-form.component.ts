@@ -12,10 +12,11 @@ import { FormInputComponent } from "../form-input/form-input.component";
 
 @Component({
   selector: 'app-reactive-form',
+  standalone: true,
   imports: [AddValueFormComponent, ValuesComponent, SearchableDropdownComponent, CheckboxGroupComponent, RadioGroupComponent, MultiSelectSearchableDropdownComponent, FileInputComponent, MultiInputComponent, FormInputComponent,
     ReactiveFormsModule,],
   templateUrl: './reactive-form.component.html',
-  styleUrl: './reactive-form.component.css'
+  styleUrls: ['./reactive-form.component.css']
 })
 export class ReactiveFormComponent {
   fields = input<any[]>([]);

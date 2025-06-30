@@ -10,11 +10,12 @@ import { ImageCarouselComponent } from "../../../shared/image/image-carusel/imag
 import { CommonModule  } from '@angular/common';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { NonNullablePipe } from "../../../pipes/nonNullable.pipe";
+import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-form.component";
 
 @Component({
   selector: 'app-loto-point-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe],
+  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, ReactiveFormComponent],
   templateUrl: './loto-point-detail-form.component.html',
   styleUrl: './loto-point-detail-form.component.css'
 })

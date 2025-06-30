@@ -9,22 +9,33 @@
 <button table-controls (click)="createNewFile()">Add New File</button>
 </app-shared-table>
 
-<!-- <app-popup-projection
+<app-popup-projection
   [isOpen]="isPopupOpen"
   [title]="'File Details'"
   [size]="'large'"
   (close)="closePopup()">
   
-  <app-file-detail-form
-    [values]="selectedItem"
-    [formDelete]="onFormDelete.bind(this)"
-    [openImage]="onOpenImage.bind(this)"
-    (formSubmitEvent)="onFormSubmit($event.formData)"
-  ></app-file-detail-form>
+  <div class="side-by-side-container">
+    <div class="form-container">
+      <app-file-detail-form
+        [values]="selectedItem"
+        (formDelete)="onFormDelete.bind(this)"
+        (openImage)="onOpenImage()"
+        (formSubmit)="onFormSubmit($event.formData)"
+      ></app-file-detail-form>
+    </div>
 
-</app-popup-projection> -->
+    <div class="image-container">
+      <app-image-zoom-interactive
+        [imageUrl]="selectedImagePath"
+        [elements]="elements$">
+      </app-image-zoom-interactive>
+    </div>
+  </div>
 
-<app-popup
+</app-popup-projection>
+
+<!-- <app-popup
   [isOpen]="isPopupOpen"
   [title]="'File Details'"
   [contentComponent]="FileDetailFormComponent"
@@ -35,7 +46,7 @@
     openImage: onOpenImage.bind(this)
   }"
   (close)="closePopup()"
-></app-popup>
+></app-popup> -->
 
 <app-popup
   [isOpen]="isImagePopupOpen"

@@ -105,7 +105,7 @@
 //   }
 // }
 
-import { Component, Input, OnInit, DestroyRef, signal, computed, Output, EventEmitter } from '@angular/core';
+import { Component, Input, OnInit, DestroyRef, signal, computed, Output, EventEmitter, input, output } from '@angular/core';
 import { ReactiveFormComponent } from '../../../shared/reactive-form/reactive-form.component';
 import { CurrentValueService } from '../../../services/current-value.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -123,9 +123,10 @@ import { ValuesComponent } from '../../values/values.component';
   styleUrl: './file-detail-form.component.css'
 })
 export class FileDetailFormComponent implements OnInit {
-  @Input() values: any = {};
-  @Output() formSubmit = new EventEmitter<any>();
-  @Output() formDelete = new EventEmitter<void>();
+  values = input<any>({});
+  openImage = output<void>();
+  formSubmit = output<any>();
+  formDelete = output<void>();
 
   private fileTypeOptions = signal<Option[]>([]);
   private systemOptions = signal<Option[]>([]);
@@ -181,5 +182,9 @@ export class FileDetailFormComponent implements OnInit {
 
   onFormDelete() {
     this.formDelete.emit();
+  }
+
+  onOpenImage() {
+    this.openImage.emit();
   }
 }

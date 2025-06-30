@@ -1,0 +1,21 @@
+.side-by-side-container {
+  display: flex;
+  flex-direction: row;
+  gap: 20px; /* Adjust the space between the form and image as needed */
+}
+
+.form-container {
+  flex: 1; /* Takes up 50% of the container width */
+  min-width: 300px; /* Adjust as needed to ensure readability */
+}
+
+.image-container {
+  flex: 1; /* Takes up 50% of the container width */
+}
+
+/* For smaller screens, stack the components vertically */
+@media (max-width: 768px) {
+  .side-by-side-container {
+    flex-direction: column;
+  }
+}

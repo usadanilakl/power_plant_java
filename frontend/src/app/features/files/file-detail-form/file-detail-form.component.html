@@ -16,10 +16,14 @@
   @if(isFormReady()){
   <app-reactive-form
       [fields]="fields()"
-      [values]="values"
-      [layout]="'reactive'"
+      [values]="values()"
+      [layout]="'column'"
       (formSubmit)="onFormSubmit($event)"
       (formDelete)="onFormDelete()">
-  </app-reactive-form>}
+  </app-reactive-form>
+<button type="button" (click)="onOpenImage()">Open Image</button>
+} @else {
+  <p>Loading form...</p>
+}
 
 

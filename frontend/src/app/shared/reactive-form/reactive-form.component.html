@@ -1,6 +1,7 @@
-@if(!isValueEditMenuOpen() && !isAddValueMenuOpen()){<form [formGroup]="form()!" (ngSubmit)="onSubmit()" [class]="'form-layout-' + layout">
+@if(!isValueEditMenuOpen() && !isAddValueMenuOpen()){
+  <form [formGroup]="form()!" (ngSubmit)="onSubmit()" [class]="'form-layout-' + layout()">
   @for (field of fields(); track field.name) {
-    <div [class]="'form-field-layout-' + layout">
+    <div [class]="'form-field-layout-' + layout()">
       @switch (field.type) {
         @case ('select') {
           <app-searchable-dropdown
@@ -58,7 +59,7 @@
     </div>
   }
   
-  <div [class]="'form-field-layout-' + layout">
+  <div [class]="'form-field-layout-' + layout()">
     <button type="submit">Submit</button>
       <button type="button" (click)="onDelete()">Delete</button>
   </div>

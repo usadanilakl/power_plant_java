@@ -19,8 +19,9 @@ import { PopupProjectionComponent } from "../../../shared/popup-projection/popup
 @Component({
   selector: 'app-file-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, FileDetailFormComponent, PopupComponent, ImageInteractiveComponent, PopupProjectionComponent],
+  imports: [CommonModule, TableComponent, FileDetailFormComponent, PopupComponent, ImageInteractiveComponent, PopupProjectionComponent, ImageZoomInteractiveComponent],
   templateUrl: './file-table.component.html',
+  styleUrls: ['./file-table.component.css'],
 })
 export class FileTableComponent implements OnInit {
   columns: Column[] = [
