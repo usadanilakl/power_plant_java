@@ -49,8 +49,8 @@ export class LotoPointDetailFormComponent implements OnInit {
       { name: 'description', label: 'Description', type: 'text', validators: [Validators.required] },
       { name: 'unit', label: 'Unit', type: 'text' },
       { name: 'tagged', label: 'Tagged', type: 'text' },
-      { name: 'isoPos', label: 'Isolated Position', type: 'select', options: this.isoPosOptions },
-      { name: 'normPos', label: 'Normal Position', type: 'select', options: this.normPosOptions },
+      { name: 'isoPos', label: 'Isolated Position', type: 'select', options: this.isoPosOptions() },
+      { name: 'normPos', label: 'Normal Position', type: 'select', options: this.normPosOptions() },
       { name: 'specificLocation', label: 'Specific Location', type: 'text' },
       { name: 'standard', label: 'Standard', type: 'text' },
       { name: 'generalLocation', label: 'General Location', type: 'text' },
@@ -69,24 +69,16 @@ export class LotoPointDetailFormComponent implements OnInit {
     this.loadOptions('normPos', this.normPosOptions);
     this.initializeFilters();
   }
-
+  
   private loadOptions(category: string, optionsSignal: ReturnType<typeof signal<Option[]>>) {
     this.currentValueService.getOptionsByCategory(category).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(options => {
+      console.log("Options in lotopoint detail form: ", options);
       optionsSignal.set(options);
       this.checkFormReady();
     });
   }
-  
-  // private loadOptions(category: string, optionsSignal: ReturnType<typeof signal<Option[]>>) {
-  //   this.currentValueService.getOptionsByCategory(category).pipe(
-  //     takeUntilDestroyed(this.destroyRef)
-  //   ).subscribe(options => {
-  //     optionsSignal.set(options);
-  //     this.checkFormReady();
-  //   });
-  // }
 
     private checkFormReady() {
     if (this.isoPosOptions().length > 0 && 

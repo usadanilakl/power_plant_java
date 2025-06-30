@@ -12,6 +12,7 @@ import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
 import { EquipmentService } from '../../../services/equipment.service';
 import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-form.component";
+import { CurrentValueService } from '../../../services/current-value.service';
 
 @Component({
   selector: 'app-equipment-form',
@@ -22,6 +23,7 @@ import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-fo
 export class EquipmentFormComponent implements OnInit {
 
   private sharedDataService = inject(SharedDataService);
+  private currentValueService = inject(CurrentValueService);
   private currentEquipmentService = inject(CurrentEquipmentService);
   private equipmentService = inject(EquipmentService);
   private destroyRef = inject(DestroyRef);
@@ -46,25 +48,30 @@ export class EquipmentFormComponent implements OnInit {
 
 
   ngOnInit(): void {
-    forkJoin({
-      systems: this.loadOptions(this.sharedDataService.loadSystems()),
-      locations: this.loadOptions(this.sharedDataService.loadLocations()),
-      vendors: this.loadOptions(this.sharedDataService.loadVendors()),
-      eqTypes: this.loadOptions(this.sharedDataService.loadEqTypes()),
-    }).pipe(
-      takeUntilDestroyed(this.destroyRef),
-      tap(({ systems, locations, vendors, eqTypes }) => {
-        this.systems.set(systems);
-        this.locations.set(locations);
-        this.vendors.set(vendors);
-        this.eqTypes.set(eqTypes);
-        this.isFormReady.set(true);
-      }),
-      catchError(error => {
-        console.error('Error loading form data:', error);
-        return of({ isoPositions: [], normPositions: [] });
-      })
-    ).subscribe();
+    // forkJoin({
+    //   systems: this.loadOptions(this.sharedDataService.loadSystems()),
+    //   locations: this.loadOptions(this.sharedDataService.loadLocations()),
+    //   vendors: this.loadOptions(this.sharedDataService.loadVendors()),
+    //   eqTypes: this.loadOptions(this.sharedDataService.loadEqTypes()),
+    // }).pipe(
+    //   takeUntilDestroyed(this.destroyRef),
+    //   tap(({ systems, locations, vendors, eqTypes }) => {
+    //     this.systems.set(systems);
+    //     this.locations.set(locations);
+    //     this.vendors.set(vendors);
+    //     this.eqTypes.set(eqTypes);
+    //     this.isFormReady.set(true);
+    //   }),
+    //   catchError(error => {
+    //     console.error('Error loading form data:', error);
+    //     return of({ isoPositions: [], normPositions: [] });
+    //   })
+    // ).subscribe();
+    
+    this.loadOptions('system', this.systems);
+    this.loadOptions('vendor', this.vendors);
+    this.loadOptions('location', this.locations);
+    this.loadOptions('eqType', this.eqTypes);
   }
 
 
@@ -125,7 +132,8 @@ export class EquipmentFormComponent implements OnInit {
   }
 
   private addDefaultOption(options: Option[], defaultLabel: string): Option[] {
-    return [{ value: '', label: defaultLabel }, ...options];
+    if(options.length>0)return [{ value: '', label: defaultLabel }, ...options];
+    return [];
   }
 
   onFormSubmit(updatedValues: any) {
@@ -137,16 +145,35 @@ export class EquipmentFormComponent implements OnInit {
   onFormDelete() {
     this.formDelete.emit();
   }
-        
-  private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
-    return source.pipe(
-      map(items => items.map(item => new ValueDto(item).toOption())),
-      catchError(error => {
-        console.error('Error loading options:', error);
-        return of([]);
-      })
-    );
+
+  private loadOptions(category: string, optionsSignal: ReturnType<typeof signal<Option[]>>) {
+    this.currentValueService.getOptionsByCategory(category).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(options => {
+      console.log('Options loaded in equipment detail form:', options);
+      optionsSignal.set(options);
+      this.checkFormReady();
+    });
   }
+
+  private checkFormReady() {
+    if (this.eqTypes().length > 0 && 
+        this.systems().length > 0 && 
+        this.locations().length > 0 && 
+        this.vendors().length > 0) {
+      this.isFormReady.set(true);
+    }
+  }
+        
+  // private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
+  //   return source.pipe(
+  //     map(items => items.map(item => new ValueDto(item).toOption())),
+  //     catchError(error => {
+  //       console.error('Error loading options:', error);
+  //       return of([]);
+  //     })
+  //   );
+  // }
 
   //Loto Point Table
   onExistingLotoPointDoubleClick(lotoPoint: LotoPointDto) {

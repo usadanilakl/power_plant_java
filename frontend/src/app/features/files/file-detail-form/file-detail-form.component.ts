@@ -162,6 +162,7 @@ export class FileDetailFormComponent implements OnInit {
     this.currentValueService.getOptionsByCategory(category).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(options => {
+      console.log('Options loaded in file detail form:', options);
       optionsSignal.set(options);
       this.checkFormReady();
     });

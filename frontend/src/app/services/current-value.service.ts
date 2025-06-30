@@ -100,6 +100,7 @@ export class CurrentValueService {
   }
 
   getValuesByCategory(category: string): Observable<ValueDto[]> {
+    console.log("All data: ", this.allDataSubject.value);
     return this.allData$.pipe(
       map(data => data[category] || []),
       shareReplay(1)
