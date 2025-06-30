@@ -6,6 +6,8 @@ import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
+import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.util.Util;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,9 @@ import java.util.Optional;
 public class NgValueService {
     private final CategoryRepo categoryRepo;
     private final ValueRepo valueRepo;
+    private final NgEquipmentService equipmentService;
+    private final NgFileService fileService;
+    private final NgLotoPointService lotoPointService;
 
     // Create
     public Value createValue(Long categoryId, Value value) {
@@ -60,6 +65,24 @@ public class NgValueService {
             return valueRepo.save(newValue);
         }
     }
+    
+    @Transactional
+    public Value addValueToCategoryByAlias(String categoryName, String valueName) {
+        System.out.println(categoryName + " " + valueName);
+        Category category = categoryRepo.findByAlias(categoryName);
+        System.out.println(category.getAlias());
+        if(category == null) throw new RuntimeException("Category not found");
+
+        Value existingValue = category.getValueByName(valueName);
+        if (existingValue != null) {
+            return existingValue;
+        } else {
+            Value newValue = new Value(valueName);
+            newValue.setCategory(category);
+            return valueRepo.save(newValue);
+        }
+    }
+    
 
     // Update
     public Value updateValue(Long id, Value valueDetails) {
@@ -185,4 +208,15 @@ public class NgValueService {
     public Optional<Value> findById(Long system) {
         return valueRepo.findById(system);
     }
+
+    public boolean moveItemsToNewValue(Long id, Long newId) {
+        Value oldValue = getValueById(id).orElseThrow(() -> new RuntimeException("Original Value not found"));
+        Value newValue = getValueById(newId).orElseThrow(() -> new RuntimeException("New Value not found"));
+
+        return equipmentService.refactorValues(oldValue,newValue) &&
+        lotoPointService.refactorValues(oldValue, newValue) &&
+        fileService.refactorValues(oldValue, newValue);
+
+    }
+
 }

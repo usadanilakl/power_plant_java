@@ -127,6 +127,8 @@ export class CurrentFileService {
     switchFileFormat(extension: string): void {
       const currentFile = this.currentFileSubject.getValue();
       if (!currentFile) return;
+
+      if(!currentFile.extensions.includes(extension)) return;
     
       // Create a new FileDto instance
       const newFile = new FileDto({
@@ -146,7 +148,6 @@ export class CurrentFileService {
         return fileLink;
       }
     
-      // Replace only the extension at the end of the file link
       return fileLink.replaceAll(oldExtension, newExtension);
     }
 

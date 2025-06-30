@@ -4,6 +4,8 @@ import {
   Output,
   EventEmitter,
   SimpleChanges,
+  output,
+  signal,
 } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { SearchableDropdownComponent } from '../searchable-dropdown/searchable-dropdown.component';
@@ -13,6 +15,8 @@ import { MultiSelectSearchableDropdownComponent } from '../multi-select-searchab
 import { FileInputComponent } from '../file-input/file-input.component';
 import { MultiInputComponent } from '../multi-input/multi-input.component';
 import { RadioGroupComponent } from '../radio-group/radio-group.component';
+import { ValuesComponent } from "../../features/values/values.component";
+import { AddValueFormComponent } from "../../features/values/add-value-form/add-value-form.component";
 
 @Component({
   selector: 'app-details-form',
@@ -27,8 +31,10 @@ import { RadioGroupComponent } from '../radio-group/radio-group.component';
     MultiSelectSearchableDropdownComponent,
     FileInputComponent,
     MultiInputComponent,
-    RadioGroupComponent
-  ],
+    RadioGroupComponent,
+    ValuesComponent,
+    AddValueFormComponent
+],
 })
 export class DetailsFormComponent {
   @Input() fields: any[] = [];
@@ -36,6 +42,11 @@ export class DetailsFormComponent {
   @Input() layout: 'row' | 'column' | 'reactive' = 'reactive';
   @Output() formSubmit = new EventEmitter<any>();
   @Output() formDelete = new EventEmitter<void>();
+  addNewSelectOption = output<void>();
+
+  isValueEditMenuOpen = signal<boolean>(false);
+  isAddValueMenuOpen = signal<boolean>(false);
+  selectedCategoryName = signal<string>('');
 
   form!: FormGroup;
 
@@ -111,25 +122,6 @@ export class DetailsFormComponent {
       return prev ? prev[curr] : null;
     }, obj);
   }
-
-  // createForm() {
-  //   const group: { [key: string]: any[] } = {};
-  //   this.fields.forEach((field) => {
-  //     group[field.name] = [this.values[field.name] || ''];
-  //   });
-  //   this.form = this.fb.group(group);
-  // }
-
-  // updateForm() {
-  //   if (this.form) {
-  //     this.fields.forEach((field) => {
-  //       if (this.form.get(field.name)) {
-  //         this.form.get(field.name)!.setValue(this.values[field.name] || '');
-  //       }
-  //     });
-  //   }
-  // }
-
   
   onSubmit() {
     if (this.form.valid) {
@@ -170,5 +162,20 @@ export class DetailsFormComponent {
 
   onDelete() {
     this.formDelete.emit();
+  }
+
+  onAddNewSelectOption(name: string) {
+    console.log('Adding value to category with name:', name);
+    this.selectedCategoryName.set(name);
+    this.isAddValueMenuOpen.set(true);
+  }
+  
+  onEditSelectOption(){
+    console.log('Select option edited');
+    this.isValueEditMenuOpen.set(false);
+  }
+
+  closeAddValueMenu(){
+    this.isAddValueMenuOpen.set(false);
   }
 }

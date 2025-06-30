@@ -3,7 +3,6 @@ import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { Option } from '../../../models/option.model';
 import { catchError, forkJoin, map, Observable, of, tap } from 'rxjs';
 import { SharedDataService } from '../../../services/shared-data.service';
-import { CurrentFileService } from '../../../services/current-file.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormField } from '../../../models/ui/form-field.model';
@@ -228,7 +227,6 @@ export class EquipmentFormComponent implements OnInit {
   onLotoPointRowRightClick(lotoPoint: LotoPointDto) {
     this.lotoPointRowRightClickEvent.emit(lotoPoint);
   }
-
 
 
 }

@@ -1,0 +1,14 @@
+<form (ngSubmit)="onSubmit()">
+  <div class="form-group">
+    <label for="valueName">Value Name:</label>
+    <input 
+      type="text" 
+      id="valueName" 
+      name="valueName" 
+      [(ngModel)]="valueName" 
+      required
+      placeholder="Enter value name"
+    >
+  </div>
+  <button type="submit" [disabled]="!valueName">Add Value</button>
+</form>

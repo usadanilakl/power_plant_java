@@ -81,3 +81,19 @@
 .dropdown-options::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+.add-new-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.add-new-option:hover {
+  background-color: #f0f0f0;
+}
+
+.plus-icon {
+  margin-right: 8px;
+  font-weight: bold;
+}

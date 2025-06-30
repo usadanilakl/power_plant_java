@@ -53,4 +53,10 @@ List<EquipmentDtoLight> getAllLight();
     List<Equipment> findByNullDataServiceItemId();
 
     List<Equipment> getByEqType_name(String equipmentType);
+
+    List<Equipment> getByVendor_name(String vendorName);
+
+    List<Equipment> getBySystem_name(String systemName);
+
+    List<Equipment> getByLocation_name(String locationName);
 }

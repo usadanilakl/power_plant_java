@@ -69,7 +69,7 @@ public class PdfConverter {
                 try {
                     PDPage page = pdf.getPage(i);
                     newDoc.addPage(page);
-                    String fileName = finalName + "_page_" + (i + 1) + ".pdf";
+                    String fileName = pdf.getNumberOfPages() > 1 ? finalName + "_page_" + (i + 1) + ".pdf" : finalName + ".pdf";
                     File outputFile = new File(fileName);
                     newDoc.save(outputFile);
                     result.add(outputFile);

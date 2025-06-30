@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.angular;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentIdDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;

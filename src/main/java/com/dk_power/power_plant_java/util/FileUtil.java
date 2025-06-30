@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -81,6 +82,43 @@ public class FileUtil {
         return filePath.toString();
     }
 
+public static List<File> getRevisionsByFileNumber(String oldFileNumber, String path) {
+    // Get the directory path
+    Path directory = Paths.get(path);
+
+    // Get the file name without potential revision
+    String baseFileName = oldFileNumber.replaceFirst("-rev\\d+$", "");
+
+    // Create a pattern to match the file name with any revision number and any extension
+    String pattern = "^" + Pattern.quote(baseFileName) + "(-rev\\d+)?\\.[^.]+$";
+
+    try {
+        // List all files in the directory that match the pattern
+        return Files.list(directory)
+                .filter(filePath -> {
+                    String fileName = filePath.getFileName().toString();
+                    return fileName.matches(pattern);
+                })
+                .map(Path::toFile)
+                .sorted((f1, f2) -> {
+                    // Sort files by their revision number (latest first)
+                    return extractRevisionNumber(f2.getName()) - extractRevisionNumber(f1.getName());
+                })
+                .collect(Collectors.toList());
+    } catch (IOException e) {
+        throw new RuntimeException("Error listing files: " + e.getMessage(), e);
+    }
+}
+
+public static int extractRevisionNumber(String fileName) {
+    // Extract the revision number from the file name
+    Pattern pattern = Pattern.compile("-rev(\\d+)");
+    Matcher matcher = pattern.matcher(fileName);
+    if (matcher.find()) {
+        return Integer.parseInt(matcher.group(1));
+    }
+    return 0; // Return 0 for files without a revision number
+}
     public static boolean checkFileExists(Path filePath) {
         return Files.exists(filePath);
     }

@@ -60,4 +60,6 @@ public interface FileService extends CrudService<FileObject, FileDto, FileRepo, 
     void updateFileRelatedSystems();
 
     List<FileObject> getAllFilesForVerification();
+
+    List<String> convertFileNumberArrayToString(String fileNumber);
 }

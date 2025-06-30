@@ -227,7 +227,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public void createNewFile(FileDto file) {
-        if(getFileByNumber(file.getFileNumber())==null){
+        if(getFileByNumber(fileMapper.convertFileNumberArrayToString(file.getFileNumber()))==null){
             String name = file.getFile().getOriginalFilename();
             String baseLink = "/src/main/resources/static/";
             String folder = baseLink+file.getFolder()+"/";
@@ -384,6 +384,11 @@ public class FileServiceImpl implements FileService {
     @Override
     public List<FileObject> getAllFilesForVerification() {
         return fileRepo.findByCompletedIsTrueAndIsVerifiedIsFalse();
+    }
+
+    @Override
+    public List<String> convertFileNumberArrayToString(String fileNumber) {
+        return fileMapper.convertFileNumberStringToArray(fileNumber);
     }
 
     public List<FileDto> getAllDtos(String ext) {

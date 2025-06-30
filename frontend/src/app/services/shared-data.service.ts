@@ -179,6 +179,35 @@ export class SharedDataService {
     this.cachedLotoAccessoryStatuses$ = null;
     this.cachedLotoStatuses$ = null;
     this.cachedVendors$ = null;
+    this.cachedLocations$ = null;
+  
+    // Reset BehaviorSubjects
+    this.systemsSubject.next([]);
+    this.equipmentTypesSubject.next([]);
+    this.fileTypeSubject.next([]);
+    this.vendorsSubject.next([]);
+    this.isoPositionsSubject.next([]);
+    this.normPositionsSubject.next([]);
+    this.lotoAccessoryStatusesSubject.next([]);
+    this.lotoStatusesSubject.next([]);
+    this.locationsSubject.next([]);
+  }
 
+  reloadAllData() {
+    console.log('Reloading all data...');
+    
+    // Clear the cache first
+    this.clearCache();
+  
+    // Load all data and update BehaviorSubjects
+    this.loadSystems().subscribe();
+    this.loadEqTypes().subscribe();
+    this.loadFileTypes().subscribe();
+    this.loadIsoPositions().subscribe();
+    this.loadNormPositions().subscribe();
+    this.loadLotoAccessoryStatuses().subscribe();
+    this.loadPermitStatuses().subscribe();
+    this.loadVendors().subscribe();
+    this.loadLocations().subscribe();
   }
 }

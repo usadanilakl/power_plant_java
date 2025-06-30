@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 @Getter
 @Setter
@@ -25,11 +26,12 @@ public class FileIdDto extends BaseDto {
     private String folder;
     private Long system;
     private String relatedSystems;
-    private String fileNumber;
+    private List<String> fileNumber;
     private Long vendor;
     private List<Long> points;
     private String objectType;
     private String extension;
+    private List<String> extensions = new ArrayList<>();
     private String bulkEditStep;
     private String docNum;
     private Boolean isVerified = false;

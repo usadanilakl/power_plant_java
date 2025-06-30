@@ -14,9 +14,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -45,7 +43,7 @@ public class FileMapper implements BaseMapper {
     public FileDto convertToDto(FileObject file) {
         FileDto fileDto = new FileDto();
         fileDto.setFileLink(file.getFileLink());
-        fileDto.setFileNumber(file.getFileNumber());
+        fileDto.setFileNumber(convertFileNumberStringToArray(file.getFileNumber()));
         fileDto.setFolder(file.getFolder());
         fileDto.setBaseLink(file.getBaseLink());
         fileDto.setExtension(file.getExtension());
@@ -64,13 +62,14 @@ public class FileMapper implements BaseMapper {
             fileDto.setHighlights(file.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
         if (file.getDocNum() != null) fileDto.setDocNum(file.getDocNum());
         if (file.getIsVerified() != null) fileDto.setIsVerified(file.getIsVerified());
+        if(file.getExtensions()!=null && !file.getExtensions().isEmpty()) fileDto.setExtensions(file.getExtensionsArray());
         return fileDto;
     }
 
     public FileDto convertToDtoLight(FileObject file) {
         FileDto fileDto = new FileDto();
         fileDto.setFileLink(file.buildFileLink());
-        fileDto.setFileNumber(file.getFileNumber());
+        fileDto.setFileNumber(convertFileNumberStringToArray(file.getFileNumber()));
         fileDto.setFolder(file.getFolder());
         fileDto.setBaseLink(file.getBaseLink());
         fileDto.setExtension(file.getExtension());
@@ -101,7 +100,7 @@ public class FileMapper implements BaseMapper {
         FileObject file = fileService.getEntityById(fileDto.getId());
 
         //if(!=null)
-        if (fileDto.getFileNumber() != null) file.setFileNumber(fileDto.getFileNumber());
+        if (fileDto.getFileNumber() != null && !fileDto.getFileNumber().isEmpty()) file.setFileNumber(convertFileNumberArrayToString(fileDto.getFileNumber()));
         if (fileDto.getFileLink() != null) file.setFileLink(fileDto.getFileLink());
         if (fileDto.getFolder() != null) file.setFolder(fileDto.getFolder());
         if (fileDto.getBaseLink() != null) file.setBaseLink(fileDto.getBaseLink());
@@ -120,6 +119,7 @@ public class FileMapper implements BaseMapper {
             file.setHighlights(fileDto.getHighlights().stream().map(highlightMapper::convertToEntity).toList());
         if (fileDto.getDocNum() != null) file.setDocNum(fileDto.getDocNum());
         if (fileDto.getIsVerified() != null) file.setIsVerified(fileDto.getIsVerified());
+        if (fileDto.getExtensions() != null && !fileDto.getExtensions().isEmpty()) file.setExtensions(String.join(",", fileDto.getExtensions()));
         return file;
     }
 
@@ -158,14 +158,14 @@ public class FileMapper implements BaseMapper {
         if (dto.getFolder() != null) fileObject.setFolder(dto.getFolder());
         if (dto.getSystem() != null) fileObject.setSystem(valueService.findById(dto.getSystem()).orElse(null));
         if (dto.getRelatedSystems() != null) fileObject.setRelatedSystems(dto.getRelatedSystems());
-        if (dto.getFileNumber() != null) fileObject.setFileNumber(dto.getFileNumber());
+        if (dto.getFileNumber() != null && !dto.getFileNumber().isEmpty()) fileObject.setFileNumber(convertFileNumberArrayToString(dto.getFileNumber()));
         if (dto.getVendor() != null) fileObject.setVendor(valueService.findById(dto.getVendor()).orElse(null));
         if (dto.getObjectType() != null) fileObject.setObjectType(dto.getObjectType());
         if (dto.getExtension() != null) fileObject.setExtension(dto.getExtension());
         if (dto.getBulkEditStep() != null) fileObject.setBulkEditStep(dto.getBulkEditStep());
         if (dto.getDocNum() != null) fileObject.setDocNum(dto.getDocNum());
         if (dto.getIsVerified() != null) fileObject.setIsVerified(dto.getIsVerified());
-
+        if (dto.getExtensions() != null && !dto.getExtensions().isEmpty()) fileObject.setExtensions(String.join(",", dto.getExtensions()));
         // Handle points
         if (dto.getPoints() != null && !dto.getPoints().isEmpty()) {
             List<Equipment> points = dto.getPoints().stream()
@@ -176,6 +176,25 @@ public class FileMapper implements BaseMapper {
         }
 
         return fileObject;
+    }
+
+    public String convertFileNumberArrayToString(List<String> fileNumberArray) {
+        if (fileNumberArray != null && !fileNumberArray.isEmpty()) {
+            String joinedFileNumber = fileNumberArray.stream()
+                    .map(part -> part.replaceAll("[^a-zA-Z0-9._-]", "_").replaceAll("\\s+", "-"))
+                    .collect(Collectors.joining("__SEP__"));
+
+            // Optionally limit the length
+            if (joinedFileNumber.length() > 255) {  // adjust max length as needed
+                joinedFileNumber = joinedFileNumber.substring(0, 255);
+            }
+            return joinedFileNumber;
+        }
+        return null;
+    }
+
+    public List<String> convertFileNumberStringToArray(String fileNumberString) {
+        return fileNumberString != null ? new ArrayList<>(Arrays.asList(fileNumberString.split("__SEP__"))) : new ArrayList<>();
     }
 
 }

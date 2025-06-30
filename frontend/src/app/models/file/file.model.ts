@@ -11,17 +11,17 @@ export interface FileModel {
   folder: string;
   system: ValueDto;
   relatedSystems: string;
-  fileNumber: string;
+  fileNumber: string[];
   vendor: ValueDto;
   points: EquipmentDto[];
   objectType: string;
   extension: string;
+  extensions: string[];
   bulkEditStep: string;
   docNum: string;
   isVerified: boolean;
 }
 
-// You might also want to create a class for more complex operations:
 export class FileDto implements FileModel {
   id: number;
   name: string;
@@ -31,11 +31,12 @@ export class FileDto implements FileModel {
   folder: string;
   system: ValueDto;
   relatedSystems: string;
-  fileNumber: string;
+  fileNumber: string[];
   vendor: ValueDto;
   points: EquipmentDto[];
   objectType: string;
   extension: string;
+  extensions: string[];
   bulkEditStep: string;
   docNum: string;
   isVerified: boolean;
@@ -49,11 +50,12 @@ export class FileDto implements FileModel {
     this.folder = data.folder || '';
     this.system = data.system || new ValueDto({ id: 0, name: '' });
     this.relatedSystems = data.relatedSystems || '';
-    this.fileNumber = data.fileNumber || '';
+    this.fileNumber = data.fileNumber || [];
     this.vendor = data.vendor || new ValueDto({ id: 0, name: '' });
     this.points = data.points || [];
     this.objectType = data.objectType || '';
     this.extension = data.extension || '';
+    this.extensions = data.extensions || [];
     this.bulkEditStep = data.bulkEditStep || '';
     this.docNum = data.docNum || '';
     this.isVerified = data.isVerified || false;
@@ -75,6 +77,7 @@ export class FileDto implements FileModel {
           points: this.points,
           objectType: this.objectType,
           extension: this.extension,
+          extensions: this.extensions,
           bulkEditStep: this.bulkEditStep,
           docNum: this.docNum,
           isVerified: this.isVerified
@@ -97,6 +100,7 @@ export class FileDto implements FileModel {
           points: json.points,
           objectType: json.objectType,
           extension: json.extension,
+          extensions: json.extensions,
           bulkEditStep: json.bulkEditStep,
           docNum: json.docNum,
           isVerified: json.isVerified
@@ -118,6 +122,7 @@ export class FileDto implements FileModel {
           points: this.points.map(point => point.id),
           objectType: this.objectType,
           extension: this.extension,
+          extensions: this.extensions,
           bulkEditStep: this.bulkEditStep,
           docNum: this.docNum,
           isVerified: this.isVerified

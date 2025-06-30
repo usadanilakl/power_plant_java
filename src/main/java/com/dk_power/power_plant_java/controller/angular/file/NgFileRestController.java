@@ -104,8 +104,13 @@ public class NgFileRestController {
 
 
         try {
-            List<FileDto> fileDtos = ngFileService.processPidFile(fileDto, file, overrideFile);
-            return ResponseEntity.ok(new NgApiResponse<>(fileDtos, "Files updated successfully", LocalDateTime.now()));
+            Object responseObject = null;
+            if(file!= null){
+                responseObject = ngFileService.processPidFile(fileDto, file, overrideFile);
+            }else{
+                responseObject = ngFileService.updateFileObject(fileDto);
+            }
+            return ResponseEntity.ok(new NgApiResponse<>(responseObject, "Files updated successfully", LocalDateTime.now()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));

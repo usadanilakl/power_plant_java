@@ -7,10 +7,11 @@ export class FileIdDto extends BaseDto {
   folder: string;
   system: number;
   relatedSystems: string;
-  fileNumber: string;
+  fileNumber: string[];
   vendor: number;
   points: number[];
   extension: string;
+  extensions: string[];
   bulkEditStep: string;
   docNum: string;
   isVerified: boolean;
@@ -23,11 +24,12 @@ export class FileIdDto extends BaseDto {
     this.folder = data.folder || '';
     this.system = data.system || 0;
     this.relatedSystems = data.relatedSystems || '';
-    this.fileNumber = data.fileNumber || '';
+    this.fileNumber = data.fileNumber || [];
     this.vendor = data.vendor || 0;
     this.points = data.points || [];
     this.objectType = data.objectType || '';
     this.extension = data.extension || '';
+    this.extensions = data.extensions || [];
     this.bulkEditStep = data.bulkEditStep || '';
     this.docNum = data.docNum || '';
     this.isVerified = data.isVerified || false;
@@ -46,6 +48,7 @@ export class FileIdDto extends BaseDto {
       vendor: this.vendor,
       points: this.points,
       extension: this.extension,
+      extensions: this.extensions,
       bulkEditStep: this.bulkEditStep,
       docNum: this.docNum,
       isVerified: this.isVerified
@@ -70,6 +73,7 @@ export class FileIdDto extends BaseDto {
       vendor: json.vendor,
       points: json.points || [],
       extension: json.extension,
+      extensions: json.extensions,
       bulkEditStep: json.bulkEditStep,
       docNum: json.docNum,
       isVerified: json.isVerified

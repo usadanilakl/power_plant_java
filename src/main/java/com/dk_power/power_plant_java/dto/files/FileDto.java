@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -35,12 +36,13 @@ public class FileDto extends BaseDto {
     @JsonProperty("systems")
     @JsonIgnore
     private String relatedSystems;
-    private String fileNumber;
+    private List<String> fileNumber;
     private ValueDto vendor;
     private List<EquipmentDto> points;
 //    private List<EquipmentDto> filePoints;
     private String objectType;
     private String extension;
+    private List<String> extensions = new ArrayList<>();
 
     private List<HeatTraceDto> heatTraceList;
     private String bulkEditStep;

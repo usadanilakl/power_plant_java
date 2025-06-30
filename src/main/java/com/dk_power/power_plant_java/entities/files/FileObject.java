@@ -124,13 +124,7 @@ public class FileObject extends BaseAuditEntity {
     public String getFileNumber() {
         return fileNumber;
     }
-    //    @JsonManagedReference
-//    @OneToMany(mappedBy="mainFile")
-//    private List<Point> filePoints;
-//    public void addFilePoint(Point entity) {
-//        if(filePoints==null) filePoints = new ArrayList<>();
-//        filePoints.add(entity);
-//    }
+
 
     public void setRelatedSystems(String system){
         if(relatedSystems==null)relatedSystems = system;
@@ -152,6 +146,10 @@ public class FileObject extends BaseAuditEntity {
             exts.remove(extension);
             extensions = String.join(",", exts);
         }
+    }
+
+    public List<String> getExtensionsArray() {
+        return Arrays.asList(extensions.split(","));
     }
 
     @Override

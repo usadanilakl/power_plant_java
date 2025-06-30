@@ -26,7 +26,7 @@ export class FileTableComponent implements OnInit {
   columns: Column[] = [
     { id: 'name', header: 'File Name', accessorKey: 'name' },
     { id: 'fileType.name', header: 'File Type', accessorKey: 'fileType.name' },
-    { id: 'fileNumber', header: 'File Number', accessorKey: 'fileNumber' },
+    { id: 'fileNumber', header: 'File Number', accessorFn: (item: FileDto) => Array.isArray(item.fileNumber) ? item.fileNumber.join(', ') : item.fileNumber },
     { id: 'relatedSystems', header: 'Systems', accessorKey: 'relatedSystems' },
   ];
 

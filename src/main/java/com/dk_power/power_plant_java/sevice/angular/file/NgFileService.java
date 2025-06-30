@@ -171,11 +171,9 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     public List<FileDto> processPidFile(FileIdDto fileDto, MultipartFile file, boolean override) throws IOException {
 
         if (file == null) throw new RuntimeException("File is required");
-        System.out.println(file.getOriginalFilename() + " - file name");
-        System.out.println(fileDto.getFileNumber() + " - file number");
 
         String originalFilename = file.getOriginalFilename();
-        String fileNumber = fileDto.getFileNumber();
+        String fileNumber = fileMapper.convertFileNumberArrayToString(fileDto.getFileNumber());
         if (originalFilename == null) {
             throw new RuntimeException("Original filename is null");
         }
@@ -186,10 +184,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         String fileLink = fileObject.buildFileLink();
         String folder = fileObject.buildFolder();
 
-        System.out.println("file link " + fileLink);
-
         MultipartFile renamedFile = new RenamedMultipartFile(file, fileName + "." + fileExtension);
-        System.out.println(renamedFile.getOriginalFilename() + " - renamed file name");
         List<String> strings = separateAndUploadPdfFileWithConversion(renamedFile, fileLink, override);
 
         List<FileDto> fileDtos = new ArrayList<>();
@@ -211,6 +206,66 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return fileDtos;
     }
 
+    public FileDto updateFileObject(FileIdDto file) {
+        if (file.getId() == null || file.getId() == 0) throw new RuntimeException("Id is required");
+
+        FileObject oldEntity = getEntityById(file.getId());
+        String oldFileNumber = oldEntity.getFileNumber();
+        List<File> revisions = FileUtil.getRevisionsByFileNumber(oldFileNumber, Paths.get(projectRootPath, oldEntity.buildFileLink("pdf")).toString());
+        List<File> extensionFiles = getFilesWithAllExtensions(oldEntity);
+
+        FileObject updatedEntity = convertIdDtoToEntity(file);
+
+        // Check if relevant fields have changed
+        boolean needsFileUpdate = !oldEntity.getFileNumber().equals(updatedEntity.getFileNumber()) ||
+                !oldEntity.getFileType().getName().equals(updatedEntity.getFileType().getName()) ||
+                !oldEntity.getVendor().getName().equals(updatedEntity.getVendor().getName());
+
+        if (needsFileUpdate) {
+            // Move files to new locations
+            for (File oldFile : extensionFiles) {
+                String extension = FileUtil.getFileExtension(oldFile.getName());
+                String newPath = Paths.get(projectRootPath, updatedEntity.buildFileLink(extension)).toString();
+                try {
+                    Files.move(oldFile.toPath(), Paths.get(newPath));
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to move file: " + oldFile.getName(), e);
+                }
+            }
+
+            // Update revision files if they exist
+            for (File revisionFile : revisions) {
+                int revisionNumber = FileUtil.extractRevisionNumber(revisionFile.getName());
+                String extension = FileUtil.getFileExtension(revisionFile.getName());
+                String newRevisionPath = Paths.get(projectRootPath, updatedEntity.buildFileLink(extension))
+                        .toString().replace("." + extension, "-rev" + revisionNumber + "." + extension);
+                try {
+                    Files.move(revisionFile.toPath(), Paths.get(newRevisionPath));
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to move revision file: " + revisionFile.getName(), e);
+                }
+            }
+        }
+
+        // Save the updated entity
+        FileObject savedEntity = save(updatedEntity);
+
+        return toDto(savedEntity);
+    }
+
+    private List<File> getFilesWithAllExtensions(FileObject file) {
+        List<File> files = new ArrayList<>();
+        for (String extension : file.getExtensionsArray()) {
+            Path filePath = Paths.get(projectRootPath, file.buildFileLink(extension));
+            File fileObj = filePath.toFile();
+            if (fileObj.exists()) {
+                files.add(fileObj);
+            }
+        }
+        return files;
+    }
+
+
     public FileObject convertIdDtoToEntity(FileIdDto fileDto) {
         return fileMapper.convertIdDtoToEntity(fileDto);
     }
@@ -231,7 +286,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if(file == null) throw new RuntimeException("Failed to delete related files");
+        if (file == null) throw new RuntimeException("Failed to delete related files");
         return NgCrudService.super.softDelete(file);
     }
 
@@ -250,7 +305,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return fileRepo.findByFileType_Name(fileType).stream().map(this::toDto).toList();
     }
 
-    public List<FileDto> getByFileType(String fileType, List<String> fields){
+    public List<FileDto> getByFileType(String fileType, List<String> fields) {
         return findAllWithProjection(fields).stream().map(this::toDto).toList();
     }
 

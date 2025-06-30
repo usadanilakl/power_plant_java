@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.angular.base;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -179,5 +181,51 @@ public interface NgCrudService<
         Page<E> itemsPage = complexSearchWithPagination(getRepo(), criteria, pageable, andLogicIsEnabled, baseCriteria);
 
         return itemsPage.map(this::toDto);
+    }
+
+    default boolean refactorValues(Value oldValue, Value newValue) {
+        List<E> entityList = getRepo().findAll();
+        boolean changes = false;
+
+        for (E entity : entityList) {
+            boolean entityChanged = false;
+
+            // Use reflection to check all Value fields
+            for (Field field : entity.getClass().getDeclaredFields()) {
+                if (field.getType().equals(Value.class)) {
+                    field.setAccessible(true);
+                    try {
+                        Value fieldValue = (Value) field.get(entity);
+                        if (fieldValue != null && fieldValue.equals(oldValue)) {
+                            field.set(entity, newValue);
+                            entityChanged = true;
+                        }
+                    } catch (IllegalAccessException e) {
+                        // Handle exception (log it, throw a custom exception, etc.)
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            // Check and update the values list if it exists
+            try {
+                Field valuesField = entity.getClass().getDeclaredField("values");
+                valuesField.setAccessible(true);
+                List<Value> values = (List<Value>) valuesField.get(entity);
+                if (values != null && values.remove(oldValue)) {
+                    values.add(newValue);
+                    entityChanged = true;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                // It's okay if the entity doesn't have a 'values' field
+            }
+
+            if (entityChanged) {
+                getRepo().save(entity);
+                changes = true;
+            }
+        }
+
+        return changes;
     }
 }

@@ -87,7 +87,7 @@ public class PointByPointRestController {
                     fileDto.setId(pid.getId());
                     fileDto.setFileLink(pid.getFileLink());
                     fileDto.setDocNum(fileDto.getDocNum());
-                    fileDto.setFileNumber(pid.getFileNumber());
+                    fileDto.setFileNumber(fileService.convertFileNumberArrayToString(pid.getFileNumber()));
                     fileDto.setName(pid.getName());
                     fileDto.setVendor(pid.getVendor().getName());
                     all.add(fileDto);

@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, HostListener, Input, Output, forwardRef } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Input, Output, forwardRef, input, output } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FindPipe } from "../../pipes/find.pipe";
 import { Option } from '../../models/option.model';
@@ -22,8 +22,11 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
   @Input() label: string = '';
   @Input() options: Option[] | Observable<Option[]> = [];
   @Input() closeOnSelect = true;
+  categoryName = input<string>('');
 
   @Output() valueChange = new EventEmitter<any>();
+  addNewOption = output<string>();
+  editOption = output<void>();
 
   private optionsSubscription: Subscription | null = null;
   selectedOption: Option | null = null;
@@ -133,5 +136,16 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
         option.label.toLowerCase().includes(filterValue)
       );
     }
+  }
+
+  onAddNewOption(event: Event) {
+    event.stopPropagation();
+    this.addNewOption.emit(this.categoryName());
+  }
+  
+
+  onEditOption(event: Event) {
+    event.stopPropagation();
+    this.editOption.emit();
   }
 }
