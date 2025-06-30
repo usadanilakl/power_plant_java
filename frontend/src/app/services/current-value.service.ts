@@ -7,6 +7,7 @@ import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { environment } from '../../environments/environment';
 import { CategoryDto } from '../models/category.model';
 import { ValueService } from './value.service';
+import { Option } from '../models/option.model';
 
 interface CategoryData {
   [category: string]: ValueDto[];
@@ -104,4 +105,11 @@ export class CurrentValueService {
       shareReplay(1)
     );
   }
+
+  getOptionsByCategory(category: string): Observable<Option[]> {
+    return this.getValuesByCategory(category).pipe(
+      map(values => values.map(v => ({ value: v.id, label: v.name })))
+    );
+  }
+
 }

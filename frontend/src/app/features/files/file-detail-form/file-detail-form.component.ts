@@ -159,9 +159,8 @@ export class FileDetailFormComponent implements OnInit {
   }
 
   private loadOptions(category: string, optionsSignal: ReturnType<typeof signal<Option[]>>) {
-    this.currentValueService.getValuesByCategory(category).pipe(
-      takeUntilDestroyed(this.destroyRef),
-      map(values => values.map(v => ({ value: v.id, label: v.name })))
+    this.currentValueService.getOptionsByCategory(category).pipe(
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(options => {
       optionsSignal.set(options);
       this.checkFormReady();

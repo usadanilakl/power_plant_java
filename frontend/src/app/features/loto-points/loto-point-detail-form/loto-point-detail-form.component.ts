@@ -1,9 +1,7 @@
-import { Component, Output, EventEmitter, Input, OnInit, DestroyRef} from '@angular/core';
+import { Component, Input, OnInit, DestroyRef, input, output, computed, signal} from '@angular/core';
 import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
-import { SharedDataService } from '../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, catchError, finalize, forkJoin, map, Observable, of, tap } from 'rxjs';
-import { ValueDto } from '../../../models/value.model';
+import { BehaviorSubject, Observable} from 'rxjs';
 import { Option } from '../../../models/option.model';
 import { Validators } from '@angular/forms';
 import { ImageCarouselComponent } from "../../../shared/image/image-carusel/image-carousel.component";
@@ -11,6 +9,7 @@ import { CommonModule  } from '@angular/common';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { NonNullablePipe } from "../../../pipes/nonNullable.pipe";
 import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-form.component";
+import { CurrentValueService } from '../../../services/current-value.service';
 
 @Component({
   selector: 'app-loto-point-detail-form',
@@ -20,10 +19,10 @@ import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-fo
   styleUrl: './loto-point-detail-form.component.css'
 })
 export class LotoPointDetailFormComponent implements OnInit {
-  @Input() values: any = {};
-  @Input() formSubmit!: (data: any) => void;
-  @Input() formDelete!: () => void;
-  @Input() openImage!: () => void;
+  values = input<any>({});
+  openImage = output<void>();
+  formSubmit = output<any>();
+  formDelete = output<void>();
   @Input() imageUrls$: Observable<string[]> = new Observable<string[]>();
   private _selectedItem: LotoPointDto | null = null;
   
@@ -39,57 +38,13 @@ export class LotoPointDetailFormComponent implements OnInit {
   get selectedItem(): LotoPointDto | null {
     return this._selectedItem;
   }
-  
 
-  @Output() openImageEvent = new EventEmitter<void>();
-  @Output() formSubmitEvent = new EventEmitter<any>();
-  @Output() formDeleteEvent = new EventEmitter<void>();
 
-  private isoPosOptions = new BehaviorSubject<Option[]>([]);
-  private normPosOptions = new BehaviorSubject<Option[]>([]);
+  private isoPosOptions = signal<Option[]>([]);
+  private normPosOptions = signal<Option[]>([]);
   equipmentFilter$ = new BehaviorSubject<{ key: string; filterFn: (value: any) => boolean }[]>([]);
 
-  fields: any[] = [];
-  isFormReady = false;
-
-  constructor(
-    private sharedDataService: SharedDataService,
-    private destroyRef: DestroyRef
-  ) {}
-  
-  ngOnInit() {
-    forkJoin({
-      isoPositions: this.loadOptions(this.sharedDataService.loadIsoPositions()),
-      normPositions: this.loadOptions(this.sharedDataService.loadNormPositions()),
-    }).pipe(
-      takeUntilDestroyed(this.destroyRef),
-      tap(({ isoPositions, normPositions }) => {
-        this.isoPosOptions.next(isoPositions);
-        this.normPosOptions.next(normPositions);
-      }),
-      finalize(() => {
-        this.initializeFields();
-        this.isFormReady = true;
-      }),
-      catchError(error => {
-        console.error('Error loading form data:', error);
-        return of({ isoPositions: [], normPositions: [], equipment: [] });
-      })
-    ).subscribe();
-  }
-  
-  private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
-    return source.pipe(
-      map(items => items.map(item => new ValueDto(item).toOption())),
-      catchError(error => {
-        console.error('Error loading options:', error);
-        return of([]);
-      })
-    );
-  }
-
-  private initializeFields() {
-    this.fields = [
+  fields = computed(() => [
       { name: 'tagNumber', label: 'Tag Number', type: 'text', validators: [Validators.required] },
       { name: 'description', label: 'Description', type: 'text', validators: [Validators.required] },
       { name: 'unit', label: 'Unit', type: 'text' },
@@ -100,8 +55,46 @@ export class LotoPointDetailFormComponent implements OnInit {
       { name: 'standard', label: 'Standard', type: 'text' },
       { name: 'generalLocation', label: 'General Location', type: 'text' },
       // { name: 'equipmentList', label: 'Equipment', type: 'multi-select', options: this.equipmentOptions },
-    ];
+    ]);
+    
+    isFormReady = signal<boolean>(false);;
+
+  constructor(
+      private currentValueService: CurrentValueService,
+    private destroyRef: DestroyRef
+  ) {}
+  
+  ngOnInit() {
+    this.loadOptions('isoPos', this.isoPosOptions);
+    this.loadOptions('normPos', this.normPosOptions);
+    this.initializeFilters();
   }
+
+  private loadOptions(category: string, optionsSignal: ReturnType<typeof signal<Option[]>>) {
+    this.currentValueService.getOptionsByCategory(category).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(options => {
+      optionsSignal.set(options);
+      this.checkFormReady();
+    });
+  }
+  
+  // private loadOptions(category: string, optionsSignal: ReturnType<typeof signal<Option[]>>) {
+  //   this.currentValueService.getOptionsByCategory(category).pipe(
+  //     takeUntilDestroyed(this.destroyRef)
+  //   ).subscribe(options => {
+  //     optionsSignal.set(options);
+  //     this.checkFormReady();
+  //   });
+  // }
+
+    private checkFormReady() {
+    if (this.isoPosOptions().length > 0 && 
+        this.normPosOptions().length > 0) {
+      this.isFormReady.set(true);
+    }
+  }
+
 
   private initializeFilters() {
     const newFilter = [
@@ -116,23 +109,14 @@ export class LotoPointDetailFormComponent implements OnInit {
   }
 
   onFormSubmit(formData: any) {
-    if (this.formSubmit) {
-      this.formSubmit(formData);
-    }
-    this.formSubmitEvent.emit(formData);
+    this.formSubmit.emit(formData);
   }
 
   onFormDelete() {
-    if (this.formDelete) {
-      this.formDelete();
-    }
-    this.formDeleteEvent.emit();
+    this.formDelete.emit();
   }
 
   onOpenImage() {
-    if (this.openImage) {
-      this.openImage();
-    }
-    this.openImageEvent.emit();
+    this.openImage.emit();
   }
 }
