@@ -22,7 +22,17 @@ export class AddValueFormComponent {
 
   onSubmit() {
     if (this.valueName) {
-      this.currentValueService.updateCategoryWithNewValue(this.categoryName(), this.valueName);
+      this.currentValueService.updateCategoryWithNewValue(this.categoryName(), this.valueName).subscribe({
+        next: (updatedValue) => {
+          if (updatedValue) {
+            console.log('Value added successfully:', updatedValue);
+            // Perform any additional actions needed after successful update
+          } else {
+            console.log('Failed to add value');
+          }
+        },
+        error: (error) => console.error('Error adding value:', error)
+      });
       this.submitEvent.emit();
       this.valueName = '';
     }

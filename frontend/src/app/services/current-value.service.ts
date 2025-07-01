@@ -75,41 +75,74 @@ export class CurrentValueService {
     ).subscribe();
   }
 
-  updateCategoryWithNewValue(category: string, newValueName: string) {
-    const currentData = this.allDataSubject.value;
-    if (!currentData[category]) {
-      currentData[category] = [];
-    }
+  // updateCategoryWithNewValue(category: string, newValueName: string) {
+  //   const currentData = this.allDataSubject.value;
+  //   if (!currentData[category]) {
+  //     currentData[category] = [];
+  //   }
 
-    const categoryDto = new CategoryDto({ name: category, alias: category });
-    const newValue = new ValueDto({ name: newValueName, category: categoryDto });
-    currentData[category].push(newValue);
-    this.allDataSubject.next({...currentData});
+  //   const categoryDto = new CategoryDto({ name: category, alias: category });
+  //   const newValue = new ValueDto({ name: newValueName, category: categoryDto });
+  //   currentData[category].push(newValue);
+  //   this.allDataSubject.next({...currentData});
 
-    // Optionally, you can also send this update to the server
-    return this.valueService.addValueToCategoryByName(category,newValueName).pipe(
+  //   // Optionally, you can also send this update to the server
+  //   return this.valueService.addValueToCategoryByName(category,newValueName).pipe(
+  //     tap(response => {
+  //       // Update the local data with the server response if needed
+  //       const updatedValue = response.responseData;
+  //       const updatedData = {...this.allDataSubject.value};
+  //       const index = updatedData[category].findIndex(v => v.id === updatedValue.id);
+  //       if (index !== -1) {
+  //         updatedData[category][index] = updatedValue;
+  //       } else {
+  //         updatedData[category].push(updatedValue);
+  //       }
+  //       this.allDataSubject.next(updatedData);
+  //     }),
+  //     catchError(error => {
+  //       console.error('Error updating category:', error);
+  //       // Revert the local change if the server update fails
+  //       this.allDataSubject.next(currentData);
+  //       return of(null);
+  //     })
+  //   ).subscribe({
+  //     next: (response) => console.log('Server updated successfully', response),
+  //     error: (error) => console.error('Error updating server', error)
+  //   });
+  // }
+
+
+  updateCategoryWithNewValue(category: string, newValueName: string): Observable<ValueDto | null> {
+    return this.valueService.addValueToCategoryByName(category, newValueName).pipe(
       tap(response => {
-        // Update the local data with the server response if needed
         const updatedValue = response.responseData;
-        const updatedData = {...this.allDataSubject.value};
-        const index = updatedData[category].findIndex(v => v.id === updatedValue.id);
-        if (index !== -1) {
-          updatedData[category][index] = updatedValue;
-        } else {
-          updatedData[category].push(updatedValue);
+        const currentData = {...this.allDataSubject.value};
+        
+        if (!currentData[category]) {
+          currentData[category] = [];
         }
-        this.allDataSubject.next(updatedData);
+  
+        const index = currentData[category].findIndex(v => v.id === updatedValue.id);
+        if (index !== -1) {
+          currentData[category][index] = updatedValue;
+        } else {
+          currentData[category].push(updatedValue);
+        }
+  
+        this.allDataSubject.next(currentData);
+  
+        // Update currentValuesSubject if needed
+        const currentValues = [...this.currentValuesSubject.value];
+        currentValues.push(updatedValue);
+        this.currentValuesSubject.next(currentValues);
       }),
+      map(response => response.responseData),
       catchError(error => {
         console.error('Error updating category:', error);
-        // Revert the local change if the server update fails
-        this.allDataSubject.next(currentData);
         return of(null);
       })
-    ).subscribe({
-      next: (response) => console.log('Server updated successfully', response),
-      error: (error) => console.error('Error updating server', error)
-    });
+    );
   }
 
   
