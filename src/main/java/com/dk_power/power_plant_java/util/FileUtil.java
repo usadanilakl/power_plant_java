@@ -4,10 +4,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -82,66 +79,123 @@ public class FileUtil {
         return filePath.toString();
     }
 
-public static List<File> getRevisionsByFileNumber(String oldFileNumber, String path) {
-    // Get the directory path
-    Path directory = Paths.get(path);
-    System.out.println("Getting revisions for file number: " + oldFileNumber + " in directory: " + directory);
+    public static List<File> getRevisionsByFileNumber(String oldFileNumber, String path) {
+        // Get the directory path
+        Path directory = Paths.get(path).getParent();
+        System.out.println("Getting revisions for file number: " + oldFileNumber + " in directory: " + directory);
 
-    // Get the file name without potential revision
-    String baseFileName = oldFileNumber.replaceFirst("-rev\\d+$", "");
-    System.out.println("Base file name: " + baseFileName);
+        // Get the file name without potential revision
+        String baseFileName = oldFileNumber.replaceFirst("-rev\\d+$", "");
+        System.out.println("Base file name: " + baseFileName);
 
-    // Create a pattern to match the file name with or without any revision number and any extension
-    String pattern = "^" + Pattern.quote(baseFileName) + "(-rev\\d+)?\\.[^.]+$";
-    System.out.println("Pattern: " + pattern);
+        // Create a pattern to match the file name with or without any revision number and any extension
+        String pattern = "^" + Pattern.quote(baseFileName) + "(-rev\\d+)?\\.[^.]+$";
+        System.out.println("Pattern: " + pattern);
 
-    try {
-        // List all files in the directory that match the pattern
-        List<File> matchingFiles = Files.list(directory)
-                .filter(filePath -> {
-                    String fileName = filePath.getFileName().toString();
-                    return fileName.matches(pattern);
-                })
-                .map(Path::toFile)
-                .sorted((f1, f2) -> {
-                    // Sort files by their revision number (latest first), 
-                    // with non-revision files considered as the latest
-                    int rev1 = extractRevisionNumber(f1.getName());
-                    int rev2 = extractRevisionNumber(f2.getName());
-                    if (rev1 == 0 && rev2 == 0) {
-                        // Both files don't have revision numbers, sort by name
-                        return f2.getName().compareTo(f1.getName());
-                    }
-                    return rev2 - rev1;
-                })
-                .collect(Collectors.toList());
+        try {
+            // List all files in the directory that match the pattern
+            List<File> matchingFiles = Files.list(directory)
+                    .filter(filePath -> {
+                        String fileName = filePath.getFileName().toString();
+                        return fileName.matches(pattern);
+                    })
+                    .map(Path::toFile)
+                    .sorted((f1, f2) -> {
+                        // Sort files by their revision number (latest first),
+                        // with non-revision files considered as the latest
+                        int rev1 = extractRevisionNumber(f1.getName());
+                        int rev2 = extractRevisionNumber(f2.getName());
+                        if (rev1 == 0 && rev2 == 0) {
+                            // Both files don't have revision numbers, sort by name
+                            return f2.getName().compareTo(f1.getName());
+                        }
+                        return rev2 - rev1;
+                    })
+                    .collect(Collectors.toList());
 
-        // If no matching files are found, log a message
-        if (matchingFiles.isEmpty()) {
-            System.out.println("No matching files found for " + oldFileNumber + " in directory: " + directory);
+            // If no matching files are found, log a message
+            if (matchingFiles.isEmpty()) {
+                System.out.println("No matching files found for " + oldFileNumber + " in directory: " + directory);
+            }
+
+            System.out.println("Matching files: " + matchingFiles);
+
+            return matchingFiles;
+
+        } catch (IOException e) {
+            // Log the error
+            System.err.println("Error listing files in directory: " + directory);
+            System.err.println("Error message: " + e.getMessage());
+            e.printStackTrace();
+
+            // Check if the directory exists
+            if (!Files.exists(directory)) {
+                System.err.println("Directory does not exist: " + directory);
+            } else if (!Files.isReadable(directory)) {
+                System.err.println("No read permission for directory: " + directory);
+            }
+
+            // Return an empty list instead of throwing an exception
+            return List.of();
         }
-
-        System.out.println("Matching files: " + matchingFiles);
-
-        return matchingFiles;
-
-    } catch (IOException e) {
-        // Log the error
-        System.err.println("Error listing files in directory: " + directory);
-        System.err.println("Error message: " + e.getMessage());
-        e.printStackTrace();
-
-        // Check if the directory exists
-        if (!Files.exists(directory)) {
-            System.err.println("Directory does not exist: " + directory);
-        } else if (!Files.isReadable(directory)) {
-            System.err.println("No read permission for directory: " + directory);
-        }
-
-        // Return an empty list instead of throwing an exception
-        return List.of();
     }
-}
+
+
+    public static void moveFileAndCleanup(Path oldPath, Path newPath) throws IOException {
+        // Check if the old path exists and is a file
+        if (!Files.exists(oldPath) || !Files.isRegularFile(oldPath)) {
+            System.out.println("Old path does not exist or is not a file: " + oldPath);
+            return;
+        }
+
+        // Create the new directory if it doesn't exist
+        Files.createDirectories(newPath.getParent());
+
+        // Move the file
+        Files.move(oldPath, newPath, StandardCopyOption.REPLACE_EXISTING);
+        System.out.println("Moved file from " + oldPath + " to " + newPath);
+
+        // Delete empty parent directories of the old path
+        deleteEmptyDirectories(oldPath.getParent());
+    }
+
+    private static void deleteEmptyDirectories(Path path) throws IOException {
+        while (path != null && Files.isDirectory(path)) {
+            try {
+                if (Files.list(path).findFirst().isPresent()) {
+                    // Directory is not empty, stop here
+                    break;
+                }
+                Files.delete(path);
+                System.out.println("Deleted empty directory: " + path);
+            } catch (DirectoryNotEmptyException e) {
+                // Stop if the directory is not empty
+                break;
+            }
+            path = path.getParent();
+        }
+    }
+
+
+
+//    public static List<File> getRevisionsByFileNumber(String oldFileNumber, String path) {
+//
+//
+//        try {
+//            List<File> matchingFiles = Files.list(Paths.get(path))
+//                    .filter(filePath -> filePath.getFileName().toString().contains(oldFileNumber))
+//                    .map(Path::toFile)
+//                    .sorted((f1, f2) -> f2.getName().compareTo(f1.getName())) // Sort in descending order
+//                    .collect(Collectors.toList());
+//
+//            System.out.println("Matching files: " + matchingFiles);
+//            return matchingFiles;
+//        } catch (IOException e) {
+//            System.err.println("Error listing files in directory: " + path);
+//            e.printStackTrace();
+//            return List.of(); // Return an empty list if there's an error
+//        }
+//    }
 
     public static int extractRevisionNumber(String fileName) {
         // Extract the revision number from the file name

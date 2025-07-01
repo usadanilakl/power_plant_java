@@ -231,7 +231,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 String extension = FileUtil.getFileExtension(oldFile.getName());
                 String newPath = Paths.get(projectRootPath, updatedEntity.buildFileLink(extension)).toString();
                 try {
-                    Files.move(oldFile.toPath(), Paths.get(newPath));
+                    FileUtil.moveFileAndCleanup(oldFile.toPath(), Paths.get(newPath));
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to move file: " + oldFile.getName(), e);
                 }
@@ -244,7 +244,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 String newRevisionPath = Paths.get(projectRootPath, updatedEntity.buildFileLink(extension))
                         .toString().replace("." + extension, "-rev" + revisionNumber + "." + extension);
                 try {
-                    Files.move(revisionFile.toPath(), Paths.get(newRevisionPath));
+                    if(revisionFile.getName().contains("-rev"))FileUtil.moveFileAndCleanup(revisionFile.toPath(), Paths.get(newRevisionPath));
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to move revision file: " + revisionFile.getName(), e);
                 }
