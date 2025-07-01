@@ -11,7 +11,8 @@ import { CurrentFileService } from '../../../services/current-file.service';
   selector: 'app-file-menu',
   imports: [ToggleMenuComponent],
   templateUrl: './file-menu.component.html',
-  styleUrl: './file-menu.component.css'
+  styleUrl: './file-menu.component.css',
+  standalone: true
 })
 export class FileMenuComponent implements OnInit{
 

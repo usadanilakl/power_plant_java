@@ -1,23 +1,8 @@
-
-<!-- @if (isFormReady) {
-  <app-details-form
-  [fields]="fields"
-  [values]="values"
-  layout="reactive"
-  (formSubmit)="onFormSubmit($event)"
-  (formDelete)="onFormDelete()"
-  (openImage)="onOpenImage()">
-</app-details-form>
-<button type="button" (click)="onOpenImage()">Open Image</button>
-} @else {
-  <p>Loading form...</p>
-} -->
-
   @if(isFormReady()){
   <app-reactive-form
       [fields]="fields()"
       [values]="values()"
-      [layout]="'column'"
+      [layout]="'reactive'"
       (formSubmit)="onFormSubmit($event)"
       (formDelete)="onFormDelete()">
   </app-reactive-form>

@@ -18,7 +18,8 @@ import { CurrentValueService } from '../../../services/current-value.service';
   selector: 'app-equipment-form',
   imports: [DetailsFormComponent, LotoPointSimpleTableComponent, ReactiveFormComponent],
   templateUrl: './equipment-form.component.html',
-  styleUrl: './equipment-form.component.css'
+  styleUrl: './equipment-form.component.css',
+  standalone: true
 })
 export class EquipmentFormComponent implements OnInit {
 

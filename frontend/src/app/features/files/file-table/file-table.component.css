@@ -1,21 +1,41 @@
 .side-by-side-container {
   display: flex;
-  flex-direction: row;
-  gap: 20px; /* Adjust the space between the form and image as needed */
+  height: 100%;
+  width: 100%;
 }
 
 .form-container {
-  flex: 1; /* Takes up 50% of the container width */
-  min-width: 300px; /* Adjust as needed to ensure readability */
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 20px;
 }
 
 .image-container {
-  flex: 1; /* Takes up 50% of the container width */
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+app-image-zoom-interactive {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 /* For smaller screens, stack the components vertically */
 @media (max-width: 768px) {
   .side-by-side-container {
     flex-direction: column;
+  }
+
+  .form-container {
+    padding-right: 0;
+    padding-bottom: 20px;
+  }
+
+  .image-container {
+    height: 300px; /* Set a fixed height for mobile */
   }
 }

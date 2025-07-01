@@ -129,7 +129,7 @@ export class ReactiveFormComponent {
   }
 
   onEditSelectOption() {
-    this.isValueEditMenuOpen.set(false);
+    this.isValueEditMenuOpen.set(true);
   }
 
   closeAddValueMenu() {

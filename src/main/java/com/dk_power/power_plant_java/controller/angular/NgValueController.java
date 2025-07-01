@@ -104,6 +104,63 @@ public class NgValueController {
         }
     }
 
+    @GetMapping("/categories")
+    public ResponseEntity<NgApiResponse<List<CategoryDto>>> getAllCategories() {
+        try {
+            List<CategoryDto> allCategories = ngValueService.getAllCategories()
+                    .stream()
+                    .map(ngValueService::categoryToDto)
+                    .toList();
+
+            if (allCategories.isEmpty()) {
+                return ResponseEntity.ok(new NgApiResponse<>(allCategories, "No categories found", LocalDateTime.now()));
+            }
+
+            return ResponseEntity.ok(new NgApiResponse<>(allCategories, "All categories retrieved successfully", LocalDateTime.now()));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while fetching all categories: " + e.getMessage(), e);
+        }
+    }
+
+    @PutMapping("/{valueId}")
+    public ResponseEntity<NgApiResponse<ValueDto>> updateValue(@PathVariable Long valueId, @RequestBody Map<String, String> request) {
+        try {
+            String newName = request.get("name");
+            if (newName == null || newName.trim().isEmpty()) {
+                throw new IllegalArgumentException("New name cannot be empty");
+            }
+
+            Value updatedValue = ngValueService.updateValueName(valueId, newName);
+            ValueDto valueDto = ngValueService.valueToDto(updatedValue);
+
+            return ResponseEntity.ok(new NgApiResponse<>(valueDto, "Value updated successfully", LocalDateTime.now()));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid value ID or name: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while updating the value: " + e.getMessage(), e);
+        }
+    }
+
+    @PostMapping("/delete-and-transfer")
+    public ResponseEntity<NgApiResponse<String>> deleteValueAndTransfer(@RequestBody Map<String, Long> request) {
+        try {
+            Long valueIdToDelete = request.get("valueIdToDelete");
+            Long transferToValueId = request.get("transferToValueId");
+
+            if (valueIdToDelete == null || transferToValueId == null) {
+                throw new IllegalArgumentException("Both valueIdToDelete and transferToValueId must be provided");
+            }
+
+            ngValueService.moveItemsToNewValue(valueIdToDelete, transferToValueId);
+            ngValueService.deleteValue(valueIdToDelete);
+
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Value deleted and items transferred successfully", LocalDateTime.now()));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid request: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while deleting value and transferring items: " + e.getMessage(), e);
+        }
+    }
 }
 
 

@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.categories.CategoryDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
@@ -121,6 +122,8 @@ public class NgValueService {
 
     // Delete
     public void deleteValue(Long id) {
+        Value value = getValueById(id).orElseThrow(() -> new RuntimeException("Value not found"));
+        List<Equipment> associatedEq = equipmentService.findByValue(value);
         valueRepo.deleteById(id);
     }
 
@@ -219,4 +222,9 @@ public class NgValueService {
 
     }
 
+    public Value updateValueName(Long valueId, String newName) {
+        Value value = getValueById(valueId).orElseThrow(() -> new RuntimeException("Value not found"));
+        value.setName(newName);
+        return valueRepo.save(value);
+    }
 }

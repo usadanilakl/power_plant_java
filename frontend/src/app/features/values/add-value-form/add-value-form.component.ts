@@ -7,7 +7,8 @@ import { CurrentValueService } from '../../../services/current-value.service';
   selector: 'app-add-value-form',
   imports: [FormsModule],
   templateUrl: './add-value-form.component.html',
-  styleUrl: './add-value-form.component.css'
+  styleUrl: './add-value-form.component.css',
+  standalone: true
 })
 export class AddValueFormComponent {
 
