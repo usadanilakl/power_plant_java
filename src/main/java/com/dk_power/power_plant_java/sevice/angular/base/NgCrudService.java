@@ -3,7 +3,6 @@ package com.dk_power.power_plant_java.sevice.angular.base;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -18,12 +17,11 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
 
 @Transactional
 public interface NgCrudService<
         E extends BaseIdEntity,
-        D ,
+        D,
         R extends BaseRepository<E>,
         M extends BaseMapper> extends FlexibleQueryInterface, ProjectionQueryInterface<E> {
 
@@ -189,37 +187,7 @@ public interface NgCrudService<
         boolean changes = false;
 
         for (E entity : entityList) {
-            boolean entityChanged = false;
-
-            // Use reflection to check all Value fields
-            for (Field field : entity.getClass().getDeclaredFields()) {
-                if (field.getType().equals(Value.class)) {
-                    field.setAccessible(true);
-                    try {
-                        Value fieldValue = (Value) field.get(entity);
-                        if (fieldValue != null && fieldValue.equals(oldValue)) {
-                            field.set(entity, newValue);
-                            entityChanged = true;
-                        }
-                    } catch (IllegalAccessException e) {
-                        // Handle exception (log it, throw a custom exception, etc.)
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-            // Check and update the values list if it exists
-            try {
-                Field valuesField = entity.getClass().getDeclaredField("values");
-                valuesField.setAccessible(true);
-                List<Value> values = (List<Value>) valuesField.get(entity);
-                if (values != null && values.remove(oldValue)) {
-                    values.add(newValue);
-                    entityChanged = true;
-                }
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                // It's okay if the entity doesn't have a 'values' field
-            }
+            boolean entityChanged = refactorEntityValues(entity, oldValue, newValue);
 
             if (entityChanged) {
                 getRepo().save(entity);
@@ -230,7 +198,120 @@ public interface NgCrudService<
         return changes;
     }
 
-    default List<E> findByValue(Value value){
+    private boolean refactorEntityValues(E entity, Value oldValue, Value newValue) {
+        boolean entityChanged = false;
+        Class<?> currentClass = entity.getClass();
+
+        while (currentClass != null && !currentClass.equals(Object.class)) {
+            for (Field field : currentClass.getDeclaredFields()) {
+                field.setAccessible(true);
+                try {
+                    if (field.getType().equals(Value.class)) {
+                        Value fieldValue = (Value) field.get(entity);
+                        if (fieldValue != null && fieldValue.equals(oldValue)) {
+                            field.set(entity, newValue);
+                            entityChanged = true;
+                        }
+                    } else if (Collection.class.isAssignableFrom(field.getType())) {
+                        Collection<?> collection = (Collection<?>) field.get(entity);
+                        if (collection != null) {
+                            if (collection.remove(oldValue)) {
+                                ((Collection<Value>) collection).add(newValue);
+                                entityChanged = true;
+                            }
+                        }
+                    }
+                } catch (IllegalAccessException e) {
+                    // Handle exception (log it, throw a custom exception, etc.)
+                    e.printStackTrace();
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+
+        return entityChanged;
+    }
+
+    default boolean containsValue(E entity, Value value) {
+        if (entity == null || value == null) {
+            return false;
+        }
+
+        Class<?> entityClass = entity.getClass();
+
+        // Check all fields of the entity
+        for (Field field : entityClass.getDeclaredFields()) {
+            field.setAccessible(true);
+
+            try {
+                // Check if the field is of type Value
+                if (field.getType().equals(Value.class)) {
+                    Value fieldValue = (Value) field.get(entity);
+                    if (fieldValue != null && fieldValue.equals(value)) {
+                        return true;
+                    }
+                }
+                // Check if the field is a collection of Values
+                else if (Collection.class.isAssignableFrom(field.getType())) {
+                    Collection<?> collection = (Collection<?>) field.get(entity);
+                    if (collection != null) {
+                        for (Object item : collection) {
+                            if (item instanceof Value && item.equals(value)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            } catch (IllegalAccessException e) {
+                // Log the exception or handle it as appropriate for your application
+                e.printStackTrace();
+            }
+        }
+
+        // Check fields from superclasses
+        Class<?> superClass = entityClass.getSuperclass();
+        while (superClass != null && !superClass.equals(Object.class)) {
+            for (Field field : superClass.getDeclaredFields()) {
+                field.setAccessible(true);
+
+                try {
+                    // Check if the field is of type Value
+                    if (field.getType().equals(Value.class)) {
+                        Value fieldValue = (Value) field.get(entity);
+                        if (fieldValue != null && fieldValue.equals(value)) {
+                            return true;
+                        }
+                    }
+                    // Check if the field is a collection of Values
+                    else if (Collection.class.isAssignableFrom(field.getType())) {
+                        Collection<?> collection = (Collection<?>) field.get(entity);
+                        if (collection != null) {
+                            for (Object item : collection) {
+                                if (item instanceof Value && item.equals(value)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                } catch (IllegalAccessException e) {
+                    // Log the exception or handle it as appropriate for your application
+                    e.printStackTrace();
+                }
+            }
+            superClass = superClass.getSuperclass();
+        }
+
+        return false;
+    }
+
+    default List<E> findByValue(Value value) {
+        List<E> result = new ArrayList<>();
+        for (E entity : getRepo().findAll()) {
+            if (containsValue(entity, value)) {
+                result.add(entity);
+            }
+        }
+        return result;
 
     }
 }

@@ -1,27 +1,28 @@
-<button (click)="selectDeletingMode()">Delete</button>
-<button (click)="selectEditingMode()">Edit</button>
+<!-- <button (click)="selectDeletingMode()">Delete</button>
+<button (click)="selectEditingMode()">Edit</button> -->
 
-<select [ngModel]="selectedValueId()" (ngModelChange)="onValueSelect($event)">
+<select [ngModel]="valueToEditId()" (ngModelChange)="onValueSelect($event)">
   <option [ngValue]="null">Select a value</option>
-  @for (value of valuesOfSameCategory(); track value.id) {
+  @for (value of values(); track value.id) {
     <option [ngValue]="value.id">{{ value.name }}</option>
   }
 </select>
 
 @if (isEditing()) {
   <input [(ngModel)]="editingName" (ngModelChange)="onNameChange($event)" />
-  <button (click)="submitEdit()">Submit Edit</button>
+  <button (click)="submitEdit()">Submit</button>
+  <button (click)="selectDeletingMode()">Delete</button>
 }
 
 @if (isDeleting()) {
   <p>Select a value to transfer associated items before deleting:</p>
-  <select [(ngModel)]="transferToValueId">
+
+    <select [ngModel]="transferValueId()" (ngModelChange)="onTransferValueSelect($event)">
     <option [ngValue]="null">Select a value</option>
-    @for (value of valuesOfSameCategory(); track value.id) {
-      @if (value.id !== selectedValueId()) {
+    @for (value of values(); track value.id) {
         <option [ngValue]="value.id">{{ value.name }}</option>
-      }
     }
-  </select>
-  <button (click)="submitDelete()" [disabled]="!transferToValueId">Submit Delete</button>
+    </select>
+    <button (click)="submitDelete()" [disabled]="!transferValueId()">Submit Delete</button>
+    <button (click)="selectEditingMode()">Cancel</button>
 }

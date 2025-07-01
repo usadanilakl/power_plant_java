@@ -26,7 +26,7 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
 
   @Output() valueChange = new EventEmitter<any>();
   addNewOption = output<string>();
-  editOption = output<void>();
+  editOption = output<string>();
 
   private optionsSubscription: Subscription | null = null;
   selectedOption: Option | null = null;
@@ -146,6 +146,6 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
 
   onEditOption(event: Event) {
     event.stopPropagation();
-    this.editOption.emit();
+    this.editOption.emit(this.categoryName());
   }
 }

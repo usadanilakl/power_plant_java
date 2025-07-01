@@ -1,7 +1,6 @@
 import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { AddValueFormComponent } from "../../features/values/add-value-form/add-value-form.component";
-import { ValuesComponent } from "../../features/values/values.component";
 import { SearchableDropdownComponent } from "../searchable-dropdown/searchable-dropdown.component";
 import { CheckboxGroupComponent } from "../checkbox-group/checkbox-group.component";
 import { RadioGroupComponent } from "../radio-group/radio-group.component";
@@ -9,12 +8,13 @@ import { MultiSelectSearchableDropdownComponent } from "../multi-select-searchab
 import { FileInputComponent } from "../file-input/file-input.component";
 import { MultiInputComponent } from "../multi-input/multi-input.component";
 import { FormInputComponent } from "../form-input/form-input.component";
+import { ValueFormComponent } from "../../features/values/value-form/value-form.component";
 
 @Component({
   selector: 'app-reactive-form',
   standalone: true,
-  imports: [AddValueFormComponent, ValuesComponent, SearchableDropdownComponent, CheckboxGroupComponent, RadioGroupComponent, MultiSelectSearchableDropdownComponent, FileInputComponent, MultiInputComponent, FormInputComponent,
-    ReactiveFormsModule,],
+  imports: [AddValueFormComponent, SearchableDropdownComponent, CheckboxGroupComponent, RadioGroupComponent, MultiSelectSearchableDropdownComponent, FileInputComponent, MultiInputComponent, FormInputComponent,
+    ReactiveFormsModule, ValueFormComponent],
   templateUrl: './reactive-form.component.html',
   styleUrls: ['./reactive-form.component.css']
 })
@@ -85,39 +85,84 @@ export class ReactiveFormComponent {
       return prev ? prev[curr] : null;
     }, obj);
   }
-  
+
   onSubmit() {
     const form = this.form();
     if (form && form.valid) {
       const formValue = form.value;
       const result = {...this.values()};
-
+  
       this.fields().forEach((field) => {
         const parts = field.name.split('.');
         let current: any = result;
-
+  
         for (let i = 0; i < parts.length - 1; i++) {
           if (!current[parts[i]]) {
             current[parts[i]] = {};
           }
           current = current[parts[i]];
         }
-
+  
         const lastPart = parts[parts.length - 1];
-
+  
         if (field.type === 'select' && typeof current[lastPart] === 'object') {
           current[lastPart] = current[lastPart] || {};
           current[lastPart].id = formValue[field.name];
         } else if (field.type === 'file' && formValue[field.name] instanceof File) {
           current[lastPart] = formValue[field.name];
+        } else if (field.type === 'multi-input' || field.type === 'multi-select' || field.type === 'checkbox-group') {
+          // Ensure these types remain as arrays
+          current[lastPart] = formValue[field.name];
         } else {
           current[lastPart] = formValue[field.name];
         }
       });
-
+  
+      console.log("Form Value:", formValue);
+      console.log("Form Value in reactive form component:", result);
+  
       this.formSubmit.emit(result);
     }
   }
+  
+  // onSubmit() {
+  //   const form = this.form();
+  //   if (form && form.valid) {
+  //     const formValue = form.value;
+  //     const result = {...this.values()};
+
+  //     this.fields().forEach((field) => {
+  //       const parts = field.name.split('.');
+  //       let current: any = result;
+
+  //       for (let i = 0; i < parts.length - 1; i++) {
+  //         if (!current[parts[i]]) {
+  //           current[parts[i]] = {};
+  //         }
+  //         current = current[parts[i]];
+  //       }
+
+  //       const lastPart = parts[parts.length - 1];
+
+  //       if (field.type === 'select' && typeof current[lastPart] === 'object') {
+  //         current[lastPart] = current[lastPart] || {};
+  //         current[lastPart].id = formValue[field.name];
+  //       } else if (field.type === 'file' && formValue[field.name] instanceof File) {
+  //         current[lastPart] = formValue[field.name];
+  //       }else if (field.type === 'multi-input' || field.type === 'multi-select' || field.type === 'checkbox-group') {
+  //         // Ensure these types remain as arrays
+  //         current[lastPart] = formValue[field.name];
+  //       } else {
+  //         current[lastPart] = formValue[field.name];
+  //       }
+  //     });
+
+  //     console.log("Form Value:", formValue);
+  //     console.log("Form Value in reactive form component:", result);
+
+  //     this.formSubmit.emit(result);
+  //   }
+  // }
 
   onDelete() {
     this.formDelete.emit();
@@ -128,7 +173,8 @@ export class ReactiveFormComponent {
     this.isAddValueMenuOpen.set(true);
   }
 
-  onEditSelectOption() {
+  onEditSelectOption(name: string) {
+    this.selectedCategoryName.set(name);
     this.isValueEditMenuOpen.set(true);
   }
 

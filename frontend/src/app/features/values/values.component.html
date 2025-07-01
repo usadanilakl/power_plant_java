@@ -1,6 +1,0 @@
-
-@if(isValueFormOpen()){
-    <app-value-form [selectedValue]="selectedValue()!"></app-value-form>
-}@else {
-    <app-value-table (rowClicked)="openValueForm($event)"></app-value-table>
-}

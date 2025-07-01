@@ -9,7 +9,7 @@
             [options]="field.options"
             [formControlName]="field.name"
             [categoryName]="field.name"
-            (editOption)="onEditSelectOption()"
+            (editOption)="onEditSelectOption($event)"
             (addNewOption)="onAddNewSelectOption($event)">
           </app-searchable-dropdown>
         }
@@ -65,7 +65,7 @@
   </div>
 </form>
 } @else if(isValueEditMenuOpen()){
-  <app-values></app-values>
+  <app-value-form [categoryAlias]="selectedCategoryName()"></app-value-form>
 } @else {
   <app-add-value-form [categoryName]="selectedCategoryName()" (submitEvent)="closeAddValueMenu()"></app-add-value-form>
 }

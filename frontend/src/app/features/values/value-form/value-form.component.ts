@@ -1,48 +1,55 @@
-import { Component, computed, inject, input, signal, effect } from '@angular/core';
+import { Component, computed, inject, input, signal, effect, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ValueDto } from '../../../models/value.model';
-import { AddValueFormComponent } from "../add-value-form/add-value-form.component";
 import { CurrentValueService } from '../../../services/current-value.service';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, of } from 'rxjs';
 
 @Component({
   selector: 'app-value-form',
-  imports: [AddValueFormComponent, FormsModule, CommonModule],
+  imports: [ FormsModule, CommonModule],
   templateUrl: './value-form.component.html',
   styleUrl: './value-form.component.css',
   standalone: true,
 })
-export class ValueFormComponent {
+export class ValueFormComponent{
   private currentValueService = inject(CurrentValueService);
 
-  selectedValue = input<ValueDto>();
-  selectedValueId = signal<string | null>(null);
-  editingName = signal<string>('');
-  transferToValueId = signal<string | null>(null);
+  categoryAlias = input<string>();
+  
+  valueToEditId = signal<number | null>(null);
+  transferValueId = signal<number | null>(null);
+  editingName = signal<string | null>('');
 
-  isEditing = signal<boolean>(false);
+  isEditing = signal<boolean>(true);
   isDeleting = signal<boolean>(false);
 
-  categoryAlias = computed(() => this.selectedValue()?.category?.alias);
-
-  valuesOfSameCategory = toSignal(
-    toObservable(this.categoryAlias).pipe(
-      switchMap(alias => alias ? this.currentValueService.getValuesByCategory(alias) : of([]))
-    ),
-    { initialValue: [] }
-  );
+  values = signal<ValueDto[]>([]);
 
   constructor() {
     effect(() => {
-      const value = this.selectedValue();
-      if (value) {
-        this.selectedValueId.set(value.id);
-        this.editingName.set(value.name);
+      if (this.categoryAlias()) {
+        this.loadValues();
       }
     });
   }
+  
+
+  loadValues() {
+    console.log('Loading values for category:', this.categoryAlias());
+    this.currentValueService.getValuesByCategory(this.categoryAlias()!).subscribe(
+      (values) => {
+        this.values.set(values);
+      },
+      (error) => {
+        console.error('Error loading values:', error);
+      }
+    );
+  }
+
+
+
 
   selectEditingMode() {
     this.isEditing.set(true);
@@ -52,15 +59,19 @@ export class ValueFormComponent {
   selectDeletingMode() {
     this.isDeleting.set(true);
     this.isEditing.set(false);
-    this.transferToValueId.set(null);
+    this.transferValueId.set(null);
   }
 
-  onValueSelect(valueId: string | null) {
-    this.selectedValueId.set(valueId);
-    const selectedValue = this.valuesOfSameCategory().find(v => v.id === valueId);
+  onValueSelect(valueId: number | null) {
+    this.valueToEditId.set(valueId);
+    const selectedValue = this.values().find(v => v.id === valueId);
     if (selectedValue) {
       this.editingName.set(selectedValue.name);
     }
+  }
+
+  onTransferValueSelect(valueId: number | null) {
+    this.transferValueId.set(valueId);
   }
 
   onNameChange(newName: string) {
@@ -68,9 +79,9 @@ export class ValueFormComponent {
   }
 
   submitEdit() {
-    if (this.selectedValueId() && this.editingName()) {
+    if (this.valueToEditId() && this.editingName()) {
       // Call your service method to update the value
-      this.currentValueService.updateValue(this.selectedValueId()!, this.editingName()).subscribe(
+      this.currentValueService.updateValue(this.valueToEditId()!, this.editingName()!).subscribe(
         updatedValue => {
           console.log('Value updated:', updatedValue);
           // Update local state or emit event to parent component
@@ -81,9 +92,9 @@ export class ValueFormComponent {
   }
 
   submitDelete() {
-    if (this.selectedValueId() && this.transferToValueId()) {
+    if (this.valueToEditId() && this.transferValueId()) {
       // Call your service method to delete the value and transfer associated items
-      this.currentValueService.deleteValueAndTransfer(this.selectedValueId()!, this.transferToValueId()!).subscribe(
+      this.currentValueService.deleteValueAndTransfer(this.valueToEditId()!, this.transferValueId()!).subscribe(
         result => {
           console.log('Value deleted and items transferred:', result);
           // Update local state or emit event to parent component
