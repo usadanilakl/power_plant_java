@@ -62,7 +62,7 @@ export class MultiInputComponent implements ControlValueAccessor {
     }
   }
 
-  onChange: (value: any) => void = (value: any) => {console.log(value)};
+  onChange: (value: any) => void = () => {};
   onTouched: () => void = () => {};
 
   registerOnChange(fn: any): void {

@@ -209,7 +209,6 @@ export class FileTableComponent implements OnInit {
     
     console.log('Data to be sent:', updatedItem);
   
-    updatedItem.fileNumber = [updatedItem.fileNumber]
     // Append the JSON data
     formDataToSend.append('fileDto', new Blob([JSON.stringify(new FileDto(updatedItem).toIdModel())], {
       type: "application/json"
@@ -267,8 +266,6 @@ export class FileTableComponent implements OnInit {
       // Extract the override/revision checkbox value
       const overrideFile = formData.overrideFile? formData.overrideFile : false;
       delete formData.overrideFile; // Remove it from formData as it's not part of the FileDto
-
-      formData.fileNumber = formData.fileNumber[0] || "";
   
     // Append the JSON data
     formDataToSend.append('fileDto', new Blob([JSON.stringify(formData)], {

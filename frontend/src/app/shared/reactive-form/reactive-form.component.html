@@ -65,7 +65,10 @@
   </div>
 </form>
 } @else if(isValueEditMenuOpen()){
-  <app-value-form [categoryAlias]="selectedCategoryName()"></app-value-form>
+  <app-value-form 
+    [categoryAlias]="selectedCategoryName()"
+    (submitEvent)="closeEditMenu()"
+    ></app-value-form>
 } @else {
   <app-add-value-form [categoryName]="selectedCategoryName()" (submitEvent)="closeAddValueMenu()"></app-add-value-form>
 }

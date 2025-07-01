@@ -211,15 +211,19 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
         FileObject oldEntity = getEntityById(file.getId());
         String oldFileNumber = oldEntity.getFileNumber();
+        String oldFileType = oldEntity.getFileType().getName();
+        String oldVendor = oldEntity.getVendor().getName();
+        
+        
         List<File> revisions = FileUtil.getRevisionsByFileNumber(oldFileNumber, Paths.get(projectRootPath, oldEntity.buildFileLink("pdf")).toString());
         List<File> extensionFiles = getFilesWithAllExtensions(oldEntity);
 
         FileObject updatedEntity = convertIdDtoToEntity(file);
 
         // Check if relevant fields have changed
-        boolean needsFileUpdate = !oldEntity.getFileNumber().equals(updatedEntity.getFileNumber()) ||
-                !oldEntity.getFileType().getName().equals(updatedEntity.getFileType().getName()) ||
-                !oldEntity.getVendor().getName().equals(updatedEntity.getVendor().getName());
+        boolean needsFileUpdate = !oldFileNumber.equals(updatedEntity.getFileNumber()) ||
+                !oldFileType.equals(updatedEntity.getFileType().getName()) ||
+                !oldVendor.equals(updatedEntity.getVendor().getName());
 
         if (needsFileUpdate) {
             // Move files to new locations
@@ -252,6 +256,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
         return toDto(savedEntity);
     }
+    
 
     private List<File> getFilesWithAllExtensions(FileObject file) {
         List<File> files = new ArrayList<>();

@@ -106,7 +106,10 @@ export class CurrentValueService {
         this.allDataSubject.next(currentData);
         return of(null);
       })
-    );
+    ).subscribe({
+      next: (response) => console.log('Server updated successfully', response),
+      error: (error) => console.error('Error updating server', error)
+    });
   }
 
   

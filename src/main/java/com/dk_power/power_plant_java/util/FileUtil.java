@@ -85,40 +85,74 @@ public class FileUtil {
 public static List<File> getRevisionsByFileNumber(String oldFileNumber, String path) {
     // Get the directory path
     Path directory = Paths.get(path);
+    System.out.println("Getting revisions for file number: " + oldFileNumber + " in directory: " + directory);
 
     // Get the file name without potential revision
     String baseFileName = oldFileNumber.replaceFirst("-rev\\d+$", "");
+    System.out.println("Base file name: " + baseFileName);
 
-    // Create a pattern to match the file name with any revision number and any extension
+    // Create a pattern to match the file name with or without any revision number and any extension
     String pattern = "^" + Pattern.quote(baseFileName) + "(-rev\\d+)?\\.[^.]+$";
+    System.out.println("Pattern: " + pattern);
 
     try {
         // List all files in the directory that match the pattern
-        return Files.list(directory)
+        List<File> matchingFiles = Files.list(directory)
                 .filter(filePath -> {
                     String fileName = filePath.getFileName().toString();
                     return fileName.matches(pattern);
                 })
                 .map(Path::toFile)
                 .sorted((f1, f2) -> {
-                    // Sort files by their revision number (latest first)
-                    return extractRevisionNumber(f2.getName()) - extractRevisionNumber(f1.getName());
+                    // Sort files by their revision number (latest first), 
+                    // with non-revision files considered as the latest
+                    int rev1 = extractRevisionNumber(f1.getName());
+                    int rev2 = extractRevisionNumber(f2.getName());
+                    if (rev1 == 0 && rev2 == 0) {
+                        // Both files don't have revision numbers, sort by name
+                        return f2.getName().compareTo(f1.getName());
+                    }
+                    return rev2 - rev1;
                 })
                 .collect(Collectors.toList());
+
+        // If no matching files are found, log a message
+        if (matchingFiles.isEmpty()) {
+            System.out.println("No matching files found for " + oldFileNumber + " in directory: " + directory);
+        }
+
+        System.out.println("Matching files: " + matchingFiles);
+
+        return matchingFiles;
+
     } catch (IOException e) {
-        throw new RuntimeException("Error listing files: " + e.getMessage(), e);
+        // Log the error
+        System.err.println("Error listing files in directory: " + directory);
+        System.err.println("Error message: " + e.getMessage());
+        e.printStackTrace();
+
+        // Check if the directory exists
+        if (!Files.exists(directory)) {
+            System.err.println("Directory does not exist: " + directory);
+        } else if (!Files.isReadable(directory)) {
+            System.err.println("No read permission for directory: " + directory);
+        }
+
+        // Return an empty list instead of throwing an exception
+        return List.of();
     }
 }
 
-public static int extractRevisionNumber(String fileName) {
-    // Extract the revision number from the file name
-    Pattern pattern = Pattern.compile("-rev(\\d+)");
-    Matcher matcher = pattern.matcher(fileName);
-    if (matcher.find()) {
-        return Integer.parseInt(matcher.group(1));
+    public static int extractRevisionNumber(String fileName) {
+        // Extract the revision number from the file name
+        Pattern pattern = Pattern.compile("-rev(\\d+)");
+        Matcher matcher = pattern.matcher(fileName);
+        if (matcher.find()) {
+            return Integer.parseInt(matcher.group(1));
+        }
+        return 0; // Return 0 for files without a revision number
     }
-    return 0; // Return 0 for files without a revision number
-}
+
     public static boolean checkFileExists(Path filePath) {
         return Files.exists(filePath);
     }
@@ -143,12 +177,12 @@ public static int extractRevisionNumber(String fileName) {
 
     public static String getNameFromPath(String path) {
         int lastIndex = path.lastIndexOf(File.separator);
-        return (lastIndex!= -1)? path.substring(lastIndex + 1) : path;
+        return (lastIndex != -1) ? path.substring(lastIndex + 1) : path;
     }
 
     public static String getNameFromPathWithoutExtension(String path) {
         String extension = getFileExtension(path);
         int lastIndex = path.lastIndexOf(File.separator);
-        return (lastIndex!= -1)? path.substring(lastIndex + 1).replace("."+extension,"") : path.replace("."+extension,"");
+        return (lastIndex != -1) ? path.substring(lastIndex + 1).replace("." + extension, "") : path.replace("." + extension, "");
     }
 }

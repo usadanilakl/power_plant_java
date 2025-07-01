@@ -182,4 +182,8 @@ export class ReactiveFormComponent {
     this.isAddValueMenuOpen.set(false);
   }
 
+  closeEditMenu(){
+    this.isValueEditMenuOpen.set(false);
+  }
+
 }
