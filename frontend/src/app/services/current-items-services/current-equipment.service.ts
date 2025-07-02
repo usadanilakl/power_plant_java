@@ -60,6 +60,7 @@ export class CurrentEquipmentService {
     }
 
     setResizeDetector(resizedShape: Shape): void {
+      console.log('Resized shape:', resizedShape);
       this.resizeDetectorSubject.next(resizedShape);
     }
 

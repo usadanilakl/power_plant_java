@@ -19,6 +19,7 @@ import { LotoPointService } from '../../../services/loto/loto-point.service';
 import { LotoPointDetailFormComponent } from "../../loto-points/loto-point-detail-form/loto-point-detail-form.component";
 import { PdfDisplayIframeComponent } from "../../../shared/pdf-dislplay-iframe/pdf-dislplay-iframe.component";
 import { LotoPointBulkEditorComponent } from "./loto-point-bulk-editor/loto-point-bulk-editor.component";
+import { EquipmentService } from '../../../services/equipment.service';
 
 @Component({
   selector: 'app-file-editor',
@@ -53,6 +54,7 @@ export class FileEditorComponent {
   constructor(
     protected currentFileService: CurrentFileService,
     private currentEquipmentService: CurrentEquipmentService,
+    private equipmentService: EquipmentService,
     private lotoPointService: LotoPointService,
     private destroyRef: DestroyRef,
     private imageService: ImageService
@@ -88,9 +90,27 @@ export class FileEditorComponent {
     this.currentEquipmentService.getRezizeDetector().pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(shape =>{
-      if(this.currentEquipment() && this.currentEquipment().id && shape && shape.id === this.currentEquipment().id){
+      if(shape && shape.id && shape.id !== 0){
+        
         const tempEq = EquipmentDto.createEquipmentFromShape(shape as RectangleShape);
-        const updatedEq = {...this.currentEquipment(),...{coordinates:tempEq.coordinates}};
+        const temp2 = EquipmentDto.removeDefaultValues(new EquipmentDto());
+        const updatedEq = {...temp2,...{coordinates:tempEq.coordinates, id:shape.id}};
+
+        this.equipmentService.updateEquipment(new EquipmentDto(updatedEq)).pipe(
+          catchError(error => {
+            console.error('Error updating equipment:', error);
+            // You can add more specific error handling here, such as displaying a user-friendly message
+            // For now, we'll just log the error and return an observable that completes
+            return of(null);
+          })
+        ).subscribe(resp => {
+          if (resp) {
+            this.currentEquipmentService.setCurrentEquipment(new EquipmentDto(resp.responseData));
+          } else {
+            console.warn('Equipment update failed or returned no data');
+            // You might want to handle this case, perhaps by showing a message to the user
+          }
+        });
       }
     })
   }

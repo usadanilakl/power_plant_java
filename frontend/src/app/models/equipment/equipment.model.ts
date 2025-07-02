@@ -234,7 +234,9 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       endY: shape.y + shape.height,
       width: shape.width,
       height: shape.height
-    });
+    })
+    .replace(/^"|"$/g, '')
+    .replace(/\\/g, '');  
   
     const originalPictureSize = `width:${shape.originalPictureWidth},height:${shape.originalPictureHeight}`;
   
@@ -242,20 +244,20 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       id: shape.id,
       tagNumber: `EQ-${shape.id}`, // Generate a default tag number
       description: `Equipment ${shape.id}`, // Generate a default description
-      specificLocation: '', // This might be set later
-      eqType: new ValueDto(), // This should be set properly later
+      specificLocation: '',
+      eqType: new ValueDto(),
       files: [],
       vendor: new ValueDto(),
       location: new ValueDto(),
       system: new ValueDto(),
       coordinates: coordinates,
       originalPictureSize: originalPictureSize,
-      mainFile: '', // This might be set later
+      mainFile: '',
       lotoPoints: [],
       isUpdated: '',
       conflictStatus: '',
       isVerified: false,
-      name: `Equipment ${shape.id}`, // Generate a default name
+      name: `Equipment ${shape.id}`,
       objectType: 'Equipment'
     });
   }

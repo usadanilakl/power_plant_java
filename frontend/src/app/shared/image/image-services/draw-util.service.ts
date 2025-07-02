@@ -120,6 +120,7 @@ export class DrawUtilService {
 
   handleMouseUp(event: MouseEvent) {
     if(this.isResizing && this.selectedShape) {
+      console.log('resizing shape ', this.selectedShape);
       this.currentEquipmentService.setResizeDetector(this.selectedShape!);
     }
 
