@@ -139,8 +139,6 @@ export class FileTableComponent implements OnInit {
       this.isPopupOpen = true;
       this.fetchElements(item.id);
     }
-
-    console.log('Selected items:', this.selectedItems);
   }
   
   fetchElements(itemId: number) {
@@ -153,7 +151,6 @@ export class FileTableComponent implements OnInit {
           // Extract elements from the points field
           const elements: EquipmentDto[] = this.selectedItem.points || [];
           this.elementsSubject.next(elements);
-          console.log('Elements:', elements);
         } else {
           console.error('Unexpected response structure:', response);
           this.elementsSubject.next([]);
@@ -180,8 +177,6 @@ export class FileTableComponent implements OnInit {
 
     this.submitting.set(true);
   
-    console.log('Form submitted with data:', formData);
-  
     // Create a FormData object to send both file and JSON data
     const formDataToSend = new FormData();
   
@@ -199,19 +194,11 @@ export class FileTableComponent implements OnInit {
 
       // Extract the override/revision checkbox value
       const overrideFile = formData.overrideFile;
-      console.log('Override file:', overrideFile);
       delete formData.overrideFile; // Remove it from formData as it's not part of the FileDto
-
-  
-    // Now formData doesn't contain the file field
-    console.log('Form data after file extraction:', formData);
   
     // Continue with the rest of your logic...
     // Merge the existing item data with the new form data
     const updatedItem = { ...this.selectedItem, ...formData };
-
-    
-    console.log('Data to be sent:', updatedItem);
   
     // Append the JSON data
     formDataToSend.append('fileDto', new Blob([JSON.stringify(new FileDto(updatedItem).toIdModel())], {
@@ -227,7 +214,6 @@ export class FileTableComponent implements OnInit {
     // Update in the backend
     this.fileService.updateFile(formDataToSend).subscribe(
       (response) => {
-        console.log('File updated successfully', response);
 
         this.fileSubmitMessage.set('File updated successfully');
         
@@ -284,12 +270,9 @@ export class FileTableComponent implements OnInit {
       // Append the override/revision flag
       formDataToSend.append('overrideFile', overrideFile);
 
-      console.log('Data to be sent:', formData);
-
     // Update in the backend
     this.fileService.updateFile(formDataToSend).subscribe(
       (response) => {
-        console.log('File created successfully', response);
         
         // Add the new item to the table
         if (response && response.responseData) {
@@ -297,7 +280,6 @@ export class FileTableComponent implements OnInit {
           const updatedItems = [newFile, ...this.initialItemsSubject.value];
           this.initialItemsSubject.next(updatedItems);
           
-          console.log('New file added to the table:', newFile);
         } else {
           console.error('Response does not contain the expected data:', response);
         }
@@ -316,7 +298,6 @@ export class FileTableComponent implements OnInit {
     if (this.selectedItem) {
       this.fileService.deleteFile(this.selectedItem.id.toString()).subscribe(
         () => {
-          console.log('File deleted successfully');
           const updatedItems = this.initialItemsSubject.value.filter(item => item.id !== this.selectedItem?.id);
           this.initialItemsSubject.next(updatedItems);
           this.selectedItem = null; // Close the form
@@ -327,9 +308,7 @@ export class FileTableComponent implements OnInit {
   }
   
   onOpenImage() {
-    console.log('Opening image popup');
     if (this.selectedItem && this.selectedItem.fileLink) {
-      console.log('Selected image:', this.selectedItem.fileLink);
       this.selectedImagePath = this.selectedItem.fileLink.replaceAll("pdf","jpg");
       this.isImagePopupOpen = true;
     } else {
@@ -342,8 +321,6 @@ export class FileTableComponent implements OnInit {
   }
 
     createNewFile() {
-      // Implement the logic to create a new file
-      console.log('Creating new file');
       // For example, you might want to open a popup with an empty form
       this.selectedItem = null; // or a new empty FileDto object
       this.isPopupOpen = true;
@@ -352,7 +329,6 @@ export class FileTableComponent implements OnInit {
   deleteFile(item: string) {
     this.fileService.deleteFile(item).subscribe(
       (response) => {
-        console.log('File deleted successfully:', response);
         // Handle successful deletion (e.g., remove the item from the list)
       },
       (error) => {

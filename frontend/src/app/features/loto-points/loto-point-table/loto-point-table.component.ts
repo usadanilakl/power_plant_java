@@ -148,22 +148,16 @@ export class LotoPointTableComponent implements OnInit {
   private updateClientSideData(criteria?: SearchCriteria) {
     if (!this.clientSideData$) return;
   
-    console.log('Updating client side data with criteria:', criteria);
-  
     this.clientSideData$.pipe(
       take(1),
       map(data => {
-        console.log('Original data count:', data.length);
         return criteria ? this.applySearchCriteria(data, criteria) : data;
       })
     ).subscribe(filteredData => {
-      console.log('Filtered data count:', filteredData.length);
   
       const startIndex = (this.currentPage - 1) * this.pageSize;
       const endIndex = startIndex + this.pageSize;
       const paginatedData = filteredData.slice(startIndex, endIndex);
-  
-      console.log('Paginated data count:', paginatedData.length);
   
       if (this.currentPage === 1) {
         this.initialItemsSubject.next(paginatedData);
@@ -171,14 +165,10 @@ export class LotoPointTableComponent implements OnInit {
         const currentItems = this.initialItemsSubject.value;
         this.initialItemsSubject.next([...currentItems, ...paginatedData]);
       }
-  
-      console.log('Final data count in subject:', this.initialItemsSubject.value.length);
     });
   }
 
   private applySearchCriteria(data: LotoPointDto[], criteria: SearchCriteria): LotoPointDto[] {
-    console.log('Applying search criteria:', criteria);
-    console.log('Initial data count:', data.length);
   
     return data.filter(item => {
       return Object.entries(criteria).some(([key, value]) => {
@@ -201,8 +191,7 @@ export class LotoPointTableComponent implements OnInit {
       console.error('No item selected for update');
       return;
     }
-  
-    console.log('Form submitted with data:', formData);
+
   
     // if (this.submitCallback) {
       
@@ -261,7 +250,6 @@ export class LotoPointTableComponent implements OnInit {
         if (response.responseData) {
           const fullUrls = response.responseData.map(url => `http://localhost:8082/${url}`);
           this.relatedImagesSubject.next(fullUrls);
-          console.log('Related images fetched successfully:', fullUrls);
         } else {
           this.relatedImagesSubject.next([]);
         }
@@ -306,11 +294,7 @@ export class LotoPointTableComponent implements OnInit {
   }
 
   onColumnDoubleClick(item: any, column: Column) {
-    // console.log('Double-click on item: outside if', item);
-    // console.log('this.cellDoubleClickCallback:', this.cellDoubleClickCallback);
-    // console.log('typeof this.cellDoubleClickCallback:', typeof this.cellDoubleClickCallback);
     if (this.cellDoubleClickCallback) {
-      // console.log('Double-click on column inside if:', column);
       this.cellDoubleClickCallback(item, column);
     } else {
       console.log('cellDoubleClickCallback is not defined or is falsy');

@@ -203,7 +203,6 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   
   private handleSingleClick(e: MouseEvent, imageX: number, imageY: number) {
     if (e.button === 2) { // Right click
-      console.log('Drawing mode');
       this.drawingService.handleRightClick(e);
     } else if (e.button === 0) { // Left click
 
@@ -218,8 +217,6 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   }
   
   private handleDoubleClick(e: MouseEvent, imageX: number, imageY: number) {
-    console.log('Double click detected');
-    console.log('Drawing mode');
     this.drawingService.handleDoubleClick({
       offsetX: imageX,
       offsetY: imageY,
@@ -246,12 +243,6 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
 
     const { x, y } = this.zoomService.viewportToPictureCoordinates(e.clientX, e.clientY);
     this.drawingService.handleMouseMove(e,x,y);
-
-    // const { x,y } = this.zoomService.viewportToPictureCoordinates(e.clientX, e.clientY);
-    // const {x:x2, y:y2 } = this.zoomService.pictureToViewportCoordinates(x,y);
-    // console.log(`IMG: (${x.toFixed(2)}, ${y.toFixed(2)})`);
-    // console.log(`VPT: (${e.clientX}, ${e.clientY})`);
-    // console.log(`PTV: (${x2.toFixed(2)}, ${y2.toFixed(2)})`);
   }
 
   handleMouseUp(e: MouseEvent) {

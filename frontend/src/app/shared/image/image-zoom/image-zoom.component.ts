@@ -28,7 +28,6 @@ export class ImageZoomComponent {
 
   transform() {
     if (this.zoomElement && this.zoomElement.nativeElement) {
-      console.log('transform');
       this.zoomElement.nativeElement.style.transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
       // Call onZoomEnd after the transition is complete
       setTimeout(() => this.onZoomEnd(), 100);
@@ -61,7 +60,6 @@ export class ImageZoomComponent {
   }
 
   onLeftClick(event: MouseEvent) {
-    console.log('leftClick');
     this.start = { x: event.clientX - this.pointX, y: event.clientY - this.pointY };
     this.panning = true;
     this.toggleDraggingClass(true);
@@ -82,7 +80,6 @@ export class ImageZoomComponent {
   }
 
   onMouseUp(event: MouseEvent) {
-    console.log('mouseup');
     this.panning = false;
     this.toggleDraggingClass(false);
     this.setTransition('0.1s'); // Restore transition after dragging
@@ -160,8 +157,6 @@ export class ImageZoomComponent {
     // newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
     // newTop = Math.max(minTop, Math.min(newTop, maxTop));
   
-    console.log('New dimensions:', { newWidth, newHeight });
-    console.log('New position:', { left: newLeft, top: newTop });
     return { left: newLeft, top: newTop };
   }
 

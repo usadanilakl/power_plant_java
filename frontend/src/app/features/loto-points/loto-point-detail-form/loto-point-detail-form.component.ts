@@ -74,7 +74,6 @@ export class LotoPointDetailFormComponent implements OnInit {
     this.currentValueService.getOptionsByCategory(category).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(options => {
-      console.log("Options in lotopoint detail form: ", options);
       optionsSignal.set(options);
       this.checkFormReady();
     });

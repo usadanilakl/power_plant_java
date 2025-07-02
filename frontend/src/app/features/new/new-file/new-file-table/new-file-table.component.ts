@@ -134,7 +134,6 @@ export class NewFileTableComponent implements OnInit {
           // Extract elements from the points field
           const elements: EquipmentDto[] = this.selectedItem.points || [];
           this.elementsSubject.next(elements);
-          console.log('Elements:', elements);
         } else {
           console.error('Unexpected response structure:', response);
           this.elementsSubject.next([]);
@@ -158,9 +157,6 @@ export class NewFileTableComponent implements OnInit {
       console.error('No item selected for update');
       return;
     }
-  
-    console.log('Form submitted with data:', formData);
-  
     // Create a FormData object to send both file and JSON data
     const formDataToSend = new FormData();
   
@@ -176,9 +172,6 @@ export class NewFileTableComponent implements OnInit {
       formDataToSend.append('file', file);
     }
   
-    // Now formData doesn't contain the file field
-    console.log('Form data after file extraction:', formData);
-  
     // Continue with the rest of your logic...
     // Merge the existing item data with the new form data
     const updatedItem = { ...this.selectedItem, ...formData };
@@ -191,7 +184,6 @@ export class NewFileTableComponent implements OnInit {
     // Update in the backend
     this.fileService.updateFile(formDataToSend).subscribe(
       (response) => {
-        console.log('File updated successfully', response);
         
         // Update the item in the table
         const updatedItems = [...this.initialItemsSubject.value];
@@ -213,7 +205,6 @@ export class NewFileTableComponent implements OnInit {
     if (this.selectedItem) {
       this.fileService.deleteFile(this.selectedItem.id.toString()).subscribe(
         () => {
-          console.log('File deleted successfully');
           const updatedItems = this.initialItemsSubject.value.filter(item => item.id !== this.selectedItem?.id);
           this.initialItemsSubject.next(updatedItems);
           this.selectedItem = null; // Close the form
@@ -224,9 +215,7 @@ export class NewFileTableComponent implements OnInit {
   }
   
   onOpenImage() {
-    console.log('Opening image popup');
     if (this.selectedItem && this.selectedItem.fileLink) {
-      console.log('Selected image:', this.selectedItem.fileLink);
       this.selectedImagePath = this.selectedItem.fileLink;
       this.isImagePopupOpen = true;
     } else {

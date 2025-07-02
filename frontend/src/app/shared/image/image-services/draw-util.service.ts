@@ -1,8 +1,10 @@
+import { inject } from "@angular/core";
 import { Shape } from "../../../models/shape.model";
 import { Tool } from "../../../models/tool.model";
 import { ShapeFactoryService } from "./shape-factory.service";
 import { ShapeUtilService } from "./shape-util.service";
 import { BehaviorSubject, Subject } from "rxjs";
+import { CurrentEquipmentService } from "../../../services/current-items-services/current-equipment.service";
 
 export class DrawUtilService {
   private shapes: Shape[] = [];
@@ -15,6 +17,8 @@ export class DrawUtilService {
   cursor$ = this.cursorSubject.asObservable();
   private img!: HTMLImageElement;
   private scale = 1;
+
+  currentEquipmentService = inject(CurrentEquipmentService);
 
   private newShapeSubject = new Subject<Shape | null>();
   newShape$ = this.newShapeSubject.asObservable();
@@ -53,7 +57,6 @@ export class DrawUtilService {
     this.shapes = shapes;
     this.shapesSubject.next(this.shapes);
 
-    // console.log(`Image dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
   }
 
   setShapes(shapes: Shape[]) {
@@ -62,7 +65,6 @@ export class DrawUtilService {
   }
 
   setCurrentTool(tool: Tool) {
-    console.log(`Setting current tool to ${tool}`);
     this.currentTool = tool;
   }
 
@@ -117,6 +119,10 @@ export class DrawUtilService {
   }
 
   handleMouseUp(event: MouseEvent) {
+    if(this.isResizing && this.selectedShape) {
+      this.currentEquipmentService.setResizeDetector(this.selectedShape!);
+    }
+
     this.isDraggingShape = false;
     this.isResizing = false;
 
@@ -163,8 +169,7 @@ export class DrawUtilService {
     // Notify subscribers of the change
     this.shapesSubject.next(this.shapes);
     this.selectedShapeSubject.next(this.selectedShape);
-    
-    console.log(this.selectedShape);
+  
   }
 
   public updateSelectedShape(shape: Shape | null) {

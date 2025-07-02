@@ -138,7 +138,6 @@ export class EquipmentFormComponent implements OnInit {
     this.currentValueService.getOptionsByCategory(category).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(options => {
-      console.log('Options loaded in equipment detail form:', options);
       optionsSignal.set(options);
       this.checkFormReady();
     });

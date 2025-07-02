@@ -6,7 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ImageService } from '../../../services/text-recognition.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { FileBulkEditorMenuComponent } from "./file-bulk-editor-menu/file-bulk-editor-menu.component";
-import { Shape } from '../../../models/shape.model';
+import { RectangleShape, Shape } from '../../../models/shape.model';
 import { catchError, map, of, tap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
@@ -82,9 +82,17 @@ export class FileEditorComponent {
       this.currentEquipment.set(equipment?? new EquipmentDto());
       if (equipment) {
         // Handle the new equipment data, e.g., update form fields
-        // console.log('Current equipment was updated in subscription:', equipment);
       }
     });
+
+    this.currentEquipmentService.getRezizeDetector().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(shape =>{
+      if(this.currentEquipment() && this.currentEquipment().id && shape && shape.id === this.currentEquipment().id){
+        const tempEq = EquipmentDto.createEquipmentFromShape(shape as RectangleShape);
+        const updatedEq = {...this.currentEquipment(),...{coordinates:tempEq.coordinates}};
+      }
+    })
   }
 
   onToggleFileFormat(){
@@ -94,7 +102,6 @@ export class FileEditorComponent {
   }
 
   onNewShapeCreated(shape: any) {
-    console.log('New shape created:', shape);
     
     this.currentEquipmentService.getCurrentPresetData().pipe(
       takeUntilDestroyed(this.destroyRef),
@@ -125,7 +132,6 @@ export class FileEditorComponent {
     this.imageService.getText(this.currentFile()?.fileLink, shape).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(text => {
-        console.log('Recognized text:', text);
         if (text) {
           // Update the tag number when text is recognized
           newEq.tagNumber = text.trim();
@@ -146,7 +152,6 @@ export class FileEditorComponent {
   }
 
   onShapeSelected(shape: any) {
-    console.log('Shape selected:', shape);
     this.currentEquipmentService.setCurrentShape(shape);
     this.isEqFormOpen.set(true);
   }
@@ -241,9 +246,6 @@ export class FileEditorComponent {
             
             this.currentEquipmentService.setCurrentEquipment(updatedEquipment);
           }
-          
-          // Optionally, you can emit an event or update a local state to reflect the change
-          console.log('LOTO point updated successfully', updatedLotoPoint);
         } else {
           throw new Error('Invalid response from server');
         }

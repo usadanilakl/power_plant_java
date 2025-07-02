@@ -97,9 +97,6 @@ export class FileBulkEditorMenuComponent implements OnInit {
       // Create a new object with the updated fields
       const updatedEquipment = new EquipmentDto({...this.itemToEdit(), ...formData});
 
-      console.log('Equipment updated:', updatedEquipment);
-      console.log('Form submitted with data:', formData);
-
       // Update the itemToEdit signal
       this.itemToEdit.set(updatedEquipment);
   
@@ -107,7 +104,6 @@ export class FileBulkEditorMenuComponent implements OnInit {
       this.equipmentService.updateEquipment(updatedEquipment).pipe(
         takeUntilDestroyed(this.destroyRef),
         tap(updatedItem => {
-          console.log('Equipment updated successfully:', updatedItem);
           // Update the equipment in the equipmentData list
         this.currentFileService.updateEquipmentInList(updatedItem.responseData);
           // Close the popup
@@ -156,8 +152,6 @@ export class FileBulkEditorMenuComponent implements OnInit {
       takeUntilDestroyed(this.destroyRef),
       tap(presetData => {
         if (presetData) {
-          console.log("Selected items: ",this.selectedItems())
-          console.log("PresetData: ", presetData);
           const updatedItems = this.selectedItems().map(item => (new EquipmentDto({
             ...item,
             ...EquipmentDto.removeDefaultValues(presetData),
@@ -174,7 +168,6 @@ export class FileBulkEditorMenuComponent implements OnInit {
   
           // Optionally, update the items on the server
           this.updateItemsOnServer(updatedItems);
-          console.log('Applied preset values to selected items:', updatedItems);
         }
       }),
       catchError(error => {
@@ -195,8 +188,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
     forkJoin(updateObservables).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(results => {
-        console.log('All items updated successfully:', results);
-        // Optionally, you can update the local data with the server responses here
+        
       }),
       catchError(error => {
         console.error('Error updating items on server:', error);

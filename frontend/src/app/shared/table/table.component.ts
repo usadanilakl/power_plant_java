@@ -140,7 +140,6 @@ ngOnInit() {
   }
 
   sortColumn(column: Column) {
-    console.log(column)
     const columnKey = column.accessorKey || column.id;
     this.isAscending = this.currentSortColumn === columnKey ? !this.isAscending : true;
     this.currentSortColumn = columnKey;
@@ -148,7 +147,6 @@ ngOnInit() {
     this.filteredItems.sort((a, b) => {
       const aValue = this.getCellValue(a, column).toString();
       const bValue = this.getCellValue(b, column).toString();
-      console.log(aValue, bValue, this.isAscending);
       return this.isAscending ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
     });
   }
@@ -209,11 +207,8 @@ ngOnInit() {
       this.doubleClickCallback(item);
     }
     if (this.cellDoubleClickCallback) {
-      // console.log('Cell double click:', this.lastClickedCell);
-      // console.log('Callback function:', this.cellDoubleClickCallback);
       try {
         this.cellDoubleClickCallback(item, this.lastClickedCell.column);
-        console.log('Callback executed successfully in table component');
       } catch (error) {
         console.error('Error executing callback:', error);
       }

@@ -92,13 +92,11 @@ export class LockTableComponent implements OnInit {
       return;
     }
 
-    console.log('Form submitted with data:', formData);
 
     const updatedItem = new LockDto({ ...this.selectedItem, ...formData });
 
     this.lockService.updateLock(this.selectedItem.id.toString(), updatedItem).subscribe(
       (response) => {
-        console.log('Lock updated successfully', response);
         const updatedItems = this.initialItemsSubject.value.map(item =>
           item.id === this.selectedItem?.id ? updatedItem : item
         );
@@ -144,7 +142,6 @@ export class LockTableComponent implements OnInit {
     if (this.selectedItem) {
       this.lockService.deleteLock(this.selectedItem.id.toString()).subscribe(
         () => {
-          console.log('Lock deleted successfully');
           const updatedItems = this.initialItemsSubject.value.filter(item => item.id !== this.selectedItem?.id);
           this.initialItemsSubject.next(updatedItems);
           this.selectedItem = null;

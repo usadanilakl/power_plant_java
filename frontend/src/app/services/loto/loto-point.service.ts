@@ -50,10 +50,8 @@ export class LotoPointService {
     let lotoPointIdDto: LotoPointIdDto;
   
     if (lotoPoint instanceof LotoPointDto) {
-      console.log('LotoPointDto given as parameter');
       lotoPointIdDto = lotoPoint.toIdModel();
     } else if (this.isLotoPointIdDto(lotoPoint)) {
-      console.log('LotoPointIdDto given as parameter');
       lotoPointIdDto = lotoPoint;
     } else {
       console.error('Invalid parameter type, expected LotoPointDto or LotoPointIdDto');

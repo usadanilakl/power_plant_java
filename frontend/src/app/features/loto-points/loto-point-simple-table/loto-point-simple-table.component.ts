@@ -58,8 +58,6 @@ export class LotoPointSimpleTableComponent implements OnInit {
 
   onSearch(searchCriteria: SearchCriteria) {
     if (!this.enableSearch()) return;
-
-    console.log('Searching LOTO points with criteria:', searchCriteria);
     
     this.lotoPointService.searchLotoPoints(searchCriteria, 500).subscribe({
       next: (response) => {

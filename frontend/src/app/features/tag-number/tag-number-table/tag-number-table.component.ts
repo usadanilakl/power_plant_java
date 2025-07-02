@@ -114,7 +114,6 @@ export class TagNumberTableComponent implements OnInit {
     if (this.selectedItem) {
       this.tagNumberService.deleteTagNumber(this.selectedItem.id).subscribe(
         () => {
-          console.log('Tag number deleted successfully');
           const currentItems = (this.initialItems$ as BehaviorSubject<any[]>).getValue();
           const updatedItems = currentItems.filter(item => item.id !== this.selectedItem.id);
           (this.initialItems$ as BehaviorSubject<any[]>).next(updatedItems);

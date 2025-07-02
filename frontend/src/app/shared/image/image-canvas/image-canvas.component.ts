@@ -34,7 +34,6 @@ export class ImageCanvasComponent implements AfterViewInit, OnChanges, OnDestroy
   ) {
     this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
       this.shapes = shapes;
-      console.log('shapes updated:', shapes);
       this.drawShapes();
     });
   }

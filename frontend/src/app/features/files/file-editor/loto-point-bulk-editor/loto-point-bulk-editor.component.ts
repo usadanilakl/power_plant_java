@@ -90,9 +90,6 @@ export class LotoPointBulkEditorComponent implements OnInit {
       // Create a new object with the updated fields
       const updatedLotoPoint = new LotoPointDto({...this.itemToEdit(), ...formData});
 
-      console.log('LotoPoint updated:', updatedLotoPoint);
-      console.log('Form submitted with data:', formData);
-
       // Update the itemToEdit signal
       this.itemToEdit.set(updatedLotoPoint);
   
@@ -100,7 +97,6 @@ export class LotoPointBulkEditorComponent implements OnInit {
       this.lotoPointService.updateLotoPoint(updatedLotoPoint).pipe(
         takeUntilDestroyed(this.destroyRef),
         tap(updatedItem => {
-          console.log('Loto Point updated successfully:', updatedItem);
           // Update the equipment in the equipmentData list
         this.currentFileService.updateAssociatedLotoPoint(updatedItem.responseData);
           // Close the popup
@@ -149,8 +145,6 @@ export class LotoPointBulkEditorComponent implements OnInit {
       takeUntilDestroyed(this.destroyRef),
       tap(presetData => {
         if (presetData) {
-          console.log("Selected items: ",this.selectedItems())
-          console.log("PresetData: ", presetData);
           const updatedItems = this.selectedItems().map(item => (new LotoPointDto({
             ...item,
             ...BaseDto.removeDefaultValues(presetData),
@@ -167,7 +161,6 @@ export class LotoPointBulkEditorComponent implements OnInit {
   
           // Optionally, update the items on the server
           this.updateItemsOnServer(updatedItems);
-          console.log('Applied preset values to selected items:', updatedItems);
         }
       }),
       catchError(error => {
@@ -188,7 +181,6 @@ export class LotoPointBulkEditorComponent implements OnInit {
     forkJoin(updateObservables).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(results => {
-        console.log('All items updated successfully:', results);
         // Optionally, you can update the local data with the server responses here
       }),
       catchError(error => {
@@ -223,7 +215,6 @@ export class LotoPointBulkEditorComponent implements OnInit {
     this.currentValueService.getOptionsByCategory(category).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(options => {
-      console.log('Options loaded in file detail form:', options);
       optionsSignal.set(options);
     });
   }

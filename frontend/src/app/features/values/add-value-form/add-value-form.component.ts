@@ -25,10 +25,9 @@ export class AddValueFormComponent {
       this.currentValueService.updateCategoryWithNewValue(this.categoryName(), this.valueName).subscribe({
         next: (updatedValue) => {
           if (updatedValue) {
-            console.log('Value added successfully:', updatedValue);
             // Perform any additional actions needed after successful update
           } else {
-            console.log('Failed to add value');
+            
           }
         },
         error: (error) => console.error('Error adding value:', error)

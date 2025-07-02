@@ -97,13 +97,11 @@ export class LotoBoxTableComponent implements OnInit {
       return;
     }
 
-    console.log('Form submitted with data:', formData);
 
     const updatedItem = new LotoBoxDto({ ...this.selectedItem, ...formData });
 
     this.lotoBoxService.updateLotoBox(this.selectedItem.id.toString(), updatedItem).subscribe(
       (response) => {
-        console.log('LOTO lotoBox updated successfully', response);
         const updatedItems = this.initialItemsSubject.value.map(item =>
           item.id === this.selectedItem?.id ? updatedItem : item
         );

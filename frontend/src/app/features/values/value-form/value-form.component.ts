@@ -37,7 +37,6 @@ export class ValueFormComponent{
   
 
   loadValues() {
-    console.log('Loading values for category:', this.categoryAlias());
     this.currentValueService.getValuesByCategory(this.categoryAlias()!).subscribe(
       (values) => {
         this.values.set(values);
@@ -83,7 +82,6 @@ export class ValueFormComponent{
       // Call your service method to update the value
       this.currentValueService.updateValue(this.valueToEditId()!, this.editingName()!).subscribe(
         updatedValue => {
-          console.log('Value updated:', updatedValue);
           // Update local state or emit event to parent component
         },
         error => console.error('Error updating value:', error)
@@ -96,7 +94,6 @@ export class ValueFormComponent{
       // Call your service method to delete the value and transfer associated items
       this.currentValueService.deleteValueAndTransfer(this.valueToEditId()!, this.transferValueId()!).subscribe(
         result => {
-          console.log('Value deleted and items transferred:', result);
           // Update local state or emit event to parent component
         },
         error => console.error('Error deleting value:', error)

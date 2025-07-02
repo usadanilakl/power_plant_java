@@ -64,7 +64,6 @@ export class CurrentValueService {
   private loadAllCategories() {
     this.valueService.getAllCategories().pipe(
       tap(response => {
-        console.log('Loaded categories:', response.responseData);
         this.allCategoriesSubject.next(response.responseData);
       }),
       catchError(error => {
@@ -191,8 +190,6 @@ export class CurrentValueService {
         // Update the currentValuesSubject
         const currentValues = this.currentValuesSubject.value.filter(v => v.id !== valueIdToDelete);
         this.currentValuesSubject.next(currentValues);
-  
-        console.log('Value deleted and items transferred:', result);
       }),
       catchError(error => {
         console.error('Error deleting value and transferring items:', error);
@@ -202,7 +199,6 @@ export class CurrentValueService {
   }
 
   reloadAllData() {
-    console.log('Reloading all data...');
     this.loadAllData();
   }
 
@@ -225,7 +221,6 @@ export class CurrentValueService {
   }
 
   getValuesByCategory(category: string): Observable<ValueDto[]> {
-    console.log("All data: ", this.allDataSubject.value);
     return this.allData$.pipe(
       map(data => data[category] || []),
       shareReplay(1)

@@ -54,7 +54,6 @@ export class DetailsFormComponent {
 
   ngOnInit() {
     this.createForm();
-    // console.log('this.form:', this.form);
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -64,11 +63,8 @@ export class DetailsFormComponent {
   }
 
   createForm() {
-    // console.log('Creating form with fields:', this.fields);
-    // console.log("values:", this.values);
     const group: { [key: string]: any[] } = {};
     this.fields.forEach((field) => {
-      // console.log('Field:', field);
       let value = this.getNestedValue(this.values, field.name);
       let validators = field.validators || [];
   
@@ -98,7 +94,6 @@ export class DetailsFormComponent {
   }
 
   updateForm() {
-    console.log('Updating form with fields:', this.fields);
     if (this.form) {
       this.fields.forEach((field) => {
         if (this.form.get(field.name)) {
@@ -126,7 +121,6 @@ export class DetailsFormComponent {
   onSubmit() {
     if (this.form.valid) {
       const formValue = this.form.value;
-      console.log("Form Value:", formValue);
       const result = {...this.values}; // Start with the original object
   
       this.fields.forEach((field) => {
@@ -165,13 +159,11 @@ export class DetailsFormComponent {
   }
 
   onAddNewSelectOption(name: string) {
-    console.log('Adding value to category with name:', name);
     this.selectedCategoryName.set(name);
     this.isAddValueMenuOpen.set(true);
   }
   
   onEditSelectOption(){
-    console.log('Select option edited');
     this.isValueEditMenuOpen.set(false);
   }
 

@@ -91,9 +91,7 @@ export class LotoPointComponent implements OnInit  {
 
     onFormSubmit(lotoPoint: LotoPointIdDto) {
       // Perform the required actions to save or update the loto point (e.g., save to the server)
-      console.log('Form submitted:', lotoPoint);
       lotoPoint.id = this.lotoPointToEdit?.id || 0;
-      console.log('Updated loto point:', lotoPoint);
       this.lotoPointService.updateLotoPoint(lotoPoint).subscribe(alert => console.log('Loto point updated successfully:', alert))
       this.isPopupOpen = false;
       this.lotoPointToEdit = null;

@@ -16,7 +16,6 @@ export class ValuesComponent {
   selectedValue = signal<ValueDto | null>(null);
 
   openValueForm(item: ValueDto) {
-    console.log('Open value form');
     this.selectedValue.set(item);
     this.isValueFormOpen.set(true);
   }

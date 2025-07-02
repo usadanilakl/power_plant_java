@@ -142,7 +142,6 @@ export class CurrentFileService {
     }
 
     private filterByEquipmentType(exclude: string[]): EquipmentDto[] {
-      // console.log('Filtering elements by type:', exclude);
       const currentElements = this.elementsSubject.getValue();
       return currentElements.filter(element => 
         element && element.eqType && element.eqType.name && 
@@ -189,10 +188,6 @@ export class CurrentFileService {
     }
     
     private updateFileLink(fileLink: string, oldExtension: string, newExtension: string): string {
-      // Ensure the old extension is at the end of the file link
-      console.log("old extension:", oldExtension);
-      console.log("new extension:", newExtension);
-      console.log("fileLink:", fileLink);
       if (!fileLink.endsWith(oldExtension)) {
         console.warn('Current file link does not end with the expected extension');
         return fileLink;

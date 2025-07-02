@@ -121,7 +121,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       this.initializeShapes(elements, this._img.naturalWidth, this._img.naturalHeight);
       this.drawShapes();
     });
-    // console.log(this.shapes());
     this.pictureOriginalWidth = img.naturalWidth;
     this.pictureOriginalHeight = img.naturalHeight;
     this.pictureCurrentWidth = this.img.width;
@@ -160,7 +159,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   setSubscriptions() {
     this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
       this.shapes.set(shapes);
-      // console.log('shapes updated:', shapes);
       this.drawShapes();
     });
 
@@ -259,7 +257,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     ctx.lineWidth = (shape.isSelected? 3 : 1);
 
     const scaledShape = this.scaleShape(shape);
-    // console.log(JSON.stringify(scaledShape));
 
             switch (scaledShape.type) {
               case 'rectangle':
@@ -464,7 +461,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   onRightClick(event: MouseEvent) {
-    // console.log('rightclick');
     const { x, y } = this.viewportToPictureCoordinates(event.clientX, event.clientY);
     this.drawingService.handleRightClick(event,x,y);
   }
@@ -550,8 +546,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     // newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
     // newTop = Math.max(minTop, Math.min(newTop, maxTop));
   
-    // console.log('New dimensions:', { newWidth, newHeight });
-    // console.log('New position:', { left: newLeft, top: newTop });
     return { left: newLeft, top: newTop };
   }
 
@@ -616,13 +610,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     const imgRect = this.img.getBoundingClientRect();
     const currentImageScale = imgRect.width / this.img.naturalWidth;
     const shapeToNaturalImageRatio = this.img.naturalWidth / shape.originalPictureWidth;
-    
-    // console.log('Current image width:', imgRect.width);
-    // console.log('Original shape image width:', shape.originalPictureWidth);
-    // console.log('Current image natural width:', this.img.naturalWidth);
-    // console.log('Current image scale:', currentImageScale);
-    // console.log('Shape to natural image ratio:', shapeToNaturalImageRatio);
-    
     return currentImageScale * shapeToNaturalImageRatio;
   }
 
@@ -641,9 +628,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     const containerRect = this.zoomOuter.getBoundingClientRect();
     const scale = this.calculateCurrentScale();
   
-    // console.log('Container Rect:', containerRect);
-    // console.log('Scale:', scale);
-  
     // Calculate the container bounds in image coordinates
     const containerBounds = {
       left: -this.pointX / scale,
@@ -652,12 +636,9 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       bottom: (-this.pointY + containerRect.height) / scale
     };
   
-    // console.log('Container Bounds:', containerBounds);
-  
     for (const shape of this.shapes()) {
       let isInContainerBounds = false;
   
-      // console.log('Checking shape:', shape);
   
       switch (shape.type) {
         case 'rectangle':
@@ -674,14 +655,10 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
           break;
       }
   
-      // console.log('Is in container bounds:', isInContainerBounds);
-  
       if (isInContainerBounds) {
         visibleShapes.push(shape);
       }
     }
-  
-    // console.log('Shapes in container bounds:', visibleShapes);
     return visibleShapes;
   }
   

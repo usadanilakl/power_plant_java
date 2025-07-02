@@ -118,9 +118,6 @@ export class ReactiveFormComponent {
         }
       });
   
-      console.log("Form Value:", formValue);
-      console.log("Form Value in reactive form component:", result);
-  
       this.formSubmit.emit(result);
     }
   }

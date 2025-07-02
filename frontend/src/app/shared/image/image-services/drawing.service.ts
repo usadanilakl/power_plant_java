@@ -47,7 +47,6 @@ export class DrawingService {
   }
 
   setCurrentTool(tool: Tool) {
-    console.log(`Setting current tool to ${tool}`);
     this.currentTool = tool;
   }
 
@@ -133,12 +132,9 @@ export class DrawingService {
   }
 
   private selectShape(event: MouseEvent) {
-    console.log('Selecting shape');
     // Deselect all shapes
     this.shapes.forEach(shape => shape.isSelected = false);
 
-    console.log(`shapes: ${JSON.stringify(this.shapes)}, event.offsetX: ${event.offsetX}, event.offsetY: ${event.offsetY} `);
-    
     // Find and select the new shape
     this.selectedShape = this.shapes.find(shape => 
       this.shapeUtil.containsPoint(shape, event.offsetX, event.offsetY)
@@ -151,7 +147,6 @@ export class DrawingService {
     // Notify subscribers of the change
     this.shapesSubject.next(this.shapes);
     
-    console.log(this.selectedShape);
   }
 
   getSelectedShape(): Shape | null {

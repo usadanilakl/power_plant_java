@@ -52,7 +52,6 @@ export class FileDetailFormComponent implements OnInit {
     this.currentValueService.getOptionsByCategory(category).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(options => {
-      console.log('Options loaded in file detail form:', options);
       optionsSignal.set(options);
       this.checkFormReady();
     });
@@ -67,7 +66,6 @@ export class FileDetailFormComponent implements OnInit {
   }
 
   onFormSubmit(formData: any) {
-    console.log('File detail form submitted with data:', formData.fileNumber);
     this.formSubmit.emit(formData);
   }
 

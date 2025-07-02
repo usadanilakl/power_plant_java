@@ -39,7 +39,6 @@ constructor(
     ).subscribe(() => {
       const routeInfo = this.routService.getCurrentRouteInfo();
       this.currentRoute.set(routeInfo.path || '');
-      // console.log('Current route:', routeInfo);
     });
   }
 
@@ -50,7 +49,6 @@ constructor(
         this.isLoading.set(false);
         // Choose 'vendor', 'system', or 'fileType' as the grouping criteria
         const nestedItems = this.createListOfNestedItems(response.responseData, 'vendor');
-        // console.log('Files loaded successfully:', nestedItems);
         this.menuItems.set(nestedItems);
       },
       (error) => {
@@ -120,8 +118,6 @@ constructor(
   }
   
   private handleFileTableClick(item: NestedItem): void {
-    // console.log('Handling click for table route', item);
-    // Implement table-specific click logic here
     this.handleFileEditClick(item);
   }
   

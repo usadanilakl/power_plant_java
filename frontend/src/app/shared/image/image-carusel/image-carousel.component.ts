@@ -90,8 +90,6 @@ export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
               this.equipmentMatchesAllFilters(equipment, this.equipmentFilter)
             );
           }
-          // console.log('Filtered equipment:', points);
-          // console.log('filter was used:', this.equipmentFilter.map(filter => filter.key).join(',  '));
           return points;
         })
       );

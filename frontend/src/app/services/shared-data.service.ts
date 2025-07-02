@@ -194,7 +194,6 @@ export class SharedDataService {
   }
 
   reloadAllData() {
-    console.log('Reloading all data...');
     
     // Clear the cache first
     this.clearCache();

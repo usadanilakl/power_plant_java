@@ -25,6 +25,9 @@ export class CurrentEquipmentService {
     private shapeSubject = new BehaviorSubject<Shape | null>(null);
     currentShape$ = this.shapeSubject.asObservable();
 
+    private resizeDetectorSubject = new BehaviorSubject<Shape | null>(null);
+    resizeDetector$ = this.resizeDetectorSubject.asObservable();
+
     //using id from shape object Equipment will be fetched from backend
     private currentEquipmentSubject = new BehaviorSubject<EquipmentDto | null>(null);
     currentEquipment$: Observable<EquipmentDto | null> = this.currentEquipmentSubject.asObservable();
@@ -54,6 +57,14 @@ export class CurrentEquipmentService {
       } else {
         this.clearCurrentEquipment();
       }
+    }
+
+    setResizeDetector(resizedShape: Shape): void {
+      this.resizeDetectorSubject.next(resizedShape);
+    }
+
+    getRezizeDetector(): Observable<Shape | null> {
+      return this.resizeDetector$;
     }
     
     setCurrentShapeWithId(shapeId: number | null): void {
@@ -138,7 +149,6 @@ export class CurrentEquipmentService {
         response => {
           if (response.responseData) {
             this.relatedEquipmentSubject.next(response.responseData.content);
-            console.log('Related equipment fetched successfully:', response.responseData.content);
           }
         },
         error => console.error('Error fetching related equipment:', error)
@@ -159,7 +169,6 @@ export class CurrentEquipmentService {
         response => {
           if (response.responseData) {
             this.relatedLotoPointsSubject.next(response.responseData.content);
-            console.log('Related LOTO points fetched successfully:', response.responseData.content);
           }
         },
         error => console.error('Error fetching related LOTO points:', error)

@@ -143,7 +143,6 @@ export class ZoomService {
           this.zoomChanged.next();
         });
 
-        console.log(`Zoom: ${this.zoomLevel}, OffsetX: ${this.offsetX}, OffsetY: ${this.offsetY}`);
       });
     });
   }
@@ -185,7 +184,7 @@ export class ZoomService {
     const transform = `translate(${this.offsetX}px, ${this.offsetY}px)`;
     this.img.style.transform = transform;
     this.canvas.style.transform = transform;
-    console.log(`Updated Position: (${this.offsetX}, ${this.offsetY})`);
+    
     
   }
 

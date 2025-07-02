@@ -122,7 +122,6 @@ export class LotoDetailFormComponent implements OnInit {
   }
 
   onFormSubmit(formData: any) {
-    console.log('selected item in the submit:', this.selectedItem);
     // The selectedItem already contains the updated LOTO points
     const updatedFormData = {
       ...formData,
@@ -132,7 +131,6 @@ export class LotoDetailFormComponent implements OnInit {
     if (this.formSubmit) {
       this.formSubmit(updatedFormData);
     }
-    console.log('Form submitted:', updatedFormData);
     this.formSubmitEvent.emit(updatedFormData);
   }
 
@@ -173,14 +171,11 @@ export class LotoDetailFormComponent implements OnInit {
   
   onSaveSelectedPoints() {
     const selectedPoints = this.selectedLotoPointsSubject.value;
-    console.log('Saving selected points:', selectedPoints);
-    console.log("selected item in the save loto points"+this.selectedItem)
   
     if (this.selectedItem) {
       // Update the selectedItem with the new LOTO points
       this.selectedItem.lotoPoints = selectedPoints;
   
-      console.log('Updated LOTO points:', this.selectedItem.lotoPoints);
   
       // Emit an event to notify the parent component of the update
       this.lotoUpdated.emit(this.selectedItem);
@@ -198,17 +193,14 @@ export class LotoDetailFormComponent implements OnInit {
   
 
   addOnDoubleClick = (item: any) => {
-    console.log('Double clicked item:', item);
     this.onSelectPoint(item);
   }
 
   removeOnDoubleClick = (item: any) => {
-    console.log('Double clicked item:', item);
     this.onRemovePoint(item.id);
   }
   
   onItemRightClick = (item: any, event: MouseEvent) => {
-    console.log('Right clicked item:', item, 'at position:', event.clientX, event.clientY);
     // Implement your right-click logic here, e.g., opening a context menu
   }
   

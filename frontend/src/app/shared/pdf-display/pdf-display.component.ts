@@ -55,7 +55,6 @@ export class PdfDisplayComponent implements OnInit {
         external_link_target: '_blank',
         page: 1,
         [Symbol.for('progress')]: (progressData: PDFProgressData) => {
-          console.log(progressData);
         },
       };
     }
