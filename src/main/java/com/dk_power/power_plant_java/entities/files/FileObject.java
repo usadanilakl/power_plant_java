@@ -112,6 +112,13 @@ public class FileObject extends BaseAuditEntity {
     }
 
 
+    public String buildFolder(String extention){
+        this.extension = extention;
+        folder = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName();
+        return folder;
+    }
+
+
     public void addPoint(Equipment entity) {
         if(points==null) points = new ArrayList<>();
         if(!points.contains(entity))points.add(entity);

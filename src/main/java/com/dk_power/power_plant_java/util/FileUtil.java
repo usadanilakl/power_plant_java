@@ -5,7 +5,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -81,7 +84,7 @@ public class FileUtil {
 
     public static List<File> getRevisionsByFileNumber(String oldFileNumber, String path) {
         // Get the directory path
-        Path directory = Paths.get(path).getParent();
+        Path directory = Paths.get(path);
         System.out.println("Getting revisions for file number: " + oldFileNumber + " in directory: " + directory);
 
         // Get the file name without potential revision
@@ -150,10 +153,14 @@ public class FileUtil {
 
         // Create the new directory if it doesn't exist
         Files.createDirectories(newPath.getParent());
+        setPermissions(newPath.getParent());
 
         // Move the file
         Files.move(oldPath, newPath, StandardCopyOption.REPLACE_EXISTING);
         System.out.println("Moved file from " + oldPath + " to " + newPath);
+
+        // Force garbage collection to release file handles
+        System.gc();
 
         // Delete empty parent directories of the old path
         deleteEmptyDirectories(oldPath.getParent());
@@ -175,7 +182,6 @@ public class FileUtil {
             path = path.getParent();
         }
     }
-
 
 
 //    public static List<File> getRevisionsByFileNumber(String oldFileNumber, String path) {
@@ -238,5 +244,24 @@ public class FileUtil {
         String extension = getFileExtension(path);
         int lastIndex = path.lastIndexOf(File.separator);
         return (lastIndex != -1) ? path.substring(lastIndex + 1).replace("." + extension, "") : path.replace("." + extension, "");
+    }
+
+    private static void setPermissions(Path path) throws IOException {
+        if (System.getProperty("os.name").toLowerCase().contains("win")) {
+            // For Windows
+            path.toFile().setWritable(true, false);
+            path.toFile().setReadable(true, false);
+            path.toFile().setExecutable(true, false);
+        } else {
+            // For Unix-like systems
+            Set<PosixFilePermission> permissions = PosixFilePermissions.fromString("rwxrwxrwx");
+            Files.setPosixFilePermissions(path, permissions);
+        }
+    }
+
+    public static boolean isDirectoryEmpty(Path path) throws IOException {
+        try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(path)) {
+            return !dirStream.iterator().hasNext();
+        }
     }
 }

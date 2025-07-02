@@ -188,20 +188,33 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         List<String> strings = separateAndUploadPdfFileWithConversion(renamedFile, fileLink, override);
 
         List<FileDto> fileDtos = new ArrayList<>();
-        for (String path : strings) {
+        if (strings.size() == 1) {
+            String path = strings.get(0);
             String nameFromPath = FileUtil.getNameFromPath(path);
-            FileObject newFile = new FileObject();
-            newFile.setName(fileObject.getName());
-            newFile.setFileType(fileObject.getFileType());
-            newFile.setVendor(fileObject.getVendor());
-            newFile.setExtension(FileUtil.getFileExtension(path));
-            newFile.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
-            newFile.buildFolder();
-            newFile.buildFileLink();
-            newFile.addExtension("pdf");
-            newFile.addExtension("jpg");
-            FileObject save = save(newFile);
+            fileObject.setExtension(FileUtil.getFileExtension(path));
+            fileObject.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
+            fileObject.buildFolder();
+            fileObject.buildFileLink();
+            fileObject.addExtension("pdf");
+            fileObject.addExtension("jpg");
+            FileObject save = save(fileObject);
             fileDtos.add(toDto(save));
+        } else {
+            for (String path : strings) {
+                String nameFromPath = FileUtil.getNameFromPath(path);
+                FileObject newFile = new FileObject();
+                newFile.setName(fileObject.getName());
+                newFile.setFileType(fileObject.getFileType());
+                newFile.setVendor(fileObject.getVendor());
+                newFile.setExtension(FileUtil.getFileExtension(path));
+                newFile.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
+                newFile.buildFolder();
+                newFile.buildFileLink();
+                newFile.addExtension("pdf");
+                newFile.addExtension("jpg");
+                FileObject save = save(newFile);
+                fileDtos.add(toDto(save));
+            }
         }
         return fileDtos;
     }
@@ -213,12 +226,13 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         String oldFileNumber = oldEntity.getFileNumber();
         String oldFileType = oldEntity.getFileType().getName();
         String oldVendor = oldEntity.getVendor().getName();
-        
-        
-        List<File> revisions = FileUtil.getRevisionsByFileNumber(oldFileNumber, Paths.get(projectRootPath, oldEntity.buildFileLink("pdf")).toString());
+
+
+//        List<File> revisions = FileUtil.getRevisionsByFileNumber(oldFileNumber, Paths.get(projectRootPath, oldEntity.buildFileLink("pdf")).toString());
         List<File> extensionFiles = getFilesWithAllExtensions(oldEntity);
 
         FileObject updatedEntity = convertIdDtoToEntity(file);
+        updatedEntity.buildFileLink();
 
         // Check if relevant fields have changed
         boolean needsFileUpdate = !oldFileNumber.equals(updatedEntity.getFileNumber()) ||
@@ -229,7 +243,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             // Move files to new locations
             for (File oldFile : extensionFiles) {
                 String extension = FileUtil.getFileExtension(oldFile.getName());
-                String newPath = Paths.get(projectRootPath, updatedEntity.buildFileLink(extension)).toString();
+                String newPath = Paths.get(projectRootPath, updatedEntity.buildFolder(extension),oldFile.getName()).toString();
                 try {
                     FileUtil.moveFileAndCleanup(oldFile.toPath(), Paths.get(newPath));
                 } catch (IOException e) {
@@ -238,17 +252,17 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             }
 
             // Update revision files if they exist
-            for (File revisionFile : revisions) {
-                int revisionNumber = FileUtil.extractRevisionNumber(revisionFile.getName());
-                String extension = FileUtil.getFileExtension(revisionFile.getName());
-                String newRevisionPath = Paths.get(projectRootPath, updatedEntity.buildFileLink(extension))
-                        .toString().replace("." + extension, "-rev" + revisionNumber + "." + extension);
-                try {
-                    if(revisionFile.getName().contains("-rev"))FileUtil.moveFileAndCleanup(revisionFile.toPath(), Paths.get(newRevisionPath));
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to move revision file: " + revisionFile.getName(), e);
-                }
-            }
+//            for (File revisionFile : revisions) {
+//                int revisionNumber = FileUtil.extractRevisionNumber(revisionFile.getName());
+//                String extension = FileUtil.getFileExtension(revisionFile.getName());
+//                String newRevisionPath = Paths.get(projectRootPath, updatedEntity.buildFileLink(extension))
+//                        .toString().replace("." + extension, "-rev" + revisionNumber + "." + extension);
+//                try {
+//                        FileUtil.moveFileAndCleanup(revisionFile.toPath(), Paths.get(newRevisionPath));
+//                } catch (IOException e) {
+//                    throw new RuntimeException("Failed to move revision file: " + revisionFile.getName(), e);
+//                }
+//            }
         }
 
         // Save the updated entity
@@ -256,16 +270,13 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
         return toDto(savedEntity);
     }
-    
+
 
     private List<File> getFilesWithAllExtensions(FileObject file) {
         List<File> files = new ArrayList<>();
         for (String extension : file.getExtensionsArray()) {
-            Path filePath = Paths.get(projectRootPath, file.buildFileLink(extension));
-            File fileObj = filePath.toFile();
-            if (fileObj.exists()) {
-                files.add(fileObj);
-            }
+            Path folder = Paths.get(projectRootPath, file.buildFileLink(extension)).getParent();
+            files.addAll(FileUtil.getRevisionsByFileNumber(file.getFileNumber(), folder.toString()));
         }
         return files;
     }
@@ -297,10 +308,9 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     public FileObject deleteRelatedFiles(Long id) throws IOException {
         FileObject file = getEntityById(id);
-        List<String> extensions = List.of(file.getExtensions().split(","));
-        for (String ext : extensions) {
-            String path = file.buildFileLink(ext);
-            FileUtil.deleteFile(Paths.get(projectRootPath, path));
+        List<File> filesWithAllExtensions = getFilesWithAllExtensions(file);
+        for (File f : filesWithAllExtensions) {
+            FileUtil.deleteFile(f.toPath());
         }
         return file;
     }

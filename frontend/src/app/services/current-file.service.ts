@@ -129,12 +129,14 @@ export class CurrentFileService {
       if (!currentFile) return;
 
       if(!currentFile.extensions.includes(extension)) return;
+
+      const currentExtension: string = currentFile.fileLink.split('.').pop() || '';
     
       // Create a new FileDto instance
       const newFile = new FileDto({
         ...currentFile,
         extension: extension,
-        fileLink: this.updateFileLink(currentFile.fileLink, currentFile.extension, extension)
+        fileLink: this.updateFileLink(currentFile.fileLink, currentExtension, extension)
       });
     
       // Update the current file
@@ -143,6 +145,9 @@ export class CurrentFileService {
     
     private updateFileLink(fileLink: string, oldExtension: string, newExtension: string): string {
       // Ensure the old extension is at the end of the file link
+      console.log("old extension:", oldExtension);
+      console.log("new extension:", newExtension);
+      console.log("fileLink:", fileLink);
       if (!fileLink.endsWith(oldExtension)) {
         console.warn('Current file link does not end with the expected extension');
         return fileLink;
