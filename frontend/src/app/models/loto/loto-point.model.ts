@@ -6,10 +6,11 @@ import { ValidatorFn, Validators } from '@angular/forms';
 import { Option } from '../option.model';
 import { LotoPointIdDto } from './loto-point-id.model';
 import { Column } from '../column.model';
+import { BaseDto, BaseModel } from '../base/base.model';
 
 type LotoPointFieldName = keyof LotoPointModel;
 
-export interface LotoPointModel {
+export interface LotoPointModel extends BaseModel{
   id: number;
   unit: string;
   tagged: string;
@@ -41,8 +42,7 @@ export interface LotoPointFormField {
   initialValue?: any;
 }
 
-export class LotoPointDto implements LotoPointModel {
-  id: number;
+export class LotoPointDto extends BaseDto implements LotoPointModel {
   unit: string;
   tagged: string;
   tagNumber: string;
@@ -57,13 +57,13 @@ export class LotoPointDto implements LotoPointModel {
   isolatedPosition: string;
   equipmentList: Set<EquipmentDto>;
   oldId: string;
-  objectType: string;
   isUpdated: number;
   fileIds: string;
   conflictStatus: string;
   lotos: LotoDto[];
 
   constructor(data: Partial<LotoPointModel> = {}) {
+    super();
     this.id = data.id || 0;
     this.unit = data.unit || '';
     this.tagged = data.tagged || '';
@@ -88,7 +88,7 @@ export class LotoPointDto implements LotoPointModel {
 
   // Serialization method
   // Serialization method
-  toJson(): any {
+  override toJson(): any {
     return {
       id: this.id || 0,
       unit: this.unit || '',
@@ -118,7 +118,7 @@ export class LotoPointDto implements LotoPointModel {
   }
 
   // Deserialization method (static)
-  static fromJson(json: any): LotoPointDto {
+  static override fromJson(json: any): LotoPointDto {
     if (!json) {
       console.warn('Received null or undefined json in LotoPointDto.fromJson');
       return new LotoPointDto();
@@ -202,7 +202,8 @@ export class LotoPointDto implements LotoPointModel {
       fileIds: { name: 'fileIds', label: 'File IDs', type: 'text', initialValue: dto.fileIds },
       conflictStatus: { name: 'conflictStatus', label: 'Conflict Status', type: 'text', initialValue: dto.conflictStatus },
       equipmentList: { name: 'equipmentList', label: 'Equipment List', type: 'text',   },
-      lotos: { name: 'lotos', label: 'Lotos', type: 'text',   }
+      lotos: { name: 'lotos', label: 'Lotos', type: 'text',   },
+      name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
     };
   
     return fields.map(fieldName => allFields[fieldName]);
@@ -241,7 +242,8 @@ static toTableColumns(
     isUpdated: { id: 'isUpdated', header: 'Is Updated', accessorKey: 'isUpdated' },
     fileIds: { id: 'fileIds', header: 'File IDs', accessorKey: 'fileIds' },
     conflictStatus: { id: 'conflictStatus', header: 'Conflict Status', accessorKey: 'conflictStatus' },
-    equipmentList: { id: 'equipmentList', header: 'Equipment List', accessorKey: 'equipmentList' }
+    equipmentList: { id: 'equipmentList', header: 'Equipment List', accessorKey: 'equipmentList' },
+    name: { id: 'name', header: 'Name', accessorKey: 'name' },
   };
 
   return fields.map(fieldName => allColumns[fieldName]);

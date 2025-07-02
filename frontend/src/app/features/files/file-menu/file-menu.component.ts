@@ -6,10 +6,12 @@ import { FileDto } from '../../../models/file/file.model';
 import { RouteService } from '../../../services/util/rout.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrentFileService } from '../../../services/current-file.service';
+import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
+import { FileDetailFormComponent } from "../file-detail-form/file-detail-form.component";
 
 @Component({
   selector: 'app-file-menu',
-  imports: [ToggleMenuComponent],
+  imports: [ToggleMenuComponent, PopupProjectionComponent, FileDetailFormComponent],
   templateUrl: './file-menu.component.html',
   styleUrl: './file-menu.component.css',
   standalone: true

@@ -44,6 +44,9 @@ export class CurrentEquipmentService {
     private currentPresetDataSubject = new BehaviorSubject<EquipmentDto>(new EquipmentDto());
     currentPresetData$: Observable<EquipmentDto> = this.currentPresetDataSubject.asObservable();
 
+    private currentLotoPointPresetDataSubject = new BehaviorSubject<LotoPointDto>(new LotoPointDto());
+    currentLotoPointPresetData$: Observable<LotoPointDto> = this.currentLotoPointPresetDataSubject.asObservable();
+
     setCurrentShape(shape: Shape | null): void {
       this.shapeSubject.next(shape);
       if (shape && shape.id) {
@@ -72,6 +75,23 @@ export class CurrentEquipmentService {
     
       // Fetch the equipment data regardless of whether we found the shape or not
       this.fetchEquipmentById(shapeId);
+    }
+
+    setCurrentShapeWithIds(equipmentIdList: number[]): void {
+      if (equipmentIdList === null || equipmentIdList.length === 0) {
+        this.setCurrentShape(null);
+        return;
+      }
+      const shape = this.allShapesSubject.getValue()?.find(s => equipmentIdList.includes(s.id)) || null;
+    
+      if (shape) {
+        this.setCurrentShape(shape);
+        this.fetchEquipmentById(shape.id);
+      } else {
+        // If the shape is not found in the current set, create a minimal shape object
+        // const minimalShape: Shape = { id: shapeId, type: 'rectangle' };
+        // this.setCurrentShape(minimalShape);
+      }
     }
 
     private fetchEquipmentById(id: number): void {
@@ -173,8 +193,13 @@ export class CurrentEquipmentService {
     setCurrentPresetData(data: EquipmentDto): void {
       this.currentPresetDataSubject.next(data);
     }
+    
     getCurrentPresetData(): Observable<EquipmentDto> {
       return this.currentPresetData$;
+    }
+    
+    getCurrentPresetLotoPointData(): Observable<LotoPointDto> {
+      return this.currentLotoPointPresetData$;
     }
 
     clearCurrentEquipment(): void {

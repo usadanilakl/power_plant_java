@@ -23,7 +23,8 @@
   <!-- New control section added at the bottom of the image container -->
   <div class="control-section">
     <div class="button-row">
-      <button (click)="onMenuOpen()" class="control-button">Bulk Edit</button>
+      <button (click)="onMenuOpen()" class="control-button">Bulk Edit Equipment</button>
+      <button (click)="openLpBulkEditMenu()" class="control-button">Bulk Edit Loto Points</button>
       <button (click)="onFilterMenuOpen()" class="control-button">Equipment Filter</button>
       <button (click)="onDataPresetMenuOpen()" class="control-button">Data Preset Menu</button>
       <button (click)="onToggleFileFormat()" class="control-button">Toggle PDF/JPG</button>
@@ -36,6 +37,13 @@
   (closeEvent)="onCloseBulkEditMenu()"
   [shapes]="visibleShapes()">
 </app-file-bulk-editor-menu>
+
+<app-loto-point-bulk-editor
+  [shapes]="visibleShapes()"
+  [isOpen]="isLpBulkEditOpen()"
+  (closeEvent)="onCloseLpBulkEditMenu()"
+>
+</app-loto-point-bulk-editor>
 
 <app-floating-menu 
 [title]="'Equipmnet Filter'"

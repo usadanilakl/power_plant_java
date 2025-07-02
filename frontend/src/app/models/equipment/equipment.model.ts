@@ -358,41 +358,41 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     return fields.map(fieldName => allFields[fieldName]);
   }
 
-  static removeDefaultValues(equipment: EquipmentDto): Partial<EquipmentModel> {
-    const result: Partial<EquipmentModel> = {};
+  // static override removeDefaultValues(equipment: EquipmentDto): Partial<EquipmentModel> {
+  //   const result: Partial<EquipmentModel> = {};
   
-    // Helper function to check if a value is "empty"
-    const isEmpty = (value: any): boolean => {
-      if (value === null || value === undefined) return true;
-      if (typeof value === 'string' && value.trim() === '') return true;
-      if (Array.isArray(value) && value.length === 0) return true;
-      if (typeof value === 'object') {
-        if ('id' in value && value.id !== 0) return false;
-      }
-      return false;
-    };
+  //   // Helper function to check if a value is "empty"
+  //   const isEmpty = (value: any): boolean => {
+  //     if (value === null || value === undefined) return true;
+  //     if (typeof value === 'string' && value.trim() === '') return true;
+  //     if (Array.isArray(value) && value.length === 0) return true;
+  //     if (typeof value === 'object') {
+  //       if ('id' in value && value.id !== 0) return false;
+  //     }
+  //     return false;
+  //   };
   
-    // Check each property and add to result if not empty
-    if (!isEmpty(equipment.id) && equipment.id !== 0) result.id = equipment.id;
-    if (!isEmpty(equipment.tagNumber)) result.tagNumber = equipment.tagNumber;
-    if (!isEmpty(equipment.description)) result.description = equipment.description;
-    if (!isEmpty(equipment.specificLocation)) result.specificLocation = equipment.specificLocation;
-    if (!isEmpty(equipment.eqType) && !isEmpty(equipment.eqType.id)) result.eqType = equipment.eqType;
-    if (!isEmpty(equipment.files)) result.files = equipment.files;
-    if (!isEmpty(equipment.vendor) && !isEmpty(equipment.vendor.id)) result.vendor = equipment.vendor;
-    if (!isEmpty(equipment.location) && !isEmpty(equipment.location.id)) result.location = equipment.location;
-    if (!isEmpty(equipment.system) && !isEmpty(equipment.system.id)) result.system = equipment.system;
-    if (!isEmpty(equipment.coordinates)) result.coordinates = equipment.coordinates;
-    if (!isEmpty(equipment.originalPictureSize)) result.originalPictureSize = equipment.originalPictureSize;
-    if (!isEmpty(equipment.mainFile)) result.mainFile = equipment.mainFile;
-    if (!isEmpty(equipment.lotoPoints)) result.lotoPoints = equipment.lotoPoints;
-    if (!isEmpty(equipment.isUpdated)) result.isUpdated = equipment.isUpdated;
-    if (!isEmpty(equipment.conflictStatus)) result.conflictStatus = equipment.conflictStatus;
-    if (equipment.isVerified !== false) result.isVerified = equipment.isVerified;
-    if (!isEmpty(equipment.name)) result.name = equipment.name;
-    if (!isEmpty(equipment.objectType)) result.objectType = equipment.objectType;
+  //   // Check each property and add to result if not empty
+  //   if (!isEmpty(equipment.id) && equipment.id !== 0) result.id = equipment.id;
+  //   if (!isEmpty(equipment.tagNumber)) result.tagNumber = equipment.tagNumber;
+  //   if (!isEmpty(equipment.description)) result.description = equipment.description;
+  //   if (!isEmpty(equipment.specificLocation)) result.specificLocation = equipment.specificLocation;
+  //   if (!isEmpty(equipment.eqType) && !isEmpty(equipment.eqType.id)) result.eqType = equipment.eqType;
+  //   if (!isEmpty(equipment.files)) result.files = equipment.files;
+  //   if (!isEmpty(equipment.vendor) && !isEmpty(equipment.vendor.id)) result.vendor = equipment.vendor;
+  //   if (!isEmpty(equipment.location) && !isEmpty(equipment.location.id)) result.location = equipment.location;
+  //   if (!isEmpty(equipment.system) && !isEmpty(equipment.system.id)) result.system = equipment.system;
+  //   if (!isEmpty(equipment.coordinates)) result.coordinates = equipment.coordinates;
+  //   if (!isEmpty(equipment.originalPictureSize)) result.originalPictureSize = equipment.originalPictureSize;
+  //   if (!isEmpty(equipment.mainFile)) result.mainFile = equipment.mainFile;
+  //   if (!isEmpty(equipment.lotoPoints)) result.lotoPoints = equipment.lotoPoints;
+  //   if (!isEmpty(equipment.isUpdated)) result.isUpdated = equipment.isUpdated;
+  //   if (!isEmpty(equipment.conflictStatus)) result.conflictStatus = equipment.conflictStatus;
+  //   if (equipment.isVerified !== false) result.isVerified = equipment.isVerified;
+  //   if (!isEmpty(equipment.name)) result.name = equipment.name;
+  //   if (!isEmpty(equipment.objectType)) result.objectType = equipment.objectType;
   
-    return result;
-  }
+  //   return result;
+  // }
     
 }

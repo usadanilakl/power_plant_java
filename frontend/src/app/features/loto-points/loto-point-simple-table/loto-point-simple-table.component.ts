@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, OnInit, DestroyRef } from '@angular/core';
+import { Component, computed, inject, input, output, OnInit, DestroyRef, effect } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { TableComponent } from "../../../shared/table/table.component";
@@ -6,6 +6,7 @@ import { LotoPointService } from '../../../services/loto/loto-point.service';
 import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { BehaviorSubject, Observable, isObservable } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Column } from '../../../models/column.model';
 
 @Component({
   selector: 'app-loto-point-simple-table',
@@ -20,6 +21,7 @@ export class LotoPointSimpleTableComponent implements OnInit {
 
   initialItems = input<Observable<LotoPointDto[]> | LotoPointDto[]>();
   enableSearch = input<boolean>();
+  initialSearchQuery = input<SearchCriteria>();
 
   private itemsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   items$ = this.itemsSubject.asObservable();
@@ -28,7 +30,18 @@ export class LotoPointSimpleTableComponent implements OnInit {
 
   itemsUpdated = output<LotoPointDto[]>();
   doubleClickEvent = output<LotoPointDto>();
+  cellDboubleClickEvent = output<{item: LotoPointDto,column: Column}>();
   rightClickEvent = output<LotoPointDto>();
+  leftClickEvent = output<LotoPointDto>();
+
+    constructor() {
+    effect(() => {
+      const searchCriteria = this.initialSearchQuery();
+      if (searchCriteria) {
+        this.onSearch(searchCriteria);
+      }
+    });
+  }
 
   ngOnInit() {
     const initialItems = this.initialItems();
@@ -45,6 +58,8 @@ export class LotoPointSimpleTableComponent implements OnInit {
 
   onSearch(searchCriteria: SearchCriteria) {
     if (!this.enableSearch()) return;
+
+    console.log('Searching LOTO points with criteria:', searchCriteria);
     
     this.lotoPointService.searchLotoPoints(searchCriteria, 500).subscribe({
       next: (response) => {
@@ -67,7 +82,15 @@ export class LotoPointSimpleTableComponent implements OnInit {
     this.doubleClickEvent.emit(item);
   }
 
+  onCellDbouleClick(item: LotoPointDto,column: Column) {
+    this.cellDboubleClickEvent.emit({item, column});
+  }
+
   onRowRightClick(item: LotoPointDto) {
     this.rightClickEvent.emit(item);
+  }
+
+  onRowClick = (item: LotoPointDto) => {
+    this.leftClickEvent.emit(item);
   }
 }

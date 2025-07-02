@@ -1,18 +1,18 @@
 import { Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { Option } from '../../../models/option.model';
-import { catchError, forkJoin, map, Observable, of, tap } from 'rxjs';
+import { catchError, of, tap } from 'rxjs';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormField } from '../../../models/ui/form-field.model';
-import { ValueDto } from '../../../models/value.model';
 import { DetailsFormComponent } from "../../../shared/details-form/details-form.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
 import { EquipmentService } from '../../../services/equipment.service';
 import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-form.component";
 import { CurrentValueService } from '../../../services/current-value.service';
+import { SearchCriteria, SearchCriteriaDto } from '../../../models/api/search-criteria.model';
 
 @Component({
   selector: 'app-equipment-form',
@@ -47,27 +47,14 @@ export class EquipmentFormComponent implements OnInit {
 
   lotoPointRowRightClickEvent = output<LotoPointDto>();
 
+  initialSearchCriteria = computed<SearchCriteria>(() => {
+    return new SearchCriteriaDto({
+      type: 'column',
+      filters: { tagNumber: this.values().tagNumber || '' }
+    });
+  });
 
   ngOnInit(): void {
-    // forkJoin({
-    //   systems: this.loadOptions(this.sharedDataService.loadSystems()),
-    //   locations: this.loadOptions(this.sharedDataService.loadLocations()),
-    //   vendors: this.loadOptions(this.sharedDataService.loadVendors()),
-    //   eqTypes: this.loadOptions(this.sharedDataService.loadEqTypes()),
-    // }).pipe(
-    //   takeUntilDestroyed(this.destroyRef),
-    //   tap(({ systems, locations, vendors, eqTypes }) => {
-    //     this.systems.set(systems);
-    //     this.locations.set(locations);
-    //     this.vendors.set(vendors);
-    //     this.eqTypes.set(eqTypes);
-    //     this.isFormReady.set(true);
-    //   }),
-    //   catchError(error => {
-    //     console.error('Error loading form data:', error);
-    //     return of({ isoPositions: [], normPositions: [] });
-    //   })
-    // ).subscribe();
     
     this.loadOptions('system', this.systems);
     this.loadOptions('vendor', this.vendors);
@@ -165,18 +152,7 @@ export class EquipmentFormComponent implements OnInit {
       this.isFormReady.set(true);
     }
   }
-        
-  // private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
-  //   return source.pipe(
-  //     map(items => items.map(item => new ValueDto(item).toOption())),
-  //     catchError(error => {
-  //       console.error('Error loading options:', error);
-  //       return of([]);
-  //     })
-  //   );
-  // }
 
-  //Loto Point Table
   onExistingLotoPointDoubleClick(lotoPoint: LotoPointDto) {
     if (!lotoPoint || !lotoPoint.id) {
       console.error('Invalid LOTO point');
@@ -256,6 +232,8 @@ export class EquipmentFormComponent implements OnInit {
   onLotoPointRowRightClick(lotoPoint: LotoPointDto) {
     this.lotoPointRowRightClickEvent.emit(lotoPoint);
   }
+
+
 
 
 }

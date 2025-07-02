@@ -2,25 +2,21 @@
   [title]="'Bulk Edit Menu'" 
   [width]="30" 
   [height]="40" 
-  [position]="MenuPosition.TopRight"
+  [position]="MenuPosition.BottomRight"
   [open]="isOpen()"
   (close)="handleClose()">
 
-  <app-equipment-table
-  [equipmentList]="equipmentData()"
-  (equipmentClicked)="onEquipmentSelected($event)"
-  (equipmentDoubleClicked)="onEquipmentEdit($event.item, $event.column)"
-  (equipmentRightClicked)="onEquipmentContextMenu($event)"
-  (equipmentHovered)="onEquipmentHover($event)"
-  (equipmentDeleted)="onEquipmentDelete($event)"
-  (selectedItemsEvent)="onSelectedItems($event)"
+  <app-loto-point-simple-table
+  [initialItems]="lotoPoints$"
+  (leftClickEvent)="onLotoPointSelected($event)"
+  (cellDboubleClickEvent)="onEquipmentEdit($event.item, $event.column)"
 >
   @if(selectedItems().length > 0) {
     <div table-controls>
       <button (click)="applyPresetValues()">Apply Preset Values</button>
     </div>
   }
-</app-equipment-table>
+</app-loto-point-simple-table>
 
 </app-floating-menu>
 
@@ -40,3 +36,4 @@
     
     </app-popup-projection>
 }
+

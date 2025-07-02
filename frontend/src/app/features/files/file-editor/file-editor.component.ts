@@ -18,10 +18,11 @@ import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { LotoPointService } from '../../../services/loto/loto-point.service';
 import { LotoPointDetailFormComponent } from "../../loto-points/loto-point-detail-form/loto-point-detail-form.component";
 import { PdfDisplayIframeComponent } from "../../../shared/pdf-dislplay-iframe/pdf-dislplay-iframe.component";
+import { LotoPointBulkEditorComponent } from "./loto-point-bulk-editor/loto-point-bulk-editor.component";
 
 @Component({
   selector: 'app-file-editor',
-  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent, LotoPointDetailFormComponent, PdfDisplayIframeComponent],
+  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent, LotoPointDetailFormComponent, PdfDisplayIframeComponent, LotoPointBulkEditorComponent],
   templateUrl: './file-editor.component.html',
   styleUrl: './file-editor.component.css',
   standalone: true,
@@ -43,6 +44,8 @@ export class FileEditorComponent {
 
   isEqFormOpen = signal<boolean>(false);
   isLotoPointFormOpen = signal<boolean>(false);
+
+  isLpBulkEditOpen = signal<boolean>(false);
 
   lpToEdit = signal<LotoPointDto | null>(null);
 
@@ -273,9 +276,18 @@ export class FileEditorComponent {
     this.lpToEdit.set(lotoPoint);
     this.isLotoPointFormOpen.set(true);
   }
+  
   onLotoPointFormClose() {
     this.lpToEdit.set(null);
     this.isLotoPointFormOpen.set(false);
+  }
+
+  openLpBulkEditMenu(){
+    this.isLpBulkEditOpen.set(true);
+  }
+
+  onCloseLpBulkEditMenu(){
+    this.isLpBulkEditOpen.set(false);
   }
 
 

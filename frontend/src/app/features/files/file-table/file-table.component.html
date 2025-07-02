@@ -15,11 +15,10 @@
   [size]="'large'"
   (close)="closePopup()">
   
-  <div class="side-by-side-container">
+  @if(!submitting()){<div class="side-by-side-container">
     <div class="form-container">
       <app-file-detail-form
         [values]="selectedItem"
-        (formDelete)="onFormDelete.bind(this)"
         (openImage)="onOpenImage()"
         (formDelete)="onFormDelete()"
         (formSubmit)="onFormSubmit($event)"
@@ -33,21 +32,15 @@
       </app-image-zoom-interactive>
     </div> -->
   </div>
+}@else{
+  <div class="center-container">
+    <p>Processing File...</p>
+    <p>{{fileSubmitMessage()}}</p>
+    <button (click)="fileUploadMessageWindow()">Cancel</button>
+  </div>
+}
 
 </app-popup-projection>
-
-<!-- <app-popup
-  [isOpen]="isPopupOpen"
-  [title]="'File Details'"
-  [contentComponent]="FileDetailFormComponent"
-  [contentInputs]="{
-    values: selectedItem,
-    formSubmit: onFormSubmit.bind(this),
-    formDelete: onFormDelete.bind(this),
-    openImage: onOpenImage.bind(this)
-  }"
-  (close)="closePopup()"
-></app-popup> -->
 
 <app-popup
   [isOpen]="isImagePopupOpen"

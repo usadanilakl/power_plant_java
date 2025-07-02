@@ -3,6 +3,7 @@ import { BehaviorSubject, map, Observable, take } from 'rxjs';
 import { FileDto } from '../models/file/file.model';
 import { EquipmentDto } from '../models/equipment/equipment.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
+import { LotoPointDto } from '../models/loto/loto-point.model';
 
 @Injectable({
   providedIn: 'root'
@@ -16,6 +17,9 @@ export class CurrentFileService {
 
     private elementsToRenderSubject = new BehaviorSubject<EquipmentDto[]>([]);
     elementsToRender$ = this.elementsToRenderSubject.asObservable();
+
+    private associatedLotoPointsSubject = new BehaviorSubject<LotoPointDto[]>([]);
+    associatedLotoPoints$ = this.associatedLotoPointsSubject.asObservable();
     
     private uniqueEquipmentTypesSubject = new BehaviorSubject<string[]>([]);
     uniqueEquipmentTypes$ = this.uniqueEquipmentTypesSubject.asObservable();
@@ -63,6 +67,47 @@ export class CurrentFileService {
 
     getElementsToRender(): Observable<EquipmentDto[]> {
         return this.elementsToRender$;
+    }
+
+    getAssociatedLotoPoints(): Observable<LotoPointDto[]> {
+      return this.elementsToRender$.pipe(
+        map(items => items.flatMap(item => item.lotoPoints || [])),
+        map(lotoPoints => lotoPoints.filter((point): point is LotoPointDto => point !== null && point !== undefined))
+      );
+    }
+
+    updateAssociatedLotoPoint(updatedLotoPoint: LotoPointDto): void {
+      // Update associatedLotoPointsSubject
+      this.associatedLotoPointsSubject.next(
+        this.associatedLotoPointsSubject.getValue().map(point =>
+          point.id === updatedLotoPoint.id ? updatedLotoPoint : point
+        )
+      );
+    
+      // Update elementsSubject and elementsToRenderSubject
+      const updateEquipmentList = (equipmentList: EquipmentDto[]): EquipmentDto[] => {
+        return equipmentList.map(equipment => {
+          if (equipment.lotoPoints.some(lp => lp.id === updatedLotoPoint.id)) {
+            return new EquipmentDto({
+              ...equipment,
+              lotoPoints: equipment.lotoPoints.map(lp =>
+                lp.id === updatedLotoPoint.id ? updatedLotoPoint : lp
+              )
+            });
+          }
+          return equipment;
+        });
+      };
+    
+      this.elementsSubject.next(updateEquipmentList(this.elementsSubject.getValue()));
+      this.elementsToRenderSubject.next(updateEquipmentList(this.elementsToRenderSubject.getValue()));
+    
+      // Update the current file if it exists
+      const currentFile = this.currentFileSubject.getValue();
+      if (currentFile && currentFile.points) {
+        const updatedPoints = updateEquipmentList(currentFile.points);
+        this.currentFileSubject.next(new FileDto({...currentFile, points: updatedPoints}));
+      }
     }
 
     updateEquipmentInList(updatedEquipment: EquipmentDto) {
