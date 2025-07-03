@@ -93,6 +93,11 @@ export class DrawUtilService {
   }
 
   handleRightClick(event: MouseEvent, imageX: number, imageY: number) {
+    const rightClickedShape = this.getClickedShape(imageX, imageY);
+    if (rightClickedShape){
+      this.currentEquipmentService.setShapeRightClickDetector(rightClickedShape);
+      return;
+    }
     if (this.isRightClickDrawEnabled) {
       this.drawWithRightClick(event, imageX, imageY);
     }
@@ -119,8 +124,7 @@ export class DrawUtilService {
   }
 
   handleMouseUp(event: MouseEvent) {
-    if(this.isResizing && this.selectedShape) {
-      console.log('resizing shape ', this.selectedShape);
+    if((this.isResizing || this.isDraggingShape) && this.selectedShape && this.selectedShape.id && this.selectedShape.id !== 0) {
       this.currentEquipmentService.setResizeDetector(this.selectedShape!);
     }
 
@@ -162,6 +166,8 @@ export class DrawUtilService {
     this.selectedShape = this.shapes.find(shape => 
       this.shapeUtil.containsPoint(shape, event.offsetX, event.offsetY)
     ) || null;
+
+    console.log('selected shape ', this.selectedShape);
     
     if (this.selectedShape) {
       this.selectedShape.isSelected = true;
@@ -198,6 +204,14 @@ export class DrawUtilService {
     }
 
     return this.shapeUtil.containsPoint(this.selectedShape, x, y);
+  }
+
+  isClickWithinAnyShape(x: number, y: number): boolean {
+    return this.shapes.some(shape => this.shapeUtil.containsPoint(shape, x, y));
+  }
+
+  getClickedShape(x: number, y: number): Shape | undefined {
+    return this.shapes.find(shape => this.shapeUtil.containsPoint(shape, x, y));
   }
 
   private isOverCorner(shape: Shape, x: number, y: number): 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null {

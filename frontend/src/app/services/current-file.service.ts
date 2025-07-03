@@ -72,7 +72,16 @@ export class CurrentFileService {
     getAssociatedLotoPoints(): Observable<LotoPointDto[]> {
       return this.elementsToRender$.pipe(
         map(items => items.flatMap(item => item.lotoPoints || [])),
-        map(lotoPoints => lotoPoints.filter((point): point is LotoPointDto => point !== null && point !== undefined))
+        map(lotoPoints => lotoPoints.filter((point): point is LotoPointDto => point !== null && point !== undefined)),
+        map(lotoPoints => {
+          const uniqueMap = new Map<number, LotoPointDto>();
+          lotoPoints.forEach(point => {
+            if (!uniqueMap.has(point.id)) {
+              uniqueMap.set(point.id, point);
+            }
+          });
+          return Array.from(uniqueMap.values());
+        })
       );
     }
 
@@ -87,7 +96,7 @@ export class CurrentFileService {
       // Update elementsSubject and elementsToRenderSubject
       const updateEquipmentList = (equipmentList: EquipmentDto[]): EquipmentDto[] => {
         return equipmentList.map(equipment => {
-          if (equipment.lotoPoints.some(lp => lp.id === updatedLotoPoint.id)) {
+          if (equipment.lotoPoints?.some(lp => lp.id === updatedLotoPoint.id)) {
             return new EquipmentDto({
               ...equipment,
               lotoPoints: equipment.lotoPoints.map(lp =>

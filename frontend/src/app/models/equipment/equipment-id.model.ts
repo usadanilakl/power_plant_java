@@ -1,59 +1,59 @@
 import { BaseDto } from '../base/base.model';
 
 export class EquipmentIdDto extends BaseDto {
-  tagNumber: string;
-  description: string;
-  specificLocation: string;
-  eqTypeId: number;
-  files: string[];
-  vendorId: number;
-  locationId: number;
-  systemId: number;
-  coordinates: string;
-  originalPictureSize: string;
-  mainFile: string;
-  lotoPointIds: number[];
-  isUpdated: string;
-  conflictStatus: string;
-  isVerified: boolean;
+  tagNumber: string | null;
+  description: string | null;
+  specificLocation: string | null;
+  eqTypeId: number | null;
+  files: string[] | null;
+  vendorId: number | null;
+  locationId: number | null;
+  systemId: number | null;
+  coordinates: string | null;
+  originalPictureSize: string | null;
+  mainFile: string | null;
+  lotoPointIds: number[] | null;
+  isUpdated: string | null;
+  conflictStatus: string | null;
+  isVerified: boolean | null;
 
   constructor(data: Partial<EquipmentIdDto> = {}) {
     super(data);
-    this.tagNumber = data.tagNumber || '';
-    this.description = data.description || '';
-    this.specificLocation = data.specificLocation || '';
-    this.eqTypeId = data.eqTypeId || 0;
-    this.files = data.files || [];
-    this.vendorId = data.vendorId || 0;
-    this.locationId = data.locationId || 0;
-    this.systemId = data.systemId || 0;
-    this.coordinates = data.coordinates || '';
-    this.originalPictureSize = data.originalPictureSize || '';
-    this.mainFile = data.mainFile || '';
-    this.lotoPointIds = data.lotoPointIds || [];
-    this.isUpdated = data.isUpdated || '';
-    this.conflictStatus = data.conflictStatus || '';
+    this.tagNumber = data.tagNumber || null;
+    this.description = data.description || null;
+    this.specificLocation = data.specificLocation || null;
+    this.eqTypeId = data.eqTypeId || null;
+    this.files = data.files || null;
+    this.vendorId = data.vendorId || null;
+    this.locationId = data.locationId || null;
+    this.systemId = data.systemId || null;
+    this.coordinates = data.coordinates || null;
+    this.originalPictureSize = data.originalPictureSize || null;
+    this.mainFile = data.mainFile || null;
+    this.lotoPointIds = data.lotoPointIds || null;
+    this.isUpdated = data.isUpdated || null;
+    this.conflictStatus = data.conflictStatus || null;
     this.isVerified = data.isVerified || false;
   }
 
   override toJson(): any {
     return {
       ...super.toJson(),
-      tagNumber: this.tagNumber,
-      description: this.description,
-      specificLocation: this.specificLocation,
-      eqTypeId: this.eqTypeId,
-      files: this.files,
-      vendorId: this.vendorId,
-      locationId: this.locationId,
-      systemId: this.systemId,
-      coordinates: this.coordinates,
-      originalPictureSize: this.originalPictureSize,
-      mainFile: this.mainFile,
-      lotoPointIds: this.lotoPointIds,
-      isUpdated: this.isUpdated,
-      conflictStatus: this.conflictStatus,
-      isVerified: this.isVerified
+      tagNumber: this.tagNumber || null,
+      description: this.description || null,
+      specificLocation: this.specificLocation || null,
+      eqTypeId: this.eqTypeId || null,
+      files: this.files || null,
+      vendorId: this.vendorId || null,
+      locationId: this.locationId || null,
+      systemId: this.systemId || null,
+      coordinates: this.coordinates || null,
+      originalPictureSize: this.originalPictureSize || null,
+      mainFile: this.mainFile || null,
+      lotoPointIds: this.lotoPointIds || null,
+      isUpdated: this.isUpdated || null,
+      conflictStatus: this.conflictStatus || null,
+      isVerified: this.isVerified || null
     };
   }
 
@@ -65,21 +65,21 @@ export class EquipmentIdDto extends BaseDto {
 
     return new EquipmentIdDto({
       ...super.fromJson(json),
-      tagNumber: json.tagNumber,
-      description: json.description,
-      specificLocation: json.specificLocation,
-      eqTypeId: json.eqTypeId,
-      files: json.files || [],
-      vendorId: json.vendorId,
-      locationId: json.locationId,
-      systemId: json.systemId,
-      coordinates: json.coordinates,
-      originalPictureSize: json.originalPictureSize,
-      mainFile: json.mainFile,
-      lotoPointIds: json.lotoPointIds || [],
-      isUpdated: json.isUpdated,
-      conflictStatus: json.conflictStatus,
-      isVerified: json.isVerified
+      tagNumber: json.tagNumber || null,
+      description: json.description || null,
+      specificLocation: json.specificLocation || null,
+      eqTypeId: json.eqTypeId || null,
+      files: json.files || null,
+      vendorId: json.vendorId || null,
+      locationId: json.locationId || null,
+      systemId: json.systemId || null,
+      coordinates: json.coordinates || null,
+      originalPictureSize: json.originalPictureSize || null,
+      mainFile: json.mainFile || null,
+      lotoPointIds: json.lotoPointIds || null,
+      isUpdated: json.isUpdated || null,
+      conflictStatus: json.conflictStatus || null,
+      isVerified: json.isVerified || null
     });
   }
 }

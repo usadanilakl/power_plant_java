@@ -74,6 +74,7 @@
     
       <app-equipment-form
         [values]="currentEquipment()"
+        (formSubmit)="submitEquipment($event)"
         (lotoPointRowRightClickEvent)="onLotoPointFormOpen($event)">
       </app-equipment-form>
 

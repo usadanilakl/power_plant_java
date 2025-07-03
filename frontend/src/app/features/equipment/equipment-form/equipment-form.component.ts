@@ -125,6 +125,7 @@ export class EquipmentFormComponent implements OnInit {
   }
 
   onFormSubmit(updatedValues: any) {
+    console.log("submitted values: ", updatedValues);
     const updatedEquipment = new EquipmentDto({ ...this.values(), ...updatedValues });
     this.valuesChange.emit(updatedEquipment);
     this.formSubmit.emit(updatedEquipment);
@@ -166,7 +167,7 @@ export class EquipmentFormComponent implements OnInit {
   
     const updatedEquipment = new EquipmentDto({
       ...currentEquipment,
-      lotoPoints: currentEquipment.lotoPoints.filter(lp => lp.id !== lotoPoint.id)
+      lotoPoints: currentEquipment.lotoPoints?.filter(lp => lp.id !== lotoPoint.id)
     });
   
     this.equipmentService.updateEquipment(updatedEquipment).pipe(
@@ -194,20 +195,20 @@ export class EquipmentFormComponent implements OnInit {
     }
   
     const currentEquipment = this.values();
-    if (!currentEquipment || !currentEquipment.id) {
+    if (!currentEquipment) {
       console.error('No current equipment selected');
       return;
     }
   
     // Check if the LOTO point is already in the equipment's list
-    if (currentEquipment.lotoPoints.some(lp => lp.id === lotoPoint.id)) {
+    if (currentEquipment.lotoPoints?.some(lp => lp.id === lotoPoint.id)) {
       console.warn('LOTO point already exists in the equipment');
       return;
     }
   
     const updatedEquipment = new EquipmentDto({
       ...currentEquipment,
-      lotoPoints: [...currentEquipment.lotoPoints, lotoPoint]
+      lotoPoints: [...currentEquipment.lotoPoints? currentEquipment.lotoPoints : [], lotoPoint]
     });
   
     this.equipmentService.updateEquipment(updatedEquipment).pipe(

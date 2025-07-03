@@ -154,7 +154,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
         if (presetData) {
           const updatedItems = this.selectedItems().map(item => (new EquipmentDto({
             ...item,
-            ...EquipmentDto.removeDefaultValues(presetData),
+            ...presetData,
           })));
   
           // Update the selected items in the component

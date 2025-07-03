@@ -9,6 +9,8 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.file.FileService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -27,6 +29,7 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final EquipmentMapper equipmentMapper;
+    private final NgFileService fileService;
 
     @Override
     public EquipmentRepo getRepo() {
@@ -151,5 +154,20 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
 
     public Equipment idDtoToEntity(EquipmentIdDto equipmentDto) {
         return equipmentMapper.convertIdDtoToEntity(equipmentDto);
+    }
+
+    public Equipment processEquipment(EquipmentIdDto equipmentDto) {
+        if (equipmentDto == null) {
+            throw new IllegalArgumentException("EquipmentDto cannot be null");
+        }
+        Equipment equipment = idDtoToEntity(equipmentDto);
+        FileObject mainFile = equipment.getMainFile();
+        save(equipment);
+        if(mainFile!=null){
+            mainFile.addPoint(equipment);
+            fileService.save(mainFile);
+        }
+        return equipment;
+
     }
 }

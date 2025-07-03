@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentIdDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -78,8 +79,7 @@ public class NgEquipmentRestController {
     @PutMapping
     public ResponseEntity<NgApiResponse<EquipmentDto>> updateEquipment(@RequestBody EquipmentIdDto equipmentDto) {
         try {
-            Equipment entity = ngEquipmentService.idDtoToEntity(equipmentDto);
-            EquipmentDto updatedEquipment = ngEquipmentService.toDto(ngEquipmentService.save(entity));
+            EquipmentDto updatedEquipment = ngEquipmentService.toDto(ngEquipmentService.processEquipment(equipmentDto));
             return ResponseEntity.ok(new NgApiResponse<>(updatedEquipment, "Equipment updated successfully"));
         } catch (Exception e) {
             e.printStackTrace();

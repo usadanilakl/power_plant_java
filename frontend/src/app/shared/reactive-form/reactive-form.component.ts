@@ -121,45 +121,6 @@ export class ReactiveFormComponent {
       this.formSubmit.emit(result);
     }
   }
-  
-  // onSubmit() {
-  //   const form = this.form();
-  //   if (form && form.valid) {
-  //     const formValue = form.value;
-  //     const result = {...this.values()};
-
-  //     this.fields().forEach((field) => {
-  //       const parts = field.name.split('.');
-  //       let current: any = result;
-
-  //       for (let i = 0; i < parts.length - 1; i++) {
-  //         if (!current[parts[i]]) {
-  //           current[parts[i]] = {};
-  //         }
-  //         current = current[parts[i]];
-  //       }
-
-  //       const lastPart = parts[parts.length - 1];
-
-  //       if (field.type === 'select' && typeof current[lastPart] === 'object') {
-  //         current[lastPart] = current[lastPart] || {};
-  //         current[lastPart].id = formValue[field.name];
-  //       } else if (field.type === 'file' && formValue[field.name] instanceof File) {
-  //         current[lastPart] = formValue[field.name];
-  //       }else if (field.type === 'multi-input' || field.type === 'multi-select' || field.type === 'checkbox-group') {
-  //         // Ensure these types remain as arrays
-  //         current[lastPart] = formValue[field.name];
-  //       } else {
-  //         current[lastPart] = formValue[field.name];
-  //       }
-  //     });
-
-  //     console.log("Form Value:", formValue);
-  //     console.log("Form Value in reactive form component:", result);
-
-  //     this.formSubmit.emit(result);
-  //   }
-  // }
 
   onDelete() {
     this.formDelete.emit();
@@ -181,6 +142,11 @@ export class ReactiveFormComponent {
 
   closeEditMenu(){
     this.isValueEditMenuOpen.set(false);
+  }
+
+  onContextMenu(event: MouseEvent) {
+    event.preventDefault();
+    return false;
   }
 
 }

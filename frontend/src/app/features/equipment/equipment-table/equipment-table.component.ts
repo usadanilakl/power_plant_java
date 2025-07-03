@@ -125,7 +125,7 @@ export class EquipmentTableComponent {
     {
       id: 'lotoPointsCount',
       header: 'LOTO Points',
-      accessorFn: (item: EquipmentDto) => item.lotoPoints.length.toString(),
+      accessorFn: (item: EquipmentDto) => item.lotoPoints?.length.toString() || '',
       conditionalStyling: (item: any, column: Column) => 
         item.lotoPoints.length === 0 ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
     }

@@ -30,11 +30,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   constructor() {
     this.drawingService = new DrawUtilService(this.shapeFactory, this.shapeUtil);
-    // effect(() => {
-    // if (this.canvas) {
-    //   this.updateShapes(this.shapes());
-    // }
-    // });
   }
 
 //Subscriptions  
@@ -140,6 +135,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     const converted = elements.map(element => {
       const equipmentDto = new EquipmentDto(element);
       const sh = equipmentDto.toShapeObject();
+      if(sh===null) return {type:'rectangle', x:0,y:0,width:0,height:0} as Shape;
       sh.currentImgWidth = originalWidth;
       sh.currentImgHeigth = originalHeight;
       sh.scaleToCurrentImage = this.img.naturalWidth / sh.originalPictureWidth;
@@ -418,6 +414,12 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   onMousedown(event: MouseEvent) {
+
+    if (event.button === 2) {
+      this.onRightClick(event);
+      return;
+    }
+
     const currentTime = new Date().getTime();
     const timeSinceLastClick = currentTime - this.lastClickTime;
 

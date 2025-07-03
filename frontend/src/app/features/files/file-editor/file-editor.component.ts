@@ -7,7 +7,7 @@ import { ImageService } from '../../../services/text-recognition.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { FileBulkEditorMenuComponent } from "./file-bulk-editor-menu/file-bulk-editor-menu.component";
 import { RectangleShape, Shape } from '../../../models/shape.model';
-import { catchError, map, of, tap } from 'rxjs';
+import { catchError, map, of, tap, throwError } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
 import { DataPresetMenuComponent } from "./data-preset-menu/data-preset-menu.component";
@@ -44,6 +44,7 @@ export class FileEditorComponent {
   isDataPresetMenuOpen = signal<boolean>(false);
 
   isEqFormOpen = signal<boolean>(false);
+  isLoading = signal<boolean>(false);
   isLotoPointFormOpen = signal<boolean>(false);
 
   isLpBulkEditOpen = signal<boolean>(false);
@@ -92,11 +93,9 @@ export class FileEditorComponent {
     ).subscribe(shape =>{
       if(shape && shape.id && shape.id !== 0){
         
-        const tempEq = EquipmentDto.createEquipmentFromShape(shape as RectangleShape);
-        const temp2 = EquipmentDto.removeDefaultValues(new EquipmentDto());
-        const updatedEq = {...temp2,...{coordinates:tempEq.coordinates, id:shape.id}};
+        const updatedEq = new EquipmentDto().setCoordinatesFromShape(shape as RectangleShape);
 
-        this.equipmentService.updateEquipment(new EquipmentDto(updatedEq)).pipe(
+        this.equipmentService.updateEquipment(new EquipmentDto({...updatedEq,id:shape.id})).pipe(
           catchError(error => {
             console.error('Error updating equipment:', error);
             // You can add more specific error handling here, such as displaying a user-friendly message
@@ -113,6 +112,14 @@ export class FileEditorComponent {
         });
       }
     })
+
+    this.currentEquipmentService.getShapeRightClickDetector().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(shpae => {
+      if(shpae && shpae.id && shpae.id!== 0){
+        this.onEquipmnetEdit(shpae);
+      }
+    })
   }
 
   onToggleFileFormat(){
@@ -126,16 +133,7 @@ export class FileEditorComponent {
     this.currentEquipmentService.getCurrentPresetData().pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(presetData => {
-        const newEq: EquipmentDto = EquipmentDto.createEquipmentFromShape(shape);
-        
-        // Set a default tag number
-        newEq.tagNumber = `EQ-${shape.id}`;
-        
-        // Apply preset data if available
-        if (presetData) {
-          // Merge preset data with newEq
-          Object.assign(newEq, presetData);
-        }
+        const newEq: EquipmentDto = presetData.setCoordinatesFromShape(shape);
         
         // Set the current equipment and open the form immediately
         this.currentEquipmentService.setCurrentShape(shape);
@@ -172,6 +170,11 @@ export class FileEditorComponent {
   }
 
   onShapeSelected(shape: any) {
+    this.currentEquipmentService.setCurrentShape(shape);
+    // this.isEqFormOpen.set(true);
+  }
+
+  onEquipmnetEdit(shape: any) {
     this.currentEquipmentService.setCurrentShape(shape);
     this.isEqFormOpen.set(true);
   }
@@ -241,6 +244,47 @@ export class FileEditorComponent {
     this.isDataPresetMenuOpen.set(false);
   }
 
+  submitEquipment(equipment: EquipmentDto) {
+    if (!equipment) {
+      console.error('Invalid equipment');
+      return;
+    }
+
+    const fileLink = this.currentFileService.getCurrentFile()?.fileLink;
+    const eqWithFile = new EquipmentDto({...equipment, mainFile: fileLink, files: [fileLink!] });
+  
+    // Assuming you have a loading state
+    this.isLoading.set(true);
+  
+    this.equipmentService.updateEquipment(eqWithFile).pipe(
+      tap(resp => {
+        console.log('Equipment update response:', resp);
+        // You could trigger a notification here
+        // this.notificationService.showSuccess('Equipment updated successfully');
+        this.isLoading.set(false);
+      }),
+      catchError(error => {
+        console.error('Error updating equipment:', error);
+        this.isLoading.set(false);
+        // this.notificationService.showError('Failed to update equipment');
+        return throwError(() => new Error('Failed to update equipment'));
+      })
+    ).subscribe({
+      next: (resp) => {
+        if (resp && resp.responseData) {
+          const updatedEquipment = new EquipmentDto(resp.responseData);
+          this.currentEquipmentService.setCurrentEquipment(updatedEquipment);
+          this.isEqFormOpen.set(false);
+        } else {
+          throw new Error('Invalid response from server');
+        }
+      },
+      error: (error) => {
+        console.error('Subscription error:', error);
+        // Handle error, maybe show a user-friendly message
+      }
+    });
+  }
   //Loto Point form
 
   onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
@@ -259,7 +303,7 @@ export class FileEditorComponent {
           if (currentEquipment && currentEquipment.id) {
             const updatedEquipment = new EquipmentDto({
               ...currentEquipment,
-              lotoPoints: currentEquipment.lotoPoints.map(lp => 
+              lotoPoints: currentEquipment.lotoPoints?.map(lp => 
                 lp.id === updatedLotoPoint.id ? updatedLotoPoint : lp
               )
             });

@@ -147,7 +147,7 @@ export class LotoPointBulkEditorComponent implements OnInit {
         if (presetData) {
           const updatedItems = this.selectedItems().map(item => (new LotoPointDto({
             ...item,
-            ...BaseDto.removeDefaultValues(presetData),
+            ...presetData,
           })));
   
           // Update the selected items in the component

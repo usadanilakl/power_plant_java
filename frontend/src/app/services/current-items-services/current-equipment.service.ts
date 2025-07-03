@@ -28,6 +28,9 @@ export class CurrentEquipmentService {
     private resizeDetectorSubject = new BehaviorSubject<Shape | null>(null);
     resizeDetector$ = this.resizeDetectorSubject.asObservable();
 
+    private shapeRightClickDetectorSubject = new BehaviorSubject<Shape | null>(null);
+    shapeRightClickDetector$ = this.shapeRightClickDetectorSubject.asObservable();
+
     //using id from shape object Equipment will be fetched from backend
     private currentEquipmentSubject = new BehaviorSubject<EquipmentDto | null>(null);
     currentEquipment$: Observable<EquipmentDto | null> = this.currentEquipmentSubject.asObservable();
@@ -55,17 +58,24 @@ export class CurrentEquipmentService {
       if (shape && shape.id) {
         this.fetchEquipmentById(shape.id);
       } else {
-        this.clearCurrentEquipment();
+        // this.clearCurrentEquipment();
       }
     }
 
     setResizeDetector(resizedShape: Shape): void {
-      console.log('Resized shape:', resizedShape);
       this.resizeDetectorSubject.next(resizedShape);
     }
 
     getRezizeDetector(): Observable<Shape | null> {
       return this.resizeDetector$;
+    }
+
+    setShapeRightClickDetector(clickedShape: Shape | null): void {
+      this.shapeRightClickDetectorSubject.next(clickedShape);
+    }
+
+    getShapeRightClickDetector(): Observable<Shape | null> {
+      return this.shapeRightClickDetector$;
     }
     
     setCurrentShapeWithId(shapeId: number | null): void {
@@ -123,7 +133,7 @@ export class CurrentEquipmentService {
     setCurrentEquipment(eq: EquipmentDto | null): void {
       this.currentEquipmentSubject.next(new EquipmentDto(eq || new EquipmentDto()));
       if (eq) {
-        this.lotoPointSubject.next(eq.lotoPoints);
+        if(eq.lotoPoints)this.lotoPointSubject.next(eq.lotoPoints);
         this.fetchRelatedEquipmentAndLotoPoints(eq);
       } else {
         this.clearCurrentEquipment();
@@ -140,8 +150,8 @@ export class CurrentEquipmentService {
         type: 'global',
         query: equipment.tagNumber,
         filters: {
-          'tagNumber': equipment.tagNumber,
-          'description': equipment.description
+          'tagNumber': equipment.tagNumber || '',
+          'description': equipment.description || ''
         },
         page: 1
       };
@@ -160,8 +170,8 @@ export class CurrentEquipmentService {
         type: 'global',
         query: equipment.tagNumber,
         filters: {
-          'tagNumber': equipment.tagNumber,
-          'description': equipment.description
+          'tagNumber': equipment.tagNumber || '',
+          'description': equipment.description || ''
         },
         page: 1
       };
