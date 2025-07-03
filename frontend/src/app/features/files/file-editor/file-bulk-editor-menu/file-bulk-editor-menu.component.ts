@@ -140,7 +140,18 @@ export class FileBulkEditorMenuComponent implements OnInit {
   }
 
   onEquipmentDelete(id: string) {
-    // Handle equipment deletion
+    this.equipmentService.deleteEquipment(Number(id)).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(() => {
+        // Remove the item from the equipmentData list
+        // this.currentFileService.removeEquipmentFromList(id);//need to implement.
+      }),
+      catchError(error => {
+        console.error('Error deleting equipment:', error);
+        // Handle error (e.g., show error message to user)
+        return of(null);
+      })
+    ).subscribe();
   }
 
   onSelectedItems(items: EquipmentDto[]) {
