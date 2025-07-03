@@ -11,10 +11,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DetailsFormComponent } from '../../shared/details-form/details-form.component';
 import { PopupProjectionComponent } from '../../shared/popup-projection/popup-projection.component';
 import { LotoPointIdDto } from '../../models/loto/loto-point-id.model';
+import { MainLayoutComponent } from "../../layout/main-layout.component";
+import { RouterMenuComponent } from "../../shared/menu/router-menu/router-menu.component";
 
 @Component({
   selector: 'app-loto-point',
-  imports: [LotoPointTableComponent, PopupProjectionComponent, DetailsFormComponent],
+  imports: [LotoPointTableComponent, PopupProjectionComponent, DetailsFormComponent, MainLayoutComponent, RouterMenuComponent],
   templateUrl: './loto-point.component.html',
   styleUrl: './loto-point.component.css'
 })

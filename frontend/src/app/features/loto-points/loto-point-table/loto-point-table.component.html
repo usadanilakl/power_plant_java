@@ -8,6 +8,9 @@
   [cellDoubleClickCallback]="onColumnDoubleClick.bind(this)"
   (loadMoreItems)="loadMoreItems($event)"
   (search)="onSearch($event)">
+  <ng-container table-controls>
+    <button (click)="exportToExcel()">Export To Excel</button>
+  </ng-container>
 </app-shared-table>
 
 <app-popup
@@ -23,3 +26,16 @@
   }"
   (close)="closePopup()"
 ></app-popup>
+
+@if(isExporting()){
+  <app-popup-projection
+    [isOpen]="true"
+    [title]="'Exporting to Excel'"
+    [size]="'medium'"
+    (close)="cancelExport()">
+    <h1>Exporting is in Progress...</h1>
+    <p>If export fails, make sure that previously exported file is closed(you can save it as a new file if needed).</p>
+    <p>{{exportMessage()}}</p>
+    <button (click)="cancelExport()">Cancel</button>
+</app-popup-projection>
+}

@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, Input, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, Input, inject, OnInit, DestroyRef, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
@@ -10,15 +10,17 @@ import { SpringApiResponse } from '../../../models/api/spring-api-response.model
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../../models/api/search-criteria.model';
+import { ExcelService } from '../../../services/excel.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 
 @Component({
   selector: 'app-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, LotoPointDetailFormComponent, PopupComponent],
+  imports: [CommonModule, TableComponent, LotoPointDetailFormComponent, PopupComponent, PopupProjectionComponent],
   templateUrl: './loto-point-table.component.html',
 })
 export class LotoPointTableComponent implements OnInit {
-  private destroy$ = new Subject<void>();
   // @Input() clientSideData: LotoPointDto[] | null = null;
   @Input() submitCallback?: (data: any) => void;
   @Input() deleteCallback?: (id: number) => void;
@@ -64,9 +66,11 @@ export class LotoPointTableComponent implements OnInit {
   private pageSize = 50;
   private isLoading = false;
 
-  constructor(private changeDetectorRef: ChangeDetectorRef) {}
+
 
   private lotoPointService = inject(LotoPointService);
+  private excelService = inject(ExcelService);
+  private destroyRef = inject(DestroyRef)
 
   private initialItemsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   initialItems$ = this.initialItemsSubject.asObservable();
@@ -74,10 +78,13 @@ export class LotoPointTableComponent implements OnInit {
   private relatedImagesSubject = new BehaviorSubject<string[]>([]);
   relatedImages$ = this.relatedImagesSubject.asObservable();
 
+  exportMessage = signal<string | null>(null);
+  isExporting = signal<boolean>(false);
+
   ngOnInit() {
     if (this.clientSideData$) {
       this.clientSideData$.pipe(
-        takeUntil(this.destroy$) // Don't forget to implement OnDestroy and create this Subject
+        takeUntilDestroyed(this.destroyRef) // Don't forget to implement OnDestroy and create this Subject
       ).subscribe(data => {
         if (data) {
           this.initialItemsSubject.next(data);
@@ -86,11 +93,29 @@ export class LotoPointTableComponent implements OnInit {
     } else {
       this.loadItems();
     }
+
+
   }
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
+  exportToExcel(): void {
+    this.isExporting.set(true);
+    this.excelService.exportAll().pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: (response) => {
+          console.log('Export successful:', response.responseData);
+          // Handle successful export (e.g., show a success message)
+          this.isExporting.set(false);
+        },
+        error: (error) => {
+          console.error('Export failed:', error);
+          this.exportMessage.set(error.message);
+        }
+      })
+  }
+
+  cancelExport(): void {
+    this.isExporting.set(false);
   }
 
 

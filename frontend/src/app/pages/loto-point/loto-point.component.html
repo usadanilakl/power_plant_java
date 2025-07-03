@@ -1,4 +1,23 @@
-<app-loto-point-table
+<app-main-layout>
+  <ng-container header>
+    <div class="header-menus">
+      <div class="menu-container">
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </div>
+      <div class="menu-container">
+        
+      </div>
+    </div>
+  </ng-container>
+  <ng-container main-content>
+    <app-loto-point-table
+        [cellDoubleClickCallback]="cellDoubleClick.bind(this)"
+    ></app-loto-point-table>
+  </ng-container>
+</app-main-layout>
+
+
+<!-- <app-loto-point-table
     [cellDoubleClickCallback]="cellDoubleClick.bind(this)"
 ></app-loto-point-table>
 
@@ -18,4 +37,4 @@
       </app-details-form>
     
     </app-popup-projection>
-}
+} -->
