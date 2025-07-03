@@ -13,6 +13,8 @@ import { EquipmentService } from '../../../services/equipment.service';
 import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-form.component";
 import { CurrentValueService } from '../../../services/current-value.service';
 import { SearchCriteria, SearchCriteriaDto } from '../../../models/api/search-criteria.model';
+import { Validators } from '@angular/forms';
+import { Question } from '../../../models/ui/question.model';
 
 @Component({
   selector: 'app-equipment-form',
@@ -72,42 +74,49 @@ export class EquipmentFormComponent implements OnInit {
         label: 'System',
         type: 'select',
         options: this.addDefaultOption(this.systems(), 'Select System'),
-        initialValue: currentPresetData.system?.id || ''
+        initialValue: currentPresetData.system?.id || '',
+        question: { type: 'text', content: "Select the system"} as Question,
+        validators: [Validators.required]
       },
       {
         name: 'location',
         label: 'Location',
         type: 'select',
         options: this.addDefaultOption(this.locations(), 'Select Location'),
-        initialValue: currentPresetData.location?.id || ''
+        initialValue: currentPresetData.location?.id || '',
+        validators: [Validators.required]
       },
       {
         name: 'vendor',
         label: 'Vendor',
         type: 'select',
         options: this.addDefaultOption(this.vendors(), 'Select Vendor'),
-        initialValue: currentPresetData.vendor?.id || ''
+        initialValue: currentPresetData.vendor?.id || '',
+        validators: [Validators.required]
       },
       {
         name: 'eqType',
         label: 'Equipment Type',
         type: 'select',
         options: this.addDefaultOption(this.eqTypes(), 'Select Equipment Type'),
-        initialValue: currentPresetData.eqType?.id || ''
+        initialValue: currentPresetData.eqType?.id || '',
+        validators: [Validators.required]
       },
       {
         name: 'description',
         label: 'Description',
         type: 'text',
         options: [],
-        initialValue: currentPresetData.description || null
+        initialValue: currentPresetData.description || null,
+        validators: [Validators.required]
       },
       {
         name: 'tagNumber',
         label: 'Tag Number',
         type: 'text',
         options: [],
-        initialValue: currentPresetData.tagNumber || null
+        initialValue: currentPresetData.tagNumber || null,
+        validators: [Validators.required]
       },
       {
         name: 'specificLocation',

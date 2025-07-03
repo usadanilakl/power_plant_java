@@ -49,11 +49,11 @@ export class LotoPointDetailFormComponent implements OnInit {
       { name: 'description', label: 'Description', type: 'text', validators: [Validators.required] },
       { name: 'unit', label: 'Unit', type: 'text' },
       { name: 'tagged', label: 'Tagged', type: 'text' },
-      { name: 'isoPos', label: 'Isolated Position', type: 'select', options: this.isoPosOptions() },
-      { name: 'normPos', label: 'Normal Position', type: 'select', options: this.normPosOptions() },
-      { name: 'specificLocation', label: 'Specific Location', type: 'text' },
+      { name: 'isoPos', label: 'Isolated Position', type: 'select', options: this.isoPosOptions(), validators: [Validators.required] },
+      { name: 'normPos', label: 'Normal Position', type: 'select', options: this.normPosOptions(), validators: [Validators.required] },
+      { name: 'specificLocation', label: 'Specific Location', type: 'text', validators: [Validators.required] },
       { name: 'standard', label: 'Standard', type: 'text' },
-      { name: 'generalLocation', label: 'General Location', type: 'text' },
+      { name: 'generalLocation', label: 'General Location', type: 'text', validators: [Validators.required] },
       // { name: 'equipmentList', label: 'Equipment', type: 'multi-select', options: this.equipmentOptions },
     ]);
     

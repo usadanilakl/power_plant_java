@@ -1,8 +1,10 @@
-import { Component, ElementRef, EventEmitter, HostListener, Input, Output, forwardRef, input, output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Input, Output, forwardRef, inject, input, output, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FindPipe } from "../../pipes/find.pipe";
 import { Option } from '../../models/option.model';
 import { Observable, Subscription, take } from 'rxjs';
+import { Question } from '../../models/ui/question.model';
+import { QuestionProcessorService } from '../../services/ui/question.service';
 
 @Component({
   selector: 'app-searchable-dropdown',
@@ -19,10 +21,15 @@ import { Observable, Subscription, take } from 'rxjs';
   imports: [FindPipe]
 })
 export class SearchableDropdownComponent implements ControlValueAccessor {
+
+  private questionService = inject(QuestionProcessorService)
+
   @Input() label: string = '';
   @Input() options: Option[] | Observable<Option[]> = [];
   @Input() closeOnSelect = true;
   categoryName = input<string>('');
+  question = input<Question | null>(null)
+  questionContent = signal<string>('');
 
   @Output() valueChange = new EventEmitter<any>();
   addNewOption = output<string>();
@@ -146,5 +153,25 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
   onEditOption(event: Event) {
     event.stopPropagation();
     this.editOption.emit(this.categoryName());
+  }
+
+  processQuestion() {
+    if (this.question()) {
+      const result = this.questionService.processQuestion(this.question()!);
+      switch (result.action) {
+        case 'display':
+          this.questionContent.set(this.question()!.content);
+          break;
+        case 'open':
+          window.open(result.data, '_blank');
+          break;
+        case 'play':
+          // You might want to create a video player component and use it here
+          console.log('Playing video:', result.data);
+          break;
+        default:
+          console.warn('Unsupported action:', result.action);
+      }
+    }
   }
 }

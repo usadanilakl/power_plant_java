@@ -23,13 +23,13 @@ export class FileDetailFormComponent implements OnInit {
   private vendorOptions = signal<Option[]>([]);
   
   fields = computed(() => [
-    { name: 'name', label: 'File Name', type: 'text', validators: [Validators.minLength(10)] },
-    { name: 'fileType', label: 'File Type', type: 'select', options: this.fileTypeOptions() },
-    { name: 'vendor', label: 'Vendor', type: 'select', options: this.vendorOptions() },
-    { name: 'fileNumber', label: 'File Numbers', type: 'multi-input' },
-    { name: 'systems', label: 'Systems', type: 'multi-select', options: this.systemOptions() },
+    { name: 'name', label: 'File Name', type: 'text', validators: [Validators.required] },
+    { name: 'fileType', label: 'File Type', type: 'select', options: this.fileTypeOptions(), validators: [Validators.required] },
+    { name: 'vendor', label: 'Vendor', type: 'select', options: this.vendorOptions(), validators: [Validators.required] },
+    { name: 'fileNumber', label: 'File Numbers', type: 'multi-input', validators: [Validators.required] },
+    { name: 'systems', label: 'Systems', type: 'multi-select', options: this.systemOptions(), validators: [Validators.required] },
     { name: 'file', label: 'File', type: 'file' },
-    { name: 'overrideFile', label: 'If File already exists, then:', type: 'radio-group', options: [{ value: 'true', label: 'Override' }, { value: 'false', label: 'Revision' }] },
+    { name: 'overrideFile', label: 'If File already exists, then:', type: 'radio-group', options: [{ value: 'true', label: 'Override' }, { value: 'false', label: 'Revision' }], validators: [Validators.required] },
   ]);
 
   isFormReady = signal(false);

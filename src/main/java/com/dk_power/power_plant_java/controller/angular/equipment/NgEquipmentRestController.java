@@ -90,7 +90,7 @@ public class NgEquipmentRestController {
     @DeleteMapping("/{id}")
     public ResponseEntity<NgApiResponse<Void>> deleteEquipment(@PathVariable Long id) {
         try {
-            ngEquipmentService.hardDelete(id);
+            ngEquipmentService.softDelete(id);
             return ResponseEntity.ok(new NgApiResponse<>(null, "Equipment deleted successfully"));
         } catch (Exception e) {
             e.printStackTrace();

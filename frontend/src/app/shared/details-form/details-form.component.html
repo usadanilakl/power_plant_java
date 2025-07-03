@@ -8,6 +8,7 @@
             [options]="field.options"
             [formControlName]="field.name"
             [categoryName]="field.name"
+            [question]="field.question"
             (editOption)="onEditSelectOption()"
             (addNewOption)="onAddNewSelectOption($event)">
           </app-searchable-dropdown>

@@ -1,5 +1,6 @@
 import { ValidatorFn } from "@angular/forms";
 import { Option } from "../option.model";
+import { Question } from "./question.model";
 
 export interface FormField {
   name: string;
@@ -9,4 +10,5 @@ export interface FormField {
   options?: Option[];
   initialValue?: any;
   currentValue?: any;
+  question?: Question
 }

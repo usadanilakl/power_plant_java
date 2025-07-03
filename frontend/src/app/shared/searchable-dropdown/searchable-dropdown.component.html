@@ -1,21 +1,13 @@
-<!-- <div class="dropdown-container">
-  <label>{{ label }}</label>
-  <div class="dropdown-input" (click)="toggleDropdown($event)">
-    {{ selectedOption?.label || 'Select an option' }}
-  </div>
-  @if (isOpen) {
-    <div class="dropdown-options">
-      <input type="text" (input)="filterOptions($event)" placeholder="Search...">
-      @for (option of filteredOptions; track option.value) {
-        <div (click)="selectOption(option,$event)">
-          {{ option.label }}
-        </div>
-      }
-    </div>
-  } -->
 
   <div class="dropdown-container">
+  <div class="label-container">
     <label>{{ label }}</label>
+    @if (question()) {
+      <span class="question-icon" (click)="processQuestion()" title="Click for more information">
+        <i class="fas fa-question-circle"></i>
+      </span>
+    }
+  </div>
     <div class="dropdown-input" (click)="toggleDropdown($event)">
       {{ selectedOption?.label || 'Select an option' }}
     </div>
