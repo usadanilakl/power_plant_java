@@ -62,6 +62,8 @@ export class EquipmentFormComponent implements OnInit {
     this.loadOptions('vendor', this.vendors);
     this.loadOptions('location', this.locations);
     this.loadOptions('eqType', this.eqTypes);
+
+    console.log("fields", this.fields());
   }
 
 

@@ -7,6 +7,7 @@ import { Question } from '../../models/ui/question.model';
 })
 export class QuestionProcessorService {
   processQuestion(question: Question): { action: string; data: any } {
+    console.log(`Processing question: ${question}`);
     switch (question.type) {
       case 'text':
         return this.handleTextQuestion(question);

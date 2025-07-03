@@ -47,6 +47,7 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
   ngOnInit() {
     this.setupOptionsObservable();
     this.updateSelectedOption();
+    console.log('question: ', this.question())
   }
 
   ngOnDestroy() {
