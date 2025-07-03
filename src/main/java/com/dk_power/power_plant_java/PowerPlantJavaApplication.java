@@ -28,9 +28,6 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 
     private final RedTagAutomationService redTagAutomationService;
     private final EtaProService etaProService;
-    private final NgFileService ngFileService;
-    private final NgLotoPointService ngLotoPointService;
-    private final ExcelWriterService excelWriterService;
 
 
 
@@ -52,8 +49,6 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
         String currentUser = System.getProperty("user.name");
         System.out.println("Current User: " + currentUser);
 
-        List<LotoPoint> poinsWithFile = ngLotoPointService.getPoinsWithFile();
-        excelWriterService.writeLotoPointsToExcelTableWithLinks("points.xlsx",poinsWithFile);
 
         System.err.println("=====================================================");
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
