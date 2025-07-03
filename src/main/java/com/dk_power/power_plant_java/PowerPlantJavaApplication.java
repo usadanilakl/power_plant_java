@@ -3,8 +3,11 @@ package com.dk_power.power_plant_java;
 
 import com.dk_power.power_plant_java.controller.permits.automation.RedTagAutomationService;
 import com.dk_power.power_plant_java.entities.EtaProPoint;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.EtaProService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
+import com.dk_power.power_plant_java.sevice.data_transfer.ExcelWriterService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -13,6 +16,8 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
+import java.util.List;
 
 @SpringBootApplication
 @RequiredArgsConstructor
@@ -24,6 +29,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     private final RedTagAutomationService redTagAutomationService;
     private final EtaProService etaProService;
     private final NgFileService ngFileService;
+    private final NgLotoPointService ngLotoPointService;
+    private final ExcelWriterService excelWriterService;
 
 
 
@@ -45,6 +52,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
         String currentUser = System.getProperty("user.name");
         System.out.println("Current User: " + currentUser);
 
+        List<LotoPoint> poinsWithFile = ngLotoPointService.getPoinsWithFile();
+        excelWriterService.writeLotoPointsToExcelTableWithLinks("points.xlsx",poinsWithFile);
 
         System.err.println("=====================================================");
         System.out.println("App is Ready: open browser and type: http://localhost:8082");

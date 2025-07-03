@@ -1,28 +1,33 @@
 package com.dk_power.power_plant_java.sevice.data_transfer;
 
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.SpreadsheetVersion;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.AreaReference;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellReference;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFTable;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.usermodel.*;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTTable;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTTableColumn;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTTableColumns;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class ExcelWriterService {
+
+    @Value("${project.root}")
+    private String projectRoot;
 
     public void writeMapToExcel(String filePath, List<Map<String, String>> data) {
         Workbook workbook = new XSSFWorkbook();
@@ -191,4 +196,139 @@ public class ExcelWriterService {
             }
         }
     }
+
+    public void writeLotoPointsToExcelTableWithLinks(String filePath, List<LotoPoint> data) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            XSSFSheet sheet = workbook.createSheet("Sheet1");
+
+            // Create a cell style for hyperlinks
+            XSSFCellStyle hlinkStyle = workbook.createCellStyle();
+            XSSFFont hlinkFont = workbook.createFont();
+            hlinkFont.setUnderline(XSSFFont.U_SINGLE);
+            hlinkFont.setColor(IndexedColors.BLUE.getIndex());
+            hlinkStyle.setFont(hlinkFont);
+
+            // Determine the maximum number of file links
+            int maxFileLinkColumns = data.stream()
+                    .mapToInt(p -> p.getFileLinks().size())
+                    .max()
+                    .orElse(0);
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            String[] fixedHeaders = {"Tag Number", "Description", "General Location", "Specific Location", "Iso Pos", "Norm Pos"};
+            int totalColumns = fixedHeaders.length + maxFileLinkColumns;
+
+            for (int i = 0; i < totalColumns; i++) {
+                Cell cell = headerRow.createCell(i);
+                if (i < fixedHeaders.length) {
+                    cell.setCellValue(fixedHeaders[i]);
+                } else {
+                    cell.setCellValue("File Link " + (i - fixedHeaders.length + 1));
+                }
+            }
+
+            // Create data rows
+            int rowNum = 1;
+            for (LotoPoint p : data) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(p.getTagNumber());
+                row.createCell(1).setCellValue(p.getDescription());
+                row.createCell(2).setCellValue(p.getGeneralLocation());
+                row.createCell(3).setCellValue(p.getSpecificLocation());
+                row.createCell(4).setCellValue(p.getIsoPos() != null ? p.getIsoPos().getName() : "Iso Pos Undefined");
+                row.createCell(5).setCellValue(p.getNormPos() != null ? p.getNormPos().getName() : "Norm Pos Undefined");
+
+                List<String> fileLinks = p.getFileLinks().stream()
+                        .map(l -> Paths.get(projectRoot, l).toUri().toString())
+                        .toList();
+
+                for (int i = 0; i < maxFileLinkColumns; i++) {
+                    Cell linkCell = row.createCell(fixedHeaders.length + i);
+                    if (i < fileLinks.size()) {
+                        addSingleHyperlink(workbook, (XSSFCell)linkCell, fileLinks.get(i), "File " + (i + 1));
+                    } else {
+                        linkCell.setCellValue("");
+                    }
+                }
+            }
+
+            // Create the table
+            XSSFTable table = sheet.createTable(new AreaReference(
+                    new CellReference(0, 0),
+                    new CellReference(data.size(), totalColumns - 1),
+                    SpreadsheetVersion.EXCEL2007
+            ));
+
+            // Set table style
+            table.setName("Table1");
+            table.setDisplayName("Table1");
+            table.setStyleName("TableStyleMedium2");
+
+            // Ensure the table structure matches the data
+            CTTable ctTable = table.getCTTable();
+            CTTableColumns columns = ctTable.getTableColumns();
+            columns.setCount(totalColumns);
+
+            // Remove existing column definitions
+            while (columns.getTableColumnList().size() > 0) {
+                columns.removeTableColumn(0);
+            }
+
+            // Add correct column definitions
+            for (int i = 0; i < totalColumns; i++) {
+                CTTableColumn column = columns.addNewTableColumn();
+                column.setId(i + 1);
+                if (i < fixedHeaders.length) {
+                    column.setName(fixedHeaders[i]);
+                } else {
+                    column.setName("File Link " + (i - fixedHeaders.length + 1));
+                }
+            }
+
+            // Adjust the table range
+            ctTable.setRef(new CellRangeAddress(0, data.size(), 0, totalColumns - 1).formatAsString());
+
+            // Add auto filter
+            ctTable.addNewAutoFilter().setRef(new CellRangeAddress(0, 0, 0, totalColumns - 1).formatAsString());
+
+            // Auto-size columns
+            for (int i = 0; i < totalColumns; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Write the output to a file
+            try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+                workbook.write(outputStream);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Open the file
+        if (Desktop.isDesktopSupported()) {
+            Desktop desktop = Desktop.getDesktop();
+            File file = new File(filePath);
+            if (file.exists()) {
+                try {
+                    Thread.sleep(1000);
+                    desktop.open(file);
+                } catch (IOException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    private void addSingleHyperlink(XSSFWorkbook workbook, XSSFCell cell, String fileLink, String linkText) {
+        XSSFCreationHelper createHelper = workbook.getCreationHelper();
+        XSSFHyperlink link = createHelper.createHyperlink(HyperlinkType.FILE);
+        link.setAddress(fileLink);
+
+        cell.setCellValue(linkText);
+        cell.setHyperlink(link);
+        cell.setCellStyle(workbook.getCellStyleAt((short)1)); // Use the hyperlink style created earlier
+    }
+
 }

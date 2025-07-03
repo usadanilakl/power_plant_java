@@ -121,5 +121,9 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     public String generateTagNumber(String system) {
         throw new RuntimeException("Method is not implemented");
     }
+
+    public List<LotoPoint> getPoinsWithFile() {
+        return lotoPointRepo.findByEquipmentListNotNull();
+    }
 }
 

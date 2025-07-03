@@ -4,6 +4,7 @@ package com.dk_power.power_plant_java.entities.loto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -12,6 +13,7 @@ import lombok.Setter;
 import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -88,5 +90,15 @@ public class LotoPoint extends BaseAuditEntity {
             this.lotos.remove(loto);
             loto.getLotoPoints().remove(this);
         }
+    }
+
+    public List<String> getFileLinks() {
+        if(this.equipmentList==null || this.equipmentList.isEmpty()) return new ArrayList<>();
+        Set<String> links = new HashSet<>();
+        for (Equipment eq : this.equipmentList) {
+            if(eq.getMainFile()!=null)links.add(eq.getMainFile().getFileLink());
+            if(eq.getFiles()!=null) links.addAll(eq.getFiles().stream().map(FileObject::getFileLink).toList());
+        }
+        return new ArrayList<>(links);
     }
 }
