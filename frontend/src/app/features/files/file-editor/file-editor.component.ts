@@ -285,6 +285,47 @@ export class FileEditorComponent {
       }
     });
   }
+
+  onEqDelete() {
+    const eqId = this.currentEquipment()?.id;
+    if (!eqId) {
+      console.error('Invalid equipment ID for deletion');
+      return;
+    }
+  
+    this.equipmentService.deleteEquipment(eqId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      catchError(error => {
+        console.error('Error deleting equipment:', error);
+        // Optionally, you can show a user-friendly error message here
+        return of(null);
+      })
+    ).subscribe({
+      next: (resp) => {
+        if (resp) {
+          // Remove the equipment from the current file's elements
+          // this.currentFileService.removeElementFromCurrentFile(eqId);
+          
+          // Clear the current equipment if it's the one being deleted
+          if (this.currentEquipment()?.id === eqId) {
+            this.currentEquipmentService.clearCurrentEquipment();
+          }
+          
+          // Close the equipment form if it's open
+          this.isEqFormOpen.set(false);
+          
+          console.log('Equipment deleted successfully');
+          // Optionally, you can show a success message here
+        } else {
+          console.warn('Equipment deletion did not return a response');
+        }
+      },
+      error: (error) => {
+        console.error('Error in equipment deletion subscription:', error);
+        // Optionally, handle the error (e.g., show an error message to the user)
+      }
+    });
+  }
   //Loto Point form
 
   onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
@@ -336,7 +377,35 @@ export class FileEditorComponent {
 
   }
 
-  onLotoPointFormDelete(lotoPoint: LotoPointDto) {}
+  onLotoPointFormDelete() {
+    if (!this.lpToEdit() || !this.lpToEdit()?.id) {
+      console.error('Invalid LOTO point for deletion');
+      return;
+    }
+
+    this.lotoPointService.deleteLotoPoint(this.lpToEdit()?.id+'').pipe(
+      takeUntilDestroyed(this.destroyRef),
+      catchError(error => {
+        console.error('Error deleting LOTO point:', error);
+        // Optionally, you can show a user-friendly error message here
+        return of(null);
+      })
+    ).subscribe({
+      next: (resp) => {
+        if (resp) {
+          // this.currentEquipmentService.removeLotoPointFromCurrentEquipment(lotoPoint);
+          // Optionally, you can show a success message here
+          console.log('LOTO point deleted successfully');
+        } else {
+          console.warn('LOTO point deletion did not return a response');
+        }
+      },
+      error: (error) => {
+        console.error('Error in LOTO point deletion subscription:', error);
+        // Optionally, handle the error (e.g., show an error message to the user)
+      }
+    });
+  }
 
   onLotoPointFormOpen(lotoPoint: LotoPointDto) {
     this.lpToEdit.set(lotoPoint);

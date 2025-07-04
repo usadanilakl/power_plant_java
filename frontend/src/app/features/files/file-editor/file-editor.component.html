@@ -75,6 +75,7 @@
       <app-equipment-form
         [values]="currentEquipment()"
         (formSubmit)="submitEquipment($event)"
+        (formDelete)="onEqDelete()"
         (lotoPointRowRightClickEvent)="onLotoPointFormOpen($event)">
       </app-equipment-form>
 
@@ -88,6 +89,7 @@
 
       <app-loto-point-detail-form
         [values]="lpToEdit()"
+        (formDelete)="onLotoPointFormDelete()"
         (formSubmit)="onLotoPointFormSubmit($event)">
       </app-loto-point-detail-form>
     

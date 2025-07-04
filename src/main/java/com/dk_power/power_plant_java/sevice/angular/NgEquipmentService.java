@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.angular;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentIdDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
@@ -162,12 +163,27 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
         }
         Equipment equipment = idDtoToEntity(equipmentDto);
         FileObject mainFile = equipment.getMainFile();
-        Equipment saved = save(equipment);
-        if(mainFile!=null){
+
+        //This is temporary fix, need to change client side setup to reference files by id, not by link.
+        if(mainFile == null){
+            String link = equipmentDto.getMainFile();
+            int index = link.lastIndexOf('.');
+            String extension = link.substring(index + 1);
+            String newLink = link.replaceAll(extension,"pdf");
+            FileDto byFileLink = fileService.findByFileLink(newLink);
+            if(byFileLink!=null){
+                mainFile = fileService.toEntity(byFileLink);
+            }
+        }
+        if(mainFile != null){
+            mainFile = fileService.getEntityById(mainFile.getId());
+            equipment.setMainFile(mainFile);
+            Equipment saved = save(equipment);
             mainFile.addPoint(equipment);
             fileService.save(mainFile);
+            return saved;
         }
-        return equipment;
+        return null;
 
     }
 }

@@ -77,7 +77,8 @@ public class FileDto extends BaseDto {
 
     @JsonIgnore
     public String getRelatedSystemsAsString() {
-        return String.join(",", relatedSystems);
+        if(relatedSystems !=null)return String.join(",", relatedSystems);
+        return null;
     }
 
     public void setVendor(String vendor) {
