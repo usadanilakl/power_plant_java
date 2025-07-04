@@ -36,6 +36,7 @@ export class EquipmentFormComponent implements OnInit {
   formSubmit = output<any>();
   formDelete = output<void>();
   valuesChange = output<EquipmentDto>();
+  addNewLotoPointEvent = output<number>();
 
   systems = signal<Option[]>([]);
   locations = signal<Option[]>([]);
@@ -242,6 +243,10 @@ export class EquipmentFormComponent implements OnInit {
 
   onLotoPointRowRightClick(lotoPoint: LotoPointDto) {
     this.lotoPointRowRightClickEvent.emit(lotoPoint);
+  }
+
+  onAddNewLotoPoint(){
+    this.addNewLotoPointEvent.emit(this.values().id);
   }
 
 

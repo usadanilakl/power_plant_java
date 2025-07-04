@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final LotoPointMapper lotoPointMapper;
+    private final NgEquipmentService equipmentService;
 
 
     @Override
@@ -125,5 +127,27 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     public List<LotoPoint> getPoinsWithFile() {
         return lotoPointRepo.findByEquipmentListNotNull();
     }
+
+@Transactional
+public LotoPoint processLotoPoint(LotoPointIdDto lotoPoint) {
+    LotoPoint entity = convertIdDtoToEntity(lotoPoint);
+    entity = save(entity);
+    
+    Set<Equipment> equipmentList = new HashSet<>(entity.getEquipmentList());
+    for (Equipment e : equipmentList) {
+        if (e.getId() != null && e.getId() != 0) {
+            Equipment managedEquipment = equipmentService.getEntityById(e.getId());
+            if (!managedEquipment.getLotoPoints().contains(entity)) {
+                managedEquipment.addLotoPoint(entity);
+                equipmentService.save(managedEquipment);
+            }
+        }
+    }
+    
+    // Refresh the entity to ensure it reflects the latest state
+    entityManager.refresh(entity);
+    
+    return entity;
+}
 }
 

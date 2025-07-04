@@ -158,11 +158,12 @@ public class NgLotoPointController {
     @PutMapping
     public ResponseEntity<NgApiResponse<LotoPointDto>> updateLotoPoint(@RequestBody LotoPointIdDto lotoPoint) {
         try {
-            if (lotoPoint.getId() == null || lotoPoint.getId() == 0) {
-                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "LotoPoint ID is required"));
-            }
+//            if (lotoPoint.getId() == null || lotoPoint.getId() == 0) {
+//                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "LotoPoint ID is required"));
+//            }
 
-            LotoPoint lp = ngLotoPointService.convertIdDtoToEntity(lotoPoint);
+//            LotoPoint lp = ngLotoPointService.convertIdDtoToEntity(lotoPoint);
+            LotoPoint lp = ngLotoPointService.processLotoPoint(lotoPoint);
 
             LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(lp));
 

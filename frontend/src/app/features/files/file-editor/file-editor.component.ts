@@ -329,51 +329,100 @@ export class FileEditorComponent {
   //Loto Point form
 
   onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
-    if (!lotoPoint || !lotoPoint.id) {
+    console.log('Submitting LOTO point:', lotoPoint);
+    if (!lotoPoint) {
       console.error('Invalid LOTO point');
       return;
     }
 
-    this.lotoPointService.updateLotoPoint(new LotoPointDto(lotoPoint)).pipe(
-      tap(resp => {
-        if (resp && resp.responseData) {
-          const updatedLotoPoint = new LotoPointDto(resp.responseData);
-          
-          // Update the LOTO point in the current equipment
-          const currentEquipment = this.currentEquipment();
-          if (currentEquipment && currentEquipment.id) {
-            const updatedEquipment = new EquipmentDto({
-              ...currentEquipment,
-              lotoPoints: currentEquipment.lotoPoints?.map(lp => 
-                lp.id === updatedLotoPoint.id ? updatedLotoPoint : lp
-              )
-            });
-            
-            this.currentEquipmentService.setCurrentEquipment(updatedEquipment);
+    if(!lotoPoint.id || lotoPoint.id===0) {
+      const currentEquipment = this.currentEquipment();
+      console.log('Creating new LOTO point for equipment:', currentEquipment);
+      if (currentEquipment) {
+        // Create a new LotoPointDto with the current equipment added to the equipmentList
+        const newLotoPoint = new LotoPointDto({
+          ...lotoPoint,
+          equipmentList: [currentEquipment]
+        });
+
+        
+    console.log('Submitting LOTO point:', newLotoPoint);
+
+      this.lotoPointService.updateLotoPoint(newLotoPoint).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap(resp => {
+          if(resp && resp.responseData){
+            const newLotoPoint = new LotoPointDto(resp.responseData);
+            const currentEquipment = this.currentEquipment();
+            if (currentEquipment) {
+              currentEquipment.lotoPoints = currentEquipment.lotoPoints || [];
+              currentEquipment.lotoPoints.push(newLotoPoint);
+              this.currentEquipmentService.setCurrentEquipment(currentEquipment);
+            }
+            // Optionally, close the form or update UI
+            this.lpToEdit.set(null);
+            this.isLotoPointFormOpen.set(false);
           }
-        } else {
-          throw new Error('Invalid response from server');
+        }),
+        catchError(error => {
+          console.error('Error updating LOTO point:', error);
+          return throwError(() => new Error('Failed to update LOTO point'));
+        })
+      ).subscribe({
+        error: (error) => {
+          console.error('Subscription error:', error);
+          // Handle error, maybe show a user-friendly message
         }
-      }),
-      catchError(error => {
-        console.error('Error updating LOTO point:', error);
-        // Optionally, you can emit an error event or show a user-friendly error message
-        return of(null);
-      })
-    ).subscribe({
-      next: () => {
-        // Close the form after successful update
-        this.isLotoPointFormOpen.set(false);
-      },
-      error: () => {
-        // Close the form even if there was an error
-        this.isLotoPointFormOpen.set(false);
-      },
-      complete: () => {
-        // Ensure the form is closed when the observable completes
-        this.isLotoPointFormOpen.set(false);
+      });
       }
-    });
+    }else{
+
+      this.lotoPointService.updateLotoPoint(new LotoPointDto(lotoPoint)).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap(resp => {
+          if (resp && resp.responseData) {
+            const updatedLotoPoint = new LotoPointDto(resp.responseData);
+            
+            // Update the LOTO point in the current equipment
+            const currentEquipment = this.currentEquipment();
+            if (currentEquipment && currentEquipment.id) {
+              const updatedEquipment = new EquipmentDto({
+                ...currentEquipment,
+                lotoPoints: currentEquipment.lotoPoints?.map(lp => 
+                  lp.id === updatedLotoPoint.id ? updatedLotoPoint : lp
+                )
+              });
+              
+              this.currentEquipmentService.setCurrentEquipment(updatedEquipment);
+            }
+          } else {
+            throw new Error('Invalid response from server');
+          }
+        }),
+        catchError(error => {
+          console.error('Error updating LOTO point:', error);
+          // Optionally, you can emit an error event or show a user-friendly error message
+          return of(null);
+        })
+      ).subscribe({
+        next: () => {
+          // Close the form after successful update
+          this.isLotoPointFormOpen.set(false);
+          this.lpToEdit.set(null);
+        },
+        error: () => {
+          // Close the form even if there was an error
+          this.isLotoPointFormOpen.set(false);
+          this.lpToEdit.set(null);
+        },
+        complete: () => {
+          // Ensure the form is closed when the observable completes
+          this.isLotoPointFormOpen.set(false);
+          this.lpToEdit.set(null);
+        }
+      });
+
+    }
 
   }
 
@@ -425,6 +474,10 @@ export class FileEditorComponent {
     this.isLpBulkEditOpen.set(false);
   }
 
+  createNewLotoPoint(id: number): void {
+    this.lpToEdit.set(new LotoPointDto());
+    this.isLotoPointFormOpen.set(true);
+  }
 
 
   

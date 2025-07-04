@@ -76,6 +76,7 @@
         [values]="currentEquipment()"
         (formSubmit)="submitEquipment($event)"
         (formDelete)="onEqDelete()"
+        (addNewLotoPointEvent)="createNewLotoPoint($event)"
         (lotoPointRowRightClickEvent)="onLotoPointFormOpen($event)">
       </app-equipment-form>
 

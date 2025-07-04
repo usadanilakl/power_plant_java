@@ -24,7 +24,7 @@ export interface LotoPointModel extends BaseModel{
   equipmentIdList: number[];
   normalPosition: string;
   isolatedPosition: string;
-  equipmentList: Set<EquipmentDto>;
+  equipmentList: EquipmentDto[];
   oldId: string;
   objectType: string;
   isUpdated: number;
@@ -55,7 +55,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   equipmentIdList: number[];
   normalPosition: string;
   isolatedPosition: string;
-  equipmentList: Set<EquipmentDto>;
+  equipmentList: EquipmentDto[];
   oldId: string;
   isUpdated: number;
   fileIds: string;
@@ -77,7 +77,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.equipmentIdList = data.equipmentIdList || [];
     this.normalPosition = data.normalPosition || '';
     this.isolatedPosition = data.isolatedPosition || '';
-    this.equipmentList = data.equipmentList || new Set<EquipmentDto>();
+    this.equipmentList = data.equipmentList || [];
     this.oldId = data.oldId || '';
     this.objectType = data.objectType || '';
     this.isUpdated = data.isUpdated || 0;
@@ -138,9 +138,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       equipmentIdList: Array.isArray(json.equipmentIdList) ? json.equipmentIdList : [],
       normalPosition: json.normalPosition || '',
       isolatedPosition: json.isolatedPosition || '',
-      equipmentList: new Set(
-        Array.isArray(json.equipmentList)
-          ? json.equipmentList
+      equipmentList: json.equipmentList? json.equipmentList
               .filter((equipment: any) => equipment != null)
               .map((equipment: any) => {
                 try {
@@ -151,8 +149,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
                 }
               })
               .filter((equipment: EquipmentDto | null) => equipment !== null)
-          : []
-      ),
+          : [],
       oldId: json.oldId || '',
       objectType: json.objectType || '',
       isUpdated: json.isUpdated || 0,
