@@ -32,6 +32,7 @@ public class NgFileRestController {
     public ResponseEntity<NgApiResponse<Page<FileDto>>> getPaginatedFiles(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize) {
+
         try {
 //            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
             Page<FileDto> paginatedFiles = ngFileService.findAllWithProjectionPaginated(
@@ -102,7 +103,7 @@ public class NgFileRestController {
                                                             @RequestPart(value = "file", required = false) MultipartFile file,
                                                             @RequestParam(value = "overrideFile", defaultValue = "false") boolean overrideFile) {
 
-
+        System.out.println(fileDto.getRelatedSystems());
         try {
             Object responseObject = null;
             if(file!= null){

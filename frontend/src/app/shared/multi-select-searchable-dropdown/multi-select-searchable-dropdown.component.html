@@ -4,7 +4,8 @@
     @for (value of selectedValues; track value) {
       <div class="selected-option">
         @if (allOptions$ | async; as options) {
-          {{ (options | find: 'value': value)!.label }}
+          {{ ((options | find: 'value': value)?.label ?? value) }}
+          <!-- {{ (options | find: 'value': value)!.label }} -->
         }
         <button type="button" (click)="removeOption(value)">X</button>
       </div>
@@ -12,25 +13,12 @@
   </div>
   <app-searchable-dropdown
     [label]="''"
+    [question]="question()"
     [options]="availableOptions$"
+    [categoryName]="categoryName()"
     [closeOnSelect]="false"
+    (editOption)="onEditOption()"
+    (addNewOption)="onAddNewOption()"
     (valueChange)="onSelect($event)"
   ></app-searchable-dropdown>
 </div>
-
-<!-- <div class="multi-select-container">
-  <label>{{ label }}</label>
-  <div class="selected-options">
-    @for (value of selectedValues; track value) {
-      <div class="selected-option">
-        {{ (options | find: 'value': value)?.label }}
-        <button type="button" (click)="removeOption(value)">X</button>
-      </div>
-    }
-  </div>
-  <app-searchable-dropdown
-    [label]="''"
-    [options]="availableOptions"
-    (valueChange)="onSelect($event)"
-  ></app-searchable-dropdown>
-</div> -->

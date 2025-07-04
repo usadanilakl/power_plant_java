@@ -1,5 +1,7 @@
-import { Component, Input, forwardRef } from '@angular/core';
+import { Component, Input, forwardRef, input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { Question } from '../../models/ui/question.model';
+import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 
 @Component({
   selector: 'app-checkbox-group',
@@ -12,11 +14,14 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
       useExisting: CheckboxGroupComponent,
       multi: true
     }
-  ]
+  ],
+  imports: [QaMenuComponent]
 })
 export class CheckboxGroupComponent implements ControlValueAccessor {
   @Input() label: string = '';
   @Input() options: { value: any, label: string }[] = [];
+  question = input<Question | null>(null)
+  showPopup = false;
 
   value: any[] = [];
 
@@ -43,5 +48,13 @@ export class CheckboxGroupComponent implements ControlValueAccessor {
       this.value = this.value.filter(val => val !== option.value);
     }
     this.onChange(this.value);
+  }
+
+  openPopup() {
+    this.showPopup = true;
+  }
+
+  closePopup() {
+    this.showPopup = false;
   }
 }

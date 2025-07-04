@@ -1,0 +1,16 @@
+
+
+.label-container {
+  display: flex;
+  align-items: center;
+}
+
+.question-icon {
+  margin-left: 5px;
+  cursor: pointer;
+  color: #007bff;
+}
+
+.question-icon:hover {
+  color: #0056b3;
+}

@@ -221,6 +221,7 @@ export class CurrentValueService {
   }
 
   getValuesByCategory(category: string): Observable<ValueDto[]> {
+    if(category && category === 'systems') category = 'system';
     return this.allData$.pipe(
       map(data => data[category] || []),
       shareReplay(1)

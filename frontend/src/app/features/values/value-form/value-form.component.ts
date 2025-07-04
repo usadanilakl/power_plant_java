@@ -1,10 +1,8 @@
-import { Component, computed, inject, input, signal, effect, OnInit } from '@angular/core';
+import { Component, computed, inject, input, signal, effect, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ValueDto } from '../../../models/value.model';
 import { CurrentValueService } from '../../../services/current-value.service';
-import { toSignal, toObservable } from '@angular/core/rxjs-interop';
-import { switchMap, of } from 'rxjs';
 
 @Component({
   selector: 'app-value-form',

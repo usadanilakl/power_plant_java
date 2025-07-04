@@ -162,7 +162,7 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
         }
         Equipment equipment = idDtoToEntity(equipmentDto);
         FileObject mainFile = equipment.getMainFile();
-        save(equipment);
+        Equipment saved = save(equipment);
         if(mainFile!=null){
             mainFile.addPoint(equipment);
             fileService.save(mainFile);

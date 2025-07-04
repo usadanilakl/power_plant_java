@@ -1,7 +1,14 @@
 
 
 <div class="multi-input-container">
+  <div class="label-container">
     <label>{{ label }}</label>
+    @if (question()) {
+      <span class="question-icon" (click)="openPopup()" title="Click for more information">
+        <span class="material-icons">help</span>
+      </span>
+    }
+  </div>
     <div class="input-values">
       @for (value of values; track $index) {
         <div class="input-value">
@@ -17,4 +24,11 @@
     </div>
     <button type="button" (click)="addValue()">Add</button>
   </div>
+
+  @if(showPopup){
+    <app-qa-menu
+      [question]="question()"
+      (closePopupEvent)="closePopup()">
+    </app-qa-menu>
+  }
 

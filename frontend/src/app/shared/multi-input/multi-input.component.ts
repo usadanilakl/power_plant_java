@@ -1,11 +1,13 @@
-import { Component, EventEmitter, Input, Output, forwardRef } from '@angular/core';
+import { Component, EventEmitter, Input, Output, forwardRef, input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { Question } from '../../models/ui/question.model';
+import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 
 @Component({
   selector: 'app-multi-input',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, QaMenuComponent],
   templateUrl: `./multi-input.component.html`,
   styleUrls: ['./multi-input.component.css'],
   providers: [
@@ -19,6 +21,8 @@ import { CommonModule } from '@angular/common';
 export class MultiInputComponent implements ControlValueAccessor {
   @Input() label: string = '';
   @Input() type: string = 'text';
+  question = input<Question | null>(null)
+  showPopup = false;
   
   @Output() valuesChange = new EventEmitter<any[]>();
 
@@ -71,5 +75,13 @@ export class MultiInputComponent implements ControlValueAccessor {
 
   registerOnTouched(fn: any): void {
     this.onTouched = fn;
+  }
+
+  openPopup() {
+    this.showPopup = true;
+  }
+
+  closePopup() {
+    this.showPopup = false;
   }
 }

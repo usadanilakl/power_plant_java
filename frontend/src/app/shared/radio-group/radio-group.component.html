@@ -1,6 +1,11 @@
 
 <div class="radio-group">
   <span class="group-label">{{ label }}</span>
+    @if (question()) {
+      <span class="question-icon" (click)="openPopup()" title="Click for more information">
+        <span class="material-icons">help</span>
+      </span>
+    }
   <div class="options-container">
     @for (option of options; track option.value) {
       <div class="option">
@@ -17,3 +22,10 @@
     }
   </div>
 </div>
+
+  @if(showPopup){
+    <app-qa-menu
+      [question]="question()"
+      (closePopupEvent)="closePopup()">
+    </app-qa-menu>
+  }

@@ -302,7 +302,11 @@ public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService,
         equipment = equipmentService.findById(dto.getId()).orElse(new Equipment());
     }
 
-    // Set fields from BaseEquipmentDto
+        System.out.println("file link: "+dto.getMainFile());
+        FileObject byFileLink = fileService.getByFileLink(dto.getMainFile());
+
+
+        // Set fields from BaseEquipmentDto
     if (dto.getId() != null && dto.getId() != 0) equipment.setId(dto.getId());
     if (dto.getDeleted() != null) equipment.setDeleted(dto.getDeleted());
     if (dto.getName() != null) equipment.setName(dto.getName());

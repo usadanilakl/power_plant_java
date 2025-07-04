@@ -7,13 +7,13 @@
   (close)="handleClose()">
 
   <app-equipment-table
-  [equipmentList]="equipmentData()"
-  (equipmentClicked)="onEquipmentSelected($event)"
-  (equipmentDoubleClicked)="onEquipmentEdit($event.item, $event.column)"
-  (equipmentRightClicked)="onEquipmentContextMenu($event)"
-  (equipmentHovered)="onEquipmentHover($event)"
-  (equipmentDeleted)="onEquipmentDelete($event)"
-  (selectedItemsEvent)="onSelectedItems($event)"
+    [equipmentList]="equipmentData()"
+    (equipmentClicked)="onEquipmentSelected($event)"
+    (equipmentDoubleClicked)="onEquipmentEdit($event.item, $event.column)"
+    (equipmentRightClicked)="onEquipmentContextMenu($event)"
+    (equipmentHovered)="onEquipmentHover($event)"
+    (equipmentDeleted)="onEquipmentDelete($event)"
+    (selectedItemsEvent)="onSelectedItems($event)"
 >
   @if(selectedItems().length > 0) {
     <div table-controls>

@@ -4,7 +4,8 @@ import { FindPipe } from "../../pipes/find.pipe";
 import { Option } from '../../models/option.model';
 import { Observable, Subscription, take } from 'rxjs';
 import { Question } from '../../models/ui/question.model';
-import { QuestionProcessorService } from '../../services/ui/question.service';
+import { MatIconModule } from '@angular/material/icon';
+import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 
 @Component({
   selector: 'app-searchable-dropdown',
@@ -18,18 +19,16 @@ import { QuestionProcessorService } from '../../services/ui/question.service';
       multi: true
     }
   ],
-  imports: [FindPipe]
+  imports: [FindPipe, MatIconModule, QaMenuComponent]
 })
 export class SearchableDropdownComponent implements ControlValueAccessor {
-
-  private questionService = inject(QuestionProcessorService)
 
   @Input() label: string = '';
   @Input() options: Option[] | Observable<Option[]> = [];
   @Input() closeOnSelect = true;
   categoryName = input<string>('');
   question = input<Question | null>(null)
-  questionContent = signal<string>('');
+  showPopup = false;
 
   @Output() valueChange = new EventEmitter<any>();
   addNewOption = output<string>();
@@ -42,12 +41,12 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
   isOpen = false;
   filteredOptions: Option[] = [];
 
+
   constructor(private elementRef: ElementRef) {}
 
   ngOnInit() {
     this.setupOptionsObservable();
     this.updateSelectedOption();
-    console.log('question: ', this.question())
   }
 
   ngOnDestroy() {
@@ -156,23 +155,12 @@ export class SearchableDropdownComponent implements ControlValueAccessor {
     this.editOption.emit(this.categoryName());
   }
 
-  processQuestion() {
-    if (this.question()) {
-      const result = this.questionService.processQuestion(this.question()!);
-      switch (result.action) {
-        case 'display':
-          this.questionContent.set(this.question()!.content);
-          break;
-        case 'open':
-          window.open(result.data, '_blank');
-          break;
-        case 'play':
-          // You might want to create a video player component and use it here
-          console.log('Playing video:', result.data);
-          break;
-        default:
-          console.warn('Unsupported action:', result.action);
-      }
-    }
+  openPopup() {
+    this.showPopup = true;
   }
+
+  closePopup() {
+    this.showPopup = false;
+  }
+
 }

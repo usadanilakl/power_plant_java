@@ -166,8 +166,6 @@ export class DrawUtilService {
     this.selectedShape = this.shapes.find(shape => 
       this.shapeUtil.containsPoint(shape, event.offsetX, event.offsetY)
     ) || null;
-
-    console.log('selected shape ', this.selectedShape);
     
     if (this.selectedShape) {
       this.selectedShape.isSelected = true;

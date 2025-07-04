@@ -281,17 +281,11 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       
     const originalPictureSize = `width:${shape.originalPictureWidth},height:${shape.originalPictureHeight}`;
 
-    console.log('Creating EquipmentDto from shape:', shape);
-    console.log('Coordinates:', coordinates);
-    console.log('Original picture size:', originalPictureSize);
-
   const newEq = new EquipmentDto({
     coordinates: coordinates,
     originalPictureSize: originalPictureSize,
   });
 
-
-  console.log('Created EquipmentDto:', newEq);
   
     return newEq;
   }

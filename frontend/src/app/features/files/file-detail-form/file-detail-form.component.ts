@@ -4,6 +4,7 @@ import { CurrentValueService } from '../../../services/current-value.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Option } from '../../../models/option.model';
 import { Validators } from '@angular/forms';
+import { Question } from '../../../models/ui/question.model';
 
 @Component({
   selector: 'app-file-detail-form',
@@ -27,7 +28,7 @@ export class FileDetailFormComponent implements OnInit {
     { name: 'fileType', label: 'File Type', type: 'select', options: this.fileTypeOptions(), validators: [Validators.required] },
     { name: 'vendor', label: 'Vendor', type: 'select', options: this.vendorOptions(), validators: [Validators.required] },
     { name: 'fileNumber', label: 'File Numbers', type: 'multi-input', validators: [Validators.required] },
-    { name: 'systems', label: 'Systems', type: 'multi-select', options: this.systemOptions(), validators: [Validators.required] },
+    // { name: 'relatedSystems', label: 'Systems', type: 'multi-select', options: this.systemOptions(), validators: [Validators.required], question: { type: 'text', content: "You can select multipla systems"} as Question },
     { name: 'file', label: 'File', type: 'file' },
     { name: 'overrideFile', label: 'If File already exists, then:', type: 'radio-group', options: [{ value: 'true', label: 'Override' }, { value: 'false', label: 'Revision' }], validators: [Validators.required] },
   ]);
@@ -66,6 +67,7 @@ export class FileDetailFormComponent implements OnInit {
   }
 
   onFormSubmit(formData: any) {
+    console.log("Form submitted: ", formData);
     this.formSubmit.emit(formData);
   }
 

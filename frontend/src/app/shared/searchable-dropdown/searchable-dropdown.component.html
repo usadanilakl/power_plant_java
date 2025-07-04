@@ -3,8 +3,8 @@
   <div class="label-container">
     <label>{{ label }}</label>
     @if (question()) {
-      <span class="question-icon" (click)="processQuestion()" title="Click for more information">
-        <i class="fas fa-question-circle"></i>
+      <span class="question-icon" (click)="openPopup()" title="Click for more information">
+        <span class="material-icons">help</span>
       </span>
     }
   </div>
@@ -28,4 +28,11 @@
       </div>
     }
   </div>
+
+  @if(showPopup){
+    <app-qa-menu
+      [question]="question()"
+      (closePopupEvent)="closePopup()">
+    </app-qa-menu>
+  }
 

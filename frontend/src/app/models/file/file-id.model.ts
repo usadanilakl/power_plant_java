@@ -6,7 +6,7 @@ export class FileIdDto extends BaseDto {
   baseLink: string;
   folder: string;
   system: number;
-  relatedSystems: string;
+  relatedSystems: string[];
   fileNumber: string[];
   vendor: number;
   points: number[];
@@ -23,7 +23,7 @@ export class FileIdDto extends BaseDto {
     this.baseLink = data.baseLink || '';
     this.folder = data.folder || '';
     this.system = data.system || 0;
-    this.relatedSystems = data.relatedSystems || '';
+    this.relatedSystems = data.relatedSystems || [];
     this.fileNumber = data.fileNumber || [];
     this.vendor = data.vendor || 0;
     this.points = data.points || [];

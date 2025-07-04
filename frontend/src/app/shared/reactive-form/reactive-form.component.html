@@ -9,6 +9,7 @@
             [options]="field.options"
             [formControlName]="field.name"
             [categoryName]="field.name"
+            [question]="field.question"
             (editOption)="onEditSelectOption($event)"
             (addNewOption)="onAddNewSelectOption($event)">
           </app-searchable-dropdown>
@@ -32,6 +33,10 @@
             [options]="field.options"
             [label]="field.label"
             [formControlName]="field.name"
+            [categoryName]="field.name"
+            [question]="field.question"
+            (editOption)="onEditSelectOption($event)"
+            (addNewOption)="onAddNewSelectOption($event)"
           ></app-multi-select-searchable-dropdown>
         }
         @case('file'){
@@ -56,6 +61,9 @@
           </app-form-input>
         }
       }
+      @if (formErrors()[field.name]) {
+        <div class="error-message">{{ formErrors()[field.name] }}</div>
+      }
     </div>
   }
   
@@ -67,8 +75,10 @@
 } @else if(isValueEditMenuOpen()){
   <app-value-form 
     [categoryAlias]="selectedCategoryName()"
-    (submitEvent)="closeEditMenu()"
+    (closeEvent)="closeEditMenu()"
     ></app-value-form>
+    <button (click)="closeEditMenu()">Cancel</button>
 } @else {
   <app-add-value-form [categoryName]="selectedCategoryName()" (submitEvent)="closeAddValueMenu()"></app-add-value-form>
+    <button (click)="closeAddValueMenu()">Cancel</button>
 }

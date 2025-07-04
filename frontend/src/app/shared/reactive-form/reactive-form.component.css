@@ -19,17 +19,20 @@ form {
   flex-wrap: nowrap;
   margin: -10px;
   overflow-x: auto;
+  margin-bottom: 15px;
 }
 
 .form-field-layout-row {
   flex: 0 0 auto;
   width: 200px;
   margin: 10px;
+  margin-bottom: 15px;
 }
 
 .form-layout-column {
   display: flex;
   flex-direction: column;
+  margin-bottom: 15px;
 }
 
 .form-field-layout-column {
@@ -93,4 +96,11 @@ button[type="button"]:hover {
   .form-field-layout-reactive {
     flex: 1 1 100%;
   }
+
+  .error-message {
+    color: red;
+    font-size: 0.8em;
+    margin-top: 5px;
+  }
+  
 }

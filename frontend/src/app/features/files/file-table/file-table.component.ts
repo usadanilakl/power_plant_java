@@ -24,11 +24,50 @@ import { PopupProjectionComponent } from "../../../shared/popup-projection/popup
   styleUrls: ['./file-table.component.css'],
 })
 export class FileTableComponent implements OnInit {
+  // columns: Column[] = [
+  //   { id: 'name', header: 'File Name', accessorKey: 'name' },
+  //   {id: 'vendor.name', header: 'Vendor', accessorKey: 'vendor.name'  },
+  //   { id: 'fileType.name', header: 'File Type', accessorKey: 'fileType.name' },
+  //   { id: 'fileNumber', header: 'File Number', accessorFn: (item: FileDto) => Array.isArray(item.fileNumber) ? item.fileNumber.join(', ') : item.fileNumber },
+  //   { id: 'relatedSystems', header: 'Systems', accessorKey: 'relatedSystems' },
+  // ];
+
   columns: Column[] = [
-    { id: 'name', header: 'File Name', accessorKey: 'name' },
-    { id: 'fileType.name', header: 'File Type', accessorKey: 'fileType.name' },
-    { id: 'fileNumber', header: 'File Number', accessorFn: (item: FileDto) => Array.isArray(item.fileNumber) ? item.fileNumber.join(', ') : item.fileNumber },
-    { id: 'relatedSystems', header: 'Systems', accessorKey: 'relatedSystems' },
+    {
+      id: 'name',
+      header: 'File Name',
+      accessorKey: 'name',
+      conditionalStyling: (item: FileDto) => 
+        !item.name ? { 'background-color': '#ffcccc' } : {'background-color': '' }
+    },
+    {
+      id: 'vendor.name',
+      header: 'Vendor',
+      accessorKey: 'vendor.name',
+      conditionalStyling: (item: FileDto) => 
+        !item.vendor?.name ? { 'background-color': '#ffcccc' } : {'background-color': '' }
+    },
+    {
+      id: 'fileType.name',
+      header: 'File Type',
+      accessorKey: 'fileType.name',
+      conditionalStyling: (item: FileDto) => 
+        !item.fileType?.name ? { 'background-color': '#ffcccc' } : {'background-color': '' }
+    },
+    {
+      id: 'fileNumber',
+      header: 'File Number',
+      accessorFn: (item: FileDto) => Array.isArray(item.fileNumber) ? item.fileNumber.join(', ') : item.fileNumber,
+      conditionalStyling: (item: FileDto) => 
+        !item.fileNumber ? { 'background-color': '#ffcccc' } : {'background-color': '' }
+    },
+    {
+      id: 'relatedSystems',
+      header: 'Systems',
+      accessorKey: 'relatedSystems',
+      conditionalStyling: (item: FileDto) => 
+        !item.relatedSystems ? { 'background-color': '#ffcccc' } : {'background-color': '' }
+    },
   ];
 
 

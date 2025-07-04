@@ -10,7 +10,7 @@ export interface FileModel {
   baseLink: string;
   folder: string;
   system: ValueDto;
-  relatedSystems: string;
+  relatedSystems: string[];
   fileNumber: string[];
   vendor: ValueDto;
   points: EquipmentDto[];
@@ -30,7 +30,7 @@ export class FileDto implements FileModel {
   baseLink: string;
   folder: string;
   system: ValueDto;
-  relatedSystems: string;
+  relatedSystems: string[];
   fileNumber: string[];
   vendor: ValueDto;
   points: EquipmentDto[];
@@ -49,7 +49,7 @@ export class FileDto implements FileModel {
     this.baseLink = data.baseLink || '';
     this.folder = data.folder || '';
     this.system = data.system || new ValueDto({ id: 0, name: '' });
-    this.relatedSystems = data.relatedSystems || '';
+    this.relatedSystems = data.relatedSystems || [];
     this.fileNumber = data.fileNumber || [];
     this.vendor = data.vendor || new ValueDto({ id: 0, name: '' });
     this.points = data.points || [];

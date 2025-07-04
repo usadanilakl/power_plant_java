@@ -25,7 +25,7 @@ public class FileIdDto extends BaseDto {
     private String baseLink;
     private String folder;
     private Long system;
-    private String relatedSystems;
+    private List<String> relatedSystems;
     private List<String> fileNumber;
     private Long vendor;
     private List<Long> points;
@@ -36,5 +36,13 @@ public class FileIdDto extends BaseDto {
     private String docNum;
     private Boolean isVerified = false;
 
+    @JsonIgnore
+    public void setRelatedSystemsAsString(String systems) {
+        this.relatedSystems = List.of(systems.split(","));
+    }
 
+    @JsonIgnore
+    public String getRelatedSystemsAsString() {
+        return String.join(",", relatedSystems);
+    }
 }

@@ -62,15 +62,13 @@ export class EquipmentFormComponent implements OnInit {
     this.loadOptions('vendor', this.vendors);
     this.loadOptions('location', this.locations);
     this.loadOptions('eqType', this.eqTypes);
-
-    console.log("fields", this.fields());
   }
 
 
 //Equipment form
   private createFields(): FormField[] {
     const currentPresetData = this.values();
-    return [
+    const fields: FormField[] = [
       {
         name: 'system',
         label: 'System',
@@ -128,6 +126,8 @@ export class EquipmentFormComponent implements OnInit {
         initialValue: currentPresetData.specificLocation || null
       }
     ];
+    console.log('created fields: ', fields);
+    return fields;
   }
 
   private addDefaultOption(options: Option[], defaultLabel: string): Option[] {

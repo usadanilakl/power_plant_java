@@ -1,6 +1,20 @@
 <div class="form-input">
   @if (label) {
+  <div class="label-container">
     <label>{{ label }}</label>
+    @if (question()) {
+      <span class="question-icon" (click)="openPopup()" title="Click for more information">
+        <span class="material-icons">help</span>
+      </span>
+    }
+  </div>
   }
   <input [type]="type" [value]="value" (input)="onInputChange($event)">
 </div>
+
+  @if(showPopup){
+    <app-qa-menu
+      [question]="question()"
+      (closePopupEvent)="closePopup()">
+    </app-qa-menu>
+  }

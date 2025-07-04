@@ -19,6 +19,7 @@ import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -133,10 +134,27 @@ public class FileObject extends BaseAuditEntity {
     }
 
 
-    public void setRelatedSystems(String system){
-        if(relatedSystems==null)relatedSystems = system;
-        else relatedSystems+=","+system;
+public void setRelatedSystems(String system) {
+    if (system == null) return;
+
+    // Clean up the input: keep only letters, numbers, spaces, dashes, and commas
+    String cleanedSystem = system.replaceAll("[^a-zA-Z0-9\\s,-]", "").trim();
+
+    if (relatedSystems == null || relatedSystems.isEmpty()) {
+        relatedSystems = cleanedSystem;
+    } else {
+        Set<String> systems = new HashSet<>(Arrays.asList(relatedSystems.split(",")));
+        systems.addAll(Arrays.asList(cleanedSystem.split(",")));
+
+        // Remove empty strings, trim each system, and remove any remaining whitespace
+        systems = systems.stream()
+                .filter(s -> !s.trim().isEmpty())
+                .map(s -> s.trim().replaceAll("\\s+", " "))
+                .collect(Collectors.toSet());
+
+        relatedSystems = String.join(",", systems);
     }
+}
 
     public void addExtension(String extension) {
         if(extensions==null) extensions = extension;
@@ -156,7 +174,8 @@ public class FileObject extends BaseAuditEntity {
     }
 
     public List<String> getExtensionsArray() {
-        return Arrays.asList(extensions.split(","));
+        if(this.extensions!=null)return Arrays.asList(extensions.split(","));
+        return Collections.emptyList();
     }
 
     @Override

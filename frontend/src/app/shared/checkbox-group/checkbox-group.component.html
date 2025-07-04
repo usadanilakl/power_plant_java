@@ -1,5 +1,12 @@
 <div class="checkbox-group">
-  <label>{{ label }}</label>
+  <div class="label-container">
+    <label>{{ label }}</label>
+    @if (question()) {
+      <span class="question-icon" (click)="openPopup()" title="Click for more information">
+        <span class="material-icons">help</span>
+      </span>
+    }
+  </div>
   @for (option of options; track option.value) {
     <div>
       <input type="checkbox" 
@@ -12,3 +19,10 @@
     </div>
   }
 </div>
+
+  @if(showPopup){
+    <app-qa-menu
+      [question]="question()"
+      (closePopupEvent)="closePopup()">
+    </app-qa-menu>
+  }

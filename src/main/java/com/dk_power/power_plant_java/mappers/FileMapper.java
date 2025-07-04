@@ -53,7 +53,7 @@ public class FileMapper implements BaseMapper {
         if (file.getFileType() != null) fileDto.setFileType(valueService.getDtoById(file.getFileType().getId()));
         if (file.getSystem() != null) fileDto.setSystem(valueService.getDtoById(file.getSystem().getId()));
         if (file.getVendor() != null) fileDto.setVendor(valueService.getDtoById(file.getVendor().getId()));
-        if (file.getRelatedSystems() != null) fileDto.setRelatedSystems(file.getRelatedSystems());
+        if (file.getRelatedSystems() != null) fileDto.setRelatedSystemsAsString(file.getRelatedSystems());
         if (file.getPoints() != null)
             fileDto.setPoints(file.getPoints().stream().map(e -> equipmentService.getDtoById(e.getId())).toList());
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
@@ -79,7 +79,7 @@ public class FileMapper implements BaseMapper {
         if (file.getFileType() != null) fileDto.setFileType(valueService.getDtoById(file.getFileType().getId()));
         if (file.getSystem() != null) fileDto.setSystem(valueService.getDtoById(file.getSystem().getId()));
         if (file.getVendor() != null) fileDto.setVendor(valueService.getDtoById(file.getVendor().getId()));
-        if (file.getRelatedSystems() != null) fileDto.setRelatedSystems(file.getRelatedSystems());
+        if (file.getRelatedSystems() != null) fileDto.setRelatedSystemsAsString(file.getRelatedSystems());
         if (file.getBulkEditStep() != null) fileDto.setBulkEditStep(file.getBulkEditStep());
 //        if(file.getPoints()!=null) fileDto.setPoints(file.getPoints().stream().map(e->equipmentService.getDtoById(e.getId())).toList());
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
@@ -111,7 +111,7 @@ public class FileMapper implements BaseMapper {
             file.setPoints(fileDto.getPoints().stream().map(e -> equipmentService.getEntityById(e.getId())).toList());
         if (fileDto.getExtension() != null) file.setExtension(fileDto.getExtension());
         if (fileDto.getRelatedSystems() != null && file.getRelatedSystems() != null && !fileDto.getRelatedSystems().equals(file.getRelatedSystems()))
-            file.setRelatedSystems(fileDto.getRelatedSystems());
+            file.setRelatedSystems(fileDto.getRelatedSystemsAsString());
         if (fileDto.getName() != null) file.setName(fileDto.getName());
         if (fileDto.getBulkEditStep() != null) file.setBulkEditStep(fileDto.getBulkEditStep());
 //        if(fileDto.getHeatTraceList()!=null) file.setHeatTrace(fileDto.getHeatTraceList().stream().map(heatTraceService::convertToEntity).toList());
@@ -157,7 +157,7 @@ public class FileMapper implements BaseMapper {
         if (dto.getBaseLink() != null) fileObject.setBaseLink(dto.getBaseLink());
         if (dto.getFolder() != null) fileObject.setFolder(dto.getFolder());
         if (dto.getSystem() != null) fileObject.setSystem(valueService.findById(dto.getSystem()).orElse(null));
-        if (dto.getRelatedSystems() != null) fileObject.setRelatedSystems(dto.getRelatedSystems());
+        if (dto.getRelatedSystems() != null) fileObject.setRelatedSystems(dto.getRelatedSystemsAsString());
         if (dto.getFileNumber() != null && !dto.getFileNumber().isEmpty()) fileObject.setFileNumber(convertFileNumberArrayToString(dto.getFileNumber()));
         if (dto.getVendor() != null) fileObject.setVendor(valueService.findById(dto.getVendor()).orElse(null));
         if (dto.getObjectType() != null) fileObject.setObjectType(dto.getObjectType());

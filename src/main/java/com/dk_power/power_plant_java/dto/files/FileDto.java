@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -33,9 +34,9 @@ public class FileDto extends BaseDto {
     private String baseLink = "uploads";
     private String folder;
     private ValueDto system;
-    @JsonProperty("systems")
-    @JsonIgnore
-    private String relatedSystems;
+//    @JsonProperty("systems")
+//    @JsonIgnore
+    private List<String> relatedSystems;
     private List<String> fileNumber;
     private ValueDto vendor;
     private List<EquipmentDto> points;
@@ -68,11 +69,15 @@ public class FileDto extends BaseDto {
         this.fileType = fileType;
     }
 
-    public void setRelatedSystems(List<String> systems) {
-        this.relatedSystems = systems.toString();
+
+    @JsonIgnore
+    public void setRelatedSystemsAsString(String systems) {
+        this.relatedSystems = List.of(systems.split(","));
     }
-    public void setRelatedSystems(String systems) {
-        this.relatedSystems = systems;
+
+    @JsonIgnore
+    public String getRelatedSystemsAsString() {
+        return String.join(",", relatedSystems);
     }
 
     public void setVendor(String vendor) {
