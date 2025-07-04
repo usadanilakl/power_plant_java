@@ -130,19 +130,26 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
 
 @Transactional
 public LotoPoint processLotoPoint(LotoPointIdDto lotoPoint) {
+
     LotoPoint entity = convertIdDtoToEntity(lotoPoint);
     entity = save(entity);
-    
-    Set<Equipment> equipmentList = new HashSet<>(entity.getEquipmentList());
-    for (Equipment e : equipmentList) {
-        if (e.getId() != null && e.getId() != 0) {
-            Equipment managedEquipment = equipmentService.getEntityById(e.getId());
-            if (!managedEquipment.getLotoPoints().contains(entity)) {
-                managedEquipment.addLotoPoint(entity);
-                equipmentService.save(managedEquipment);
+
+    if(lotoPoint.getEquipmentList()!=null &&!lotoPoint.getEquipmentList().isEmpty()){
+
+        Set<Long> ids = new HashSet<>(lotoPoint.getEquipmentList());
+        for (Long id : ids) {
+            Equipment e = equipmentService.getEntityById(id);
+            if (e!=null && e.getId() != null && e.getId() != 0) {
+                Equipment managedEquipment = equipmentService.getEntityById(e.getId());
+                if (!managedEquipment.getLotoPoints().contains(entity)) {
+                    managedEquipment.addLotoPoint(entity);
+                    equipmentService.save(managedEquipment);
+                }
             }
         }
+
     }
+
     
     // Refresh the entity to ensure it reflects the latest state
     entityManager.refresh(entity);

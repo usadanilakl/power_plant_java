@@ -268,7 +268,7 @@ static toTableColumns(
       specificLocation: this.specificLocation,
       standard: this.standard,
       generalLocation: this.generalLocation,
-      equipmentIdList: this.equipmentIdList,
+      equipmentIdList: this.equipmentList.map(equipment => equipment.id),
       normalPosition: this.normalPosition,
       isolatedPosition: this.isolatedPosition,
       oldId: this.oldId,

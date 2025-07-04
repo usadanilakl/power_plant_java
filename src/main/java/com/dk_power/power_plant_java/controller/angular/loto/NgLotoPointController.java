@@ -163,6 +163,7 @@ public class NgLotoPointController {
 //            }
 
 //            LotoPoint lp = ngLotoPointService.convertIdDtoToEntity(lotoPoint);
+
             LotoPoint lp = ngLotoPointService.processLotoPoint(lotoPoint);
 
             LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(lp));

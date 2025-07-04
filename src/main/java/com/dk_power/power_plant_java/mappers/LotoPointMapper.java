@@ -179,6 +179,7 @@ public class LotoPointMapper implements BaseMapper{
 
         // Handle equipmentList
         if (dto.getEquipmentList() != null && !dto.getEquipmentList().isEmpty()) {
+            System.out.println("Handling equipmentList for LotoPointIdDto...  ids: " + dto.getEquipmentList());
             Set<Equipment> equipment = dto.getEquipmentList().stream()
                     .map(id -> equipmentService.findById(id).orElse(null))
                     .filter(Objects::nonNull)
