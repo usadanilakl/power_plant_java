@@ -178,6 +178,9 @@ export class DrawUtilService {
   }
 
   public updateSelectedShape(shape: Shape | null) {
+    if (shape && !this.shapes.some(s => s.id === shape.id)) {
+      this.shapes.push(shape);
+    }
     // Deselect all shapes
     this.shapes.forEach(s => s.isSelected = false);
   
@@ -403,5 +406,7 @@ export class DrawUtilService {
     return currentWidth / naturalWidth;
     // return naturalWidth / currentWidth;
   }
+
+
 
 }

@@ -210,6 +210,11 @@ export class CurrentEquipmentService {
       this.allShapesSubject.next(shapes);
     }
 
+    addShapeToAllShapes(shape: Shape): void {
+      this.allShapesSubject.getValue()?.push(shape);
+      this.allShapesSubject.next(this.allShapesSubject.getValue() || []);
+    }
+
     setCurrentPresetData(data: EquipmentDto): void {
       this.currentPresetDataSubject.next(data);
     }

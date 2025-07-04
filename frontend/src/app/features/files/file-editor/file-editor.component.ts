@@ -141,7 +141,7 @@ export class FileEditorComponent {
         this.isEqFormOpen.set(true);
       
         // Start the text recognition process
-        this.startTextRecognition(shape, newEq);
+        // this.startTextRecognition(shape, newEq);
       })
     ).subscribe();
   }
@@ -273,6 +273,7 @@ export class FileEditorComponent {
       next: (resp) => {
         if (resp && resp.responseData) {
           const updatedEquipment = new EquipmentDto(resp.responseData);
+          const sh = updatedEquipment.toShapeObject();
           this.currentEquipmentService.setCurrentEquipment(updatedEquipment);
           this.isEqFormOpen.set(false);
         } else {

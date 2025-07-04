@@ -74,15 +74,15 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         return findById(id).map(lotoPointMapper::convertToDto);
     }
 
-    public Page<LotoPointDto> complexSearch(String searchString, int page, int size){
-        Map<String,String> searchCriteria = new HashMap<>();
+    public Page<LotoPointDto> complexSearch(String searchString, int page, int size) {
+        Map<String, String> searchCriteria = new HashMap<>();
         searchCriteria.put("tagNumber", searchString);
         searchCriteria.put("description", searchString);
         searchCriteria.put("specificLocation", searchString);
         SearchCriteria sc = new SearchCriteria();
         sc.setFilters(searchCriteria);
 //        return complexSearch(sc).stream().map(this::toDto).toList();
-        return complexSearch(sc, page, size, "tagNumber", "asc",false);
+        return complexSearch(sc, page, size, "tagNumber", "asc", false);
     }
 
     @Override
@@ -97,13 +97,13 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
 
     public List<String> getRelatedImages(Long id) {
         Optional<LotoPoint> byId = findById(id);
-        if(byId.isPresent()){
+        if (byId.isPresent()) {
             LotoPoint lotoPoint = byId.get();
             Set<Equipment> equipmentList = lotoPoint.getEquipmentList();
             List<String> imageUrls = new ArrayList<>();
             for (Equipment equipment : equipmentList) {
                 FileObject file = equipment.getMainFile();
-                if(file!= null){
+                if (file != null) {
                     imageUrls.add(file.getFileLink());
                 }
             }
@@ -129,32 +129,32 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
 @Transactional
-public LotoPoint processLotoPoint(LotoPointIdDto lotoPoint) {
+public LotoPoint processLotoPoint(LotoPointIdDto lotoPointDto) {
+    System.out.println(lotoPointDto.getEquipmentIdList() + " - Processing LotoPoint");
+    LotoPoint entity = convertIdDtoToEntity(lotoPointDto);
+    entity = lotoPointRepo.save(entity);
+    Long savedLpId = entity.getId();
 
-    LotoPoint entity = convertIdDtoToEntity(lotoPoint);
-    entity = save(entity);
+    if (lotoPointDto.getEquipmentIdList() != null && !lotoPointDto.getEquipmentIdList().isEmpty()) {
+        Set<Long> ids = new HashSet<>(lotoPointDto.getEquipmentIdList());
+        System.out.println("Equipment IDs: " + ids);
 
-    if(lotoPoint.getEquipmentList()!=null &&!lotoPoint.getEquipmentList().isEmpty()){
-
-        Set<Long> ids = new HashSet<>(lotoPoint.getEquipmentList());
         for (Long id : ids) {
-            Equipment e = equipmentService.getEntityById(id);
-            if (e!=null && e.getId() != null && e.getId() != 0) {
-                Equipment managedEquipment = equipmentService.getEntityById(e.getId());
-                if (!managedEquipment.getLotoPoints().contains(entity)) {
-                    managedEquipment.addLotoPoint(entity);
-                    equipmentService.save(managedEquipment);
-                }
+            Equipment equipment = equipmentService.getEntityById(id);
+            if (equipment != null) {
+                // Update both sides of the relationship
+                LotoPoint lotoPoint = lotoPointRepo.findById(savedLpId).orElse(null);
+                System.out.println("equipment.getLotoPoints().size() = " + equipment.getLotoPoints().size());
+                equipment.addLotoPoint(lotoPoint);
+                System.out.println("equipment.getLotoPoints().size() = " + equipment.getLotoPoints().size());
+                equipmentService.save(equipment);
+                lotoPoint.addEquipment(equipment);
+                lotoPointRepo.save(lotoPoint);
             }
         }
-
     }
 
-    
-    // Refresh the entity to ensure it reflects the latest state
-    entityManager.refresh(entity);
-    
-    return entity;
+    return getEntityById(savedLpId);
 }
 }
 

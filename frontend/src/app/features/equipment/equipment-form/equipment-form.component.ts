@@ -227,7 +227,10 @@ export class EquipmentFormComponent implements OnInit {
       tap(resp => {
         if (resp && resp.responseData) {
           const updatedEquipmentDto = new EquipmentDto(resp.responseData);
-          this.currentEquipmentService.setCurrentEquipment(updatedEquipmentDto);
+          const shape = updatedEquipmentDto.toShapeObject();
+          this.currentEquipmentService.addShapeToAllShapes(shape!);
+          this.currentEquipmentService.setCurrentShape(shape!);
+          // this.currentEquipmentService.setCurrentEquipment(updatedEquipmentDto);
           this.valuesChange.emit(updatedEquipmentDto);
         } else {
           throw new Error('Invalid response from server');
