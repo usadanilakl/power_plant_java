@@ -1,6 +1,5 @@
 import { ValueDto } from '../value.model';
 import { EquipmentDto } from '../equipment/equipment.model';
-import { JsonpClientBackend } from '@angular/common/http';
 import { LotoDto } from './loto.model';
 import { ValidatorFn, Validators } from '@angular/forms';
 import { Option } from '../option.model';
@@ -63,28 +62,74 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   lotos: LotoDto[];
 
   constructor(data: Partial<LotoPointModel> = {}) {
-    super();
-    this.id = data.id || 0;
-    this.unit = data.unit || '';
-    this.tagged = data.tagged || '';
-    this.tagNumber = data.tagNumber || '';
-    this.description = data.description || '';
-    this.isoPos = data.isoPos || new ValueDto();
-    this.normPos = data.normPos || new ValueDto();
-    this.specificLocation = data.specificLocation || '';
-    this.standard = data.standard || '';
-    this.generalLocation = data.generalLocation || '';
-    this.equipmentIdList = data.equipmentIdList || [];
-    this.normalPosition = data.normalPosition || '';
-    this.isolatedPosition = data.isolatedPosition || '';
-    this.equipmentList = data.equipmentList || [];
-    this.oldId = data.oldId || '';
-    this.objectType = data.objectType || '';
-    this.isUpdated = data.isUpdated || 0;
-    this.fileIds = data.fileIds || '';
-    this.conflictStatus = data.conflictStatus || '';
-    this.lotos = data.lotos || [];
+    super(data);  // This should handle id, name, objectType, and isVerified
+
+    // Initialize LotoPointDto-specific fields
+    // this.objectType = data.objectType?? 'LotoPoint';
+    // this.isVerified = data.isVerified?? false;
+    this.unit = data.unit ?? '';
+    this.tagged = data.tagged ?? '';
+    this.tagNumber = data.tagNumber ?? '';
+    this.description = data.description ?? '';
+    this.isoPos = data.isoPos ? new ValueDto(data.isoPos) : new ValueDto();
+    this.normPos = data.normPos ? new ValueDto(data.normPos) : new ValueDto();
+    this.specificLocation = data.specificLocation ?? '';
+    this.standard = data.standard ?? '';
+    this.generalLocation = data.generalLocation ?? '';
+    this.equipmentIdList = data.equipmentIdList ?? [];
+    this.normalPosition = data.normalPosition ?? '';
+    this.isolatedPosition = data.isolatedPosition ?? '';
+    this.equipmentList = data.equipmentList ?? [];
+    this.oldId = data.oldId ?? '';
+    this.isUpdated = data.isUpdated ?? 0;
+    this.fileIds = data.fileIds ?? '';
+    this.conflictStatus = data.conflictStatus ?? '';
+    this.lotos = data.lotos ?? [];
   }
+
+  // export class LotoPointDto extends BaseDto implements LotoPointModel {
+  // unit: string;
+  // tagged: string;
+  // tagNumber: string;
+  // description: string;
+  // isoPos: ValueDto;
+  // normPos: ValueDto;
+  // specificLocation: string;
+  // standard: string;
+  // generalLocation: string;
+  // equipmentIdList: number[];
+  // normalPosition: string;
+  // isolatedPosition: string;
+  // equipmentList: EquipmentDto[];
+  // oldId: string;
+  // isUpdated: number;
+  // fileIds: string;
+  // conflictStatus: string;
+  // lotos: LotoDto[];
+
+  // constructor(data: Partial<LotoPointModel> = {}) {
+  //   super();
+  //   this.id = data.id || 0;
+  //   this.unit = data.unit || '';
+  //   this.tagged = data.tagged || '';
+  //   this.tagNumber = data.tagNumber || '';
+  //   this.description = data.description || '';
+  //   this.isoPos = data.isoPos || new ValueDto();
+  //   this.normPos = data.normPos || new ValueDto();
+  //   this.specificLocation = data.specificLocation || '';
+  //   this.standard = data.standard || '';
+  //   this.generalLocation = data.generalLocation || '';
+  //   this.equipmentIdList = data.equipmentIdList || [];
+  //   this.normalPosition = data.normalPosition || '';
+  //   this.isolatedPosition = data.isolatedPosition || '';
+  //   this.equipmentList = data.equipmentList || [];
+  //   this.oldId = data.oldId || '';
+  //   this.objectType = data.objectType || '';
+  //   this.isUpdated = data.isUpdated || 0;
+  //   this.fileIds = data.fileIds || '';
+  //   this.conflictStatus = data.conflictStatus || '';
+  //   this.lotos = data.lotos || [];
+  // }
 
   // Serialization method
   // Serialization method
@@ -92,6 +137,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     return {
       id: this.id || 0,
       unit: this.unit || '',
+      isVerified :this.isVerified || false,
       tagged: this.tagged || '',
       tagNumber: this.tagNumber || '',
       description: this.description || '',
@@ -127,6 +173,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     return new LotoPointDto({
       id: json.id || 0,
       unit: json.unit || '',
+      isVerified: json.isVerified || false,
       tagged: json.tagged || '',
       tagNumber: json.tagNumber || '',
       description: json.description || '',
@@ -164,7 +211,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     dto: LotoPointDto, 
     isoPosOptions: Option[], 
     normPosOptions: Option[],
-    fields: LotoPointFieldName[] = ['tagNumber', 'description', 'unit', 'tagged', 'isoPos', 'normPos', 'specificLocation', 'standard', 'generalLocation']
+    fields: LotoPointFieldName[] = ['tagNumber', 'description', 'unit', 'tagged', 'isoPos', 'normPos', 'specificLocation', 'standard', 'generalLocation', 'isVerified']
   ): LotoPointFormField[] {
     const allFields: { [key in LotoPointFieldName]: LotoPointFormField } = {
       tagNumber: { name: 'tagNumber', label: 'Tag Number', type: 'text', validators: [Validators.required], initialValue: dto.tagNumber },
@@ -201,6 +248,16 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       equipmentList: { name: 'equipmentList', label: 'Equipment List', type: 'text',   },
       lotos: { name: 'lotos', label: 'Lotos', type: 'text',   },
       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
+      isVerified: { 
+        name: 'isVerified', 
+        label: 'Is Verified', 
+        type: 'select', 
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' }
+        ], 
+        initialValue: dto.isVerified?.toString() 
+      },
     };
   
     return fields.map(fieldName => allFields[fieldName]);
@@ -241,6 +298,13 @@ static toTableColumns(
     conflictStatus: { id: 'conflictStatus', header: 'Conflict Status', accessorKey: 'conflictStatus' },
     equipmentList: { id: 'equipmentList', header: 'Equipment List', accessorKey: 'equipmentList' },
     name: { id: 'name', header: 'Name', accessorKey: 'name' },
+    isVerified: {
+      id: 'isVerified',
+      header: 'Verified',
+      accessorFn: (item: LotoPointDto) => item.isVerified ? 'Yes' : 'No',
+      conditionalStyling: (item: any, column: Column) => 
+      item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
+    },
   };
 
   return fields.map(fieldName => allColumns[fieldName]);
@@ -251,7 +315,7 @@ static toTableColumns(
       'id', 'unit', 'tagged', 'tagNumber', 'description', 'isoPos', 'normPos',
       'specificLocation', 'standard', 'generalLocation', 'equipmentIdList',
       'normalPosition', 'isolatedPosition', 'equipmentList', 'oldId',
-      'objectType', 'isUpdated', 'fileIds', 'conflictStatus', 'lotos'
+      'objectType', 'isUpdated', 'fileIds', 'conflictStatus', 'lotos','isVerified'
     ];
     return validKeys.includes(key as keyof LotoPointModel);
   }
@@ -260,10 +324,13 @@ static toTableColumns(
     return new LotoPointIdDto({
       id: this.id,
       unit: this.unit,
+      isVerified: this.isVerified,
       tagged: this.tagged,
       tagNumber: this.tagNumber,
       description: this.description,
       isoPos: this.isoPos?.id || null,
+      isoPosId: this.isoPos?.id || null,
+      normPos: this.normPos?.id || null,
       normPosId: this.normPos?.id || null,
       specificLocation: this.specificLocation,
       standard: this.standard,

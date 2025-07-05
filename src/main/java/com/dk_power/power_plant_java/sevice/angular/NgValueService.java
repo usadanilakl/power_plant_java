@@ -223,9 +223,16 @@ public class NgValueService {
         Value oldValue = getValueById(id).orElseThrow(() -> new RuntimeException("Original Value not found"));
         Value newValue = getValueById(newId).orElseThrow(() -> new RuntimeException("New Value not found"));
 
-        return equipmentService.refactorValues(oldValue,newValue) &&
-        lotoPointService.refactorValues(oldValue, newValue) &&
-        fileService.refactorValues(oldValue, newValue);
+        List<Equipment> equipment = equipmentService.refactorValues(oldValue, newValue);
+        List<LotoPoint> lotoPoints = lotoPointService.refactorValues(oldValue, newValue);
+        List<FileObject> fileObjects = fileService.refactorValues(oldValue, newValue);
+
+        if(equipment.isEmpty() && lotoPoints.isEmpty() && fileObjects.isEmpty()){
+            oldValue.setCategory(newValue.getCategory());
+            return true;
+        }
+
+        return false;
 
     }
 

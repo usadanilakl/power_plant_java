@@ -1,5 +1,11 @@
 <div class="file-menu-container">
   <h2>File Menu</h2>
+  <div class="file-menu-controls">
+    <button class="file-menu-button" (click)="loadFiles('pid')">PID</button>
+    <button class="file-menu-button" (click)="loadFiles('elect')">Electrical</button>
+    <button class="file-menu-button" (click)="loadFiles('heat')">Heat Trace</button>
+    <button class="file-menu-button" (click)="loadFiles('iso')">Isometrics</button>
+  </div>
   
   @if (isLoading()) {
     <div>Loading...</div>
@@ -8,7 +14,38 @@
   } @else {
     <app-toggle-menu
       [menuItems]="menuItems()"
+      (itemDblClick)="onItemDoubleClick($event)"
       (itemClick)="onItemClick($event)"
     ></app-toggle-menu>
   }
 </div>
+
+<app-popup-projection
+  [isOpen]="isFileFormOpen()"
+  [title]="'File Details'"
+  [size]="'large'"
+  (close)="onFileFormClose()">
+  
+  @if(!isProcessingFile()){
+    <div class="side-by-side-container">
+    <div class="form-container">
+      <app-file-detail-form
+        [values]="currentFile()"
+        (formSubmit)="onFormSubmit($event)"
+      ></app-file-detail-form>
+    </div>
+
+    <!-- <div class="image-container">
+      <app-image-zoom-interactive
+        [imageUrl]="selectedImagePath"
+        [elements]="elements$">
+      </app-image-zoom-interactive>
+    </div> -->
+  </div>
+}@else{
+  <div class="center-container">
+    <p>Processing File...</p>
+    <p>{{fileSubmitMessage()}}</p>
+    <button (click)="fileUploadMessageWindow()">Cancel</button>
+  </div>
+}

@@ -47,6 +47,7 @@ public class FileMapper implements BaseMapper {
         fileDto.setFolder(file.getFolder());
         fileDto.setBaseLink(file.getBaseLink());
         fileDto.setExtension(file.getExtension());
+        fileDto.setIsVerified(file.getIsVerified());
         if (file.getName() != null) fileDto.setName(file.getName());
         if (file.getObjectType() != null) fileDto.setObjectType(file.getObjectType());
         fileDto.setId(file.getId());
@@ -73,6 +74,7 @@ public class FileMapper implements BaseMapper {
         fileDto.setFolder(file.getFolder());
         fileDto.setBaseLink(file.getBaseLink());
         fileDto.setExtension(file.getExtension());
+        if (file.getIsVerified()!= null) fileDto.setIsVerified(file.getIsVerified());
         if (file.getName() != null) fileDto.setName(file.getName());
         if (file.getObjectType() != null) fileDto.setObjectType(file.getObjectType());
         fileDto.setId(file.getId());
@@ -100,6 +102,7 @@ public class FileMapper implements BaseMapper {
         FileObject file = fileService.getEntityById(fileDto.getId());
 
         //if(!=null)
+        if(file.getIsVerified()!=null) file.setIsVerified(fileDto.getIsVerified());
         if (fileDto.getFileNumber() != null && !fileDto.getFileNumber().isEmpty()) file.setFileNumber(convertFileNumberArrayToString(fileDto.getFileNumber()));
         if (fileDto.getFileLink() != null) file.setFileLink(fileDto.getFileLink());
         if (fileDto.getFolder() != null) file.setFolder(fileDto.getFolder());
@@ -140,6 +143,7 @@ public class FileMapper implements BaseMapper {
         }
 
         // Set fields from BaseDto
+        if(dto.getIsVerified()!= null) fileObject.setIsVerified(dto.getIsVerified());
         if (dto.getId() != null && dto.getId() != 0) fileObject.setId(dto.getId());
         if (dto.getDeleted() != null) fileObject.setDeleted(dto.getDeleted());
         if (dto.getName() != null) fileObject.setName(dto.getName());

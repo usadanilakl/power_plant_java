@@ -14,7 +14,6 @@ export class FileIdDto extends BaseDto {
   extensions: string[];
   bulkEditStep: string;
   docNum: string;
-  isVerified: boolean;
 
   constructor(data: Partial<FileIdDto> = {}) {
     super(data);
@@ -32,7 +31,6 @@ export class FileIdDto extends BaseDto {
     this.extensions = data.extensions || [];
     this.bulkEditStep = data.bulkEditStep || '';
     this.docNum = data.docNum || '';
-    this.isVerified = data.isVerified || false;
   }
 
   override toJson(): any {
@@ -51,7 +49,6 @@ export class FileIdDto extends BaseDto {
       extensions: this.extensions,
       bulkEditStep: this.bulkEditStep,
       docNum: this.docNum,
-      isVerified: this.isVerified
     };
   }
 
@@ -76,7 +73,6 @@ export class FileIdDto extends BaseDto {
       extensions: json.extensions,
       bulkEditStep: json.bulkEditStep,
       docNum: json.docNum,
-      isVerified: json.isVerified
     });
   }
 }

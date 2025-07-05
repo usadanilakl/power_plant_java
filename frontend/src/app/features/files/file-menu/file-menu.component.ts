@@ -21,6 +21,11 @@ export class FileMenuComponent implements OnInit{
   menuItems = signal<NestedItem[]>([]);
   isLoading = signal(false);
   error = signal<string | null>(null);
+  currentFile = signal<FileDto | null>(null);
+  isFileFormOpen = signal(false);
+  isProcessingFile = signal(false);
+  fileSubmitMessage = signal<string>("");
+
 
 constructor(
   private fileService: FileService, 
@@ -42,9 +47,9 @@ constructor(
     });
   }
 
-  loadFiles(): void {
+  loadFiles(type: string = 'PID'): void {
     this.isLoading.set(true);
-    this.fileService.getByFileType("PID").subscribe(
+    this.fileService.getByFileType(type).subscribe(
       (response) => {
         this.isLoading.set(false);
         // Choose 'vendor', 'system', or 'fileType' as the grouping criteria
@@ -91,7 +96,7 @@ constructor(
   
       parentItem.values = files.map(file => new NestedItemImpl({
         id: file.id.toString(),
-        name: file.name,
+        name: file.name && file.name.trim() !== '' ? file.name : file.fileNumber.join(',') || 'Unnamed File',
         isExpanded: false,
         objectType: file.objectType,
         color: this.setFileItemColor(file)
@@ -116,6 +121,72 @@ constructor(
         console.log('Unhandled route for item click:', this.currentRoute());
     }
   }
+
+  onItemDoubleClick(item: NestedItem): void {
+    this.onItemClick(item)
+    this.isFileFormOpen.set(true);
+  }
+
+  onFormSubmit(formData: any) {
+
+    if(!this.currentFile()) return;
+    const formDataToSend = new FormData();
+    this.isProcessingFile.set(true);
+  
+    // Extract file from formData and remove it from the object
+    let file: File | null = null;
+    if (formData.file instanceof File) {
+      file = formData.file;
+      delete formData.file; // Remove file from formData
+    }
+  
+    // Append the file if it exists
+    if (file) {
+      formDataToSend.append('file', file);
+    }
+
+      // Extract the override/revision checkbox value
+      const overrideFile = formData.overrideFile;
+      delete formData.overrideFile; // Remove it from formData as it's not part of the FileDto
+  
+    // Continue with the rest of your logic...
+    // Merge the existing item data with the new form data
+    const updatedItem = { ...this.currentFile(), ...formData };
+  
+    // Append the JSON data
+    formDataToSend.append('fileDto', new Blob([JSON.stringify(new FileDto(updatedItem).toIdModel())], {
+      type: "application/json"
+    }));
+
+      // Append the override/revision flag
+      formDataToSend.append('overrideFile', overrideFile);
+
+
+    
+  
+    // Update in the backend
+    this.fileService.updateFile(formDataToSend).subscribe(
+      (response) => {
+
+        this.fileSubmitMessage.set('File updated successfully');
+        this.currentFile.set(response.responseData);
+  
+        this.isProcessingFile.set(false);
+        this.isFileFormOpen.set(false);
+      },
+      error => {
+        console.error('Error updating file:', error);
+        this.fileSubmitMessage.set('Error updating file ' + error.message);
+      }
+    );
+  }
+
+  onFileFormClose(){
+    this.isFileFormOpen.set(false);
+  }
+  fileUploadMessageWindow(){
+    this.isProcessingFile.set(false)
+  }
   
   private handleFileTableClick(item: NestedItem): void {
     this.handleFileEditClick(item);
@@ -130,6 +201,7 @@ constructor(
         const file = FileDto.fromJson(response.responseData);
         file.fileLink = file.fileLink.replaceAll('pdf','jpg');
         this.currentFileService.setCurrentFile(file);
+        this.currentFile.set(file);
       },
       (error) => {
         console.error('Error getting file for edit:', error);
@@ -151,7 +223,6 @@ constructor(
     }
     return 'green';
   }
-
 
 
 }

@@ -53,6 +53,13 @@ export class EquipmentTableComponent {
 
   columns: Column[] = [
     {
+      id: 'isVerified',
+      header: 'Verified',
+      accessorFn: (item: EquipmentDto) => item.isVerified ? 'Yes' : 'No',
+      conditionalStyling: (item: any, column: Column) => 
+      item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
+    },
+    {
       id: 'tagNumber',
       header: 'Tag Number',
       accessorKey: 'tagNumber',
@@ -66,13 +73,13 @@ export class EquipmentTableComponent {
       conditionalStyling: (item: any, column: Column) => 
         !item.description ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
     },
-    {
-      id: 'specificLocation',
-      header: 'Specific Location',
-      accessorKey: 'specificLocation',
-      conditionalStyling: (item: any, column: Column) => 
-        !item.specificLocation ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
-    },
+    // {
+    //   id: 'specificLocation',
+    //   header: 'Specific Location',
+    //   accessorKey: 'specificLocation',
+    //   conditionalStyling: (item: any, column: Column) => 
+    //     !item.specificLocation ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    // },
     {
       id: 'eqType',
       header: 'Equipment Type',
@@ -101,27 +108,20 @@ export class EquipmentTableComponent {
       conditionalStyling: (item: any, column: Column) => 
         !item.system?.name ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
     },
-    {
-      id: 'coordinates',
-      header: 'Coordinates',
-      accessorKey: 'coordinates',
-      conditionalStyling: (item: any, column: Column) => 
-        !item.coordinates ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
-    },
-    {
-      id: 'isVerified',
-      header: 'Verified',
-      accessorFn: (item: EquipmentDto) => item.isVerified ? 'Yes' : 'No',
-      conditionalStyling: (item: any, column: Column) => 
-        item.isVerified === undefined ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
-    },
-    {
-      id: 'conflictStatus',
-      header: 'Conflict Status',
-      accessorKey: 'conflictStatus',
-      conditionalStyling: (item: any, column: Column) => 
-        !item.conflictStatus ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
-    },
+    // {
+    //   id: 'coordinates',
+    //   header: 'Coordinates',
+    //   accessorKey: 'coordinates',
+    //   conditionalStyling: (item: any, column: Column) => 
+    //     !item.coordinates ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    // },
+    // {
+    //   id: 'conflictStatus',
+    //   header: 'Conflict Status',
+    //   accessorKey: 'conflictStatus',
+    //   conditionalStyling: (item: any, column: Column) => 
+    //     !item.conflictStatus ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+    // },
     {
       id: 'lotoPointsCount',
       header: 'LOTO Points',

@@ -15,7 +15,6 @@ export class EquipmentIdDto extends BaseDto {
   lotoPointIds: number[] | null;
   isUpdated: string | null;
   conflictStatus: string | null;
-  isVerified: boolean | null;
 
   constructor(data: Partial<EquipmentIdDto> = {}) {
     super(data);
@@ -33,7 +32,6 @@ export class EquipmentIdDto extends BaseDto {
     this.lotoPointIds = data.lotoPointIds || null;
     this.isUpdated = data.isUpdated || null;
     this.conflictStatus = data.conflictStatus || null;
-    this.isVerified = data.isVerified || false;
   }
 
   override toJson(): any {
@@ -53,7 +51,6 @@ export class EquipmentIdDto extends BaseDto {
       lotoPointIds: this.lotoPointIds || null,
       isUpdated: this.isUpdated || null,
       conflictStatus: this.conflictStatus || null,
-      isVerified: this.isVerified || null
     };
   }
 
@@ -79,7 +76,6 @@ export class EquipmentIdDto extends BaseDto {
       lotoPointIds: json.lotoPointIds || null,
       isUpdated: json.isUpdated || null,
       conflictStatus: json.conflictStatus || null,
-      isVerified: json.isVerified || null
     });
   }
 }

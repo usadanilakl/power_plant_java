@@ -10,6 +10,7 @@
   [initialItems]="lotoPoints$"
   (leftClickEvent)="onLotoPointSelected($event)"
   (cellDboubleClickEvent)="onEquipmentEdit($event.item, $event.column)"
+  (selectedItemsEvent)="onSelectedItems($event)"
 >
   @if(selectedItems().length > 0) {
     <div table-controls>
@@ -27,12 +28,18 @@
       [size]="'medium'"
       (close)="onClosePopup()">
       
-      <app-details-form
-        [fields]="fields"
+      <!-- <app-details-form
+        [fields]="fields()"
         [values]="itemToEdit()"
         [layout]="'reactive'"
         (formSubmit)="onFormSubmit($event)">
-      </app-details-form>
+      </app-details-form> -->
+      <app-reactive-form
+        [fields]="fields()"
+        [values]="itemToEdit()"
+        [layout]="'reactive'"
+        (formSubmit)="onFormSubmit($event)">
+      </app-reactive-form>
     
     </app-popup-projection>
 }

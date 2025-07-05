@@ -477,7 +477,11 @@ export class FileEditorComponent {
   }
 
   createNewLotoPoint(id: number): void {
-    this.lpToEdit.set(new LotoPointDto());
+    let presetData = {};
+    this.currentEquipmentService.getCurrentPresetLotoPointData().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(dataPresetData => {presetData = dataPresetData});
+    this.lpToEdit.set(new LotoPointDto(presetData));
     this.isLotoPointFormOpen.set(true);
   }
 

@@ -53,6 +53,7 @@ public class LotoPointMapper implements BaseMapper{
             return null;
         }
         LotoPointDto dto = new LotoPointDto();
+        if(entity.getIsVerified()!= null) dto.setIsVerified(entity.getIsVerified());
         if (entity.getUnit() != null) dto.setUnit(entity.getUnit());
         if (entity.getId() != null) dto.setId(entity.getId());
         if (entity.getIsUpdated() != null) dto.setIsUpdated(entity.getIsUpdated());
@@ -102,6 +103,7 @@ public class LotoPointMapper implements BaseMapper{
         LotoPoint entity = null;
         if(dto.getId()==null || dto.getId()==0) entity = new LotoPoint();
         else entity = lotoPointService.getEntityById(dto.getId());
+        if (dto.getIsVerified()!= null) entity.setIsVerified(dto.getIsVerified());
         if (dto.getUnit() != null) entity.setUnit(dto.getUnit());
         if (dto.getTagged() != null) entity.setTagged(dto.getTagged());
         if (dto.getTagNumber() != null) entity.setTagNumber(dto.getTagNumber());
@@ -148,6 +150,7 @@ public class LotoPointMapper implements BaseMapper{
         }
 
         // Set fields from BaseDto
+        if(dto.getIsVerified()!= null) lotoPoint.setIsVerified(dto.getIsVerified());
         if (dto.getId() != null && dto.getId() != 0) lotoPoint.setId(dto.getId());
         if (dto.getDeleted() != null) lotoPoint.setDeleted(dto.getDeleted());
         if (dto.getName() != null) lotoPoint.setName(dto.getName());

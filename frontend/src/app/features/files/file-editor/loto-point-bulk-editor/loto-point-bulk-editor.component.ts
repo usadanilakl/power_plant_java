@@ -17,10 +17,12 @@ import { ValueDto } from '../../../../models/value.model';
 import { LotoPointService } from '../../../../services/loto/loto-point.service';
 import { CurrentValueService } from '../../../../services/current-value.service';
 import { BaseDto } from '../../../../models/base/base.model';
+import { FormField } from '../../../../models/ui/form-field.model';
+import { ReactiveFormComponent } from "../../../../shared/reactive-form/reactive-form.component";
 
 @Component({
   selector: 'app-loto-point-bulk-editor',
-  imports: [FloatingMenuComponent, LotoPointSimpleTableComponent, PopupProjectionComponent, DetailsFormComponent],
+  imports: [FloatingMenuComponent, LotoPointSimpleTableComponent, PopupProjectionComponent, DetailsFormComponent, ReactiveFormComponent],
   templateUrl: './loto-point-bulk-editor.component.html',
   styleUrl: './loto-point-bulk-editor.component.css'
 })
@@ -43,7 +45,7 @@ export class LotoPointBulkEditorComponent implements OnInit {
   lotoPoints = signal<LotoPointDto[]>([]);
   lotoPoints$: Observable<LotoPointDto[]>;
   itemToEdit = signal<LotoPointDto | null>(null);
-  fields: LotoPointFormField[] = [];
+  fields = signal<LotoPointFormField[]>([]);
   isPopupOpen = false;
   isFormReady = false;
   DetailsFormComponent = DetailsFormComponent;
@@ -81,14 +83,16 @@ export class LotoPointBulkEditorComponent implements OnInit {
   onClosePopup() {
     this.isPopupOpen = false;
     this.itemToEdit.set(null);
-    this.fields = [];
+    this.fields.set([]);
     this.isFormReady = false;
   }
 
   onFormSubmit(formData: any) {
     if (this.itemToEdit()) {
       // Create a new object with the updated fields
+      console.log('onFormSubmit', formData);
       const updatedLotoPoint = new LotoPointDto({...this.itemToEdit(), ...formData});
+      console.log('Updated LotoPoint:', updatedLotoPoint);
 
       // Update the itemToEdit signal
       this.itemToEdit.set(updatedLotoPoint);
@@ -137,6 +141,7 @@ export class LotoPointBulkEditorComponent implements OnInit {
   }
 
   onSelectedItems(items: LotoPointDto[]) {
+    console.log('onSelectedItems', items);
     this.selectedItems.set(items);
   }
 
@@ -149,6 +154,9 @@ export class LotoPointBulkEditorComponent implements OnInit {
             ...item,
             ...presetData,
           })));
+
+          console.log('Preset values applied to items:', presetData);
+          console.log('Updated items:', updatedItems);
   
           // Update the selected items in the component
           this.selectedItems.set(updatedItems);
@@ -196,12 +204,12 @@ export class LotoPointBulkEditorComponent implements OnInit {
   
     private setupEditFields(item: LotoPointDto, column: Column) {
       if (LotoPointDto.isValidKey(column.id)) {
-        this.fields = LotoPointDto.toFormFields(
+        this.fields.set(LotoPointDto.toFormFields(
           item,
           this.isoPosOptions(),
           this.normPosOptions(),
           [column.id]
-        );
+        ));
         this.isFormReady = true;
       } else {
         console.error(`Invalid column id: ${column.id}`);

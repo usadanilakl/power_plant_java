@@ -11,6 +11,7 @@ import { CurrentFileService } from '../../../../services/current-file.service';
 import { CurrentEquipmentService } from '../../../../services/current-items-services/current-equipment.service';
 import { DataPresetDto } from '../../../../models/equipment/data-preset.model';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
+import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 
 
 @Component({
@@ -37,9 +38,15 @@ export class DataPresetMenuComponent implements OnInit {
   locations = signal<Option[]>([]);
   vendors = signal<Option[]>([]);
   eqTypes = signal<Option[]>([]);
+  isoPosOptions = signal<Option[]>([]);
+  normPosOptions = signal<Option[]>([]);
 
   fields = computed(() => this.createFields());
   currentValues = signal<EquipmentDto>(new EquipmentDto());
+
+
+  lotoPointFields = computed(() => this.createLotoPointFields());
+  currentLotoPointValues = signal<LotoPointDto>(new LotoPointDto());
 
   ngOnInit(): void {
     forkJoin({
@@ -47,13 +54,17 @@ export class DataPresetMenuComponent implements OnInit {
       locations: this.loadOptions(this.sharedDataService.loadLocations()),
       vendors: this.loadOptions(this.sharedDataService.loadVendors()),
       eqTypes: this.loadOptions(this.sharedDataService.loadEqTypes()),
+      normPosOptions: this.loadOptions(this.sharedDataService.loadNormPositions()),
+      isoPosOptions: this.loadOptions(this.sharedDataService.loadIsoPositions()),
     }).pipe(
       takeUntilDestroyed(this.destroyRef),
-      tap(({ systems, locations, vendors, eqTypes }) => {
+      tap(({ systems, locations, vendors, eqTypes, isoPosOptions, normPosOptions }) => {
         this.systems.set(systems);
         this.locations.set(locations);
         this.vendors.set(vendors);
         this.eqTypes.set(eqTypes);
+        this.isoPosOptions.set(isoPosOptions);
+        this.normPosOptions.set(normPosOptions);
       }),
       catchError(error => {
         console.error('Error loading form data:', error);
@@ -141,6 +152,52 @@ export class DataPresetMenuComponent implements OnInit {
     );
   }
 
+  /********************************************************************
+   * LOTO POINT FORM
+   *****************************************************************/
 
+  private createLotoPointFields(): FormField[] {
+    const currentPresetData = this.currentLotoPointValues();
+    return [
+      {
+        name: 'normPos',
+        label: 'Normal Position',
+        type: 'select',
+        options: this.addDefaultOption(this.normPosOptions(), 'Skip Normal Position'),
+        initialValue: currentPresetData.normPos?.id || ''
+      },
+      {
+        name: 'isoPos',
+        label: 'Isolated Position',
+        type: 'select',
+        options: this.addDefaultOption(this.isoPosOptions(), 'Skip Iso Position'),
+        initialValue: currentPresetData.isoPos?.id || ''
+      },
+      {
+        name: 'specificLocation',
+        label: 'Detailed Location',
+        type: 'text',
+        initialValue: currentPresetData.specificLocation || ''
+      },
+      {
+        name: 'description',
+        label: 'Description',
+        type: 'text',
+        options: [],
+        initialValue: currentPresetData.description || null
+      },
+      {
+        name: 'tagNumber',
+        label: 'Tag Number',
+        type: 'text',
+        options: [],
+        initialValue: currentPresetData.tagNumber || null
+      }
+    ];
+  }
+
+  onLotoPointSubmit(values: LotoPointDto) {
+    this.currentEquipmentService.setCurrentPresetLpData(new LotoPointDto({ ...values }));
+  }
 
 }

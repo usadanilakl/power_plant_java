@@ -32,7 +32,6 @@ export interface EquipmentModel extends BaseModel  {
   lotoPoints: LotoPointDto[] | null | undefined;
   isUpdated: string | null | undefined;
   conflictStatus: string | null | undefined;
-  isVerified: boolean | null | undefined;
 }
 
 export class EquipmentDto extends BaseDto implements EquipmentModel {
@@ -50,7 +49,6 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   lotoPoints: LotoPointDto[] | null | undefined;
   isUpdated: string | null | undefined;
   conflictStatus: string | null | undefined;
-  isVerified: boolean | null | undefined;
 
   // constructor(data: Partial<EquipmentModel> = {}) {
   //   super(data);
@@ -106,7 +104,6 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     this.lotoPoints = data.lotoPoints ?? [];
     this.isUpdated = data.isUpdated ?? null;
     this.conflictStatus = data.conflictStatus ?? null;
-    this.isVerified = data.isVerified ?? false;
   }
 
   // Serialization method
@@ -126,7 +123,6 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       lotoPoints: this.lotoPoints?.map(point => point ? point.toJson() : null).filter(Boolean),
       isUpdated: this.isUpdated || null,
       conflictStatus: this.conflictStatus || null,
-      isVerified: this.isVerified || false
     };
   }
 
@@ -152,7 +148,6 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       lotoPoints: json.lotoPoints ? json.lotoPoints.map((point: any) => LotoPointDto.fromJson(point)) : null,
       isUpdated: json.isUpdated || null,
       conflictStatus: json.conflictStatus || null,
-      isVerified: json.isVerified || false
     });
   }
 

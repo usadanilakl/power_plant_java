@@ -6,11 +6,22 @@
   [open]="isOpen()"
   (close)="handleClose()">
 
+  <h3>Preset Equipment Values</h3>
     <app-details-form
-    [fields]="fields()"
-    [values]="currentValues()"
-    [layout]="'reactive'"
-    (formSubmit)="onFormSubmit($event)">
+      [fields]="fields()"
+      [values]="currentValues()"
+      [layout]="'reactive'"
+      (formChange)="onFormSubmit($event)"
+      (formSubmit)="onFormSubmit($event)">
+    </app-details-form>
+
+  <h3>Preset Loto Point Values</h3>
+    <app-details-form
+      [fields]="lotoPointFields()"
+      [values]="currentLotoPointValues()"
+      [layout]="'reactive'"
+      (formChange)="onLotoPointSubmit($event)"
+      (formSubmit)="onLotoPointSubmit($event)">
     </app-details-form>
 
 

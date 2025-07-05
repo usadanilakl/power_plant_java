@@ -14,10 +14,11 @@ export class ToggleMenuComponent{
   menuItems = input<NestedItem[]>([]);
 
   itemClick = output<NestedItem>();
+  itemDblClick = output<NestedItem>();
 
 
   onItemDoubleClicked (item: NestedItem) {
-    console.log(`Double clicked on item: ${item.name}`);
+    this.itemDblClick.emit(item);
   }
   onItemRightClicked(event:{event: MouseEvent, item: NestedItem}) {
     console.log(`Right clicked on item: ${event.item.name}`);

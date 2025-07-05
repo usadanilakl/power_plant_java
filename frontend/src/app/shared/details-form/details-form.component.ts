@@ -17,6 +17,7 @@ import { MultiInputComponent } from '../multi-input/multi-input.component';
 import { RadioGroupComponent } from '../radio-group/radio-group.component';
 import { ValuesComponent } from "../../features/values/values.component";
 import { AddValueFormComponent } from "../../features/values/add-value-form/add-value-form.component";
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 @Component({
   selector: 'app-details-form',
@@ -43,6 +44,7 @@ export class DetailsFormComponent {
   @Output() formSubmit = new EventEmitter<any>();
   @Output() formDelete = new EventEmitter<void>();
   addNewSelectOption = output<void>();
+  formChange = output<any>();
 
   isValueEditMenuOpen = signal<boolean>(false);
   isAddValueMenuOpen = signal<boolean>(false);
@@ -54,7 +56,17 @@ export class DetailsFormComponent {
 
   ngOnInit() {
     this.createForm();
+    this.subscribeToFormChanges();
   }
+
+private subscribeToFormChanges() {
+  this.form.valueChanges.pipe(
+    debounceTime(1000), // Adds a small delay to avoid too frequent emissions
+    distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr))
+  ).subscribe(() => {
+    this.emitFormChange();
+  });
+}
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['values'] && !changes['values'].firstChange) {
@@ -169,5 +181,42 @@ export class DetailsFormComponent {
 
   closeAddValueMenu(){
     this.isAddValueMenuOpen.set(false);
+  }
+
+  private emitFormChange() {
+    if (this.form.valid) {
+      const formValue = this.form.value;
+      const result = this.prepareFormData(formValue);
+      this.formChange.emit(result);
+    }
+  }
+  
+  private prepareFormData(formValue: any): any {
+    const result = {...this.values};
+  
+    this.fields.forEach((field) => {
+      const parts = field.name.split('.');
+      let current: any = result;
+  
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!current[parts[i]]) {
+          current[parts[i]] = {};
+        }
+        current = current[parts[i]];
+      }
+  
+      const lastPart = parts[parts.length - 1];
+  
+      if (field.type === 'select' && typeof current[lastPart] === 'object') {
+        current[lastPart] = current[lastPart] || {};
+        current[lastPart].id = formValue[field.name];
+      } else if (field.type === 'file' && formValue[field.name] instanceof File) {
+        current[lastPart] = formValue[field.name];
+      } else {
+        current[lastPart] = formValue[field.name];
+      }
+    });
+  
+    return result;
   }
 }

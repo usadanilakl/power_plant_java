@@ -26,13 +26,14 @@ export class LotoPointSimpleTableComponent implements OnInit {
   private itemsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   items$ = this.itemsSubject.asObservable();
 
-  columns = computed(() => LotoPointDto.toTableColumns(['tagNumber', 'description', 'specificLocation']));
+  columns = computed(() => LotoPointDto.toTableColumns(['tagNumber', 'description', 'specificLocation', 'isoPos', 'normPos', 'isVerified']));
 
   itemsUpdated = output<LotoPointDto[]>();
   doubleClickEvent = output<LotoPointDto>();
   cellDboubleClickEvent = output<{item: LotoPointDto,column: Column}>();
   rightClickEvent = output<LotoPointDto>();
   leftClickEvent = output<LotoPointDto>();
+  selectedItemsEvent = output<LotoPointDto[]>();
 
     constructor() {
     effect(() => {
@@ -90,5 +91,9 @@ export class LotoPointSimpleTableComponent implements OnInit {
 
   onRowClick = (item: LotoPointDto) => {
     this.leftClickEvent.emit(item);
+  }
+  
+  onSelectedItems = (items: LotoPointDto[]) => {
+    this.selectedItemsEvent.emit(items);
   }
 }

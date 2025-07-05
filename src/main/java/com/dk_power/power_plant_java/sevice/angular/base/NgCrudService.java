@@ -182,20 +182,21 @@ public interface NgCrudService<
         return itemsPage.map(this::toDto);
     }
 
-    default boolean refactorValues(Value oldValue, Value newValue) {
+    default List<E> refactorValues(Value oldValue, Value newValue) {
         List<E> entityList = getRepo().findAll();
+        List<E> changedEntities = new ArrayList<>();
         boolean changes = false;
 
         for (E entity : entityList) {
             boolean entityChanged = refactorEntityValues(entity, oldValue, newValue);
 
             if (entityChanged) {
-                getRepo().save(entity);
+                changedEntities.add(getRepo().save(entity));
                 changes = true;
             }
         }
 
-        return changes;
+        return changedEntities;
     }
 
     private boolean refactorEntityValues(E entity, Value oldValue, Value newValue) {

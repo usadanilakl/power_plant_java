@@ -60,6 +60,17 @@ public class FileDto extends BaseDto {
         return folder;
     }
 
+    public String buildFileLink(String extension) {
+        this.extension = extension;
+        fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+getFileNumberAsString()+"."+extension;
+        return fileLink;
+    }
+    public String buildFolder(String extension) {
+        this.extension = extension;
+        folder = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName();
+        return folder;
+    }
+
     public void setFileType(String fileType) {
         ValueDto value =new ValueDto();
         value.setName(fileType);
@@ -105,5 +116,21 @@ public class FileDto extends BaseDto {
                 "\n\tpoints=" + points +
                 "\n\tobjectType=" + objectType +
                 "\n}";
+    }
+
+    public String getFileNumberAsString() {
+        if (this.fileNumber != null && !this.fileNumber.isEmpty()) {
+            String joinedFileNumber = this.fileNumber.stream()
+                    .map(part -> part.replaceAll("[^a-zA-Z0-9._-]", "_").replaceAll("\\s+", "-"))
+                    .collect(Collectors.joining("__SEP__"));
+
+            // Optionally limit the length
+            if (joinedFileNumber.length() > 255) {  // adjust max length as needed
+                joinedFileNumber = joinedFileNumber.substring(0, 255);
+            }
+            return joinedFileNumber;
+        }
+        return null;
+
     }
 }

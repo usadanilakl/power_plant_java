@@ -6,6 +6,8 @@ export class LotoPointIdDto extends BaseDto {
   tagNumber: string;
   description: string;
   isoPos: number | null;
+  normPos: number | null;
+  isoPosId: number | null;
   normPosId: number | null;
   specificLocation: string;
   standard: string;
@@ -13,33 +15,84 @@ export class LotoPointIdDto extends BaseDto {
   equipmentIdList: number[];
   normalPosition: string;
   isolatedPosition: string;
+  equipmentList: number[];
   oldId: string;
   isUpdated: number;
   fileIds: string;
   conflictStatus: string;
+  lotos: number[];
   lotoIds: number[];
 
   constructor(data: Partial<LotoPointIdDto> = {}) {
+    console.log('Creating LotoPointIdDto',data);
     super(data);
-    this.unit = data.unit || '';
-    this.tagged = data.tagged || '';
-    this.tagNumber = data.tagNumber || '';
-    this.description = data.description || '';
-    this.isoPos = data.isoPos || null;
-    this.normPosId = data.normPosId || null;
-    this.specificLocation = data.specificLocation || '';
-    this.standard = data.standard || '';
-    this.generalLocation = data.generalLocation || '';
-    this.equipmentIdList = data.equipmentIdList || [];
-    this.normalPosition = data.normalPosition || '';
-    this.isolatedPosition = data.isolatedPosition || '';
-    this.oldId = data.oldId || '';
-    this.objectType = data.objectType || '';
-    this.isUpdated = data.isUpdated || 0;
-    this.fileIds = data.fileIds || '';
-    this.conflictStatus = data.conflictStatus || '';
-    this.lotoIds = data.lotoIds || [];
+
+    this.unit = data.unit ?? '';
+    this.tagged = data.tagged ?? '';
+    this.tagNumber = data.tagNumber ?? '';
+    this.description = data.description ?? '';
+    this.isoPos = data.isoPos ?? null;
+    this.normPos = data.normPos ?? null;
+    this.isoPosId = data.isoPosId ?? null;
+    this.normPosId = data.normPosId ?? null;
+    this.specificLocation = data.specificLocation ?? '';
+    this.standard = data.standard ?? '';
+    this.generalLocation = data.generalLocation ?? '';
+    this.equipmentIdList = data.equipmentIdList ?? [];
+    this.normalPosition = data.normalPosition ?? '';
+    this.isolatedPosition = data.isolatedPosition ?? '';
+    this.equipmentList = data.equipmentList ?? [];
+    this.oldId = data.oldId ?? '';
+    this.isUpdated = data.isUpdated ?? 0;
+    this.fileIds = data.fileIds ?? '';
+    this.conflictStatus = data.conflictStatus ?? '';
+    this.lotos = data.lotos ?? [];
+    this.lotoIds = data.lotoIds ?? [];
   }
+
+
+// export class LotoPointIdDto extends BaseDto {
+//   unit: string;
+//   tagged: string;
+//   tagNumber: string;
+//   description: string;
+//   isoPos: number | null;
+//   normPosId: number | null;
+//   specificLocation: string;
+//   standard: string;
+//   generalLocation: string;
+//   equipmentIdList: number[];
+//   normalPosition: string;
+//   isolatedPosition: string;
+//   oldId: string;
+//   isUpdated: number;
+//   fileIds: string;
+//   conflictStatus: string;
+//   lotoIds: number[];
+
+//   constructor(data: Partial<LotoPointIdDto> = {}) {
+//     super(data);
+//     this.unit = data.unit || '';
+//     this.tagged = data.tagged || '';
+//     this.tagNumber = data.tagNumber || '';
+//     this.description = data.description || '';
+//     this.isoPos = data.isoPos || null;
+//     this.normPosId = data.normPosId || null;
+//     this.specificLocation = data.specificLocation || '';
+//     this.standard = data.standard || '';
+//     this.generalLocation = data.generalLocation || '';
+//     this.equipmentIdList = data.equipmentIdList || [];
+//     this.normalPosition = data.normalPosition || '';
+//     this.isolatedPosition = data.isolatedPosition || '';
+//     this.oldId = data.oldId || '';
+//     this.objectType = data.objectType || '';
+//     this.isUpdated = data.isUpdated || 0;
+//     this.fileIds = data.fileIds || '';
+//     this.conflictStatus = data.conflictStatus || '';
+//     this.lotoIds = data.lotoIds || [];
+//   }
+
+
 
   override toJson(): any {
     return {
@@ -49,6 +102,8 @@ export class LotoPointIdDto extends BaseDto {
       tagNumber: this.tagNumber,
       description: this.description,
       isoPos: this.isoPos,
+      normPos: this.normPos,
+      isoPosId: this.isoPosId,
       normPosId: this.normPosId,
       specificLocation: this.specificLocation,
       standard: this.standard,
@@ -56,11 +111,12 @@ export class LotoPointIdDto extends BaseDto {
       equipmentIdList: this.equipmentIdList,
       normalPosition: this.normalPosition,
       isolatedPosition: this.isolatedPosition,
+      equipmentList: this.equipmentList,
       oldId: this.oldId,
-      objectType: this.objectType,
       isUpdated: this.isUpdated,
       fileIds: this.fileIds,
       conflictStatus: this.conflictStatus,
+      lotos: this.lotos,
       lotoIds: this.lotoIds
     };
   }
@@ -78,6 +134,8 @@ export class LotoPointIdDto extends BaseDto {
       tagNumber: json.tagNumber,
       description: json.description,
       isoPos: json.isoPos,
+      normPos: json.normPos,
+      isoPosId: json.isoPosId,
       normPosId: json.normPosId,
       specificLocation: json.specificLocation,
       standard: json.standard,
@@ -85,11 +143,12 @@ export class LotoPointIdDto extends BaseDto {
       equipmentIdList: json.equipmentIdList || [],
       normalPosition: json.normalPosition,
       isolatedPosition: json.isolatedPosition,
+      equipmentList: json.equipmentList || [],
       oldId: json.oldId,
-      objectType: json.objectType,
       isUpdated: json.isUpdated,
       fileIds: json.fileIds || "",
       conflictStatus: json.conflictStatus,
+      lotos: json.lotos || [],
       lotoIds: json.lotoIds || []
     });
   }

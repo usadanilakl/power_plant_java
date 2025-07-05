@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -281,6 +282,25 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return files;
     }
 
+    private List<File> getFilesWithAllExtensions(FileDto file) {
+        List<File> files = new ArrayList<>();
+        for (String extension : file.getExtensions()) {
+            Path folder = Paths.get(projectRootPath, file.buildFileLink(extension)).getParent();
+            files.addAll(FileUtil.getRevisionsByFileNumber(file.getFileNumberAsString(), folder.toString()));
+        }
+        return files;
+    }
+
+    private List<File> getFilesWithAllExtensions(String link, List<String> extensions) {
+        List<File> files = new ArrayList<>();
+        for (String extension : extensions) {
+            String currentExtension = FileUtil.getFileExtension(link);
+            Path folder = Paths.get(projectRootPath, link.replaceAll(currentExtension,extension)).getParent();
+            files.addAll(FileUtil.getRevisionsByFileNumber(FileUtil.getNameFromPathWithoutExtension(link), folder.toString()));
+        }
+        return files;
+    }
+
 
     public FileObject convertIdDtoToEntity(FileIdDto fileDto) {
         return fileMapper.convertIdDtoToEntity(fileDto);
@@ -321,10 +341,37 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     public List<FileDto> getByFileType(String fileType, List<String> fields) {
-        return findAllWithProjection(fields).stream().map(this::toDto).toList();
+        return findAllWithProjection(fields).stream()
+            .filter(file -> file.getFileType() != null && file.getFileType().getName().toLowerCase().contains(fileType.toLowerCase()))
+            .map(this::toDto)
+            .collect(Collectors.toList());
     }
 
+    @Override
+    public List<FileObject> refactorValues(com.dk_power.power_plant_java.entities.categories.Value oldValue, com.dk_power.power_plant_java.entities.categories.Value newValue) {
+        List<FileObject> fileObjects = NgCrudService.super.refactorValues(oldValue, newValue);
+
+        for (FileObject file : fileObjects) {
+            String oldLink = file.getFileLink();
+            String newPath = oldLink.replace(oldValue.getName(), newValue.getName());
+            String currentExtension = FileUtil.getFileExtension(oldLink);
+            List<File> filesWithAllExtensions = getFilesWithAllExtensions(oldLink, file.getExtensionsArray());
+            for (File f : filesWithAllExtensions) {
+                String extension = FileUtil.getFileExtension(f.getName());
+                try {
+                    FileUtil.moveFileAndCleanup(f.toPath(), Paths.get(projectRootPath, newPath.replaceAll(currentExtension,extension)) );
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
 
 
+        }
 
+        return fileObjects.stream().map(file -> {
+            file.buildFileLink();
+            file.buildFolder();
+            return save(file);
+        }).toList();
+    }
 }

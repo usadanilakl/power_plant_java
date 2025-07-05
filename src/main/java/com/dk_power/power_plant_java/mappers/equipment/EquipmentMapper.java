@@ -11,15 +11,14 @@ import com.dk_power.power_plant_java.mappers.BaseMapper;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.equipment.HeatTraceService;
-import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,21 +34,21 @@ public class EquipmentMapper implements BaseMapper {
     private final HeatTraceMapper heatTraceMapper;
     private final HighlightMapper highlightMapper;
 
-public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService, @Lazy FileService fileService, @Lazy EquipmentService equipmentService, @Lazy LotoPointService lotoPointService, @Lazy HeatTraceService heatTraceService, HeatTraceMapper heatTraceMapper, @Lazy HighlightMapper highlightMapper) {
-    this.modelMapper = modelMapper;
-    this.valueService = valueService;
-    this.fileService = fileService;
-    this.equipmentService = equipmentService;
-    this.lotoPointService = lotoPointService;
-    this.heatTraceService = heatTraceService;
-    this.heatTraceMapper = heatTraceMapper;
-    this.highlightMapper = highlightMapper;
-}
+    public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService, @Lazy FileService fileService, @Lazy EquipmentService equipmentService, @Lazy LotoPointService lotoPointService, @Lazy HeatTraceService heatTraceService, HeatTraceMapper heatTraceMapper, @Lazy HighlightMapper highlightMapper) {
+        this.modelMapper = modelMapper;
+        this.valueService = valueService;
+        this.fileService = fileService;
+        this.equipmentService = equipmentService;
+        this.lotoPointService = lotoPointService;
+        this.heatTraceService = heatTraceService;
+        this.heatTraceMapper = heatTraceMapper;
+        this.highlightMapper = highlightMapper;
+    }
 
 
     public EquipmentDto convertToDto(Equipment entity) {
         EquipmentDto dto = new EquipmentDto();
-        
+
         dto.setId(entity.getId());
 
         if (entity.getName() != null) {
@@ -101,22 +100,22 @@ public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService,
                     .map(FileObject::getFileLink)
                     .collect(Collectors.toList()));
         }
-        if(entity.getLotoPoints()!=null){
+        if (entity.getLotoPoints() != null) {
             dto.setLotoPoints(entity.getLotoPoints().stream().map(lotoPointService::convertToDto).collect(Collectors.toSet()));
         }
-        if(entity.getHeatTraceList()!=null){
+        if (entity.getHeatTraceList() != null) {
             dto.setHeatTraceList(entity.getHeatTraceList().stream().map(heatTraceMapper::convertToDtoLight).toList());
         }
 
-        if(entity.getHighlight()!=null){
+        if (entity.getHighlight() != null) {
             dto.setHighlight(highlightMapper.convertToDtoLight(entity.getHighlight()));
         }
 
-        if(entity.getConflictStatus()!=null){
+        if (entity.getConflictStatus() != null) {
             dto.setConflictStatus(entity.getConflictStatus());
         }
 
-        if(entity.getIsVerified()!=null){
+        if (entity.getIsVerified() != null) {
             dto.setIsVerified(entity.getIsVerified());
         }
         return dto;
@@ -155,11 +154,11 @@ public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService,
             dto.setObjectType(entity.getObjectType());
         }
 
-        if(entity.getConflictStatus()!=null){
+        if (entity.getConflictStatus() != null) {
             dto.setConflictStatus(entity.getConflictStatus());
         }
 
-        if(entity.getIsVerified()!=null){
+        if (entity.getIsVerified() != null) {
             dto.setIsVerified(entity.getIsVerified());
         }
 
@@ -200,8 +199,8 @@ public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService,
     public Equipment convertToEntity(EquipmentDto source) {
 //        Equipment entity = Optional.of(equipmentService.getEntityById(source.getId())).orElse(new Equipment()) ;
         Equipment entity = null;
-        if(source.getId()!=null)entity = equipmentService.getEntityById(source.getId());
-        if (entity==null) entity = new Equipment();
+        if (source.getId() != null) entity = equipmentService.getEntityById(source.getId());
+        if (entity == null) entity = new Equipment();
 
         if (source.getName() != null) {
             entity.setName(source.getName());
@@ -228,11 +227,11 @@ public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService,
         }
 
         if (source.getVendor() != null) {
-            if(source.getVendor().getId() == null){
-                ValueDto v = valueService.getValueFromCategory("Vendor",source.getVendor().getName());
-                if(v==null) throw new RuntimeException("Vendor "+source.getVendor().getName() +" not found");
+            if (source.getVendor().getId() == null) {
+                ValueDto v = valueService.getValueFromCategory("Vendor", source.getVendor().getName());
+                if (v == null) throw new RuntimeException("Vendor " + source.getVendor().getName() + " not found");
                 else entity.setVendor(valueService.convertToEntity(v));
-            }else{
+            } else {
                 entity.setVendor(valueService.getEntityById(source.getVendor().getId()));
             }
 
@@ -242,32 +241,33 @@ public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService,
             entity.setMainFile(fileService.getByFileLink(source.getMainFile()));
         }
         if (source.getLocation() != null) {
-            if(source.getLocation().getId() == null){
-                ValueDto v = valueService.getValueFromCategory("Location",source.getLocation().getName());
-                if(v==null) throw new RuntimeException("Location "+source.getLocation().getName() +" not found");
+            if (source.getLocation().getId() == null) {
+                ValueDto v = valueService.getValueFromCategory("Location", source.getLocation().getName());
+                if (v == null) throw new RuntimeException("Location " + source.getLocation().getName() + " not found");
                 else entity.setLocation(valueService.convertToEntity(v));
-            }else{
+            } else {
                 entity.setLocation(valueService.getEntityById(source.getLocation().getId()));
             }
             //if(source.getLocation().getId()!=null)entity.setLocation(valueService.getEntityById(source.getLocation().getId()));
         }
         if (source.getEqType() != null) {
-            if(source.getEqType().getId() == null){
-                ValueDto v = valueService.getValueFromCategory("Equipment Type",source.getEqType().getName());
-                if(v==null) throw new RuntimeException("Equipment Type "+source.getEqType().getName() +" not found");
+            if (source.getEqType().getId() == null) {
+                ValueDto v = valueService.getValueFromCategory("Equipment Type", source.getEqType().getName());
+                if (v == null)
+                    throw new RuntimeException("Equipment Type " + source.getEqType().getName() + " not found");
                 else entity.setEqType(valueService.convertToEntity(v));
-            }else{
+            } else {
                 entity.setEqType(valueService.getEntityById(source.getEqType().getId()));
             }
             //if(source.getEqType().getId()!=null)entity.setEqType(valueService.getEntityById(source.getEqType().getId()));
         }
         if (source.getSystem() != null) {
 
-            if(source.getSystem().getId() == null){
-                ValueDto v = valueService.getValueFromCategory("System",source.getSystem().getName());
-                if(v==null) throw new RuntimeException("System "+source.getSystem().getName() +" not found");
+            if (source.getSystem().getId() == null) {
+                ValueDto v = valueService.getValueFromCategory("System", source.getSystem().getName());
+                if (v == null) throw new RuntimeException("System " + source.getSystem().getName() + " not found");
                 else entity.setSystem(valueService.convertToEntity(v));
-            }else{
+            } else {
                 entity.setSystem(valueService.getEntityById(source.getSystem().getId()));
             }
         }
@@ -278,92 +278,98 @@ public EquipmentMapper(ModelMapper modelMapper, @Lazy ValueService valueService,
                     .collect(Collectors.toList()));
         }
 
-        if(source.getLotoPoints()!=null){
+        if (source.getLotoPoints() != null) {
             entity.setLotoPoints(source.getLotoPoints().stream().map(lotoPointService::convertToEntity).collect(Collectors.toSet()));
         }
-        if(source.getHeatTraceList()!=null) entity.setHeatTraceList(source.getHeatTraceList().stream().map(heatTraceService::convertToEntity).toList());
+        if (source.getHeatTraceList() != null)
+            entity.setHeatTraceList(source.getHeatTraceList().stream().map(heatTraceService::convertToEntity).toList());
 
-        if(source.getConflictStatus()!=null){
+        if (source.getConflictStatus() != null) {
             entity.setConflictStatus(source.getConflictStatus());
         }
-        if(source.getIsVerified()!=null){
+        if (source.getIsVerified() != null) {
             entity.setIsVerified(source.getIsVerified());
         }
         return entity;
     }
-    
+
     public Equipment convertIdDtoToEntity(EquipmentIdDto dto) {
-    if (dto == null) return null;
+        if (dto == null) return null;
 
-    Equipment equipment;
-    if (dto.getId() == null || dto.getId() == 0) {
-        equipment = new Equipment();
-    } else {
-        equipment = equipmentService.findById(dto.getId()).orElse(new Equipment());
-    }
+        Equipment equipment;
+        if (dto.getId() == null || dto.getId() == 0) {
+            equipment = new Equipment();
+        } else {
+            equipment = equipmentService.findById(dto.getId()).orElse(new Equipment());
+        }
 
-        System.out.println("file link: "+dto.getMainFile());
+        System.out.println("file link: " + dto.getMainFile());
         FileObject byFileLink = fileService.getByFileLink(dto.getMainFile());
 
 
         // Set fields from BaseEquipmentDto
-    if (dto.getId() != null && dto.getId() != 0) equipment.setId(dto.getId());
-    if (dto.getDeleted() != null) equipment.setDeleted(dto.getDeleted());
-    if (dto.getName() != null) equipment.setName(dto.getName());
-    if (dto.getNote() != null) equipment.setNote(dto.getNote());
-    if (dto.getCreatedBy() != null) equipment.setCreatedBy(dto.getCreatedBy());
-    if (dto.getObjectType() != null) equipment.setObjectType(dto.getObjectType());
-    if (dto.getDataServiceItemId() != null) equipment.setDataServiceItemId(dto.getDataServiceItemId());
-    if (dto.getRefactorNotes() != null) equipment.setRefactorNotes(dto.getRefactorNotes());
-    if (dto.getDateCreated() != null) equipment.setDateCreated(dto.getDateCreated());
-    if (dto.getDateModified() != null) equipment.setDateModified(dto.getDateModified());
+        if (dto.getId() != null && dto.getId() != 0) equipment.setId(dto.getId());
+        if (dto.getDeleted() != null) equipment.setDeleted(dto.getDeleted());
+        if (dto.getName() != null) equipment.setName(dto.getName());
+        if (dto.getNote() != null) equipment.setNote(dto.getNote());
+        if (dto.getCreatedBy() != null) equipment.setCreatedBy(dto.getCreatedBy());
+        if (dto.getObjectType() != null) equipment.setObjectType(dto.getObjectType());
+        if (dto.getDataServiceItemId() != null) equipment.setDataServiceItemId(dto.getDataServiceItemId());
+        if (dto.getRefactorNotes() != null) equipment.setRefactorNotes(dto.getRefactorNotes());
+        if (dto.getDateCreated() != null) equipment.setDateCreated(dto.getDateCreated());
+        if (dto.getDateModified() != null) equipment.setDateModified(dto.getDateModified());
 
-    // Set fields specific to EquipmentIdDto
-    if (dto.getTagNumber() != null) equipment.setTagNumber(dto.getTagNumber());
-    if (dto.getDescription() != null) equipment.setDescription(dto.getDescription());
-    if (dto.getSpecificLocation() != null) equipment.setSpecificLocation(dto.getSpecificLocation());
-    if (dto.getEqTypeId() != null && dto.getEqTypeId()!=0) equipment.setEqType(valueService.findById(dto.getEqTypeId()).orElse(null));
-    if (dto.getVendorId() != null && dto.getVendorId()!=0) equipment.setVendor(valueService.findById(dto.getVendorId()).orElse(null));
-    if (dto.getLocationId() != null && dto.getLocationId()!=0) equipment.setLocation(valueService.findById(dto.getLocationId()).orElse(null));
-    if (dto.getSystemId() != null && dto.getSystemId()!=0) equipment.setSystem(valueService.findById(dto.getSystemId()).orElse(null));
-    if (dto.getCoordinates() != null) equipment.setCoordinates(dto.getCoordinates());
-    if (dto.getOriginalPictureSize() != null) equipment.setOriginalPictureSize(dto.getOriginalPictureSize());
-    if (dto.getMainFile() != null && !dto.getMainFile().isEmpty()) equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
-    if (dto.getConflictStatus() != null) equipment.setConflictStatus(dto.getConflictStatus());
-    if (dto.getIsVerified() != null) equipment.setIsVerified(dto.getIsVerified());
+        // Set fields specific to EquipmentIdDto
+        if (dto.getTagNumber() != null) equipment.setTagNumber(dto.getTagNumber());
+        if (dto.getDescription() != null) equipment.setDescription(dto.getDescription());
+        if (dto.getSpecificLocation() != null) equipment.setSpecificLocation(dto.getSpecificLocation());
+        if (dto.getEqTypeId() != null && dto.getEqTypeId() != 0)
+            equipment.setEqType(valueService.findById(dto.getEqTypeId()).orElse(null));
+        if (dto.getVendorId() != null && dto.getVendorId() != 0)
+            equipment.setVendor(valueService.findById(dto.getVendorId()).orElse(null));
+        if (dto.getLocationId() != null && dto.getLocationId() != 0)
+            equipment.setLocation(valueService.findById(dto.getLocationId()).orElse(null));
+        if (dto.getSystemId() != null && dto.getSystemId() != 0)
+            equipment.setSystem(valueService.findById(dto.getSystemId()).orElse(null));
+        if (dto.getCoordinates() != null) equipment.setCoordinates(dto.getCoordinates());
+        if (dto.getOriginalPictureSize() != null) equipment.setOriginalPictureSize(dto.getOriginalPictureSize());
+        if (dto.getMainFile() != null && !dto.getMainFile().isEmpty())
+            equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
+        if (dto.getConflictStatus() != null) equipment.setConflictStatus(dto.getConflictStatus());
+        if (dto.getIsVerified() != null) equipment.setIsVerified(dto.getIsVerified());
 
-    // Handle files
-    if (dto.getFiles() != null && !dto.getFiles().isEmpty()) {
-        List<FileObject> files = dto.getFiles().stream()
-                .map(fileService::getByFileLink)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        equipment.setFiles(files);
+        // Handle files
+        if (dto.getFiles() != null && !dto.getFiles().isEmpty()) {
+            List<FileObject> files = dto.getFiles().stream()
+                    .map(fileService::getByFileLink)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            equipment.setFiles(files);
+        }
+
+        // Handle lotoPoints
+        if (dto.getLotoPointIds() != null && !dto.getLotoPointIds().isEmpty()) {
+            Set<LotoPoint> lotoPoints = dto.getLotoPointIds().stream()
+                    .map(id -> lotoPointService.findById(id).orElse(null))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            equipment.setLotoPoints(lotoPoints);
+        }
+
+        // Handle heatTraces
+        if (dto.getHeatTraceIds() != null && !dto.getHeatTraceIds().isEmpty()) {
+            List<HeatTrace> heatTraces = dto.getHeatTraceIds().stream()
+                    .map(id -> heatTraceService.findById(id).orElse(null))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            equipment.setHeatTraceList(heatTraces);
+        }
+
+        return equipment;
     }
 
-    // Handle lotoPoints
-    if (dto.getLotoPointIds() != null && !dto.getLotoPointIds().isEmpty()) {
-        Set<LotoPoint> lotoPoints = dto.getLotoPointIds().stream()
-                .map(id -> lotoPointService.findById(id).orElse(null))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        equipment.setLotoPoints(lotoPoints);
+    @Override
+    public ModelMapper getMapper() {
+        return modelMapper;
     }
-
-    // Handle heatTraces
-    if (dto.getHeatTraceIds() != null && !dto.getHeatTraceIds().isEmpty()) {
-        List<HeatTrace> heatTraces = dto.getHeatTraceIds().stream()
-                .map(id -> heatTraceService.findById(id).orElse(null))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        equipment.setHeatTraceList(heatTraces);
-    }
-
-    return equipment;
-}
-
-@Override
-public ModelMapper getMapper() {
-return modelMapper;
-}
 }

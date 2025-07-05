@@ -5,5 +5,9 @@
   [columns]="columns()"
   [rightClickCallback]="onRowRightClick.bind(this)" 
   [clickCallback]="onRowClick.bind(this)"
+  (selectedItemsEvent)="onSelectedItems($event)"
   (search)="onSearch($event)">
+      <div table-controls>
+        <ng-content select="[table-controls]"></ng-content>
+      </div>
 </app-shared-table>

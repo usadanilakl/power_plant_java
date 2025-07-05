@@ -34,6 +34,13 @@ export class FileTableComponent implements OnInit {
 
   columns: Column[] = [
     {
+      id: 'isVerified',
+      header: 'Verified',
+      accessorFn: (item: FileDto) => item.isVerified ? 'Yes' : 'No',
+      conditionalStyling: (item: any, column: Column) => 
+      item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
+    },
+    {
       id: 'name',
       header: 'File Name',
       accessorKey: 'name',

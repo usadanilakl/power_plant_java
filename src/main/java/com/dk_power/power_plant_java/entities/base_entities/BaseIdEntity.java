@@ -25,6 +25,7 @@ public class BaseIdEntity {
     @Where(clause = "deleted = false")
     private Long id;
     private Boolean deleted = false;
+    private Boolean isVerified = false;
     private String name;
     private String note;
     private String createdBy;

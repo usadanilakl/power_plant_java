@@ -30,6 +30,15 @@ export class FileDetailFormComponent implements OnInit {
     // { name: 'relatedSystems', label: 'Systems', type: 'multi-select', options: this.systemOptions(), validators: [Validators.required], question: { type: 'text', content: "You can select multipla systems"} as Question },
     { name: 'file', label: 'File', type: 'file' },
     { name: 'overrideFile', label: 'If File already exists, then:', type: 'radio-group', options: [{ value: 'true', label: 'Override' }, { value: 'false', label: 'Revision' }], validators: [Validators.required] },
+    { 
+        name: 'isVerified', 
+        label: 'Is Verified', 
+        type: 'select', 
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' }
+        ]
+      }
   ]);
 
   isFormReady = signal(false);

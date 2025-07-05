@@ -49,7 +49,7 @@ export class CurrentEquipmentService {
 
     private currentPresetDataSubject = new BehaviorSubject<EquipmentDto>(new EquipmentDto());
     currentPresetData$: Observable<EquipmentDto> = this.currentPresetDataSubject.asObservable();
-
+    
     private currentLotoPointPresetDataSubject = new BehaviorSubject<LotoPointDto>(new LotoPointDto());
     currentLotoPointPresetData$: Observable<LotoPointDto> = this.currentLotoPointPresetDataSubject.asObservable();
 
@@ -268,6 +268,10 @@ export class CurrentEquipmentService {
     getCurrentPresetLotoPointData(): Observable<LotoPointDto> {
       return this.currentLotoPointPresetData$;
     }
+    
+    setCurrentPresetLpData(arg0: LotoPointDto) {
+      this.currentLotoPointPresetDataSubject.next(arg0);
+    }
 
     clearCurrentEquipment(): void {
         this.currentEquipmentSubject.next(null);
@@ -275,4 +279,6 @@ export class CurrentEquipmentService {
         this.relatedEquipmentSubject.next([]);
         this.relatedLotoPointsSubject.next([]);
     }
+
+
 }
