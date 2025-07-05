@@ -162,6 +162,9 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
             throw new IllegalArgumentException("EquipmentDto cannot be null");
         }
         Equipment equipment = idDtoToEntity(equipmentDto);
+        if (equipmentDto.getId() == null || equipmentDto.getId() == 0) {
+            return save(equipment);
+        }
         FileObject mainFile = equipment.getMainFile();
 
         //This is temporary fix, need to change client side setup to reference files by id, not by link.

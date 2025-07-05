@@ -266,7 +266,6 @@ export class FileEditorComponent {
   
     this.equipmentService.updateEquipment(eqWithFile).pipe(
       tap(resp => {
-        console.log('Equipment update response:', resp);
         // You could trigger a notification here
         // this.notificationService.showSuccess('Equipment updated successfully');
         this.isLoading.set(false);
@@ -339,7 +338,6 @@ export class FileEditorComponent {
  * LOTO POINT FORM PROCESSING
  ***********************************************************************************/
   onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
-    console.log('Submitting LOTO point:', lotoPoint);
     if (!lotoPoint) {
       console.error('Invalid LOTO point');
       return;

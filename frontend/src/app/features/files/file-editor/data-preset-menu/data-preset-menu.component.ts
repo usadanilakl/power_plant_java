@@ -125,6 +125,13 @@ export class DataPresetMenuComponent implements OnInit {
         type: 'text',
         options: [],
         initialValue: currentPresetData.tagNumber || null
+      },
+      {
+        name: 'isVerified',
+        label: 'Is Verified',
+        type: 'select',
+        options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }],
+        initialValue: currentPresetData.tagNumber || null
       }
     ];
   }
@@ -191,6 +198,13 @@ export class DataPresetMenuComponent implements OnInit {
         label: 'Tag Number',
         type: 'text',
         options: [],
+        initialValue: currentPresetData.tagNumber || null
+      },
+      {
+        name: 'isVerified',
+        label: 'Is Verified',
+        type: 'select',
+        options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }],
         initialValue: currentPresetData.tagNumber || null
       }
     ];

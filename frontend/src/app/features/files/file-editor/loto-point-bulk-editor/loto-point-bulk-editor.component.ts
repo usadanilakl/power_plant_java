@@ -90,9 +90,7 @@ export class LotoPointBulkEditorComponent implements OnInit {
   onFormSubmit(formData: any) {
     if (this.itemToEdit()) {
       // Create a new object with the updated fields
-      console.log('onFormSubmit', formData);
       const updatedLotoPoint = new LotoPointDto({...this.itemToEdit(), ...formData});
-      console.log('Updated LotoPoint:', updatedLotoPoint);
 
       // Update the itemToEdit signal
       this.itemToEdit.set(updatedLotoPoint);
@@ -141,7 +139,6 @@ export class LotoPointBulkEditorComponent implements OnInit {
   }
 
   onSelectedItems(items: LotoPointDto[]) {
-    console.log('onSelectedItems', items);
     this.selectedItems.set(items);
   }
 
@@ -191,7 +188,7 @@ export class LotoPointBulkEditorComponent implements OnInit {
     forkJoin(updateObservables).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(results => {
-        
+        this.currentFileService.updateLocalLotoPoints(results.map(result => result.responseData));
       }),
       catchError(error => {
         console.error('Error updating items on server:', error);

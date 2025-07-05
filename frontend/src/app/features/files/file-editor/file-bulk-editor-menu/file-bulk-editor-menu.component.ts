@@ -166,16 +166,19 @@ export class FileBulkEditorMenuComponent implements OnInit {
           const updatedItems = this.selectedItems().map(item => (new EquipmentDto({
             ...item,
             ...presetData,
+            id: item.id,
           })));
   
           // Update the selected items in the component
-          this.selectedItems.set(updatedItems);
+          this.selectedItems.set([]);
   
           // Update the items in the equipmentData
           const updatedEquipmentData = this.equipmentData().map(item => 
             updatedItems.find(updatedItem => updatedItem.id === item.id) || item
           );
           this.equipmentData.set(updatedEquipmentData);
+
+          console.log('items: ', this.equipmentData())
   
           // Optionally, update the items on the server
           this.updateItemsOnServer(updatedItems);
@@ -199,7 +202,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
     forkJoin(updateObservables).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(results => {
-        
+        this.currentFileService.updateRenderedEquipment(results.map(result => result.responseData));
       }),
       catchError(error => {
         console.error('Error updating items on server:', error);

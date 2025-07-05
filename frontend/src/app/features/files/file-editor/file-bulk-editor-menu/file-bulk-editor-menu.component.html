@@ -1,13 +1,13 @@
 <app-floating-menu 
   [title]="'Bulk Edit Menu'" 
-  [width]="30" 
+  [width]="50" 
   [height]="40" 
   [position]="MenuPosition.TopRight"
   [open]="isOpen()"
   (close)="handleClose()">
 
   <app-equipment-table
-    [equipmentList]="equipmentData()"
+    [equipmentList]="equipmentData"
     (equipmentClicked)="onEquipmentSelected($event)"
     (equipmentDoubleClicked)="onEquipmentEdit($event.item, $event.column)"
     (equipmentRightClicked)="onEquipmentContextMenu($event)"

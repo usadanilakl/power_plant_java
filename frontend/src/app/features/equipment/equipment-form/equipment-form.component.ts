@@ -127,7 +127,6 @@ export class EquipmentFormComponent implements OnInit {
         initialValue: currentPresetData.specificLocation || null
       }
     ];
-    console.log('created fields: ', fields);
     return fields;
   }
 
@@ -137,7 +136,6 @@ export class EquipmentFormComponent implements OnInit {
   }
 
   onFormSubmit(updatedValues: any) {
-    console.log("submitted values: ", updatedValues);
     const updatedEquipment = new EquipmentDto({ ...this.values(), ...updatedValues });
     this.valuesChange.emit(updatedEquipment);
     this.formSubmit.emit(updatedEquipment);

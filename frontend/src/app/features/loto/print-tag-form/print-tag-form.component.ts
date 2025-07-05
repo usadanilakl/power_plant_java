@@ -49,7 +49,6 @@ export class PrintTagFormComponent implements OnInit {
     this.http.post('http://localhost:8082/ng/loto-points/tagging', tagData, { headers: headers })
       .subscribe(
         response => {
-          console.log('Tag data submitted successfully', response);
           // Handle success (e.g., show a success message)
         },
         error => {

@@ -231,14 +231,7 @@ export class CurrentEquipmentService {
     
 
   
-  updateLocalLotoPoints(updatedLotoPoints: LotoPointDto[]): void {
-    const currentLotoPoints = this.lotoPointSubject.getValue();
-    const updatedLotoPointsArray = currentLotoPoints.map(point => {
-      const updatedPoint = updatedLotoPoints.find(up => up.id === point.id);
-      return updatedPoint || point;
-    });
-    this.lotoPointSubject.next(updatedLotoPointsArray);
-  }
+
 
     getCurrentEquipment(): Observable<EquipmentDto | null> {
         return this.currentEquipment$;
