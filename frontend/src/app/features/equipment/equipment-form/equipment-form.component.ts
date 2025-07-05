@@ -76,7 +76,7 @@ export class EquipmentFormComponent implements OnInit {
         type: 'select',
         options: this.addDefaultOption(this.systems(), 'Select System'),
         initialValue: currentPresetData.system?.id || '',
-        question: { type: 'text', content: "Select the system"} as Question,
+        // question: { type: 'text', content: "Select the system"} as Question,
         validators: [Validators.required]
       },
       {
@@ -85,6 +85,7 @@ export class EquipmentFormComponent implements OnInit {
         type: 'select',
         options: this.addDefaultOption(this.locations(), 'Select Location'),
         initialValue: currentPresetData.location?.id || '',
+        question: { type: 'text', content: "This is general location, if more detailed location description is needed, it can be provided in attached Loto Points"} as Question,
         validators: [Validators.required]
       },
       {
@@ -109,6 +110,12 @@ export class EquipmentFormComponent implements OnInit {
         type: 'text',
         options: [],
         initialValue: currentPresetData.description || null,
+        question: { 
+          type: 'text', 
+          content: `Description conventions:<br>
+          • Air Operated Valve - AOV<br>
+          • Motor Operated Valve - MOV`
+        } as Question,
         validators: [Validators.required]
       },
       {

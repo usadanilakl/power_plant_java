@@ -253,9 +253,6 @@ export class FileTableComponent implements OnInit {
 
       // Append the override/revision flag
       formDataToSend.append('overrideFile', overrideFile);
-
-
-    
   
     // Update in the backend
     this.fileService.updateFile(formDataToSend).subscribe(

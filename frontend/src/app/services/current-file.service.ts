@@ -25,6 +25,7 @@ export class CurrentFileService {
     uniqueEquipmentTypes$ = this.uniqueEquipmentTypesSubject.asObservable();
 
     private equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
+  
 
 
     setCurrentFile(file: FileDto | null): void {

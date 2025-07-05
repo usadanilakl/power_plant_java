@@ -13,6 +13,7 @@ import { FileEditorComponent } from './features/files/file-editor/file-editor.co
 import { FilePageComponent } from './pages/file-page/file-page.component';
 import { FileTableComponent } from './features/files/file-table/file-table.component';
 import { FileEditorBottomMenuComponent } from './features/files/file-editor/file-editor-bottom-menu/file-editor-bottom-menu.component';
+import { BackupComponent } from './pages/backup/backup.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -44,6 +45,7 @@ export const routes: Routes = [
     {path: 'loto-points', component: LotoPointComponent},
     {path: 'tag-number', component: TagNumberComponent},
     {path: 'print', component: PrintComponent},
+    {path: 'backup', component: BackupComponent},
 
 
     {path: 'file-editor', component: FileEditorComponent, data: {menuType: 'main'}},

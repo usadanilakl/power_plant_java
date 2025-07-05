@@ -1,0 +1,30 @@
+
+<div class="backup-container">
+  <h2>Database Backup and Restore</h2>
+
+  <div class="create-backup">
+    <h3>Create New Backup</h3>
+    <input [(ngModel)]="newBackupName" placeholder="Backup name (optional)">
+    <button (click)="createBackup()">Create Backup</button>
+  </div>
+
+  <div class="restore-backup">
+    <h3>Restore Backup</h3>
+    <select [(ngModel)]="selectedBackup">
+      <option value="">Select a backup</option>
+      <option *ngFor="let backup of backups" [value]="backup">{{backup}}</option>
+    </select>
+    <button (click)="restoreBackup()">Restore Selected Backup</button>
+  </div>
+
+  <div class="backup-list">
+    <h3>Available Backups</h3>
+    <ul>
+      <li *ngFor="let backup of backups">{{backup}}</li>
+    </ul>
+  </div>
+
+  <div class="message" *ngIf="message">
+    {{message}}
+  </div>
+</div>

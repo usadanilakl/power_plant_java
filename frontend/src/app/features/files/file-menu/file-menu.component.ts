@@ -45,6 +45,11 @@ constructor(
       const routeInfo = this.routService.getCurrentRouteInfo();
       this.currentRoute.set(routeInfo.path || '');
     });
+    this.currentFileService.currentFile$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(file => {
+      this.currentFile.set(file);
+    });
   }
 
   loadFiles(type: string = 'PID'): void {
@@ -160,8 +165,6 @@ constructor(
 
       // Append the override/revision flag
       formDataToSend.append('overrideFile', overrideFile);
-
-
     
   
     // Update in the backend

@@ -1,8 +1,9 @@
 import { ValueDto } from '../value.model';
 import { EquipmentDto } from '../equipment/equipment.model';
 import { FileIdDto } from './file-id.model';
+import { BaseDto, BaseModel } from '../base/base.model';
 
-export interface FileModel {
+export interface FileModel extends BaseModel {
   id: number;
   name: string;
   fileType: ValueDto;
@@ -22,9 +23,7 @@ export interface FileModel {
   isVerified: boolean;
 }
 
-export class FileDto implements FileModel {
-  id: number;
-  name: string;
+export class FileDto extends BaseDto implements FileModel {
   fileType: ValueDto;
   fileLink: string;
   baseLink: string;
@@ -34,14 +33,13 @@ export class FileDto implements FileModel {
   fileNumber: string[];
   vendor: ValueDto;
   points: EquipmentDto[];
-  objectType: string;
   extension: string;
   extensions: string[];
   bulkEditStep: string;
   docNum: string;
-  isVerified: boolean;
 
   constructor(data: Partial<FileModel> = {}) {
+    super(data);
     this.id = data.id || 0;
     this.name = data.name || '';
     this.fileType = data.fileType || new ValueDto({ id: 0, name: '' });
@@ -62,7 +60,7 @@ export class FileDto implements FileModel {
   }
 
     // Serialization method
-    toJson(): any {
+    override toJson(): any {
         return {
           id: this.id,
           name: this.name,
@@ -85,7 +83,7 @@ export class FileDto implements FileModel {
       }
     
       // Deserialization method (static)
-      static fromJson(json: any): FileDto {
+      static override fromJson(json: any): FileDto {
         return new FileDto({
           id: json.id,
           name: json.name,

@@ -13,6 +13,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/tag-number', label: 'Create New Tag' },
     { route: '/file', label: 'View Files' },
     { route: '/print', label: 'Print' },
+    { route: '/backup', label: 'Backup' },
     // { route: '/file-editor', label: 'Edit File' }
 ];
 

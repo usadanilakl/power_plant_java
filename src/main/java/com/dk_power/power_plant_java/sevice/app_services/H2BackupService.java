@@ -34,6 +34,9 @@ public class H2BackupService {
     @Value("${h2.backup.directory}")
     private String backupDirectory;
 
+    @Value("${h2.backup.shared.directory}")
+    private String backupSharedDirectory;
+
     //@Scheduled(cron = "0 0 1 * * ?") // Run at 1:00 AM every day
     public void backupDatabase(){
         backupDatabase(null);
@@ -41,6 +44,8 @@ public class H2BackupService {
     public void backupDatabase(String backupFileName) {
         if (backupFileName == null || backupFileName.isEmpty()) {
             backupFileName = "backup_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".zip";
+        }else{
+            backupFileName = backupFileName.trim() + ".zip";
         }
 
         Path backupPath = Paths.get(backupDirectory, backupFileName);
@@ -153,12 +158,48 @@ public class H2BackupService {
     }
 
     public List<String> listBackups() throws IOException {
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(backupDirectory), "backup_*.zip")) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(backupDirectory), "*.zip")) {
             return StreamSupport.stream(stream.spliterator(), false)
                     .map(Path::getFileName)
                     .map(Path::toString)
                     .sorted(Comparator.reverseOrder())
                     .collect(Collectors.toList());
+        }
+    }
+    
+
+    public void moveBackupToSharedDrive(String backupFileName) throws IOException {
+        Path backupPath = Paths.get(backupDirectory, backupFileName);
+        Path sharedDrivePath = Paths.get(backupSharedDirectory, backupFileName);
+
+        // Check if the source backup file exists
+        if (!Files.exists(backupPath)) {
+            throw new IOException("Backup file not found: " + backupPath);
+        }
+
+        // Check if the shared drive is accessible
+
+        Path sharedDriveDir = sharedDrivePath.getParent();
+        if (!Files.exists(sharedDriveDir)) {
+            throw new IOException("Shared drive is not accessible: " + sharedDriveDir);
+        }
+
+        // Check if we have write permissions on the shared drive
+        if (!Files.isWritable(sharedDriveDir)) {
+            throw new IOException("No write permission on shared drive: " + sharedDriveDir);
+        }
+
+        // Check if the file already exists in the shared drive
+        if (Files.exists(sharedDrivePath)) {
+            throw new IOException("File already exists in shared drive: " + sharedDrivePath);
+        }
+
+        try {
+            // Move the backup file to the shared drive
+            Files.move(backupPath, sharedDrivePath);
+            System.out.println("Backup moved to shared drive successfully: " + sharedDrivePath);
+        } catch (IOException e) {
+            throw new IOException("Failed to move backup to shared drive: " + e.getMessage(), e);
         }
     }
 }

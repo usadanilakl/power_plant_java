@@ -1,0 +1,26 @@
+
+.backup-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.create-backup, .restore-backup, .backup-list {
+  margin-bottom: 20px;
+}
+
+input, select, button {
+  margin: 5px 0;
+  padding: 5px;
+}
+
+button {
+  cursor: pointer;
+}
+
+.message {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+}
