@@ -39,9 +39,29 @@ public class DatabaseBackupController {
             return ResponseEntity.badRequest().body("Error restoring database: " + e.getMessage());
         }
     }
+
+    @PostMapping("/restore-database")
+    public ResponseEntity<String> restoreSharedDatabase(@RequestParam String backupFileName) {
+        try {
+            h2BackupService.restoreSharedDatabase(backupFileName);
+            return ResponseEntity.ok("Database restored successfully");
+        } catch (SQLException | IOException e) {
+            return ResponseEntity.badRequest().body("Error restoring database: " + e.getMessage());
+        }
+    }
     
     @GetMapping("/list-backups")
     public ResponseEntity<List<String>> listBackups() {
+        try {
+            List<String> backups = h2BackupService.listBackups();
+            return ResponseEntity.ok(backups);
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @GetMapping("/list-shared-backups")
+    public ResponseEntity<List<String>> listSharedBackups() {
         try {
             List<String> backups = h2BackupService.listBackups();
             return ResponseEntity.ok(backups);

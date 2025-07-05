@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.app_services;
 
+import com.dk_power.power_plant_java.util.FileUtil;
 import org.h2.tools.Restore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -61,28 +62,33 @@ public class H2BackupService {
                 System.out.println("Database backup created successfully: " + backupPath);
             }
 
-            // Keep only the 5 latest backups
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(backupDirectory), "backup_*.zip")) {
-                List<Path> backupFiles = StreamSupport.stream(stream.spliterator(), false)
-                        .sorted(Comparator.comparing((Path path) -> {
-                            try {
-                                return Files.getLastModifiedTime(path).toMillis();
-                            } catch (IOException e) {
-                                return 0L;
-                            }
-                        }).reversed())
-                        .collect(Collectors.toList());
-
-                // Delete older backups
-                for (int i = 5; i < backupFiles.size(); i++) {
-                    try {
-                        Files.delete(backupFiles.get(i));
-                        System.out.println("Deleted old backup: " + backupFiles.get(i));
-                    } catch (IOException e) {
-                        System.err.println("Error deleting old backup: " + e.getMessage());
-                    }
-                }
+            FileUtil.uploadAndKeepNLatest(Paths.get(backupDirectory).toString(), Paths.get(backupDirectory, backupFileName), "backup_*.zip", 10 );
+            boolean isAccessable = FileUtil.checkAccess(Paths.get(backupSharedDirectory));
+            if(isAccessable){
+                FileUtil.uploadAndKeepNLatest(Paths.get(backupSharedDirectory).toString(), Paths.get(backupDirectory, backupFileName), "backup_*.zip", 10 );
             }
+//            // Keep only the 5 latest backups
+//            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(backupDirectory), "backup_*.zip")) {
+//                List<Path> backupFiles = StreamSupport.stream(stream.spliterator(), false)
+//                        .sorted(Comparator.comparing((Path path) -> {
+//                            try {
+//                                return Files.getLastModifiedTime(path).toMillis();
+//                            } catch (IOException e) {
+//                                return 0L;
+//                            }
+//                        }).reversed())
+//                        .collect(Collectors.toList());
+//
+//                // Delete older backups
+//                for (int i = 5; i < backupFiles.size(); i++) {
+//                    try {
+//                        Files.delete(backupFiles.get(i));
+//                        System.out.println("Deleted old backup: " + backupFiles.get(i));
+//                    } catch (IOException e) {
+//                        System.err.println("Error deleting old backup: " + e.getMessage());
+//                    }
+//                }
+//            }
         } catch (SQLException | IOException e) {
             System.err.println("Error during database backup process: " + e.getMessage());
         }
@@ -90,6 +96,30 @@ public class H2BackupService {
 
     public void restoreDatabase(String backupFileName) throws SQLException, IOException {
         Path backupPath = Paths.get(backupDirectory, backupFileName);
+        if (!Files.exists(backupPath)) {
+            throw new IOException("Backup file not found: " + backupPath);
+        }
+
+        // Close all existing connections to the database
+        try (Connection conn = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
+            conn.createStatement().execute("SHUTDOWN");
+        }
+
+        // Extract the database name and path from the JDBC URL
+        String dbName = extractDatabaseName(dbUrl);
+        String dbPath = extractDatabasePath(dbUrl);
+
+        // Perform the restore
+        try {
+            Restore.execute(backupPath.toString(), dbPath, dbName);
+            System.out.println("Database restored successfully from: " + backupPath);
+        } catch (Exception e) {
+            throw new IOException("Error restoring database: " + e.getMessage(), e);
+        }
+    }
+
+    public void restoreSharedDatabase(String backupFileName) throws SQLException, IOException {
+        Path backupPath = Paths.get(backupSharedDirectory, backupFileName);
         if (!Files.exists(backupPath)) {
             throw new IOException("Backup file not found: " + backupPath);
         }
@@ -159,6 +189,18 @@ public class H2BackupService {
 
     public List<String> listBackups() throws IOException {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(backupDirectory), "*.zip")) {
+            return StreamSupport.stream(stream.spliterator(), false)
+                    .map(Path::getFileName)
+                    .map(Path::toString)
+                    .sorted(Comparator.reverseOrder())
+                    .collect(Collectors.toList());
+        }
+    }
+
+
+
+    public List<String> listSharedBackups() throws IOException {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(backupSharedDirectory), "*.zip")) {
             return StreamSupport.stream(stream.spliterator(), false)
                     .map(Path::getFileName)
                     .map(Path::toString)

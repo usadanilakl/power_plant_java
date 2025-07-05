@@ -7,11 +7,13 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class FileUtil {
     public static String uploadFileToLocal(MultipartFile file, String directory, boolean override) throws IOException {
@@ -182,6 +184,90 @@ public class FileUtil {
             path = path.getParent();
         }
     }
+
+    public static void uploadAndKeepNLatest(String targetDirectory, Path sourcePath, String searchCriteria, Integer countOfLatestToKeep) {
+        if(searchCriteria==null) searchCriteria = "*";
+        if(countOfLatestToKeep==null) countOfLatestToKeep = 999999999;
+
+        try {
+            // Ensure the backup directory exists
+            Files.createDirectories(Paths.get(targetDirectory));
+
+            if (!targetDirectory.equals(sourcePath.getParent().toString())) {
+                // Copy the file from source to target directory
+                Path targetPath = Paths.get(targetDirectory, sourcePath.getFileName().toString());
+                Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                System.out.println("Copied file from " + sourcePath + " to " + targetPath);
+            }
+
+            // Keep only the n latest backups
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(targetDirectory), searchCriteria)) {
+                List<Path> files = StreamSupport.stream(stream.spliterator(), false)
+                        .sorted(Comparator.comparing((Path path) -> {
+                            try {
+                                return Files.getLastModifiedTime(path).toMillis();
+                            } catch (IOException e) {
+                                return 0L;
+                            }
+                        }).reversed())
+                        .collect(Collectors.toList());
+
+                // Delete older backups
+                for (int i = countOfLatestToKeep; i < files.size(); i++) {
+                    try {
+                        Files.delete(files.get(i));
+                        System.out.println("Deleted old backup: " + files.get(i));
+                    } catch (IOException e) {
+                        System.err.println("Error deleting old backup: " + e.getMessage());
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error during database backup process: " + e.getMessage());
+        }
+    }
+    
+public static boolean checkAccess(Path filePath) {
+    // Get the root path (drive letter for Windows, or root directory for Unix-like systems)
+    Path rootPath = filePath.getRoot();
+    
+    if (rootPath == null) {
+        System.err.println("Unable to determine root path for: " + filePath);
+        return false;
+    }
+
+    try {
+        // Check if the root path exists and is accessible
+        if (!Files.exists(rootPath)) {
+            System.out.println("Drive does not exist or is not accessible: " + rootPath);
+            return false;
+        }
+
+        // Check read permission
+        boolean readable = Files.isReadable(rootPath);
+        
+        // Check write permission
+        boolean writable = Files.isWritable(rootPath);
+        
+        // Check execute permission (for directories)
+        boolean executable = Files.isExecutable(rootPath);
+
+        boolean accessible = readable ;//&& writable && executable;
+
+        if (!accessible) {
+            System.out.println("Drive " + rootPath + " is not fully accessible.");
+            System.out.println("Read: " + readable + ", Write: " + writable + ", Execute: " + executable);
+        } else {
+            System.out.println("Drive " + rootPath + " is accessible.");
+        }
+
+        return accessible;
+    } catch (SecurityException e) {
+        System.err.println("Security exception when checking access for drive: " + rootPath);
+        e.printStackTrace();
+        return false;
+    }
+}
 
 
 //    public static List<File> getRevisionsByFileNumber(String oldFileNumber, String path) {
