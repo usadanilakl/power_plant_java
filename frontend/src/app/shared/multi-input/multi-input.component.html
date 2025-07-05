@@ -13,6 +13,7 @@
       @for (value of values; track $index) {
         <div class="input-value">
           <input
+            appCopyPaste
             [type]="type"
             [(ngModel)]="values[$index]"
             (ngModelChange)="onValueChange($index, $event)"

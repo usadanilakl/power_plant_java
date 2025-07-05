@@ -279,6 +279,8 @@ export class FileTableComponent implements OnInit {
   
     // Create a FormData object to send both file and JSON data
     const formDataToSend = new FormData();
+
+    this.submitting.set(true);
   
     // Extract file from formData and remove it from the object
     let file: File | null = null;
@@ -323,12 +325,15 @@ export class FileTableComponent implements OnInit {
           console.error('Response does not contain the expected data:', response);
         }
     
+
+        this.submitting.set(true);
         // Close the form or reset as needed
         this.selectedItem = null;
         this.isPopupOpen = false;
       },
       error => {
         console.error('Error creating file:', error);
+        this.fileSubmitMessage.set('Error updating file ' + error.message);
       }
     );
   }

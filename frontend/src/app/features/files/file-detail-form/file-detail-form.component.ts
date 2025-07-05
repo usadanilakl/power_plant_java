@@ -4,7 +4,6 @@ import { CurrentValueService } from '../../../services/current-value.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Option } from '../../../models/option.model';
 import { Validators } from '@angular/forms';
-import { Question } from '../../../models/ui/question.model';
 
 @Component({
   selector: 'app-file-detail-form',
@@ -67,7 +66,6 @@ export class FileDetailFormComponent implements OnInit {
   }
 
   onFormSubmit(formData: any) {
-    console.log("Form submitted: ", formData);
     this.formSubmit.emit(formData);
   }
 

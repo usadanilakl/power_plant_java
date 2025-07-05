@@ -6,6 +6,7 @@ import { Observable, Subscription, take } from 'rxjs';
 import { Question } from '../../models/ui/question.model';
 import { MatIconModule } from '@angular/material/icon';
 import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
+import { CopyPasteDirective } from '../../directives/copy-paste.directive';
 
 @Component({
   selector: 'app-searchable-dropdown',
@@ -19,7 +20,7 @@ import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
       multi: true
     }
   ],
-  imports: [FindPipe, MatIconModule, QaMenuComponent]
+  imports: [FindPipe, MatIconModule, QaMenuComponent, CopyPasteDirective]
 })
 export class SearchableDropdownComponent implements ControlValueAccessor {
 

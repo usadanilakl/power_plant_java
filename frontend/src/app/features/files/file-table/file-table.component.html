@@ -15,7 +15,8 @@
   [size]="'large'"
   (close)="closePopup()">
   
-  @if(!submitting()){<div class="side-by-side-container">
+  @if(!submitting()){
+    <div class="side-by-side-container">
     <div class="form-container">
       <app-file-detail-form
         [values]="selectedItem"

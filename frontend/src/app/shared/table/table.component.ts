@@ -5,11 +5,12 @@ import { Column } from '../../models/column.model';
 import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable, Subject, Subscription } from 'rxjs';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { CopyPasteDirective } from '../../directives/copy-paste.directive';
 
 @Component({
   selector: 'app-shared-table',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CopyPasteDirective],
   templateUrl: './table.component.html',
   styleUrls: ['./table.component.css']
 })

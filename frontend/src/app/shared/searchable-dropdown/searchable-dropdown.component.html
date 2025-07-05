@@ -13,7 +13,7 @@
     </div>
     @if (isOpen) {
       <div class="dropdown-options">
-        <input type="text" (input)="filterOptions($event)" placeholder="Search...">
+        <input appCopyPaste type="text" (input)="filterOptions($event)" placeholder="Search...">
         @for (option of filteredOptions; track option.value) {
           <div (click)="selectOption(option,$event)">
             {{ option.label }}

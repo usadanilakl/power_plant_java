@@ -3,11 +3,12 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/f
 import { CommonModule } from '@angular/common';
 import { Question } from '../../models/ui/question.model';
 import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
+import { CopyPasteDirective } from '../../directives/copy-paste.directive'
 
 @Component({
   selector: 'app-multi-input',
   standalone: true,
-  imports: [CommonModule, FormsModule, QaMenuComponent],
+  imports: [CommonModule, FormsModule, QaMenuComponent, CopyPasteDirective],
   templateUrl: `./multi-input.component.html`,
   styleUrls: ['./multi-input.component.css'],
   providers: [

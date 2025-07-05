@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, forwardRef, ViewEncapsulation, 
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 import { Question } from '../../models/ui/question.model';
+import { CopyPasteDirective } from '../../directives/copy-paste.directive';
 
 @Component({
   selector: 'app-form-input',
@@ -15,7 +16,7 @@ import { Question } from '../../models/ui/question.model';
       multi: true
     }
   ],
-  imports: [QaMenuComponent]
+  imports: [QaMenuComponent, CopyPasteDirective]
 })
 export class FormInputComponent implements ControlValueAccessor {
   @Input() label: string = '';
