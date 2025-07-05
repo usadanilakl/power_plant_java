@@ -156,9 +156,9 @@ export class LotoPointBulkEditorComponent implements OnInit {
             id: item.id,
           }));
 
-          console.log('current :', this.selectedItems());
-          console.log('Preset values applied to items:', presetData);
-          console.log('Updated items:', updatedItems);
+          // console.log('current :', this.selectedItems());
+          // console.log('Preset values applied to items:', presetData);
+          // console.log('Updated items:', updatedItems);
   
           // Update the selected items in the component
           this.selectedItems.set(updatedItems);
@@ -191,7 +191,7 @@ export class LotoPointBulkEditorComponent implements OnInit {
     forkJoin(updateObservables).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(results => {
-        // Optionally, you can update the local data with the server responses here
+        
       }),
       catchError(error => {
         console.error('Error updating items on server:', error);
