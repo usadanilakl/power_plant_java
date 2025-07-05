@@ -54,11 +54,53 @@ export class CurrentEquipmentService {
     currentLotoPointPresetData$: Observable<LotoPointDto> = this.currentLotoPointPresetDataSubject.asObservable();
 
     setCurrentShape(shape: Shape | null): void {
+      if(shape === null) {
+        const currentShape = this.shapeSubject.getValue();
+        if(currentShape && currentShape.id === 0){
+          // Remove the current shape from allShapes
+          const allShapes = this.allShapesSubject.getValue();
+          const updatedShapes = allShapes.filter(s => s !== currentShape);
+          // Create a new array to ensure change detection
+          this.allShapesSubject.next([...updatedShapes]);
+        }
+      }
       this.shapeSubject.next(shape);
       if (shape && shape.id) {
         this.fetchEquipmentById(shape.id);
       } else {
-        // this.clearCurrentEquipment();
+        this.clearCurrentEquipment();
+      }
+    }
+
+    updateCurrentShape(updatedShape: Shape): void {
+      const currentShape = this.shapeSubject.getValue();
+      
+      // Update the current shape
+      this.shapeSubject.next(updatedShape);
+    
+      // Update or replace the shape in the allShapes array
+      const allShapes = this.allShapesSubject.getValue();
+      let updatedShapes: Shape[];
+    
+      if (currentShape && currentShape.id === 0) {
+        // Remove the temporary shape and add the new one
+        updatedShapes = allShapes.filter(shape => shape.id !== 0);
+        updatedShapes.push(updatedShape);
+      } else {
+        // Update existing shape
+        updatedShapes = allShapes.map(shape => 
+          shape.id === updatedShape.id ? updatedShape : shape
+        );
+      }
+      
+      // Create a new array to ensure change detection
+      this.allShapesSubject.next([...updatedShapes]);
+    
+      // Fetch the corresponding equipment if the shape has a valid ID
+      if (updatedShape.id && updatedShape.id !== 0) {
+        this.fetchEquipmentById(updatedShape.id);
+      } else {
+        this.clearCurrentEquipment();
       }
     }
 
@@ -133,7 +175,7 @@ export class CurrentEquipmentService {
     setCurrentEquipment(eq: EquipmentDto | null): void {
       this.currentEquipmentSubject.next(new EquipmentDto(eq || new EquipmentDto()));
       if (eq) {
-        if(eq.lotoPoints)this.lotoPointSubject.next(eq.lotoPoints);
+        if(eq.lotoPoints)this.lotoPointSubject.next([...eq.lotoPoints]);
         this.fetchRelatedEquipmentAndLotoPoints(eq);
       } else {
         this.clearCurrentEquipment();

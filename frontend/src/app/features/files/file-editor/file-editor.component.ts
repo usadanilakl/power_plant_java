@@ -51,6 +51,8 @@ export class FileEditorComponent {
 
   lpToEdit = signal<LotoPointDto | null>(null);
 
+  isTextRecongnitionEnabled = signal<boolean>(true);
+
 
   constructor(
     protected currentFileService: CurrentFileService,
@@ -141,7 +143,7 @@ export class FileEditorComponent {
         this.isEqFormOpen.set(true);
       
         // Start the text recognition process
-        // this.startTextRecognition(shape, newEq);
+        if(this.isTextRecongnitionEnabled())this.startTextRecognition(shape, newEq);
       })
     ).subscribe();
   }
@@ -164,9 +166,15 @@ export class FileEditorComponent {
     ).subscribe();
   }
 
+  toggleTextRecongnition(){
+    this.isTextRecongnitionEnabled.set(!this.isTextRecongnitionEnabled());  
+  }
+
   closeEqForm(){
     this.isEqFormOpen.set(false);
     this.currentEquipmentService.clearCurrentEquipment();
+    this.recognizedText.set('');
+    this.currentEquipmentService.setCurrentShape(null);
   }
 
   onShapeSelected(shape: any) {
@@ -274,7 +282,7 @@ export class FileEditorComponent {
         if (resp && resp.responseData) {
           const updatedEquipment = new EquipmentDto(resp.responseData);
           const sh = updatedEquipment.toShapeObject();
-          this.currentEquipmentService.setCurrentEquipment(updatedEquipment);
+          this.currentEquipmentService.updateCurrentShape(sh!);
           this.isEqFormOpen.set(false);
         } else {
           throw new Error('Invalid response from server');
@@ -327,8 +335,9 @@ export class FileEditorComponent {
       }
     });
   }
-  //Loto Point form
-
+/**********************************************************************************
+ * LOTO POINT FORM PROCESSING
+ ***********************************************************************************/
   onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
     console.log('Submitting LOTO point:', lotoPoint);
     if (!lotoPoint) {
@@ -337,17 +346,20 @@ export class FileEditorComponent {
     }
 
     if(!lotoPoint.id || lotoPoint.id===0) {
+      this.processNewLotoPoint(lotoPoint);
+    }else{
+      this.processExitingLotoPoint(lotoPoint);
+    }
+
+  }
+  private processNewLotoPoint(lotoPoint: LotoPointDto): void {
       const currentEquipment = this.currentEquipment();
-      console.log('Creating new LOTO point for equipment:', currentEquipment);
       if (currentEquipment) {
         // Create a new LotoPointDto with the current equipment added to the equipmentList
         const newLotoPoint = new LotoPointDto({
           ...lotoPoint,
           equipmentList: [currentEquipment]
         });
-
-        
-    console.log('Submitting LOTO point:', newLotoPoint);
 
       this.lotoPointService.updateLotoPoint(newLotoPoint).pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -376,8 +388,8 @@ export class FileEditorComponent {
         }
       });
       }
-    }else{
-
+  }
+  private processExitingLotoPoint(lotoPoint: LotoPointDto): void {
       this.lotoPointService.updateLotoPoint(new LotoPointDto(lotoPoint)).pipe(
         takeUntilDestroyed(this.destroyRef),
         tap(resp => {
@@ -422,9 +434,6 @@ export class FileEditorComponent {
           this.lpToEdit.set(null);
         }
       });
-
-    }
-
   }
 
   onLotoPointFormDelete() {
@@ -467,17 +476,21 @@ export class FileEditorComponent {
     this.isLotoPointFormOpen.set(false);
   }
 
+  createNewLotoPoint(id: number): void {
+    this.lpToEdit.set(new LotoPointDto());
+    this.isLotoPointFormOpen.set(true);
+  }
+
+  /**********************************************************************************
+ * LOTO POINT BULK EDITING
+ ***********************************************************************************/
+
   openLpBulkEditMenu(){
     this.isLpBulkEditOpen.set(true);
   }
 
   onCloseLpBulkEditMenu(){
     this.isLpBulkEditOpen.set(false);
-  }
-
-  createNewLotoPoint(id: number): void {
-    this.lpToEdit.set(new LotoPointDto());
-    this.isLotoPointFormOpen.set(true);
   }
 
 

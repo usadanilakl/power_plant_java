@@ -28,6 +28,13 @@
       <button (click)="onFilterMenuOpen()" class="control-button">Equipment Filter</button>
       <button (click)="onDataPresetMenuOpen()" class="control-button">Data Preset Menu</button>
       <button (click)="onToggleFileFormat()" class="control-button">Toggle PDF/JPG</button>
+      <button (click)="toggleTextRecongnition()">
+        @if (isTextRecongnitionEnabled()) {
+          Disable Text Recognition
+        } @else {
+          Enable Text Recognition
+        }
+      </button>
     </div>
   </div>
 </div>
