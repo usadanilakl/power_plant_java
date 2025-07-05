@@ -1,53 +1,53 @@
 import { BaseDto } from '../base/base.model';
 
 export class LotoPointIdDto extends BaseDto {
-  unit: string;
-  tagged: string;
-  tagNumber: string;
-  description: string;
+  unit: string | null;
+  tagged: string | null;
+  tagNumber: string | null;
+  description: string | null;
   isoPos: number | null;
   normPos: number | null;
   isoPosId: number | null;
   normPosId: number | null;
-  specificLocation: string;
-  standard: string;
-  generalLocation: string;
-  equipmentIdList: number[];
-  normalPosition: string;
-  isolatedPosition: string;
-  equipmentList: number[];
-  oldId: string;
-  isUpdated: number;
-  fileIds: string;
-  conflictStatus: string;
-  lotos: number[];
-  lotoIds: number[];
+  specificLocation: string | null;
+  standard: string | null;
+  generalLocation: string | null;
+  equipmentIdList: number[] | null;
+  normalPosition: string | null;
+  isolatedPosition: string | null;
+  equipmentList: number[] | null;
+  oldId: string | null;
+  isUpdated: number | null;
+  fileIds: string | null;
+  conflictStatus: string | null;
+  lotos: number[] | null;
+  lotoIds: number[] | null;
 
   constructor(data: Partial<LotoPointIdDto> = {}) {
     console.log('Creating LotoPointIdDto',data);
     super(data);
 
-    this.unit = data.unit ?? '';
-    this.tagged = data.tagged ?? '';
-    this.tagNumber = data.tagNumber ?? '';
-    this.description = data.description ?? '';
+    this.unit = data.unit ?? null;
+    this.tagged = data.tagged ?? null;
+    this.tagNumber = data.tagNumber ?? null;
+    this.description = data.description ?? null;
     this.isoPos = data.isoPos ?? null;
     this.normPos = data.normPos ?? null;
     this.isoPosId = data.isoPosId ?? null;
     this.normPosId = data.normPosId ?? null;
-    this.specificLocation = data.specificLocation ?? '';
-    this.standard = data.standard ?? '';
-    this.generalLocation = data.generalLocation ?? '';
-    this.equipmentIdList = data.equipmentIdList ?? [];
-    this.normalPosition = data.normalPosition ?? '';
-    this.isolatedPosition = data.isolatedPosition ?? '';
-    this.equipmentList = data.equipmentList ?? [];
-    this.oldId = data.oldId ?? '';
-    this.isUpdated = data.isUpdated ?? 0;
-    this.fileIds = data.fileIds ?? '';
-    this.conflictStatus = data.conflictStatus ?? '';
-    this.lotos = data.lotos ?? [];
-    this.lotoIds = data.lotoIds ?? [];
+    this.specificLocation = data.specificLocation ?? null;
+    this.standard = data.standard ?? null;
+    this.generalLocation = data.generalLocation ?? null;
+    this.equipmentIdList = data.equipmentIdList ?? null;
+    this.normalPosition = data.normalPosition ?? null;
+    this.isolatedPosition = data.isolatedPosition ?? null;
+    this.equipmentList = data.equipmentList ?? null;
+    this.oldId = data.oldId ?? null;
+    this.isUpdated = data.isUpdated ?? null;
+    this.fileIds = data.fileIds ?? null;
+    this.conflictStatus = data.conflictStatus ?? null;
+    this.lotos = data.lotos ?? null;
+    this.lotoIds = data.lotoIds ?? null;
   }
 
 

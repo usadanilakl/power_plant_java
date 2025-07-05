@@ -10,26 +10,24 @@ import { BaseDto, BaseModel } from '../base/base.model';
 type LotoPointFieldName = keyof LotoPointModel;
 
 export interface LotoPointModel extends BaseModel{
-  id: number;
-  unit: string;
-  tagged: string;
-  tagNumber: string;
-  description: string;
-  isoPos: ValueDto;
-  normPos: ValueDto;
-  specificLocation: string;
-  standard: string;
-  generalLocation: string;
-  equipmentIdList: number[];
-  normalPosition: string;
-  isolatedPosition: string;
-  equipmentList: EquipmentDto[];
-  oldId: string;
-  objectType: string;
-  isUpdated: number;
-  fileIds: string;
-  conflictStatus: string;
-  lotos: LotoDto[];
+  unit: string | null;
+  tagged: string | null;
+  tagNumber: string | null;
+  description: string | null;
+  isoPos: ValueDto | null;
+  normPos: ValueDto | null;
+  specificLocation: string | null;
+  standard: string | null;
+  generalLocation: string | null;
+  equipmentIdList: number[] | null;
+  normalPosition: string | null;
+  isolatedPosition: string | null;
+  equipmentList: EquipmentDto[] | null;
+  oldId: string | null;
+  isUpdated: number | null;
+  fileIds: string | null;
+  conflictStatus: string | null;
+  lotos: LotoDto[] | null;
 }
 
 export interface LotoPointFormField {
@@ -42,49 +40,46 @@ export interface LotoPointFormField {
 }
 
 export class LotoPointDto extends BaseDto implements LotoPointModel {
-  unit: string;
-  tagged: string;
-  tagNumber: string;
-  description: string;
-  isoPos: ValueDto;
-  normPos: ValueDto;
-  specificLocation: string;
-  standard: string;
-  generalLocation: string;
-  equipmentIdList: number[];
-  normalPosition: string;
-  isolatedPosition: string;
-  equipmentList: EquipmentDto[];
-  oldId: string;
-  isUpdated: number;
-  fileIds: string;
-  conflictStatus: string;
-  lotos: LotoDto[];
+  unit: string | null;
+  tagged: string | null;
+  tagNumber: string | null;
+  description: string | null;
+  isoPos: ValueDto | null;
+  normPos: ValueDto | null;
+  specificLocation: string | null;
+  standard: string | null;
+  generalLocation: string | null;
+  equipmentIdList: number[] | null;
+  normalPosition: string | null;
+  isolatedPosition: string | null;
+  equipmentList: EquipmentDto[] | null;
+  oldId: string | null;
+  isUpdated: number | null;
+  fileIds: string | null;
+  conflictStatus: string | null;
+  lotos: LotoDto[] | null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     super(data);  // This should handle id, name, objectType, and isVerified
 
-    // Initialize LotoPointDto-specific fields
-    // this.objectType = data.objectType?? 'LotoPoint';
-    // this.isVerified = data.isVerified?? false;
-    this.unit = data.unit ?? '';
-    this.tagged = data.tagged ?? '';
-    this.tagNumber = data.tagNumber ?? '';
-    this.description = data.description ?? '';
-    this.isoPos = data.isoPos ? new ValueDto(data.isoPos) : new ValueDto();
-    this.normPos = data.normPos ? new ValueDto(data.normPos) : new ValueDto();
-    this.specificLocation = data.specificLocation ?? '';
-    this.standard = data.standard ?? '';
-    this.generalLocation = data.generalLocation ?? '';
-    this.equipmentIdList = data.equipmentIdList ?? [];
-    this.normalPosition = data.normalPosition ?? '';
-    this.isolatedPosition = data.isolatedPosition ?? '';
-    this.equipmentList = data.equipmentList ?? [];
-    this.oldId = data.oldId ?? '';
-    this.isUpdated = data.isUpdated ?? 0;
-    this.fileIds = data.fileIds ?? '';
-    this.conflictStatus = data.conflictStatus ?? '';
-    this.lotos = data.lotos ?? [];
+    this.unit = data.unit ?? null;
+    this.tagged = data.tagged ?? null;
+    this.tagNumber = data.tagNumber ?? null;
+    this.description = data.description ?? null;
+    this.isoPos = data.isoPos ? new ValueDto(data.isoPos) : null;
+    this.normPos = data.normPos ? new ValueDto(data.normPos) : null;
+    this.specificLocation = data.specificLocation ?? null;
+    this.standard = data.standard ?? null;
+    this.generalLocation = data.generalLocation ?? null;
+    this.equipmentIdList = data.equipmentIdList ?? null;
+    this.normalPosition = data.normalPosition ?? null;
+    this.isolatedPosition = data.isolatedPosition ?? null;
+    this.equipmentList = data.equipmentList ?? null;
+    this.oldId = data.oldId ?? null;
+    this.isUpdated = data.isUpdated ?? null;
+    this.fileIds = data.fileIds ?? null;
+    this.conflictStatus = data.conflictStatus ?? null;
+    this.lotos = data.lotos ?? null;
   }
 
   // export class LotoPointDto extends BaseDto implements LotoPointModel {
@@ -159,7 +154,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       isUpdated: this.isUpdated || 0,
       fileIds: this.fileIds || '',
       conflictStatus: this.conflictStatus || '',
-      lotos: this.lotos.map(loto => loto.toJson())
+      lotos: this.lotos?.map(loto => loto.toJson())
     };
   }
 
@@ -335,7 +330,7 @@ static toTableColumns(
       specificLocation: this.specificLocation,
       standard: this.standard,
       generalLocation: this.generalLocation,
-      equipmentIdList: this.equipmentList.map(equipment => equipment.id),
+      equipmentIdList: this.equipmentList?.map(equipment => equipment.id),
       normalPosition: this.normalPosition,
       isolatedPosition: this.isolatedPosition,
       oldId: this.oldId,
@@ -344,7 +339,7 @@ static toTableColumns(
       // fileIds: this.fileIds.split(',').map(id => id.trim()).filter(id => id !== ''),
       fileIds: this.fileIds,
       conflictStatus: this.conflictStatus,
-      lotoIds: this.lotos.map(loto => loto.id)
+      lotoIds: this.lotos?.map(loto => loto.id)
     });
   }
 

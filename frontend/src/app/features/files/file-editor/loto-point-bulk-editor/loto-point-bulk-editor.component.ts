@@ -119,7 +119,7 @@ export class LotoPointBulkEditorComponent implements OnInit {
   //Table related methods
 
   onLotoPointSelected(item: LotoPointDto) {
-    this.currentEquipmentService.setCurrentShapeWithIds(item.equipmentIdList);
+    this.currentEquipmentService.setCurrentShapeWithIds(item.equipmentIdList!);
   }
 
   onEquipmentEdit(lotoPoint: LotoPointDto, column: Column) {
@@ -150,11 +150,13 @@ export class LotoPointBulkEditorComponent implements OnInit {
       takeUntilDestroyed(this.destroyRef),
       tap(presetData => {
         if (presetData) {
-          const updatedItems = this.selectedItems().map(item => (new LotoPointDto({
+          const updatedItems = this.selectedItems().map(item => new LotoPointDto({
             ...item,
             ...presetData,
-          })));
+            id: item.id,
+          }));
 
+          console.log('current :', this.selectedItems());
           console.log('Preset values applied to items:', presetData);
           console.log('Updated items:', updatedItems);
   
