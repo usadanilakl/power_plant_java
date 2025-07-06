@@ -28,7 +28,7 @@
       <button (click)="onFilterMenuOpen()" class="control-button">Equipment Filter</button>
       <button (click)="onDataPresetMenuOpen()" class="control-button">Data Preset Menu</button>
       <button (click)="onToggleFileFormat()" class="control-button">Toggle PDF/JPG</button>
-      <button (click)="toggleTextRecongnition()">
+      <button (click)="toggleTextRecongnition()" class="control-button">
         @if (isTextRecongnitionEnabled()) {
           Disable Text Recognition
         } @else {
@@ -79,14 +79,17 @@
     [size]="'large'"
     (close)="closeEqForm()">
     
-      <app-equipment-form
-        [values]="currentEquipment()"
-        (formSubmit)="submitEquipment($event)"
-        (formDelete)="onEqDelete()"
-        (addNewLotoPointEvent)="createNewLotoPoint($event)"
-        (lotoPointRowRightClickEvent)="onLotoPointFormOpen($event)">
-      </app-equipment-form>
-
+      <div class="form-container">
+        <app-equipment-form
+          [values]="currentEquipment()"
+          (formSubmit)="submitEquipment($event)"
+          (formDelete)="onEqDelete()"
+          (addNewLotoPointEvent)="createNewLotoPoint($event)"
+          (lotoPointRowRightClickEvent)="onLotoPointFormOpen($event)">
+        </app-equipment-form>
+      
+        <button (click)="openTagNumberGenerator()" class="control-button generate-tag-button">Generate Tag</button>
+      </div>
   </app-popup-projection>
 
   <app-popup-projection
@@ -95,10 +98,21 @@
     [size]="'large'"
     (close)="onLotoPointFormClose()">
 
+    <div class="form-container">
       <app-loto-point-detail-form
         [values]="lpToEdit()"
         (formDelete)="onLotoPointFormDelete()"
         (formSubmit)="onLotoPointFormSubmit($event)">
       </app-loto-point-detail-form>
     
+      <button (click)="openTagNumberGenerator()" class="control-button generate-tag-button">Generate Tag</button>
+    </div>
   </app-popup-projection>
+
+  
+
+<app-popup-projection
+  [isOpen]="isTagNumberGeneratorOpen()"
+  (close)="closeTagNumberGenerator()">
+  <app-tag-number-generator></app-tag-number-generator>
+</app-popup-projection>

@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TagNumberService } from '../../../services/tag-number.service';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
+import { ClipboardService } from '../../../services/util/clipboard.service';
 
 @Component({
   selector: 'app-tag-number-generator',
@@ -19,7 +20,7 @@ export class TagNumberGeneratorComponent {
   generatedTagNumber: string | null = null;
   errorMessage: string | null = null;
 
-  constructor(private tagNumberService: TagNumberService) {}
+  constructor(private tagNumberService: TagNumberService, private clipboardService: ClipboardService) {}
 
   onSubmit() {
     const tagNumberData = {
@@ -31,6 +32,7 @@ export class TagNumberGeneratorComponent {
     this.tagNumberService.createTagNumber(tagNumberData).subscribe(
       (response: SpringApiResponse<string>) => {
         this.generatedTagNumber = response.responseData;
+        this.clipboardService.setClipboardData(response.responseData);
         this.errorMessage = null;
       },
       (error) => {

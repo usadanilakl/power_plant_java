@@ -20,10 +20,11 @@ import { LotoPointDetailFormComponent } from "../../loto-points/loto-point-detai
 import { PdfDisplayIframeComponent } from "../../../shared/pdf-dislplay-iframe/pdf-dislplay-iframe.component";
 import { LotoPointBulkEditorComponent } from "./loto-point-bulk-editor/loto-point-bulk-editor.component";
 import { EquipmentService } from '../../../services/equipment.service';
+import { TagNumberGeneratorComponent } from "../../tag-number/tag-number-generator/tag-number-generator.component";
 
 @Component({
   selector: 'app-file-editor',
-  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent, LotoPointDetailFormComponent, PdfDisplayIframeComponent, LotoPointBulkEditorComponent],
+  imports: [ImageZoomInteractiveComponent, FileBulkEditorMenuComponent, CommonModule, FloatingMenuComponent, DataPresetMenuComponent, PopupProjectionComponent, EquipmentFormComponent, LotoPointDetailFormComponent, PdfDisplayIframeComponent, LotoPointBulkEditorComponent, TagNumberGeneratorComponent],
   templateUrl: './file-editor.component.html',
   styleUrl: './file-editor.component.css',
   standalone: true,
@@ -52,6 +53,7 @@ export class FileEditorComponent {
   lpToEdit = signal<LotoPointDto | null>(null);
 
   isTextRecongnitionEnabled = signal<boolean>(true);
+  isTagNumberGeneratorOpen = signal<boolean>(false);
 
 
   constructor(
@@ -495,6 +497,13 @@ export class FileEditorComponent {
     this.isLpBulkEditOpen.set(false);
   }
 
+  openTagNumberGenerator(){
+    this.isTagNumberGeneratorOpen.set(true);
+  }
+
+  closeTagNumberGenerator(){
+    this.isTagNumberGeneratorOpen.set(false);
+  }
 
   
 }
