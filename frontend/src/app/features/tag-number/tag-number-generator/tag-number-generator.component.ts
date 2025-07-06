@@ -5,11 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { TagNumberService } from '../../../services/tag-number.service';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { ClipboardService } from '../../../services/util/clipboard.service';
+import { NamingConventionComponent } from "../naming-convention/naming-convention.component";
 
 @Component({
   selector: 'app-tag-number-generator',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NamingConventionComponent],
   templateUrl: './tag-number-generator.component.html',
   styleUrls: ['./tag-number-generator.component.css']
 })

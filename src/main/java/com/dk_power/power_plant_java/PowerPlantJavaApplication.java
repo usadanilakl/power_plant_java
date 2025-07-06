@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.controller.permits.automation.RedTagAutomat
 import com.dk_power.power_plant_java.entities.EtaProPoint;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.EtaProService;
+import com.dk_power.power_plant_java.sevice.angular.DefaultValueGeneratorService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelWriterService;
@@ -28,6 +29,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 
     private final RedTagAutomationService redTagAutomationService;
     private final EtaProService etaProService;
+    private final DefaultValueGeneratorService defaultValueGeneratorService;
 
 
 
@@ -45,6 +47,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     public void run(String... args) throws Exception {
 
 //        redTagAutomationService.openApp();
+
+        defaultValueGeneratorService.generateAllValues();
 
         String currentUser = System.getProperty("user.name");
         System.out.println("Current User: " + currentUser);

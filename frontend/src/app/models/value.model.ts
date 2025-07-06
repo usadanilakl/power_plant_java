@@ -4,17 +4,20 @@ import { Option } from './option.model';
 export interface ValueModel {
   id: number;
   name: string;
+  alias: string;
   category: CategoryDto;
 }
 
 export class ValueDto implements ValueModel {
   id: number;
   name: string;
+  alias: string;
   category: CategoryDto;
 
   constructor(data: Partial<ValueModel> = {}) {
     this.id = data.id || 0;
     this.name = data.name || '';
+    this.alias = data.alias || '';
     this.category = data.category || new CategoryDto({ id: 0, name: '', alias: '' });
   }
 

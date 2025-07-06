@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.sevice;
+package com.dk_power.power_plant_java.sevice.angular;
 
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import jakarta.persistence.GeneratedValue;
@@ -11,7 +11,8 @@ public class DefaultValueGeneratorService {
     private final NgValueService ngValueService;
 
     public void generateAllValues(){
-
+        generateSystems();
+        generateEquipmentTypes();
     }
 
 private void generateSystems() {
@@ -23,10 +24,28 @@ private void generateSystems() {
     ngValueService.createValue("System", "LP Steam System", "LPS");
     ngValueService.createValue("System", "IP Steam System", "IPS");
     ngValueService.createValue("System", "HP Steam System", "HPS");
-    ngValueService.createValue("System", "CT System", "CTP");
-    ngValueService.createValue("System", "ST System", "STP");
+    ngValueService.createValue("System", "Combustion Turbine", "CTP");
+    ngValueService.createValue("System", "Steam Turbine", "STP");
     ngValueService.createValue("System", "Fuel Gas System", "FGS");
     ngValueService.createValue("System", "Closed Cooling Water System", "CCW");
+    ngValueService.createValue("System", "Cold Reheat", "CRH");
+    ngValueService.createValue("System", "Hot Reheat", "HRH");
+    ngValueService.createValue("System", "Aux Steam", "AXS");
+    ngValueService.createValue("System", "Instrument Air", "INA");
+    ngValueService.createValue("System", "Lube Oil System", "LOS");
+    ngValueService.createValue("System", "Chemical Feed System", "CCF");
+    ngValueService.createValue("System", "Heat Trace", "HTS");
+    ngValueService.createValue("System", "Air Cool Condenser", "ACC");
+    ngValueService.createValue("System", "Blow Down System", "BDN");
+    ngValueService.createValue("System", "Potable Water System", "PWS");
+    ngValueService.createValue("System", "Fire Protection System", "FPS");
+    ngValueService.createValue("System", "Sampling System", "SMP");
+    ngValueService.createValue("System", "Compressed Gasses", "CMP");
+    ngValueService.createValue("System", "Duct Burner", "BUR");
+    ngValueService.createValue("System", "AFCU", "SCR");
+    ngValueService.createValue("System", "Control Oil", "COS");
+    ngValueService.createValue("System", "Seal Oil", "SOS");
+    ngValueService.createValue("System", "Bulk Ammonia System", "AQA");
 }
 
 private void generateEquipmentTypes() {
@@ -42,5 +61,9 @@ private void generateEquipmentTypes() {
     ngValueService.createValue("Equipment Type", "Pressure Transmitter", "PIT");
     ngValueService.createValue("Equipment Type", "Temperature Transmitter", "TIT");
     ngValueService.createValue("Equipment Type", "Flow Transmitter", "FIT");
+    ngValueService.createValue("Equipment Type", "Relief Valve", "PRV");
+    ngValueService.createValue("Equipment Type", "Control Panel", "CPL");
+    ngValueService.createValue("Equipment Type", "Heater-Dryer", "HTR");
+    ngValueService.createValue("Equipment Type", "Skid", "SKD");
 }
 }

@@ -134,9 +134,9 @@ export class DrawUtilService {
     
     if (this.isDrawingWithRightClick) {
       this.isDrawingWithRightClick = false;
+      // if(this.selectedShape.)
       this.newShapeSubject.next(this.selectedShape);
       this.selectedShape = null;
-      // The shape is already saved in the shapes array, so we just need to notify subscribers
       this.shapesSubject.next(this.shapes);
     }
   }

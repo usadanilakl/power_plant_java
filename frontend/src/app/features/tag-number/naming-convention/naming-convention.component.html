@@ -5,37 +5,23 @@
       <li>Unit: 01, 02, 03</li>
       <li>Equipment Type: 
         <ul style="padding-left: 20px; list-style-type: none;">
-          <li><strong>V</strong> - Manual valve</li>
-          <li><strong>MOV</strong> - Motor Operated Valve</li>
-          <li><strong>AOV</strong> - Air Operated Valve</li>
-          <li><strong>PCV</strong> - Pressure Control Valve</li>
-          <li><strong>TCV</strong> - Temperature Control Valve</li>
-          <li><strong>FCV</strong> - Flow Control Valve</li>
-          <li><strong>PMP</strong> - Pump</li>
-          <li><strong>CMP</strong> - Compressor</li>
-          <li><strong>XRF</strong> - Transformer</li>
-          <li><strong>PIT</strong> - Pressure Transmitter</li>
-          <li><strong>TIT</strong> - Temperature Transmitter</li>
-          <li><strong>FIT</strong> - Flow Transmitter</li>
+          @for (eqType of eqTypes(); track eqType.id) {
+            @if(eqType.alias){
+              <li><strong>{{ eqType.alias }}</strong> - {{ eqType.name }}</li>
+            }
+          }
           <li>If equipment is not in the list, come up with 3 letter name for it</li>
         </ul>
       </li>
       <li>System:</li>
       <ul style="padding-left: 20px; list-style-type: none;">
-        <li><strong>SWS</strong> - Service Water System</li>
-        <li><strong>DWS</strong> - Demin Water System</li>
-        <li><strong>DWT</strong> - Demin Water Treatment System</li>
-        <li><strong>CND</strong> - Condensate System</li>
-        <li><strong>BFW</strong> - Feed Water System</li>
-        <li><strong>LPS</strong> - LP Steam System</li>
-        <li><strong>IPS</strong> - IP Steam System</li>
-        <li><strong>HPS</strong> - HP Steam System</li>
-        <li><strong>CTP</strong> - CT System</li>
-        <li><strong>STP</strong> - ST System</li>
-        <li><strong>FGS</strong> - Fuel Gas System</li>
-        <li><strong>CCW</strong> - Closde Cooling Water System</li>
+        @for (system of systems(); track system.id) {
+          @if(system.alias){
+            <li><strong>{{ system.alias }}</strong> - {{ system.name }}</li>
+          }
+            <!-- <li><strong>{{ system.alias }}</strong> - {{ system.name }}</li> -->
+        }
         <li>If system is not in the list, come up with 3 letter name for it</li>
-
       </ul>
     </ul>
   </div>

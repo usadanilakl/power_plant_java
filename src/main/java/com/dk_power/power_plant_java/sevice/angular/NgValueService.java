@@ -77,9 +77,18 @@ public class NgValueService {
                 .orElseGet(() -> createCategory(categoryName));
 
         Value existingValue = category.getValueByName(valueName);
+        Value existingValueAlias = category.getValueByName(valueAlias);
         if (existingValue != null) {
+            if(existingValue.getAlias()==null){
+                existingValue.setAlias(valueAlias);
+                return valueRepo.save(existingValue);
+            }
             return existingValue;
-        } else {
+        }else if(existingValue == null && existingValueAlias!=null){
+            existingValueAlias.setName(valueName);
+            existingValueAlias.setAlias(valueAlias);
+            return valueRepo.save(existingValueAlias);
+        }else {
             Value newValue = new Value(valueName,valueAlias);
             newValue.setCategory(category);
             return valueRepo.save(newValue);
