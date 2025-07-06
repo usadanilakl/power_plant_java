@@ -68,13 +68,30 @@ public class NgValueService {
             return valueRepo.save(newValue);
         }
     }
-    
+
+    @Transactional
+    public Value createValue(String categoryName, String valueName, String valueAlias) {
+        Category category = categoryRepo.findByName(categoryName)
+                .stream()
+                .findFirst()
+                .orElseGet(() -> createCategory(categoryName));
+
+        Value existingValue = category.getValueByName(valueName);
+        if (existingValue != null) {
+            return existingValue;
+        } else {
+            Value newValue = new Value(valueName,valueAlias);
+            newValue.setCategory(category);
+            return valueRepo.save(newValue);
+        }
+    }
+
     @Transactional
     public Value addValueToCategoryByAlias(String categoryName, String valueName) {
         System.out.println(categoryName + " " + valueName);
         Category category = categoryRepo.findByAlias(categoryName);
         System.out.println(category.getAlias());
-        if(category == null) throw new RuntimeException("Category not found");
+        if (category == null) throw new RuntimeException("Category not found");
 
         Value existingValue = category.getValueByName(valueName);
         if (existingValue != null) {
@@ -85,7 +102,7 @@ public class NgValueService {
             return valueRepo.save(newValue);
         }
     }
-    
+
 
     // Update
     public Value updateValue(Long id, Value valueDetails) {
@@ -128,7 +145,7 @@ public class NgValueService {
         List<Equipment> associatedEq = equipmentService.findByValue(value);
         List<FileObject> associatedFiles = fileService.findByValue(value);
         List<LotoPoint> associatedLotoPoints = lotoPointService.findByValue(value);
-        if(associatedLotoPoints.isEmpty() && associatedFiles.isEmpty() && associatedEq.isEmpty()){
+        if (associatedLotoPoints.isEmpty() && associatedFiles.isEmpty() && associatedEq.isEmpty()) {
             valueRepo.deleteById(id);
         }
 
@@ -159,6 +176,7 @@ public class NgValueService {
         ValueDto valueDto = new ValueDto();
         if (value.getId() != null) valueDto.setId(value.getId());
         if (value.getName() != null) valueDto.setName(value.getName());
+        if (value.getAlias() != null) valueDto.setAlias(value.getAlias());
         if (value.getCategory() != null) valueDto.setCategory(this.categoryToDto(value.getCategory()));
 
         return valueDto;
@@ -179,6 +197,7 @@ public class NgValueService {
         Value value = new Value();
         value.setId(valueDto.getId());
         value.setName(valueDto.getName());
+        value.setAlias(valueDto.getAlias());
         value.setCategory(this.categoryToEntity(valueDto.getCategory()));
         return value;
     }
@@ -227,7 +246,7 @@ public class NgValueService {
         List<LotoPoint> lotoPoints = lotoPointService.refactorValues(oldValue, newValue);
         List<FileObject> fileObjects = fileService.refactorValues(oldValue, newValue);
 
-        if(equipment.isEmpty() && lotoPoints.isEmpty() && fileObjects.isEmpty()){
+        if (equipment.isEmpty() && lotoPoints.isEmpty() && fileObjects.isEmpty()) {
             oldValue.setCategory(newValue.getCategory());
             return true;
         }

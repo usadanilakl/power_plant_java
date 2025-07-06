@@ -20,8 +20,13 @@ public class Value extends BaseAuditEntity {
     public Value(String name) {
         this.name = name;
     }
+    public Value(String name, String alias) {
+        this.name = name;
+        this.alias = alias;
+    }
 
     private String name;
+    private String alias;
 
     @ManyToOne
     @JoinColumn(name = "category_id")

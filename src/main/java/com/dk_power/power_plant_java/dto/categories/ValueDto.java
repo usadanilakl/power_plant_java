@@ -15,6 +15,7 @@ public class ValueDto {
     private Long id;
     private String name;
     private CategoryDto category;
+    private String alias;
 
     @Override
     public String toString() {
