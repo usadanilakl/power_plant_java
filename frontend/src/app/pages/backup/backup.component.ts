@@ -3,11 +3,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BackupService } from '../../services/backup.service';
+import { RouterMenuComponent } from "../../shared/menu/router-menu/router-menu.component";
 
 @Component({
   selector: 'app-backup',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterMenuComponent],
   templateUrl: './backup.component.html',
   styleUrls: ['./backup.component.css']
 })
@@ -16,11 +17,17 @@ export class BackupComponent implements OnInit {
   newBackupName: string = '';
   selectedBackup: string = '';
   message: string = '';
+  
+  sharedDriveBackups: string[] = [];
+  newSharedBackupName: string = '';
+  selectedSharedBackup: string = '';
+  sharedDriveMessage: string = '';
 
   constructor(private backupService: BackupService) {}
 
   ngOnInit() {
     this.loadBackups();
+    this.loadSharedBackups();
   }
 
   loadBackups() {
@@ -51,4 +58,25 @@ export class BackupComponent implements OnInit {
       error: (error) => this.message = 'Error restoring backup: ' + error.message
     });
   }
+
+  loadSharedBackups() {
+    this.backupService.listSharedBackups().subscribe({
+      next: (backups) => this.sharedDriveBackups = backups,
+      error: (error) => this.sharedDriveMessage = 'Error loading backups: ' + error.message
+    });
+  }
+
+
+  restoreSharedBackup() {
+    if (!this.selectedSharedBackup) {
+      this.sharedDriveMessage = 'Please select a backup to restore';
+      return;
+    }
+    this.backupService.restoreSharedDatabase(this.selectedSharedBackup).subscribe({
+      next: (response) => this.sharedDriveMessage = response,
+      error: (error) => this.sharedDriveMessage = 'Error restoring backup: ' + error.message
+    });
+  }
+
+  
 }

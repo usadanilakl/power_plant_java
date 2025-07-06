@@ -40,7 +40,7 @@ public class DatabaseBackupController {
         }
     }
 
-    @PostMapping("/restore-database")
+    @PostMapping("/restore-shared-database")
     public ResponseEntity<String> restoreSharedDatabase(@RequestParam String backupFileName) {
         try {
             h2BackupService.restoreSharedDatabase(backupFileName);
@@ -63,7 +63,7 @@ public class DatabaseBackupController {
     @GetMapping("/list-shared-backups")
     public ResponseEntity<List<String>> listSharedBackups() {
         try {
-            List<String> backups = h2BackupService.listBackups();
+            List<String> backups = h2BackupService.listSharedBackups();
             return ResponseEntity.ok(backups);
         } catch (IOException e) {
             return ResponseEntity.badRequest().body(null);

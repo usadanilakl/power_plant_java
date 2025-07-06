@@ -1,21 +1,43 @@
 <app-shared-table
 [columns]="columns"
 [items]="initialItems$"
-(loadMore)="loadMoreItems()"
 [clickCallback]="onItemClick"
-></app-shared-table>
+>
+  <ng-container table-controls>
+    <button (click)="onFormOpen()">Create New Loto Point</button>
+    <button (click)="onGenerateNewTagNumber()">Generate New Tag Number</button>
+  </ng-container>
+</app-shared-table>
 
-<app-popup
+<!-- <app-popup
   [isOpen]="isPopupOpen"
   [title]="'Tag Number Details'"
-  [contentComponent]="TagNumberDetailFormComponent"
+  [contentComponent]="LotoPointDetailFormComponent"
   [contentInputs]="{
-    values: selectedItem,
+    values: selectedItem(),
     formSubmit: onFormSubmit.bind(this),
     formDelete: onFormDelete.bind(this)
   }"
   (close)="closePopup()"
-></app-popup>
+></app-popup> -->
+
+<app-popup-projection 
+[title]="'New Loto Point Details'"
+[isOpen]="isPopupOpen" 
+(close)="closePopup()"
+>
+  <app-loto-point-detail-form
+  [values]="selectedItem()"
+  (formDelete)="onFormDelete()"
+  (formSubmit)="onFormSubmit($event)">
+</app-loto-point-detail-form>
+</app-popup-projection>
+
+<app-popup-projection
+  [isOpen]="isTagNumberGeneratorOpen()"
+  (close)="closeTagNumberGenerator()">
+  <app-tag-number-generator></app-tag-number-generator>
+</app-popup-projection>
 
 <!-- @if (selectedItem) {
   <app-tag-number-detail-form

@@ -1,5 +1,8 @@
 
 <div class="backup-container">
+  <header class="full-width-header">
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </header>
   <h2>Database Backup and Restore</h2>
 
   <div class="create-backup">
@@ -24,7 +27,23 @@
     </ul>
   </div>
 
-  <div class="message" *ngIf="message">
+  <div class="restore-backup">
+    <h3>Restore Backup (from shared drive)</h3>
+    <select [(ngModel)]="selectedSharedBackup">
+      <option value="">Select a backup</option>
+      <option *ngFor="let backup of sharedDriveBackups" [value]="backup">{{backup}}</option>
+    </select>
+    <button (click)="restoreSharedBackup()">Restore Selected Backup</button>
+  </div>
+
+  <div class="backup-list">
+    <h3>Available Backups (on shared drive)</h3>
+    <ul>
+      <li *ngFor="let backup of sharedDriveBackups">{{backup}}</li>
+    </ul>
+  </div>
+
+  <div class="message" *ngIf="sharedDriveMessage">
     {{message}}
   </div>
 </div>

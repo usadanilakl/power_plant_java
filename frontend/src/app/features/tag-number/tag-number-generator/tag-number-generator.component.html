@@ -1,0 +1,25 @@
+<p>tag-number-generator works!</p>
+<form (ngSubmit)="onSubmit()">
+  <div>
+    <label for="unit">Unit:</label>
+    <input type="text" id="unit" name="unit" [(ngModel)]="unit" required>
+  </div>
+  <div>
+    <label for="equipmentType">Equipment Type:</label>
+    <input type="text" id="equipmentType" name="equipmentType" [(ngModel)]="equipmentType" required>
+  </div>
+  <div>
+    <label for="system">System:</label>
+    <input type="text" id="system" name="system" [(ngModel)]="system" required>
+  </div>
+  <button type="submit">Generate Tag Number</button>
+</form>
+
+<div *ngIf="generatedTagNumber">
+  <h3>Generated Tag Number:</h3>
+  <p>{{ generatedTagNumber }}</p>
+</div>
+
+<div *ngIf="errorMessage" class="error-message">
+  {{ errorMessage }}
+</div>

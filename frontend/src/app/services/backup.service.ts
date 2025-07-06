@@ -28,4 +28,13 @@ export class BackupService {
   listBackups(): Observable<string[]> {
     return this.http.get<string[]>(`${this.apiUrl}/list-backups`);
   }
+
+  restoreSharedDatabase(backupFileName: string): Observable<string> {
+    let params = new HttpParams().set('backupFileName', backupFileName);
+    return this.http.post<string>(`${this.apiUrl}/restore-shared-database`, null, { params, responseType: 'text' as 'json' });
+  }
+
+  listSharedBackups(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiUrl}/list-shared-backups`);
+  }
 }

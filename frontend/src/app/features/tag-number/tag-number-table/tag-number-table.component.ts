@@ -1,32 +1,37 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { TagNumberService } from '../../../services/tag-number.service';
 import { Column } from '../../../models/column.model';
-import { TagNumberDetailFormComponent } from "../tag-number-detail-form/tag-number-detail-form.component";
 import { PopupComponent } from "../../../shared/popup/popup.component";
 import { BehaviorSubject, Observable } from 'rxjs';
+import { LotoPointService } from '../../../services/loto/loto-point.service';
+import { LotoPointDetailFormComponent } from '../../loto-points/loto-point-detail-form/loto-point-detail-form.component';
+import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { TagNumberGeneratorComponent } from "../tag-number-generator/tag-number-generator.component";
+import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 
 @Component({
   selector: 'app-tag-number-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, TagNumberDetailFormComponent, PopupComponent],
+  imports: [CommonModule, TableComponent, PopupComponent, LotoPointDetailFormComponent, TagNumberGeneratorComponent, PopupProjectionComponent],
   templateUrl: `./tag-number-table.component.html`,
 })
 export class TagNumberTableComponent implements OnInit {
   columns: Column[] = [
-    { id: 'tagNumber', header: 'Tag Number', accessorKey: 'number' },
+    { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
     { id: 'description', header: 'Description', accessorKey: 'description' },
-    { id: 'area', header: 'Area', accessorKey: 'area' },
-    { id: 'system', header: 'System', accessorKey: 'system' }
+    { id: 'specificLocation', header: 'Location', accessorKey: 'specificLocation' },
   ];
 
-  initialItems$: Observable<any[]>;
-  selectedItem: any = null;
+  initialItems$: Observable<LotoPointDto[]>;
+  selectedItem = signal<LotoPointDto>(new LotoPointDto());
   isPopupOpen: boolean = false;
-  TagNumberDetailFormComponent = TagNumberDetailFormComponent;
+  LotoPointDetailFormComponent = LotoPointDetailFormComponent;
 
-  constructor(private tagNumberService: TagNumberService) {
+  isTagNumberGeneratorOpen = signal<boolean>(false);
+
+  constructor(private tagNumberService: TagNumberService, private lotoPointService: LotoPointService) {
     this.initialItems$ = new BehaviorSubject<any[]>([]);
   }
 
@@ -35,9 +40,9 @@ export class TagNumberTableComponent implements OnInit {
   }
 
   loadInitialItems() {
-    this.tagNumberService.getTagNumbers().subscribe(
+    this.tagNumberService.getAllTagNumbers().subscribe(
       (data) => {
-        (this.initialItems$ as BehaviorSubject<any[]>).next(data);
+        (this.initialItems$ as BehaviorSubject<any[]>).next(data.responseData);
       },
       (error) => {
         console.error('Error loading initial items:', error);
@@ -45,36 +50,6 @@ export class TagNumberTableComponent implements OnInit {
     );
   }
 
-  loadMoreItems = async () => {
-    const currentItems = (this.initialItems$ as BehaviorSubject<any[]>).getValue();
-    const lastItem = currentItems[currentItems.length - 1];
-    const params = { lastId: lastItem.id };
-    return new Promise<any[]>((resolve, reject) => {
-      this.tagNumberService.getTagNumbers(params).subscribe(
-        (data) => {
-          const updatedItems = [...currentItems, ...data];
-          (this.initialItems$ as BehaviorSubject<any[]>).next(updatedItems);
-          resolve(data);
-        },
-        (error) => {
-          console.error('Error loading more items:', error);
-          reject([]);
-        }
-      );
-    });
-  };
-
-  searchItems = async (criteria: any) => {
-    return new Promise<any[]>((resolve, reject) => {
-      this.tagNumberService.searchTagNumbers(criteria).subscribe(
-        (data) => resolve(data),
-        (error) => {
-          console.error('Error searching items:', error);
-          reject([]);
-        }
-      );
-    });
-  };
 
   onItemClick = (item: any) => {
     this.selectedItem = item;
@@ -83,26 +58,30 @@ export class TagNumberTableComponent implements OnInit {
 
   closePopup() {
     this.isPopupOpen = false;
-    this.selectedItem = null;
+    this.selectedItem.set(new LotoPointDto());
+  }
+
+  onFormOpen(){
+    this.isPopupOpen = true;
   }
 
   onFormSubmit(formData: any) {
-    if (!this.selectedItem) {
+    if (!this.selectedItem()) {
       console.error('No item selected for update');
       return;
     }
   
     const updatedItem = { ...this.selectedItem, ...formData };
   
-    this.tagNumberService.updateTagNumber(this.selectedItem.id, updatedItem).subscribe(
+    this.lotoPointService.updateLotoPoint(updatedItem).subscribe(
       (response) => {
-        console.log('Tag number updated successfully', response);
+        console.log('Tag number updated successfully', response.responseData);
         const currentItems = (this.initialItems$ as BehaviorSubject<any[]>).getValue();
         const updatedItems = currentItems.map(item => 
-          item.id === this.selectedItem.id ? updatedItem : item
+          item.id === this.selectedItem().id ? updatedItem : item
         );
         (this.initialItems$ as BehaviorSubject<any[]>).next(updatedItems);
-        this.selectedItem = null;
+        this.selectedItem.set(new LotoPointDto());
       },
       error => {
         console.error('Error updating tag number:', error);
@@ -111,16 +90,23 @@ export class TagNumberTableComponent implements OnInit {
   }
   
   onFormDelete() {
-    if (this.selectedItem) {
-      this.tagNumberService.deleteTagNumber(this.selectedItem.id).subscribe(
+    if (this.selectedItem()) {
+      this.lotoPointService.deleteLotoPoint(this.selectedItem().id+"").subscribe(
         () => {
           const currentItems = (this.initialItems$ as BehaviorSubject<any[]>).getValue();
-          const updatedItems = currentItems.filter(item => item.id !== this.selectedItem.id);
+          const updatedItems = currentItems.filter(item => item.id !== this.selectedItem().id);
           (this.initialItems$ as BehaviorSubject<any[]>).next(updatedItems);
-          this.selectedItem = null;
+          this.selectedItem.set(new LotoPointDto());
         },
         error => console.error('Error deleting tag number:', error)
       );
     }
+  }
+
+  onGenerateNewTagNumber(){
+    this.isTagNumberGeneratorOpen.set(true);
+  }
+  closeTagNumberGenerator(){
+    this.isTagNumberGeneratorOpen.set(false);
   }
 }
