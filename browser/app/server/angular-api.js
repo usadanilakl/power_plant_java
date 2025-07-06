@@ -1,10 +1,12 @@
 const angularApi = {
     navigateToFiles: () => {
-        navigateTo(properties.serverUrl+'/app/pid');
+        navigateTo(properties.serverUrl+'/app');
     },
-    navigateToEquipment: () => {
-        navigateTo(properties.serverUrl+'/app/eq');
+    navigateToLotoPoints: () => {
+        navigateTo(properties.serverUrl+'/app/loto-points');
     },
+    navigateToTags: () => {
+        navigateTo(properties.serverUrl+'/app/tag-number');}
 };
 
 function navigateTo(path) {

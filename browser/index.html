@@ -30,8 +30,9 @@
                 <button onclick="fileTable.buildFileTable()">Browse Files</button>
                 <button onclick="equipmentTable.buildEquipmentTable()">Browse Equipment</button>
                 <button class="server-dependent" onclick="angularApi.navigateToFiles()">Edit Files</button>
-                <button class="server-dependent" onclick="navigateTo('/edit-equipment')">Edit Equipment</button>
-                <button class="server-dependent" onclick="navigateTo('/manage-tag-numbers')">Manage Tag Numbers</button>
+                <button class="server-dependent" onclick="angularApi.navigateToLotoPoints()">LOTO Points</button>
+                <button class="server-dependent" onclick="angularApi.navigateToTags()">Manage Tag Numbers</button>
+                <button class="server-dependent" onclick="angularApi.navigateToTags()">Shut Down Server</button>
             </div>
         </header>
         <div class="content">

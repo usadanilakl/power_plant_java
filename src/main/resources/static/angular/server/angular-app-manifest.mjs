@@ -62,24 +62,29 @@ export default {
   },
   {
     "renderMode": 2,
+    "route": "/angular/browser/backup"
+  },
+  {
+    "renderMode": 2,
     "route": "/angular/browser/file-editor"
   }
 ],
   entryPointToBrowserMapping: undefined,
   assets: {
-    'index.csr.html': {size: 23674, hash: '809f51f532e6543975076025b5e023820bb0c4c4d0f4cdf1d8ece4692644fa60', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
-    'index.server.html': {size: 17152, hash: 'f19a08e859fd9a2f2a6e9a7707a8ca98d9547e2582edca2a7cf900cad63cb106', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
-    'loto/loto/index.html': {size: 33294, hash: 'b1627a6ceb5ce0bca96982cd64aa456bf87fb2d15aa409e66301099fbfa9020f', text: () => import('./assets-chunks/loto_loto_index_html.mjs').then(m => m.default)},
-    'file/table/index.html': {size: 40746, hash: 'bf02c65be920ca0794fa5c82fa837e5f3fca1694ee8e901ca78650205703c159', text: () => import('./assets-chunks/file_table_index_html.mjs').then(m => m.default)},
-    'loto/loto-points/index.html': {size: 34095, hash: 'd1ffe7af6f3e7d3e383a6c8cd4cc720f94f625609cffca419ba409c5f662a536', text: () => import('./assets-chunks/loto_loto-points_index_html.mjs').then(m => m.default)},
-    'loto/loto-boxes/index.html': {size: 30790, hash: 'ac41c0f6292564accd66f697377f94dee615b13423af788dca77074cb9faa452', text: () => import('./assets-chunks/loto_loto-boxes_index_html.mjs').then(m => m.default)},
-    'loto/loto-points-active/index.html': {size: 34674, hash: 'c6011e33c095a547f1a4bb4debbab4dec04ac01c90cc0221d7e5234540d66e95', text: () => import('./assets-chunks/loto_loto-points-active_index_html.mjs').then(m => m.default)},
-    'tag-number/index.html': {size: 32953, hash: 'd93631c292b866145cd9cce0af39a3d9381dce1a7e48a1cd91c6d951a4af6c82', text: () => import('./assets-chunks/tag-number_index_html.mjs').then(m => m.default)},
-    'loto-points/index.html': {size: 38271, hash: 'c784387cdda3d0377eb35c44abba702b07f1d79105e0d2b40a64659186ec1b3d', text: () => import('./assets-chunks/loto-points_index_html.mjs').then(m => m.default)},
-    'loto/locks/index.html': {size: 30751, hash: '0e0c60a29d3a63618140e70717a79a1a276176aff14e1fd0ef114fe198511519', text: () => import('./assets-chunks/loto_locks_index_html.mjs').then(m => m.default)},
-    'print/index.html': {size: 24270, hash: 'ee430c8440a1b6e0f073b7c9da3937bc4db33a75b893fbf361140ea3f0020a62', text: () => import('./assets-chunks/print_index_html.mjs').then(m => m.default)},
-    'file-editor/index.html': {size: 39257, hash: 'dd960f9cd4b01181db9fc96c2ce7ba2e73d1ee5995fe7e38701a88e2d11225d8', text: () => import('./assets-chunks/file-editor_index_html.mjs').then(m => m.default)},
-    'file/edit/index.html': {size: 48292, hash: 'fc393d4fb7ead964416c499c027b58e34788cb851b145c5a69d74249591da896', text: () => import('./assets-chunks/file_edit_index_html.mjs').then(m => m.default)},
+    'index.csr.html': {size: 23674, hash: '4c0aff567b3037e885931214371284fa86698e7b19f692f1968e2b794e9d370a', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
+    'index.server.html': {size: 17152, hash: 'd58f4376cdf218b7d5f75518000d9cf0f7a2b9b22aa31df561f0e05fee2e9756', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
+    'file/table/index.html': {size: 42678, hash: '3b811014d7c73d513b77aebeb8ddcd02d3d32690860742e42e5b76e956912cfe', text: () => import('./assets-chunks/file_table_index_html.mjs').then(m => m.default)},
+    'loto/loto/index.html': {size: 33434, hash: '459ce0b639f3255d32466953053cc207536a961aa6a2b9ece4ffb3775afd9791', text: () => import('./assets-chunks/loto_loto_index_html.mjs').then(m => m.default)},
+    'loto/loto-points-active/index.html': {size: 34864, hash: '57ad6e43cfd031233007d512c375a562ead4d614366422542f0eccc5833990cf', text: () => import('./assets-chunks/loto_loto-points-active_index_html.mjs').then(m => m.default)},
+    'loto/loto-boxes/index.html': {size: 30864, hash: '0c8d54202fac7429b8ec26d07b92955e741333647ad194b493266596f0d1f0b8', text: () => import('./assets-chunks/loto_loto-boxes_index_html.mjs').then(m => m.default)},
+    'loto/locks/index.html': {size: 30839, hash: 'c63101fbed3a5fb65aa1a84dc7e2c5c6002ec7d2494528d3e7e45c4c9d02cb50', text: () => import('./assets-chunks/loto_locks_index_html.mjs').then(m => m.default)},
+    'loto-points/index.html': {size: 38574, hash: '8ec77046af3e687123c4afbed8e491f9793e7716fd4b616bb6743aff2e87ce82', text: () => import('./assets-chunks/loto-points_index_html.mjs').then(m => m.default)},
+    'print/index.html': {size: 24270, hash: 'e3a2be0938098834c765ca22f48484564641f52b4880d955bb6687f3ded588b2', text: () => import('./assets-chunks/print_index_html.mjs').then(m => m.default)},
+    'tag-number/index.html': {size: 31565, hash: '0edb2f352bf0714fd95cdd844a64741b6b28e269dfaaefbb1f22365f8d6e8891', text: () => import('./assets-chunks/tag-number_index_html.mjs').then(m => m.default)},
+    'backup/index.html': {size: 30879, hash: 'ef411e0080077bf36f46c68e8fb9885ad0d5eee467ecba5643b22595ef5a2196', text: () => import('./assets-chunks/backup_index_html.mjs').then(m => m.default)},
+    'loto/loto-points/index.html': {size: 34275, hash: 'dd922d36e59a553ede59b4db931304c008b256937f90f8be27da4193adff7165', text: () => import('./assets-chunks/loto_loto-points_index_html.mjs').then(m => m.default)},
+    'file/edit/index.html': {size: 50797, hash: 'af9ead683edf1ba7b213db9a6ccb4650a64155bbfcfdb31fccbd7efce6f4229c', text: () => import('./assets-chunks/file_edit_index_html.mjs').then(m => m.default)},
+    'file-editor/index.html': {size: 40317, hash: '20f16ec443d326067d22bdafe5b856a3720458d7d2276d76bb7a8d73352a85cd', text: () => import('./assets-chunks/file-editor_index_html.mjs').then(m => m.default)},
     'styles-ZZB5FV3S.css': {size: 9528, hash: '3l+z/03bYiA', text: () => import('./assets-chunks/styles-ZZB5FV3S_css.mjs').then(m => m.default)}
   },
 };

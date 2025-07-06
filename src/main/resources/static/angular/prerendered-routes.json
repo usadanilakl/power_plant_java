@@ -1,6 +1,7 @@
 {
   "routes": {
     "/angular/browser": {},
+    "/angular/browser/backup": {},
     "/angular/browser/file": {},
     "/angular/browser/file-editor": {},
     "/angular/browser/file/edit": {},
