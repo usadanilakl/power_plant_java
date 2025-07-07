@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ValueService } from '../../../services/value.service';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { CurrentValueService } from '../../../services/current-value.service';
+
 @Component({
   selector: 'app-add-value-form',
   imports: [FormsModule],
@@ -19,22 +20,23 @@ export class AddValueFormComponent {
   categoryName = input<string>('');
   submitEvent = output<void>();
   valueName: string = '';
+  valueAlias: string = '';
 
   onSubmit() {
     if (this.valueName) {
-      this.currentValueService.updateCategoryWithNewValue(this.categoryName(), this.valueName).subscribe({
+      this.currentValueService.updateCategoryWithNewValue(this.categoryName(), this.valueName, this.valueAlias).subscribe({
         next: (updatedValue) => {
           if (updatedValue) {
             // Perform any additional actions needed after successful update
           } else {
-            
+            // Handle the case where the update was not successful
           }
         },
         error: (error) => console.error('Error adding value:', error)
       });
       this.submitEvent.emit();
       this.valueName = '';
+      this.valueAlias = '';
     }
   }
-
 }

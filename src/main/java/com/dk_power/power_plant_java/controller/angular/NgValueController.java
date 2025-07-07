@@ -76,7 +76,7 @@ public class NgValueController {
     @PostMapping("/add-to-category-by-name")
     public ResponseEntity<NgApiResponse<ValueDto>> addValueToCategoryByName(@RequestBody Map<String, String> request) {
         try {
-            Value createdValue = ngValueService.addValueToCategoryByAlias(request.get("category"), request.get("value"));
+            Value createdValue = ngValueService.addValueToCategoryByAlias(request.get("category"), request.get("value"), request.get("valueAlias"));
             ValueDto valueDto = ngValueService.valueToDto(createdValue);
             return ResponseEntity.ok(new NgApiResponse<>(valueDto, "Value added successfully to category", LocalDateTime.now()));
         } catch (IllegalArgumentException e) {
@@ -126,11 +126,12 @@ public class NgValueController {
     public ResponseEntity<NgApiResponse<ValueDto>> updateValue(@PathVariable Long valueId, @RequestBody Map<String, String> request) {
         try {
             String newName = request.get("name");
+            String newAlias = request.get("alias");
             if (newName == null || newName.trim().isEmpty()) {
                 throw new IllegalArgumentException("New name cannot be empty");
             }
 
-            Value updatedValue = ngValueService.updateValueName(valueId, newName);
+            Value updatedValue = ngValueService.updateValueName(valueId, newName, newAlias);
             ValueDto valueDto = ngValueService.valueToDto(updatedValue);
 
             return ResponseEntity.ok(new NgApiResponse<>(valueDto, "Value updated successfully", LocalDateTime.now()));

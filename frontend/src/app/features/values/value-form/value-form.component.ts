@@ -19,6 +19,7 @@ export class ValueFormComponent{
   valueToEditId = signal<number | null>(null);
   transferValueId = signal<number | null>(null);
   editingName = signal<string | null>('');
+  editingAlias = signal<string>('');
 
   isEditing = signal<boolean>(true);
   isDeleting = signal<boolean>(false);
@@ -75,10 +76,14 @@ export class ValueFormComponent{
     this.editingName.set(newName);
   }
 
+  onAliasChange(newAlias: string) {
+  this.editingAlias.set(newAlias);
+}
+
   submitEdit() {
     if (this.valueToEditId() && this.editingName()) {
       // Call your service method to update the value
-      this.currentValueService.updateValue(this.valueToEditId()!, this.editingName()!).subscribe(
+      this.currentValueService.updateValue(this.valueToEditId()!, this.editingName()!, this.editingAlias()!).subscribe(
         updatedValue => {
           // Update local state or emit event to parent component
         },

@@ -176,6 +176,7 @@ export class CurrentEquipmentService {
       this.currentEquipmentSubject.next(new EquipmentDto(eq || new EquipmentDto()));
       if (eq) {
         if(eq.lotoPoints)this.lotoPointSubject.next([...eq.lotoPoints]);
+        else this.lotoPointSubject.next([new LotoPointDto()]);
         this.fetchRelatedEquipmentAndLotoPoints(eq);
       } else {
         this.clearCurrentEquipment();

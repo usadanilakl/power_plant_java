@@ -9,7 +9,14 @@
 </select>
 
 @if (isEditing()) {
-  <input [(ngModel)]="editingName" (ngModelChange)="onNameChange($event)" />
+  <div>
+    <label for="editingName">Name:</label>
+    <input id="editingName" [(ngModel)]="editingName" (ngModelChange)="onNameChange($event)" />
+  </div>
+  <div>
+    <label for="editingAlias">Alias:</label>
+    <input id="editingAlias" [(ngModel)]="editingAlias" (ngModelChange)="onAliasChange($event)" />
+  </div>
   <button (click)="submitEdit()">Submit</button>
   <button (click)="selectDeletingMode()">Delete</button>
 }

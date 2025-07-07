@@ -112,8 +112,8 @@ export class CurrentValueService {
   // }
 
 
-  updateCategoryWithNewValue(category: string, newValueName: string): Observable<ValueDto | null> {
-    return this.valueService.addValueToCategoryByName(category, newValueName).pipe(
+  updateCategoryWithNewValue(category: string, newValueName: string, valueAlias: string = ''): Observable<ValueDto | null> {
+    return this.valueService.addValueToCategoryByName(category, newValueName, valueAlias).pipe(
       tap(response => {
         const updatedValue = response.responseData;
         const currentData = {...this.allDataSubject.value};
@@ -145,8 +145,8 @@ export class CurrentValueService {
   }
 
   
-  updateValue(valueId: number, newName: string): Observable<ValueDto> {
-    return this.valueService.updateValue(valueId,newName).pipe(
+  updateValue(valueId: number, newName: string, newAlias: string = ""): Observable<ValueDto> {
+    return this.valueService.updateValue(valueId,newName,newAlias).pipe(
       map(response => response.responseData),
       tap(updatedValue => {
         // Update the value in the local state

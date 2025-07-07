@@ -1,5 +1,5 @@
 import { inject } from "@angular/core";
-import { Shape } from "../../../models/shape.model";
+import { RectangleShape, Shape } from "../../../models/shape.model";
 import { Tool } from "../../../models/tool.model";
 import { ShapeFactoryService } from "./shape-factory.service";
 import { ShapeUtilService } from "./shape-util.service";
@@ -134,10 +134,24 @@ export class DrawUtilService {
     
     if (this.isDrawingWithRightClick) {
       this.isDrawingWithRightClick = false;
-      // if(this.selectedShape.)
-      this.newShapeSubject.next(this.selectedShape);
-      this.selectedShape = null;
-      this.shapesSubject.next(this.shapes);
+      if (this.selectedShape && 
+          this.selectedShape.type === 'rectangle' && 
+          (this.selectedShape as RectangleShape).width > 20 && 
+          (this.selectedShape as RectangleShape).height > 20) {
+        this.newShapeSubject.next(this.selectedShape);
+        this.selectedShape = null;
+        this.shapesSubject.next(this.shapes);
+      } else {
+        // Remove the shape if it doesn't meet the criteria
+        if (this.selectedShape) {
+          const index = this.shapes.indexOf(this.selectedShape);
+          if (index > -1) {
+            this.shapes.splice(index, 1);
+          }
+          this.selectedShape = null;
+          this.shapesSubject.next(this.shapes);
+        }
+      }
     }
   }
 

@@ -162,7 +162,7 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
             throw new IllegalArgumentException("EquipmentDto cannot be null");
         }
         Equipment equipment = idDtoToEntity(equipmentDto);
-        if (equipmentDto.getId() == null || equipmentDto.getId() == 0) {
+        if (equipmentDto.getId() != null && equipmentDto.getId() != 0) {
             return save(equipment);
         }
         FileObject mainFile = equipment.getMainFile();

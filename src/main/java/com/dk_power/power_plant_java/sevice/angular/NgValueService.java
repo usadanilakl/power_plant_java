@@ -112,6 +112,24 @@ public class NgValueService {
         }
     }
 
+    @Transactional
+    public Value addValueToCategoryByAlias(String categoryName, String valueName, String valueAlias) {
+        System.out.println(categoryName + " " + valueName);
+        Category category = categoryRepo.findByAlias(categoryName);
+        System.out.println(category.getAlias());
+        if (category == null) throw new RuntimeException("Category not found");
+
+        Value existingValue = category.getValueByName(valueName);
+        if (existingValue != null) {
+            return existingValue;
+        } else {
+            Value newValue = new Value(valueName);
+            if(valueAlias!=null && !valueAlias.isEmpty()) newValue.setAlias(valueAlias);
+            newValue.setCategory(category);
+            return valueRepo.save(newValue);
+        }
+    }
+
 
     // Update
     public Value updateValue(Long id, Value valueDetails) {
@@ -267,6 +285,12 @@ public class NgValueService {
     public Value updateValueName(Long valueId, String newName) {
         Value value = getValueById(valueId).orElseThrow(() -> new RuntimeException("Value not found"));
         value.setName(newName);
+        return valueRepo.save(value);
+    }
+    public Value updateValueName(Long valueId, String newName, String newAlias) {
+        Value value = getValueById(valueId).orElseThrow(() -> new RuntimeException("Value not found"));
+        value.setName(newName);
+        if(newAlias!=null && !newAlias.isEmpty())value.setAlias(newAlias);
         return valueRepo.save(value);
     }
 }

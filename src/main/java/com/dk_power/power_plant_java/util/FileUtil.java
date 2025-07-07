@@ -7,9 +7,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -349,5 +347,14 @@ public static boolean checkAccess(Path filePath) {
         try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(path)) {
             return !dirStream.iterator().hasNext();
         }
+    }
+
+    public static List<File> getFilesFromDirectory(String qaDirectory) {
+        File directory = new File(qaDirectory);
+        File[] files = directory.listFiles();
+        if (files!= null) {
+            return Arrays.asList(files);
+        }
+        return Collections.emptyList();
     }
 }

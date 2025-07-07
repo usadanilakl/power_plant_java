@@ -20,16 +20,16 @@ export class ValueService {
   }
 
     
-  addValueToCategoryByName(categoryName: string, value: string): Observable<SpringApiResponse<ValueDto>> {
-      return this.http.post<SpringApiResponse<ValueDto>>(`${this.apiUrl}/add-to-category-by-name`,{category:categoryName, value:value});
+  addValueToCategoryByName(categoryName: string, value: string, valueAlias: string = ''): Observable<SpringApiResponse<ValueDto>> {
+      return this.http.post<SpringApiResponse<ValueDto>>(`${this.apiUrl}/add-to-category-by-name`,{category:categoryName, value:value, valueAlias:valueAlias});
     }
 
   getAllCategories(): Observable<SpringApiResponse<CategoryDto[]>> {
     return this.http.get<SpringApiResponse<CategoryDto[]>>(`${this.apiUrl}/categories`);
   }
 
-  updateValue(valueId: number, newName: string): Observable<SpringApiResponse<ValueDto>> {
-    return this.http.put<SpringApiResponse<ValueDto>>(`${this.apiUrl}/${valueId}`, { name: newName });
+  updateValue(valueId: number, newName: string, newAlias:string=""): Observable<SpringApiResponse<ValueDto>> {
+    return this.http.put<SpringApiResponse<ValueDto>>(`${this.apiUrl}/${valueId}`, { name: newName, alias: newAlias });
   }
 
   deleteValueAndTransfer(valueIdToDelete: number, transferToValueId: number): Observable<SpringApiResponse<any>> {
