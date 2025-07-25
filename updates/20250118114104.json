@@ -1,0 +1,88 @@
+[ {
+  "id" : 28084,
+  "name" : null,
+  "objectType" : "Equipment",
+  "description" : "ECA/2C COOLING 3-WAY TCV",
+  "tagNumber" : "01LCA14AA707",
+  "specificLocation" : null,
+  "eqType" : {
+    "id" : 4206,
+    "name" : "AOV",
+    "category" : {
+      "id" : 2502,
+      "name" : "Equipment Type",
+      "alias" : "eqType"
+    }
+  },
+  "files" : [ "uploads/jpg/PID/Kiewit/20023894-PD-054A.01.C2CR.01.01.jpg" ],
+  "vendor" : {
+    "id" : 4156,
+    "name" : "Kiewit",
+    "category" : {
+      "id" : 2453,
+      "name" : "Vendor",
+      "alias" : "vendor"
+    }
+  },
+  "location" : {
+    "id" : 10909,
+    "name" : "HRSG EAST- LOWER",
+    "category" : {
+      "id" : 2702,
+      "name" : "Location",
+      "alias" : "location"
+    }
+  },
+  "system" : {
+    "id" : 4403,
+    "name" : "CND",
+    "category" : {
+      "id" : 2552,
+      "name" : "System",
+      "alias" : "system"
+    }
+  },
+  "coordinates" : "startX:1658,startY:3097,endX:1849,endY:3288,width:191,height:190",
+  "originalPictureSize" : "width:7344,height:4752",
+  "mainFile" : "uploads/jpg/PID/Kiewit/20023894-PD-054A.01.C2CR.01.01.jpg",
+  "lotoPoints" : [ {
+    "id" : 36568,
+    "name" : null,
+    "objectType" : "LotoPoint",
+    "unit" : null,
+    "tagged" : null,
+    "tagNumber" : "01LCA14AA707",
+    "description" : "ECA/2C COOLING WATER  3-WAY TCV",
+    "isoPos" : {
+      "id" : 5404,
+      "name" : "CLOSED",
+      "category" : {
+        "id" : 3052,
+        "name" : "Isolated Position",
+        "alias" : "isoPos"
+      }
+    },
+    "normPos" : {
+      "id" : 5407,
+      "name" : "OPEN",
+      "category" : {
+        "id" : 3053,
+        "name" : "Normal Position",
+        "alias" : "normPos"
+      }
+    },
+    "specificLocation" : "ECA COOLER AREA",
+    "standard" : null,
+    "generalLocation" : "HRSG EAST- LOWER",
+    "equipmentIdList" : [ 28084, 65734 ],
+    "normalPosition" : null,
+    "isolatedPosition" : null,
+    "lotos" : null,
+    "equipmentList" : null,
+    "oldId" : null,
+    "isUpdated" : null,
+    "fileIds" : null
+  } ],
+  "highlight" : null,
+  "isUpdated" : null
+} ]
