@@ -1,0 +1,88 @@
+[ {
+  "id" : 27198,
+  "name" : null,
+  "objectType" : "Equipment",
+  "description" : "HRH SAMPLE ROOT",
+  "tagNumber" : "01-VHRS901F",
+  "specificLocation" : null,
+  "eqType" : {
+    "id" : 4204,
+    "name" : "Manual Valve",
+    "category" : {
+      "id" : 2502,
+      "name" : "Equipment Type",
+      "alias" : "eqType"
+    }
+  },
+  "files" : [ "uploads/jpg/PID/Kiewit/20023894-PD-034A.01.C2CR.01.01.jpg" ],
+  "vendor" : {
+    "id" : 4156,
+    "name" : "Kiewit",
+    "category" : {
+      "id" : 2453,
+      "name" : "Vendor",
+      "alias" : "vendor"
+    }
+  },
+  "location" : {
+    "id" : 5852,
+    "name" : "PIPE RACK 3RD LEVEL",
+    "category" : {
+      "id" : 2702,
+      "name" : "Location",
+      "alias" : "location"
+    }
+  },
+  "system" : {
+    "id" : 7702,
+    "name" : "HRH",
+    "category" : {
+      "id" : 2552,
+      "name" : "System",
+      "alias" : "system"
+    }
+  },
+  "coordinates" : "startX:2557,startY:2487,endX:2652,endY:2686,width:94,height:198",
+  "originalPictureSize" : "width:7344,height:4752",
+  "mainFile" : "uploads/jpg/PID/Kiewit/20023894-PD-034A.01.C2CR.01.01.jpg",
+  "lotoPoints" : [ {
+    "id" : 30901,
+    "name" : null,
+    "objectType" : "LotoPoint",
+    "unit" : "UNIT 1",
+    "tagged" : "NO",
+    "tagNumber" : "01-VHRS901F",
+    "description" : "HRH SAMPLE ROOT",
+    "isoPos" : {
+      "id" : 5404,
+      "name" : "CLOSED",
+      "category" : {
+        "id" : 3052,
+        "name" : "Isolated Position",
+        "alias" : "isoPos"
+      }
+    },
+    "normPos" : {
+      "id" : 5407,
+      "name" : "OPEN",
+      "category" : {
+        "id" : 3053,
+        "name" : "Normal Position",
+        "alias" : "normPos"
+      }
+    },
+    "specificLocation" : "PIPE RACK 3RD LEVEL",
+    "standard" : "SAMPLE HRH",
+    "generalLocation" : "HRSG SOUTH - UPPER",
+    "equipmentIdList" : [ 35156, 27198 ],
+    "normalPosition" : "OPEN",
+    "isolatedPosition" : "CLOSED",
+    "lotos" : null,
+    "equipmentList" : null,
+    "oldId" : "9900.0",
+    "isUpdated" : null,
+    "fileIds" : null
+  } ],
+  "highlight" : null,
+  "isUpdated" : null
+} ]
