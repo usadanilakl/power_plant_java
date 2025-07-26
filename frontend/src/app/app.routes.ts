@@ -56,8 +56,8 @@ export const routes: Routes = [
       path: 'scheduler',
       component: SchedulerPageComponent,
       children: [
-        { path: '', redirectTo: 'table', pathMatch: 'full' },
-        { path: 'edit', component: SchedulerComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
+        { path: '', redirectTo: 'flow', pathMatch: 'full' },
+        { path: 'flow', component: SchedulerComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
         { path: 'table', component: FileTableComponent }
       ]
     },
