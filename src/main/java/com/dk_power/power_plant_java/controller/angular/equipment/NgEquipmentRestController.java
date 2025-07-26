@@ -79,7 +79,12 @@ public class NgEquipmentRestController {
     @PutMapping
     public ResponseEntity<NgApiResponse<EquipmentDto>> updateEquipment(@RequestBody EquipmentIdDto equipmentDto) {
         try {
-            EquipmentDto updatedEquipment = ngEquipmentService.toDto(ngEquipmentService.processEquipment(equipmentDto));
+            Equipment eqEntity = ngEquipmentService.processEquipment(equipmentDto);
+            EquipmentDto updatedEquipment = ngEquipmentService.toDto(eqEntity);
+            FileObject fileObject = eqEntity.getMainFile();
+            fileObject.getPoints().forEach(p -> {
+                System.out.println(p.getTagNumber());
+            });
             return ResponseEntity.ok(new NgApiResponse<>(updatedEquipment, "Equipment updated successfully"));
         } catch (Exception e) {
             e.printStackTrace();

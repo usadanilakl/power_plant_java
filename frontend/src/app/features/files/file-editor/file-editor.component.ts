@@ -7,7 +7,7 @@ import { ImageService } from '../../../services/text-recognition.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { FileBulkEditorMenuComponent } from "./file-bulk-editor-menu/file-bulk-editor-menu.component";
 import { RectangleShape, Shape } from '../../../models/shape.model';
-import { catchError, map, of, tap, throwError } from 'rxjs';
+import { catchError, combineLatest, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
 import { DataPresetMenuComponent } from "./data-preset-menu/data-preset-menu.component";
@@ -80,8 +80,8 @@ export class FileEditorComponent {
     ).subscribe(types => {
       this.uniqueEquipmentTypes.set(types);
       this.initializeSelectedEqTypes();
-      this.updateFilteredEquipment();
     });
+
 
     this.currentEquipmentService.currentEquipment$.pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -206,14 +206,6 @@ export class FileEditorComponent {
     this.isDataPresetMenuOpen.set(!this.isDataPresetMenuOpen());
   }
 
-  onEqTypeChange(eqType: {type: string, selected: boolean}) {
-    const updatedTypes = this.selectedEqTypes().map(et => 
-      et.type === eqType.type ? {...et, selected: !et.selected} : et
-    );
-    this.selectedEqTypes.set(updatedTypes);
-    this.updateFilteredEquipment();
-  }
-
   initializeSelectedEqTypes() {
     const equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
     this.selectedEqTypes.set(
@@ -222,6 +214,9 @@ export class FileEditorComponent {
         selected: !equipmentNotSelectedByDefault.includes(type.toLowerCase())
       }))
     );
+  setTimeout(() => {
+    this.updateFilteredEquipment();
+  }, 300);
   }
 
   updateFilteredEquipment() {
@@ -241,6 +236,15 @@ export class FileEditorComponent {
     });
   }
 
+  onEqTypeChange(eqType: {type: string, selected: boolean}) {
+    const updatedTypes = this.selectedEqTypes().map(et => 
+      et.type === eqType.type ? {...et, selected: !et.selected} : et
+    );
+    this.selectedEqTypes.set(updatedTypes);
+    this.updateFilteredEquipment();
+  }
+
+
   onCloseEquipmentFilterMenu() {
     this.isFilterMenuOpen.set(false);
   }
@@ -255,6 +259,15 @@ export class FileEditorComponent {
   }
 
   submitEquipment(equipment: EquipmentDto) {
+    this.createEquipment(equipment);
+  }
+
+  createEquipmentAndAddLotoPoint(equipment: EquipmentDto) {
+    this.createEquipment(equipment);
+  }
+
+  private createEquipment(equipment: EquipmentDto) {
+    
     if (!equipment) {
       console.error('Invalid equipment');
       return;
@@ -263,7 +276,6 @@ export class FileEditorComponent {
     const fileLink = this.currentFileService.getCurrentFile()?.fileLink;
     const eqWithFile = new EquipmentDto({...equipment, mainFile: fileLink, files: [fileLink!] });
   
-    // Assuming you have a loading state
     this.isLoading.set(true);
   
     this.equipmentService.updateEquipment(eqWithFile).pipe(

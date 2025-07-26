@@ -15,6 +15,7 @@ import { CurrentValueService } from '../../../services/current-value.service';
 import { SearchCriteria, SearchCriteriaDto } from '../../../models/api/search-criteria.model';
 import { Validators } from '@angular/forms';
 import { Question } from '../../../models/ui/question.model';
+import { ConfirmationService } from '../../../services/ui/confirmation.service';
 
 @Component({
   selector: 'app-equipment-form',
@@ -30,6 +31,7 @@ export class EquipmentFormComponent implements OnInit {
   private currentEquipmentService = inject(CurrentEquipmentService);
   private equipmentService = inject(EquipmentService);
   private destroyRef = inject(DestroyRef);
+  private confirmationService = inject(ConfirmationService);
 
   values = input<EquipmentDto>(new EquipmentDto());
 
@@ -37,6 +39,7 @@ export class EquipmentFormComponent implements OnInit {
   formDelete = output<void>();
   valuesChange = output<EquipmentDto>();
   addNewLotoPointEvent = output<number>();
+  createNewEqAndAddLotoPointEvent = output<EquipmentDto>();
 
   systems = signal<Option[]>([]);
   locations = signal<Option[]>([]);
@@ -227,6 +230,21 @@ export class EquipmentFormComponent implements OnInit {
       ...currentEquipment,
       lotoPoints: [...currentEquipment.lotoPoints? currentEquipment.lotoPoints : [], lotoPoint]
     });
+
+    if(!updatedEquipment.id || updatedEquipment.id === 0) {
+      // this.confirmationService.confirm('The current equipment is not saved. Do you want to save it first?')
+      //   .then((result) => {
+      //     if (result) {
+      //       // User clicked "OK", save the equipment first
+      //       this.createNewEqAndAddLotoPointEvent.emit(updatedEquipment);
+      //     } else {
+      //       // User clicked "Cancel", do nothing or show a message
+      //       console.log('Operation cancelled by user');
+      //     }
+      //   });
+      this.createNewEqAndAddLotoPointEvent.emit(updatedEquipment);
+      return;
+    }
   
     this.equipmentService.updateEquipment(updatedEquipment).pipe(
       tap(resp => {

@@ -73,7 +73,7 @@
     (closeEvent)="onDataPresetMenuOpen()">
   </app-data-preset-menu>
 
-  <app-popup-projection
+  <!-- <app-popup-projection
     [isOpen]="isEqFormOpen()"
     [title]="'Equipment Details'"
     [size]="'large'"
@@ -90,7 +90,26 @@
       
         <button (click)="openTagNumberGenerator()" class="control-button generate-tag-button">Generate Tag</button>
       </div>
-  </app-popup-projection>
+  </app-popup-projection> -->
+
+  <app-floating-menu 
+    [title]="'Equipmnet Details'"
+    (close)="closeEqForm()"
+    [open]="isEqFormOpen()">
+    
+      <div class="form-container">
+        <app-equipment-form
+          [values]="currentEquipment()"
+          (createNewEqAndAddLotoPointEvent)="createEquipmentAndAddLotoPoint($event)"
+          (formSubmit)="submitEquipment($event)"
+          (formDelete)="onEqDelete()"
+          (addNewLotoPointEvent)="createNewLotoPoint($event)"
+          (lotoPointRowRightClickEvent)="onLotoPointFormOpen($event)">
+        </app-equipment-form>
+      
+        <button (click)="openTagNumberGenerator()" class="control-button generate-tag-button">Generate Tag</button>
+      </div>
+    </app-floating-menu>
 
   <app-popup-projection
     [isOpen]="isLotoPointFormOpen()"

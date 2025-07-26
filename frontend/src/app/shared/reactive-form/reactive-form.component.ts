@@ -40,30 +40,6 @@ export class ReactiveFormComponent {
     });
   }
 
-  // createForm() {
-  //   const group: { [key: string]: any[] } = {};
-  //   this.fields().forEach((field) => {
-  //     let value = this.getNestedValue(this.values(), field.name);
-  //     let validators = field.validators || [];
-
-  //     if (field.type === 'file') {
-  //       value = null;
-  //     }
-
-  //     if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
-  //       value = value || [];
-  //       console.log('Updating '+ field.name +' with values:', value);
-  //     }
-
-  //     if (field.type === 'select' && typeof value === 'object' && value !== null) {
-  //       value = value.id;
-  //     }
-
-  //     group[field.name] = [value, validators];
-  //   });
-  //   this.form.set(this.fb.group(group));
-  // }
-
   createForm() {
     const group: { [key: string]: any[] } = {};
     this.fields().forEach((field) => {
