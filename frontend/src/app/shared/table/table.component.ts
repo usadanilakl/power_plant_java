@@ -175,35 +175,75 @@ ngOnInit() {
     }, obj);
   }
 
+  // onRowClick(item: any, event: MouseEvent) {
+  //   if (event.button === 0) { // Left click
+  //     if (this.clickTimer) {
+  //       // Double click detected
+  //       clearTimeout(this.clickTimer);
+  //       this.clickTimer = null;
+  //       this.onRowDoubleClick(item);
+  //     } else {
+  //       // Set a timer for potential double click
+  //       this.clickTimer = setTimeout(() => {
+  //         this.clickTimer = null;
+  //         if (this.clickCallback) {
+  //         if (event.ctrlKey) {
+  //           this.onRowCtrlClick(item, event);
+  //         } else if (event.shiftKey) {
+  //           this.onRowShiftClick(item, event);
+  //         } else {
+  //           this.clearSelection();
+  //           this.clickCallback(item, event);
+  //         }
+  //         }
+  //       }, this.clickDelay);
+  //     }
+  //   } else if (event.button === 1 && this.middleClickCallback) { // Middle click
+  //     this.middleClickCallback(item);
+  //   }
+  // }
+
+  private lastClickTime: number = 0;
+  private isDoubleClickHandled: boolean = false;
+  
   onRowClick(item: any, event: MouseEvent) {
     if (event.button === 0) { // Left click
-      if (this.clickTimer) {
-        // Double click detected
-        clearTimeout(this.clickTimer);
-        this.clickTimer = null;
+      event.preventDefault(); // Prevent default click behavior
+      const currentTime = new Date().getTime();
+      const timeSinceLastClick = currentTime - this.lastClickTime;
+  
+      if (timeSinceLastClick < 300 && !this.isDoubleClickHandled) {
+        // Double click
         this.onRowDoubleClick(item);
+        setTimeout(() => {
+          this.isDoubleClickHandled = false;
+        }, 300); // Reset the flag after a short delay
       } else {
-        // Set a timer for potential double click
-        this.clickTimer = setTimeout(() => {
-          this.clickTimer = null;
-          if (this.clickCallback) {
-          if (event.ctrlKey) {
-            this.onRowCtrlClick(item, event);
-          } else if (event.shiftKey) {
-            this.onRowShiftClick(item, event);
-          } else {
-            this.clearSelection();
-            this.clickCallback(item, event);
+        // Single click
+        this.lastClickTime = currentTime;
+        setTimeout(() => {
+          if (!this.isDoubleClickHandled && this.clickCallback) {
+            if (event.ctrlKey) {
+              this.onRowCtrlClick(item, event);
+            } else if (event.shiftKey) {
+              this.onRowShiftClick(item, event);
+            } else {
+              this.clearSelection();
+              this.clickCallback(item, event);
+            }
           }
-          }
-        }, this.clickDelay);
+        }, 300);
       }
     } else if (event.button === 1 && this.middleClickCallback) { // Middle click
       this.middleClickCallback(item);
     }
   }
-
+  
   onRowDoubleClick(item: any) {
+    if (this.isDoubleClickHandled) {
+      return; // Exit if we've already handled a double-click
+    }
+    this.isDoubleClickHandled = true;
     if (this.doubleClickCallback) {
       this.doubleClickCallback(item);
     }
