@@ -1,0 +1,21 @@
+<app-main-layout>
+  <ng-container header>
+    <div class="header-menus">
+      <div class="menu-container">
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </div>
+      <!-- <div class="menu-container">
+        <app-router-menu [menuItems]="fileNavMenuItems" [layout]="'row'"></app-router-menu>
+      </div> -->
+    </div>
+  </ng-container>
+  <ng-container left-menu>
+    <!-- <app-file-menu></app-file-menu> -->
+  </ng-container>
+  <ng-container main-content>
+    <router-outlet></router-outlet>
+  </ng-container>
+  <ng-container bottom-menu>
+    <app-bottom-menu-outlet></app-bottom-menu-outlet>
+  </ng-container>
+</app-main-layout>

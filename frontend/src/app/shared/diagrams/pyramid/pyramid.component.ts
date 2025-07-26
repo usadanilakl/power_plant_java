@@ -16,6 +16,7 @@ cytoscape.use(dagre);
 
 @Component({
   selector: 'app-pyramid',
+  standalone: true,
   template: '<div #cyContainer style="width: 100%; height: 600px;"></div>',
   styleUrls: ['./pyramid.component.css']
 })

@@ -14,6 +14,8 @@ import { FilePageComponent } from './pages/file-page/file-page.component';
 import { FileTableComponent } from './features/files/file-table/file-table.component';
 import { FileEditorBottomMenuComponent } from './features/files/file-editor/file-editor-bottom-menu/file-editor-bottom-menu.component';
 import { BackupComponent } from './pages/backup/backup.component';
+import { SchedulerPageComponent } from './pages/scheduler-page/scheduler-page.component';
+import { SchedulerComponent } from './features/scheduler/scheduler.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -49,4 +51,14 @@ export const routes: Routes = [
 
 
     {path: 'file-editor', component: FileEditorComponent, data: {menuType: 'main'}},
+
+    {
+      path: 'scheduler',
+      component: SchedulerPageComponent,
+      children: [
+        { path: '', redirectTo: 'table', pathMatch: 'full' },
+        { path: 'edit', component: SchedulerComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
+        { path: 'table', component: FileTableComponent }
+      ]
+    },
 ];
