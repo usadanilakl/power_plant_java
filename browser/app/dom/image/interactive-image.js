@@ -123,6 +123,8 @@ class ImageZoomInteractive {
     loadImage() {
         this.img.onload = () => {
             this.setInitialSize();
+            const shps = [... this.shapes];
+            this.shapes = shps.map(sh => this.scaleShapeToOriginalPictureSize(sh));
             this.drawShapes();
         };
         this.img.src = this.imageUrl;
@@ -308,6 +310,7 @@ class ImageZoomInteractive {
         if (!ctx) return;
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.shapes.forEach(shape => {
+            // const h = this.scaleShapeToOriginalPictureSize(shape);
             this.drawShape(ctx, shape);
         });
     }
@@ -362,6 +365,42 @@ class ImageZoomInteractive {
             default:
                 return shape;
         }
+    }
+
+    scaleShapeToOriginalPictureSize(shape) {
+        const scaleX = this.img.naturalWidth / shape.originalWidth;
+        const scaleY = this.img.naturalHeight / shape.originalHeight;
+    
+        if (scaleX === 1) return shape;
+    
+        const scaledShape = { ...shape };
+    
+        switch (shape.type) {
+            case 'rectangle':
+                scaledShape.x *= scaleX;
+                scaledShape.y *= scaleY;
+                scaledShape.width *= scaleX;
+                scaledShape.height *= scaleY;
+                break;
+            case 'circle':
+                scaledShape.x *= scaleX;
+                scaledShape.y *= scaleY;
+                scaledShape.radius *= Math.min(scaleX, scaleY);
+                break;
+            case 'line':
+                scaledShape.startX *= scaleX;
+                scaledShape.startY *= scaleY;
+                scaledShape.endX *= scaleX;
+                scaledShape.endY *= scaleY;
+                break;
+            case 'text':
+                scaledShape.x *= scaleX;
+                scaledShape.y *= scaleY;
+                // You might want to scale the font size as well
+                break;
+        }
+    
+        return scaledShape;
     }
 
     drawSelectionHandles(ctx, shape) {

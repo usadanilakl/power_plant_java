@@ -2,7 +2,8 @@ const equipmentService = {
 
     createShapeFromEquipment(equipment) {
         // Clean up and parse the coordinates string
-        const cleanCoordinates = equipment.coordinates.replace(/["']/g, '').trim().replace(/,\s*$/, '');
+        const cleanCoordinates = equipment.coordinates.replace(/[^a-zA-Z0-9,.:]/g, '').replace(/,\s*$/, '');
+
         const coordParts = cleanCoordinates.split(',');
         const coords = {};
         coordParts.forEach(part => {

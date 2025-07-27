@@ -125,7 +125,12 @@ export class DrawUtilService {
 
   handleMouseUp(event: MouseEvent) {
     if((this.isResizing || this.isDraggingShape) && this.selectedShape && this.selectedShape.id && this.selectedShape.id !== 0) {
-      this.currentEquipmentService.setResizeDetector(this.selectedShape!);
+      // Update the shape's original picture dimensions
+      this.selectedShape.originalPictureWidth = this.img.naturalWidth;
+      this.selectedShape.originalPictureHeight = this.img.naturalHeight;
+
+      // Now notify the currentEquipmentService
+      this.currentEquipmentService.setResizeDetector(this.selectedShape);
     }
 
     this.isDraggingShape = false;
