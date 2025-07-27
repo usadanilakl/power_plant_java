@@ -45,7 +45,7 @@ public class Task extends BaseAuditEntity {
     @ManyToMany(mappedBy = "prerequisites")
     private Set<Task> dependents = new HashSet<>();
 
-    @OneToMany(mappedBy = "actionStep", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<TaskReference> references = new HashSet<>();
 
     @Transient

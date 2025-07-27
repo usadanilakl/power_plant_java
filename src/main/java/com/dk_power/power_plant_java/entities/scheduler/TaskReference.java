@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 public class TaskReference extends BaseAuditEntity {
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "action_step_id")
+    @JoinColumn(name = "task_id")
     private Task task;
 
     @Column(name = "reference_id")
