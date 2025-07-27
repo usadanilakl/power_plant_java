@@ -14,6 +14,9 @@
     "/angular/browser/loto/loto-points": {},
     "/angular/browser/loto/loto-points-active": {},
     "/angular/browser/print": {},
+    "/angular/browser/scheduler": {},
+    "/angular/browser/scheduler/flow": {},
+    "/angular/browser/scheduler/table": {},
     "/angular/browser/tag-number": {}
   }
 }
