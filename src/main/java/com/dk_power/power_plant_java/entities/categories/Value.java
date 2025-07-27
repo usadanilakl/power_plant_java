@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.entities.categories;
 
+import com.dk_power.power_plant_java.entities.Referenceable;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
@@ -16,7 +17,7 @@ import org.hibernate.envers.Audited;
 @Audited
 @Table(name = "val_table")
 @Where(clause = "deleted = false")
-public class Value extends BaseAuditEntity {
+public class Value extends BaseAuditEntity implements Referenceable {
     public Value(String name) {
         this.name = name;
     }

@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.loto;
 
 
+import com.dk_power.power_plant_java.entities.Referenceable;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
@@ -24,7 +25,7 @@ import java.util.Set;
 @Setter
 @Audited
 @Where(clause = "deleted=false")
-public class LotoPoint extends BaseAuditEntity {
+public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private String unit;
     private String tagged;
     private String tagNumber;

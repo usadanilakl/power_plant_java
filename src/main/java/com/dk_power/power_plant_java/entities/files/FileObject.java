@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.entities.files;
 
 
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.entities.Referenceable;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
@@ -28,7 +29,7 @@ import java.util.stream.Collectors;
 @Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Where(clause = "deleted=false")
-public class FileObject extends BaseAuditEntity {
+public class FileObject extends BaseAuditEntity implements Referenceable {
 
     public FileObject(String name, Value fileType, String fileLink, Value sytem, String fileNumber, Value vendor) {
         this.name = name;

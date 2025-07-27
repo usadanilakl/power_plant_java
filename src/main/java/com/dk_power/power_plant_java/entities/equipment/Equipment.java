@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.equipment;
 
 
+import com.dk_power.power_plant_java.entities.Referenceable;
 import com.dk_power.power_plant_java.entities.base_entities.BaseEquipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.categories.Value;
@@ -27,7 +28,7 @@ import java.util.Set;
 @Audited
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Where(clause = "deleted=false")
-public class Equipment extends BaseEquipment {
+public class Equipment extends BaseEquipment implements Referenceable {
     //private String name;
 //    private String tagNumber;
 //    private String description;
@@ -121,4 +122,5 @@ public class Equipment extends BaseEquipment {
         if(conflictId == null) conflictId = string;
         else conflictId += ","+string;
     }
+
 }
