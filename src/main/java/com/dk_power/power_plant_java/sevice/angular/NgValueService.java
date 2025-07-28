@@ -289,8 +289,11 @@ public class NgValueService {
     }
     public Value updateValueName(Long valueId, String newName, String newAlias) {
         Value value = getValueById(valueId).orElseThrow(() -> new RuntimeException("Value not found"));
+        fileService.updateFileStructureWithNewValue(value, newName);
         value.setName(newName);
         if(newAlias!=null && !newAlias.isEmpty())value.setAlias(newAlias);
         return valueRepo.save(value);
     }
+
+
 }

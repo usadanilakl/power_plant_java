@@ -127,7 +127,11 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
     }
 
     public String getFileLink() {
-        return fileLink;
+        String ext = null;
+        if(this.extensions!=null && this.extensions.contains("pdf")) ext = "pdf";
+        else if(this.extensions!=null && !this.extensions.isEmpty()) ext = this.extensions.split(",")[0];
+        else if(ext == null && this.extension!=null) ext = this.extension;
+        return this.buildFileLink(ext);
     }
 
     public String getFileNumber() {

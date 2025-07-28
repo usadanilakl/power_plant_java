@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java;
 
 import com.dk_power.power_plant_java.controller.permits.automation.RedTagAutomationService;
 import com.dk_power.power_plant_java.entities.EtaProPoint;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.EtaProService;
 import com.dk_power.power_plant_java.sevice.angular.DefaultValueGeneratorService;
@@ -11,6 +12,7 @@ import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelWriterService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -18,6 +20,9 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @SpringBootApplication
@@ -30,6 +35,10 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     private final RedTagAutomationService redTagAutomationService;
     private final EtaProService etaProService;
     private final DefaultValueGeneratorService defaultValueGeneratorService;
+    private final NgFileService fileService;
+
+    @Value("${files.root.path}")
+    private String filesRoot;
 
 
 
@@ -52,6 +61,27 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 
         String currentUser = System.getProperty("user.name");
         System.out.println("Current User: " + currentUser);
+
+//        List<FileObject> all = fileService.getFilesWithNoExtension();
+//        System.out.println(all.size() + " files found with no extension"  );
+//        for (FileObject f : all) {
+//            String jpgLink = f.buildFileLink("jpg");
+//            String pdfLink = f.buildFileLink("pdf");
+//
+//            Path jpgPath = Paths.get(filesRoot.replace("\\uploads",""), jpgLink);
+//            Path pdfPath = Paths.get(filesRoot.replace("\\uploads",""), pdfLink);
+//
+//            System.out.println(jpgPath);
+//
+//            if (Files.exists(jpgPath)) {
+//                f.addExtension("jpg");
+//            }
+//            if (Files.exists(pdfPath)) {
+//                f.addExtension("pdf");
+//            }
+//
+//            fileService.save(f);
+//        }
 
 
         System.err.println("=====================================================");

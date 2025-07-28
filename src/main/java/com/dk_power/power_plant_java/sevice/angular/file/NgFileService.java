@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.angular.file;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileIdDto;
+import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
@@ -13,6 +14,8 @@ import com.dk_power.power_plant_java.util.RenamedMultipartFile;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -35,6 +38,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private final FileMapper fileMapper;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
+    private final Logger logger = LoggerFactory.getLogger(NgFileService.class);
 
     @Value("${files.root.path}")
     String filesRootPath;
@@ -235,6 +239,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         FileObject updatedEntity = convertIdDtoToEntity(file);
         updatedEntity.buildFileLink();
 
+        System.out.println("old file number - " + oldFileNumber + " - new file number" + updatedEntity.getFileNumber());
+
         // Check if relevant fields have changed
         boolean needsFileUpdate = !oldFileNumber.equals(updatedEntity.getFileNumber()) ||
                 !oldFileType.equals(updatedEntity.getFileType().getName()) ||
@@ -244,8 +250,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             // Move files to new locations
             for (File oldFile : extensionFiles) {
                 String extension = FileUtil.getFileExtension(oldFile.getName());
-                String newPath = Paths.get(projectRootPath, updatedEntity.buildFolder(extension),oldFile.getName()).toString();
+                String name = FileUtil.renameFileWithRevisions(oldFile, updatedEntity.getFileNumber());
+                String newPath = Paths.get(projectRootPath, updatedEntity.buildFolder(extension), name).toString();
                 try {
+                    System.out.println("Moving file: " + oldFile.toPath() + " to " + newPath );
                     FileUtil.moveFileAndCleanup(oldFile.toPath(), Paths.get(newPath));
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to move file: " + oldFile.getName(), e);
@@ -295,7 +303,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         List<File> files = new ArrayList<>();
         for (String extension : extensions) {
             String currentExtension = FileUtil.getFileExtension(link);
-            Path folder = Paths.get(projectRootPath, link.replaceAll(currentExtension,extension)).getParent();
+            Path folder = Paths.get(projectRootPath, link.replaceAll(currentExtension, extension)).getParent();
             files.addAll(FileUtil.getRevisionsByFileNumber(FileUtil.getNameFromPathWithoutExtension(link), folder.toString()));
         }
         return files;
@@ -342,9 +350,9 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     public List<FileDto> getByFileType(String fileType, List<String> fields) {
         return findAllWithProjection(fields).stream()
-            .filter(file -> file.getFileType() != null && file.getFileType().getName().toLowerCase().contains(fileType.toLowerCase()))
-            .map(this::toDto)
-            .collect(Collectors.toList());
+                .filter(file -> file.getFileType() != null && file.getFileType().getName().toLowerCase().contains(fileType.toLowerCase()))
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -359,7 +367,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             for (File f : filesWithAllExtensions) {
                 String extension = FileUtil.getFileExtension(f.getName());
                 try {
-                    FileUtil.moveFileAndCleanup(f.toPath(), Paths.get(projectRootPath, newPath.replaceAll(currentExtension,extension)) );
+                    FileUtil.moveFileAndCleanup(f.toPath(), Paths.get(projectRootPath, newPath.replaceAll(currentExtension, extension)));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -373,5 +381,57 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             file.buildFolder();
             return save(file);
         }).toList();
+    }
+
+    public void updateFileStructureWithNewValue(com.dk_power.power_plant_java.entities.categories.Value value, String newName) {
+        Category category = value.getCategory();
+        if (category != null && category.getName().equals("File Type")) {
+            String oldName = value.getName();
+            try {
+                Path rootPath = Paths.get(filesRootPath);
+                Files.walk(rootPath, 1) // Limit depth to 2 to avoid going too deep
+                        .filter(Files::isDirectory)
+                        .forEach(path -> {
+                            Path folderToRename = path.resolve(oldName);
+                            if (Files.exists(folderToRename)) {
+                                try {
+                                    Path newPath = path.resolve(newName);
+                                    Files.move(folderToRename, newPath);
+                                    logger.info("Renamed folder from {} to {}", folderToRename, newPath);
+                                } catch (IOException e) {
+                                    logger.error("Failed to rename folder from {} to {}", folderToRename, path.resolve(newName), e);
+                                }
+                            }
+                        });
+            } catch (IOException e) {
+                logger.error("Error while traversing directories", e);
+            }
+        } else if (category != null && category.getName().equals("Vendor")) {
+            String oldName = value.getName();
+            try {
+                Path rootPath = Paths.get(filesRootPath);
+                Files.walk(rootPath, 3) // Depth 3 to reach the vendor folders
+                        .filter(Files::isDirectory)
+                        .forEach(path -> {
+                            // Check if this is a vendor folder (at depth 3)
+                            if (path.getNameCount() - rootPath.getNameCount() == 3 && path.getFileName().toString().equals(oldName)) {
+                                try {
+                                    Path newPath = path.resolveSibling(newName);
+                                    Files.move(path, newPath);
+                                    logger.info("Renamed vendor folder from {} to {}", path, newPath);
+                                } catch (IOException e) {
+                                    logger.error("Failed to rename vendor folder from {} to {}", path, path.resolveSibling(newName), e);
+                                }
+                            }
+                        });
+            } catch (IOException e) {
+                logger.error("Error while traversing directories", e);
+            }
+        }
+    }
+
+
+    public List<FileObject> getFilesWithNoExtension() {
+        return fileRepo.findByExtensionsIsNullOrBlank();
     }
 }

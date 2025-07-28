@@ -357,4 +357,22 @@ public static boolean checkAccess(Path filePath) {
         }
         return Collections.emptyList();
     }
+
+public static String renameFileWithRevisions(File oldFile, String fileNumber) {
+    String oldFileName = oldFile.getName();
+    String extension = getFileExtension(oldFileName);
+    
+    // Extract revision number if it exists
+    Pattern revPattern = Pattern.compile("-rev(\\d+)");
+    Matcher revMatcher = revPattern.matcher(oldFileName);
+    String revisionPart = "";
+    if (revMatcher.find()) {
+        revisionPart = revMatcher.group();
+    }
+    
+    // Construct new file name
+    String newFileName = fileNumber + revisionPart + "." + extension;
+    
+    return newFileName;
+}
 }

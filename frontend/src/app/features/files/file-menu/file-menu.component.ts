@@ -52,13 +52,14 @@ constructor(
     });
   }
 
-  loadFiles(type: string = 'PID'): void {
+  loadFiles(type: string = 'pid'): void {
     this.isLoading.set(true);
     this.fileService.getByFileType(type).subscribe(
       (response) => {
         this.isLoading.set(false);
         // Choose 'vendor', 'system', or 'fileType' as the grouping criteria
-        const nestedItems = this.createListOfNestedItems(response.responseData, 'vendor');
+        const criteria = type==='pid' ? 'vendor' : 'fileType';
+        const nestedItems = this.createListOfNestedItems(response.responseData, criteria);
         this.menuItems.set(nestedItems);
       },
       (error) => {

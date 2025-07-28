@@ -78,7 +78,7 @@ public interface ProjectionQueryInterface<E extends BaseIdEntity> {
         for (String field : fields) {
             Selection<?> selection = getSelectionWithJoin(cb, root, field, joins);
             selections.add(selection);
-            log.debug("Added selection for field: {}", field);
+//            log.debug("Added selection for field: {}", field);
         }
 
         query.multiselect(selections);
@@ -94,7 +94,7 @@ public interface ProjectionQueryInterface<E extends BaseIdEntity> {
                 } else {
                     orders.add(cb.desc(expression));
                 }
-                log.debug("Added sort order: {} {}", order.getProperty(), order.getDirection());
+//                log.debug("Added sort order: {} {}", order.getProperty(), order.getDirection());
             });
             query.orderBy(orders);
         }
@@ -145,7 +145,7 @@ public interface ProjectionQueryInterface<E extends BaseIdEntity> {
         for (String field : fields) {
             Selection<?> selection = getSelectionWithJoin(cb, root, field, joins);
             selections.add(selection);
-            log.debug("Added selection for field: {}", field);
+//            log.debug("Added selection for field: {}", field);
         }
 
         query.multiselect(selections);
@@ -160,7 +160,7 @@ public interface ProjectionQueryInterface<E extends BaseIdEntity> {
                 if (value != null && !value.isEmpty()) {
                     Expression<?> expression = getExpressionWithJoin(cb, root, key, joins);
                     predicates.add(cb.like(cb.lower(expression.as(String.class)), "%" + value.toLowerCase() + "%"));
-                    log.debug("Added search criteria: {} LIKE %{}%", key, value);
+//                    log.debug("Added search criteria: {} LIKE %{}%", key, value);
                 }
             }
         }
@@ -179,7 +179,7 @@ public interface ProjectionQueryInterface<E extends BaseIdEntity> {
                 } else {
                     orders.add(cb.desc(expression));
                 }
-                log.debug("Added sort order: {} {}", order.getProperty(), order.getDirection());
+//                log.debug("Added sort order: {} {}", order.getProperty(), order.getDirection());
             });
             query.orderBy(orders);
         }
@@ -318,7 +318,7 @@ public interface ProjectionQueryInterface<E extends BaseIdEntity> {
         for (int i = 0; i < fields.size(); i++) {
             String field = fields.get(i);
             Object value = tuple.get(i);
-            log.debug("Setting field '{}' with value: {}", field, value);
+//            log.debug("Setting field '{}' with value: {}", field, value);
             setEntityFieldRecursively(entity, field, value);
         }
 

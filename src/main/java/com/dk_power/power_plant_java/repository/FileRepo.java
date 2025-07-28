@@ -5,6 +5,8 @@ import com.dk_power.power_plant_java.dto.files.FileDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -16,6 +18,7 @@ public interface FileRepo extends BaseRepository<FileObject> {
     @Query("SELECT e FROM FileObject e WHERE e.vendor.name=?1")
     List<FileObject> findByVendor(String vendor);
     List<FileObject> findByVendor(Value vendor);
+    Page<FileObject> findByVendor(Value vendor, Pageable pageable);
     @Query("SELECT DISTINCT e.system.name FROM FileObject e")
     List<String> getSystems();
     FileObject findByName(String name);
@@ -36,6 +39,7 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileObject> findBySystem(Value oldVal);
 
     List<FileObject> findByFileType(Value oldVal);
+    Page<FileObject> findByFileType(Value fileType, Pageable pageable);
 
     List<FileObject> findByBulkEditStep(String step);
 
@@ -44,5 +48,10 @@ public interface FileRepo extends BaseRepository<FileObject> {
     List<FileObject> findByCompletedIsTrueAndIsVerifiedIsFalse();
 
     List<FileObject> findByFileType_Name(String fileType);
+
+    List<FileObject> findByExtensionsIsNull();
+    
+    @Query("SELECT f FROM FileObject f WHERE f.extensions IS NULL OR trim(f.extensions) = ''")
+    List<FileObject> findByExtensionsIsNullOrBlank();
 }
 
