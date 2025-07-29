@@ -185,6 +185,53 @@ constructor(
     );
   }
 
+  onFormDelete() {
+    if (!this.currentFile()) return;
+  
+    const fileId = this.currentFile()!.id + '';
+    this.isProcessingFile.set(true);
+  
+    this.fileService.deleteFile(fileId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        console.log('File deleted successfully');
+        this.fileSubmitMessage.set('File deleted successfully');
+        
+        // Remove the deleted file from the menu items
+        this.removeDeletedFileFromMenu(fileId);
+        
+        // Clear the current file
+        this.currentFileService.setCurrentFile(null);
+        this.currentFile.set(null);
+        
+        // Close the file form
+        this.isFileFormOpen.set(false);
+        
+        // Optionally, reload the file list
+        // this.loadFiles();
+      },
+      error: (error) => {
+        console.error('Error deleting file:', error);
+        this.fileSubmitMessage.set('Error deleting file: ' + error.message);
+      },
+      complete: () => {
+        this.isProcessingFile.set(false);
+      }
+    });
+  }
+  
+  private removeDeletedFileFromMenu(fileId: string) {
+    this.menuItems.update(items => {
+      return items.map(item => {
+        if (item.values) {
+          item.values = item.values.filter(subItem => subItem.id !== fileId);
+        }
+        return item;
+      }).filter(item => item.values && item.values.length > 0);
+    });
+  }
+
   onFileFormClose(){
     this.isFileFormOpen.set(false);
   }

@@ -3,7 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { EquipmentDto } from '../../models/equipment/equipment.model';
 import { EquipmentService } from '../equipment.service';
 import { LotoPointDto } from '../../models/loto/loto-point.model';
-import { Shape } from '../../models/shape.model';
+import { RectangleShape, Shape } from '../../models/shape.model';
 import { LotoPointService } from '../loto/loto-point.service';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
 import { DataPresetDto } from '../../models/equipment/data-preset.model';
@@ -70,6 +70,23 @@ export class CurrentEquipmentService {
       } else {
         this.clearCurrentEquipment();
       }
+    }
+
+    removeShapeFromArray(shapeToRemove: RectangleShape): void {
+      const allShapes = this.allShapesSubject.getValue();
+      const updatedShapes = allShapes.filter(shape => 
+        !this.areShapesEqual(shape as RectangleShape, shapeToRemove)
+      );
+      // Create a new array to ensure change detection
+      this.allShapesSubject.next([...updatedShapes]);
+      console.log('currently selected shape is: ', this.shapeSubject.getValue());
+    }
+    
+    private areShapesEqual(shape1: RectangleShape, shape2: RectangleShape): boolean {
+      return shape1.x === shape2.x &&
+             shape1.y === shape2.y &&
+             shape1.width === shape2.width &&
+             shape1.height === shape2.height;
     }
 
     updateCurrentShape(updatedShape: Shape): void {

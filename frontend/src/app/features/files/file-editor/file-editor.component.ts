@@ -21,6 +21,7 @@ import { PdfDisplayIframeComponent } from "../../../shared/pdf-dislplay-iframe/p
 import { LotoPointBulkEditorComponent } from "./loto-point-bulk-editor/loto-point-bulk-editor.component";
 import { EquipmentService } from '../../../services/equipment.service';
 import { TagNumberGeneratorComponent } from "../../tag-number/tag-number-generator/tag-number-generator.component";
+import { ClipboardService } from '../../../services/util/clipboard.service';
 
 @Component({
   selector: 'app-file-editor',
@@ -53,6 +54,7 @@ export class FileEditorComponent {
   lpToEdit = signal<LotoPointDto | null>(null);
 
   isTextRecongnitionEnabled = signal<boolean>(true);
+  isGetJustTextEnabled = signal<boolean>(false);
   isTagNumberGeneratorOpen = signal<boolean>(false);
 
 
@@ -62,7 +64,8 @@ export class FileEditorComponent {
     private equipmentService: EquipmentService,
     private lotoPointService: LotoPointService,
     private destroyRef: DestroyRef,
-    private imageService: ImageService
+    private imageService: ImageService,
+    private clipboardService: ClipboardService,
   ) {}
 
   ngOnInit() {
@@ -133,6 +136,12 @@ export class FileEditorComponent {
   }
 
   onNewShapeCreated(shape: any) {
+
+    if(this.isGetJustTextEnabled()){
+      this.startTextRecognition(shape);
+      this.currentEquipmentService.removeShapeFromArray(shape);
+      return;
+    }
     
     this.currentEquipmentService.getCurrentPresetData().pipe(
       takeUntilDestroyed(this.destroyRef),
@@ -150,15 +159,18 @@ export class FileEditorComponent {
     ).subscribe();
   }
   
-  private startTextRecognition(shape: any, newEq: EquipmentDto) {
+  private startTextRecognition(shape: any, newEq?: EquipmentDto) {
     this.imageService.getText(this.currentFile()?.fileLink, shape).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(text => {
         if (text) {
-          // Update the tag number when text is recognized
-          newEq.tagNumber = text.trim();
-          this.currentEquipmentService.setCurrentEquipment(newEq);
           this.recognizedText.set(text.trim());
+          this.clipboardService.setClipboardData(text.trim());
+          if (newEq) {
+            // Update the tag number when text is recognized and newEq exists
+            newEq.tagNumber = text.trim();
+            this.currentEquipmentService.setCurrentEquipment(newEq);
+          }
         }
       }),
       catchError(error => {
@@ -170,6 +182,9 @@ export class FileEditorComponent {
 
   toggleTextRecongnition(){
     this.isTextRecongnitionEnabled.set(!this.isTextRecongnitionEnabled());  
+  }
+  toggleGetJustText() {
+    this.isGetJustTextEnabled.set(!this.isGetJustTextEnabled());  
   }
 
   closeEqForm(){

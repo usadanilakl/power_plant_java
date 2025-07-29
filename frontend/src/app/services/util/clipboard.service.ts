@@ -9,6 +9,7 @@ export class ClipboardService {
 
   setClipboardData(data: string) {
     this.clipboardData = data;
+    console.log('Data copied to clipboard',data);
   }
 
   getClipboardData(): string {

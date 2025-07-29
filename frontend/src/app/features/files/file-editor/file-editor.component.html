@@ -35,6 +35,13 @@
           Enable Text Recognition
         }
       </button>
+      <button (click)="toggleGetJustText()" class="control-button">
+        @if (isGetJustTextEnabled()) {
+          Just Text
+        } @else {
+          Create Shape
+        }
+      </button>
     </div>
   </div>
 </div>

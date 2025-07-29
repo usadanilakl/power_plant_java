@@ -127,7 +127,7 @@ class ImageZoomInteractive {
             this.shapes = shps.map(sh => this.scaleShapeToOriginalPictureSize(sh));
             this.drawShapes();
         };
-        this.img.src = this.imageUrl;
+        this.img.src = this.imageUrl.replace(/pdf/g, 'jpg').replace('file//', '');
     }
 
     calculateCurrentScale() {
