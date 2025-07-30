@@ -1,0 +1,21 @@
+  <div class="tables-container">
+    <div class="table-wrapper">
+      <h3>Selected Points</h3>
+        <app-equipment-table
+            [equipmentList]="currentItems"
+        >
+        </app-equipment-table>
+    </div>
+    <div class="table-wrapper">
+      <h3>Search Points</h3>
+      <app-searchable-dropdown
+      [label]="'Get Points From Selected File'"
+      [options]="fileOptions()"
+      (valueChange)="handleFileSelect($event)"
+      ></app-searchable-dropdown>
+        <app-equipment-table
+            [equipmentList]="searchedItems"
+        >
+        </app-equipment-table>
+    </div>
+  </div>

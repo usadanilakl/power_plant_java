@@ -20,7 +20,7 @@
   }
 </div>
 
-<app-popup-projection
+<!-- <app-popup-projection
   [isOpen]="isFileFormOpen()"
   [title]="'File Details'"
   [size]="'large'"
@@ -36,17 +36,51 @@
       ></app-file-detail-form>
     </div>
 
-    <!-- <div class="image-container">
+    <div class="image-container">
       <app-image-zoom-interactive
         [imageUrl]="selectedImagePath"
         [elements]="elements$">
       </app-image-zoom-interactive>
-    </div> -->
+    </div>
   </div>
-}@else{
-  <div class="center-container">
-    <p>Processing File...</p>
-    <p>{{fileSubmitMessage()}}</p>
-    <button (click)="fileUploadMessageWindow()">Cancel</button>
-  </div>
-}
+  }@else{
+    <div class="center-container">
+      <p>Processing File...</p>
+      <p>{{fileSubmitMessage()}}</p>
+      <button (click)="fileUploadMessageWindow()">Back</button>
+    </div>
+  }
+</app-popup-projection> -->
+
+  <app-floating-menu 
+    [title]="'File Details'"
+    (close)="onFileFormClose()"
+    [open]="isFileFormOpen()">
+    
+      <div class="form-container">
+      @if(!isProcessingFile()){
+        <div class="side-by-side-container">
+        <div class="form-container">
+          <app-file-detail-form
+            [values]="currentFile()"
+            (formSubmit)="onFormSubmit($event)"
+            (formDelete)="onFormDelete()"
+          ></app-file-detail-form>
+        </div>
+
+        <!-- <div class="image-container">
+          <app-image-zoom-interactive
+            [imageUrl]="selectedImagePath"
+            [elements]="elements$">
+          </app-image-zoom-interactive>
+        </div> -->
+      </div>
+      }@else{
+        <div class="center-container">
+          <p>Processing File...</p>
+          <p>{{fileSubmitMessage()}}</p>
+          <button (click)="fileUploadMessageWindow()">Back</button>
+        </div>
+      }
+    </div>
+  </app-floating-menu>

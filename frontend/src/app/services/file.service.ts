@@ -22,6 +22,9 @@ export class FileService {
       .set('pageSize', pageSize.toString());
     return this.http.get<SpringPaginatedResponse<FileDto[]>>(`${this.apiUrl}/paginated`, { params });
   }
+  getFilesWithPoints(): Observable<SpringPaginatedResponse<FileDto>> {
+    return this.http.get<SpringPaginatedResponse<FileDto>>(`${this.apiUrl}/with-points`);
+  }
   
   getByFileType(fileType: string) {
     return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/by-type/${fileType}`);

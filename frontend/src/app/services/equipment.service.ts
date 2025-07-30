@@ -7,6 +7,7 @@ import { EquipmentDto } from '../models/equipment/equipment.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { SearchCriteria } from '../models/api/search-criteria.model';
 import { SpringPaginatedResponse } from '../models/api/spring-pagenated.response.model';
+import { FileDto } from '../models/file/file.model';
 
 @Injectable({
   providedIn: 'root'
@@ -52,5 +53,8 @@ export class EquipmentService {
 
   getByEquipmentType(equipmentType: string): Observable<SpringApiResponse<EquipmentDto[]>> {
     return this.http.get<SpringApiResponse<EquipmentDto[]>>(`${this.apiUrl}/by-type/${equipmentType}`);
+  }
+  copyEquipment(id: number, fileId: FileDto): Observable<SpringApiResponse<EquipmentDto>> {
+    return this.http.post<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}/copy`, {eqId: id, fileId: fileId });
   }
 }

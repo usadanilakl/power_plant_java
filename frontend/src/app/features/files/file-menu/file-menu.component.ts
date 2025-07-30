@@ -8,10 +8,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrentFileService } from '../../../services/current-file.service';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { FileDetailFormComponent } from "../file-detail-form/file-detail-form.component";
+import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
 
 @Component({
   selector: 'app-file-menu',
-  imports: [ToggleMenuComponent, PopupProjectionComponent, FileDetailFormComponent],
+  imports: [ToggleMenuComponent, PopupProjectionComponent, FileDetailFormComponent, FloatingMenuComponent],
   templateUrl: './file-menu.component.html',
   styleUrl: './file-menu.component.css',
   standalone: true

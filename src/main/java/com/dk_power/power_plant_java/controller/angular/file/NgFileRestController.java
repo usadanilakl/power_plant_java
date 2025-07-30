@@ -46,6 +46,19 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+    @GetMapping("/with-points")
+    public ResponseEntity<NgApiResponse<Page<FileDto>>> getFilesWithPoints() {
+        try{
+            Page<FileDto> paginatedFiles = ngFileService.findAllWithProjectionPaginated(
+                    new ArrayList<>(Arrays.asList("id", "fileNumber", "name", "vendor.name")),
+                    PageRequest.of(0, 10000)).map(ngFileService::toDto);
+            NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        }catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<NgApiResponse<FileDto>> getFileById(@PathVariable Long id) {
@@ -155,5 +168,7 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving files: " + e.getMessage()));
         }
     }
+    
+
 
 }

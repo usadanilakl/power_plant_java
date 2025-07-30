@@ -62,26 +62,26 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
         String currentUser = System.getProperty("user.name");
         System.out.println("Current User: " + currentUser);
 
-        List<FileObject> all = fileService.getFilesWithNoExtension();
-        System.out.println(all.size() + " files found with no extension"  );
-        for (FileObject f : all) {
-            String jpgLink = f.buildFileLink("jpg");
-            String pdfLink = f.buildFileLink("pdf");
-
-            Path jpgPath = Paths.get(filesRoot.replace("\\uploads",""), jpgLink);
-            Path pdfPath = Paths.get(filesRoot.replace("\\uploads",""), pdfLink);
-
-            System.out.println(jpgPath);
-
-            if (Files.exists(jpgPath)) {
-                f.addExtension("jpg");
-            }
-            if (Files.exists(pdfPath)) {
-                f.addExtension("pdf");
-            }
-
-            fileService.save(f);
-        }
+//        List<FileObject> all = fileService.getFilesWithNoExtension();
+//        System.out.println(all.size() + " files found with no extension"  );
+//        for (FileObject f : all) {
+//            String jpgLink = f.buildFileLink("jpg");
+//            String pdfLink = f.buildFileLink("pdf");
+//
+//            Path jpgPath = Paths.get(filesRoot.replace("\\uploads",""), jpgLink);
+//            Path pdfPath = Paths.get(filesRoot.replace("\\uploads",""), pdfLink);
+//
+//            System.out.println(jpgPath);
+//
+//            if (Files.exists(jpgPath)) {
+//                f.addExtension("jpg");
+//            }
+//            if (Files.exists(pdfPath)) {
+//                f.addExtension("pdf");
+//            }
+//
+//            fileService.save(f);
+//        }
 
 
         System.err.println("=====================================================");

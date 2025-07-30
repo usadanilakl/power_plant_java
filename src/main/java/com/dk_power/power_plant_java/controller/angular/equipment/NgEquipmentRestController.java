@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/ng/equipment")
@@ -137,6 +138,19 @@ public class NgEquipmentRestController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+    @PostMapping("/copy")
+    public ResponseEntity<NgApiResponse<EquipmentDto>> copyEquipment(@RequestBody Map<String, Object> requestBody) {
+        try {
+            Long eqId = Long.parseLong(requestBody.get("eqId").toString());
+            Long fileId = Long.parseLong(((Map<String, Object>)requestBody.get("fileId")).get("id").toString());
+
+            EquipmentDto copiedEquipment = ngEquipmentService.copyEquipment(eqId, fileId);
+            return ResponseEntity.ok(new NgApiResponse<>(copiedEquipment, "Equipment copied successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error copying equipment: " + e.getMessage()));
         }
     }
 }

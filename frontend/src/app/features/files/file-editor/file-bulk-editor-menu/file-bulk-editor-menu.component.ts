@@ -14,10 +14,11 @@ import { Option } from '../../../../models/option.model';
 import { SharedDataService } from '../../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EquipmentService } from '../../../../services/equipment.service';
+import { FileLookupMenuComponent } from "../file-lookup-menu/file-lookup-menu.component";
 
 @Component({
   selector: 'app-file-bulk-editor-menu',
-  imports: [FloatingMenuComponent, EquipmentTableComponent, PopupProjectionComponent, DetailsFormComponent],
+  imports: [FloatingMenuComponent, EquipmentTableComponent, PopupProjectionComponent, DetailsFormComponent, FileLookupMenuComponent],
   templateUrl: './file-bulk-editor-menu.component.html',
   styleUrl: './file-bulk-editor-menu.component.css'
 })
@@ -52,6 +53,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
   MenuPosition = MenuPosition;
 
   selectedItems = signal<EquipmentDto[]>([]);
+  isLookupMenuOpen = signal<boolean>(false);
 
   ngOnInit(): void {
     this.currentFileService.getElementsToRender().subscribe(equipmentList => {
@@ -240,6 +242,10 @@ export class FileBulkEditorMenuComponent implements OnInit {
           return of([]);
         })
       );
+    }
+
+    toggleLookupMenu() {
+      this.isLookupMenuOpen.set(!this.isLookupMenuOpen());
     }
 
 }

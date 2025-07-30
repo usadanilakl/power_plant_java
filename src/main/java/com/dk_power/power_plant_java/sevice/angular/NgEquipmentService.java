@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
@@ -189,4 +190,76 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
         return null;
 
     }
+
+public EquipmentDto copyEquipment(Long eqId, Long fileId) {
+    Equipment sourcePoint = findById(eqId).orElseThrow(() -> new RuntimeException("Equipment not found with id: " + eqId));
+    Equipment processedEq = new Equipment();
+
+    // Copy basic properties
+    processedEq.setCoordinates(sourcePoint.getCoordinates());
+    processedEq.setOriginalPictureSize(sourcePoint.getOriginalPictureSize());
+    processedEq.setSystem(sourcePoint.getSystem());
+    processedEq.setLocation(sourcePoint.getLocation());
+    processedEq.setVendor(sourcePoint.getVendor());
+    processedEq.setEqType(sourcePoint.getEqType());
+    processedEq.setLotoPoints(new HashSet<>());
+
+    // Process tag number and description
+    String sourceTagNumber = sourcePoint.getTagNumber();
+    String destinationTagNumber;
+    String destDescription = "";
+
+    if (sourceTagNumber.startsWith("01")) {
+        destinationTagNumber = "02" + sourceTagNumber.substring(2);
+        if (sourcePoint.getDescription() != null) {
+            destDescription = processDescription(sourcePoint.getDescription(), "01", "02");
+        }
+    } else if (sourceTagNumber.startsWith("02")) {
+        destinationTagNumber = "01" + sourceTagNumber.substring(2);
+        if (sourcePoint.getDescription() != null) {
+            destDescription = processDescription(sourcePoint.getDescription(), "02", "01");
+        }
+    } else {
+        // If it doesn't start with 01 or 02, keep the original tag number
+        destinationTagNumber = sourceTagNumber;
+        destDescription = sourcePoint.getDescription();
+    }
+
+    processedEq.setTagNumber(destinationTagNumber);
+    processedEq.setDescription(destDescription);
+
+    // Set the main file
+    FileObject mainFile = fileService.getEntityById(fileId);
+    processedEq.setMainFile(mainFile);
+
+    // Copy LOTO points
+//    Set<LotoPoint> lotoPoints = sourcePoint.getLotoPoints();
+//    if (lotoPoints != null) {
+//        for (LotoPoint lp : lotoPoints) {
+//            List<LotoPoint> points = (List<LotoPoint>) ngLotoPointService.copyPointFromOtherUnit(lp.getId()).get("Match");
+//            processedEq.getLotoPoints().addAll(points);
+//        }
+//    }
+
+    Equipment savedEquipment = save(processedEq);
+
+    // Add the equipment to the file's points
+    mainFile.addPoint(savedEquipment);
+    fileService.save(mainFile);
+
+    return toDto(savedEquipment);
+
+}
+
+private String processDescription(String description, String fromUnit, String toUnit) {
+    return Arrays.stream(description.split(" "))
+            .map(e -> {
+                if (e.startsWith(fromUnit)) return toUnit + e.substring(2);
+                else return e;
+            })
+            .collect(Collectors.joining(" "))
+            .replaceAll("Unit" + fromUnit.charAt(1), "Unit" + toUnit.charAt(1))
+            .replaceAll("Unit " + fromUnit.charAt(1), "Unit " + toUnit.charAt(1))
+            .replaceAll("U" + fromUnit.charAt(1), "U" + toUnit.charAt(1));
+}
 }

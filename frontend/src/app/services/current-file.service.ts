@@ -8,7 +8,7 @@ import { LotoPointDto } from '../models/loto/loto-point.model';
 @Injectable({
   providedIn: 'root'
 })
-export class CurrentFileService {  
+export class CurrentFileService {
     private currentFileSubject = new BehaviorSubject<FileDto | null>(null);
     currentFile$: Observable<FileDto | null> = this.currentFileSubject.asObservable();
 

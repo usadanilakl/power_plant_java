@@ -108,6 +108,8 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
         return folder;
     }
     public String buildFileLink(String extention){
+        if(fileType == null || fileType.getName()==null) return null;
+        if(vendor == null || vendor.getName()==null) return null;
         this.extension = extention;
         fileLink = baseLink+"/"+extension+"/"+fileType.getName()+"/"+vendor.getName()+"/"+fileNumber+"."+extension;
         return fileLink;

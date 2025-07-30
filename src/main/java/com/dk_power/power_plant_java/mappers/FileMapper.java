@@ -53,7 +53,7 @@ public class FileMapper implements BaseMapper {
         fileDto.setId(file.getId());
         if (file.getFileType() != null) fileDto.setFileType(valueService.getDtoById(file.getFileType().getId()));
         if (file.getSystem() != null) fileDto.setSystem(valueService.getDtoById(file.getSystem().getId()));
-        if (file.getVendor() != null) fileDto.setVendor(valueService.getDtoById(file.getVendor().getId()));
+        if (file.getVendor() != null && file.getVendor().getId()!=null) fileDto.setVendor(valueService.getDtoById(file.getVendor().getId()));
         if (file.getRelatedSystems() != null) fileDto.setRelatedSystemsAsString(file.getRelatedSystems());
         if (file.getPoints() != null)
             fileDto.setPoints(file.getPoints().stream().map(e -> equipmentService.getDtoById(e.getId())).toList());
