@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.controller.angular.file;
 import com.dk_power.power_plant_java.api.ApiResponse;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileIdDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
@@ -166,6 +167,17 @@ public class NgFileRestController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving files: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/eq-by-file")
+    public ResponseEntity<NgApiResponse<List<EquipmentDto>>> getEquipmentByFile(@RequestBody Map<String,String> fileId) {
+        try {
+            List<EquipmentDto> equipmentDtos = ngFileService.getEquipmentByFile(fileId.get("id"));
+            return ResponseEntity.ok(new NgApiResponse<>(equipmentDtos, "Equipment retrieved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving equipment: " + e.getMessage()));
         }
     }
     

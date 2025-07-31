@@ -7,6 +7,7 @@ import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { SpringPaginatedResponse } from '../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../models/api/search-criteria.model';
 import { FileIdDto } from '../models/file/file-id.model';
+import { EquipmentDto } from '../models/equipment/equipment.model';
 
 @Injectable({
   providedIn: 'root'
@@ -24,6 +25,9 @@ export class FileService {
   }
   getFilesWithPoints(): Observable<SpringPaginatedResponse<FileDto>> {
     return this.http.get<SpringPaginatedResponse<FileDto>>(`${this.apiUrl}/with-points`);
+  }
+  getEquipmentByFileId(fileId: any): Observable<SpringApiResponse<EquipmentDto[]>> {
+    return this.http.post<SpringApiResponse<EquipmentDto[]>>(`${this.apiUrl}/eq-by-file`, { id: fileId });
   }
   
   getByFileType(fileType: string) {

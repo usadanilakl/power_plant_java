@@ -35,7 +35,7 @@
           }
         </tr>
       </thead>
-      <tbody>
+      <tbody #tableBody>
         @for (item of filteredItems; track item.id) {
           <tr 
           (mouseenter)="onRowHover(item)"

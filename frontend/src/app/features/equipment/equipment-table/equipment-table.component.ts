@@ -27,7 +27,7 @@ import { Column } from '../../../models/column.model';
   </app-shared-table>
   `
 })
-export class EquipmentTableComponent {
+export class EquipmentTableComponent extends TableComponent{
   equipmentList = input.required<Signal<EquipmentDto[]> | null>();
   debounceTime = input<number>(500);
   @Output() equipmentClicked = new EventEmitter<EquipmentDto>();
@@ -35,7 +35,7 @@ export class EquipmentTableComponent {
   @Output() equipmentRightClicked = new EventEmitter<EquipmentDto>();
   @Output() equipmentHovered = new EventEmitter<EquipmentDto>();
   @Output() equipmentDeleted = new EventEmitter<string>();
-  selectedItemsEvent = output<EquipmentDto[]>();
+  override selectedItemsEvent = output<EquipmentDto[]>();
 
   // columns: Column[] = [
   //   { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
@@ -51,7 +51,7 @@ export class EquipmentTableComponent {
   //   { id: 'lotoPointsCount', header: 'LOTO Points', accessorFn: (item: EquipmentDto) => item.lotoPoints.length.toString() }
   // ];
 
-  columns: Column[] = [
+  override columns: Column[] = [
     {
       id: 'isVerified',
       header: 'Verified',

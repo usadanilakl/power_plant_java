@@ -1,1 +1,26 @@
-<p>file-point-discrepancies-menu works!</p>
+
+    
+    <app-searchable-dropdown
+        [options]="fileOptions()"
+        (valueChange)="fetchOtherUnitItems($event)">
+    </app-searchable-dropdown>
+    
+    <div class="tables-container">
+      <div class="table-wrapper">
+        <h3>Current Items</h3>
+        <app-equipment-table
+          #currentTable
+          [equipmentList]="currentItems"
+          (equipmentClicked)="onItemClick($event, true)">
+        </app-equipment-table>
+      </div>
+    
+      <div class="table-wrapper">
+        <h3>Other Unit Items</h3>
+        <app-equipment-table
+          #otherTable
+          [equipmentList]="otherUnitItems"
+          (equipmentClicked)="onItemClick($event, false)">
+        </app-equipment-table>
+      </div>
+    </div>

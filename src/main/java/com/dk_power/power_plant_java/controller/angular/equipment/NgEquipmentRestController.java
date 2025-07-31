@@ -153,4 +153,22 @@ public class NgEquipmentRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error copying equipment: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/get-other-unit-equipment")
+    public ResponseEntity<NgApiResponse<EquipmentDto>> getOtherUnitEquipment(@RequestBody Map<String, String> requestBody) {
+        try {
+            String tagNumber = requestBody.get("tagNumber");
+            String baseTagNumber = tagNumber.substring(2);
+            String unit = tagNumber.trim().substring(0, 2);
+            String otherUnitTagNumber = unit.equals("01") ? "02" : unit.equals("02")? "01" : "00";
+            System.out.println("Other unit tag number: " + otherUnitTagNumber + baseTagNumber);
+
+            List<EquipmentDto> byTagNumber = ngEquipmentService.getByTagNumber(otherUnitTagNumber+baseTagNumber);
+            if(byTagNumber.isEmpty()) throw new IllegalArgumentException("Other unit equipment not found.");
+            return ResponseEntity.ok(new NgApiResponse<>(byTagNumber.get(0), "Other unit equipment retrieved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving other unit equipment: " + e.getMessage()));
+        }
+    }
 }

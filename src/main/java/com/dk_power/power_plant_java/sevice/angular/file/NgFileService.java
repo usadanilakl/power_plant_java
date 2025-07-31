@@ -1,12 +1,14 @@
 package com.dk_power.power_plant_java.sevice.angular.file;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileIdDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
+import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.util.FileUtil;
 import com.dk_power.power_plant_java.util.PdfConverter;
@@ -38,6 +40,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private final FileMapper fileMapper;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
+    private final NgEquipmentService equipmentService;
     private final Logger logger = LoggerFactory.getLogger(NgFileService.class);
 
     @Value("${files.root.path}")
@@ -433,5 +436,12 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     public List<FileObject> getFilesWithNoExtension() {
         return fileRepo.findByExtensionsIsNullOrBlank();
+    }
+
+
+    public List<EquipmentDto> getEquipmentByFile(String fileId) {
+        FileObject entityById = getEntityById(fileId);
+        if (entityById == null) return Collections.emptyList();
+        return entityById.getPoints().stream().map(equipmentService::toDto).toList();
     }
 }

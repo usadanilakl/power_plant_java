@@ -147,3 +147,9 @@ tr.selected {
 tr.selected:hover {
   background-color: #b2ebf2;
 }
+
+
+.highlighted {
+  background-color: #ffff99; /* Light yellow background */
+  transition: background-color 0.5s ease;
+}

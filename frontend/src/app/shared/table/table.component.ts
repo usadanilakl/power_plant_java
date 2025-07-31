@@ -28,6 +28,7 @@ export class TableComponent implements OnInit {
   hoverDebounceTime = input<number>(0);
 
   @ViewChild('tableContainer') tableContainer!: ElementRef;
+  @ViewChild('tableBody') tableBody!: ElementRef;
 
   @Output() loadMoreItems = new EventEmitter<SearchCriteria>();
   @Output() search = new EventEmitter<SearchCriteria>();
@@ -345,6 +346,45 @@ ngOnInit() {
       // Trigger change detection
       this.cdr.detectChanges();
     }
+  }
+
+  scrollToIndex(index: number) {
+    if (this.tableBody && this.tableBody.nativeElement) {
+      const rows = this.tableBody.nativeElement.querySelectorAll('tr');
+      if (rows[index]) {
+        rows[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log('Scrolled to row:', index);
+        // Optionally, highlight the row
+        rows[index].classList.add('highlighted');
+        setTimeout(() => {
+          rows[index].classList.remove('highlighted');
+        }, 2000); // Remove highlight after 2 seconds
+      }
+    }
+  }
+
+  // Method to get the index of an item
+  // getItemIndex(item: any): number {
+  //   console.log('filteredItems: ', this.filteredItems)
+  //   return this.filteredItems.findIndex(i => i.id === item.id);
+  // }
+  getItemIndex(item: any): number {
+    if (!this.tableBody) {
+      console.warn('Table body not available');
+      return -1;
+    }
+
+    const rows = this.tableBody.nativeElement.querySelectorAll('tr');
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.dataset.itemId === item.id.toString()) {
+        console.log(`Item found at visual index ${i}`);
+        return i;
+      }
+    }
+
+    console.warn('Item not found in table body');
+    return -1;
   }
 
 }

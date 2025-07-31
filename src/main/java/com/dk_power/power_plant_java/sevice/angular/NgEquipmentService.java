@@ -35,7 +35,7 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
     private final NgFileService fileService;
     private final NgLotoPointService lotoPointService;
 
-    public NgEquipmentService(EquipmentRepo equipmentRepo, SessionFactory sessionFactory, EntityManager entityManager, EquipmentMapper equipmentMapper, NgFileService fileService, @Lazy NgLotoPointService lotoPointService) {
+    public NgEquipmentService(EquipmentRepo equipmentRepo, SessionFactory sessionFactory, EntityManager entityManager, EquipmentMapper equipmentMapper, @Lazy NgFileService fileService, @Lazy NgLotoPointService lotoPointService) {
         this.equipmentRepo = equipmentRepo;
         this.sessionFactory = sessionFactory;
         this.entityManager = entityManager;
@@ -273,4 +273,10 @@ private String processDescription(String description, String fromUnit, String to
             .replaceAll("Unit " + fromUnit.charAt(1), "Unit " + toUnit.charAt(1))
             .replaceAll("U" + fromUnit.charAt(1), "U" + toUnit.charAt(1));
 }
+
+    public List <EquipmentDto> getByTagNumber(String tagNumber) {
+        List<Equipment> byTagNumber = equipmentRepo.findByTagNumber(tagNumber);
+        return byTagNumber.stream().map(this::toDto).collect(Collectors.toList());
+
+    }
 }
