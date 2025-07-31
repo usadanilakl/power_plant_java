@@ -144,7 +144,7 @@ public class NgEquipmentRestController {
     public ResponseEntity<NgApiResponse<EquipmentDto>> copyEquipment(@RequestBody Map<String, Object> requestBody) {
         try {
             Long eqId = Long.parseLong(requestBody.get("eqId").toString());
-            Long fileId = Long.parseLong(((Map<String, Object>)requestBody.get("fileId")).get("id").toString());
+            Long fileId = Long.parseLong(requestBody.get("fileId").toString());
 
             EquipmentDto copiedEquipment = ngEquipmentService.copyEquipment(eqId, fileId);
             return ResponseEntity.ok(new NgApiResponse<>(copiedEquipment, "Equipment copied successfully"));

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -156,6 +157,66 @@ public LotoPoint processLotoPoint(LotoPointIdDto lotoPointDto) {
     }
 
     return getEntityById(savedLpId);
+}
+
+public LotoPoint copyPointFromOtherUnit(Long id) {
+    LotoPoint sourcePoint = getEntityById(id);
+    String sourceTagNumber = sourcePoint.getTagNumber();
+    String destinationTagNumber = "";
+    String destDescription = "";
+    String specificLocation = "";
+
+    if (sourceTagNumber.startsWith("01")) {
+        destinationTagNumber = "02" + sourceTagNumber.substring(2);
+        destDescription = processDescription(sourcePoint.getDescription(), "01", "02");
+        specificLocation = processDescription(sourcePoint.getSpecificLocation(), "01", "02");
+    } else if (sourceTagNumber.startsWith("02")) {
+        destinationTagNumber = "01" + sourceTagNumber.substring(2);
+        destDescription = processDescription(sourcePoint.getDescription(), "02", "01");
+        specificLocation = processDescription(sourcePoint.getSpecificLocation(), "02", "01");
+    } else {
+        // If it doesn't start with 01 or 02, keep the original data
+        return sourcePoint;
+    }
+
+    if (!destinationTagNumber.isEmpty()) {
+        List<LotoPoint> existingPoints = lotoPointRepo.findByTagNumber(destinationTagNumber);
+
+        if (existingPoints != null && !existingPoints.isEmpty()) {
+            // If points with the destination tag number exist, modify the first one
+            LotoPoint existingPoint = existingPoints.get(0);
+            existingPoint.setDescription(destDescription);
+            existingPoint.setSpecificLocation(specificLocation);
+            existingPoint.setIsoPos(sourcePoint.getIsoPos());
+            existingPoint.setNormPos(sourcePoint.getNormPos());
+            return lotoPointRepo.save(existingPoint);
+        } else {
+            // If no points with the destination tag number exist, create a new one
+            LotoPoint newLotoPoint = new LotoPoint();
+            newLotoPoint.setTagNumber(destinationTagNumber);
+            newLotoPoint.setDescription(destDescription);
+            newLotoPoint.setSpecificLocation(specificLocation);
+            newLotoPoint.setIsoPos(sourcePoint.getIsoPos());
+            newLotoPoint.setNormPos(sourcePoint.getNormPos());
+            return lotoPointRepo.save(newLotoPoint);
+        }
+    }
+
+    // If destinationTagNumber is empty, return null or throw an exception
+    return null; // or throw new RuntimeException("Unable to copy LotoPoint");
+}
+
+private String processDescription(String text, String fromUnit, String toUnit) {
+    if (text == null) return null;
+    return Arrays.stream(text.split(" "))
+            .map(e -> {
+                if (e.startsWith(fromUnit)) return toUnit + e.substring(2);
+                else return e;
+            })
+            .collect(Collectors.joining(" "))
+            .replaceAll("Unit" + fromUnit.charAt(1), "Unit" + toUnit.charAt(1))
+            .replaceAll("Unit " + fromUnit.charAt(1), "Unit " + toUnit.charAt(1))
+            .replaceAll("U" + fromUnit.charAt(1), "U" + toUnit.charAt(1));
 }
 }
 

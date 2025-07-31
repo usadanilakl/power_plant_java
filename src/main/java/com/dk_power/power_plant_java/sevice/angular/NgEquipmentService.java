@@ -12,10 +12,12 @@ import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +26,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto, EquipmentRepo, EquipmentMapper> {
     private final EquipmentRepo equipmentRepo;
@@ -32,6 +33,16 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
     private final EntityManager entityManager;
     private final EquipmentMapper equipmentMapper;
     private final NgFileService fileService;
+    private final NgLotoPointService lotoPointService;
+
+    public NgEquipmentService(EquipmentRepo equipmentRepo, SessionFactory sessionFactory, EntityManager entityManager, EquipmentMapper equipmentMapper, NgFileService fileService, @Lazy NgLotoPointService lotoPointService) {
+        this.equipmentRepo = equipmentRepo;
+        this.sessionFactory = sessionFactory;
+        this.entityManager = entityManager;
+        this.equipmentMapper = equipmentMapper;
+        this.fileService = fileService;
+        this.lotoPointService = lotoPointService;
+    }
 
     @Override
     public EquipmentRepo getRepo() {
@@ -233,13 +244,13 @@ public EquipmentDto copyEquipment(Long eqId, Long fileId) {
     processedEq.setMainFile(mainFile);
 
     // Copy LOTO points
-//    Set<LotoPoint> lotoPoints = sourcePoint.getLotoPoints();
-//    if (lotoPoints != null) {
-//        for (LotoPoint lp : lotoPoints) {
-//            List<LotoPoint> points = (List<LotoPoint>) ngLotoPointService.copyPointFromOtherUnit(lp.getId()).get("Match");
-//            processedEq.getLotoPoints().addAll(points);
-//        }
-//    }
+    Set<LotoPoint> lotoPoints = sourcePoint.getLotoPoints();
+    if (lotoPoints != null) {
+        for (LotoPoint lp : lotoPoints) {
+            LotoPoint point = lotoPointService.copyPointFromOtherUnit(lp.getId());
+            processedEq.getLotoPoints().add(point);
+        }
+    }
 
     Equipment savedEquipment = save(processedEq);
 
