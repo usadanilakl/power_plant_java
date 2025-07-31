@@ -27,6 +27,9 @@ export class EquipmentService {
   getEquipmentById(id: number): Observable<SpringApiResponse<EquipmentDto>> {
     return this.http.get<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}/${id}`);
   }
+  getEquipmentForAnotherUnit(tagNumber: string | null | undefined): Observable<SpringApiResponse<EquipmentDto>> {
+    return this.http.post<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}/get-other-unit-equipment`, { tagNumber:tagNumber });
+  }
 
   searchEquipment(criteria: SearchCriteria, page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<EquipmentDto[]>> {
     const params = new HttpParams()
@@ -54,7 +57,7 @@ export class EquipmentService {
   getByEquipmentType(equipmentType: string): Observable<SpringApiResponse<EquipmentDto[]>> {
     return this.http.get<SpringApiResponse<EquipmentDto[]>>(`${this.apiUrl}/by-type/${equipmentType}`);
   }
-  copyEquipment(id: number, fileId: FileDto): Observable<SpringApiResponse<EquipmentDto>> {
+  copyEquipment(id: number, fileId: number): Observable<SpringApiResponse<EquipmentDto>> {
     return this.http.post<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}/copy`, {eqId: id, fileId: fileId });
   }
 }

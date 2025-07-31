@@ -13,8 +13,10 @@
       [options]="fileOptions()"
       (valueChange)="handleFileSelect($event)"
       ></app-searchable-dropdown>
+      <button (click)="copyAllPoints()">Copy All Points</button>
         <app-equipment-table
             [equipmentList]="searchedItems"
+            (equipmentDoubleClicked)="copyEquipmentToCurrent($event.item)"
         >
         </app-equipment-table>
     </div>

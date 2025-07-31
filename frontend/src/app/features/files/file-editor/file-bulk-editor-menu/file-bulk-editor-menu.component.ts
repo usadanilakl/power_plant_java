@@ -15,10 +15,11 @@ import { SharedDataService } from '../../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EquipmentService } from '../../../../services/equipment.service';
 import { FileLookupMenuComponent } from "../file-lookup-menu/file-lookup-menu.component";
+import { FilePointDiscrepanciesMenuComponent } from "../file-point-discrepancies-menu/file-point-discrepancies-menu.component";
 
 @Component({
   selector: 'app-file-bulk-editor-menu',
-  imports: [FloatingMenuComponent, EquipmentTableComponent, PopupProjectionComponent, DetailsFormComponent, FileLookupMenuComponent],
+  imports: [FloatingMenuComponent, EquipmentTableComponent, PopupProjectionComponent, DetailsFormComponent, FileLookupMenuComponent, FilePointDiscrepanciesMenuComponent],
   templateUrl: './file-bulk-editor-menu.component.html',
   styleUrl: './file-bulk-editor-menu.component.css'
 })
@@ -54,6 +55,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
 
   selectedItems = signal<EquipmentDto[]>([]);
   isLookupMenuOpen = signal<boolean>(false);
+  isDiscrepanciesMenuOpen = signal<boolean>(false);
 
   ngOnInit(): void {
     this.currentFileService.getElementsToRender().subscribe(equipmentList => {
@@ -246,6 +248,10 @@ export class FileBulkEditorMenuComponent implements OnInit {
 
     toggleLookupMenu() {
       this.isLookupMenuOpen.set(!this.isLookupMenuOpen());
+    }
+
+    toggleDiscrepanciesMenu() {
+      this.isDiscrepanciesMenuOpen.set(!this.isDiscrepanciesMenuOpen());
     }
 
 }

@@ -49,6 +49,12 @@ export class CurrentFileService {
         this.elementsToRenderSubject.next(elements);
     }
 
+    addElementToRenderedArray(element: EquipmentDto): void {
+        const currentElements = this.elementsToRenderSubject.getValue();
+        const updatedElements = [...currentElements, element];
+        this.elementsToRenderSubject.next(updatedElements);
+    }
+
     getCurrentFile(): FileDto | null {
         return this.currentFileSubject.getValue();
     }

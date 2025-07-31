@@ -11,6 +11,7 @@ import { Option } from '../../../../models/option.model';
 import { SpringPaginatedResponse } from '../../../../models/api/spring-pagenated.response.model';
 import { map } from 'rxjs';
 import { EquipmentService } from '../../../../services/equipment.service';
+import { SpringApiResponse } from '../../../../models/api/spring-api-response.model';
 
 @Component({
   selector: 'app-file-lookup-menu',
@@ -74,9 +75,22 @@ copyEquipmentToCurrent(equipment: EquipmentDto): void {
     console.error('Invalid equipment');
     return;
   }
-  this.equipmentService.copyEquipment(equipment.id, fileId).pipe(
+  this.equipmentService.copyEquipment(equipment.id, fileId.id).pipe(
     takeUntilDestroyed(this.destroyRef)
-  ).subscribe();
+  ).subscribe({
+    next: (response: SpringApiResponse<EquipmentDto>) => {
+      this.currentFileService.addElementToRenderedArray(response.responseData);
+    },
+    error: (error) => {
+      console.error('Error copying equipment:', error);
+    }
+  });
+}
+
+copyAllPoints() {
+  this.searchedItems().forEach(equipment => {
+    this.copyEquipmentToCurrent(equipment);
+  });
 }
 
 

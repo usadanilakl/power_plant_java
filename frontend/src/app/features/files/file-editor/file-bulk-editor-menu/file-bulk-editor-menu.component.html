@@ -23,6 +23,7 @@
 </app-equipment-table>
 
 <button (click)="toggleLookupMenu()">Lookup Menu</button>
+<button (click)="toggleDiscrepanciesMenu()">Discrepancies Menu</button>
 
 </app-floating-menu>
 
@@ -53,5 +54,20 @@
   >
 
     <app-file-lookup-menu></app-file-lookup-menu>
+
   </app-floating-menu>
+
+  <app-floating-menu
+    [title]="'Discrepancies Menu'"
+    [width]="50"
+    [height]="40"
+    [position]="MenuPosition.TopLeft"
+    [open]="isDiscrepanciesMenuOpen()"
+    (close)="toggleDiscrepanciesMenu()"
+  >
+
+    <app-file-point-discrepancies-menu></app-file-point-discrepancies-menu>
+  </app-floating-menu>
+
+  
 
