@@ -1,5 +1,5 @@
 
-import { Component, Input, Output, EventEmitter, input, output, Signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, input, output, Signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { TableComponent } from '../../../shared/table/table.component';
@@ -11,7 +11,7 @@ import { Column } from '../../../models/column.model';
   imports: [CommonModule, TableComponent],
   template: `
     <app-shared-table
-      [columns]="columns"
+      [columns]="columnsToRender()"
       [items]="equipmentList()!()"
       [hoverDebounceTime]="debounceTime()"
       [clickCallback]="onEquipmentClick"
@@ -30,6 +30,7 @@ import { Column } from '../../../models/column.model';
 export class EquipmentTableComponent extends TableComponent{
   equipmentList = input.required<Signal<EquipmentDto[]> | null>();
   debounceTime = input<number>(500);
+  columnsInput = input<Column[]>();
   @Output() equipmentClicked = new EventEmitter<EquipmentDto>();
   @Output() equipmentDoubleClicked = new EventEmitter<{item: EquipmentDto, column: Column}>();
   @Output() equipmentRightClicked = new EventEmitter<EquipmentDto>();
@@ -37,19 +38,7 @@ export class EquipmentTableComponent extends TableComponent{
   @Output() equipmentDeleted = new EventEmitter<string>();
   override selectedItemsEvent = output<EquipmentDto[]>();
 
-  // columns: Column[] = [
-  //   { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
-  //   { id: 'description', header: 'Description', accessorKey: 'description' },
-  //   { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' },
-  //   { id: 'eqType', header: 'Equipment Type', accessorKey: 'eqType.name' },
-  //   { id: 'vendor', header: 'Vendor', accessorKey: 'vendor.name' },
-  //   { id: 'location', header: 'Location', accessorKey: 'location.name' },
-  //   { id: 'system', header: 'System', accessorKey: 'system.name' },
-  //   { id: 'coordinates', header: 'Coordinates', accessorKey: 'coordinates' },
-  //   { id: 'isVerified', header: 'Verified', accessorFn: (item: EquipmentDto) => item.isVerified ? 'Yes' : 'No' },
-  //   { id: 'conflictStatus', header: 'Conflict Status', accessorKey: 'conflictStatus' },
-  //   { id: 'lotoPointsCount', header: 'LOTO Points', accessorFn: (item: EquipmentDto) => item.lotoPoints.length.toString() }
-  // ];
+  columnsToRender = computed<Column[]>(() => this.columnsInput() || this.columns);
 
   override columns: Column[] = [
     {

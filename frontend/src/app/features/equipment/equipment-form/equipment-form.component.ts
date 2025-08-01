@@ -34,6 +34,7 @@ export class EquipmentFormComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
 
   values = input<EquipmentDto>(new EquipmentDto());
+  layout = input<'column' | 'row' | 'reactive'>('reactive');
 
   formSubmit = output<any>();
   formDelete = output<void>();

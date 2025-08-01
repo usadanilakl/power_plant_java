@@ -14,6 +14,17 @@
   margin-bottom: 0.5rem;
 }
 
+
+.equipment-forms-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.equipment-form-wrapper {
+  flex: 1;
+}
+
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
   .tables-container {

@@ -1,5 +1,27 @@
 
     
+
+
+    @if(selectedCurrentEquipment()){
+      <div class="equipment-forms-container">
+        <div class="equipment-form-wrapper">
+          <h3>Current Equipment</h3>
+          <app-equipment-form
+            [layout]="'column'"
+            [values]="selectedCurrentEquipment()!">
+          </app-equipment-form>
+        </div>
+        <div class="equipment-form-wrapper">
+          <h3>Other Equipment</h3>
+          <app-equipment-form
+            [layout]="'column'"
+            [values]="selectedOtherEquipment()!">
+          </app-equipment-form>
+        </div>
+      </div>
+      <button (click)="resetSelectedEquipment()">Back</button>
+
+    }@else{
     <app-searchable-dropdown
         [options]="fileOptions()"
         (valueChange)="fetchOtherUnitItems($event)">
@@ -11,6 +33,7 @@
         <app-equipment-table
           #currentTable
           [equipmentList]="currentItems"
+          [columnsInput]="columns"
           (equipmentClicked)="onItemClick($event, true)">
         </app-equipment-table>
       </div>
@@ -20,7 +43,9 @@
         <app-equipment-table
           #otherTable
           [equipmentList]="otherUnitItems"
+          [columnsInput]="columns"
           (equipmentClicked)="onItemClick($event, false)">
         </app-equipment-table>
       </div>
     </div>
+    }
