@@ -29,7 +29,7 @@ function loadPictureWithFile(file){
 }
 async function loadPictureWithLightFile(file){
     lightFile = {...file};
-    picture.setAttribute('src','/'+file.fileLink);
+    picture.setAttribute('src','/'+file.fileLink.replaceAll('pdf','jpg'));
     picture.onerror = async function() {
         //Goes into infinite loop if file is not found - need to fix
         // console.log('Image not found. Running fallback function.');

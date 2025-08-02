@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -16,6 +17,8 @@ import java.io.IOException;
 
 @Configuration
 public class WebConfigurer implements WebMvcConfigurer {
+    @Value("${project.root}")
+    String projectRoot;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
@@ -51,12 +54,30 @@ public class WebConfigurer implements WebMvcConfigurer {
                     }
                 });
 
+        // Configuration for Browser
+        String resourceLocation = "file:" + projectRoot + "/browser/";
+        registry.addResourceHandler("/browser/**")
+                .addResourceLocations(resourceLocation)
+                .setCachePeriod(3600)
+                .resourceChain(true)
+                .addResolver(new PathResourceResolver() {
+                    @Override
+                    protected Resource getResource(String resourcePath, Resource location) throws IOException {
+                        Resource requestedResource = location.createRelative(resourcePath);
+                        return requestedResource.exists() && requestedResource.isReadable()
+                                ? requestedResource
+                                : new ClassPathResource("/browser/index.html");
+                    }
+                });
+
+
     }
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addViewController("/app/**").setViewName("forward:/angular/browser/index.csr.html");
         registry.addViewController("/print/**").setViewName("forward:/brady/index.html");
+        registry.addViewController("/brows/**").setViewName("forward:/browser/index.html");
     }
 
 

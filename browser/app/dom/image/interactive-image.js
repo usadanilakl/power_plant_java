@@ -286,8 +286,8 @@ class ImageZoomInteractive {
         toggleButton.onclick = () => this.toggleExtension();
     
         const placeholderButton = document.createElement('button');
-        placeholderButton.textContent = 'Placeholder';
-        placeholderButton.onclick = () => console.log('Placeholder button clicked');
+        placeholderButton.textContent = 'Print Tags';
+        placeholderButton.onclick = () => this.printSelectedShapes();
     
         menuContainer.appendChild(toggleButton);
         menuContainer.appendChild(placeholderButton);
@@ -686,5 +686,37 @@ class ImageZoomInteractive {
             this.container.appendChild(popup);
         }
     }
+
+    printSelectedShapes() {
+        // if(!this.selectedShapes || this.selectedShapes.length === 0) return;
+        // Prepare the simplified array with needed properties
+        const itemsToPrint = this.selectedShapes.map(sh => ({
+            tagNumber: sh.tagNumber,
+            description: sh.description
+        }));
+
+        console.log("Senditn items to pring: " + itemsToPrint)
+
+        // Create a dynamic form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = properties.serverUrl+'/print/list';   // Adjust base URL as needed
+        form.target = '_blank';        // Open response in new tab
+
+        // Create a hidden input to hold the JSON string
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = '_json';           // Must match server @RequestParam
+        input.value = JSON.stringify(itemsToPrint);
+
+        form.appendChild(input);
+
+        // Append form to body, submit, and remove immediately
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+
+
 
 }

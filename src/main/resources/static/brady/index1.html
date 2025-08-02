@@ -13,44 +13,114 @@
         }                     
     </script>
 
+<style>
+    .item {
+        background-color: dimgray;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        margin: 6px 4px;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.15s ease;
+        user-select: none;
+        display: inline-block;
+        min-width: 200px;
+        text-align: left;
+    }
+
+    .item:hover {
+        background-color: gray;
+        transform: scale(1.05);
+    }
+
+    .item:focus {
+        outline: 3px solid #ffd700; /* gold highlight on focus */
+        outline-offset: 2px;
+    }
+
+    .printed {
+        background-color: darkgreen;
+        color: #d0ffd0;
+        cursor: default;
+        transform: none;
+    }
+
+    .printed:hover {
+        background-color: darkgreen; /* no hover effect once printed */
+        transform: none;
+    }
+
+    /* Container styling */
+    .container {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 10px 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f3f3f3;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    h1 {
+        color: #333;
+        margin-bottom: 1rem;
+    }
+</style>
+
+
 </head>
 <body>
-    <div th:replace="fragments/header :: header"></div>
-    
-    <main id="main">
-        <nav class="tagging-menu">
-            <ul>            
-                <li><a id="initTaggingPointTable" href="#">To Tag</a></li>
-                <li><a id="initTaggingVerificationTable" href="#">To Verify</a></li>
-                <li><a id="initTaggingedPointTable" href="#">Tagged</a></li>
-            </ul>
-        </nav>
-        <button id="print" class="print-button">Print</button>
-        <div class="content-wrapper">
-            <div id="tableContainer" class="table-container"></div>
-        </div>
-    </main>
+    <div class="container">
+        <h1>Items to Print</h1>
+        
+        <div id="list"></div>
+    </div>
 
-    <script src="/brady/Print.js" type="module"></script>
+    <script type="module">
+        import { printPopup, scanForPrinters, createImageFromStrings } from '/brady/Print.js';
 
-<script>
-    
-</script>
+        document.addEventListener('DOMContentLoaded', function() {
 
-<script type="module">
-    import { printPopup } from '/brady/Print.js';
+            const listElement = document.getElementById('list');
+            // Fetch data from the /data endpoint
+            fetch('/print/list-data')
+                .then(response => response.json())
+                .then(data => {
+                    buildListToPrint(data,listElement);
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    input1.value = '';
+                    input2.value = '';
+                });
 
-    document.getElementById('print').addEventListener('click', () => {
-        const tagNumberInput = document.getElementById('tagNumber');
-        const descriptionInput = document.getElementById('description');
+            
 
-        const tagNumber = tagNumberInput ? tagNumberInput.value : 'String 1';
-        const description = descriptionInput ? descriptionInput.value : 'String 2';
+            function buildListToPrint(dat, container, printPopup) {
+                container.innerHTML = '';
 
-        printPopup(tagNumber, description);
-    });
-</script>
+                dat.forEach(function(item, idx) {
+                    const btn = document.createElement('button');
+                    btn.textContent ="Print" +  item.tagNumber + " - " + item.description;
+                    btn.type = 'button';
+                    btn.classList.add('item');
+                    btn.onclick = function() {
+                        actionFn(item.tagNumber, item.description);
+                        btn.textContent = "Printed " + item.tagNumber + " - " + item.description;
+                        btn.classList.add('printed');
+                        btn.disabled = true;  // disable the button after printing
+                    };
 
+                    container.appendChild(btn);
+                });
+            }
+
+
+        });
+    </script>
 </body>
 
 </html>

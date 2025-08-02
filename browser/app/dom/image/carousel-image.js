@@ -40,7 +40,7 @@ class ImageCarousel {
         wrapper.style.marginRight = `${this.options.gap}px`;
 
         const img = document.createElement('img');
-        img.src = "../" + file.fileLink.replace(/pdf/g, 'jpg').replace('file//', '');
+        img.src = "../" + file.fileLink;
         img.alt = file.name;
         img.style.width = '100%';
         img.style.height = 'auto';

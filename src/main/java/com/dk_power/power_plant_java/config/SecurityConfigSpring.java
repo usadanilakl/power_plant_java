@@ -84,5 +84,25 @@ public class SecurityConfigSpring {
         return source;
     }
 
+//    @Bean
+//    public CorsConfigurationSource corsConfigurationSource() {
+//        return request -> {
+//            CorsConfiguration config = new CorsConfiguration();
+//            String origin = request.getHeader("Origin");
+//            if (origin == null || "null".equals(origin)) {
+//                // Allow 'null' origin requests (from file://)
+//                config.addAllowedOriginPattern("*");
+//            } else {
+//                config.setAllowedOrigins(Arrays.asList("http://localhost:4200", "http://localhost"));
+//            }
+//            config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+//            config.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
+//            config.setExposedHeaders(Arrays.asList("x-auth-token"));
+//            config.setAllowCredentials(true);
+//            return config;
+//        };
+//    }
+
+
 
 }
