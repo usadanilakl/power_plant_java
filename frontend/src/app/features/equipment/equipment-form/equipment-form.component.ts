@@ -1,7 +1,7 @@
 import { Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { Option } from '../../../models/option.model';
-import { catchError, map, Observable, of, switchMap, tap } from 'rxjs';
+import { catchError, map, Observable, of, switchMap, take, tap } from 'rxjs';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -51,6 +51,8 @@ export class EquipmentFormComponent implements OnInit {
   fields = computed(() => this.createFields());
 
   lotoPoints$ = this.currentEquipmentService.getlotoPoints();
+
+
 
 
 
