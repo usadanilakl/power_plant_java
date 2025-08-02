@@ -14,14 +14,16 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/print")
 public class BradyController {
 
-    String tag="";
-    String description="";
+    String tag = "";
+    String description = "";
     List<TagNumberPrint> tagsToPrint = new ArrayList<>();
 
     @GetMapping("/tag/{tag}/{description}")
@@ -48,27 +50,34 @@ public class BradyController {
                 .body(jsonResponse);
     }
 
-//    @PostMapping("/list")
+//    @PostMapping(value = "/list", consumes = MediaType.APPLICATION_JSON_VALUE)
 //    public String bradyIndexList(Model model, @RequestBody List<TagNumberPrint> tags) {
 //        // Add any data you want to pass to the view
 //        model.addAttribute("tags", tags);
 //
 //        this.tagsToPrint = tags;
-//        return "forward:/brady/index1.html";
+//        return "redirect:/brady/index1.html";
 //    }
-@PostMapping("/list")
-public String bradyIndexList(Model model,@RequestParam("_json") String tagsJson) throws IOException {
 
-    ObjectMapper mapper = new ObjectMapper();
-    List<TagNumberPrint> tags = mapper.readValue(tagsJson, new TypeReference<List<TagNumberPrint>>() {});
+    @PostMapping(value = "/list", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> bradyIndexList(@RequestBody List<TagNumberPrint> tags) {
+        this.tagsToPrint = tags;
 
-    System.out.println("Got items to print: " + tags);
-    model.addAttribute("tags", tags);
-    this.tagsToPrint = tags;
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("message", "Tags received successfully");
+        response.put("redirectUrl", "/brady/index1.html");
 
-    // Forward to Thymeleaf page
-    return "forward:/brady/index1.html";
-}
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/brady/index1.html")
+    public String bradyIndex1(Model model) {
+        model.addAttribute("tags", this.tagsToPrint);
+        return "forward:/brady/index.html";
+    }
+
 
     @GetMapping("/list-data")
     @ResponseBody

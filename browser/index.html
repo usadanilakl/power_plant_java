@@ -4,11 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jackson</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="app/dom/table/table-style.css">
-    <link rel="stylesheet" href="app/dom/image/interactive-image.css">
-    <link rel="stylesheet" href="app/dom/image/grid-image.css">
-    <link rel="stylesheet" href="app/dom/image/carousel-image.css">
+    <!-- <link rel="stylesheet" href="browser/style.css">
+    <link rel="stylesheet" href="browser/app/dom/table/table-style.css">
+    <link rel="stylesheet" href="browser/app/dom/image/interactive-image.css">
+    <link rel="stylesheet" href="browser/app/dom/image/grid-image.css">
+    <link rel="stylesheet" href="browser/app/dom/image/carousel-image.css"> -->
+    <script>
+        (function() {
+            var isSpringBoot = window.location.hostname !== "" && window.location.hostname === "localhost";
+            var prefix = isSpringBoot ? "browser/" : "";
+            document.write('<link rel="stylesheet" href="' + prefix + 'style.css" id="mainStyle">');
+            document.write('<link rel="stylesheet" href="' + prefix + 'app/dom/table/table-style.css" id="tableStyle">');
+            document.write('<link rel="stylesheet" href="' + prefix + 'app/dom/image/interactive-image.css" id="interactiveImageStyle">');
+            document.write('<link rel="stylesheet" href="' + prefix + 'app/dom/image/grid-image.css" id="gridImageStyle">');
+            document.write('<link rel="stylesheet" href="' + prefix + 'app/dom/image/carousel-image.css" id="carouselImageStyle">');
+        })();
+    </script>
+
 </head>
 <body>
     <div class="container">
@@ -49,25 +61,61 @@
         </div>
     </div>
 
-    <script src="properties/static-resources.js"></script>
+    <!-- <script src="browser/properties/static-resources.js"></script>
 
-    <script src="data/equipment.js"></script>
-    <script src="data/files.js"></script>
+    <script src="browser/data/equipment.js"></script>
+    <script src="browser/data/files.js"></script>
 
-    <script src="app/server/server-status.js"></script>
-    <script src="app/server/updates.js"></script>
-    <script src="app/server/angular-api.js"></script>
+    <script src="browser/app/server/server-status.js"></script>
+    <script src="browser/app/server/updates.js"></script>
+    <script src="browser/app/server/angular-api.js"></script>
 
-    <script src="app/utils/theme-switcher.js"></script>
-    <script src="app/utils/main-layout-resizer.js"></script>
-    <script src="app/dom/table/table.js"></script>
-    <script src="app/files/file-table.js"></script>
-    <script src="app/files/file-service.js"></script>
-    <script src="app/dom/image/interactive-image.js"></script>
-    <script src="app/dom/image/grid-image.js"></script>
-    <script src="app/dom/image/carousel-image.js"></script>
-    <script src="app/equipment/equipment-service.js"></script>
-    <script src="app/equipment/equipment-table.js"></script>
+    <script src="browser/app/utils/theme-switcher.js"></script>
+    <script src="browser/app/utils/main-layout-resizer.js"></script>
+    <script src="browser/app/dom/table/table.js"></script>
+    <script src="browser/app/files/file-table.js"></script>
+    <script src="browser/app/files/file-service.js"></script>
+    <script src="browser/app/dom/image/interactive-image.js"></script>
+    <script src="browser/app/dom/image/grid-image.js"></script>
+    <script src="browser/app/dom/image/carousel-image.js"></script>
+    <script src="browser/app/equipment/equipment-service.js"></script>
+    <script src="browser/app/equipment/equipment-table.js"></script> -->
+
+    <script>
+        (function() {
+            var isSpringBoot = window.location.hostname !== "" && window.location.hostname === "localhost";
+            var prefix = isSpringBoot ? "browser/" : "";
+
+            // console.log('Loading scripts...', window.location.hostname);
+    
+            var scripts = [
+                'properties/static-resources.js',
+                'data/equipment.js',
+                'data/files.js',
+                'app/server/server-status.js',
+                'app/server/updates.js',
+                'app/server/angular-api.js',
+                'app/utils/theme-switcher.js',
+                'app/utils/main-layout-resizer.js',
+                'app/dom/table/table.js',
+                'app/files/file-table.js',
+                'app/files/file-service.js',
+                'app/dom/image/interactive-image.js',
+                'app/dom/image/grid-image.js',
+                'app/dom/image/carousel-image.js',
+                'app/equipment/equipment-service.js',
+                'app/equipment/equipment-table.js'
+            ];
+    
+            scripts.forEach(function(src) {
+                var script = document.createElement('script');
+                script.src = prefix + src;
+                script.async = false; // This ensures scripts are loaded in order
+                document.body.appendChild(script);
+                // console.log('Loaded script:', script);
+            });
+        })();
+    </script>
 
 
 

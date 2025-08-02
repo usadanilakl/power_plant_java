@@ -687,35 +687,39 @@ class ImageZoomInteractive {
         }
     }
 
-    printSelectedShapes() {
-        // if(!this.selectedShapes || this.selectedShapes.length === 0) return;
-        // Prepare the simplified array with needed properties
-        const itemsToPrint = this.selectedShapes.map(sh => ({
-            tagNumber: sh.tagNumber,
-            description: sh.description
-        }));
+printSelectedShapes() {
+    const itemsToPrint = this.selectedShapes.map(sh => ({
+        tagNumber: sh.tagNumber,
+        description: sh.description
+    }));
 
-        console.log("Senditn items to pring: " + itemsToPrint)
+    console.log(`Sending items to print: ${JSON.stringify(itemsToPrint)}`);
 
-        // Create a dynamic form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = properties.serverUrl+'/print/list';   // Adjust base URL as needed
-        form.target = '_blank';        // Open response in new tab
-
-        // Create a hidden input to hold the JSON string
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = '_json';           // Must match server @RequestParam
-        input.value = JSON.stringify(itemsToPrint);
-
-        form.appendChild(input);
-
-        // Append form to body, submit, and remove immediately
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-    }
+    fetch(properties.serverUrl + '/print/list', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(itemsToPrint)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            // Open the redirectUrl in a new tab
+            window.open(properties.serverUrl + data.redirectUrl, '_blank');
+        } else {
+            throw new Error('Server returned an error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
 
 
 

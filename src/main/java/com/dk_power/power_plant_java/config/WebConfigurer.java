@@ -41,13 +41,28 @@ public class WebConfigurer implements WebMvcConfigurer {
                 });
 
         // Configuration for Brady
+//        registry.addResourceHandler("/brady/**")
+//                .addResourceLocations("classpath:/static/brady/")
+//                .setCachePeriod(3600)
+//                .resourceChain(true)
+//                .addResolver(new PathResourceResolver() {
+//                    @Override
+//                    protected Resource getResource(String resourcePath, Resource location) throws IOException {
+//                        Resource requestedResource = location.createRelative(resourcePath);
+//                        return requestedResource.exists() && requestedResource.isReadable() ? requestedResource
+//                                : new ClassPathResource("/static/brady/index.html");
+//                    }
+//                });
+
         registry.addResourceHandler("/brady/**")
                 .addResourceLocations("classpath:/static/brady/")
-                .setCachePeriod(3600)
                 .resourceChain(true)
                 .addResolver(new PathResourceResolver() {
                     @Override
                     protected Resource getResource(String resourcePath, Resource location) throws IOException {
+                        if (resourcePath.equals("print/list")) {
+                            return null; // Let the controller handle this
+                        }
                         Resource requestedResource = location.createRelative(resourcePath);
                         return requestedResource.exists() && requestedResource.isReadable() ? requestedResource
                                 : new ClassPathResource("/static/brady/index.html");
