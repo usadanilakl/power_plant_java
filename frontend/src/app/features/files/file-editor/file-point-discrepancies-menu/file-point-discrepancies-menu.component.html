@@ -3,19 +3,22 @@
 
 
     @if(selectedCurrentEquipment()){
+      <button (click)="resetSelectedEquipment()">Back</button>
       <div class="equipment-forms-container">
         <div class="equipment-form-wrapper">
           <h3>Current Equipment</h3>
           <app-equipment-form
             [layout]="'column'"
-            [values]="selectedCurrentEquipment()!">
+            [values]="selectedCurrentEquipment()!"
+            (formSubmit)="onSubmit($event)">
           </app-equipment-form>
         </div>
         <div class="equipment-form-wrapper">
           <h3>Other Equipment</h3>
           <app-equipment-form
             [layout]="'column'"
-            [values]="selectedOtherEquipment()!">
+            [values]="selectedOtherEquipment()!"
+            (formSubmit)="onSubmit($event)">
           </app-equipment-form>
         </div>
       </div>

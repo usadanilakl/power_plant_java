@@ -12,6 +12,7 @@ import { SearchableDropdownComponent } from "../../../../shared/searchable-dropd
 import { Option } from '../../../../models/option.model';
 import { EquipmentFormComponent } from "../../../equipment/equipment-form/equipment-form.component";
 import { Column } from '../../../../models/column.model';
+import { catchError, tap, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-file-point-discrepancies-menu',
@@ -80,29 +81,7 @@ export class FilePointDiscrepanciesMenuComponent implements OnInit {
       });
     
   }
-
-  // onItemClick(item: EquipmentDto, isCurrentTable: boolean) {
-  //   if(!item || !item.tagNumber) return;
-  //   const sourceTable = isCurrentTable ? this.currentTable : this.otherTable;
-  //   const targetTable = isCurrentTable ? this.otherTable : this.currentTable;
-  //   const targetItems = isCurrentTable ? this.otherUnitItems() : this.currentItems();
   
-  //   const flippedTagNumber = this.flipTagNumber(item.tagNumber);
-  //   const correspondingItem = targetItems.find(i => i.tagNumber === flippedTagNumber);
-  
-  //   if (correspondingItem) {
-  //     const sourceIndex = sourceTable.getItemIndex(item);
-  //     const targetIndex = targetTable.getItemIndex(correspondingItem);
-
-  //     console.log(`Swapping ${item.tagNumber} with ${correspondingItem.tagNumber}`);
-  //     console.log(`Source table index: ${sourceIndex}, Target table index: ${targetIndex}`);
-  
-  //     if (sourceIndex !== -1 && targetIndex !== -1) {
-  //       targetTable.scrollToIndex(targetIndex);
-  //       sourceTable.scrollToIndex(sourceIndex);
-  //     }
-  //   }
-  // }  
   onItemClick(item: EquipmentDto, isCurrentTable: boolean) {
     if(!item || !item.tagNumber) return;
     const sourceTable = isCurrentTable ? this.currentTable : this.otherTable;
@@ -115,10 +94,107 @@ export class FilePointDiscrepanciesMenuComponent implements OnInit {
     this.selectedCurrentEquipment.set(item);
     this.selectedOtherEquipment.set(correspondingItem? correspondingItem : new EquipmentDto());
   }
-resetSelectedEquipment() {
-  this.selectedOtherEquipment.set(null);
-  this.selectedCurrentEquipment.set(null);
-}
+
+  resetSelectedEquipment() {
+    this.selectedOtherEquipment.set(null);
+    this.selectedCurrentEquipment.set(null);
+  }
+  
+  private updateEquipment(equipment: EquipmentDto) {
+    if (!equipment) {
+      console.error('Invalid equipment');
+      return;
+    }
+  
+    const eq = new EquipmentDto({...equipment});
+  
+    this.equipmentService.updateEquipment(eq).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap((resp) => {
+        if (resp && resp.responseData) {
+          const updatedEquipment = new EquipmentDto(resp.responseData);
+          
+          // Update the equipment in the appropriate list
+          if (this.currentItems().some(item => item.id === updatedEquipment.id)) {
+            this.currentItems.update(items => 
+              items.map(item => item.id === updatedEquipment.id ? updatedEquipment : item)
+            );
+          } else if (this.otherUnitItems().some(item => item.id === updatedEquipment.id)) {
+            this.otherUnitItems.update(items => 
+              items.map(item => item.id === updatedEquipment.id ? updatedEquipment : item)
+            );
+          }
+  
+          // Update selected equipment if it's the one that was updated
+          if (this.selectedCurrentEquipment()?.id === updatedEquipment.id) {
+            this.selectedCurrentEquipment.set(updatedEquipment);
+          } else if (this.selectedOtherEquipment()?.id === updatedEquipment.id) {
+            this.selectedOtherEquipment.set(updatedEquipment);
+          }
+  
+          console.log('Equipment updated successfully:', updatedEquipment);
+          this.resetSelectedEquipment();
+        } else {
+          throw new Error('Invalid response from server');
+        }
+      }),
+      catchError((error) => {
+        console.error('Error updating equipment:', error);
+        // You might want to show an error message to the user here
+        return throwError(() => new Error('Failed to update equipment'));
+      })
+    ).subscribe();
+  }
+  
+  // Add a public method to be called from the template
+  public onSubmit(equipment: EquipmentDto) {
+    this.updateEquipment(equipment);
+  }
+  
+  
+  /********************************************************************************************
+  TABLE COLUMNS
+  *********************************************************************************************/
+  private getTagNumberStyling(item: EquipmentDto): { 'background-color': string } {
+    if (!item.tagNumber) return { 'background-color': '#ffcccc' };
+  
+    const isCurrentUnit = this.currentItems().some(i => i.id === item.id);
+    const flippedTagNumber = this.flipTagNumber(item.tagNumber);
+    const oppositeArray = isCurrentUnit ? this.otherUnitItems() : this.currentItems();
+    
+    const correspondingItem = oppositeArray.find(i => i.tagNumber === flippedTagNumber);
+    
+    if (!correspondingItem) {
+      return { 'background-color': '#ffff99' }; // Yellow if no corresponding item in the opposite array
+    } else {
+      return { 'background-color': '' }; // No background if a corresponding item is found
+    }
+  }
+  private getDescriptionStyling(item: EquipmentDto): { 'background-color': string } {
+    if (!item.description || !item.tagNumber) {
+      return { 'background-color': '#ffcccc' }; // Red if description or tag number is missing
+    }
+
+    const isCurrentUnit = this.currentItems().some(i => i.id === item.id);
+    const flippedTagNumber = this.flipTagNumber(item.tagNumber);
+    const oppositeArray = isCurrentUnit ? this.otherUnitItems() : this.currentItems();
+    
+    const correspondingItem = oppositeArray.find(i => i.tagNumber === flippedTagNumber);
+
+    if (!correspondingItem) {
+      return { 'background-color': '#ffff99' }; // Yellow if no corresponding item in the opposite array
+    }
+
+    const fromUnit = item.tagNumber.startsWith('01') ? '01' : '02';
+    const toUnit = fromUnit === '01' ? '02' : '01';
+    const processedDescription = this.processDescription(item.description, fromUnit, toUnit);
+
+    if (processedDescription !== correspondingItem.description) {
+      return { 'background-color': '#ffa500' }; // Orange if descriptions don't match after processing
+    }
+
+    return { 'background-color': '' }; // No background if everything matches
+  }
   
   private flipTagNumber(tagNumber: string): string {
     if (tagNumber.startsWith('01')) {
@@ -128,58 +204,28 @@ resetSelectedEquipment() {
     }
     return tagNumber; // Return original if it doesn't start with 01 or 02
   }
-private processDescription(description: string, fromUnit: string, toUnit: string): string {
-  return description.split(" ")
-    .map(e => e.startsWith(fromUnit) ? toUnit + e.substring(2) : e)
-    .join(" ")
-    .replace(new RegExp(`Unit${fromUnit[1]}`, 'g'), `Unit${toUnit[1]}`)
-    .replace(new RegExp(`Unit ${fromUnit[1]}`, 'g'), `Unit ${toUnit[1]}`)
-    .replace(new RegExp(`U${fromUnit[1]}`, 'g'), `U${toUnit[1]}`);
-}
+  private processDescription(description: string, fromUnit: string, toUnit: string): string {
+    return description.split(" ")
+      .map(e => e.startsWith(fromUnit) ? toUnit + e.substring(2) : e)
+      .join(" ")
+      .replace(new RegExp(`Unit${fromUnit[1]}`, 'g'), `Unit${toUnit[1]}`)
+      .replace(new RegExp(`Unit ${fromUnit[1]}`, 'g'), `Unit ${toUnit[1]}`)
+      .replace(new RegExp(`U${fromUnit[1]}`, 'g'), `U${toUnit[1]}`);
+  }
   
     columns: Column[] = [
-      {
-        id: 'tagNumber',
-        header: 'Tag Number',
-        accessorKey: 'tagNumber',
-        conditionalStyling: (item: EquipmentDto) => {
-          if (!item.tagNumber) return { 'background-color': '#ffcccc' };
-          const flippedTagNumber = this.flipTagNumber(item.tagNumber);
-          const otherUnitItem = this.otherUnitItems().find(i => i.tagNumber === flippedTagNumber);
-          
-          if (!otherUnitItem) {
-            return { 'background-color': '#ffff99' };
-          } else {
-            return { 'background-color': '' };
-          }
-        }
-      },
+        {
+          id: 'tagNumber',
+          header: 'Tag Number',
+          accessorKey: 'tagNumber',
+          conditionalStyling: (item: EquipmentDto) => this.getTagNumberStyling(item)
+        },
+        
         {
           id: 'description',
           header: 'Description',
           accessorKey: 'description',
-          conditionalStyling: (item: EquipmentDto) => {
-            if (!item.description || !item.tagNumber) {
-              return { 'background-color': '#ffcccc' }; // Red if description is missing
-            }
-
-            const flippedTagNumber = this.flipTagNumber(item.tagNumber);
-            const otherUnitItem = this.otherUnitItems().find(i => i.tagNumber === flippedTagNumber);
-
-            if (!otherUnitItem) {
-              return { 'background-color': '#ffff99' }; // Yellow if no corresponding item in other unit
-            }
-
-            const fromUnit = item.tagNumber.startsWith('01') ? '01' : '02';
-            const toUnit = fromUnit === '01' ? '02' : '01';
-            const processedDescription = this.processDescription(item.description, fromUnit, toUnit);
-
-            if (processedDescription !== otherUnitItem.description) {
-              return { 'background-color': '#ffa500' }; // Orange if descriptions don't match after processing
-            }
-
-            return { 'background-color': '' }; // No background if everything matches
-          }
+          conditionalStyling: (item: EquipmentDto) => this.getDescriptionStyling(item)
         },
       // {
       //   id: 'specificLocation',

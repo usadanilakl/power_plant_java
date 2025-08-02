@@ -16,7 +16,7 @@
     <div class="table-wrapper">
       <h3>Associated LOTO Points</h3>
       <app-loto-point-simple-table 
-        [initialItems]="lotoPoints$"
+        [initialItems]="lotoPointsWithDefault()"
         (rightClickEvent)="onLotoPointRowRightClick($event)"
         (doubleClickEvent)="onExistingLotoPointDoubleClick($event)">
     </app-loto-point-simple-table>
