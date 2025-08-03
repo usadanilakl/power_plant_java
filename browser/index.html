@@ -41,6 +41,7 @@
             <div class="menu-buttons">
                 <button onclick="fileTable.buildFileTable()">Browse Files</button>
                 <button onclick="equipmentTable.buildEquipmentTable()">Browse Equipment</button>
+                <button onclick="lotoPointTable.buildTable()">Browse LotoPoints</button>
                 <button class="server-dependent" onclick="angularApi.navigateToFiles()">Edit Files</button>
                 <button class="server-dependent" onclick="angularApi.navigateToLotoPoints()">LOTO Points</button>
                 <button class="server-dependent" onclick="angularApi.navigateToTags()">Manage Tag Numbers</button>
@@ -91,6 +92,7 @@
             var scripts = [
                 'properties/static-resources.js',
                 'data/equipment.js',
+                'data/loto-points.js',
                 'data/files.js',
                 'app/server/server-status.js',
                 'app/server/updates.js',
@@ -104,7 +106,9 @@
                 'app/dom/image/grid-image.js',
                 'app/dom/image/carousel-image.js',
                 'app/equipment/equipment-service.js',
-                'app/equipment/equipment-table.js'
+                'app/equipment/equipment-table.js',
+                'app/loto-points/loto-point.service.js',
+                'app/loto-points/loto-point-table.js'
             ];
     
             scripts.forEach(function(src) {

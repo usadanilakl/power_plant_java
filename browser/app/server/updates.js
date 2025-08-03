@@ -8,7 +8,9 @@ const update = {
         try {
             await Promise.all([
                 update.updateFiles(),
-                update.updateEquipment()
+                update.updateEquipment(),
+                update.updateLotoPoints(),
+                // Add more update functions as needed
             ]);
             console.log('All updates completed successfully');
         } catch (error) {
@@ -34,6 +36,21 @@ const update = {
     updateEquipment: async () => {
         try {
             const response = await fetch(`${url}/backup/update/equipment`);
+            const data = await response.json();
+            // Update the equipment list in the UI
+            // updateEquipmentList(data);
+            updateElements.forEach(element => {
+                element.classList.add('hidden');
+            });
+            console.log('Equipment updated successfully');
+        } catch (error) {
+            console.error('Error updating equipment:', error);
+        }
+    },
+
+    updateLotoPoints: async () => {
+        try {
+            const response = await fetch(`${url}/backup/update/loto-points`);
             const data = await response.json();
             // Update the equipment list in the UI
             // updateEquipmentList(data);
