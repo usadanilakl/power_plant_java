@@ -12,6 +12,7 @@ import java.util.UUID;
 
 public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     List<LotoPoint> findByDescriptionContaining(String tag);
+    List<LotoPoint> findByDescriptionContainingAndDescriptionContaining(String one, String two);
 
     LotoPoint findByOldId(String oldId);
 

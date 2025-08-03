@@ -10,6 +10,7 @@ const update = {
                 update.updateFiles(),
                 update.updateEquipment(),
                 update.updateLotoPoints(),
+                update.updateHeatTrace(),
                 // Add more update functions as needed
             ]);
             console.log('All updates completed successfully');
@@ -57,7 +58,22 @@ const update = {
             updateElements.forEach(element => {
                 element.classList.add('hidden');
             });
-            console.log('Equipment updated successfully');
+            console.log('Loto Points updated successfully');
+        } catch (error) {
+            console.error('Error updating equipment:', error);
+        }
+    },
+
+    updateHeatTrace: async () => {
+        try {
+            const response = await fetch(`${url}/backup/update/heat-trace`);
+            const data = await response.json();
+            // Update the equipment list in the UI
+            // updateEquipmentList(data);
+            updateElements.forEach(element => {
+                element.classList.add('hidden');
+            });
+            console.log('Heat Trace updated successfully');
         } catch (error) {
             console.error('Error updating equipment:', error);
         }

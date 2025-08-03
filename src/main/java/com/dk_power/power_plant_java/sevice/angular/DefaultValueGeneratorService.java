@@ -40,12 +40,15 @@ private void generateSystems() {
     ngValueService.createValue("System", "Potable Water System", "PWS");
     ngValueService.createValue("System", "Fire Protection System", "FPS");
     ngValueService.createValue("System", "Sampling System", "SMP");
-    ngValueService.createValue("System", "Compressed Gasses", "CMP");
+    ngValueService.createValue("System", "Compressed Gasses", "CMG");
     ngValueService.createValue("System", "Duct Burner", "BUR");
     ngValueService.createValue("System", "AFCU", "SCR");
     ngValueService.createValue("System", "Control Oil", "COS");
     ngValueService.createValue("System", "Seal Oil", "SOS");
     ngValueService.createValue("System", "Bulk Ammonia System", "AQA");
+    ngValueService.createValue("System", "Sanitary Drain System", "SDR");
+    ngValueService.createValue("System", "Plant Drain System", "PDR");
+    ngValueService.createValue("System", "Waste Water Drain System", "WDR");
 }
 
 private void generateEquipmentTypes() {

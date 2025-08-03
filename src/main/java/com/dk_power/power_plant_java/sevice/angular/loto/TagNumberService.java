@@ -1,20 +1,25 @@
 package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
+import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TagNumberService {
     private final LotoPointRepo lotoPointRepo;
     private final LotoPointMapper lotoPointMapper;
+    private final CategoryRepo categoryRepo;
 
     public List<LotoPointDto> getAllJgTagNumbers() {
         List<LotoPoint> all = lotoPointRepo.findByTagNumberContaining("-JG");
@@ -54,5 +59,21 @@ public class TagNumberService {
 
     public String createNewTagNumber(Map<String, String> values) {
         return createNewTagNumber(values.get("unit"), values.get("system"), values.get("eqType"));
+    }
+
+    public String getSystemTagNumber(String tagNumber) {
+        Set<Value> values = categoryRepo.findByAlias("system").getValues();
+        Set<String> systems = values.stream().filter(v->v.getName()!=null).map(Value::getName).collect(Collectors.toSet());
+        int index = -1;
+        for (String system : systems) {
+            index = tagNumber.indexOf(system);
+        }
+        if (index >= 0) {
+            String cleanedTag = tagNumber.substring(index);
+            int dashIndex = cleanedTag.indexOf("-");
+            if(dashIndex!=-1)return cleanedTag.substring(index, dashIndex);
+            else return cleanedTag.substring(index);
+        }
+        return null;
     }
 }

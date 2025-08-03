@@ -2,10 +2,12 @@ package com.dk_power.power_plant_java.controller.browser;
 
 import com.dk_power.power_plant_java.dto.browser.BrEquipmentDto;
 import com.dk_power.power_plant_java.dto.browser.BrFileDto;
+import com.dk_power.power_plant_java.dto.browser.BrHeatTrace;
 import com.dk_power.power_plant_java.dto.browser.BrLotoPoint;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.browser.BrEquipmentService;
 import com.dk_power.power_plant_java.sevice.browser.BrFileService;
+import com.dk_power.power_plant_java.sevice.browser.BrHeatTraceService;
 import com.dk_power.power_plant_java.sevice.browser.BrLotoPointService;
 import com.dk_power.power_plant_java.sevice.file.FileService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +33,7 @@ public class BackupController {
     private final BrFileService fileObjectService;
     private final BrEquipmentService equipmentService;
     private final BrLotoPointService lotoPointService;
+    private final BrHeatTraceService heatTraceService;
     private final ObjectMapper objectMapper;
 
     @Value("${backup.app.files}")
@@ -42,10 +45,14 @@ public class BackupController {
     @Value("${backup.app.loto-points}")
     private String backupLotoPointPath;
 
-    public BackupController(BrFileService fileObjectService, BrEquipmentService equipmentService, BrLotoPointService lotoPointService, ObjectMapper objectMapper) {
+    @Value("${backup.app.heat-trace}")
+    private String backupHeatTracePath;
+
+    public BackupController(BrFileService fileObjectService, BrEquipmentService equipmentService, BrLotoPointService lotoPointService, BrHeatTraceService heatTraceService, ObjectMapper objectMapper) {
         this.fileObjectService = fileObjectService;
         this.equipmentService = equipmentService;
         this.lotoPointService = lotoPointService;
+        this.heatTraceService = heatTraceService;
         this.objectMapper = objectMapper;
     }
 
@@ -142,6 +149,41 @@ public class BackupController {
             jsContent.append("];");
 
             File file = new File(backupLotoPointPath);
+            file.getParentFile().mkdirs(); // Ensure the directory exists
+
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write(jsContent.toString());
+            }
+
+            return ResponseEntity.ok("Backup created successfully");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Failed to create backup: " + e.getMessage());
+        }
+    }
+
+
+
+    @GetMapping("/heat-trace")
+    public ResponseEntity<String> backupHeatTrace() {
+        try {
+            List<BrHeatTrace> all = heatTraceService.getAllBrHeatTrace();
+
+            StringBuilder jsContent = new StringBuilder("const lotoPoints = [\n");
+
+            for (int i = 0; i < all.size(); i++) {
+                String jsonObject = objectMapper.writeValueAsString(all.get(i));
+                jsContent.append(jsonObject);
+                if (i < all.size() - 1) {
+                    jsContent.append(",\n");
+                } else {
+                    jsContent.append("\n");
+                }
+            }
+
+            jsContent.append("];");
+
+            File file = new File(backupHeatTracePath);
             file.getParentFile().mkdirs(); // Ensure the directory exists
 
             try (FileWriter writer = new FileWriter(file)) {

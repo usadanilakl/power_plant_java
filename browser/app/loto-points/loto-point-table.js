@@ -10,8 +10,9 @@ const lotoPointTable = {
             const clickedItem= event.detail;
             this.selectedLotoPoints= clickedItem;
             if (clickedItem) {
-                const files = lotoPointService.getAssociatedFiles([clickedItem.id]);
                 const equipment = lotoPointService.getAssociatedEquipment([clickedItem.id]);
+                const fileIds = [...new Set(equipment.flatMap(eq => eq.files))];
+                const files = fileService.getFilesByIds(fileIds);
                 if(files.length > 0) {this.displayImage(files[0], equipment[0].id);}
 
                 const carousel = new ImageCarousel('carousel', files, {

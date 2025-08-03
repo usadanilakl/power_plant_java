@@ -9,4 +9,8 @@ const fileService = {
         );
     },
 
+    getFilesByIds: (fileIds) => {
+        return files.filter(file => fileIds.includes(file.id));
+    }
+
 }
