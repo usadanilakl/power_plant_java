@@ -67,27 +67,43 @@ public class BrHeatTraceMapper {
             dto.setEquipmentList(new HashSet<>(entity.getEquipmentList().stream().map(Equipment::getId).toList()));
         }
 
+        List<Equipment> equipment = new ArrayList<>();
         if (dto.getTagNumber() != null) {
-            String type = dto.getTagNumber().toLowerCase().contains("htt") ? "HTT" : "ENC";
-            int index = dto.getTagNumber().toLowerCase().indexOf(type.toLowerCase());
-            String circuit = dto.getPanelNumber().substring(index).split("-")[1];
-            List<LotoPoint> lotoPoints = lotoPointRepo.findByDescriptionContainingAndDescriptionContaining(type, circuit);
-            dto.setLotoPointId(lotoPoints.isEmpty() ? null : lotoPoints.getFirst().getId());
+            String tagNumber = dto.getTagNumber().toLowerCase();
+            String type = tagNumber.contains("htt") ? "HTT" :
+                    tagNumber.contains("enc") ? "ENC" : null;
 
-            List<Equipment> equipment = new ArrayList<>();
-            if (type.equals("ENC")) {
-                equipment.addAll(equipmentRepo.findByTagNumberContainingIgnoreCase(circuit));
-            }
+            if (type != null) {
+                int index = tagNumber.indexOf(type.toLowerCase());
+                if (index != -1) {
+                    String[] parts = dto.getTagNumber().substring(index).split("-");
+                    if (parts.length > 1) {
+                        String circuit = parts[1];
+                        List<LotoPoint> lotoPoints = lotoPointRepo.findByDescriptionContainingAndDescriptionContaining(type, circuit);
+                        dto.setLotoPointId(lotoPoints.isEmpty() ? null : lotoPoints.get(0).getId());
 
-            if (entity.getTempEquipment() != null) {
-                equipment.addAll(equipmentRepo.findByTagNumberContainingIgnoreCase(entity.getTempEquipment().trim()));
-                String systemTagNumber = tagNumberService.getSystemTagNumber(entity.getTagNumber());
-                if (systemTagNumber != null && systemTagNumber.length() > 3) {
-                    equipment.addAll(equipmentRepo.findByTagNumberContainingIgnoreCase(systemTagNumber));
+                        if ("ENC".equals(type)) {
+                            equipment.addAll(equipmentRepo.findByTagNumberContainingIgnoreCase(circuit));
+                            if(entity.getId()==3071) System.out.println("circuit"+circuit);
+                        }
+                    }
                 }
             }
 
-            dto.setPossiblyRelatedEquipmentList(equipment.stream().map(Equipment::getId).collect(Collectors.toSet()));
+            if (entity.getTempEquipment() != null) {
+                String tempEquipment = entity.getTempEquipment().trim();
+                equipment.addAll(equipmentRepo.findByTagNumberContainingIgnoreCase(tempEquipment));
+
+                String systemTagNumber = tagNumberService.getSystemTagNumber(tempEquipment);
+                if (systemTagNumber != null && systemTagNumber.length() > 3) {
+                    equipment.addAll(equipmentRepo.findByTagNumberContainingIgnoreCase(systemTagNumber));
+                    if(entity.getId()==3071)System.out.println("processed tag" + systemTagNumber);
+                }
+            }
+
+            dto.setPossiblyRelatedEquipmentList(equipment.stream()
+                    .map(Equipment::getId)
+                    .collect(Collectors.toSet()));
         }
 
 
