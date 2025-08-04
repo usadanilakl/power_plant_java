@@ -592,26 +592,154 @@ class ImageZoomInteractive {
                 detailsList.style.listStyleType = 'none';
                 detailsList.style.padding = '0';
                 detailsList.style.margin = '0';
-    
+
                 const detailsToShow = [
-                    { label: 'Tag Number', value: shape.tagNumber },
+                    { label: 'Tag Number', value: shape.tagNumber, type: 'text' },
                     { label: 'Description', value: shape.description },
                     { label: 'Equipment Type', value: shape.eqType },
                     { label: 'Vendor', value: shape.vendor },
                     { label: 'System', value: shape.system },
-                    { label: 'Location', value: shape.location }
+                    { label: 'Location', value: shape.location },
+                    { 
+                        label: 'Related Files', 
+                        value: shape.eqType === 'Connector' ? fileService.getFilesByNumberContaining(shape.tagNumber) : null, 
+                        type: 'relatedFiles' 
+                    },
+                    { 
+                        label: 'Related Loto Points', 
+                        value: shape.lotoPoints, 
+                        type: 'lotoPoints' 
+                    },
+                    { 
+                        label: 'Related Heat Trace', 
+                        value: this.getHeatTrace([shape.id]), 
+                        type: 'heatTrace' 
+                    }
                 ];
-    
+
+                // detailsToShow.forEach(detail => {
+                //     if (detail.value) {
+                //         const li = document.createElement('li');
+                //         li.style.marginBottom = '5px';
+                //         li.style.color = '#333';
+                //         if (detail.isRelatedFiles && Array.isArray(detail.value)) {
+                //             const fileLinks = detail.value.map(file => 
+                //                 `<button onclick='displayImage(${JSON.stringify(file)})'>${file.name}</button>`
+                //             ).join(', ');
+                //             li.innerHTML = `<strong>${detail.label}:</strong> ${fileLinks}`;
+                //         } else {
+                //             li.innerHTML = `<strong>${detail.label}:</strong> ${detail.value}`;
+                //         }
+                //         detailsList.appendChild(li);
+                //     }
+                // });
+
                 detailsToShow.forEach(detail => {
                     if (detail.value) {
                         const li = document.createElement('li');
-                        li.style.marginBottom = '5px';
+                        li.style.marginBottom = '10px';
                         li.style.color = '#333';
-                        li.innerHTML = `<strong>${detail.label}:</strong> ${detail.value}`;
+                
+                        const label = document.createElement('strong');
+                        label.textContent = `${detail.label}:`;
+                        li.appendChild(label);
+                
+                        if (detail.type === 'relatedFiles' && Array.isArray(detail.value)) {
+                            const fileList = document.createElement('ul');
+                            fileList.style.listStyle = 'none';
+                            fileList.style.padding = '5px 0 0 0';
+                            fileList.style.margin = '0';
+                
+                            detail.value.forEach(file => {
+                                const listItem = document.createElement('li');
+                                listItem.style.marginBottom = '5px';
+                                
+                                const button = document.createElement('button');
+                                button.textContent = file.name;
+                                button.onclick = () => displayImage(file);
+                                button.style.padding = '5px 10px';
+                                button.style.cursor = 'pointer';
+                                
+                                listItem.appendChild(button);
+                                fileList.appendChild(listItem);
+                            });
+                
+                            li.appendChild(fileList);
+                        } else if (detail.type === 'lotoPoints' && Array.isArray(detail.value)) {
+                            const lotoPointsList = document.createElement('ul');
+                            lotoPointsList.style.listStyle = 'none';
+                            lotoPointsList.style.padding = '5px 0 0 0';
+                            lotoPointsList.style.margin = '0';
+
+                            const lotoPoints = lotoPointService.getLotoPoints(detail.value);
+
+                            lotoPoints.forEach(lotoPoint => {
+                                const listItem = document.createElement('li');
+                                listItem.style.marginBottom = '10px';
+                                
+                                const button = document.createElement('button');
+                                button.textContent = `${lotoPoint.tagNumber}`;
+                                button.onclick = () => displayLotoPoint(lotoPoint);
+                                button.style.padding = '5px 10px';
+                                button.style.cursor = 'pointer';
+                                
+                                const details = document.createElement('div');
+                                details.style.fontSize = '0.9em';
+                                details.style.marginTop = '5px';
+                                details.innerHTML = `
+                                    <div>Description: ${lotoPoint.description}</div>
+                                    <div>Normal Position: ${lotoPoint.normalPosition}</div>
+                                    <div>Isolated Position: ${lotoPoint.isolatedPosition}</div>
+                                    <div>Location: ${lotoPoint.specificLocation}</div>
+                                `;
+                                
+                                listItem.appendChild(button);
+                                listItem.appendChild(details);
+                                lotoPointsList.appendChild(listItem);
+                            });
+
+                            li.appendChild(lotoPointsList);
+                        } else if (detail.type === 'heatTrace' && Array.isArray(detail.value)) {
+                            const heatTraceList = document.createElement('ul');
+                            heatTraceList.style.listStyle = 'none';
+                            heatTraceList.style.padding = '5px 0 0 0';
+                            heatTraceList.style.margin = '0';
+
+                            detail.value.forEach(heatTrace => {
+                                const listItem = document.createElement('li');
+                                listItem.style.marginBottom = '10px';
+                                
+                                const button = document.createElement('button');
+                                button.textContent = `${heatTrace.tagNumber} (${heatTrace.panelNumber})`;
+                                button.onclick = () => displayHeatTrace(heatTrace);
+                                button.style.padding = '5px 10px';
+                                button.style.cursor = 'pointer';
+                                
+                                const details = document.createElement('div');
+                                details.style.fontSize = '0.9em';
+                                details.style.marginTop = '5px';
+                                details.innerHTML = `
+                                    <div>Panel: ${heatTrace.panelNumber}</div>
+                                    <div>Breaker: ${heatTrace.breaker}</div>
+                                    <div>Location: ${heatTrace.panelLocation}</div>
+                                `;
+                                
+                                listItem.appendChild(button);
+                                listItem.appendChild(details);
+                                heatTraceList.appendChild(listItem);
+                            });
+
+                            li.appendChild(heatTraceList);
+                        } else {
+                            const valueSpan = document.createElement('span');
+                            valueSpan.textContent = ` ${detail.value}`;
+                            li.appendChild(valueSpan);
+                        }
+                
                         detailsList.appendChild(li);
                     }
                 });
-    
+
                 details.appendChild(detailsList);
                 shapeDetails.appendChild(details);
     
@@ -687,40 +815,111 @@ class ImageZoomInteractive {
         }
     }
 
-printSelectedShapes() {
-    const itemsToPrint = this.selectedShapes.map(sh => ({
-        tagNumber: sh.tagNumber,
-        description: sh.description
-    }));
+    printSelectedShapes() {
+        const itemsToPrint = this.selectedShapes.map(sh => ({
+            tagNumber: sh.tagNumber,
+            description: sh.description
+        }));
 
-    console.log(`Sending items to print: ${JSON.stringify(itemsToPrint)}`);
+        console.log(`Sending items to print: ${JSON.stringify(itemsToPrint)}`);
 
-    fetch(properties.serverUrl + '/print/list', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
+        fetch(properties.serverUrl + '/print/list', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(itemsToPrint)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                // Open the redirectUrl in a new tab
+                window.open(properties.serverUrl + data.redirectUrl, '_blank');
+            } else {
+                throw new Error('Server returned an error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    getHeatTrace(equipmentId){
+        const ht = heatTraceService.getHeatTracesByEquipmentIds(equipmentId);
+        if(ht && ht.length > 0){
+            return ht;
+        }
+        return null;
+    }
+
+}
+
+function displayImage(file){
+    if(!file || !file.fileLink) return;
+
+    const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image');
+    const shapes = equipmentService.getShapes(file.points);
+    shapes.forEach(shape => imageZoom.addShape(shape));
+}
+
+function displayHeatTrace(heatTrace){
+    if(!heatTrace) return;
+    const fileIds = [...heatTrace.pids, heatTrace.isometric, heatTrace.panelSchedule];
+    const files = fileService.getFilesByIds(fileIds);
+
+    const eqIds = heatTrace.equipmentList;
+    // const equipment = equipmentService.getEquipment(eqIds);
+
+    if(heatTrace.lotoPointId){
+        const lotoPoint = lotoPointService.getLotoPoint(heatTrace.lotoPointId);
+        if(lotoPoint && lotoPoint.equipmentList && lotoPoint.equipmentList.length > 0  && lotoPoint.equipmentList[0]!= null  && lotoPoint.equipmentList[0]!= 0 ){
+            const breaker = equipmentService.getEquipment(lotoPoint.equipmentList);
+            eqIds.push(breaker);
+        }
+
+    }
+
+    displayImage(files[files.length - 1], eqIds);
+
+    const carousel = new ImageCarousel('carousel', files, {
+        visibleImages: 3,
+        imageWidth: 200,
+        gap: 10,
+        onImageClick: (file) => {
+            // Custom click handler
+            this.displayImage(file, eqIds);
         },
-        body: JSON.stringify(itemsToPrint)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
+        onImageHover: (file, isHovering) => {
+            // Custom hover handler
         }
-        return response.json();
-    })
-    .then(data => {
-        if (data.status === 'success') {
-            // Open the redirectUrl in a new tab
-            window.open(properties.serverUrl + data.redirectUrl, '_blank');
-        } else {
-            throw new Error('Server returned an error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
     });
 }
 
+function displayLotoPoint(lotoPoint){
+    if(!lotoPoint) return;
+    const equipmentIds = [...lotoPoint.equipmentList];
+    const files = fileService.getFilesByEquipmentIds(equipmentIds);
 
+    // const eqIds = lotoPoint.equipmentList;
+    // // const equipment = equipmentService.getEquipment(eqIds);
 
+    // displayImage(files[files.length - 1], eqIds);
+
+    const carousel = new ImageCarousel('carousel', files, {
+        visibleImages: 3,
+        imageWidth: 200,
+        gap: 10,
+        onImageClick: (file) => {
+            // Custom click handler
+            this.displayImage(file, eqIds);
+        },
+        onImageHover: (file, isHovering) => {
+            // Custom hover handler
+        }
+    });
 }

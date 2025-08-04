@@ -1,4 +1,4 @@
-const lotoPoints = [
+const heatTrace = [
 {"id":102,"tagNumber":"HTT-1610","panelNumber":"HPL-1111","panelLocation":"01-HTT-HPL-1111 Top of U1 HRSG west (between HP and IP drums)","panelSchedule":7034,"breaker":"01","breakerTagNumber":"01-HTT-JBX-1610","isometric":5955,"pids":[5246],"equipmentList":[35267,35262,35263],"possiblyRelatedEquipmentList":[],"lotoPointId":25549},
 {"id":105,"tagNumber":"HTT-1611","panelNumber":"HPL-1111","panelLocation":"01-HTT-HPL-1111 Top of U1 HRSG west (between HP and IP drums)","panelSchedule":7034,"breaker":"01","breakerTagNumber":"01-HTT-JBX-1610","isometric":5956,"pids":[],"equipmentList":[],"possiblyRelatedEquipmentList":[],"lotoPointId":25549},
 {"id":108,"tagNumber":"HTT-1612","panelNumber":"HPL-1111","panelLocation":"01-HTT-HPL-1111 Top of U1 HRSG west (between HP and IP drums)","panelSchedule":7034,"breaker":"01","breakerTagNumber":"01-HTT-JBX-1610","isometric":5957,"pids":[5246],"equipmentList":[35270,35271,35272],"possiblyRelatedEquipmentList":[],"lotoPointId":25549},

@@ -19,6 +19,9 @@ const equipmentService = {
             const [key, value] = part.split(':');
             originalSize[key.trim()] = parseInt(value.trim(), 10);
         });
+
+        // const lotoPoints = equipment.lotoPoints && equipment.lotoPoints.length > 0? equipment.lotoPoints.map(lp => lotoPointService.getLotoPoint(lp)) : null;
+        const lotoPoints = equipment.lotoPoints && equipment.lotoPoints.length > 0? equipment.lotoPoints : null;
     
         // Create the shape object
         const shape = {
@@ -37,7 +40,8 @@ const equipmentService = {
             system: equipment.system,
             location: equipment.location,
             originalWidth: originalSize.width || 0,
-            originalHeight: originalSize.height || 0
+            originalHeight: originalSize.height || 0,
+            lotoPoints: lotoPoints
         };
     
         return shape;

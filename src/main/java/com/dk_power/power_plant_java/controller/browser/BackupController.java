@@ -169,7 +169,7 @@ public class BackupController {
         try {
             List<BrHeatTrace> all = heatTraceService.getAllBrHeatTrace();
 
-            StringBuilder jsContent = new StringBuilder("const lotoPoints = [\n");
+            StringBuilder jsContent = new StringBuilder("const heatTrace = [\n");
 
             for (int i = 0; i < all.size(); i++) {
                 String jsonObject = objectMapper.writeValueAsString(all.get(i));

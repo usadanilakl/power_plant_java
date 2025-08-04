@@ -5,6 +5,10 @@ const lotoPointService = {
         return lotoPoints.filter(lp => ids.includes(lp.id));
     },
 
+    getLotoPoint(id){
+        return lotoPoints.filter(lp => lp.id === id);
+    },
+
     getAssociatedEquipment(ids){
         const lotoPoints = this.getLotoPoints(ids);
         const equipmentIds = [...new Set(lotoPoints.flatMap(lp => lp.equipmentList))];

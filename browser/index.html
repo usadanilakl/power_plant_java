@@ -42,6 +42,7 @@
                 <button onclick="fileTable.buildFileTable()">Browse Files</button>
                 <button onclick="equipmentTable.buildEquipmentTable()">Browse Equipment</button>
                 <button onclick="lotoPointTable.buildTable()">Browse LotoPoints</button>
+                <button onclick="heatTraceTable.buildTable()">Browse Heat Trace</button>
                 <button class="server-dependent" onclick="angularApi.navigateToFiles()">Edit Files</button>
                 <button class="server-dependent" onclick="angularApi.navigateToLotoPoints()">LOTO Points</button>
                 <button class="server-dependent" onclick="angularApi.navigateToTags()">Manage Tag Numbers</button>
@@ -94,6 +95,7 @@
                 'data/equipment.js',
                 'data/loto-points.js',
                 'data/files.js',
+                'data/heat-trace.js',
                 'app/server/server-status.js',
                 'app/server/updates.js',
                 'app/server/angular-api.js',
@@ -108,7 +110,9 @@
                 'app/equipment/equipment-service.js',
                 'app/equipment/equipment-table.js',
                 'app/loto-points/loto-point.service.js',
-                'app/loto-points/loto-point-table.js'
+                'app/loto-points/loto-point-table.js',
+                'app/heat-trace/heat-trace.service.js',
+                'app/heat-trace/heat-trace-table.js',
             ];
     
             scripts.forEach(function(src) {

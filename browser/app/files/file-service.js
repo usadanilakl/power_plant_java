@@ -11,6 +11,10 @@ const fileService = {
 
     getFilesByIds: (fileIds) => {
         return files.filter(file => fileIds.includes(file.id));
+    }, 
+
+    getFilesByNumberContaining: (number) => {
+        return files.filter(file => file.fileNumber.trim().toLowerCase().includes(number.trim().toLowerCase()));
     }
 
 }
