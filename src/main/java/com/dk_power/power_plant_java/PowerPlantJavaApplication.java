@@ -68,8 +68,9 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //            String jpgLink = f.buildFileLink("jpg");
 //            String pdfLink = f.buildFileLink("pdf");
 //
-//            Path jpgPath = Paths.get(filesRoot.replace("\\uploads",""), jpgLink);
-//            Path pdfPath = Paths.get(filesRoot.replace("\\uploads",""), pdfLink);
+//            Path jpgPath = Paths.get(filesRoot.replace("\\uploads","").replace("/uploads",""), jpgLink);
+//            Path pdfPath = Paths.get(filesRoot.replace("\\uploads","").replace("/uploads",""), pdfLink);
+//
 //
 //            System.out.println(jpgPath);
 //

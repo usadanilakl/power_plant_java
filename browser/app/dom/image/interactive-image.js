@@ -612,8 +612,13 @@ class ImageZoomInteractive {
                     },
                     { 
                         label: 'Related Heat Trace', 
-                        value: this.getHeatTrace([shape.id]), 
+                        value: this.getHeatTrace(shape.id), 
                         type: 'heatTrace' 
+                    },
+                    { 
+                        label: 'Extended Heat Trace Search', 
+                        value: this.getHeatTrace(shape.id,true), 
+                        type: 'extendedHeatTrace' 
                     }
                 ];
 
@@ -700,6 +705,37 @@ class ImageZoomInteractive {
 
                             li.appendChild(lotoPointsList);
                         } else if (detail.type === 'heatTrace' && Array.isArray(detail.value)) {
+                            const heatTraceList = document.createElement('ul');
+                            heatTraceList.style.listStyle = 'none';
+                            heatTraceList.style.padding = '5px 0 0 0';
+                            heatTraceList.style.margin = '0';
+
+                            detail.value.forEach(heatTrace => {
+                                const listItem = document.createElement('li');
+                                listItem.style.marginBottom = '10px';
+                                
+                                const button = document.createElement('button');
+                                button.textContent = `${heatTrace.tagNumber} (${heatTrace.panelNumber})`;
+                                button.onclick = () => displayHeatTrace(heatTrace);
+                                button.style.padding = '5px 10px';
+                                button.style.cursor = 'pointer';
+                                
+                                const details = document.createElement('div');
+                                details.style.fontSize = '0.9em';
+                                details.style.marginTop = '5px';
+                                details.innerHTML = `
+                                    <div>Panel: ${heatTrace.panelNumber}</div>
+                                    <div>Breaker: ${heatTrace.breaker}</div>
+                                    <div>Location: ${heatTrace.panelLocation}</div>
+                                `;
+                                
+                                listItem.appendChild(button);
+                                listItem.appendChild(details);
+                                heatTraceList.appendChild(listItem);
+                            });
+
+                            li.appendChild(heatTraceList);
+                        } else if (detail.type === 'extendedHeatTrace' && Array.isArray(detail.value)) {
                             const heatTraceList = document.createElement('ul');
                             heatTraceList.style.listStyle = 'none';
                             heatTraceList.style.padding = '5px 0 0 0';
@@ -849,8 +885,10 @@ class ImageZoomInteractive {
         });
     }
 
-    getHeatTrace(equipmentId){
-        const ht = heatTraceService.getHeatTracesByEquipmentIds(equipmentId);
+    getHeatTrace(equipmentId, isExtendedSearch){
+        let ht = null;
+        if(!isExtendedSearch)ht = heatTraceService.getHeatTracesByEquipmentIds([equipmentId]);
+        if(isExtendedSearch)ht = (heatTraceService.getExtendedHeatTrace(equipmentId));
         if(ht && ht.length > 0){
             return ht;
         }
@@ -859,12 +897,17 @@ class ImageZoomInteractive {
 
 }
 
-function displayImage(file){
+function displayImage(file,ids){
     if(!file || !file.fileLink) return;
 
     const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image');
     const shapes = equipmentService.getShapes(file.points);
-    shapes.forEach(shape => imageZoom.addShape(shape));
+        shapes.forEach(shape =>{
+            if(ids && ids.includes(shape.id)){
+                shape.isSelected = true;
+            }
+            imageZoom.addShape(shape);
+        });
 }
 
 function displayHeatTrace(heatTrace){
@@ -892,7 +935,7 @@ function displayHeatTrace(heatTrace){
         gap: 10,
         onImageClick: (file) => {
             // Custom click handler
-            this.displayImage(file, eqIds);
+            displayImage(file, eqIds);
         },
         onImageHover: (file, isHovering) => {
             // Custom hover handler
@@ -905,7 +948,7 @@ function displayLotoPoint(lotoPoint){
     const equipmentIds = [...lotoPoint.equipmentList];
     const files = fileService.getFilesByEquipmentIds(equipmentIds);
 
-    // const eqIds = lotoPoint.equipmentList;
+    const eqIds = lotoPoint.equipmentList;
     // // const equipment = equipmentService.getEquipment(eqIds);
 
     // displayImage(files[files.length - 1], eqIds);

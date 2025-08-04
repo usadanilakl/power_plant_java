@@ -4546,7 +4546,7 @@ const lotoPoints = [
 {"id":25546,"tagNumber":"01-GSU-CPL-01","description":"UNIT 1 GSU CONTROL PANEL 125 VDC PWR MAIN","specificLocation":null,"normalPosition":"CLOSED","isolatedPosition":"OPEN","equipmentList":[]},
 {"id":25547,"tagNumber":"01-GSU-CPL-01","description":"UNIT 1 GSU CTRL PNL 480 VAC PWR MAIN 2","specificLocation":null,"normalPosition":"CLOSED","isolatedPosition":"OPEN","equipmentList":[]},
 {"id":25548,"tagNumber":"00-VFP825","description":"ELECTRIC PUMP SENSING LINE SHUT-OFF","specificLocation":null,"normalPosition":"no data","isolatedPosition":"Not Applicable.","equipmentList":[]},
-{"id":25549,"tagNumber":"01-HPL-1111-01","description":"HTT-1610/HTT-1611/HTT-1612/HTT-1613/HTT-1614/HTT-1615/HTT-1616/","specificLocation":null,"normalPosition":"no data","isolatedPosition":"Not Applicable.","equipmentList":[]},
+{"id":25549,"tagNumber":"01-HPL-1111-01","description":"HTT-1610/HTT-1611/HTT-1612/HTT-1613/HTT-1614/HTT-1615/HTT-1616/","specificLocation":null,"normalPosition":"CLOSED","isolatedPosition":"OPEN","equipmentList":[1000000102]},
 {"id":25550,"tagNumber":"00-VFP826","description":"ELECTRIC PUMP SENSING LINE SHUT-OFF","specificLocation":null,"normalPosition":"no data","isolatedPosition":"Not Applicable.","equipmentList":[]},
 {"id":25551,"tagNumber":"01-HPL-1111-02","description":"HTT-1641/HTT-1642/HTT-1608/","specificLocation":null,"normalPosition":"no data","isolatedPosition":"Not Applicable.","equipmentList":[]},
 {"id":25552,"tagNumber":"01-HPL-1111-03","description":"HTT-1525/HTT-1526/HTT-1527/HTT-1539/HTT-1540/","specificLocation":null,"normalPosition":"no data","isolatedPosition":"Not Applicable.","equipmentList":[]},

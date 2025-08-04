@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -67,7 +68,7 @@ public class BrHeatTraceMapper {
             dto.setEquipmentList(new HashSet<>(entity.getEquipmentList().stream().map(Equipment::getId).toList()));
         }
 
-        List<Equipment> equipment = new ArrayList<>();
+        Set<Equipment> equipment = new HashSet<>();
         if (dto.getTagNumber() != null) {
             String tagNumber = dto.getTagNumber().toLowerCase();
             String type = tagNumber.contains("htt") ? "HTT" :
