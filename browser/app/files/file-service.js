@@ -13,6 +13,16 @@ const fileService = {
         return files.filter(file => fileIds.includes(file.id));
     }, 
 
+    getFileById: (fileId) => {
+        const numericFileId = Number(fileId);
+        if (isNaN(numericFileId)) {
+            console.error('Invalid fileId provided:', fileId);
+            return undefined;
+        }
+        return files.find(file => numericFileId === Number(file.id));
+    },
+
+
     getFilesByNumberContaining: (number) => {
         return files.filter(file => file.fileNumber.trim().toLowerCase().includes(number.trim().toLowerCase()));
     }

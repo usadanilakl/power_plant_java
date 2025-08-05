@@ -489,6 +489,14 @@ class ImageZoomInteractive {
         }
         return null; // No shape was clicked
     }
+
+    resetSelectedShapes(){
+        this.shapes.forEach(shape => {
+            shape.isSelected = false;
+        });
+        this.selectedShapes = [];
+        this.drawShapes();
+    }
     
     distanceToLine(x, y, x1, y1, x2, y2) {
         const A = x - x1;
@@ -586,7 +594,10 @@ class ImageZoomInteractive {
             closeButton.style.padding = '5px 10px';
             closeButton.style.cursor = 'pointer';
             closeButton.style.borderRadius = '3px';
-            closeButton.onclick = () => popup.remove();
+            closeButton.onclick = () =>{
+                popup.remove();
+                this.resetSelectedShapes();
+            }
             popup.appendChild(closeButton);
     
             // Add details for each selected shape
@@ -635,23 +646,6 @@ class ImageZoomInteractive {
                         type: 'extendedHeatTrace' 
                     }
                 ];
-
-                // detailsToShow.forEach(detail => {
-                //     if (detail.value) {
-                //         const li = document.createElement('li');
-                //         li.style.marginBottom = '5px';
-                //         li.style.color = '#333';
-                //         if (detail.isRelatedFiles && Array.isArray(detail.value)) {
-                //             const fileLinks = detail.value.map(file => 
-                //                 `<button onclick='displayImage(${JSON.stringify(file)})'>${file.name}</button>`
-                //             ).join(', ');
-                //             li.innerHTML = `<strong>${detail.label}:</strong> ${fileLinks}`;
-                //         } else {
-                //             li.innerHTML = `<strong>${detail.label}:</strong> ${detail.value}`;
-                //         }
-                //         detailsList.appendChild(li);
-                //     }
-                // });
 
                 detailsToShow.forEach(detail => {
                     if (detail.value) {
