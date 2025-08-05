@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java.mappers.browser;
 
 import com.dk_power.power_plant_java.dto.browser.BrEquipmentDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.equipment.HtBreaker;
+import com.dk_power.power_plant_java.entities.equipment.HtPanel;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import org.springframework.stereotype.Component;
@@ -30,8 +32,8 @@ public class BrEquipmentMapper {
                 .map(files -> files.stream()
                         .filter(Objects::nonNull)
                         .map(FileObject::getId)
-                        .collect(Collectors.toList()))
-                .orElse(Collections.emptyList()));
+                        .collect(Collectors.toSet()))
+                .orElse(Collections.emptySet()));
         dto.setVendor(Optional.ofNullable(equipment.getVendor())
                 .map(vendor -> vendor.getName())
                 .orElse(""));
@@ -53,9 +55,57 @@ public class BrEquipmentMapper {
                         .map(LotoPoint::getId)
                         .collect(Collectors.toSet()))
                 .orElse(Collections.emptySet()));
+        
+
+        Set<Long> relatedEquipmentIds = new HashSet<>();
+        Set<Long> relatedFileIds = new HashSet<>();
+
+        if (equipment.getLotoPoints() != null && !equipment.getLotoPoints().isEmpty()) {
+            equipment.getLotoPoints().stream()
+                .flatMap(lp -> lp.getEquipmentList().stream())
+                .forEach(relatedEquipment -> {
+                    relatedEquipmentIds.add(relatedEquipment.getId());
+                    Optional.ofNullable(relatedEquipment.getMainFile())
+                        .map(FileObject::getId)
+                        .ifPresent(relatedFileIds::add);
+                });
+        }
+
+        if (equipment.getHeatTraceList() != null) {
+            equipment.getHeatTraceList().stream()
+                .flatMap(ht -> {
+                    Set<Long> fileIds = new HashSet<>();
+
+//                    Optional.ofNullable(ht.getPid())
+//                        .ifPresent(pid -> fileIds.addAll(
+//                            pid.stream()
+//                                .filter(Objects::nonNull)
+//                                .map(FileObject::getId)
+//                                .filter(Objects::nonNull)
+//                                .collect(Collectors.toSet())
+//                        ));
+
+                    Optional.ofNullable(ht.getHtIso())
+                        .map(FileObject::getId)
+                        .ifPresent(fileIds::add);
+
+                    Optional.ofNullable(ht.getBreaker())
+                        .map(HtBreaker::getPanel)
+                        .map(HtPanel::getPanelSchedule)
+                        .map(FileObject::getId)
+                        .ifPresent(fileIds::add);
+
+                    return fileIds.stream();
+                })
+                .forEach(relatedFileIds::add);
+        }
+
+        dto.setRelatedEquipment(relatedEquipmentIds);
+        dto.getFiles().addAll(relatedFileIds);
 
         return dto;
     }
+    
 
     public List<BrEquipmentDto> toDtoAll(List<Equipment> all) {
         return all.stream()
@@ -64,3 +114,5 @@ public class BrEquipmentMapper {
                 .collect(Collectors.toList());
     }
 }
+
+

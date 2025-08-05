@@ -19,7 +19,7 @@ public class BrEquipmentDto {
     private String description;
     private String specificLocation;
     private String eqType;
-    private List<Long> files;
+    private Set<Long> files;
     private String vendor;
     private String location;
     private String system;
@@ -27,4 +27,6 @@ public class BrEquipmentDto {
     private String originalPictureSize;
     private String mainFile;
     private Set<Long> lotoPoints;
+    private Set<Long> possiblyRelatedFiles;
+    private Set<Long> relatedEquipment;
 }

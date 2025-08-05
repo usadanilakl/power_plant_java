@@ -537,6 +537,20 @@ class ImageZoomInteractive {
         
         this.drawShapes();
         this.showSelectedDetails();
+
+
+        const carousel = new ImageCarousel('carousel', clickedShape.files, {
+            visibleImages: 3,
+            imageWidth: 200,
+            gap: 10,
+            onImageClick: (file) => {
+                // Custom click handler
+                displayImage(file, [...clickedShape.relatedEquipment,clickedShape.id]);
+            },
+            onImageHover: (file, isHovering) => {
+                // Custom hover handler
+            }
+        });
     }
 
     showSelectedDetails() {
@@ -616,7 +630,7 @@ class ImageZoomInteractive {
                         type: 'heatTrace' 
                     },
                     { 
-                        label: 'Extended Heat Trace Search', 
+                        label: 'Extended Heat Trace Search (Not Accurate)', 
                         value: this.getHeatTrace(shape.id,true), 
                         type: 'extendedHeatTrace' 
                     }

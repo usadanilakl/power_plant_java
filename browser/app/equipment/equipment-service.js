@@ -22,6 +22,7 @@ const equipmentService = {
 
         // const lotoPoints = equipment.lotoPoints && equipment.lotoPoints.length > 0? equipment.lotoPoints.map(lp => lotoPointService.getLotoPoint(lp)) : null;
         const lotoPoints = equipment.lotoPoints && equipment.lotoPoints.length > 0? equipment.lotoPoints : null;
+        const files = equipment.files && equipment.files.length > 0? fileService.getFilesByIds(equipment.files) : null;
     
         // Create the shape object
         const shape = {
@@ -41,7 +42,9 @@ const equipmentService = {
             location: equipment.location,
             originalWidth: originalSize.width || 0,
             originalHeight: originalSize.height || 0,
-            lotoPoints: lotoPoints
+            lotoPoints: lotoPoints,
+            files: files,
+            relatedEquipment: equipment.relatedEquipment,
         };
     
         return shape;

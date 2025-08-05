@@ -33,6 +33,7 @@ class ImageCarousel {
     }
 
     createImageElement(file) {
+        if(!file ||!file.fileLink) return;
         const wrapper = document.createElement('div');
         wrapper.className = 'carousel-item';
         wrapper.style.flexShrink = '0';
@@ -40,7 +41,7 @@ class ImageCarousel {
         wrapper.style.marginRight = `${this.options.gap}px`;
 
         const img = document.createElement('img');
-        img.src = "../" + file.fileLink;
+        img.src = "../" + file.fileLink.replaceAll('pdf', 'jpg').replaceAll('file//', '');
         img.alt = file.name;
         img.style.width = '100%';
         img.style.height = 'auto';
