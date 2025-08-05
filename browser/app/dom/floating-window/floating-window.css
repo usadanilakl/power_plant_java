@@ -1,0 +1,11 @@
+.floating-window {
+    font-family: Arial, sans-serif;
+}
+
+.resize-handle {
+    z-index: 10;
+}
+
+.floating-window-content {
+    word-wrap: break-word;
+}

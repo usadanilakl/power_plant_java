@@ -20,6 +20,10 @@ class ImageZoomInteractive {
         this.mouseDownPos = { x: 0, y: 0 };
         this.potentialClickedShape = null;
 
+        this.isBuildingLoto = false;
+        this.lotoBuildingService = null;
+        this.lotoListComponent = null;
+
         this.init();
     }
 
@@ -289,8 +293,13 @@ class ImageZoomInteractive {
         placeholderButton.textContent = 'Print Tags';
         placeholderButton.onclick = () => this.printSelectedShapes();
     
+        const buildLotoButton = document.createElement('button');
+        buildLotoButton.textContent = 'Build LOTO';
+        buildLotoButton.onclick = () => this.startBuildingLoto();
+    
         menuContainer.appendChild(toggleButton);
         menuContainer.appendChild(placeholderButton);
+        menuContainer.appendChild(buildLotoButton);
     
         // Always append to the main container
         this.container.appendChild(menuContainer);
@@ -559,6 +568,10 @@ class ImageZoomInteractive {
                 // Custom hover handler
             }
         });
+
+        if(this.isBuildingLoto){
+            this.lotoListComponent.addLotoPoints(clickedShape.lotoPoints);           
+        }
     }
 
     showSelectedDetails() {
@@ -901,6 +914,23 @@ class ImageZoomInteractive {
             return ht;
         }
         return null;
+    }
+
+    
+    startBuildingLoto(){
+        this.isBuildingLoto = true;
+        this.lotoBuildingService = new LotoBuildingService();
+        this.lotoListComponent = new LotoListComponent(this.lotoBuildingService);
+        const allLotoPointIds = this.selectedShapes.flatMap(sh => sh.lotoPoints);
+        this.lotoListComponent.addLotoPoints(allLotoPointIds);
+    
+        const myWindow = new FloatingWindow(null, 'Selected LOTO Points', 'loto-building-window');
+
+        document.addEventListener('floatingWindowClosed', (event) => {
+            console.log('Floating window closed:', event.detail.windowId);
+            this.lotoListComponent.removeAllLotoPoints();
+            this.isBuildingLoto = false;
+        });
     }
 
 }
