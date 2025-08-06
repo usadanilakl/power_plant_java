@@ -1,4 +1,4 @@
-.floating-window {
+/* .floating-window {
     font-family: Arial, sans-serif;
     z-index: 100;
 }
@@ -9,4 +9,86 @@
 
 .floating-window-content {
     word-wrap: break-word;
+} */
+
+
+.floating-window {
+    position: absolute;
+    top: 50px;
+    left: 50px;
+    height: 85vh;
+    min-width: 200px;
+    min-height: 100px;
+    max-width: 85vw;
+    max-height: 85vh;
+    border: 1px solid var(--light-resizer-bg);
+    background-color: var(--light-bg-color);
+    color: var(--light-text-color);
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    z-index: 100;
+}
+
+.floating-window-header {
+    padding: 5px;
+    background-color: var(--light-header-bg);
+    color: var(--light-header-text);
+    cursor: move;
+    user-select: none;
+}
+
+.floating-window-close {
+    float: right;
+    border: none;
+    background: var(--button-bg-color);
+    color: var(--button-text-color);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.floating-window-close:hover {
+    background-color: var(--button-hover-bg-color);
+}
+
+.floating-window-content {
+    padding: 10px;
+    overflow: auto;
+    height: calc(100% - 30px);
+    word-wrap: break-word;
+}
+
+
+.resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: transparent;
+    z-index: 100;
+}
+
+.resize-handle.n { top: 0; left: 0; right: 0; cursor: n-resize; }
+.resize-handle.e { top: 0; right: 0; bottom: 0; cursor: e-resize; }
+.resize-handle.s { bottom: 0; left: 0; right: 0; cursor: s-resize; }
+.resize-handle.w { top: 0; left: 0; bottom: 0; cursor: w-resize; }
+.resize-handle.ne { top: 0; right: 0; cursor: ne-resize; }
+.resize-handle.se { bottom: 0; right: 0; cursor: se-resize; }
+.resize-handle.sw { bottom: 0; left: 0; cursor: sw-resize; }
+.resize-handle.nw { top: 0; left: 0; cursor: nw-resize; }
+
+/* Dark theme styles */
+.floating-window.dark-theme {
+    border-color: var(--dark-resizer-bg);
+    background-color: var(--dark-bg-color);
+    color: var(--dark-text-color);
+}
+
+.floating-window.dark-theme .floating-window-header {
+    background-color: var(--dark-header-bg);
+    color: var(--dark-header-text);
+}
+
+.floating-window.dark-theme .resize-handle {
+    background-color: var(--dark-resizer-bg);
 }

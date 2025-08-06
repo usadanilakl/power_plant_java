@@ -44,10 +44,4 @@ public class LotoRestController {
         return ResponseEntity.ok("Success");
     }
 
-    @PostMapping("/build-red-tag-loto")
-    public ResponseEntity<String> buildRedTagLoto(@RequestBody List<BrLotoPoint> points){
-        System.out.println(points);
-//        LotoBuilderService.buildLotowWithNewPoints(points);
-        return ResponseEntity.ok("Success");
-    }
 }

@@ -287,7 +287,7 @@ class LotoListComponent {
             return;
         }
 
-        fetch(properties.serverUrl+'/api-lotos/build-red-tag-loto', {
+        fetch(properties.serverUrl+'/browser/loto/build-red-tag-loto', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
