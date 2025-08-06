@@ -934,7 +934,7 @@ class ImageZoomInteractive {
 function displayImage(file,ids){
     if(!file || !file.fileLink) return;
 
-    const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image');
+    const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image','jpg',lotoBuildingService,lotoListComponent);
     const shapes = equipmentService.getShapes(file.points);
         shapes.forEach(shape =>{
             if(ids && ids.includes(shape.id)){
