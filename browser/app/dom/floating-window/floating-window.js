@@ -21,8 +21,11 @@ class FloatingWindow {
         this.element.style.position = 'absolute';
         this.element.style.top = '50px';
         this.element.style.left = '50px';
+        this.element.style.height = '85vh'; 
         this.element.style.minWidth = '200px';
         this.element.style.minHeight = '100px';
+        this.element.style.maxWidth = '85vw';
+        this.element.style.maxHeight = '85vh';
         this.element.style.border = '1px solid #ccc';
         this.element.style.backgroundColor = '#fff';
         this.element.style.boxShadow = '0 0 10px rgba(0,0,0,0.1)';

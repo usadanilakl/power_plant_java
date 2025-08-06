@@ -1,7 +1,7 @@
 // const extension = 'jpg';
 
 class ImageZoomInteractive {
-    constructor(imageUrl, containerId, extension = 'jpg') {
+    constructor(imageUrl, containerId, extension = 'jpg', lotoBuildingService = null, lotoListComponent = null) {
         this.imageUrl = imageUrl;
         this.container = document.getElementById(containerId);
         this.scale = 1;
@@ -21,8 +21,8 @@ class ImageZoomInteractive {
         this.potentialClickedShape = null;
 
         this.isBuildingLoto = false;
-        this.lotoBuildingService = null;
-        this.lotoListComponent = null;
+        this.lotoBuildingService = lotoBuildingService;
+        this.lotoListComponent = lotoListComponent;
 
         this.init();
     }
@@ -569,7 +569,7 @@ class ImageZoomInteractive {
             }
         });
 
-        if(this.isBuildingLoto){
+        if(this.lotoBuildingService.isBuildingLoto){
             this.lotoListComponent.addLotoPoints(clickedShape.lotoPoints);           
         }
     }
@@ -918,18 +918,14 @@ class ImageZoomInteractive {
 
     
     startBuildingLoto(){
-        this.isBuildingLoto = true;
-        this.lotoBuildingService = new LotoBuildingService();
-        this.lotoListComponent = new LotoListComponent(this.lotoBuildingService);
+        this.lotoBuildingService.isBuildingLoto = true;
         const allLotoPointIds = this.selectedShapes.flatMap(sh => sh.lotoPoints);
         this.lotoListComponent.addLotoPoints(allLotoPointIds);
-    
-        const myWindow = new FloatingWindow(null, 'Selected LOTO Points', 'loto-building-window');
 
         document.addEventListener('floatingWindowClosed', (event) => {
             console.log('Floating window closed:', event.detail.windowId);
             this.lotoListComponent.removeAllLotoPoints();
-            this.isBuildingLoto = false;
+            this.lotoBuildingService.isBuildingLoto = false;
         });
     }
 

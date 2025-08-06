@@ -1,9 +1,10 @@
 .floating-window {
     font-family: Arial, sans-serif;
+    z-index: 100;
 }
 
 .resize-handle {
-    z-index: 10;
+    z-index: 100;
 }
 
 .floating-window-content {

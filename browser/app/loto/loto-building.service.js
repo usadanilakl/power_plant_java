@@ -1,6 +1,8 @@
 class LotoBuildingService{
     constructor(){
         this.selectedLotoPoints = [];
+        this.isBuildingLoto = false;
+
     }
 
     
@@ -55,6 +57,7 @@ class LotoBuildingService{
 
 class LotoListComponent {
     constructor(lotoBuildingService) {
+        console.log('LotoListComponent initialized');
         this.lotoBuildingService = lotoBuildingService;
         this.lotoPoints = [];
         this.updateList();
@@ -83,11 +86,13 @@ class LotoListComponent {
     }
 
     render() {
+        if(!this.lotoPoints || this.lotoPoints.length === 0) return;
+        let windowObject = null;
         // Find the LOTO building window
-        const lotoBuildingWindow = document.getElementById('loto-building-window');
+        let lotoBuildingWindow = document.getElementById('loto-building-window');
         if (!lotoBuildingWindow) {
-            console.error('LOTO building window not found');
-            return;
+            windowObject = new FloatingWindow(null, 'Selected LOTO Points', 'loto-building-window');
+            lotoBuildingWindow = document.getElementById('loto-building-window');
         }
     
         // Find the content container within the window
@@ -107,7 +112,7 @@ class LotoListComponent {
             const ul = document.createElement('ul');
             ul.style.listStyleType = 'none';
             ul.style.padding = '0';
-    
+
             this.lotoPoints.forEach(point => {
                 const listItem = document.createElement('li');
                 listItem.style.marginBottom = '15px';
@@ -119,19 +124,27 @@ class LotoListComponent {
                     <p style="margin: 0 0 5px 0;"><strong>Normal Position:</strong> ${point.normalPosition}</p>
                     <p style="margin: 0 0 5px 0;"><strong>Isolated Position:</strong> ${point.isolatedPosition}</p>
                     <p style="margin: 0;"><strong>Location:</strong> ${point.specificLocation}</p>
-                    <button onclick="lotoListComponent.removeLotoPoint(${point.id})">Remove</button>
+                    <button class="remove-loto-point" data-id="${point.id}">Remove</button>
                 `;
                 ul.appendChild(listItem);
             });
-    
+
             listContainer.appendChild(ul);
+
+            // Add event listener for remove buttons
+            listContainer.addEventListener('click', (event) => {
+                if (event.target.classList.contains('remove-loto-point')) {
+                    const lotoPointId = parseInt(event.target.getAttribute('data-id'), 10);
+                    this.removeLotoPoint(lotoPointId);
+                }
+            });
         }
     }
 }
 
 // // Usage
-// const lotoService = new LotoBuildingService();
-// const lotoListComponent = new LotoListComponent(lotoService);
+const lotoBuildingService = new LotoBuildingService();
+const lotoListComponent = new LotoListComponent(lotoBuildingService);
 
 // // To add a new LOTO point
 // lotoListComponent.addLotoPoint(newLotoPoint);

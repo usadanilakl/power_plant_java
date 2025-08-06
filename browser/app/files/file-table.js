@@ -1,26 +1,3 @@
-// const fileTable = {
-//     selectedFile: {},
-//     buildFileTable: function() {
-//         const columns = ['name', 'fileNumber', 'fileType', 'system', 'relatedSystems', 'vendor'];
-
-//         tableBuilder.buildTable(files, columns, 'tableContainer');
-
-//         // Add event listener for custom rowClick event
-//         document.addEventListener('rowClick', (event) => {
-//             const clickedFile = event.detail;
-//             this.selectedFile = clickedFile;
-//             if (clickedFile.fileLink) {
-//                 const imageZoom = new ImageZoomInteractive('../' + clickedFile.fileLink, 'image');
-//                 const shapes = equipmentService.getShapes(this.selectedFile.points);
-//                 shapes.forEach(shape => imageZoom.addShape(shape));
-//             }
-//         });
-//     }
-// };
-
-// fileTable.buildFileTable();
-
-
 const fileTable = {
     selectedFile: {},
     rowClickHandler: null,
@@ -40,7 +17,7 @@ const fileTable = {
             const clickedFile = event.detail;
             this.selectedFile = clickedFile;
             if (clickedFile && clickedFile.fileLink) {
-                const imageZoom = new ImageZoomInteractive('../' + clickedFile.fileLink, 'image');
+                const imageZoom = new ImageZoomInteractive('../' + clickedFile.fileLink, 'image','jpg',lotoBuildingService,lotoListComponent);
                 const shapes = equipmentService.getShapes(this.selectedFile.points);
                 shapes.forEach(shape => imageZoom.addShape(shape));
             }
@@ -62,5 +39,3 @@ const fileTable = {
 // Initialize the table
 fileTable.buildFileTable();
 
-// Example of how to remove the event listener when needed:
-// fileTable.removeEventListener();
