@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.controller.permits;
 
+import com.dk_power.power_plant_java.dto.browser.BrLotoPoint;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -40,6 +41,13 @@ public class LotoRestController {
             result.addAll(lotoPointService.getByTagNumber(t));
         }
         LotoBuilderService.buildLotowWithNewPoints(result);
+        return ResponseEntity.ok("Success");
+    }
+
+    @PostMapping("/build-red-tag-loto")
+    public ResponseEntity<String> buildRedTagLoto(@RequestBody List<BrLotoPoint> points){
+        System.out.println(points);
+//        LotoBuilderService.buildLotowWithNewPoints(points);
         return ResponseEntity.ok("Success");
     }
 }

@@ -24,7 +24,7 @@ public class SecurityConfigSpring {
                 .authorizeHttpRequests((requests) -> requests
                         .anyRequest().permitAll()
                 )
-                .csrf(csrf->csrf.ignoringRequestMatchers("/h2-console/**", "/images-api/**", "/ng/**","server/**","api/backup/**","/browser/**","/print/**"))
+                .csrf(csrf->csrf.ignoringRequestMatchers("/h2-console/**", "/images-api/**", "/ng/**","server/**","api/backup/**","/browser/**","/print/**", "/api-lotos/**"))
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
         return http.build();

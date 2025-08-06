@@ -23,6 +23,7 @@ public class BrLotoPointMapper {
         if(lotoPoint.getIsoPos()!=null && lotoPoint.getIsoPos().getName()!=null)dto.setIsolatedPosition(lotoPoint.getIsoPos().getName());
         if(lotoPoint.getNormPos()!=null && lotoPoint.getNormPos().getName()!=null)dto.setNormalPosition(lotoPoint.getNormPos().getName());
         if(lotoPoint.getEquipmentList()!=null)dto.setEquipmentList(lotoPoint.getEquipmentList().stream().map(Equipment::getId).collect(Collectors.toSet()));
+        if(lotoPoint.getSpecificLocation()!=null)dto.setSpecificLocation(lotoPoint.getSpecificLocation());
 
         return dto;
     }

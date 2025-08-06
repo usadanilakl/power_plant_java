@@ -924,7 +924,7 @@ class ImageZoomInteractive {
 
         document.addEventListener('floatingWindowClosed', (event) => {
             console.log('Floating window closed:', event.detail.windowId);
-            this.lotoListComponent.removeAllLotoPoints();
+            this.lotoListComponent.clearAllLotoPoints();
             this.lotoBuildingService.isBuildingLoto = false;
         });
     }

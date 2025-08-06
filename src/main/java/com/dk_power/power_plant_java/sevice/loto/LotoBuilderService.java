@@ -92,6 +92,7 @@ public class LotoBuilderService {
 
 
             for (LotoPointDto lp : list) {
+                System.out.println(lp.getDescription() + " " + lp.getTagNumber() + " " + lp.getSpecificLocation() + " " + lp.getIsolatedPosition());
                 Region r0 = pointMenu.find(addDeviceManuallyBtn);
                 r0.offset(r0.w/2-5,r0.h/2-5).click();
 
@@ -115,14 +116,17 @@ public class LotoBuilderService {
                 App.setClipboard(lp.getSpecificLocation());
                 scr.type("v", KeyModifier.CTRL);
 
+                String normalPosition = lp.getNormPos()!=null? lp.getNormPos().getName() : lp.getNormalPosition();
+                String isolatedPosition = lp.getIsoPos()!=null? lp.getIsoPos().getName() : lp.getIsolatedPosition();
+
                 Region r3 = appWindow.find(isoPosField);
                 r3.offset(r3.w-5,r3.h/2).click();
-                App.setClipboard(lp.getIsoPos().getName());
+                App.setClipboard(isolatedPosition);
                 scr.type("v", KeyModifier.CTRL);
 
                 Region r4 = appWindow.find(normPosField);
                 r4.offset(r4.w-5,r4.h/2).click();
-                App.setClipboard(lp.getNormPos().getName());
+                App.setClipboard(normalPosition);
                 scr.type("v", KeyModifier.CTRL);
 
                 Region r5 = appWindow.find(locableDropdown);
