@@ -92,7 +92,7 @@ const lotoPointTable = {
     },
 
     displayImage: function(file, eqId) {
-        const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image');
+        const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image','jpg',lotoBuildingService,lotoListComponent);
         const shapes = equipmentService.getShapes(file.points);
         shapes.forEach(shape => {
             if (shape.id === eqId) {

@@ -91,7 +91,7 @@ const equipmentTable = {
     },
 
     displayImage: function(file, eqIds) {
-        const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image');
+        const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image','jpg',lotoBuildingService,lotoListComponent);
         const shapes = equipmentService.getShapes(file.points);
         shapes.forEach(shape => {
             if (eqIds && eqIds.includes(shape.id)) {
