@@ -89,3 +89,5 @@ class LotoStandardBuilder {
         });
     }
 }
+
+const lotoStandardBuilder = new LotoStandardBuilder();

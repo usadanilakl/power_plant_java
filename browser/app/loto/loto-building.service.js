@@ -47,6 +47,11 @@ class LotoBuildingService{
             specificLocation: lotoPoint.specificLocation || 'Not specified'
         }));
     }
+
+    createNewStandard(){
+        lotoStandardBuilder.lotoPoints = this.selectedLotoPoints();
+        lotoStandardBuilder.showLotoStandard();
+    }
     
     // Add a method to remove a specific LOTO point
     removeLotoPoint(lotoPointId) {
@@ -126,10 +131,12 @@ class LotoListComponent {
         // const addButton = this.createButton('Add LOTO Point', () => this.openAddLotoPointDialog());
         // const clearButton = this.createButton('Clear All', () => this.clearAllLotoPoints());
         const exportButton = this.createButton('Submit', () => this.exportLotoPoints());
+        const createStandardButton = this.createButton('Create Standard', () => this.lotoBuildingService.createNewStandard());
 
         // fixedMenu.appendChild(addButton);
         // fixedMenu.appendChild(clearButton);
         fixedMenu.appendChild(exportButton);
+        fixedMenu.appendChild(createStandardButton);
 
         // Add the fixed menu to the list container
         listContainer.appendChild(fixedMenu);
