@@ -4,7 +4,7 @@ const tableBuilder = {
     containerId: '',
     lastClickedRow: null,
 
-    buildTable: function(data, columns, containerId) {
+    buildTable: function(data, columns, containerId, buttons) {
         this.originalData = data; // Store the original data
         this.data = [...data]; // Create a copy for filtering and display
         this.columns = columns;
@@ -12,6 +12,14 @@ const tableBuilder = {
 
         const container = document.getElementById(containerId);
         container.innerHTML = '';
+
+        if(buttons){
+            buttons.forEach(b=>{
+                if(!b.text || !b.func) return;
+                const btn = this.createTableControlButton(b.text,b.func);
+                container.appendChild(btn);
+            })
+        }
 
         // Create table
         const table = document.createElement('table');
@@ -193,5 +201,12 @@ const tableBuilder = {
         const tbody = table.querySelector('tbody');
         tbody.innerHTML = '';
         this.initInfiniteScroll();
+    }, 
+
+    createTableControlButton(buttonText, buttonFunction){
+        const btn = document.createElement('button');
+        btn.textContent = buttonText;
+        btn.onclick = buttonFunction;
+        return btn;
     }
 };

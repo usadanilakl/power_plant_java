@@ -317,9 +317,3 @@ class LotoListComponent {
 // // Usage
 const lotoBuildingService = new LotoBuildingService();
 const lotoListComponent = new LotoListComponent(lotoBuildingService);
-
-// // To add a new LOTO point
-// lotoListComponent.addLotoPoint(newLotoPoint);
-
-// // To remove a LOTO point
-// lotoListComponent.removeLotoPoint(lotoPointId);
