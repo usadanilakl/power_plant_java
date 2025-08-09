@@ -16,6 +16,7 @@ import { FileEditorBottomMenuComponent } from './features/files/file-editor/file
 import { BackupComponent } from './pages/backup/backup.component';
 import { SchedulerPageComponent } from './pages/scheduler-page/scheduler-page.component';
 import { SchedulerComponent } from './features/scheduler/scheduler.component';
+import { LotoStandardComponent } from './features/loto-standard/loto-standard.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -37,6 +38,7 @@ export const routes: Routes = [
       children: [
         { path: '', redirectTo: 'loto', pathMatch: 'full' },
         { path: 'loto', component: LotoTableComponent },
+        { path: 'loto-standard', component: LotoStandardComponent },
         { path: 'loto-points', component: LotoPointTableComponent },
         { path: 'loto-points-active', component: ActiveLotoPointsComponent },
         { path: 'loto-boxes', component: LotoBoxTableComponent },

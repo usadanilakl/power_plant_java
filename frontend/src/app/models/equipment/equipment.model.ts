@@ -50,44 +50,6 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   isUpdated: string | null | undefined;
   conflictStatus: string | null | undefined;
 
-  // constructor(data: Partial<EquipmentModel> = {}) {
-  //   super(data);
-  //   this.tagNumber = data.tagNumber || null;
-  //   this.description = data.description || null;
-  //   this.specificLocation = data.specificLocation || null;
-  //   this.eqType = data.eqType || null;
-  //   this.files = data.files || null;
-  //   this.vendor = data.vendor || null;
-  //   this.location = data.location || null;
-  //   this.system = data.system || null;
-  //   this.coordinates = data.coordinates || null;
-  //   this.originalPictureSize = data.originalPictureSize || null;
-  //   this.mainFile = data.mainFile || null;
-  //   this.lotoPoints = data.lotoPoints || null;
-  //   this.isUpdated = data.isUpdated || null;
-  //   this.conflictStatus = data.conflictStatus || null;
-  //   this.isVerified = data.isVerified || null;
-  // }
-
-  // constructor(data: Partial<EquipmentModel> = {}) {
-  //   super(data);
-  //   this.tagNumber = data.tagNumber;
-  //   this.description = data.description;
-  //   this.specificLocation = data.specificLocation;
-  //   this.eqType = data.eqType;
-  //   this.files = data.files;
-  //   this.vendor = data.vendor;
-  //   this.location = data.location;
-  //   this.system = data.system;
-  //   this.coordinates = data.coordinates;
-  //   this.originalPictureSize = data.originalPictureSize;
-  //   this.mainFile = data.mainFile;
-  //   this.lotoPoints = data.lotoPoints;
-  //   this.isUpdated = data.isUpdated;
-  //   this.conflictStatus = data.conflictStatus;
-  //   this.isVerified = data.isVerified;
-  // }
-
   constructor(data: Partial<EquipmentModel> = {}) {
     super(data);
     this.tagNumber = data.tagNumber ?? null;

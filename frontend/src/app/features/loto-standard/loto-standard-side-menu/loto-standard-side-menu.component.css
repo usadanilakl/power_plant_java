@@ -1,0 +1,27 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.resizable-panel {
+  overflow: auto;
+}
+
+.top-panel {
+  flex: 1 1 50%;
+  min-height: 50px;
+}
+
+.bottom-panel {
+  flex: 1 1 50%;
+  min-height: 50px;
+}
+
+.resize-handle {
+  height: 10px;
+  background: #f0f0f0;
+  cursor: row-resize;
+  user-select: none;
+}

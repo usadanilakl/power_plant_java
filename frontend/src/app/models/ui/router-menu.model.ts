@@ -26,3 +26,13 @@ export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [
 export const FILE_EDITOR_MENU_ITEMS: RouterMenuItems = [
     
 ];
+
+export const LOTO_NAV_MENU_ITEMS: RouterMenuItems = [
+    { label: 'LOTO', route: './loto' },
+    { label: 'LOTO Standards', route: './loto-standard' },
+    { label: 'Active LOTO Points', route: './loto-points-active' },
+    { label: 'All LOTO Points', route: './loto-points' },
+    { label: 'LOTO Boxes', route: './loto-boxes' },
+    { label: 'Locks', route: './locks' }
+
+];

@@ -1,12 +1,5 @@
-<!-- <div class="loto-navigation">
-  @for (category of categories; track category.name) {
-    <button [routerLink]="category.route">{{ category.name }}</button>
-  }
-</div>
 
-<router-outlet></router-outlet> -->
-
-<div class="loto-container">
+<!-- <div class="loto-container">
   <nav class="loto-navigation">
     @for (category of categories; track category.name) {
       <button [routerLink]="category.route">{{ category.name }}</button>
@@ -16,4 +9,25 @@
   <div class="loto-content">
     <router-outlet></router-outlet>
   </div>
-</div>
+</div> -->
+<app-main-layout>
+  <ng-container header>
+    <div class="header-menus">
+      <div class="menu-container">
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </div>
+      <div class="menu-container">
+        <app-router-menu [menuItems]="lotoNavMenuItems" [layout]="'row'"></app-router-menu>
+      </div>
+    </div>
+  </ng-container>
+  <ng-container left-menu>
+    <app-loto-standard-side-menu></app-loto-standard-side-menu>
+  </ng-container>
+  <ng-container main-content>
+    <router-outlet></router-outlet>
+  </ng-container>
+  <ng-container bottom-menu>
+    <app-bottom-menu-outlet></app-bottom-menu-outlet>
+  </ng-container>
+</app-main-layout>

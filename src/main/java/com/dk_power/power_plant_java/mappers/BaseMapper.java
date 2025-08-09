@@ -13,4 +13,5 @@ public interface BaseMapper {
         getMapper().getConfiguration().setSkipNullEnabled(true);
         return getMapper().map(objectToBeConverted, (Type) convertedObject.getClass());
     }
+
 }

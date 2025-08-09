@@ -30,6 +30,8 @@ public class ElectricalPanelMapper implements BaseMapper {
     public ModelMapper getMapper() {
         return modelMapper;
     }
+
+
     public ElectricalPanelDto convertToDto(ElectricalPanel entity){
         if(entity!=null){
             ElectricalPanelDto dto = new ElectricalPanelDto();

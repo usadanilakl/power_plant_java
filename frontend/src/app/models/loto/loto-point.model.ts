@@ -342,6 +342,13 @@ static toTableColumns(
       lotoIds: this.lotos?.map(loto => loto.id)
     });
   }
+  toOption(): Option {
+    const label: string = this.tagNumber && this.description ? `${this.tagNumber} - ${this.description}` : this.tagNumber || this.description || 'No Tag Number or Description';
+    return {
+      value: this.id,
+      label: label
+    };
+  }
 
 
 
