@@ -42,4 +42,16 @@ public class NgLotoStandardController {
         }
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> getLotoStandardById(@PathVariable String id) {
+        try {
+            LotoStandardDto standard = lotoStandardService.getDtoById(id);
+            return ResponseEntity.ok(new NgApiResponse<>(standard, "Loto standard retrieved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(new NgApiResponse<>(null, "Error retrieving loto standard: " + e.getMessage()));
+        }
+    }
+
+
 }

@@ -84,7 +84,7 @@ export class LotoPointTableComponent implements OnInit {
   ngOnInit() {
     if (this.clientSideData$) {
       this.clientSideData$.pipe(
-        takeUntilDestroyed(this.destroyRef) // Don't forget to implement OnDestroy and create this Subject
+        takeUntilDestroyed(this.destroyRef)
       ).subscribe(data => {
         if (data) {
           this.initialItemsSubject.next(data);
@@ -216,21 +216,64 @@ export class LotoPointTableComponent implements OnInit {
       console.error('No item selected for update');
       return;
     }
+  
+    if (this.submitCallback) {
+      const itemToAdd = new LotoPointDto({ ...this.selectedItem, ...formData });
+      // Use the provided callback
+      this.submitCallback(itemToAdd);
+      this.closePopup();
+    } else {
+      // Default behavior
+      const updatedItem = new LotoPointDto({ ...this.selectedItem, ...formData });
+      this.lotoPointService.updateLotoPoint(updatedItem).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: (response) => {
+          console.log('LOTO point created successfully:', response);
+          // Update the local data
+          this.updateLocalData(response.responseData);
+          // Show success message
+          this.showSuccessMessage('LOTO point created successfully');
+        },
+        error: (error) => {
+          console.error('Error creating LOTO point:', error);
+          // Show error message
+          this.showErrorMessage('Failed to create LOTO point');
+        },
+        complete: () => {
+          this.closePopup();
+        }
+      });
+    }
 
+  }
   
-    // if (this.submitCallback) {
-      
-    //   const itemToAdd = new LotoPointDto({ ...this.selectedItem, ...formData });
-    //   // Use the provided callback
-    //   this.submitCallback(itemToAdd);
-    // } else {
-    //   // Default behavior
-    //   const updatedItem = new LotoPointDto({ ...this.selectedItem, ...formData });
-    //   // Implement your default update logic here
-    //   console.log('Updating item with default behavior:', updatedItem);
-    // }
+  private updateLocalData(updatedItem: LotoPointDto) {
+    const currentItems = this.initialItemsSubject.value;
+    const itemIndex = currentItems.findIndex(item => item.id === updatedItem.id);
   
-    this.closePopup();
+    if (itemIndex !== -1) {
+      // Update existing item
+      const updatedItems = [...currentItems];
+      updatedItems[itemIndex] = updatedItem;
+      this.initialItemsSubject.next(updatedItems);
+    } else {
+      // Add new item
+      const updatedItems = [updatedItem, ...currentItems];
+      this.initialItemsSubject.next(updatedItems);
+    }
+  }
+  
+  private showSuccessMessage(message: string) {
+    // Implement your success message display logic here
+    // For example, you could use a snackbar or toast notification
+    console.log(message);
+  }
+  
+  private showErrorMessage(message: string) {
+    // Implement your error message display logic here
+    // For example, you could use a snackbar or toast notification
+    console.error(message);
   }
 
   resetAndLoadItems(): void {
@@ -336,13 +379,33 @@ export class LotoPointTableComponent implements OnInit {
       if (this.deleteCallback) {
         // Use the provided callback
         this.deleteCallback(this.selectedItem.id);
+        this.closePopup();
       } else {
         // Default behavior
-        console.log('Deleting item with default behavior:', this.selectedItem.id);
-        // Implement your default delete logic here
+        this.lotoPointService.deleteLotoPoint(this.selectedItem.id.toString()).pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe({
+          next: (response) => {
+            console.log('LOTO point deleted successfully:', response);
+            this.removeDeletedItemFromLocalData(this.selectedItem!.id);
+            this.showSuccessMessage('LOTO point deleted successfully');
+          },
+          error: (error) => {
+            console.error('Error deleting LOTO point:', error);
+            this.showErrorMessage('Failed to delete LOTO point');
+          },
+          complete: () => {
+            this.closePopup();
+          }
+        });
       }
-      this.closePopup();
     }
+  }
+  
+  private removeDeletedItemFromLocalData(deletedItemId: number) {
+    const currentItems = this.initialItemsSubject.value;
+    const updatedItems = currentItems.filter(item => item.id !== deletedItemId);
+    this.initialItemsSubject.next(updatedItems);
   }
   
   onOpenImage() {

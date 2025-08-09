@@ -21,4 +21,8 @@ export class LotoStandardService {
     getAllLotoStandards(): Observable<SpringApiResponse<LotoStandardDto[]>> {
         return this.http.get<SpringApiResponse<LotoStandardDto[]>>(`${this.apiUrl}/get-all`);
     }
+
+    getLotoStandardById(lotoStandardId: number) {
+        return this.http.get<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/${lotoStandardId}`);
+    }
 }

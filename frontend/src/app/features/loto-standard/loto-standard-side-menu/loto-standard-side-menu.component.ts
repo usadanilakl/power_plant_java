@@ -1,6 +1,8 @@
 import { AfterViewInit, Component, ElementRef, HostListener } from '@angular/core';
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoStandardFormComponent } from "../loto-standard-form/loto-standard-form.component";
+import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { LotoStandardDto } from '../../../models/loto/loto-standard.model';
 
 @Component({
   selector: 'app-loto-standard-side-menu',
@@ -19,6 +21,9 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
 
   constructor(private el: ElementRef) {}
 
+  currentImageUrl: string | null = null;
+  currentCarouselItems: string[] = [];
+
   ngAfterViewInit() {
     this.container = this.el.nativeElement.querySelector('.container');
     if (!this.container) {
@@ -35,6 +40,10 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
       console.error('Required elements not found');
     }
   }
+
+  /*************************************************************************************************************
+   * Resize functionality using drag and drop on the resize handle.
+   *************************************************************************************************************/
 
   private startResize(e: Event) {
     if (!this.topPanel || !this.bottomPanel) return;
@@ -63,5 +72,51 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   @HostListener('document:mouseup')
   onMouseUp() {
     this.isResizing = false;
+  }
+
+  /*************************************************************************************************************
+   * Loto Point Table functionality.
+   *************************************************************************************************************/
+  onLotoPointTableRowLeftClick(lotoPoint: LotoPointDto) {
+    // Perform the required actions when a loto point row is clicked
+    console.log('Clicked on loto point:', lotoPoint);
+  }
+
+  onLotoPointTableRowRightClick(lotoPoint: LotoPointDto) {
+    // Perform the required actions when a loto point row is right-clicked
+    console.log('Right-clicked on loto point:', lotoPoint);
+  }
+
+  onLotoPointTableRowDoubleClick(lotoPoint: LotoPointDto) {
+    // Perform the required actions when a loto point row is double-clicked
+    console.log('Double-clicked on loto point:', lotoPoint);
+  }
+
+  private setCaruselItems(lotoPoint: LotoPointDto) {
+
+  }
+
+  /**********************************************************************************************************
+   * Loto Point Form functionality.
+   *********************************************************************************************************/
+  onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
+    // Perform the required actions when the loto point form is submitted
+    console.log('Submitted loto point:', lotoPoint);
+  }
+
+  /*************************************************************************************************************
+   * Loto Standard Table functionality.
+   *************************************************************************************************************/ 
+  onLotoStandardTableRowClick(lotoStandard: LotoStandardDto) {
+    // Perform the required actions when a loto standard row is clicked
+    console.log('Clicked on loto standard:', lotoStandard);
+  }
+
+  /*************************************************************************************************************
+   * Loto Standard Form functionality.
+   *************************************************************************************************************/ 
+  onLotoStandardFormSubmit(lotoStandard: LotoStandardDto) {
+    // Perform the required actions when the loto standard form is submitted
+    console.log('Submitted loto standard:', lotoStandard);
   }
 }

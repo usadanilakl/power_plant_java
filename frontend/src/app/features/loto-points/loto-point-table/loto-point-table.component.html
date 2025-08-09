@@ -13,7 +13,7 @@
   </ng-container>
 </app-shared-table>
 
-<app-popup
+<!-- <app-popup
   [isOpen]="isPopupOpen"
   [title]="'LOTO Point Details'"
   [contentComponent]="LotoPointDetailFormComponent"
@@ -25,7 +25,22 @@
     selectedItem: selectedItem
   }"
   (close)="closePopup()"
-></app-popup>
+></app-popup> -->
+
+<app-popup-projection
+  [isOpen]="isPopupOpen"
+  [title]="'LOTO Point Details'"
+  [size]="'medium'"
+  (close)="closePopup()"
+  >
+<app-loto-point-detail-form
+  [values]="selectedItem"
+  [imageUrls$]="relatedImages$"
+  [selectedItem]="selectedItem"
+  (formSubmit)="onFormSubmit($event)"
+  (formDelete)="onFormDelete()"
+></app-loto-point-detail-form>
+</app-popup-projection>
 
 @if(isExporting()){
   <app-popup-projection

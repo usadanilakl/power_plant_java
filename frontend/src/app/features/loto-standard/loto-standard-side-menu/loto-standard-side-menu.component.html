@@ -4,6 +4,9 @@
   </div>
   <div class="resize-handle"></div>
   <div class="resizable-panel bottom-panel">
-    <app-loto-point-table></app-loto-point-table>
+    <app-loto-point-table
+      [doubleClickCallback]="onLotoPointTableRowDoubleClick"
+      [clickCallback]="onLotoPointTableRowLeftClick"
+    ></app-loto-point-table>
   </div>
 </div>
