@@ -49,7 +49,7 @@ class LotoBuildingService{
     }
 
     createNewStandard(){
-        lotoStandardBuilder.lotoPoints = this.selectedLotoPoints();
+        lotoStandardBuilder.lotoPoints = this.selectedLotoPoints;
         lotoStandardBuilder.showLotoStandard();
     }
     

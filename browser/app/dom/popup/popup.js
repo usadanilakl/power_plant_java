@@ -62,10 +62,15 @@ class Popup {
         if (this.element && this.element.parentNode) {
             this.element.parentNode.removeChild(this.element);
         }
-    }
-
-    updateContent(newContent) {
+    }    updateContent(newContent) {
         this.content = newContent;
-        this.element.textContent = this.content;
+        // Remove existing content
+        this.element.innerHTML = '';
+        // If newContent is a Node, append it, otherwise treat as text
+        if (newContent instanceof Node) {
+            this.element.appendChild(newContent);
+        } else {
+            this.element.textContent = newContent;
+        }
     }
 }
