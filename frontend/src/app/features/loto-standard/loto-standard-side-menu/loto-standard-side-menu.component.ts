@@ -33,7 +33,20 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   currentLotoStandardSignal = toSignal(this.currentLotoStandardService.currentStandard$, { initialValue: new LotoStandardDto() });
   currentLotoStandard = computed(() => this.currentLotoStandardSignal() || new LotoStandardDto());
   allStandardsSignal = toSignal(this.currentLotoStandardService.allStandards$, { initialValue: [] });
+  
+
   ngAfterViewInit() {
+    setTimeout(() => {
+      this.setupResizeHandlers();
+    });
+  }
+
+  /*************************************************************************************************************
+   * Resize functionality using drag and drop on the resize handle.
+   *************************************************************************************************************/
+
+  
+  private setupResizeHandlers() {
     this.container = this.el.nativeElement.querySelector('.container');
     if (!this.container) {
       console.error('Container element not found');
@@ -44,15 +57,17 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
     const handle = this.container.querySelector('.resize-handle');
   
     if (this.topPanel && this.bottomPanel && handle) {
-      handle.addEventListener('mousedown', this.startResize.bind(this) as EventListener);
+      handle.addEventListener('mousedown', this.startResize.bind(this));
     } else {
       console.error('Required elements not found');
     }
   }
 
-  /*************************************************************************************************************
-   * Resize functionality using drag and drop on the resize handle.
-   *************************************************************************************************************/
+  checkAndSetupResizeHandlers() {
+    if (!this.container) {
+      this.setupResizeHandlers();
+    }
+  }
 
   private startResize(e: Event) {
     if (!this.topPanel || !this.bottomPanel) return;
@@ -88,18 +103,18 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    *************************************************************************************************************/
   onLotoPointTableRowLeftClick(lotoPoint: LotoPointDto) {
     this.addLotoPointToStandard(lotoPoint);
-    console.log('Clicked on loto point:', lotoPoint);
+    // console.log('Clicked on loto point:', lotoPoint);
 
   }
 
   onLotoPointTableRowRightClick(lotoPoint: LotoPointDto) {
     // Perform the required actions when a loto point row is right-clicked
-    console.log('Right-clicked on loto point:', lotoPoint);
+    // console.log('Right-clicked on loto point:', lotoPoint);
   }
 
   onLotoPointTableRowDoubleClick(lotoPoint: LotoPointDto) {
     // Perform the required actions when a loto point row is double-clicked
-    console.log('Double-clicked on loto point:', lotoPoint);
+    // console.log('Double-clicked on loto point:', lotoPoint);
   }
 
   private setCaruselItems(lotoPoint: LotoPointDto) {
@@ -115,7 +130,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    *********************************************************************************************************/
   onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
     // Perform the required actions when the loto point form is submitted
-    console.log('Submitted loto point:', lotoPoint);
+    // console.log('Submitted loto point:', lotoPoint);
   }
 
   /*************************************************************************************************************
@@ -131,11 +146,11 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    *************************************************************************************************************/ 
   onLotoStandardFormSubmit(lotoStandard: LotoStandardDto) {
     this.currentLotoStandardService.addStandard(lotoStandard)
-    console.log('Submitted loto standard:', lotoStandard);
+    // console.log('Submitted loto standard:', lotoStandard);
   }
 
   onRemoveLotoPointFromStandard(lotoPoint: LotoPointDto) {
     this.currentLotoStandardService.removeLotoPointFromStandard(lotoPoint.id);
-    console.log('Removed loto point from standard:', lotoPoint.id);
+    // console.log('Removed loto point from standard:', lotoPoint.id);
   }
 }

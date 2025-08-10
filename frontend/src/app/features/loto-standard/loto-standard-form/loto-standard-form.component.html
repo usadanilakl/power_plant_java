@@ -3,7 +3,7 @@
     <!-- Name input -->
     <div class="form-field">
       <label for="name">Name:</label>
-      <input id="name" type="text" [(ngModel)]="lotoStandard().name" (ngModelChange)="onNameChange()">
+      <input id="name" type="text" [(ngModel)]="lotoStandard()().name" (ngModelChange)="onNameChange()">
       @if (showNameSubmitButton) {
         <button (click)="onNameSubmit()">Submit Name</button>
       }
@@ -12,14 +12,14 @@
     <!-- Description input -->
     <div class="form-field">
       <label for="description">Description:</label>
-      <input id="description" type="text" [(ngModel)]="lotoStandard().description" (ngModelChange)="onDescriptionChange()">
+      <input id="description" type="text" [(ngModel)]="lotoStandard()().description" (ngModelChange)="onDescriptionChange()">
       @if (showDescriptionSubmitButton) {
         <button (click)="onDescriptionSubmit()">Submit Description</button>
       }
     </div>
   
     <!-- LOTO Points list -->
-    <div class="loto-points-list">
+    <!-- <div class="loto-points-list">
       <h3>LOTO Points</h3>
       @for (point of lotoStandard().lotoPoints; track point.id) {
         <div class="loto-point-item">
@@ -27,5 +27,9 @@
           <button class="remove-button" (click)="removePoint(point)">Remove</button>
         </div>
       }
-    </div>
+    </div> -->
+    <app-loto-point-simple-table
+      [initialItems]="lotoPoints()"
+      (doubleClickEvent)="removePoint($event)"
+    ></app-loto-point-simple-table>
   </div>

@@ -5,7 +5,7 @@
   }@else {
   <div class="resizable-panel top-panel">
     <app-loto-standard-form
-      [lotoStandard]="currentLotoStandard()"
+      [lotoStandard]="currentLotoStandard"
       (updateNameEvent)="onLotoStandardFormSubmit($event)"
       (updateDescriptionEvent)="onLotoStandardFormSubmit($event)"
       (removePointEvent)="onRemoveLotoPointFromStandard($event)"

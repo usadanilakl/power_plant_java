@@ -30,7 +30,6 @@ export class LotoStandardService {
       return this.http.post<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/${id}/add-loto-point/${lotoStandardId}`, {});
     }
     removeLotoPointFromStandard(lotoPointId: number, lotoStandardId: number): Observable<SpringApiResponse<LotoStandardDto>> {
-      console.log(lotoPointId, lotoStandardId);
       return this.http.delete<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/${lotoPointId}/remove-loto-point/${lotoStandardId}`);
     }
 }
