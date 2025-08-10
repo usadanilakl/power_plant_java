@@ -1,12 +1,20 @@
 <div class="container">
+  @if(allStandardsSignal()!==null && allStandardsSignal().length>0 && !currentLotoStandardSignal()){
+    <app-loto-standard-table
+    ></app-loto-standard-table>
+  }@else {
   <div class="resizable-panel top-panel">
-    <app-loto-standard-form></app-loto-standard-form>
+    <app-loto-standard-form
+      [values]="currentLotoStandard()"
+      (formSubmit)="onLotoStandardFormSubmit($event)"
+    ></app-loto-standard-form>
   </div>
   <div class="resize-handle"></div>
   <div class="resizable-panel bottom-panel">
     <app-loto-point-table
-      [doubleClickCallback]="onLotoPointTableRowDoubleClick"
-      [clickCallback]="onLotoPointTableRowLeftClick"
+      [doubleClickCallback]="onLotoPointTableRowDoubleClick.bind(this)"
+      [clickCallback]="onLotoPointTableRowLeftClick.bind(this)"
     ></app-loto-point-table>
   </div>
+  }
 </div>

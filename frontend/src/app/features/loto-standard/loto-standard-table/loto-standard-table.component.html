@@ -1,1 +1,5 @@
-<p>loto-standard-table works!</p>
+<app-shared-table
+    [items]="lotoStandards$"
+    [columns]="columns"
+    [clickCallback]="onStandardTableRowClick.bind(this)"
+></app-shared-table>

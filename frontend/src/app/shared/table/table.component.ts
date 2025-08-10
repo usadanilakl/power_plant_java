@@ -54,23 +54,42 @@ export class TableComponent implements OnInit {
 
   private itemsSubscription: Subscription | null = null;
   
+  // @Input() set items(value: any[] | Observable<any[]>) {
+  //   if (Array.isArray(value)) {
+  //     this._items.next(value);
+  //   } else if (value instanceof Observable) {
+  //     this.itemsSubscription?.unsubscribe();
+  //     this.itemsSubscription = value.pipe(
+  //       takeUntilDestroyed(this.destroyRef)
+  //     ).subscribe(items => this._items.next(items));
+  //   }
+  // }
+
   @Input() set items(value: any[] | Observable<any[]>) {
+    console.log('Items input received:', value);
     if (Array.isArray(value)) {
+      console.log('Array received:', value);
       this._items.next(value);
     } else if (value instanceof Observable) {
+      console.log('Observable received');
       this.itemsSubscription?.unsubscribe();
       this.itemsSubscription = value.pipe(
         takeUntilDestroyed(this.destroyRef)
-      ).subscribe(items => this._items.next(items));
+      ).subscribe(items => {
+        console.log('Items from Observable:', items);
+        this._items.next(items);
+      });
     }
   }
 
 ngOnInit() {
+  console.log('TableComponent initialized');
   this._items.pipe(
     debounceTime(0),
     distinctUntilChanged(),
     takeUntilDestroyed(this.destroyRef)
-  ).subscribe(() => {
+  ).subscribe((items) => {
+    console.log('Items updated:', items);
     this.updateFilteredItems();
     this.cdr.detectChanges();
   });
@@ -175,34 +194,6 @@ ngOnInit() {
       return current[key] !== undefined ? current[key] : '';
     }, obj);
   }
-
-  // onRowClick(item: any, event: MouseEvent) {
-  //   if (event.button === 0) { // Left click
-  //     if (this.clickTimer) {
-  //       // Double click detected
-  //       clearTimeout(this.clickTimer);
-  //       this.clickTimer = null;
-  //       this.onRowDoubleClick(item);
-  //     } else {
-  //       // Set a timer for potential double click
-  //       this.clickTimer = setTimeout(() => {
-  //         this.clickTimer = null;
-  //         if (this.clickCallback) {
-  //         if (event.ctrlKey) {
-  //           this.onRowCtrlClick(item, event);
-  //         } else if (event.shiftKey) {
-  //           this.onRowShiftClick(item, event);
-  //         } else {
-  //           this.clearSelection();
-  //           this.clickCallback(item, event);
-  //         }
-  //         }
-  //       }, this.clickDelay);
-  //     }
-  //   } else if (event.button === 1 && this.middleClickCallback) { // Middle click
-  //     this.middleClickCallback(item);
-  //   }
-  // }
 
   private lastClickTime: number = 0;
   private isDoubleClickHandled: boolean = false;

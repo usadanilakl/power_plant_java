@@ -3,6 +3,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { FormField } from '../ui/form-field.model';
 import { LotoPointDto } from './loto-point.model';
 import { LotoStandardIdDto } from './loto-standard-id.model';
+import { Column } from '../column.model';
 
 export type LotoStandardFieldName = keyof LotoStandardModel;
 
@@ -58,6 +59,45 @@ export class LotoStandardDto extends BaseDto {
       isVerified: { name: 'isVerified', label: 'Is Verified', type: 'select', options: [{}], initialValue: 'false' } as FormField
     }
     return fields.map(field => allFields[field]);
+  }
+
+  static toTableColumns(fields: LotoStandardFieldName[] = ['name', 'description', 'lotoPoints']): Column[] {
+    const allColumns: { [key in LotoStandardFieldName]: Column } = {
+      id: { 
+        id: 'id', 
+        header: 'ID', 
+        accessorKey: 'id'
+      },
+      name: { 
+        id: 'name', 
+        header: 'Name', 
+        accessorKey: 'name'
+      },
+      description: { 
+        id: 'description', 
+        header: 'Description', 
+        accessorKey: 'description'
+      },
+      lotoPoints: { 
+        id: 'lotoPoints', 
+        header: 'LOTO Points', 
+        accessorFn: (item: LotoStandardDto) => item.lotoPoints?.length.toString() || '0'
+      },
+      objectType: { 
+        id: 'objectType', 
+        header: 'Object Type', 
+        accessorKey: 'objectType'
+      },
+      isVerified: { 
+        id: 'isVerified', 
+        header: 'Verified', 
+        accessorFn: (item: LotoStandardDto) => item.isVerified ? 'Yes' : 'No',
+        conditionalStyling: (item: LotoStandardDto) => 
+          item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
+      }
+    };
+  
+    return fields.map(field => allColumns[field]);
   }
   
 }

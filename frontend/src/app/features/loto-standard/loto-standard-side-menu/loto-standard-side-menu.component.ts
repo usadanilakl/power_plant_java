@@ -1,16 +1,22 @@
-import { AfterViewInit, Component, ElementRef, HostListener } from '@angular/core';
+import { AfterViewInit, Component, computed, ElementRef, HostListener, inject, signal } from '@angular/core';
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoStandardFormComponent } from "../loto-standard-form/loto-standard-form.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { LotoStandardDto } from '../../../models/loto/loto-standard.model';
+import { CurrentLotoStandardService } from '../../../services/current-items-services/current-loto-standard.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { LotoStandardTableComponent } from "../loto-standard-table/loto-standard-table.component";
 
 @Component({
   selector: 'app-loto-standard-side-menu',
-  imports: [LotoPointTableComponent, LotoStandardFormComponent],
+  imports: [LotoPointTableComponent, LotoStandardFormComponent, LotoStandardTableComponent],
   templateUrl: './loto-standard-side-menu.component.html',
   styleUrl: './loto-standard-side-menu.component.css'
 })
 export class LotoStandardSideMenuComponent implements AfterViewInit {
+
+  private currentLotoStandardService = inject(CurrentLotoStandardService);
+
   private isResizing = false;
   private container: HTMLElement | null = null;
   private topPanel: HTMLElement | null = null;
@@ -23,7 +29,9 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
 
   currentImageUrl: string | null = null;
   currentCarouselItems: string[] = [];
-
+  currentLotoStandardSignal = toSignal(this.currentLotoStandardService.currentStandard$, { initialValue: new LotoStandardDto() });
+  currentLotoStandard = computed(() => this.currentLotoStandardSignal() || new LotoStandardDto());
+  allStandardsSignal = toSignal(this.currentLotoStandardService.allStandards$, { initialValue: [] });
   ngAfterViewInit() {
     this.container = this.el.nativeElement.querySelector('.container');
     if (!this.container) {
@@ -78,8 +86,9 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    * Loto Point Table functionality.
    *************************************************************************************************************/
   onLotoPointTableRowLeftClick(lotoPoint: LotoPointDto) {
-    // Perform the required actions when a loto point row is clicked
+    this.addLotoPointToStandard(lotoPoint);
     console.log('Clicked on loto point:', lotoPoint);
+
   }
 
   onLotoPointTableRowRightClick(lotoPoint: LotoPointDto) {
@@ -94,6 +103,10 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
 
   private setCaruselItems(lotoPoint: LotoPointDto) {
 
+  }
+
+  private addLotoPointToStandard(lotoPoint: LotoPointDto) {
+    this.currentLotoStandardService.addLotoPointToStandard(lotoPoint);
   }
 
   /**********************************************************************************************************
@@ -116,7 +129,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    * Loto Standard Form functionality.
    *************************************************************************************************************/ 
   onLotoStandardFormSubmit(lotoStandard: LotoStandardDto) {
-    // Perform the required actions when the loto standard form is submitted
+    this.currentLotoStandardService.addStandard(lotoStandard)
     console.log('Submitted loto standard:', lotoStandard);
   }
 }

@@ -12,14 +12,14 @@ import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-fo
 export class LotoStandardFormComponent {
   values = input<LotoStandardDto>(new LotoStandardDto());
   openImage = output<void>();
-  formSubmit = output<any>();
+  formSubmit = output<LotoStandardDto>();
   formDelete = output<void>();
 
   fields = computed<FormField[]>(() =>{
     return this.values().toFormFields();
   } );
 
-  onFormSubmit(formData: any) {
+  onFormSubmit(formData: LotoStandardDto) {
     this.formSubmit.emit(formData);
   }
 

@@ -15,7 +15,8 @@ export class LotoStandardService {
     constructor(private http: HttpClient) {}
 
     createLotoStandard(standard: LotoStandardDto): Observable<SpringApiResponse<LotoStandardDto>> {
-        return this.http.post<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/create-standard`, {...standard.toIdDto()});
+      const idDto = new LotoStandardDto({...standard}).toIdDto();
+        return this.http.post<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/create-standard`, idDto);
     }
 
     getAllLotoStandards(): Observable<SpringApiResponse<LotoStandardDto[]>> {
@@ -24,5 +25,8 @@ export class LotoStandardService {
 
     getLotoStandardById(lotoStandardId: number) {
         return this.http.get<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/${lotoStandardId}`);
+    }
+    addLotoPointToStandard(id: number, lotoStandardId: any): Observable<SpringApiResponse<LotoStandardDto>> {
+      return this.http.post<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/${id}/add-loto-point/${lotoStandardId}`, {});
     }
 }

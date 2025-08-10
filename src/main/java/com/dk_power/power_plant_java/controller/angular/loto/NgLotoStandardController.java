@@ -52,6 +52,18 @@ public class NgLotoStandardController {
             return ResponseEntity.internalServerError().body(new NgApiResponse<>(null, "Error retrieving loto standard: " + e.getMessage()));
         }
     }
+    
+    
+@PostMapping("/{id}/add-loto-point/{lotoStandardId}")
+public ResponseEntity<NgApiResponse<LotoStandardDto>> addLotoPointToStandard(@PathVariable Long id, @PathVariable String lotoStandardId) {
+    try {
+        LotoStandardDto saved = lotoStandardService.addLotoPointToStandard(id, lotoStandardId);
+        return ResponseEntity.ok(new NgApiResponse<>(saved, "LOTO point added to standard successfully"));
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.internalServerError().body(new NgApiResponse<>(null, "Error adding LOTO point to standard: " + e.getMessage()));
+    }
+}
 
 
 }
