@@ -66,30 +66,30 @@ export class TableComponent implements OnInit {
   // }
 
   @Input() set items(value: any[] | Observable<any[]>) {
-    console.log('Items input received:', value);
+    // console.log('Items input received:', value);
     if (Array.isArray(value)) {
-      console.log('Array received:', value);
+      // console.log('Array received:', value);
       this._items.next(value);
     } else if (value instanceof Observable) {
-      console.log('Observable received');
+      // console.log('Observable received');
       this.itemsSubscription?.unsubscribe();
       this.itemsSubscription = value.pipe(
         takeUntilDestroyed(this.destroyRef)
       ).subscribe(items => {
-        console.log('Items from Observable:', items);
+        // console.log('Items from Observable:', items);
         this._items.next(items);
       });
     }
   }
 
 ngOnInit() {
-  console.log('TableComponent initialized');
+  // console.log('TableComponent initialized');
   this._items.pipe(
     debounceTime(0),
     distinctUntilChanged(),
     takeUntilDestroyed(this.destroyRef)
   ).subscribe((items) => {
-    console.log('Items updated:', items);
+    // console.log('Items updated:', items);
     this.updateFilteredItems();
     this.cdr.detectChanges();
   });
@@ -344,7 +344,7 @@ ngOnInit() {
       const rows = this.tableBody.nativeElement.querySelectorAll('tr');
       if (rows[index]) {
         rows[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        console.log('Scrolled to row:', index);
+        // console.log('Scrolled to row:', index);
         // Optionally, highlight the row
         rows[index].classList.add('highlighted');
         setTimeout(() => {
@@ -369,12 +369,12 @@ ngOnInit() {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       if (row.dataset.itemId === item.id.toString()) {
-        console.log(`Item found at visual index ${i}`);
+        // console.log(`Item found at visual index ${i}`);
         return i;
       }
     }
 
-    console.warn('Item not found in table body');
+    // console.warn('Item not found in table body');
     return -1;
   }
 

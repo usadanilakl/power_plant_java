@@ -6,6 +6,7 @@ import { LotoStandardDto } from '../../../models/loto/loto-standard.model';
 import { CurrentLotoStandardService } from '../../../services/current-items-services/current-loto-standard.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LotoStandardTableComponent } from "../loto-standard-table/loto-standard-table.component";
+import { LotoStandardIdDto } from '../../../models/loto/loto-standard-id.model';
 
 @Component({
   selector: 'app-loto-standard-side-menu',
@@ -131,5 +132,10 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   onLotoStandardFormSubmit(lotoStandard: LotoStandardDto) {
     this.currentLotoStandardService.addStandard(lotoStandard)
     console.log('Submitted loto standard:', lotoStandard);
+  }
+
+  onRemoveLotoPointFromStandard(lotoPoint: LotoPointDto) {
+    this.currentLotoStandardService.removeLotoPointFromStandard(lotoPoint.id);
+    console.log('Removed loto point from standard:', lotoPoint.id);
   }
 }

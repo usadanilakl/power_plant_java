@@ -84,11 +84,12 @@ public class LotoStandardMapper implements BaseMapper {
         }
 
         LotoStandard entity = null;
-        if(dto.getId()!=null) entity = lotoStandardRepo.findById(dto.getId()).orElse(null);
+        if(dto.getId()!=null) entity = lotoStandardRepo.findById(dto.getId()).orElse(new LotoStandard());
         if(entity==null) entity = new LotoStandard();
-        entity.setName(Optional.ofNullable(dto.getName()).orElse(null));
-        entity.setDescription(Optional.ofNullable(dto.getDescription()).orElse(null));
-        entity.setLotoPoints(
+
+        if(dto.getName()!=null && !dto.getName().isEmpty())entity.setName(Optional.ofNullable(dto.getName()).orElse(null));
+        if(dto.getDescription()!=null && !dto.getDescription().isEmpty())entity.setDescription(Optional.ofNullable(dto.getDescription()).orElse(null));
+        if(dto.getLotoPoints()!=null)entity.setLotoPoints(
                 Optional.ofNullable(dto.getLotoPoints())
                         .map(points -> points.stream()
                                 .filter(Objects::nonNull)

@@ -83,13 +83,31 @@ export class MultiSelectSearchableDropdownComponent implements ControlValueAcces
     this.selectionChange.emit(this.selectedValues);
   }
 
+  // writeValue(value: any[]): void {
+  //   if (Array.isArray(value)) {
+  //     this.selectedValues = [...value];
+  //     this.optionsSubject.next(this.optionsSubject.value); // Trigger filter
+  //   } else {
+  //     this.selectedValues = [];
+  //   }
+  // }
+
   writeValue(value: any[]): void {
     if (Array.isArray(value)) {
-      this.selectedValues = [...value];
+      this.selectedValues = value.map(item => {
+        if (typeof item === 'object' && item !== null) {
+          // If it's an object, return the id or the entire object
+          return item.id !== undefined ? item.id : item;
+        } else {
+          // If it's a simple value (string, number, etc.), return as is
+          return item;
+        }
+      });
       this.optionsSubject.next(this.optionsSubject.value); // Trigger filter
     } else {
       this.selectedValues = [];
     }
+    console.log('Selected values after writeValue:', this.selectedValues);
   }
 
   onChange: (value: any) => void = () => {};

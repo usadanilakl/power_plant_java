@@ -1,34 +1,46 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { LotoStandardDto } from '../../../models/loto/loto-standard.model';
-import { FormField } from '../../../models/ui/form-field.model';
-import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-form.component";
+import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-loto-standard-form',
-  imports: [ReactiveFormComponent],
   templateUrl: './loto-standard-form.component.html',
-  styleUrl: './loto-standard-form.component.css'
+  styleUrls: ['./loto-standard-form.component.css'],
+  standalone: true,
+  imports: [CommonModule, FormsModule]
 })
 export class LotoStandardFormComponent {
-  values = input<LotoStandardDto>(new LotoStandardDto());
-  openImage = output<void>();
-  formSubmit = output<LotoStandardDto>();
-  formDelete = output<void>();
+  lotoStandard = input<LotoStandardDto>(new LotoStandardDto());
+  updateNameEvent = output<LotoStandardDto>();
+  updateDescriptionEvent = output<LotoStandardDto>();
+  removePointEvent = output<LotoPointDto>();
 
-  fields = computed<FormField[]>(() =>{
-    return this.values().toFormFields();
-  } );
+  showNameSubmitButton = false;
+  showDescriptionSubmitButton = false;
 
-  onFormSubmit(formData: LotoStandardDto) {
-    this.formSubmit.emit(formData);
+  onNameChange() {
+    this.showNameSubmitButton = true;
   }
 
-  onFormDelete() {
-    this.formDelete.emit();
+  onDescriptionChange() {
+    this.showDescriptionSubmitButton = true;
   }
 
-  onOpenImage() {
-    this.openImage.emit();
+  onNameSubmit() {
+    const updatedStandard = new LotoStandardDto({id: this.lotoStandard().id, name: this.lotoStandard().name??"" });
+    this.updateNameEvent.emit(updatedStandard);
+    this.showNameSubmitButton = false;
   }
 
+  onDescriptionSubmit() {
+    const updatedStandard = new LotoStandardDto({id: this.lotoStandard().id, description: this.lotoStandard().description??"" });
+    this.updateDescriptionEvent.emit(updatedStandard);
+    this.showDescriptionSubmitButton = false;
+  }
+
+  removePoint(point: LotoPointDto) {
+    this.removePointEvent.emit(point);
+  }
 }

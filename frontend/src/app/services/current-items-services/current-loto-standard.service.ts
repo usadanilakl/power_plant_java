@@ -61,24 +61,57 @@ export class CurrentLotoStandardService{
         takeUntilDestroyed(this.destroyRef),
         map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
         tap((standard: LotoStandardDto) => {
+          const standardDto = new LotoStandardDto({...standard});
           const currentStandards = this.allStandards.getValue();
           const existingStandardIndex = currentStandards.findIndex(s => s.id === standard.id);
           
           if (existingStandardIndex === -1) {
             // If the standard doesn't exist, add it to the array
-            this.allStandards.next([...currentStandards, standard]);
+            this.allStandards.next([...currentStandards, standardDto]);
           } else {
             // If the standard exists, update it in the array
             const updatedStandards = [...currentStandards];
-            updatedStandards[existingStandardIndex] = standard;
+            updatedStandards[existingStandardIndex] = standardDto;
             this.allStandards.next(updatedStandards);
           }
           
           // Always update the current standard
-          this.currentStandardSubject.next(standard);
+          this.currentStandardSubject.next(standardDto);
         }),
         catchError((error) => {
           console.error('Error adding LOTO point to standard:', error);
+          return of(null);
+        })
+      ).subscribe();
+    }
+
+    removeLotoPointFromStandard(lotoPointId: number) {
+      const lotoStandardId = this.currentStandardSubject.getValue()?.id;
+      if (!lotoStandardId) {
+        console.error('No current LOTO standard selected');
+        return;
+      }
+    
+      this.lotoStandardService.removeLotoPointFromStandard(lotoPointId, lotoStandardId).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
+        tap((standard: LotoStandardDto) => {
+          const standardDto = new LotoStandardDto({...standard});
+          const currentStandards = this.allStandards.getValue();
+          const existingStandardIndex = currentStandards.findIndex(s => s.id === standard.id);
+          
+          if (existingStandardIndex !== -1) {
+            // If the standard exists, update it in the array
+            const updatedStandards = [...currentStandards];
+            updatedStandards[existingStandardIndex] = standardDto;
+            this.allStandards.next(updatedStandards);
+          }
+          
+          // Always update the current standard
+          this.currentStandardSubject.next(standardDto);
+        }),
+        catchError((error) => {
+          console.error('Error removing LOTO point from standard:', error);
           return of(null);
         })
       ).subscribe();

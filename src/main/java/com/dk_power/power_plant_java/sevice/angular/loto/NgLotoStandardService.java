@@ -7,8 +7,8 @@ import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.mappers.permits.LotoStandardMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
-import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,12 +34,12 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
     @Override
     public LotoStandard getEntity() {
-        return new LotoStandard()  ;
+        return new LotoStandard();
     }
 
     @Override
     public LotoStandardDto getDto() {
-        return new LotoStandardDto()  ;
+        return new LotoStandardDto();
     }
 
     @Override
@@ -88,10 +88,50 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         return lotoStandardMapper.convertToDto(standardEntity);
     }
 
-    public LotoStandardDto addLotoPointToStandard(Long id, String lotoStandardId) {
-        LotoStandard standard = getEntityById(lotoStandardId);
-        LotoPoint lotoPoint = ngLotoPointService.getEntityById(id);
-        standard.getLotoPoints().add(lotoPoint);
-        return toDto(save(standard));
+
+    @Transactional
+    public LotoStandardDto addLotoPointToStandard(Long lotoPointId, String lotoStandardId) {
+        try {
+            LotoStandard standard = getEntityById(lotoStandardId);
+            LotoPoint lotoPoint = ngLotoPointService.getEntityById(lotoPointId);
+
+            if (standard == null || lotoPoint == null) {
+                throw new EntityNotFoundException("LotoStandard or LotoPoint not found");
+            }
+
+            // Check if the LotoPoint is already in the standard
+            if (!standard.getLotoPoints().contains(lotoPoint)) {
+                standard.addLotoPoint(lotoPoint);
+                lotoPoint.addLotoStandard(standard);
+            }
+
+            LotoStandard savedStandard = save(standard);
+            return toDto(savedStandard);
+        } catch (Exception e) {
+            throw new RuntimeException("Error adding LotoPoint to LotoStandard: " + e.getMessage(), e);
+        }
+    }
+
+    @Transactional
+    public LotoStandardDto removeLotoPointToStandard(Long lotoPointId, String lotoStandardId) {
+        try {
+            LotoStandard standard = getEntityById(lotoStandardId);
+            LotoPoint lotoPoint = ngLotoPointService.getEntityById(lotoPointId);
+
+            if (standard == null || lotoPoint == null) {
+                throw new EntityNotFoundException("LotoStandard or LotoPoint not found");
+            }
+
+            // Check if the LotoPoint is already in the standard
+            if (standard.getLotoPoints().contains(lotoPoint)) {
+                standard.removeLotoPoint(lotoPoint);
+                lotoPoint.removeStandard(standard);
+            }
+
+            LotoStandard savedStandard = save(standard);
+            return toDto(savedStandard);
+        } catch (Exception e) {
+            throw new RuntimeException("Error removing LotoPoint from LotoStandard: " + e.getMessage(), e);
+        }
     }
 }

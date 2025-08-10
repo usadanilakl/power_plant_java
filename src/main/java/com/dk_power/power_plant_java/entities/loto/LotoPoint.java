@@ -7,7 +7,10 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -60,6 +63,8 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     @ManyToMany(mappedBy = "lotoPoints")
     @JsonIgnore
     private Set<Equipment> equipmentList;
+    @ManyToMany(mappedBy = "lotoPoints")
+    private Set<LotoStandard> lotoStandards = new HashSet<>();
     private String conflictStatus;
     private String conflictId;
 
@@ -94,12 +99,25 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     }
 
     public List<String> getFileLinks() {
-        if(this.equipmentList==null || this.equipmentList.isEmpty()) return new ArrayList<>();
+        if (this.equipmentList == null || this.equipmentList.isEmpty()) return new ArrayList<>();
         Set<String> links = new HashSet<>();
         for (Equipment eq : this.equipmentList) {
-            if(eq.getMainFile()!=null)links.add(eq.getMainFile().getFileLink());
-            if(eq.getFiles()!=null) links.addAll(eq.getFiles().stream().map(FileObject::getFileLink).toList());
+            if (eq.getMainFile() != null) links.add(eq.getMainFile().getFileLink());
+            if (eq.getFiles() != null) links.addAll(eq.getFiles().stream().map(FileObject::getFileLink).toList());
         }
         return new ArrayList<>(links);
+    }
+
+    public void addLotoStandard(LotoStandard lotoStandard) {
+        if (this.lotoStandards == null) {
+            this.lotoStandards = new HashSet<>();
+        }
+        this.lotoStandards.add(lotoStandard);
+    }
+
+    public void removeStandard(LotoStandard standard) {
+        if(this.lotoStandards!=null){
+            this.lotoStandards.remove(standard);
+        }
     }
 }

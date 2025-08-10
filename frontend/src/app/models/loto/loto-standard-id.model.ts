@@ -2,12 +2,12 @@ import { BaseDto } from '../base/base.model';
 
 export class LotoStandardIdDto extends BaseDto {
   description: string | null;
-  lotoPointIds: number[] | null;
+  lotoPoints: number[] | null;
 
   constructor(data: Partial<LotoStandardIdDto> = {}) {
     super(data);
     this.description = data.description || null;
-    this.lotoPointIds = data.lotoPointIds || null;
+    this.lotoPoints = data.lotoPoints || null;
   }
 
   // Serialization method
@@ -15,7 +15,7 @@ export class LotoStandardIdDto extends BaseDto {
     return {
       ...super.toJson(),
       description: this.description,
-      lotoPointIds: this.lotoPointIds
+      lotoPoints: this.lotoPoints
     };
   }
 
@@ -24,7 +24,7 @@ export class LotoStandardIdDto extends BaseDto {
     return new LotoStandardIdDto({
       ...super.fromJson(json),
       description: json.description,
-      lotoPointIds: json.lotoPointIds || null
+      lotoPoints: json.lotoPoints || null
     });
   }
 }

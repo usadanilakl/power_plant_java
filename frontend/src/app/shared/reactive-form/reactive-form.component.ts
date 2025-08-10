@@ -171,10 +171,13 @@ export class ReactiveFormComponent {
         } else if (field.type === 'multi-input' || field.type === 'multi-select' || field.type === 'checkbox-group') {
           // Ensure these types remain as arrays
           current[lastPart] = formValue[field.name];
+          console.log('Multi-select or multi-input fields:', current[lastPart]);
         } else {
           current[lastPart] = formValue[field.name];
         }
       });
+
+      console.log('Form submitted:', result);
   
       this.formSubmit.emit(result);
     }else if(form){

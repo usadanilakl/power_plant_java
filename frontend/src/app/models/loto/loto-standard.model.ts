@@ -45,7 +45,7 @@ export class LotoStandardDto extends BaseDto {
     idDto.id = this.id;
     idDto.name = this.name;
     idDto.description = this.description;
-    idDto.lotoPointIds = this.lotoPoints?.map(point => point.id) || null;
+    idDto.lotoPoints = this.lotoPoints?.map(point => point.id) || null;
     return idDto;
   }
 
