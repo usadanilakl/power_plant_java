@@ -337,14 +337,14 @@ public class EquipmentMapper implements BaseMapper {
             equipment.setSystem(valueService.findById(dto.getSystemId()).orElse(null));
         if (dto.getCoordinates() != null) equipment.setCoordinates(dto.getCoordinates());
         if (dto.getOriginalPictureSize() != null) equipment.setOriginalPictureSize(dto.getOriginalPictureSize());
-        if (dto.getMainFile() != null && !dto.getMainFile().isEmpty())
+        if (dto.getMainFile() != null && !dto.getMainFile().isEmpty() && equipment.getMainFile()==null)
             equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
         if(dto.getMainFileId()!=null && equipment.getMainFile()==null) equipment.setMainFile(fileService.getEntityById(dto.getMainFileId()));
         if (dto.getConflictStatus() != null) equipment.setConflictStatus(dto.getConflictStatus());
         if (dto.getIsVerified() != null) equipment.setIsVerified(dto.getIsVerified());
 
         // Handle files
-        if (dto.getFiles() != null && !dto.getFiles().isEmpty()) {
+        if (dto.getFiles() != null && !dto.getFiles().isEmpty() && (equipment.getFiles()==null || equipment.getFiles().isEmpty())) {
             List<FileObject> files = dto.getFiles().stream()
                     .map(fileService::getByFileLink)
                     .filter(Objects::nonNull)
@@ -369,6 +369,8 @@ public class EquipmentMapper implements BaseMapper {
                     .collect(Collectors.toList());
             equipment.setHeatTraceList(heatTraces);
         }
+
+        System.out.println("From Eq mapper: " + equipment.getMainFile().getFileNumber());
 
         return equipment;
     }
