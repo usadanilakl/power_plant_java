@@ -29,6 +29,7 @@ public class EquipmentDto extends BaseEquipmentDto {
     private String coordinates;
     private String originalPictureSize;
     private String mainFile;
+    private Long mainFileId;
     private Set<LotoPointDto> lotoPoints;
     private List<HeatTraceDto> heatTraceList;
     private HighlightDto highlight;

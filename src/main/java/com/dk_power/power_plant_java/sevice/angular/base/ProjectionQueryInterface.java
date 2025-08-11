@@ -313,7 +313,7 @@ public interface ProjectionQueryInterface<E extends BaseIdEntity> {
 
     private E buildEntity(Tuple tuple, List<String> fields) {
         E entity = createEntityInstance();
-        log.debug("Created new instance of {}", entity.getClass().getSimpleName());
+//        log.debug("Created new instance of {}", entity.getClass().getSimpleName());
 
         for (int i = 0; i < fields.size(); i++) {
             String field = fields.get(i);

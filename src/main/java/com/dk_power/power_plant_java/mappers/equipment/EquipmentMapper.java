@@ -84,6 +84,7 @@ public class EquipmentMapper implements BaseMapper {
         }
         if (entity.getMainFile() != null) {
             dto.setMainFile(entity.getMainFile().getFileLink());
+            dto.setMainFileId(entity.getMainFile().getId());
         }
         if (entity.getLocation() != null) {
             dto.setLocation(valueService.getDtoById(entity.getLocation().getId()));
@@ -240,6 +241,9 @@ public class EquipmentMapper implements BaseMapper {
         if (source.getMainFile() != null) {
             entity.setMainFile(fileService.getByFileLink(source.getMainFile()));
         }
+        if(source.getMainFileId() != null && entity.getMainFile()==null){
+            entity.setMainFile(fileService.getEntityById(source.getMainFileId()));
+        }
         if (source.getLocation() != null) {
             if (source.getLocation().getId() == null) {
                 ValueDto v = valueService.getValueFromCategory("Location", source.getLocation().getName());
@@ -335,6 +339,7 @@ public class EquipmentMapper implements BaseMapper {
         if (dto.getOriginalPictureSize() != null) equipment.setOriginalPictureSize(dto.getOriginalPictureSize());
         if (dto.getMainFile() != null && !dto.getMainFile().isEmpty())
             equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
+        if(dto.getMainFileId()!=null && equipment.getMainFile()==null) equipment.setMainFile(fileService.getEntityById(dto.getMainFileId()));
         if (dto.getConflictStatus() != null) equipment.setConflictStatus(dto.getConflictStatus());
         if (dto.getIsVerified() != null) equipment.setIsVerified(dto.getIsVerified());
 

@@ -151,7 +151,7 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
         // Remove all spaces and convert to uppercase
         String cleanedTag = tagNumber.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
         List<String> systems = EquipmentDto.SYSTEMS;
-        
+
         int index = 0;
         for (String system : systems) {
             int systemIndex = cleanedTag.indexOf(system);
@@ -161,7 +161,7 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
             }
         }
 
-        if(index == 0) return tagNumber;
+        if (index == 0) return tagNumber;
         return cleanedTag.substring(index, index + 6);
     }
 
@@ -180,17 +180,17 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
         FileObject mainFile = equipment.getMainFile();
 
         //This is temporary fix, need to change client side setup to reference files by id, not by link.
-        if(mainFile == null){
+        if (mainFile == null) {
             String link = equipmentDto.getMainFile();
             int index = link.lastIndexOf('.');
             String extension = link.substring(index + 1);
-            String newLink = link.replaceAll(extension,"pdf");
+            String newLink = link.replaceAll(extension, "pdf");
             FileDto byFileLink = fileService.findByFileLink(newLink);
-            if(byFileLink!=null){
+            if (byFileLink != null) {
                 mainFile = fileService.toEntity(byFileLink);
             }
         }
-        if(mainFile != null){
+        if (mainFile != null) {
             mainFile = fileService.getEntityById(mainFile.getId());
             equipment.setMainFile(mainFile);
             Equipment saved = save(equipment);
@@ -202,79 +202,79 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
 
     }
 
-public EquipmentDto copyEquipment(Long eqId, Long fileId) {
-    Equipment sourcePoint = findById(eqId).orElseThrow(() -> new RuntimeException("Equipment not found with id: " + eqId));
-    Equipment processedEq = new Equipment();
+    public EquipmentDto copyEquipment(Long eqId, Long fileId) {
+        Equipment sourcePoint = findById(eqId).orElseThrow(() -> new RuntimeException("Equipment not found with id: " + eqId));
+        Equipment processedEq = new Equipment();
 
-    // Copy basic properties
-    processedEq.setCoordinates(sourcePoint.getCoordinates());
-    processedEq.setOriginalPictureSize(sourcePoint.getOriginalPictureSize());
-    processedEq.setSystem(sourcePoint.getSystem());
-    processedEq.setLocation(sourcePoint.getLocation());
-    processedEq.setVendor(sourcePoint.getVendor());
-    processedEq.setEqType(sourcePoint.getEqType());
-    processedEq.setLotoPoints(new HashSet<>());
+        // Copy basic properties
+        processedEq.setCoordinates(sourcePoint.getCoordinates());
+        processedEq.setOriginalPictureSize(sourcePoint.getOriginalPictureSize());
+        processedEq.setSystem(sourcePoint.getSystem());
+        processedEq.setLocation(sourcePoint.getLocation());
+        processedEq.setVendor(sourcePoint.getVendor());
+        processedEq.setEqType(sourcePoint.getEqType());
+        processedEq.setLotoPoints(new HashSet<>());
 
-    // Process tag number and description
-    String sourceTagNumber = sourcePoint.getTagNumber();
-    String destinationTagNumber;
-    String destDescription = "";
+        // Process tag number and description
+        String sourceTagNumber = sourcePoint.getTagNumber();
+        String destinationTagNumber;
+        String destDescription = "";
 
-    if (sourceTagNumber.startsWith("01")) {
-        destinationTagNumber = "02" + sourceTagNumber.substring(2);
-        if (sourcePoint.getDescription() != null) {
-            destDescription = processDescription(sourcePoint.getDescription(), "01", "02");
+        if (sourceTagNumber.startsWith("01")) {
+            destinationTagNumber = "02" + sourceTagNumber.substring(2);
+            if (sourcePoint.getDescription() != null) {
+                destDescription = processDescription(sourcePoint.getDescription(), "01", "02");
+            }
+        } else if (sourceTagNumber.startsWith("02")) {
+            destinationTagNumber = "01" + sourceTagNumber.substring(2);
+            if (sourcePoint.getDescription() != null) {
+                destDescription = processDescription(sourcePoint.getDescription(), "02", "01");
+            }
+        } else {
+            // If it doesn't start with 01 or 02, keep the original tag number
+            destinationTagNumber = sourceTagNumber;
+            destDescription = sourcePoint.getDescription();
         }
-    } else if (sourceTagNumber.startsWith("02")) {
-        destinationTagNumber = "01" + sourceTagNumber.substring(2);
-        if (sourcePoint.getDescription() != null) {
-            destDescription = processDescription(sourcePoint.getDescription(), "02", "01");
+
+        processedEq.setTagNumber(destinationTagNumber);
+        processedEq.setDescription(destDescription);
+
+        // Set the main file
+        FileObject mainFile = fileService.getEntityById(fileId);
+        processedEq.setMainFile(mainFile);
+
+        // Copy LOTO points
+        Set<LotoPoint> lotoPoints = sourcePoint.getLotoPoints();
+        if (lotoPoints != null) {
+            for (LotoPoint lp : lotoPoints) {
+                LotoPoint point = lotoPointService.copyPointFromOtherUnit(lp.getId());
+                processedEq.getLotoPoints().add(point);
+            }
         }
-    } else {
-        // If it doesn't start with 01 or 02, keep the original tag number
-        destinationTagNumber = sourceTagNumber;
-        destDescription = sourcePoint.getDescription();
+
+        Equipment savedEquipment = save(processedEq);
+
+        // Add the equipment to the file's points
+        mainFile.addPoint(savedEquipment);
+        fileService.save(mainFile);
+
+        return toDto(savedEquipment);
+
     }
 
-    processedEq.setTagNumber(destinationTagNumber);
-    processedEq.setDescription(destDescription);
-
-    // Set the main file
-    FileObject mainFile = fileService.getEntityById(fileId);
-    processedEq.setMainFile(mainFile);
-
-    // Copy LOTO points
-    Set<LotoPoint> lotoPoints = sourcePoint.getLotoPoints();
-    if (lotoPoints != null) {
-        for (LotoPoint lp : lotoPoints) {
-            LotoPoint point = lotoPointService.copyPointFromOtherUnit(lp.getId());
-            processedEq.getLotoPoints().add(point);
-        }
+    private String processDescription(String description, String fromUnit, String toUnit) {
+        return Arrays.stream(description.split(" "))
+                .map(e -> {
+                    if (e.startsWith(fromUnit)) return toUnit + e.substring(2);
+                    else return e;
+                })
+                .collect(Collectors.joining(" "))
+                .replaceAll("Unit" + fromUnit.charAt(1), "Unit" + toUnit.charAt(1))
+                .replaceAll("Unit " + fromUnit.charAt(1), "Unit " + toUnit.charAt(1))
+                .replaceAll("U" + fromUnit.charAt(1), "U" + toUnit.charAt(1));
     }
 
-    Equipment savedEquipment = save(processedEq);
-
-    // Add the equipment to the file's points
-    mainFile.addPoint(savedEquipment);
-    fileService.save(mainFile);
-
-    return toDto(savedEquipment);
-
-}
-
-private String processDescription(String description, String fromUnit, String toUnit) {
-    return Arrays.stream(description.split(" "))
-            .map(e -> {
-                if (e.startsWith(fromUnit)) return toUnit + e.substring(2);
-                else return e;
-            })
-            .collect(Collectors.joining(" "))
-            .replaceAll("Unit" + fromUnit.charAt(1), "Unit" + toUnit.charAt(1))
-            .replaceAll("Unit " + fromUnit.charAt(1), "Unit " + toUnit.charAt(1))
-            .replaceAll("U" + fromUnit.charAt(1), "U" + toUnit.charAt(1));
-}
-
-    public List <EquipmentDto> getByTagNumber(String tagNumber) {
+    public List<EquipmentDto> getByTagNumber(String tagNumber) {
         List<Equipment> byTagNumber = equipmentRepo.findByTagNumber(tagNumber);
         return byTagNumber.stream().map(this::toDto).collect(Collectors.toList());
 
