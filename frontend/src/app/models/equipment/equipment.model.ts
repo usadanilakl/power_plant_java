@@ -29,6 +29,7 @@ export interface EquipmentModel extends BaseModel  {
   coordinates: string | null | undefined;
   originalPictureSize: string | null | undefined;
   mainFile: string | null | undefined;
+  mainFileId: number | null | undefined;
   lotoPoints: LotoPointDto[] | null | undefined;
   isUpdated: string | null | undefined;
   conflictStatus: string | null | undefined;
@@ -46,6 +47,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   coordinates: string | null | undefined;
   originalPictureSize: string | null | undefined;
   mainFile: string | null | undefined;
+  mainFileId: number | null | undefined;
   lotoPoints: LotoPointDto[] | null | undefined;
   isUpdated: string | null | undefined;
   conflictStatus: string | null | undefined;
@@ -63,6 +65,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     this.coordinates = data.coordinates ?? null;
     this.originalPictureSize = data.originalPictureSize ?? null;
     this.mainFile = data.mainFile ?? null;
+    this.mainFileId = data.mainFileId ?? null;
     this.lotoPoints = data.lotoPoints ?? [];
     this.isUpdated = data.isUpdated ?? null;
     this.conflictStatus = data.conflictStatus ?? null;
@@ -82,6 +85,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       coordinates: this.coordinates || null,
       originalPictureSize: this.originalPictureSize || null,
       mainFile: this.mainFile || null,
+      mainFileId: this.mainFileId || null,
       lotoPoints: this.lotoPoints?.map(point => point ? point.toJson() : null).filter(Boolean),
       isUpdated: this.isUpdated || null,
       conflictStatus: this.conflictStatus || null,
@@ -107,6 +111,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       coordinates: json.coordinates || null,
       originalPictureSize: json.originalPictureSize || null,
       mainFile: json.mainFile || null,
+      mainFileId: json.mainFileId || null,
       lotoPoints: json.lotoPoints ? json.lotoPoints.map((point: any) => LotoPointDto.fromJson(point)) : null,
       isUpdated: json.isUpdated || null,
       conflictStatus: json.conflictStatus || null,
@@ -129,6 +134,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       coordinates: this.coordinates,
       originalPictureSize: this.originalPictureSize,
       mainFile: this.mainFile,
+      mainFileId: this.mainFileId,
       lotoPointIds: this.lotoPoints?.map(point => point.id) || null,
       isUpdated: this.isUpdated,
       conflictStatus: this.conflictStatus,
@@ -351,6 +357,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       coordinates: { name: 'coordinates', label: 'Coordinates', type: 'text', initialValue: dto.coordinates },
       originalPictureSize: { name: 'originalPictureSize', label: 'Original Picture Size', type: 'text', initialValue: dto.originalPictureSize },
       mainFile: { name: 'mainFile', label: 'Main File', type: 'text', initialValue: dto.mainFile },
+      mainFileId: { name: 'mainFileId', label: 'Main File ID', type: 'text', initialValue: dto.mainFileId },
       lotoPoints: { name: 'lotoPoints', label: 'LOTO Points', type: 'multi-select', initialValue: dto.lotoPoints?.map(point => point.id) || null },
       isUpdated: { name: 'isUpdated', label: 'Is Updated', type: 'text', initialValue: dto.isUpdated },
       conflictStatus: { name: 'conflictStatus', label: 'Conflict Status', type: 'text', initialValue: dto.conflictStatus },

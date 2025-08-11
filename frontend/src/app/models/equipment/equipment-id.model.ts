@@ -12,6 +12,7 @@ export class EquipmentIdDto extends BaseDto {
   coordinates: string | null;
   originalPictureSize: string | null;
   mainFile: string | null;
+  mainFileId: number | null;
   lotoPointIds: number[] | null;
   isUpdated: string | null;
   conflictStatus: string | null;
@@ -29,6 +30,7 @@ export class EquipmentIdDto extends BaseDto {
     this.coordinates = data.coordinates || null;
     this.originalPictureSize = data.originalPictureSize || null;
     this.mainFile = data.mainFile || null;
+    this.mainFileId = data.mainFileId || null;
     this.lotoPointIds = data.lotoPointIds || null;
     this.isUpdated = data.isUpdated || null;
     this.conflictStatus = data.conflictStatus || null;
@@ -48,6 +50,7 @@ export class EquipmentIdDto extends BaseDto {
       coordinates: this.coordinates || null,
       originalPictureSize: this.originalPictureSize || null,
       mainFile: this.mainFile || null,
+      mainFileId: this.mainFileId || null,
       lotoPointIds: this.lotoPointIds || null,
       isUpdated: this.isUpdated || null,
       conflictStatus: this.conflictStatus || null,
@@ -73,6 +76,7 @@ export class EquipmentIdDto extends BaseDto {
       coordinates: json.coordinates || null,
       originalPictureSize: json.originalPictureSize || null,
       mainFile: json.mainFile || null,
+      mainFileId: json.mainFileId || null,
       lotoPointIds: json.lotoPointIds || null,
       isUpdated: json.isUpdated || null,
       conflictStatus: json.conflictStatus || null,

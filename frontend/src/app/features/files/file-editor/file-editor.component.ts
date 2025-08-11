@@ -289,7 +289,8 @@ export class FileEditorComponent {
     }
 
     const fileLink = this.currentFileService.getCurrentFile()?.fileLink;
-    const eqWithFile = new EquipmentDto({...equipment, mainFile: fileLink, files: [fileLink!] });
+    const fileId = this.currentFileService.getCurrentFile()?.id;
+    const eqWithFile = new EquipmentDto({...equipment, mainFile: fileLink, mainFileId:fileId, files: [fileLink!] });
   
     this.isLoading.set(true);
   
