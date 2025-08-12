@@ -3,6 +3,8 @@
     <app-toggle-list 
     [items]="menuItems()"
     [trackLastClicked]="true"
+    [trackAllClicked]="true"
+    [highlightOnHover]="false"
     (itemClicked)="onItemClick($event)"
     (itemDoubleClicked)="onItemDoubleClicked($event)"
     (itemRightClicked)="onItemRightClicked($event)"

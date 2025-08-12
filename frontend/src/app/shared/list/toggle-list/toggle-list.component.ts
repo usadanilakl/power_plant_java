@@ -33,8 +33,6 @@ export class ToggleListComponent {
   private lastClickTime: number = 0;
   private readonly doubleClickDelay: number = 250; // milliseconds
 
-  private lastClickedItem: NestedItem | null = null;
-  private clickedItems: Set<NestedItem> = new Set();
 
   trackByFn(index: number, item: NestedItem): string | number {
     return item.id;
@@ -54,7 +52,6 @@ export class ToggleListComponent {
   }
 
   private resetClickState(item: NestedItem): void {
-    item.isClicked = false;
     item.isLastClicked = false;
     if (item.values) {
       item.values.forEach(child => this.resetClickState(child));
@@ -116,15 +113,7 @@ export class ToggleListComponent {
 
   // New methods to handle nested item events
   onNestedItemClicked(item: NestedItem): void {
-    this.itemClicked.emit(item);
-
-    if (this.trackLastClicked()) {
-      this.lastClickedItem = item;
-    }
-    if (this.trackAllClicked()) {
-      this.clickedItems.add(item);
-    }
-      
+    this.itemClicked.emit(item);      
   }
 
   onNestedItemDoubleClicked(item: NestedItem): void {
@@ -143,17 +132,6 @@ export class ToggleListComponent {
     if (this.clickTimeout !== null) {
       clearTimeout(this.clickTimeout);
     }
-  }
-
-
-
-  isItemClicked(item: NestedItem): boolean {
-    return this.trackLastClicked() ? this.lastClickedItem === item : this.clickedItems.has(item);
-  }
-
-  isItemLastClicked(item: NestedItem): boolean {
-    console.log('Checking if item is last clicked', item, this.lastClickedItem);
-    return this.trackLastClicked() && this.lastClickedItem === item;
   }
   
   getItemLevel(item: NestedItem): number {
