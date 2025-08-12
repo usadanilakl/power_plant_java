@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, OnInit, output, signal, ViewChild } from '@angular/core';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { Option } from '../../../models/option.model';
 import { catchError, map, Observable, of, switchMap, take, tap } from 'rxjs';
@@ -32,6 +32,8 @@ export class EquipmentFormComponent implements OnInit {
   private equipmentService = inject(EquipmentService);
   private destroyRef = inject(DestroyRef);
   private confirmationService = inject(ConfirmationService);
+  
+  @ViewChild(ReactiveFormComponent) reactiveForm!: ReactiveFormComponent;
 
   values = input<EquipmentDto>(new EquipmentDto());
   layout = input<'column' | 'row' | 'reactive'>('reactive');
@@ -190,6 +192,14 @@ export class EquipmentFormComponent implements OnInit {
       console.log('Preset data applied:', updatedValues);
     } else {
       console.warn('No preset data available');
+    }
+  }
+
+  setPresetData() {
+    if (this.reactiveForm) {
+      const currentFormValues = this.reactiveForm.getCurrentFormValues();
+      // Now use these values to set as preset data
+      this.currentEquipmentService.setCurrentPresetData(currentFormValues);
     }
   }
 

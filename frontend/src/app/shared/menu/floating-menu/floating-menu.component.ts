@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, output, input, signal, SimpleChanges } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, output, input, signal, SimpleChanges, inject, Renderer2 } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 
 export enum MenuPosition {
@@ -18,6 +18,7 @@ export enum MenuPosition {
 })
 export class FloatingMenuComponent implements AfterViewInit {
   @ViewChild('menuContainer') menuContainer!: ElementRef;
+  private renderer = inject(Renderer2);
 
   title = input<string>("");
   height = input<number>(50);
@@ -109,6 +110,7 @@ export class FloatingMenuComponent implements AfterViewInit {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     };
+    this.renderer.addClass(document.body, 'dragging');
   }
 
   private drag(e: MouseEvent) {
@@ -121,6 +123,7 @@ export class FloatingMenuComponent implements AfterViewInit {
 
   private stopDragging() {
     this.isDragging = false;
+    this.renderer.removeClass(document.body, 'dragging');
   }
 
 
@@ -138,6 +141,7 @@ export class FloatingMenuComponent implements AfterViewInit {
     this.resizeStartPos = { x: e.clientX, y: e.clientY };
     const rect = this.menuContainer.nativeElement.getBoundingClientRect();
     this.initialSize = { width: rect.width, height: rect.height };
+    this.renderer.addClass(document.body, 'dragging');
   }
 
   private resize(e: MouseEvent) {
@@ -152,5 +156,6 @@ export class FloatingMenuComponent implements AfterViewInit {
 
   private stopResizing() {
     this.isResizing = false;
+    this.renderer.removeClass(document.body, 'dragging');
   }
 }

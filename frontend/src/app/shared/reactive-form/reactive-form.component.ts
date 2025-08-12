@@ -212,4 +212,14 @@ export class ReactiveFormComponent {
     return false;
   }
 
+  getCurrentFormValues() {
+    const currentForm = this.form();
+    if (currentForm) {
+      return currentForm.value;
+    }
+    return null;
+  }
+
+
+
 }

@@ -10,7 +10,7 @@
              'level-2': colorLevels() && getItemLevel(item) === 1,
              'level-3': colorLevels() && getItemLevel(item) === 2
            }"
-           [style.backgroundColor]="getItemColor(item)"
+           [style.backgroundColor]="item.color||null"
            (click)="onClick($event, item)"
            (dblclick)="onDoubleClick(item)"
            (contextmenu)="onRightClick($event, item)"
