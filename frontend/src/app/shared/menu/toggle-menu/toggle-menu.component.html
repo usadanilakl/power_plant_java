@@ -2,6 +2,7 @@
   @if (menuItems().length > 0) {
     <app-toggle-list 
     [items]="menuItems()"
+    [trackLastClicked]="true"
     (itemClicked)="onItemClick($event)"
     (itemDoubleClicked)="onItemDoubleClicked($event)"
     (itemRightClicked)="onItemRightClicked($event)"

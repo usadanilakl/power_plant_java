@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Application Metrics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .button-group {
+            margin-bottom: 20px;
+        }
+        button {
+            margin-right: 10px;
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Application Metrics</h1>
+    <div class="button-group">
+        <button onclick="fetchMetrics('system')">System Metrics</button>
+        <button onclick="fetchMetrics('http')">HTTP Metrics</button>
+        <button onclick="fetchMetrics('custom')">Custom Metrics</button>
+    </div>
+    <canvas id="metricsChart"></canvas>
+
+    <script>
+    let chart;
+
+    const metricGroups = {
+        system: ['process.cpu.usage', 'system.cpu.usage', 'jvm.memory.used', 'system.load.average.1m'],
+        http: ['http.server.requests', 'http.server.requests.active'],
+        custom: ['pid.files.processed', 'files.created', 'files.deleted']
+    };
+
+function fetchMetrics(group) {
+    const metricsOfInterest = metricGroups[group];
+
+    Promise.all(metricsOfInterest.map(metric =>
+        fetch(`/actuator/metrics/${metric}`).then(res => res.json())
+    )).then(metricsData => {
+        const labels = metricsData.map(m => m.name);
+        const values = metricsData.map(m => {
+            if (m.name === 'jvm.memory.used') {
+                // Convert bytes to MB
+                return m.measurements[0].value / (1024 * 1024);
+            }
+            return m.measurements[0].value;
+        });
+
+        if (chart) {
+            chart.destroy();
+        }
+
+        chart = new Chart(document.getElementById('metricsChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: `${group.charAt(0).toUpperCase() + group.slice(1)} Metrics`,
+                    data: values,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Value (Memory in MB for JVM memory)'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    if (context.label === 'jvm.memory.used') {
+                                        label += context.parsed.y.toFixed(2) + ' MB';
+                                    } else {
+                                        label += context.parsed.y;
+                                    }
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+}
+
+    // Initial fetch
+    fetchMetrics('system');
+
+    // Refresh every minute
+    setInterval(() => fetchMetrics('system'), 60000);
+    </script>
+</body>
+</html>

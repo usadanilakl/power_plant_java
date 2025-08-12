@@ -5,6 +5,8 @@ export interface NestedItem {
   isExpanded?: boolean;
   objectType: string;
   color: string;
+  isClicked?: boolean;
+  isLastClicked?: boolean;
 }
 
 export class NestedItemImpl implements NestedItem {
@@ -14,6 +16,8 @@ export class NestedItemImpl implements NestedItem {
   isExpanded: boolean;
   objectType: string;
   color: string;
+  isClicked: boolean;
+  isLastClicked: boolean;
 
   constructor(data: Partial<NestedItem> = {}) {
     this.id = data.id ?? '';
@@ -22,6 +26,8 @@ export class NestedItemImpl implements NestedItem {
     this.isExpanded = data.isExpanded ?? false;
     this.objectType = data.objectType?? '';
     this.color = data.color?? '';
+    this.isClicked = data.isClicked?? false;
+    this.isLastClicked = data.isLastClicked?? false;
   }
 
   addChild(child: NestedItem): void {

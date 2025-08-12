@@ -108,6 +108,7 @@
         <app-equipment-form
           [values]="currentEquipment()"
           (createNewEqAndAddLotoPointEvent)="createEquipmentAndAddLotoPoint($event)"
+          (valuesChange)="applyEqValueChanges($event)"
           (formSubmit)="submitEquipment($event)"
           (formDelete)="onEqDelete()"
           (addNewLotoPointEvent)="createNewLotoPoint($event)"

@@ -260,6 +260,11 @@ export class FileEditorComponent {
   }
 
 
+applyEqValueChanges($event: EquipmentDto) {
+  this.currentEquipment.set($event);
+}
+
+
   onCloseEquipmentFilterMenu() {
     this.isFilterMenuOpen.set(false);
   }

@@ -173,6 +173,25 @@ export class EquipmentFormComponent implements OnInit {
   onFormDelete() {
     this.formDelete.emit();
   }
+  
+  applyPresetData() {
+    const presetData: EquipmentDto = this.currentEquipmentService.getCurrentPresetDataValue();
+    if (presetData) {
+      // Update the values
+      const currentValues: EquipmentDto = new EquipmentDto({ ...this.values()});
+      const updatedValues = currentValues.applyPresetValue(presetData);
+  
+      // Emit the updated values
+      this.valuesChange.emit(updatedValues);
+  
+      // If you're using a reactive form, you might need to update it as well
+      // this.form.patchValue(updatedValues);
+  
+      console.log('Preset data applied:', updatedValues);
+    } else {
+      console.warn('No preset data available');
+    }
+  }
 
   private loadOptions(category: string, optionsSignal: ReturnType<typeof signal<Option[]>>) {
     this.currentValueService.getOptionsByCategory(category).pipe(

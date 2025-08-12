@@ -34,14 +34,12 @@ public class Equipment extends BaseEquipment implements Referenceable {
 //    private String description;
     private String specificLocation;
     @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name="eq_type_id")
+    @JoinColumn(name = "eq_type_id")
     private Value eqType;
-//    @ManyToMany(mappedBy = "points")
+    //    @ManyToMany(mappedBy = "points")
 //    @JsonIgnore
-@ManyToMany(cascade = CascadeType.ALL)
-@JoinTable(name = "file_point",
-        joinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"),
-        inverseJoinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"))
+    @ManyToMany(cascade = CascadeType.ALL)
+    @JoinTable(name = "file_point", joinColumns = @JoinColumn(name = "point_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "file_id", referencedColumnName = "id"))
     private List<FileObject> files;
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "vendor_id")
@@ -60,9 +58,7 @@ public class Equipment extends BaseEquipment implements Referenceable {
     //@JsonIgnore
     private FileObject mainFile;
     @ManyToMany(cascade = CascadeType.ALL)
-    @JoinTable(name = "eq_loto_point",
-            joinColumns = @JoinColumn(name = "eq_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "loto_point_id", referencedColumnName = "id"))
+    @JoinTable(name = "eq_loto_point", joinColumns = @JoinColumn(name = "eq_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "loto_point_id", referencedColumnName = "id"))
 
     private Set<LotoPoint> lotoPoints;
     @ManyToMany(mappedBy = "equipmentList")
@@ -80,47 +76,34 @@ public class Equipment extends BaseEquipment implements Referenceable {
     private String conflictId;
 
 
-
     @Transient
     private String pid;
 
 
     public void addFile(FileObject file) {
-        if(files==null) files = new ArrayList<>();
-        if(!files.contains(file)) files.add(file);
+        if (files == null) files = new ArrayList<>();
+        if (!files.contains(file)) files.add(file);
     }
-    public void addLotoPoint(LotoPoint lotoPoint){
-        if(lotoPoints == null) lotoPoints = new HashSet<>();
-        if(lotoPoint!=null) lotoPoints.add(lotoPoint);
+
+    public void addLotoPoint(LotoPoint lotoPoint) {
+        if (lotoPoints == null) lotoPoints = new HashSet<>();
+        if (lotoPoint != null) lotoPoints.add(lotoPoint);
     }
-    public void setMainFile(FileObject file){
+
+    public void setMainFile(FileObject file) {
         addFile(file);
         this.mainFile = file;
     }
 
     @Override
     public String toString() {
-        return "Equipment{" +
-                "name='" + getName() + '\'' +
-                ",\n tagNumber='" + getTagNumber() + '\'' +
-                ",\n description='" + getDescription() + '\'' +
-                ",\n specificLocation='" + specificLocation + '\'' +
-                ",\n eqType=" + eqType+
-                ",\n files=" + files.size()+
-                ",\n vendor=" + vendor+
-                ",\n location=" + location +
-                ",\n system=" + system +
-                ",\n coordinates='" + coordinates + '\'' +
-                ",\n originalPictureSize='" + originalPictureSize + '\'' +
-                ",\n mainFile=" + mainFile.getFileNumber() +
-                ",\n pid='" + pid + '\'' +
-                '}';
+        return "Equipment{" + "name='" + getName() + '\'' + ",\n tagNumber='" + getTagNumber() + '\'' + ",\n description='" + getDescription() + '\'' + ",\n specificLocation='" + specificLocation + '\'' + ",\n eqType=" + eqType + ",\n files=" + files.size() + ",\n vendor=" + vendor + ",\n location=" + location + ",\n system=" + system + ",\n coordinates='" + coordinates + '\'' + ",\n originalPictureSize='" + originalPictureSize + '\'' + ",\n mainFile=" + mainFile.getFileNumber() + ",\n pid='" + pid + '\'' + '}';
     }
 
 
     public void addConflictId(String string) {
-        if(conflictId == null) conflictId = string;
-        else conflictId += ","+string;
+        if (conflictId == null) conflictId = string;
+        else conflictId += "," + string;
     }
 
 }

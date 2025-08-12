@@ -287,6 +287,10 @@ export class CurrentEquipmentService {
     getCurrentPresetData(): Observable<EquipmentDto> {
       return this.currentPresetData$;
     }
+
+    getCurrentPresetDataValue(): EquipmentDto {
+      return this.currentPresetDataSubject.getValue();
+    }
     
     getCurrentPresetLotoPointData(): Observable<LotoPointDto> {
       return this.currentLotoPointPresetData$;

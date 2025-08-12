@@ -1,24 +1,24 @@
 <ul class="toggle-list">
   @for (item of items(); track item.id) {
-    <li [ngClass]="{
-          'highlighted': highlightOnHover(),
-          'clicked': isItemClicked(item),
-          'level-1': colorLevels() && getItemLevel(item) === 0,
-          'level-2': colorLevels() && getItemLevel(item) === 1,
-          'level-3': colorLevels() && getItemLevel(item) === 2
-        }"
-        [style.backgroundColor]="getItemColor(item)"
-        (click)="onClick($event, item)"
-        (dblclick)="onDoubleClick(item)"
-        (contextmenu)="onRightClick($event, item)"
-        (mousedown)="onMiddleClick($event, item)">
-      <div class="item">
-        <span class="toggle-icon">
-          @if (item.values && item.values.length > 0) {
-            {{ item.isExpanded ? '▼' : '▶' }}
-          }
+    <li>
+      <div class="item-content"
+           [ngClass]="{
+             'highlighted': highlightOnHover(),
+             'clicked': item.isClicked,
+             'last-clicked': item.isLastClicked,
+             'level-1': colorLevels() && getItemLevel(item) === 0,
+             'level-2': colorLevels() && getItemLevel(item) === 1,
+             'level-3': colorLevels() && getItemLevel(item) === 2
+           }"
+           [style.backgroundColor]="getItemColor(item)"
+           (click)="onClick($event, item)"
+           (dblclick)="onDoubleClick(item)"
+           (contextmenu)="onRightClick($event, item)"
+           (mousedown)="onMiddleClick($event, item)">
+        <span class="toggle-icon" *ngIf="item.values && item.values.length > 0">
+          {{ item.isExpanded ? '▼' : '▶' }}
         </span>
-        {{ item.name }}
+        <span class="item-name">{{ item.name }}</span>
       </div>
       @if (item.isExpanded && item.values && item.values.length > 0) {
         <app-toggle-list

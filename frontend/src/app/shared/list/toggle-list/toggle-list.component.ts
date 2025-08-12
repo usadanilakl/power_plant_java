@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NestedItem, NestedItemImpl } from '../../../models/ui/nested-item.model';
 
@@ -13,7 +13,8 @@ interface ColorCondition {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './toggle-list.component.html',
-  styleUrl: './toggle-list.component.css'
+  styleUrl: './toggle-list.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ToggleListComponent {
   items = input<NestedItem[]>([]);
@@ -35,6 +36,38 @@ export class ToggleListComponent {
   private lastClickedItem: NestedItem | null = null;
   private clickedItems: Set<NestedItem> = new Set();
 
+  trackByFn(index: number, item: NestedItem): string | number {
+    return item.id;
+  }
+
+  onItemClick(event: MouseEvent, item: NestedItem): void {
+    event.stopPropagation();
+    this.toggleItem(item);
+    this.updateClickedState(item);
+    this.itemClicked.emit(item);
+  }
+
+  private updateClickedState(clickedItem: NestedItem): void {
+    this.items().forEach(item => this.resetClickState(item));
+    clickedItem.isClicked = true;
+    clickedItem.isLastClicked = true;
+  }
+
+  private resetClickState(item: NestedItem): void {
+    item.isClicked = false;
+    item.isLastClicked = false;
+    if (item.values) {
+      item.values.forEach(child => this.resetClickState(child));
+    }
+  }
+
+  private updateItemAndChildren(item: NestedItem, updateFn: (i: NestedItem) => void): void {
+    updateFn(item);
+    if (item.values) {
+      item.values.forEach(child => this.updateItemAndChildren(child, updateFn));
+    }
+  }
+
   onClick(event: MouseEvent, item: NestedItem): void {
     event.stopPropagation(); // Prevent event from bubbling up
     const currentTime = new Date().getTime();
@@ -48,8 +81,7 @@ export class ToggleListComponent {
     } else {
       // Potential single click
       this.clickTimeout = setTimeout(() => {
-        this.toggleItem(item);
-        this.itemClicked.emit(item);
+        this.onItemClick(event, item);
       }, this.doubleClickDelay);
     }
 
@@ -113,8 +145,15 @@ export class ToggleListComponent {
     }
   }
 
+
+
   isItemClicked(item: NestedItem): boolean {
     return this.trackLastClicked() ? this.lastClickedItem === item : this.clickedItems.has(item);
+  }
+
+  isItemLastClicked(item: NestedItem): boolean {
+    console.log('Checking if item is last clicked', item, this.lastClickedItem);
+    return this.trackLastClicked() && this.lastClickedItem === item;
   }
   
   getItemLevel(item: NestedItem): number {

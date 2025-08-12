@@ -378,5 +378,25 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     return fields.map(fieldName => allFields[fieldName]);
   }
 
+  applyPresetValue(equipment: EquipmentDto): EquipmentDto {
+    console.log('Applying preset value:', equipment);
+    Object.keys(equipment).forEach(key => {
+      if (EquipmentDto.isValidKey(key)) {
+        const value = equipment[key];
+        if (value !== null && value !== undefined && value !== '') {
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            // For nested objects like ValueDto
+            if (value.id) {
+              (this[key] as any) = value;
+            }
+          } else {
+            (this[key] as any) = value;
+          }
+        }
+      }
+    });
+    return this;
+  }
+
     
 }

@@ -1,34 +1,64 @@
 .toggle-list {
   list-style-type: none;
-  padding-left: 20px;
+  padding-left: 0;
+  margin: 0;
 }
 
-.item {
+.toggle-list li {
+  margin: 0;
+  padding: 0;
+}
+
+.item-content {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
   cursor: pointer;
-  padding: 5px 0;
+  transition: background-color 0.2s ease;
+}
+
+.item-content:hover {
+  background-color: #f0f0f0;
 }
 
 .toggle-icon {
-  display: inline-block;
-  width: 20px;
+  margin-right: 8px;
+  font-size: 12px;
+  width: 12px;
+  text-align: center;
 }
 
-.highlighted:hover {
-  background-color: #f0f0f0;
+.item-name {
+  flex-grow: 1;
+}
+
+.highlighted {
+  font-weight: bold;
 }
 
 .clicked {
   background-color: #e0e0e0;
 }
 
+.last-clicked {
+  border-left: 3px solid #007bff;
+}
+
 .level-1 {
-  background-color: #f8f8f8;
+  margin-left: 0;
 }
 
 .level-2 {
-  background-color: #f0f0f0;
+  margin-left: 20px;
 }
 
 .level-3 {
-  background-color: #e8e8e8;
+  margin-left: 40px;
+}
+
+/* Add more level classes if needed */
+
+app-toggle-list {
+  display: block;
+  margin-left: 20px;
 }

@@ -13,6 +13,7 @@ import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.util.FileUtil;
 import com.dk_power.power_plant_java.util.PdfConverter;
 import com.dk_power.power_plant_java.util.RenamedMultipartFile;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
@@ -42,6 +43,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private final EntityManager entityManager;
     private final NgEquipmentService equipmentService;
     private final Logger logger = LoggerFactory.getLogger(NgFileService.class);
+    private final MeterRegistry meterRegistry;
 
     @Value("${files.root.path}")
     String filesRootPath;
@@ -156,6 +158,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     }
 
     public FileDto create(FileIdDto fileDto) {
+        meterRegistry.counter("files.createdDto").increment();
         FileObject entity = convertIdDtoToEntity(fileDto);
         String extension = FileUtil.getFileExtension(entity.getFileLink());
         entity.setBaseLink(filesRelativePath);
@@ -167,6 +170,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     @Override
     public FileObject create(FileDto dto) {
+        meterRegistry.counter("files.createdEntity").increment();
         FileObject entity = toEntity(dto);
         String extension = FileUtil.getFileExtension(entity.getFileLink());
         entity.setBaseLink(filesRelativePath);
