@@ -31,12 +31,12 @@ export class EquipmentService {
     return this.http.post<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}/get-other-unit-equipment`, { tagNumber:tagNumber });
   }
 
-  searchEquipment(criteria: SearchCriteria, page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<EquipmentDto[]>> {
+  searchEquipment(criteria: SearchCriteria, page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<EquipmentDto>> {
     const params = new HttpParams()
       .set('page', page.toString())
       .set('pageSize', pageSize.toString());
 
-    return this.http.post<SpringPaginatedResponse<EquipmentDto[]>>(`${this.apiUrl}/search`, criteria, { params });
+    return this.http.post<SpringPaginatedResponse<EquipmentDto>>(`${this.apiUrl}/search`, criteria, { params });
   }
   searchEqByBaseTagNumber(criteria: SearchCriteria, page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<EquipmentDto>> {
     const params = new HttpParams()

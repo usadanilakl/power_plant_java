@@ -15,8 +15,9 @@
       ></app-searchable-dropdown>
       <button (click)="copyAllPoints()">Copy All Points</button>
         <app-equipment-table
-            [equipmentList]="searchedItems"
+            [equipmentList]="filteredItems"
             (equipmentDoubleClicked)="copyEquipmentToCurrent($event.item)"
+            (searchTableEvent)="onSearchtable($event)"
         >
         </app-equipment-table>
     </div>

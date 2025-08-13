@@ -12,6 +12,7 @@ import { SpringPaginatedResponse } from '../../../../models/api/spring-pagenated
 import { map } from 'rxjs';
 import { EquipmentService } from '../../../../services/equipment.service';
 import { SpringApiResponse } from '../../../../models/api/spring-api-response.model';
+import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 
 @Component({
   selector: 'app-file-lookup-menu',
@@ -30,10 +31,12 @@ export class FileLookupMenuComponent implements OnInit  {
 
   currentItems = signal<EquipmentDto[]>([]);
   searchedItems = signal<EquipmentDto[]>([]);
+  filteredItems = signal<EquipmentDto[]>([]);
   filesWithPoints = signal<FileDto[]>([]);
   fileOptions = computed(() => {
     return this.filesWithPoints().map(file => ({ label: `${file.fileNumber} - ${file.name}`, value: file.id } as Option));
   });
+  isGlobalSearch = signal<boolean>(true);
 
   ngOnInit(): void {
     this.currentFileService.getElements().pipe(
@@ -62,7 +65,9 @@ handleFileSelect($event: any) {
     takeUntilDestroyed(this.destroyRef)
   ).subscribe(file => {
     this.searchedItems.set(file.responseData.points)
+    this.filteredItems.set(file.responseData.points);
   });
+  this.isGlobalSearch.set(false);
 }
 
 copyEquipmentToCurrent(equipment: EquipmentDto): void {
@@ -88,9 +93,39 @@ copyEquipmentToCurrent(equipment: EquipmentDto): void {
 }
 
 copyAllPoints() {
+  if(this.searchedItems().length > 200)return;
   this.searchedItems().forEach(equipment => {
     this.copyEquipmentToCurrent(equipment);
   });
+}
+
+onSearchtable(searchCriteria: SearchCriteria) {
+  if(!this.isGlobalSearch()){
+    console.log('Searching within current items',searchCriteria);
+    // Search within the existing items
+    const filteredItems = this.searchedItems().filter(item => {
+      if (searchCriteria.type === 'global' && searchCriteria.query) {
+        // Global search
+        return Object.values(item).some(value => 
+          String(value).toLowerCase().includes(searchCriteria.query!.toLowerCase())
+        );
+      } else if (searchCriteria.type === 'column' && searchCriteria.filters) {
+        // Column-specific search
+        return Object.entries(searchCriteria.filters).every(([key, value]) => 
+          String(item[key as keyof EquipmentDto]).toLowerCase().includes(value.toLowerCase())
+        );
+      }
+      return true;
+    });
+    this.filteredItems.set(filteredItems);
+
+  }else{
+    this.equipmentService.searchEquipment(searchCriteria).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(response =>{
+      this.filteredItems.set(response.responseData.content);
+    });
+  }
 }
 
 

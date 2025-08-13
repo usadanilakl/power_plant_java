@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
+import { SearchCriteria } from '../../../models/api/search-criteria.model';
 
 @Component({
   selector: 'app-equipment-table',
@@ -20,6 +21,7 @@ import { Column } from '../../../models/column.model';
       [deleteItem]="onDeleteEquipment"
       (selectedItemsEvent)="onSelectedItems($event)"
       (rowHoveredEvent)="onEquipmentHover($event)"
+      (search)="onSearchTable($event)"
     >
       <div table-controls>
         <ng-content select="[table-controls]"></ng-content>
@@ -37,6 +39,7 @@ export class EquipmentTableComponent extends TableComponent{
   @Output() equipmentHovered = new EventEmitter<EquipmentDto>();
   @Output() equipmentDeleted = new EventEmitter<string>();
   override selectedItemsEvent = output<EquipmentDto[]>();
+  searchTableEvent = output<SearchCriteria>();
 
   columnsToRender = computed<Column[]>(() => this.columnsInput() || this.columns);
 
@@ -140,7 +143,12 @@ export class EquipmentTableComponent extends TableComponent{
     this.equipmentDeleted.emit(id);
   }
 
-    onSelectedItems = (items: EquipmentDto[]) => {
-      this.selectedItemsEvent.emit(items);
-    }
+  onSelectedItems = (items: EquipmentDto[]) => {
+    this.selectedItemsEvent.emit(items);
+  }
+
+  onSearchTable = (searchCriteria: SearchCriteria) => {
+    this.searchTableEvent.emit(searchCriteria);
+  }
+
 }
