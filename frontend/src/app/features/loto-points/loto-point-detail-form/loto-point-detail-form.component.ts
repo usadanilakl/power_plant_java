@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, DestroyRef, input, output, computed, signal} from '@angular/core';
+import { Component, Input, OnInit, DestroyRef, input, output, computed, signal, ViewChild} from '@angular/core';
 import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Observable} from 'rxjs';
@@ -10,6 +10,8 @@ import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { NonNullablePipe } from "../../../pipes/nonNullable.pipe";
 import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-form.component";
 import { CurrentValueService } from '../../../services/current-value.service';
+import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
+import { LotoPointIdDto } from '../../../models/loto/loto-point-id.model';
 
 @Component({
   selector: 'app-loto-point-detail-form',
@@ -19,10 +21,14 @@ import { CurrentValueService } from '../../../services/current-value.service';
   styleUrl: './loto-point-detail-form.component.css'
 })
 export class LotoPointDetailFormComponent implements OnInit {
+  
+  @ViewChild(ReactiveFormComponent) reactiveForm!: ReactiveFormComponent;
+
   values = input<any>({});
   openImage = output<void>();
   formSubmit = output<any>();
   formDelete = output<void>();
+  valuesChange = output<LotoPointDto>();
   @Input() imageUrls$: Observable<string[]> = new Observable<string[]>();
   private _selectedItem: LotoPointDto | null = null;
   
@@ -61,6 +67,7 @@ export class LotoPointDetailFormComponent implements OnInit {
 
   constructor(
       private currentValueService: CurrentValueService,
+      private currentEquipmentService: CurrentEquipmentService,
     private destroyRef: DestroyRef
   ) {}
   
@@ -110,4 +117,32 @@ export class LotoPointDetailFormComponent implements OnInit {
   onOpenImage() {
     this.openImage.emit();
   }
+    
+    applyPresetData() {
+      const presetData: LotoPointDto = this.currentEquipmentService.getCurrentPresetLotoPointValue();
+      if (presetData) {
+        // Update the values
+        const currentValues: LotoPointDto = new LotoPointDto({ ...this.values()});
+        const updatedValues = currentValues.applyPresetValue(presetData);
+    
+        // Emit the updated values
+        this.valuesChange.emit(updatedValues);
+    
+        // If you're using a reactive form, you might need to update it as well
+        // this.form.patchValue(updatedValues);
+    
+        console.log('Preset data applied:', updatedValues);
+      } else {
+        console.warn('No preset data available');
+      }
+    }
+  
+    setPresetData() {
+      if (this.reactiveForm) {
+        const currentFormValues = this.reactiveForm.getCurrentFormValues();
+        const dto = new LotoPointDto(currentFormValues);
+        // Now use these values to set as preset data
+        this.currentEquipmentService.setCurrentPresetLpData(dto);
+      }
+    }
 }

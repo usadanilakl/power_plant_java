@@ -259,10 +259,14 @@ export class FileEditorComponent {
     this.updateFilteredEquipment();
   }
 
+  applyEqValueChanges($event: EquipmentDto) {
+    this.currentEquipment.set($event);
+  }
 
-applyEqValueChanges($event: EquipmentDto) {
-  this.currentEquipment.set($event);
-}
+  applyLpValueChanges($event: LotoPointDto) {
+    this.lpToEdit.set($event);
+  }
+
 
 
   onCloseEquipmentFilterMenu() {

@@ -1,10 +1,6 @@
 @if (isFormReady()) {
-  <!-- <app-details-form
-    [fields]="fields"
-    [values]="values"
-    (formSubmit)="onFormSubmit($event)"
-    (formDelete)="onFormDelete()">
-  </app-details-form> -->
+  <button (click)="applyPresetData()">Apply Preset Data</button>
+  <button (click)="setPresetData()">Use This Form As Preset Data</button>
   <app-reactive-form
     [fields]="fields()"
     [values]="values()"

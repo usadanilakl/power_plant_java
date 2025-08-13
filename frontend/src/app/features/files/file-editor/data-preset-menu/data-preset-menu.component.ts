@@ -72,11 +72,16 @@ export class DataPresetMenuComponent implements OnInit {
       })
     ).subscribe();
 
-  this.currentEquipmentService.getCurrentPresetData().pipe(
-    takeUntilDestroyed(this.destroyRef)
-  ).subscribe(dataPresetData => {
-    this.currentValues.set(dataPresetData);
-  });
+    this.currentEquipmentService.getCurrentPresetData().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(dataPresetData => {
+      this.currentValues.set(dataPresetData);
+    });
+    this.currentEquipmentService.getCurrentPresetLotoPointData().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(dataPresetData => {
+      this.currentLotoPointValues.set(dataPresetData);
+    });
   }
 
 

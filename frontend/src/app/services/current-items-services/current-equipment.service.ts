@@ -281,6 +281,7 @@ export class CurrentEquipmentService {
     }
 
     setCurrentPresetData(data: EquipmentDto): void {
+      console.log('Current presetData', data);
       this.currentPresetDataSubject.next(data);
     }
     
@@ -296,7 +297,12 @@ export class CurrentEquipmentService {
       return this.currentLotoPointPresetData$;
     }
     
+    getCurrentPresetLotoPointValue(): LotoPointDto {
+      return this.currentLotoPointPresetDataSubject.getValue();
+    }
+    
     setCurrentPresetLpData(arg0: LotoPointDto) {
+      console.log('Current presetLpData', arg0);
       this.currentLotoPointPresetDataSubject.next(arg0);
     }
 

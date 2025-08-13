@@ -128,6 +128,7 @@
     <div class="form-container">
       <app-loto-point-detail-form
         [values]="lpToEdit()"
+        (valuesChange)="applyLpValueChanges($event)"
         (formDelete)="onLotoPointFormDelete()"
         (formSubmit)="onLotoPointFormSubmit($event)">
       </app-loto-point-detail-form>

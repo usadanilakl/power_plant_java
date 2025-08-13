@@ -16,6 +16,7 @@ import { SearchCriteria, SearchCriteriaDto } from '../../../models/api/search-cr
 import { Validators } from '@angular/forms';
 import { Question } from '../../../models/ui/question.model';
 import { ConfirmationService } from '../../../services/ui/confirmation.service';
+import { EquipmentIdDto } from '../../../models/equipment/equipment-id.model';
 
 @Component({
   selector: 'app-equipment-form',
@@ -197,9 +198,10 @@ export class EquipmentFormComponent implements OnInit {
 
   setPresetData() {
     if (this.reactiveForm) {
-      const currentFormValues = this.reactiveForm.getCurrentFormValues();
+      const currentFormValues: EquipmentIdDto = this.reactiveForm.getCurrentFormValues();
+      const dto: EquipmentDto = new EquipmentDto({...currentFormValues });
       // Now use these values to set as preset data
-      this.currentEquipmentService.setCurrentPresetData(currentFormValues);
+      this.currentEquipmentService.setCurrentPresetData(dto);
     }
   }
 

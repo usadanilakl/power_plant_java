@@ -1,4 +1,5 @@
 import { BaseDto } from '../base/base.model';
+import { EquipmentDto } from './equipment.model';
 
 export class EquipmentIdDto extends BaseDto {
   tagNumber: string | null;

@@ -66,8 +66,10 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.tagged = data.tagged ?? null;
     this.tagNumber = data.tagNumber ?? null;
     this.description = data.description ?? null;
-    this.isoPos = data.isoPos ? new ValueDto(data.isoPos) : null;
-    this.normPos = data.normPos ? new ValueDto(data.normPos) : null;
+    // this.isoPos = data.isoPos ? new ValueDto(data.isoPos) : null;
+    // this.normPos = data.normPos ? new ValueDto(data.normPos) : null;
+    this.isoPos = super.setNestedObjectById(data.isoPos, new ValueDto());
+    this.normPos = super.setNestedObjectById(data.normPos, new ValueDto());
     this.specificLocation = data.specificLocation ?? null;
     this.standard = data.standard ?? null;
     this.generalLocation = data.generalLocation ?? null;
@@ -350,6 +352,23 @@ static toTableColumns(
     };
   }
 
+  applyPresetValue(equipment: LotoPointDto): LotoPointDto {
+    Object.keys(equipment).forEach(key => {
+      if (LotoPointDto.isValidKey(key)) {
+        const value = equipment[key];
+        if (value !== null && value !== undefined && value !== '') {
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            if (value.id) {
+              (this[key] as any) = value;
+            }
+          } else {
+            (this[key] as any) = value;
+          }
+        }
+      }
+    });
+    return this;
+  }
 
 
   // You can add methods here for any LOTO point-specific operations

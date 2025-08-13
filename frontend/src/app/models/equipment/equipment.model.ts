@@ -57,11 +57,13 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     this.tagNumber = data.tagNumber ?? null;
     this.description = data.description ?? null;
     this.specificLocation = data.specificLocation ?? null;
-    this.eqType = data.eqType ?? null;
+    // this.eqType = data.eqType ?? null;
+    this.eqType = super.setNestedObjectById(data.eqType,new ValueDto());
     this.files = data.files ?? [];
-    this.vendor = data.vendor ?? null;
-    this.location = data.location ?? null;
-    this.system = data.system ?? null;
+    // this.vendor = data.vendor ?? null;
+    this.vendor = super.setNestedObjectById(data.vendor,new ValueDto());
+    this.location = super.setNestedObjectById(data.location,new ValueDto());
+    this.system = super.setNestedObjectById(data.system,new ValueDto());
     this.coordinates = data.coordinates ?? null;
     this.originalPictureSize = data.originalPictureSize ?? null;
     this.mainFile = data.mainFile ?? null;
