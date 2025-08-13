@@ -38,6 +38,8 @@ export class EquipmentFormComponent implements OnInit {
 
   values = input<EquipmentDto>(new EquipmentDto());
   layout = input<'column' | 'row' | 'reactive'>('reactive');
+  isCustomExistingTableDoubleClick = input<boolean>(false);
+  isCustomESearchTableDoubleClick = input<boolean>(false);
 
   formSubmit = output<any>();
   formDelete = output<void>();

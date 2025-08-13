@@ -146,7 +146,6 @@ export class FilePointDiscrepanciesMenuComponent implements OnInit {
     ).subscribe();
   }
   
-  // Add a public method to be called from the template
   public onSubmit(equipment: EquipmentDto) {
     this.updateEquipment(equipment);
   }
