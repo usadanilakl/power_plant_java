@@ -13,6 +13,7 @@ import { Option } from '../../../../models/option.model';
 import { EquipmentFormComponent } from "../../../equipment/equipment-form/equipment-form.component";
 import { Column } from '../../../../models/column.model';
 import { catchError, tap, throwError } from 'rxjs';
+import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 
 @Component({
   selector: 'app-file-point-discrepancies-menu',
@@ -29,6 +30,9 @@ export class FilePointDiscrepanciesMenuComponent implements OnInit {
 
   @ViewChild('currentTable') currentTable!: EquipmentTableComponent;
   @ViewChild('otherTable') otherTable!: EquipmentTableComponent;
+
+  @ViewChild('currentForm') currentForm!: EquipmentFormComponent;
+  @ViewChild('otherForm') otherForm!: EquipmentFormComponent;
 
   currentItems = signal<EquipmentDto[]>([]);
   otherUnitItems = signal<EquipmentDto[]>([]);
@@ -147,6 +151,37 @@ export class FilePointDiscrepanciesMenuComponent implements OnInit {
   }
   
   public onSubmit(equipment: EquipmentDto) {
+    this.updateEquipment(equipment);
+  }
+
+  removeLotoPoint($event: LotoPointDto, isCurrentForm: boolean) {
+    const equipment = isCurrentForm ? this.selectedCurrentEquipment() : this.selectedOtherEquipment();
+    if (!equipment) {
+      console.error('No equipment selected');
+      return;
+    }
+  
+    // Remove the LOTO point from the equipment
+    equipment.lotoPoints = equipment.lotoPoints?.filter(lp => lp.id !== $event.id);
+  
+    // Update the equipment
+    this.updateEquipment(equipment);
+  }
+  
+  addLotoPoint($event: LotoPointDto, isCurrentForm: boolean) {
+    const equipment = isCurrentForm ? this.selectedCurrentEquipment() : this.selectedOtherEquipment();
+    if (!equipment) {
+      console.error('No equipment selected');
+      return;
+    }
+  
+    // Add the LOTO point to the equipment
+    if (!equipment.lotoPoints) {
+      equipment.lotoPoints = [];
+    }
+    equipment.lotoPoints.push($event);
+  
+    // Update the equipment
     this.updateEquipment(equipment);
   }
   

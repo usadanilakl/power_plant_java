@@ -46,6 +46,8 @@ export class EquipmentFormComponent implements OnInit {
   valuesChange = output<EquipmentDto>();
   addNewLotoPointEvent = output<number>();
   createNewEqAndAddLotoPointEvent = output<EquipmentDto>();
+  customExistingTableDoubleClick = output<LotoPointDto>();
+  customSearchTableDoubleClick = output<LotoPointDto>();
 
   systems = signal<Option[]>([]);
   locations = signal<Option[]>([]);
@@ -230,6 +232,10 @@ export class EquipmentFormComponent implements OnInit {
       console.error('Invalid LOTO point');
       return;
     }
+
+    if(this.isCustomExistingTableDoubleClick()){
+      this.customExistingTableDoubleClick.emit(lotoPoint);
+    }
   
     const currentEquipment = this.values();
     if (!currentEquipment || !currentEquipment.id) {
@@ -264,6 +270,10 @@ export class EquipmentFormComponent implements OnInit {
     if (!lotoPoint || !lotoPoint.id) {
       console.error('Invalid LOTO point');
       return;
+    }
+
+    if(this.isCustomESearchTableDoubleClick()){
+      this.customSearchTableDoubleClick.emit(lotoPoint);
     }
   
     const currentEquipment = this.values();
