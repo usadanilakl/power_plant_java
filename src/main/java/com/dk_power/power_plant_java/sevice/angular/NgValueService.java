@@ -13,6 +13,7 @@ import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.util.Util;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +22,6 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class NgValueService {
     private final CategoryRepo categoryRepo;
@@ -29,6 +29,14 @@ public class NgValueService {
     private final NgEquipmentService equipmentService;
     private final NgFileService fileService;
     private final NgLotoPointService lotoPointService;
+
+    public NgValueService(CategoryRepo categoryRepo, ValueRepo valueRepo, NgEquipmentService equipmentService, @Lazy NgFileService fileService, NgLotoPointService lotoPointService) {
+        this.categoryRepo = categoryRepo;
+        this.valueRepo = valueRepo;
+        this.equipmentService = equipmentService;
+        this.fileService = fileService;
+        this.lotoPointService = lotoPointService;
+    }
 
     // Create
     public Value createValue(Long categoryId, Value value) {

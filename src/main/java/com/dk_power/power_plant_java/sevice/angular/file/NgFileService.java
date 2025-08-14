@@ -9,7 +9,9 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.FileMapper;
 import com.dk_power.power_plant_java.repository.FileRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
 import com.dk_power.power_plant_java.util.FileUtil;
 import com.dk_power.power_plant_java.util.PdfConverter;
 import com.dk_power.power_plant_java.util.RenamedMultipartFile;
@@ -30,6 +32,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,6 +47,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private final NgEquipmentService equipmentService;
     private final Logger logger = LoggerFactory.getLogger(NgFileService.class);
     private final MeterRegistry meterRegistry;
+    private final ExcelReaderService excelReaderService;
+    private final NgValueService valueService;
 
     @Value("${files.root.path}")
     String filesRootPath;
@@ -109,6 +114,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     public Optional<FileDto> findById(Long id) {
         Optional<FileObject> byId = fileRepo.findById(id);
         return byId.map(this::toDto);
+    }
+
+    private FileObject getFileByNumber(String fileNumber) {
+        return fileRepo.findByFileNumber(fileNumber);
     }
 
     public FileDto findByFileLink(String imageUrl) {
@@ -437,15 +446,80 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         }
     }
 
-
     public List<FileObject> getFilesWithNoExtension() {
         return fileRepo.findByExtensionsIsNullOrBlank();
     }
-
 
     public List<EquipmentDto> getEquipmentByFile(String fileId) {
         FileObject entityById = getEntityById(fileId);
         if (entityById == null) return Collections.emptyList();
         return entityById.getPoints().stream().map(equipmentService::toDto).toList();
+    }
+
+
+    //File Uploading Methods
+
+    public void createObjectsFromDirectoryUsingMetaDataExcel(String folder, String type, String extension, String vendor,String system) {
+        String root = System.getProperty("user.dir").replaceAll("\\\\","/");
+        folder =root+"/" +folder.replaceAll("\\\\","/");
+        System.out.println(folder);
+        List<File> listOfFiles = FileUtil.getFilesFromDirectory(folder);
+        System.out.println("Found: " + listOfFiles.size() + " files");
+        File excel = listOfFiles.stream().filter(e->e.getName().contains("metadata.xl")).findFirst().orElse(null);
+        List<Map<String, String>> metadata = null;
+        if(excel!=null)metadata = excelReaderService.readExcelFile(folder + "/" + excel.getName());
+
+        for (File file : listOfFiles) {
+            String fileNumber = null;
+            if(file.getName().contains(extension)) fileNumber = file.getName().substring(0,file.getName().indexOf(extension)-1);
+            FileObject f = getFileByNumber(fileNumber);
+            if(f==null && file.getName().contains(extension)){
+                f = new FileObject();
+                f.setBaseLink("uploads");
+                f.setExtension(extension);
+                f.addExtension(extension);
+                f.setFileType(valueService.createValue("FileType",type));
+                f.setVendor(valueService.createValue("Vendor",vendor));
+                f.setFileNumber(fileNumber);
+                System.out.println(f.getFileNumber());
+                f.buildFileLink(extension);
+                f.buildFolder(extension);
+                f.setRelatedSystems(system);
+
+                if(metadata!=null){
+                    Map<String, String> details = metadata.stream().filter(e -> file.getName().contains(e.get("Document No."))).findFirst().orElse(null);
+                    if(details!=null){
+                        if(details.get("Title")!=null && !details.get("Title").trim().isEmpty())f.setName(details.get("Title"));
+                        if(details.get("VDN")!=null && !details.get("VDN").trim().isEmpty()){
+                            f.setDocNum(details.get("VDN").trim());
+                            List<String> strings = new ArrayList<>();
+                            strings.add(details.get("Document No.").trim());
+                            strings.add(f.getDocNum());
+                            String s = fileMapper.convertFileNumberArrayToString(strings);
+                            f.setFileNumber(s);
+                        }
+                        if(details.get("Tag No")!=null && !details.get("Tag No").trim().isEmpty()) f.setRelatedTags(details.get("Tag No"));
+                    }
+
+                }
+                // Rename here after all changes
+                String newFileName = f.getFileNumber() +"."+ extension;
+                Path source = file.toPath();
+                Path target = source.resolveSibling(newFileName);
+                try {
+                    Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+                    System.out.println("Renamed to: " + newFileName);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                save(f);
+
+            }else{
+//                throw new RuntimeException("File with this name already exists");
+                System.out.println("Skipped: " + file.getName());
+            }
+        }
+
     }
 }

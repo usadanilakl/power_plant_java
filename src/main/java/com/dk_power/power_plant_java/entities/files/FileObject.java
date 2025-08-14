@@ -80,6 +80,9 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
     @JsonBackReference
     private List<Highlight> highlights;
 
+    @Column(length = 10000)
+    private String relatedTags;
+
     private Boolean completed;
     private String bulkEditStep = "eqTagNumber";
     private String docNum;

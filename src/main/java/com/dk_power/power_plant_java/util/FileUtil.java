@@ -184,8 +184,8 @@ public class FileUtil {
     }
 
     public static void uploadAndKeepNLatest(String targetDirectory, Path sourcePath, String searchCriteria, Integer countOfLatestToKeep) {
-        if(searchCriteria==null) searchCriteria = "*";
-        if(countOfLatestToKeep==null) countOfLatestToKeep = 999999999;
+        if (searchCriteria == null) searchCriteria = "*";
+        if (countOfLatestToKeep == null) countOfLatestToKeep = 999999999;
 
         try {
             // Ensure the backup directory exists
@@ -224,68 +224,49 @@ public class FileUtil {
             System.err.println("Error during database backup process: " + e.getMessage());
         }
     }
-    
-public static boolean checkAccess(Path filePath) {
-    // Get the root path (drive letter for Windows, or root directory for Unix-like systems)
-    Path rootPath = filePath.getRoot();
-    
-    if (rootPath == null) {
-        System.err.println("Unable to determine root path for: " + filePath);
-        return false;
-    }
 
-    try {
-        // Check if the root path exists and is accessible
-        if (!Files.exists(rootPath)) {
-            System.out.println("Drive does not exist or is not accessible: " + rootPath);
+    public static boolean checkAccess(Path filePath) {
+        // Get the root path (drive letter for Windows, or root directory for Unix-like systems)
+        Path rootPath = filePath.getRoot();
+
+        if (rootPath == null) {
+            System.err.println("Unable to determine root path for: " + filePath);
             return false;
         }
 
-        // Check read permission
-        boolean readable = Files.isReadable(rootPath);
-        
-        // Check write permission
-        boolean writable = Files.isWritable(rootPath);
-        
-        // Check execute permission (for directories)
-        boolean executable = Files.isExecutable(rootPath);
+        try {
+            // Check if the root path exists and is accessible
+            if (!Files.exists(rootPath)) {
+                System.out.println("Drive does not exist or is not accessible: " + rootPath);
+                return false;
+            }
 
-        boolean accessible = readable ;//&& writable && executable;
+            // Check read permission
+            boolean readable = Files.isReadable(rootPath);
 
-        if (!accessible) {
-            System.out.println("Drive " + rootPath + " is not fully accessible.");
-            System.out.println("Read: " + readable + ", Write: " + writable + ", Execute: " + executable);
-        } else {
-            System.out.println("Drive " + rootPath + " is accessible.");
+            // Check write permission
+            boolean writable = Files.isWritable(rootPath);
+
+            // Check execute permission (for directories)
+            boolean executable = Files.isExecutable(rootPath);
+
+            boolean accessible = readable;//&& writable && executable;
+
+            if (!accessible) {
+                System.out.println("Drive " + rootPath + " is not fully accessible.");
+                System.out.println("Read: " + readable + ", Write: " + writable + ", Execute: " + executable);
+            } else {
+                System.out.println("Drive " + rootPath + " is accessible.");
+            }
+
+            return accessible;
+        } catch (SecurityException e) {
+            System.err.println("Security exception when checking access for drive: " + rootPath);
+            e.printStackTrace();
+            return false;
         }
-
-        return accessible;
-    } catch (SecurityException e) {
-        System.err.println("Security exception when checking access for drive: " + rootPath);
-        e.printStackTrace();
-        return false;
     }
-}
 
-
-//    public static List<File> getRevisionsByFileNumber(String oldFileNumber, String path) {
-//
-//
-//        try {
-//            List<File> matchingFiles = Files.list(Paths.get(path))
-//                    .filter(filePath -> filePath.getFileName().toString().contains(oldFileNumber))
-//                    .map(Path::toFile)
-//                    .sorted((f1, f2) -> f2.getName().compareTo(f1.getName())) // Sort in descending order
-//                    .collect(Collectors.toList());
-//
-//            System.out.println("Matching files: " + matchingFiles);
-//            return matchingFiles;
-//        } catch (IOException e) {
-//            System.err.println("Error listing files in directory: " + path);
-//            e.printStackTrace();
-//            return List.of(); // Return an empty list if there's an error
-//        }
-//    }
 
     public static int extractRevisionNumber(String fileName) {
         // Extract the revision number from the file name
@@ -352,27 +333,27 @@ public static boolean checkAccess(Path filePath) {
     public static List<File> getFilesFromDirectory(String qaDirectory) {
         File directory = new File(qaDirectory);
         File[] files = directory.listFiles();
-        if (files!= null) {
+        if (files != null) {
             return Arrays.asList(files);
         }
         return Collections.emptyList();
     }
 
-public static String renameFileWithRevisions(File oldFile, String fileNumber) {
-    String oldFileName = oldFile.getName();
-    String extension = getFileExtension(oldFileName);
-    
-    // Extract revision number if it exists
-    Pattern revPattern = Pattern.compile("-rev(\\d+)");
-    Matcher revMatcher = revPattern.matcher(oldFileName);
-    String revisionPart = "";
-    if (revMatcher.find()) {
-        revisionPart = revMatcher.group();
+    public static String renameFileWithRevisions(File oldFile, String fileNumber) {
+        String oldFileName = oldFile.getName();
+        String extension = getFileExtension(oldFileName);
+
+        // Extract revision number if it exists
+        Pattern revPattern = Pattern.compile("-rev(\\d+)");
+        Matcher revMatcher = revPattern.matcher(oldFileName);
+        String revisionPart = "";
+        if (revMatcher.find()) {
+            revisionPart = revMatcher.group();
+        }
+
+        // Construct new file name
+        String newFileName = fileNumber + revisionPart + "." + extension;
+
+        return newFileName;
     }
-    
-    // Construct new file name
-    String newFileName = fileNumber + revisionPart + "." + extension;
-    
-    return newFileName;
-}
 }

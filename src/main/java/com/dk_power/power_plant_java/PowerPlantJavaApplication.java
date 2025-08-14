@@ -84,6 +84,13 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //            fileService.save(f);
 //        }
 
+//        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\HRSG Valves\\John Cockerill","HRSG Valves","pdf","John Cockerill","");
+//        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\HRSG Isometrics\\John Cockerill","HRSG Valves","pdf","John Cockerill","");
+//        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\BOP Valves\\Kiewit","BOP Valves","pdf","Kiewit","");
+//        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\Isometric Large Bore Piping none-stressed\\Kiewit","Isometric Large Bore Piping none-stressed","pdf","Kiewit","");
+//        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\Isometric Large Bore Piping stressed\\Kiewit","Isometric Large Bore Piping stressed","pdf","Kiewit","");
+//        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\Isometric Small Bore Piping stressed\\Kiewit","Isometric Small Bore Piping stressed","pdf","Kiewit","");
+
 
         System.err.println("=====================================================");
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
