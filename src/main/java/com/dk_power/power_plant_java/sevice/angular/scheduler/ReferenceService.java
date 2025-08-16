@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.sevice.angular.scheduler;
 
 import com.dk_power.power_plant_java.entities.Referenceable;
-import com.dk_power.power_plant_java.repository.FileRepo;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;

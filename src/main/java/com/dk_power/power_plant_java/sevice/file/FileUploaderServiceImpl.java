@@ -2,7 +2,7 @@ package com.dk_power.power_plant_java.sevice.file;
 
 import com.dk_power.power_plant_java.dto.files.FileUploader;
 import com.dk_power.power_plant_java.entities.files.FileObject;
-import com.dk_power.power_plant_java.repository.FileRepo;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelReaderService;
