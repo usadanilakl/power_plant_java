@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.EtaProService;
 import com.dk_power.power_plant_java.sevice.angular.DefaultValueGeneratorService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.sevice.angular.file.ReferenceObjectService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelWriterService;
 import jakarta.transaction.Transactional;
@@ -36,6 +37,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     private final EtaProService etaProService;
     private final DefaultValueGeneratorService defaultValueGeneratorService;
     private final NgFileService fileService;
+    private final ReferenceObjectService referenceObjectService;
 
     @Value("${files.root.path}")
     private String filesRoot;
@@ -90,6 +92,9 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\Isometric Large Bore Piping none-stressed\\Kiewit","Isometric Large Bore Piping none-stressed","pdf","Kiewit","");
 //        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\Isometric Large Bore Piping stressed\\Kiewit","Isometric Large Bore Piping stressed","pdf","Kiewit","");
 //        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\Isometric Small Bore Piping stressed\\Kiewit","Isometric Small Bore Piping stressed","pdf","Kiewit","");
+
+//        referenceObjectService.importHrsgValveList();
+        referenceObjectService.printAll();
 
 
 

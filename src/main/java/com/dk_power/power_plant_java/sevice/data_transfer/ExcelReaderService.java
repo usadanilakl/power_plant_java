@@ -12,30 +12,42 @@ import java.util.*;
 public class ExcelReaderService {
 
     public List<Map<String, String>> readExcelFile(String filePath){
+        return readExcelFile(filePath, null);
+    }
+    public List<Map<String, String>> readExcelFile(String filePath, String sheetName){
         List<Map<String, String>> data = new ArrayList<>();
-        
+
         try (FileInputStream fis = new FileInputStream(filePath);
              Workbook workbook = new XSSFWorkbook(fis)) {
-            
-            Sheet sheet = workbook.getSheetAt(0);
+
+            Sheet sheet;
+
+            if(sheetName!= null &&!sheetName.isEmpty()){
+                sheet = workbook.getSheet(sheetName);
+                if (sheet == null) {
+                    throw new IllegalArgumentException("Sheet '" + sheetName + "' not found in the workbook.");
+                }
+            }else{
+                sheet = workbook.getSheetAt(0);
+            }
             Iterator<Row> rowIterator = sheet.iterator();
-            
+
             // Assume the first row contains headers
             Row headerRow = rowIterator.next();
             List<String> headers = new ArrayList<>();
             for (Cell cell : headerRow) {
                 headers.add(cell.getStringCellValue());
             }
-            
+
             while (rowIterator.hasNext()) {
                 Row row = rowIterator.next();
                 Map<String, String> rowData = new HashMap<>();
-                
+
                 for (int i = 0; i < headers.size(); i++) {
                     Cell cell = row.getCell(i, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
                     rowData.put(headers.get(i), getCellValueAsString(cell));
                 }
-                
+
                 data.add(rowData);
             }
         } catch (IOException e) {

@@ -4,3 +4,14 @@ CREATE SEQUENCE IF NOT EXISTS id_seq
     MINVALUE 1
     MAXVALUE 999999999
     CYCLE;
+
+--CREATE TABLE IF NOT EXISTS reference_object (
+--    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+--    description VARCHAR(255),
+--    type VARCHAR(20),
+--    group_name VARCHAR(20),
+--    tag_numbers CLOB,
+--    file_numbers CLOB,
+--    characteristics CLOB,
+--    references CLOB
+--);
