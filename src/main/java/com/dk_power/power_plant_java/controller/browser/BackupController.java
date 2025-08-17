@@ -5,6 +5,8 @@ import com.dk_power.power_plant_java.dto.browser.BrFileDto;
 import com.dk_power.power_plant_java.dto.browser.BrHeatTrace;
 import com.dk_power.power_plant_java.dto.browser.BrLotoPoint;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.files.ReferenceObject;
+import com.dk_power.power_plant_java.sevice.angular.file.ReferenceObjectService;
 import com.dk_power.power_plant_java.sevice.browser.BrEquipmentService;
 import com.dk_power.power_plant_java.sevice.browser.BrFileService;
 import com.dk_power.power_plant_java.sevice.browser.BrHeatTraceService;
@@ -34,6 +36,7 @@ public class BackupController {
     private final BrEquipmentService equipmentService;
     private final BrLotoPointService lotoPointService;
     private final BrHeatTraceService heatTraceService;
+    private final ReferenceObjectService referenceObjectService;
     private final ObjectMapper objectMapper;
 
     @Value("${backup.app.files}")
@@ -48,11 +51,15 @@ public class BackupController {
     @Value("${backup.app.heat-trace}")
     private String backupHeatTracePath;
 
-    public BackupController(BrFileService fileObjectService, BrEquipmentService equipmentService, BrLotoPointService lotoPointService, BrHeatTraceService heatTraceService, ObjectMapper objectMapper) {
+    @Value("${backup.app.reference-data}")
+    private String backupReferenceDataPath;
+
+    public BackupController(BrFileService fileObjectService, BrEquipmentService equipmentService, BrLotoPointService lotoPointService, BrHeatTraceService heatTraceService, ReferenceObjectService referenceObjectService, ObjectMapper objectMapper) {
         this.fileObjectService = fileObjectService;
         this.equipmentService = equipmentService;
         this.lotoPointService = lotoPointService;
         this.heatTraceService = heatTraceService;
+        this.referenceObjectService = referenceObjectService;
         this.objectMapper = objectMapper;
     }
 
@@ -162,8 +169,6 @@ public class BackupController {
         }
     }
 
-
-
     @GetMapping("/heat-trace")
     public ResponseEntity<String> backupHeatTrace() {
         try {
@@ -184,6 +189,39 @@ public class BackupController {
             jsContent.append("];");
 
             File file = new File(backupHeatTracePath);
+            file.getParentFile().mkdirs(); // Ensure the directory exists
+
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write(jsContent.toString());
+            }
+
+            return ResponseEntity.ok("Backup created successfully");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Failed to create backup: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/reference-data")
+    public ResponseEntity<String> backupReferenceData() {
+        try {
+            List<ReferenceObject> all = referenceObjectService.getAll();
+
+            StringBuilder jsContent = new StringBuilder("const referenceData = [\n");
+
+            for (int i = 0; i < all.size(); i++) {
+                String jsonObject = objectMapper.writeValueAsString(all.get(i));
+                jsContent.append(jsonObject);
+                if (i < all.size() - 1) {
+                    jsContent.append(",\n");
+                } else {
+                    jsContent.append("\n");
+                }
+            }
+
+            jsContent.append("];");
+
+            File file = new File(backupReferenceDataPath);
             file.getParentFile().mkdirs(); // Ensure the directory exists
 
             try (FileWriter writer = new FileWriter(file)) {

@@ -297,9 +297,14 @@ class ImageZoomInteractive {
         buildLotoButton.textContent = 'Build LOTO';
         buildLotoButton.onclick = () => this.startBuildingLoto();
     
+        const getMoreDetailsButton = document.createElement('button');
+        getMoreDetailsButton.textContent = 'More Details';
+        getMoreDetailsButton.onclick = () => referenceDataDisplay.showData(this.selectedShapes[0].tagNumber);
+    
         menuContainer.appendChild(toggleButton);
         menuContainer.appendChild(placeholderButton);
         menuContainer.appendChild(buildLotoButton);
+        menuContainer.appendChild(getMoreDetailsButton);
     
         // Always append to the main container
         this.container.appendChild(menuContainer);

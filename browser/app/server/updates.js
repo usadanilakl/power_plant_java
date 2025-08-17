@@ -15,6 +15,7 @@ const update = {
                 update.updateEquipment(),
                 update.updateLotoPoints(),
                 update.updateHeatTrace(),
+                update.updateReferenceData(),
                 // Add more update functions as needed
             ]);
             
@@ -51,7 +52,7 @@ const update = {
             });
             console.log('Files updated successfully');
             popup.updateContent('Files updated successfully');
-            return "Files updated successfully";
+            return "Files updated successfully. Updating Equipment data...";
         } catch (error) {
             console.error('Error updating files:', error);
             popup.updateContent(`Error updating files: ${error.message}`);
@@ -70,7 +71,7 @@ const update = {
             });
             console.log('Equipment updated successfully');
             popup.updateContent('Equipment updated successfully');
-            return "Equipment updated successfully";
+            return "Equipment updated successfully. Updating Loto Point data...";
         } catch (error) {
             console.error('Error updating equipment:', error);
             popup.updateContent(`Error updating equipment: ${error.message}`);
@@ -89,7 +90,7 @@ const update = {
             });
             console.log('Loto Points updated successfully');
             popup.updateContent('Loto Points updated successfully');
-            return "Loto Points updated successfully";
+            return "Loto Points updated successfully. Updating Heat Trace data...";
         } catch (error) {
             console.error('Error updating equipment:', error);
             popup.updateContent(`Error updating loto points: ${error.message}`);
@@ -107,7 +108,26 @@ const update = {
                 element.classList.add('hidden');
             });
             console.log('Heat Trace updated successfully');
-            popup.updateContent('Heat Trace updated successfully');
+            popup.updateContent('Heat Trace updated successfully. Updating Reference data...');
+            return "Heat Trace updated successfully";
+        } catch (error) {
+            console.error('Error updating equipment:', error);
+            popup.updateContent(`Error updating heat trace: ${error.message}`);
+            return "Error updating equipment";
+        }
+    },
+
+    updateReferenceData: async () => {
+        try {
+            const response = await fetch(`${url}/backup/update/reference-data`);
+            const data = await response.text();
+            // Update the equipment list in the UI
+            // updateEquipmentList(data);
+            updateElements.forEach(element => {
+                element.classList.add('hidden');
+            });
+            console.log('Heat Trace updated successfully');
+            popup.updateContent('Heat Trace updated successfully. Updating Reference data...');
             return "Heat Trace updated successfully";
         } catch (error) {
             console.error('Error updating equipment:', error);
