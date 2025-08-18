@@ -41,12 +41,14 @@ class ImageZoomInteractive {
             this.iframe.src = url;
 
             this.container.appendChild(this.iframe);
+            caruselElement.classList.add('hidden');
         
 
         }else{
             this.createElements();
             this.addEventListeners();
             this.loadImage();
+            caruselElement.classList.remove('hidden');
         }
     }
 
@@ -299,7 +301,7 @@ class ImageZoomInteractive {
     
         const getMoreDetailsButton = document.createElement('button');
         getMoreDetailsButton.textContent = 'More Details';
-        getMoreDetailsButton.onclick = () => referenceDataDisplay.showData(this.selectedShapes[0].tagNumber);
+        getMoreDetailsButton.onclick = () => referenceDataDisplay.showDataByTagNumber(this.selectedShapes[0].tagNumber);
     
         menuContainer.appendChild(toggleButton);
         menuContainer.appendChild(placeholderButton);

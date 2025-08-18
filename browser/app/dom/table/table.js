@@ -118,6 +118,27 @@ const tableBuilder = {
                 fragment.appendChild(row);
             }
 
+            // for (let i = currentIndex; i < endIndex; i++) {
+            //     const row = document.createElement('tr');
+            //     row.classList.add('row');
+            //     this.columns.forEach(column => {
+            //         const td = document.createElement('td');
+            //         const cellData = this.data[i][column];
+                    
+            //         if (typeof cellData === 'object' && cellData !== null) {
+            //             // If it's an object, stringify it with pretty formatting
+            //             td.textContent = JSON.stringify(cellData, null, 2);
+            //             td.style.whiteSpace = 'pre-wrap'; // Preserve formatting
+            //         } else {
+            //             // For simple items, just set the text content
+            //             td.textContent = cellData || '';
+            //         }
+                    
+            //         row.appendChild(td);
+            //     });
+            //     fragment.appendChild(row);
+            // }
+
             tbody.appendChild(fragment);
             currentIndex = endIndex;
 

@@ -40,10 +40,11 @@
                 </div>
             </div>
             <div class="menu-buttons">
-                <button onclick="fileTable.buildFileTable()">Browse Files</button>
-                <button onclick="equipmentTable.buildEquipmentTable()">Browse Equipment</button>
-                <button onclick="lotoPointTable.buildTable()">Browse LotoPoints</button>
-                <button onclick="heatTraceTable.buildTable()">Browse Heat Trace</button>
+                <button onclick="fileTable.buildFileTable()">Files</button>
+                <button onclick="equipmentTable.buildEquipmentTable()">Equipment</button>
+                <button onclick="lotoPointTable.buildTable()">LotoPoints</button>
+                <button onclick="heatTraceTable.buildTable()">Heat Trace</button>
+                <button onclick="referenceDataTable.buildTable()">Reference Table</button>
                 <button class="server-dependent" onclick="angularApi.navigateToFiles()">Edit Files</button>
                 <button class="server-dependent" onclick="angularApi.navigateToLotoPoints()">LOTO Points</button>
                 <button class="server-dependent" onclick="angularApi.navigateToTags()">Manage Tag Numbers</button>
@@ -124,6 +125,7 @@
                 'app/loto/loto-standard-builder.js',
                 'app/reference-data/reference-data.service.js',
                 'app/reference-data/reference-data-display.js',
+                'app/reference-data/reference-data-table.js',
             ];
     
             scripts.forEach(function(src) {
@@ -134,6 +136,7 @@
                 // console.log('Loaded script:', script);
             });
         })();
+        const caruselElement = document.getElementById('carousel-container');
     </script>
 
 

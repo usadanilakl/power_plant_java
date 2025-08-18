@@ -27,6 +27,13 @@ const fileService = {
         return files.filter(file =>{
             return file.fileNumber.trim().toLowerCase().includes(number.trim().toLowerCase())
         });
+    },
+
+
+    getFilesByNumbersContaining: (numbers) => {
+        return files.filter(file =>{
+            return numbers.map(n=>n.trim().toLowerCase()).some(n => file.fileNumber.trim().toLowerCase().includes(n.trim().toLowerCase()))
+        });
     }
 
 }

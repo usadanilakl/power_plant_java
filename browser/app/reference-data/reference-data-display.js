@@ -11,7 +11,7 @@ class ReferenceDataDisplay {
     //         position: 'top-right'
     //     });
     // }
-    showData(tagNumber) {
+    showDataByTagNumber(tagNumber) {
         // Get the data for the tag number
         const data = referenceDataService.getDataByTagNumber(tagNumber);
 
@@ -32,6 +32,19 @@ class ReferenceDataDisplay {
         );
     }
 
+    showData(data){
+        if(!data) return;
+        console.log(data);
+        const content = this.createFormattedContent(data);
+
+        // Create and show the floating window
+        new FloatingWindow(
+            content,
+            `Reference Data for ${data.tagNumbers}`,
+            `reference-data-${data.tagNumbers}`
+        );
+    }
+
     createFormattedContent(dataArray) {
         const data = dataArray[0];
         const container = document.createElement('div');
@@ -40,7 +53,7 @@ class ReferenceDataDisplay {
         container.style.overflowY = 'auto';
 
         const title = document.createElement('h3');
-        title.textContent = data.description;
+        title.textContent = data.description? data.description : 'No description provided';
         container.appendChild(title);
 
         const files = this.getFiles(data.fileNumbers);

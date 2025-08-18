@@ -63,5 +63,19 @@ const equipmentService = {
         return shpes;
     },
 
+    getEqByTagNumber(tagNumber){
+        return equipment.filter(eq => eq.tagNumber?.trim() === tagNumber.trim());
+    },
+
+    getEqByTagNumbers(tagNumbers){
+        if(!Array.isArray(tagNumbers) || !tagNumbers || tagNumbers.length === 0) return [];
+        return equipment.filter( eq => tagNumbers.map(t=>this.leaveOnlyLetterAndNumbers(t)).includes(this.leaveOnlyLetterAndNumbers(eq.tagNumber)));
+    },
+
+    leaveOnlyLetterAndNumbers(str){
+        if(!str) return '';
+        return str.replace(/[^a-zA-Z0-9]/g, '').trim();
+    }
+
 
 }

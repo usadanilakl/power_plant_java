@@ -1,12 +1,11 @@
-
-const lotoPointTable = {
-    selectedLotoPoints: {},
+const referenceDataTable = {
+    selected: {},
     rowClickHandler: null,
 
     buildTable: function() {
-        const columns = ['tagNumber', 'description', 'specificLocation', 'isolatedPosition', 'normalPosition'];
+        const columns = ['tagNumbers', 'fileNumbers', 'description', 'referenceType', 'referenceGroup']//, 'characteristics', 'references'];
 
-        tableBuilder.buildTable(lotoPoints, columns, 'tableContainer');
+        tableBuilder.buildTable(referenceData, columns, 'tableContainer');
 
         // Remove existing event listener if it exists
         if (this.rowClickHandler) {
@@ -16,12 +15,14 @@ const lotoPointTable = {
         // Create new event listener
         this.rowClickHandler = (event) => {
             const clickedItem = event.detail;
-            this.selectedLotoPoints = clickedItem;
+            this.selected = clickedItem;
             if (clickedItem) {
-                const equipment = lotoPointService.getAssociatedEquipment([clickedItem.id]);
+                const equipment = clickedItem.tagNumbers ? equipmentService.getEqByTagNumbers(clickedItem.tagNumbers) : null;
+                let files = clickedItem.fileNumbers ? fileService.getFilesByNumbersContaining(clickedItem.fileNumbers) : null;
                 if (equipment && equipment.length > 0) {
                     const fileIds = [...new Set(equipment.flatMap(eq => eq.files))];
-                    const files = fileService.getFilesByIds(fileIds);
+                    const equipmentFiles = fileService.getFilesByIds(fileIds);
+                    files = [...new Set([...files, ...equipmentFiles])]; 
                     if (files.length > 0) {
                         this.displayImage(files[0], equipment[0].id);
                     }
@@ -39,6 +40,7 @@ const lotoPointTable = {
                         }
                     });
                 }
+                referenceDataDisplay.showData([clickedItem]);
             }
         };
 
@@ -47,6 +49,7 @@ const lotoPointTable = {
     },
 
     displayImage: function(file, eqId) {
+        console.log('Displaying image:', file.fileLink);
         const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image','jpg',lotoBuildingService,lotoListComponent);
         const shapes = equipmentService.getShapes(file.points);
         shapes.forEach(shape => {
