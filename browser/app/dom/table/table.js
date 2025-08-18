@@ -116,7 +116,7 @@ const tableBuilder = {
                 row.classList.add('row');
                 this.columns.forEach(column => {
                     const td = document.createElement('td');
-                    td.textContent = this.data[i][column] || '';
+                    td.textContent = this.data[i][column.name] || '';
                     row.appendChild(td);
                 });
                 fragment.appendChild(row);
@@ -173,65 +173,58 @@ const tableBuilder = {
         return input;
     },
 
+
+
     createSearchableDropdown: function(column) {
-        const container = document.createElement('div');
-        container.className = 'dropdown-container';
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = `Search ${column.name}`;
-        input.className = 'dropdown-input';
-        input.dataset.column = column.name;
-
-        const dropdown = document.createElement('ul');
-        dropdown.className = 'dropdown-list';
-
-        // Use options from column object
-        column.options.forEach(value => {
-            const li = document.createElement('li');
-            li.textContent = value;
-            li.addEventListener('click', () => {
-                input.value = value;
-                this.filterData();
-                dropdown.style.display = 'none';
-            });
-            dropdown.appendChild(li);
-        });
-
-        input.addEventListener('focus', () => {
-            dropdown.style.display = 'block';
-        });
-
-        input.addEventListener('input', () => {
-            const filter = input.value.toLowerCase();
-            Array.from(dropdown.children).forEach(li => {
-                li.style.display = li.textContent.toLowerCase().includes(filter) ? '' : 'none';
-            });
-            dropdown.style.display = 'block';
-            this.filterData();
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!container.contains(e.target)) {
-                dropdown.style.display = 'none';
-            }
-        });
-
-        container.appendChild(input);
-        container.appendChild(dropdown);
-
-        this.dropdowns[column.name] = { input, dropdown };
-
-        return container;
+        const dropdown = new SearchableDropdown(column, () => this.filterData());
+        this.dropdowns[column.name] = dropdown;
+        return dropdown.getElement();
     },
+
+
+    // filterData: function() {
+    //     const container = document.getElementById(this.containerId);
+    //     const globalSearch = container.querySelector('.global-search');
+    //     const columnSearches = Array.from(container.querySelectorAll('.column-search, .dropdown-input'));
+    
+    //     const allInputsEmpty = globalSearch.value === '' && 
+    //         columnSearches.every(input => input.value === '');
+    
+    //     if (allInputsEmpty) {
+    //         this.data = [...this.originalData];
+    //     } else {
+    //         this.data = this.originalData.filter(item => {
+    //             const globalMatch = globalSearch.value === '' || 
+    //                 this.columns.some(column => 
+    //                     String(item[column.name]).toLowerCase().includes(globalSearch.value.toLowerCase())
+    //                 );
+        
+    //             const columnMatch = this.columns.every(column => {
+    //                 const dropdown = this.dropdowns[column.name];
+    //                 const value = dropdown ? dropdown.getValue() : '';
+    //                 return value === '' || 
+    //                     String(item[column.name]).toLowerCase().includes(value.toLowerCase());
+    //             });
+        
+    //             return globalMatch && columnMatch;
+    //         });
+    //     }
+    
+    //     const tbody = container.querySelector('tbody');
+    //     tbody.innerHTML = '';
+    
+    //     this.initInfiniteScroll();
+    // },
+
 
     filterData: function() {
         const container = document.getElementById(this.containerId);
         const globalSearch = container.querySelector('.global-search');
-        const columnSearches = Array.from(container.querySelectorAll('.column-search, .dropdown-input'));
-    
+        const columnSearches = Array.from(container.querySelectorAll('.column-search'));
+        
         const allInputsEmpty = globalSearch.value === '' && 
-            columnSearches.every(input => input.value === '');
+            columnSearches.every(input => input.value === '') &&
+            Object.values(this.dropdowns).every(dropdown => dropdown.getValue() === '');
     
         if (allInputsEmpty) {
             this.data = [...this.originalData];
@@ -242,10 +235,19 @@ const tableBuilder = {
                         String(item[column.name]).toLowerCase().includes(globalSearch.value.toLowerCase())
                     );
         
-                const columnMatch = columnSearches.every(input => 
-                    input.value === '' || 
-                    String(item[input.dataset.column]).toLowerCase().includes(input.value.toLowerCase())
-                );
+                const columnMatch = this.columns.every(column => {
+                    if (column.inputType === 'dropdown') {
+                        const dropdown = this.dropdowns[column.name];
+                        const value = dropdown ? dropdown.getValue() : '';
+                        return value === '' || 
+                            String(item[column.name]).toLowerCase().includes(value.toLowerCase());
+                    } else {
+                        const input = columnSearches.find(input => input.dataset.column === column.name);
+                        const value = input ? input.value : '';
+                        return value === '' || 
+                            String(item[column.name]).toLowerCase().includes(value.toLowerCase());
+                    }
+                });
         
                 return globalMatch && columnMatch;
             });

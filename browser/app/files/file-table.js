@@ -11,9 +11,9 @@ const fileTable = {
             { name: 'name', inputType: 'text' },
             { name: 'fileNumber', inputType: 'text' },
             { name: 'fileType', inputType: 'dropdown', options: fileTypes },
+            { name: 'vendor', inputType: 'dropdown', options: fileVendors },
             { name: 'system', inputType: 'text' },
             { name: 'relatedSystems', inputType: 'text' },
-            { name: 'vendor', inputType: 'dropdown', options: fileVendors }
         ];
 
         tableBuilder.buildTable(files, columns, 'tableContainer');

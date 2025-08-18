@@ -1,0 +1,76 @@
+
+.dropdown-container {
+    position: relative;
+    width: 100%;
+    min-width: 200px; /* Ensure a minimum width */
+}
+
+.dropdown-input {
+    width: 100%;
+    padding: 8px 12px; /* Increased horizontal padding */
+    border: 1px solid var(--resizer-bg);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    font-size: 14px; /* Specify a font size */
+    line-height: 1.5; /* Improve text readability */
+}
+
+.dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    min-width: 200px; /* Ensure a minimum width */
+    max-height: 300px; /* Increased max-height */
+    overflow-y: auto;
+    background-color: var(--bg-color);
+    border: 1px solid var(--resizer-bg);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Enhanced shadow */
+    z-index: 1000;
+    display: none;
+}
+
+.dropdown-list li {
+    padding: 8px 12px; /* Increased horizontal padding */
+    cursor: pointer;
+    color: var(--text-color);
+    transition: background-color 0.2s ease; /* Smooth hover transition */
+}
+
+.dropdown-list li:hover {
+    background-color: var(--button-hover-bg-color);
+    color: var(--button-text-color);
+}
+
+/* Styles for when the dropdown is open */
+.dropdown-container.open .dropdown-input {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: transparent;
+}
+
+.dropdown-container.open .dropdown-list {
+    display: block;
+    border-top: 1px solid var(--resizer-bg);
+}
+
+/* Scrollbar styles for webkit browsers */
+.dropdown-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.dropdown-list::-webkit-scrollbar-track {
+    background: var(--bg-color);
+}
+
+.dropdown-list::-webkit-scrollbar-thumb {
+    background-color: var(--resizer-bg);
+    border-radius: 4px;
+}
+
+.dropdown-list::-webkit-scrollbar-thumb:hover {
+    background-color: var(--button-hover-bg-color);
+}
