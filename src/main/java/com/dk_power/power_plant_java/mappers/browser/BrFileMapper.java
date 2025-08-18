@@ -44,6 +44,7 @@ public class BrFileMapper {
                                 .collect(Collectors.toList()))
                         .orElse(Collections.emptyList())
         );
+        brFileDto.setExtensions(Optional.ofNullable(file.getExtensions()).orElse(""));
 
         return brFileDto;
     }

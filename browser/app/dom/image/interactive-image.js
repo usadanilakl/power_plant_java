@@ -24,6 +24,8 @@ class ImageZoomInteractive {
         this.lotoBuildingService = lotoBuildingService;
         this.lotoListComponent = lotoListComponent;
 
+        this.isShowingMoreDetails = false;
+
         this.init();
     }
 
@@ -134,6 +136,12 @@ class ImageZoomInteractive {
             this.drawShapes();
         };
         this.img.src = this.imageUrl.replace(/pdf/g, 'jpg').replace('file//', '');
+
+        this.img.onerror = () => {
+            console.error('Failed to load image:', this.imageUrl);
+            // Handle the error, e.g., display a placeholder or error message
+            this.toggleExtension();
+        };
     }
 
     calculateCurrentScale() {
@@ -301,7 +309,7 @@ class ImageZoomInteractive {
     
         const getMoreDetailsButton = document.createElement('button');
         getMoreDetailsButton.textContent = 'More Details';
-        getMoreDetailsButton.onclick = () => referenceDataDisplay.showDataByTagNumber(this.selectedShapes[0].tagNumber);
+        getMoreDetailsButton.onclick = () => this.showMoreDetails();
     
         menuContainer.appendChild(toggleButton);
         menuContainer.appendChild(placeholderButton);
@@ -934,6 +942,18 @@ class ImageZoomInteractive {
             this.lotoListComponent.clearAllLotoPoints();
             this.lotoBuildingService.isBuildingLoto = false;
         });
+    }
+
+    showMoreDetails(){
+        this.isShowingMoreDetails = !this.isShowingMoreDetails;
+        if(!this.isShowingMoreDetails){
+            referenceDataDisplay.closeDisplayWindows();
+            return;
+        } 
+        const selectedShape = this.selectedShapes[this.selectedShapes.length - 1];
+        if(selectedShape){
+            referenceDataDisplay.showDataByTagNumber(selectedShape.tagNumber)
+        }
     }
 
 }

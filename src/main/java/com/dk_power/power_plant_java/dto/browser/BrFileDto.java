@@ -24,5 +24,6 @@ public class BrFileDto {
     private String fileNumber;
     private String vendor;
     private List<Long> points;
+    private String extensions;
 
 }

@@ -1,16 +1,8 @@
 class ReferenceDataDisplay {
-    // showData(tagNumber) {
-    //     // Create a formatted HTML content for the popup
-    //     const data = referenceDataService.getDataByTagNumber(tagNumber);
-    //     const content = this.createFormattedContent(data);
 
-    //     // Create and show the popup
-    //     new Popup(content, {
-    //         duration: 0,  // Set to 0 to keep it open until manually closed
-    //         type: 'info',
-    //         position: 'top-right'
-    //     });
-    // }
+    constructor() {
+        this.floatingWindows = [];
+    }
     showDataByTagNumber(tagNumber) {
         // Get the data for the tag number
         const data = referenceDataService.getDataByTagNumber(tagNumber);
@@ -25,11 +17,13 @@ class ReferenceDataDisplay {
         const content = this.createFormattedContent(data);
 
         // Create and show the floating window
-        new FloatingWindow(
+        this.floatingWindows.push(
+            new FloatingWindow(
             content,
             `Reference Data for ${tagNumber}`,
             `reference-data-${tagNumber}`
-        );
+            )
+        ); 
     }
 
     showData(data){
@@ -140,6 +134,11 @@ class ReferenceDataDisplay {
             }
         });
         return files;
+    }
+
+    closeDisplayWindows(){
+        console.log('Closing all floating windows',this.floatingWindows.length);
+        this.floatingWindows.forEach(window => window.close());
     }
 }
 

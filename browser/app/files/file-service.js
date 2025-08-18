@@ -34,6 +34,14 @@ const fileService = {
         return files.filter(file =>{
             return numbers.map(n=>n.trim().toLowerCase()).some(n => file.fileNumber.trim().toLowerCase().includes(n.trim().toLowerCase()))
         });
-    }
+    },
+
+    getUniqueFileTypes: () => {
+        return [...new Set(files.map(file => file.fileType))];
+    },
+
+    getUniqueVendors: () => {
+        return [...new Set(files.map(file => file.vendor))];
+    },
 
 }

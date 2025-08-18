@@ -135,7 +135,9 @@ class FloatingWindow {
     }
 
     close() {
-        document.body.removeChild(this.element);
+        if (this.element && this.element.parentNode) {
+            this.element.remove();
+        }
         // Emit a custom event
         const closeEvent = new CustomEvent('floatingWindowClosed', {
             detail: { windowId: this.id }
