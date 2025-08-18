@@ -3,7 +3,18 @@ const fileTable = {
     rowClickHandler: null,
 
     buildFileTable: function() {
-        const columns = ['name', 'fileNumber', 'fileType', 'system', 'relatedSystems', 'vendor'];
+        // const columns = ['name', 'fileNumber', 'fileType', 'system', 'relatedSystems', 'vendor'];
+
+        const fileTypes = fileService.getUniqueFileTypes();
+        const fileVendors = fileService.getUniqueVendors();
+        const columns = [
+            { name: 'name', inputType: 'text' },
+            { name: 'fileNumber', inputType: 'text' },
+            { name: 'fileType', inputType: 'dropdown', options: fileTypes },
+            { name: 'system', inputType: 'text' },
+            { name: 'relatedSystems', inputType: 'text' },
+            { name: 'vendor', inputType: 'dropdown', options: fileVendors }
+        ];
 
         tableBuilder.buildTable(files, columns, 'tableContainer');
 

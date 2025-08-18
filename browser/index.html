@@ -86,6 +86,7 @@
     <script src="browser/app/equipment/equipment-table.js"></script> -->
 
     <script>
+        let appIsLoades = false;
         (function() {
             var isSpringBoot = window.location.hostname !== "" && window.location.hostname === "localhost";
             var prefix = isSpringBoot ? "browser/" : "";
@@ -106,8 +107,8 @@
                 'app/utils/main-layout-resizer.js',
                 'app/dom/table/table.js',
                 'app/dom/floating-window/floating-window.js',
-                'app/files/file-table.js',
                 'app/files/file-service.js',
+                'app/files/file-table.js',
                 'app/dom/image/interactive-image.js',
                 'app/dom/image/grid-image.js',
                 'app/dom/image/carousel-image.js',
