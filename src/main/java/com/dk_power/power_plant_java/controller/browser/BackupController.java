@@ -22,11 +22,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping("/backup/update")
@@ -53,6 +52,12 @@ public class BackupController {
 
     @Value("${backup.app.reference-data}")
     private String backupReferenceDataPath;
+
+    @Value("${backup.app.properties-data}")
+    private String backupPropertiesDataPath;
+
+    @Value("${project.root}")
+    private String projectRootPath;
 
     public BackupController(BrFileService fileObjectService, BrEquipmentService equipmentService, BrLotoPointService lotoPointService, BrHeatTraceService heatTraceService, ReferenceObjectService referenceObjectService, ObjectMapper objectMapper) {
         this.fileObjectService = fileObjectService;
@@ -210,7 +215,10 @@ public class BackupController {
             StringBuilder jsContent = new StringBuilder("const referenceData = [\n");
 
             for (int i = 0; i < all.size(); i++) {
-                String jsonObject = objectMapper.writeValueAsString(all.get(i));
+                ReferenceObject obj = all.get(i);
+                // Replace special dashes with normal dashes
+                obj = replaceSpecialDashes(obj);
+                String jsonObject = objectMapper.writeValueAsString(obj);
                 jsContent.append(jsonObject);
                 if (i < all.size() - 1) {
                     jsContent.append(",\n");
@@ -233,5 +241,79 @@ public class BackupController {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Failed to create backup: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/properties-data")
+    public ResponseEntity<String> backupPropertiesData() {
+        try {
+            List<Map<String,String>> all = new ArrayList<>();
+            Map<String, String> projectRoot = new HashMap<>();
+            projectRoot.put("projectRoot", Paths.get(projectRootPath).toString());
+            all.add(projectRoot);
+
+            StringBuilder jsContent = new StringBuilder("const propertiesData = [\n");
+
+            for (int i = 0; i < all.size(); i++) {
+                String jsonObject = objectMapper.writeValueAsString(all.get(i));
+                jsContent.append(jsonObject);
+                if (i < all.size() - 1) {
+                    jsContent.append(",\n");
+                } else {
+                    jsContent.append("\n");
+                }
+            }
+
+            jsContent.append("];");
+
+            File file = new File(backupPropertiesDataPath);
+            file.getParentFile().mkdirs(); // Ensure the directory exists
+
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write(jsContent.toString());
+            }
+
+            return ResponseEntity.ok("Backup created successfully");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Failed to create backup: " + e.getMessage());
+        }
+    }
+
+    private ReferenceObject replaceSpecialDashes(ReferenceObject obj) {
+        // Replace special dashes in all string fields
+        if (obj.getDescription() != null) {
+            obj.setDescription(obj.getDescription().replaceAll("[\\u2010-\\u2015]", "-"));
+        }
+
+        try {
+            if (obj.getTagNumbers() != null) {
+                List<String> tagNumbers = obj.getTagNumbers();
+                tagNumbers.replaceAll(s -> s.replaceAll("[\\u2010-\\u2015]", "-"));
+                obj.setTagNumbers(tagNumbers);
+            }
+
+            if (obj.getFileNumbers() != null) {
+                List<String> fileNumbers = obj.getFileNumbers();
+                fileNumbers.replaceAll(s -> s.replaceAll("[\\u2010-\\u2015]", "-"));
+                obj.setFileNumbers(fileNumbers);
+            }
+
+            if (obj.getCharacteristics() != null) {
+                Map<String, String> characteristics = obj.getCharacteristics();
+                characteristics.replaceAll((k, v) -> v.replaceAll("[\\u2010-\\u2015]", "-"));
+                obj.setCharacteristics(characteristics);
+            }
+
+            if (obj.getReferences() != null) {
+                Map<String, String> references = obj.getReferences();
+                references.replaceAll((k, v) -> v.replaceAll("[\\u2010-\\u2015]", "-"));
+                obj.setReferences(references);
+            }
+        } catch (Exception e) {
+            // Log the error but continue processing
+            System.err.println("Error replacing special dashes: " + e.getMessage());
+        }
+
+        return obj;
     }
 }

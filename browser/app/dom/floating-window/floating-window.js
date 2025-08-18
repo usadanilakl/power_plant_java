@@ -36,7 +36,19 @@ class FloatingWindow {
         // Create content container
         const contentElement = document.createElement('div');
         contentElement.className = 'floating-window-content';
-        contentElement.innerHTML = this.content ? this.content : '';
+    
+        if (this.content) {
+            // Assuming this.content is a DOM element or a string representation of HTML
+            if (typeof this.content === 'string') {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = this.content;
+                while (tempDiv.firstChild) {
+                    contentElement.appendChild(tempDiv.firstChild);
+                }
+            } else if (this.content instanceof Node) {
+                contentElement.appendChild(this.content);
+            }
+        }
         this.element.appendChild(contentElement);
 
         // Add resize handles

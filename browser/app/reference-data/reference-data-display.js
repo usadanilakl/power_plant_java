@@ -26,7 +26,7 @@ class ReferenceDataDisplay {
 
         // Create and show the floating window
         new FloatingWindow(
-            content.outerHTML,
+            content,
             `Reference Data for ${tagNumber}`,
             `reference-data-${tagNumber}`
         );
@@ -66,10 +66,17 @@ class ReferenceDataDisplay {
             files.forEach(file => {
                 const button = document.createElement('button');
                 button.textContent = file.fileNumber;
-                button.onclick = () => this.openDocumentInNewWindow(file);
+                button.dataset.fileLink = file.fileLink;
                 button.style.marginRight = '5px';
                 button.style.marginBottom = '5px';
                 fileButtonsContainer.appendChild(button);
+            });
+            fileButtonsContainer.addEventListener('click', (event) => {
+                if (event.target.tagName === 'BUTTON') {
+                    event.stopPropagation();
+                    const fileLink = event.target.dataset.fileLink.replace('file//', '');
+                    new PdfViewer(fileLink).open();
+                }
             });
             container.appendChild(fileButtonsContainer);
         }
@@ -106,28 +113,20 @@ class ReferenceDataDisplay {
     }
 
     getFiles(fileNumbers) {
-        // Fetch and return the files based on the provided file numbers
-        // Return an array of file objects
-        const files = []; 
+        const files = [];
         fileNumbers.forEach(fileNumber => {
-            const file = fileService.getFilesByNumberContaining(fileNumber);
-            if (file) {
-                files.push(file);
-            } else {
-                console.error(`File not found for number: ${fileNumber}`);
+            try {
+                const matchingFiles = fileService.getFilesByNumberContaining(fileNumber);
+                if (matchingFiles && matchingFiles.length > 0) {
+                    files.push(...matchingFiles); // Spread operator to flatten the array
+                } else {
+                    console.warn(`No files found for number: ${fileNumber}`);
+                }
+            } catch (error) {
+                console.error(`Error retrieving files for number ${fileNumber}:`, error);
             }
         });
-         return files;
-    }
-
-    openDocumentInNewWindow(file) {
-        if (file.filePath.toLowerCase().endsWith('.pdf')) {
-            // For PDFs, you might want to use a specific viewer or handle differently
-            window.open(`/pdf-viewer.html?file=${encodeURIComponent(file.filePath)}`, '_blank');
-        } else {
-            // For other file types, open directly
-            window.open(file.filePath, '_blank');
-        }
+        return files;
     }
 }
 

@@ -16,6 +16,7 @@ const update = {
                 update.updateLotoPoints(),
                 update.updateHeatTrace(),
                 update.updateReferenceData(),
+                update.updatePropertiesData(),
                 // Add more update functions as needed
             ]);
             
@@ -127,7 +128,21 @@ const update = {
                 element.classList.add('hidden');
             });
             console.log('Heat Trace updated successfully');
-            popup.updateContent('Heat Trace updated successfully. Updating Reference data...');
+            popup.updateContent('Reference Data Updated Successfully. Updating Properties data...');
+            return "Heat Trace updated successfully";
+        } catch (error) {
+            console.error('Error updating equipment:', error);
+            popup.updateContent(`Error updating heat trace: ${error.message}`);
+            return "Error updating equipment";
+        }
+    },
+
+    updatePropertiesData: async () => {
+        try {
+            const response = await fetch(`${url}/backup/update/properties-data`);
+            const data = await response.text();
+            
+            popup.updateContent('roperties updated successfully.');
             return "Heat Trace updated successfully";
         } catch (error) {
             console.error('Error updating equipment:', error);

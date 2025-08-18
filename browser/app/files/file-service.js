@@ -24,7 +24,9 @@ const fileService = {
 
 
     getFilesByNumberContaining: (number) => {
-        return files.filter(file => file.fileNumber.trim().toLowerCase().includes(number.trim().toLowerCase()));
+        return files.filter(file =>{
+            return file.fileNumber.trim().toLowerCase().includes(number.trim().toLowerCase())
+        });
     }
 
 }
