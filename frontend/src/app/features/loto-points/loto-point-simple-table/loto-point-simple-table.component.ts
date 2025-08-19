@@ -97,4 +97,9 @@ export class LotoPointSimpleTableComponent implements OnInit {
   onSelectedItems = (items: LotoPointDto[]) => {
     this.selectedItemsEvent.emit(items);
   }
+
+  updateItems(items: LotoPointDto[]) {
+    this.itemsSubject.next(items);
+    this.itemsUpdated.emit(items);
+  }
 }

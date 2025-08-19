@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, input, OnInit, output, signal, ViewChild } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, OnInit, output, signal, ViewChild } from '@angular/core';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { Option } from '../../../models/option.model';
 import { catchError, map, Observable, of, switchMap, take, tap } from 'rxjs';
@@ -55,12 +55,10 @@ export class EquipmentFormComponent implements OnInit {
   eqTypes = signal<Option[]>([]);
 
   isFormReady = signal<boolean>(true);
+  // values = signal<EquipmentDto>(new EquipmentDto());
   fields = computed(() => this.createFields());
 
   lotoPoints$ = this.currentEquipmentService.getlotoPoints();
-
-
-
 
 
   lotoPointsWithDefault = computed<Observable<LotoPointDto[]>>(() => {
@@ -85,6 +83,12 @@ export class EquipmentFormComponent implements OnInit {
       filters: { tagNumber: this.values().tagNumber || '' }
     });
   });
+
+    // constructor() {
+    //   effect(() => {
+    //     console.log('Values changed:', this.values());
+    //   });
+    // }
 
   ngOnInit(): void {
     
@@ -235,6 +239,7 @@ export class EquipmentFormComponent implements OnInit {
 
     if(this.isCustomExistingTableDoubleClick()){
       this.customExistingTableDoubleClick.emit(lotoPoint);
+      return;
     }
   
     const currentEquipment = this.values();
@@ -274,6 +279,7 @@ export class EquipmentFormComponent implements OnInit {
 
     if(this.isCustomESearchTableDoubleClick()){
       this.customSearchTableDoubleClick.emit(lotoPoint);
+      return;
     }
   
     const currentEquipment = this.values();

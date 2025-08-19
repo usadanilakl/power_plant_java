@@ -137,7 +137,7 @@ export class FilePointDiscrepanciesMenuComponent implements OnInit {
           }
   
           console.log('Equipment updated successfully:', updatedEquipment);
-          this.resetSelectedEquipment();
+          // this.resetSelectedEquipment();
         } else {
           throw new Error('Invalid response from server');
         }
@@ -152,37 +152,56 @@ export class FilePointDiscrepanciesMenuComponent implements OnInit {
   
   public onSubmit(equipment: EquipmentDto) {
     this.updateEquipment(equipment);
+    this.resetSelectedEquipment();
   }
 
   removeLotoPoint($event: LotoPointDto, isCurrentForm: boolean) {
-    const equipment = isCurrentForm ? this.selectedCurrentEquipment() : this.selectedOtherEquipment();
-    if (!equipment) {
+    const currentEquipment = isCurrentForm ? this.selectedCurrentEquipment() : this.selectedOtherEquipment();
+    
+    if (!currentEquipment) {
       console.error('No equipment selected');
       return;
     }
   
-    // Remove the LOTO point from the equipment
-    equipment.lotoPoints = equipment.lotoPoints?.filter(lp => lp.id !== $event.id);
+    // Create a new equipment object with the updated LOTO points
+    const updatedEquipment = new EquipmentDto({
+      ...currentEquipment,
+      lotoPoints: currentEquipment.lotoPoints?.filter(lp => lp.id !== $event.id) || []
+    });
   
     // Update the equipment
-    this.updateEquipment(equipment);
+    this.updateEquipment(updatedEquipment);
+  
+    // Update the selected equipment signal
+    if (isCurrentForm) {
+      this.selectedCurrentEquipment.set(updatedEquipment);
+    } else {
+      this.selectedOtherEquipment.set(updatedEquipment);
+    }
   }
   
   addLotoPoint($event: LotoPointDto, isCurrentForm: boolean) {
-    const equipment = isCurrentForm ? this.selectedCurrentEquipment() : this.selectedOtherEquipment();
-    if (!equipment) {
+    const currentEquipment = isCurrentForm ? this.selectedCurrentEquipment() : this.selectedOtherEquipment();
+    
+    if (!currentEquipment) {
       console.error('No equipment selected');
       return;
     }
   
-    // Add the LOTO point to the equipment
-    if (!equipment.lotoPoints) {
-      equipment.lotoPoints = [];
-    }
-    equipment.lotoPoints.push($event);
+    // Create a new equipment object with the updated LOTO points
+    const updatedEquipment = new EquipmentDto({
+      ...currentEquipment,
+      lotoPoints: [...(currentEquipment.lotoPoints || []), $event]
+    });
   
     // Update the equipment
-    this.updateEquipment(equipment);
+    this.updateEquipment(updatedEquipment);
+    // Update the selected equipment signal
+    if (isCurrentForm) {
+      this.selectedCurrentEquipment.set(updatedEquipment);
+    } else {
+      this.selectedOtherEquipment.set(updatedEquipment);
+    }
   }
   
   
