@@ -3,7 +3,21 @@ const referenceDataTable = {
     rowClickHandler: null,
 
     buildTable: function() {
-        const columns = ['tagNumbers', 'fileNumbers', 'description', 'referenceType', 'referenceGroup']//, 'characteristics', 'references'];
+        // const columns = ['tagNumbers', 'fileNumbers', 'description', 'referenceType', 'referenceGroup']//, 'characteristics', 'references'];
+
+        const types = referenceDataService.getUniqueReferenceTypes();
+        const groups = referenceDataService.getUniqueReferenceGroups();
+        const columns = [
+            { name: 'tagNumbers', inputType: 'text' },
+            { name: 'fileNumbers', inputType: 'text' },
+            { name: 'description', inputType: 'text' },
+            { name: 'referenceType', inputType: 'dropdown', options: types },
+            { name: 'referenceGroup', inputType: 'dropdown', options: groups }
+        ];
+        
+        // Commented out columns:
+        // { name: 'characteristics', inputType: 'text' },
+        // { name: 'references', inputType: 'text' }
 
         tableBuilder.buildTable(referenceData, columns, 'tableContainer');
 

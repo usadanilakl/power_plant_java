@@ -3,7 +3,11 @@ const lotoStandardTable = {
     rowClickHandler: null,
 
     buildTable: async function() {
-        const columns = ['name', 'description'];
+        
+        const columns = [
+            { name: 'name', inputType: 'text' },
+            { name: 'description', inputType: 'text' }
+        ];
 
         const standards = await lotoStandardService.getAllLotoStandards();
 

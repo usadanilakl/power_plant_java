@@ -9,5 +9,13 @@ const referenceDataService = {
 
     cleanString(str) {
         return str.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    }
+    },
+
+    getUniqueReferenceTypes(){
+        return [...new Set(referenceData.map(row => row.referenceType))];
+    },
+
+    getUniqueReferenceGroups(){
+        return [...new Set(referenceData.map(row => row.referenceGroup))];
+    },
 }

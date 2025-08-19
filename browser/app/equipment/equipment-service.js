@@ -75,7 +75,18 @@ const equipmentService = {
     leaveOnlyLetterAndNumbers(str){
         if(!str) return '';
         return str.replace(/[^a-zA-Z0-9]/g, '').trim();
-    }
+    },
 
+    getUniqueEquipmentTypes(){
+        return [...new Set(equipment.map(eq => eq.eqType))];
+    },
 
+    getUniqueVendors(){
+        return [...new Set(equipment.map(eq => eq.vendor))];
+    },
+
+    getUniqueLocations(){
+        return [...new Set(equipment.map(eq => eq.location))];
+    },
 }
+

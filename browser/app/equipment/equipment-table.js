@@ -1,55 +1,20 @@
-// const equipmentTable = {
-//     selectedEquipment: {},
-//     buildEquipmentTable: function() {
-//         const columns = ['tagNumber', 'description', 'location', 'system', 'eqType', 'vendor'];
-
-//         tableBuilder.buildTable(equipment, columns, 'tableContainer');
-
-//         // Add event listener for custom rowClick event
-//         document.addEventListener('rowClick', (event) => {
-//             const clickedEquipment = event.detail;
-//             this.selectedEquipment= clickedEquipment;
-//             if (clickedEquipment) {
-//                 const eqIds = [...new Set([...clickedEquipment.relatedEquipment, clickedEquipment.id])];
-//                 const files = fileService.getFilesByEquipmentIds(eqIds);
-//                 const mainFile = fileService.getFileById([clickedEquipment.mainFile]);
-
-//                 if(mainFile) {this.displayImage(mainFile, [clickedEquipment.id]);}
-
-//                 const carousel = new ImageCarousel('carousel', files, {
-//                     visibleImages: 3,
-//                     imageWidth: 200,
-//                     gap: 10,
-//                     onImageClick: (file) => {
-//                         // Custom click handler
-//                         this.displayImage(file,eqIds);
-//                     },
-//                     onImageHover: (file, isHovering) => {
-//                         // Custom hover handler
-//                     }
-//                 });
-//             }
-//         });
-//     },
-//     displayImage: function(file, eqIds) {
-//         const imageZoom = new ImageZoomInteractive('../' + file.fileLink, 'image');
-//         const shapes = equipmentService.getShapes(file.points);
-//         shapes.forEach(shape =>{
-//             if(eqIds && eqIds.includes(shape.id)){
-//                 shape.isSelected = true;
-//             }
-//             imageZoom.addShape(shape);
-//         });
-
-//     }
-// };
-
 const equipmentTable = {
     selectedEquipment: {},
     rowClickHandler: null,
 
     buildEquipmentTable: function() {
-        const columns = ['tagNumber', 'description', 'location', 'system', 'eqType', 'vendor'];
+        // const columns = ['tagNumber', 'description', 'location', 'system', 'eqType', 'vendor'];
+        const eqTypes = equipmentService.getUniqueEquipmentTypes();
+        const vendors = equipmentService.getUniqueVendors();
+        const locations = equipmentService.getUniqueLocations();
+        const columns = [
+            { name: 'tagNumber', inputType: 'text' },
+            { name: 'description', inputType: 'text' },
+            { name: 'location', inputType: 'dropdown', options: locations },
+            { name: 'system', inputType: 'text' },
+            { name: 'eqType', inputType: 'dropdown', options: eqTypes },
+            { name: 'vendor', inputType: 'dropdown', options: vendors }
+        ];
 
         tableBuilder.buildTable(equipment, columns, 'tableContainer');
 

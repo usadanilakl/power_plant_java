@@ -9,6 +9,10 @@ const heatTraceService = {
 
     getExtendedHeatTrace: (equipmentId) => {
         return heatTrace.filter(ht => ht.possiblyRelatedEquipmentList.includes(equipmentId));
+    },
+    
+    getUniquePanelLocations(){
+        return [...new Set(heatTrace.map(ht => ht.panelLocation))];
     }
     
 }

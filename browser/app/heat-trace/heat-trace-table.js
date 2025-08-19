@@ -61,7 +61,14 @@ const heatTraceTable = {
     rowClickHandler: null,
 
     buildTable: function() {
-        const columns = ['tagNumber', 'panelLocation', 'breaker'];
+
+        const panelLocations = heatTraceService.getUniquePanelLocations();
+        
+        const columns = [
+            { name: 'tagNumber', inputType: 'text' },
+            { name: 'panelLocation', inputType: 'dropdown', options: panelLocations },
+            { name: 'breaker', inputType: 'text' }
+        ];
 
         tableBuilder.buildTable(heatTrace, columns, 'tableContainer');
 
