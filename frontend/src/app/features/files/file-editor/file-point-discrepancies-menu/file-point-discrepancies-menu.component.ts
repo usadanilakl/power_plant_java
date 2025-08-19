@@ -136,7 +136,7 @@ export class FilePointDiscrepanciesMenuComponent implements OnInit {
             this.selectedOtherEquipment.set(updatedEquipment);
           }
   
-          console.log('Equipment updated successfully:', updatedEquipment);
+          // console.log('Equipment updated successfully:', updatedEquipment);
           // this.resetSelectedEquipment();
         } else {
           throw new Error('Invalid response from server');

@@ -1,7 +1,7 @@
 import { Component, computed, DestroyRef, effect, inject, input, OnInit, output, signal, ViewChild } from '@angular/core';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { Option } from '../../../models/option.model';
-import { catchError, map, Observable, of, switchMap, take, tap } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, switchMap, take, tap } from 'rxjs';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -59,17 +59,40 @@ export class EquipmentFormComponent implements OnInit {
   fields = computed(() => this.createFields());
 
   lotoPoints$ = this.currentEquipmentService.getlotoPoints();
+  lotoPointsLocalSubject = new BehaviorSubject<LotoPointDto[]>([]);
+  lotoPointsLocal$ = this.lotoPointsLocalSubject.asObservable();
 
+
+  // lotoPointsWithDefault = computed<Observable<LotoPointDto[]>>(() => {
+  //   return this.lotoPoints$.pipe(
+  //     switchMap(points => {
+  //       if (points && points.length > 0) {
+  //         console.log('loto points in observable: ', points);
+  //         return of(points);
+  //       } else {
+  //         console.log('loto points: ', this.values().lotoPoints);
+  //         return of(this.values().lotoPoints || []);
+  //       }
+  //     })
+  //   );
+  // });
 
   lotoPointsWithDefault = computed<Observable<LotoPointDto[]>>(() => {
+    const currentValues = this.values();
+    // console.log('current values: ', currentValues);
+    if(this.lotoPointsLocalSubject.value.length > 0) {
+      this.lotoPointsLocalSubject.next(currentValues.lotoPoints || []);
+    }
     return this.lotoPoints$.pipe(
       switchMap(points => {
         if (points && points.length > 0) {
-          console.log('loto points in observable: ', points);
+          // console.log('loto points in observable: ', points);
           return of(points);
         } else {
-          console.log('loto points: ', this.values().lotoPoints);
-          return of(this.values().lotoPoints || []);
+          // console.log('loto points: ', currentValues.lotoPoints);
+          // return of(currentValues.lotoPoints || []);
+          this.lotoPointsLocalSubject.next(currentValues.lotoPoints || []);
+          return this.lotoPointsLocal$;
         }
       })
     );

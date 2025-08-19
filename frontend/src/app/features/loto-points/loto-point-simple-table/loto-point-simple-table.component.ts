@@ -50,10 +50,11 @@ export class LotoPointSimpleTableComponent implements OnInit {
       initialItems.pipe(
         takeUntilDestroyed(this.destroyRef)
       ).subscribe(items => {
-        // console.log('Received initial items:', items);
+        // console.log('Received initial items observable:', items);
         this.itemsSubject.next(items);
       });
     } else if (Array.isArray(initialItems)) {
+      // console.log('Received initial items array:', initialItems);
       this.itemsSubject.next(initialItems);
     }
   }
