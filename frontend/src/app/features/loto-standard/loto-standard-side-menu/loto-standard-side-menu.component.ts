@@ -122,6 +122,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   }
 
   private addLotoPointToStandard(lotoPoint: LotoPointDto) {
+    console.log('Adding loto point to standard:', lotoPoint);
     this.currentLotoStandardService.addLotoPointToStandard(lotoPoint);
   }
 

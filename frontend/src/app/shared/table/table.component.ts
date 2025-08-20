@@ -236,22 +236,36 @@ ngOnInit() {
       return; // Exit if we've already handled a double-click
     }
     this.isDoubleClickHandled = true;
-    if (this.doubleClickCallback) {
-      this.doubleClickCallback(item);
-    }
-    if (this.cellDoubleClickCallback) {
+  
+    if (typeof this.doubleClickCallback === 'function') {
       try {
-        this.cellDoubleClickCallback(item, this.lastClickedCell.column);
+        this.doubleClickCallback(item);
       } catch (error) {
-        console.error('Error executing callback:', error);
+        console.error('Error executing doubleClickCallback:', error);
+      }
+    }
+  
+    if (typeof this.cellDoubleClickCallback === 'function') {
+      try {
+        if (this.lastClickedCell && this.lastClickedCell.column) {
+          this.cellDoubleClickCallback(item, this.lastClickedCell.column);
+        } else {
+          console.warn('lastClickedCell or its column is undefined');
+        }
+      } catch (error) {
+        console.error('Error executing cellDoubleClickCallback:', error);
       }
     }
   }
   
   onRowRightClick(item: any, event: MouseEvent) {
-    if (this.rightClickCallback) {
+    if (typeof this.rightClickCallback === 'function') {
       event.preventDefault(); // Prevent the default context menu
-      this.rightClickCallback(item);
+      try {
+        this.rightClickCallback(item);
+      } catch (error) {
+        console.error('Error executing rightClickCallback:', error);
+      }
     }
   }
 
