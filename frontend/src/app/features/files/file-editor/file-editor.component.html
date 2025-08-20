@@ -4,6 +4,7 @@
       <app-image-zoom-interactive
         [imageUrl]="currentFile()?.fileLink"
         [elements]="currentFileService.getElementsToRender()"
+        [isEditEnabled]="true"
         (visibleShapes)="handleVisibleShapes($event)"
         (shapeSelected)="onShapeSelected($event)"
         (newShapeCreated)="onNewShapeCreated($event)">

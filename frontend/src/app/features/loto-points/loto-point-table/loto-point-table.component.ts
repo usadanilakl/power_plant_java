@@ -329,43 +329,45 @@ export class LotoPointTableComponent implements OnInit {
     );
   }
 
+  onMiddleClick(item: any) {
+    if (typeof this.middleClickCallback === 'function') {
+      this.middleClickCallback(item);
+    }
+  }
+  
   onLeftClick(item: any) {
-    if (this.clickCallback) {
+    if (typeof this.clickCallback === 'function') {
       this.clickCallback(item);
     } else {
       this.onItemClick(item);
     }
   }
   
-  onMiddleClick(item: any) {
-    if (this.middleClickCallback) {
-      this.middleClickCallback(item);
-    }
-  }
-  
   onDoubleClick(item: any) {
-    if (this.doubleClickCallback) {
+    if (typeof this.doubleClickCallback === 'function') {
       this.doubleClickCallback(item);
-    }else if(this.cellDoubleClickCallback){
-
+    } else if (typeof this.cellDoubleClickCallback === 'function') {
+      // Note: cellDoubleClickCallback typically requires a column parameter
+      // You might need to adjust this if you want to use it here
+      console.log('cellDoubleClickCallback is provided but not used in onDoubleClick');
     } else {
       this.onItemClick(item);
     }
   }
   
   onRightClick(item: any) {
-    if (this.rightClickCallback) {
+    if (typeof this.rightClickCallback === 'function') {
       this.rightClickCallback(item);
     } else {
       this.onItemClick(item);
     }
   }
-
+  
   onColumnDoubleClick(item: any, column: Column) {
-    if (this.cellDoubleClickCallback) {
+    if (typeof this.cellDoubleClickCallback === 'function') {
       this.cellDoubleClickCallback(item, column);
     } else {
-      console.log('cellDoubleClickCallback is not defined or is falsy');
+      console.log('cellDoubleClickCallback is not defined or is not a function');
     }
   }
 

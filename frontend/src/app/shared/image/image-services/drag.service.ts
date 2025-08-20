@@ -43,7 +43,7 @@
 //   }
 // }
 
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { ZoomService } from './zoom.service';
 
 @Injectable({
@@ -53,6 +53,7 @@ export class DragService {
   isDragging = false;
   private lastX = 0;
   private lastY = 0;
+  isEditingEnabled = signal<boolean>(false);
 
   constructor(private zoomService: ZoomService) {}
 

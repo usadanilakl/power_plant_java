@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, ElementRef, AfterViewInit, OnDestroy, Renderer2 } from '@angular/core';
+import { Component, Input, ViewChild, ElementRef, AfterViewInit, OnDestroy, Renderer2, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ImageCanvasComponent } from '../image-canvas/image-canvas.component';
 import { ShapeService } from '../image-services/shape.service';
@@ -21,6 +21,7 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
   @Input() imagePath!: string;
   @Input() imageName!: string;
   @Input() elements: any[] = [];
+  isEditEnabled = input<boolean>(false);
 
   @ViewChild('container') containerRef!: ElementRef;
   @ViewChild('img') imgRef!: ElementRef;
@@ -114,6 +115,9 @@ export class ImageInteractiveComponent implements AfterViewInit, OnDestroy {
     this.isInitialized = true;
     this.updateShapes();
     this.drawingService.setOriginalPictureDimensions(img.naturalWidth, img.naturalHeight);
+
+    this.dragService.isEditingEnabled.set(this.isEditEnabled());
+    this.drawingService.isEditingEnabled.set(this.isEditEnabled());
   }
 
   ngOnDestroy() {

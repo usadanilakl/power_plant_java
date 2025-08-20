@@ -13,7 +13,9 @@ const equipmentTable = {
             { name: 'location', inputType: 'dropdown', options: locations },
             { name: 'system', inputType: 'text' },
             { name: 'eqType', inputType: 'dropdown', options: eqTypes },
-            { name: 'vendor', inputType: 'dropdown', options: vendors }
+            { name: 'vendor', inputType: 'dropdown', options: vendors },
+            { name: 'fileName', inputType: 'text' },
+            { name: 'fileNumber', inputType: 'text' },
         ];
 
         tableBuilder.buildTable(equipment, columns, 'tableContainer');

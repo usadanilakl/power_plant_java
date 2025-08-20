@@ -883,7 +883,7 @@ const lotoPoints = [
 {"id":21883,"tagNumber":"01-MOV-CND221","description":"CND IRON FILTER BYP MOV HANDWHEEL","specificLocation":"CRT AREA","normalPosition":"CLOSED ","isolatedPosition":"CLOSED","equipmentList":[27841]},
 {"id":21884,"tagNumber":"01-MOV-CND221A","description":"CND IRON FILTER BYP MOV EQ","specificLocation":"CRT AREA","normalPosition":"CLOSED","isolatedPosition":"CLOSED","equipmentList":[27841]},
 {"id":21885,"tagNumber":"01-MOV-CND221B","description":"CND IRON FILTER BYP MOV EQ","specificLocation":"CRT AREA","normalPosition":"CLOSED","isolatedPosition":"CLOSED","equipmentList":[27841]},
-{"id":21886,"tagNumber":"01-VCND101","description":"IRON FILTER B INLET DRAIN","specificLocation":"CRT AREA","normalPosition":"CLOSED","isolatedPosition":"OPEN","equipmentList":[27832]},
+{"id":21886,"tagNumber":"01-VCND101","description":"IRON FILTER B INLET DRAIN","specificLocation":"CRT AREA","normalPosition":"CLOSED","isolatedPosition":"OPEN","equipmentList":[33892,27832]},
 {"id":21887,"tagNumber":"01-VCND114","description":"IRON FILTER A INLET DRAIN","specificLocation":"CRT AREA","normalPosition":"CLOSED","isolatedPosition":"OPEN","equipmentList":[27834]},
 {"id":21888,"tagNumber":"01-VCND139","description":"IRON FILTER A VENT","specificLocation":"CRT AREA","normalPosition":"CLOSED","isolatedPosition":"OPEN","equipmentList":[27831]},
 {"id":21889,"tagNumber":"01-VCND140","description":"IRON FILTER B VENT","specificLocation":"CRT AREA","normalPosition":"CLOSED","isolatedPosition":"OPEN","equipmentList":[27821]},

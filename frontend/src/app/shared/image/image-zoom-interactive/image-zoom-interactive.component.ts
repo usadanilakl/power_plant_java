@@ -17,6 +17,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   imageUrl = input<string>();
   imageName = input<string>();
   elements = input.required<Observable<EquipmentDto[]>>();
+  isEditEnabled = input<boolean>(false);
 
   newShapeCreated = output<Shape | null>();
   shapeSelected = output<Shape | null>();
@@ -150,6 +151,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   initializeServices(){
     this.drawingService.init(this.img, this.shapes());
+    this.drawingService.isEditingEnabled.set(this.isEditEnabled());
   }
 
   setSubscriptions() {

@@ -100,6 +100,11 @@ public class BrEquipmentMapper {
                 .forEach(relatedFileIds::add);
         }
 
+        if(equipment.getMainFile()!=null){
+            dto.setFileName(equipment.getMainFile().getName());
+            dto.setFileNumber(equipment.getMainFile().getFileNumber());
+        }
+
         dto.setRelatedEquipment(relatedEquipmentIds);
         dto.getFiles().addAll(relatedFileIds);
 

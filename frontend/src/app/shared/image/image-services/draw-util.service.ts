@@ -1,4 +1,4 @@
-import { inject } from "@angular/core";
+import { inject, signal } from "@angular/core";
 import { RectangleShape, Shape } from "../../../models/shape.model";
 import { Tool } from "../../../models/tool.model";
 import { ShapeFactoryService } from "./shape-factory.service";
@@ -17,6 +17,7 @@ export class DrawUtilService {
   cursor$ = this.cursorSubject.asObservable();
   private img!: HTMLImageElement;
   private scale = 1;
+  isEditingEnabled = signal<boolean>(false);
 
   currentEquipmentService = inject(CurrentEquipmentService);
 
@@ -33,6 +34,7 @@ export class DrawUtilService {
 
   isDraggingShape = false;
   isRightClickDrawEnabled = true;
+  isDragAndDropEnabled = false;
   private initialMouseX = 0;
   private initialMouseY = 0;
   private isDrawingWithRightClick = false;
@@ -77,7 +79,7 @@ export class DrawUtilService {
   }
 
   handleLeftClick(event: MouseEvent, imageX: number, imageY: number) : boolean {
-    if(this.selectedShape){
+    if(this.selectedShape && this.isEditingEnabled()){
       if (this.isClickWithinSelectedShape(imageX, imageY)) {
         this.isDraggingShape = true;
         return true;
@@ -88,18 +90,25 @@ export class DrawUtilService {
         this.isResizing = true;
         return true;
       }
+    }else if (this.selectedShape){
+      console.log('Editing is disabled. Cannot change shape with left click');
+      this.isDragAndDropEnabled = true;
     }
     return false;
   }
 
   handleRightClick(event: MouseEvent, imageX: number, imageY: number) {
     const rightClickedShape = this.getClickedShape(imageX, imageY);
-    if (rightClickedShape){
-      this.currentEquipmentService.setShapeRightClickDetector(rightClickedShape);
-      return;
-    }
-    if (this.isRightClickDrawEnabled) {
-      this.drawWithRightClick(event, imageX, imageY);
+    if(this.isEditingEnabled()){
+      if (rightClickedShape){
+        this.currentEquipmentService.setShapeRightClickDetector(rightClickedShape);
+        return;
+      }
+      if (this.isRightClickDrawEnabled) {
+        this.drawWithRightClick(event, imageX, imageY);
+      }
+    }else{
+      console.log('Editing is disabled. Cannot create new shape with right click');
     }
   }
 
@@ -157,6 +166,11 @@ export class DrawUtilService {
           this.shapesSubject.next(this.shapes);
         }
       }
+    }
+
+    if(this.isDragAndDropEnabled) { 
+      this.isDragAndDropEnabled = false;
+      console.log('Drag and drop enabled is now false');
     }
   }
 
@@ -272,6 +286,7 @@ export class DrawUtilService {
   }
 
   dragSelectedShape(dx: number, dy: number): void {
+    if(!this.isEditingEnabled()) return;
     if (!this.selectedShape) {
       return;
     }
@@ -308,6 +323,7 @@ export class DrawUtilService {
 
   private resizeShape(event: MouseEvent) {
     if (!this.selectedShape) return;
+    if(!this.isEditingEnabled()) return;
   
     const scale = this.calculateScale();
     const imgRect = this.img.getBoundingClientRect();
@@ -341,6 +357,7 @@ export class DrawUtilService {
 
   private resizeExistingShape(event: MouseEvent) {
     if (!this.selectedShape || !this.resizeCorner) return;
+    if(!this.isEditingEnabled()) return;
   
     const scale = this.calculateScale();
     const imgRect = this.img.getBoundingClientRect();
@@ -396,6 +413,7 @@ export class DrawUtilService {
   }
 
   drawWithRightClick(event: MouseEvent, imgX: number, imgY: number) {
+    if(!this.isEditingEnabled()) return;
     event.preventDefault(); // Prevent the default context menu
     const scale = this.calculateScale();
     

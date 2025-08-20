@@ -33,7 +33,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   currentLotoStandardSignal = toSignal(this.currentLotoStandardService.currentStandard$, { initialValue: new LotoStandardDto() });
   currentLotoStandard = computed(() => this.currentLotoStandardSignal() || new LotoStandardDto());
   allStandardsSignal = toSignal(this.currentLotoStandardService.allStandards$, { initialValue: [] });
-  
+  isStandardListDisplayed = signal<boolean>(false);
 
   ngAfterViewInit() {
     setTimeout(() => {
@@ -102,7 +102,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    * Loto Point Table functionality.
    *************************************************************************************************************/
   onLotoPointTableRowLeftClick(lotoPoint: LotoPointDto) {
-    this.addLotoPointToStandard(lotoPoint);
+    this.currentLotoStandardService.setCurrentLotoPoint(lotoPoint);
     // console.log('Clicked on loto point:', lotoPoint);
 
   }
@@ -113,8 +113,8 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   }
 
   onLotoPointTableRowDoubleClick(lotoPoint: LotoPointDto) {
-    // Perform the required actions when a loto point row is double-clicked
-    // console.log('Double-clicked on loto point:', lotoPoint);
+    console.log('Double-clicked on loto point:', lotoPoint);
+    this.addLotoPointToStandard(lotoPoint);
   }
 
   private setCaruselItems(lotoPoint: LotoPointDto) {
@@ -136,6 +136,10 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   /*************************************************************************************************************
    * Loto Standard Table functionality.
    *************************************************************************************************************/ 
+  showStandardList(){
+    this.isStandardListDisplayed.set(!this.isStandardListDisplayed());
+  }
+  
   onLotoStandardTableRowClick(lotoStandard: LotoStandardDto) {
     // Perform the required actions when a loto standard row is clicked
     console.log('Clicked on loto standard:', lotoStandard);

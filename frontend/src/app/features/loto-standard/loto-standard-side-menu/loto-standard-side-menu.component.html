@@ -1,5 +1,6 @@
 <div class="container">
-  @if(allStandardsSignal()!==null && allStandardsSignal().length>0 && !currentLotoStandardSignal()){
+  <button (click)="showStandardList()">Toggle Menu</button>
+  @if((allStandardsSignal()!==null && allStandardsSignal().length>0 && !currentLotoStandardSignal()) || isStandardListDisplayed()){
     <app-loto-standard-table
     ></app-loto-standard-table>
   }@else {

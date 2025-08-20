@@ -5,6 +5,7 @@ import { LotoStandardService } from "../loto/loto-standard.service";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { LotoPointDto } from "../../models/loto/loto-point.model";
+import { LotoPointService } from "../loto/loto-point.service";
 
 @Injectable({
   providedIn: 'root'
@@ -12,6 +13,7 @@ import { LotoPointDto } from "../../models/loto/loto-point.model";
 export class CurrentLotoStandardService{
 
     private lotoStandardService = inject(LotoStandardService);
+    private lotoPointService = inject(LotoPointService);
     private destroyRef = inject(DestroyRef);
 
     constructor(){
@@ -23,6 +25,12 @@ export class CurrentLotoStandardService{
 
     private currentStandardSubject = new BehaviorSubject<LotoStandardDto | null>(null);
     currentStandard$ = this.currentStandardSubject.asObservable();
+
+    private currentLotoPointSubject = new BehaviorSubject<LotoPointDto | null>(null);
+    currentLotoPoint$ = this.currentLotoPointSubject.asObservable();
+
+    private currentFileLinksSubject = new BehaviorSubject<string[]>([]);
+    currentFileLinks$ = this.currentFileLinksSubject.asObservable();
 
     loadStandardsFromServer() {
       this.lotoStandardService.getAllLotoStandards().pipe(
@@ -77,6 +85,7 @@ export class CurrentLotoStandardService{
           
           // Always update the current standard
           this.currentStandardSubject.next(standardDto);
+          this.setCurrentLotoPoint(lotoPoint);
         }),
         catchError((error) => {
           console.error('Error adding LOTO point to standard:', error);
@@ -134,5 +143,41 @@ export class CurrentLotoStandardService{
 
     getCurrentStandard(): Observable<LotoStandardDto | null> {
         return this.currentStandard$;
+    }
+
+    getCurrentLotoPoint(): Observable<LotoPointDto | null> {
+      return this.currentLotoPoint$;
+    }
+
+    setCurrentLotoPoint(lotoPoint: LotoPointDto | null) {
+      this.currentLotoPointSubject.next(lotoPoint);
+      if (lotoPoint) {
+        this.loadCurrentFileLinks(lotoPoint.id);
+      } else {
+        this.clearCurrentFileLinks();
+      }
+    }
+
+    getCurrentFileLinks(): Observable<string[]> {
+      return this.currentFileLinks$;
+    }
+
+    loadCurrentFileLinks(lotoPointId: number) {
+      this.lotoPointService.getRelatedImages(lotoPointId).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map((response: SpringApiResponse<string[]>) => response.responseData),
+        tap((fileLinks: string[]) => {
+          this.currentFileLinksSubject.next(fileLinks);
+        }),
+        catchError((error) => {
+          console.error('Error fetching LOTO point file links:', error);
+          this.currentFileLinksSubject.next([]);
+          return of([]);
+        })
+      ).subscribe()
+    }
+
+    clearCurrentFileLinks() {
+      this.currentFileLinksSubject.next([]);
     }
 }

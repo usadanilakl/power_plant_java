@@ -29,4 +29,6 @@ public class BrEquipmentDto {
     private Set<Long> lotoPoints;
     private Set<Long> possiblyRelatedFiles;
     private Set<Long> relatedEquipment;
+    private String fileName;
+    private String fileNumber;
 }

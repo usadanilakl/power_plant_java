@@ -1,4 +1,4 @@
-import { Injectable } from "@angular/core";
+import { Injectable, signal } from "@angular/core";
 import { Shape } from "../../../models/shape.model";
 import { Tool } from "../../../models/tool.model";
 import { ShapeFactoryService } from "./shape-factory.service";
@@ -21,6 +21,7 @@ export class DrawingService {
   shapes$ = this.shapesSubject.asObservable();
   private cursorSubject = new BehaviorSubject<string>('default');
   cursor$ = this.cursorSubject.asObservable();
+  isEditingEnabled = signal<boolean>(false);
 
   constructor(
     private shapeFactory: ShapeFactoryService,
@@ -30,6 +31,7 @@ export class DrawingService {
 
   isDraggingShape = false;
   isRightClickDrawEnabled = true;
+  isDragAndDropEnabled = false;
   private initialMouseX = 0;
   private initialMouseY = 0;
   private isDrawingWithRightClick = false;
@@ -59,7 +61,7 @@ export class DrawingService {
   }
 
   handleLeftClick(event: MouseEvent, imageX: number, imageY: number) : boolean {
-    if(this.selectedShape){
+    if(this.selectedShape && this.isEditingEnabled()){
       if (this.isClickWithinSelectedShape(imageX, imageY)) {
         this.isDraggingShape = true;
         return true;
@@ -71,12 +73,15 @@ export class DrawingService {
         this.isResizing = true;
         return true;
       }
+    }else if (this.selectedShape){
+      console.log('Editing is disabled. Cannot change shape with left click');
+      this.isDragAndDropEnabled = true;
     }
     return false;
   }
 
   handleRightClick(event: MouseEvent) {
-    if (this.isRightClickDrawEnabled) {
+    if (this.isRightClickDrawEnabled && this.isEditingEnabled()) {
       this.drawWithRightClick(event);
     }
   }
@@ -88,6 +93,9 @@ export class DrawingService {
     }
     if(this.isResizing) {
       this.resizeExistingShape(event);
+    }
+    if(this.isDragAndDropEnabled) {
+      this.moveShape(event,x,y);
     }
 
     const cursorStyle = this.pointerChangingCornerDetector(x,y);
@@ -112,6 +120,8 @@ export class DrawingService {
       // The shape is already saved in the shapes array, so we just need to notify subscribers
       this.shapesSubject.next(this.shapes);
     }
+
+    this.isDragAndDropEnabled = false;
   }
 
 
@@ -202,6 +212,7 @@ export class DrawingService {
     if (!this.selectedShape) {
       return;
     }
+    if(!this.isEditingEnabled()) return;
     const scale = this.zoomService.scale;
     const _dx = dx / scale;
     const _dy = dy / scale;
@@ -234,6 +245,7 @@ export class DrawingService {
 
   private resizeShape(event: MouseEvent) {
     if (!this.selectedShape) return;
+    if(!this.isEditingEnabled()) return;
 
     const scale = this.zoomService.scale;
     const dx = (event.offsetX - this.initialMouseX) / scale;
@@ -256,6 +268,7 @@ export class DrawingService {
 
   private resizeExistingShape(event: MouseEvent) {
     if (!this.selectedShape || !this.resizeCorner) return;
+    if(!this.isEditingEnabled()) return;
   
     const scale = this.zoomService.scale;
     const dx = (event.offsetX - this.initialMouseX) / scale;
@@ -310,6 +323,7 @@ export class DrawingService {
   }
 
   drawWithRightClick(event: MouseEvent) {
+    if(!this.isEditingEnabled()) return;
     event.preventDefault(); // Prevent the default context menu
     const scale = this.zoomService.scale;
     
@@ -331,6 +345,10 @@ export class DrawingService {
 
   toggleRightClickDraw() {
     this.isRightClickDrawEnabled = !this.isRightClickDrawEnabled;
+  }
+
+  moveShape(event: MouseEvent, x: number, y: number){
+    console.log('move shape',x,y);
   }
 
 }
