@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
@@ -218,5 +219,31 @@ private String processDescription(String text, String fromUnit, String toUnit) {
             .replaceAll("Unit " + fromUnit.charAt(1), "Unit " + toUnit.charAt(1))
             .replaceAll("U" + fromUnit.charAt(1), "U" + toUnit.charAt(1));
 }
+
+    public List<FileDto> getRelatedFiles(Long id) {
+        Optional<LotoPoint> byId = findById(id);
+        if (byId.isPresent()) {
+            LotoPoint lotoPoint = byId.get();
+            Set<Equipment> equipmentList = lotoPoint.getEquipmentList();
+            List<FileDto> files = new ArrayList<>();
+            for (Equipment equipment : equipmentList) {
+                FileObject file = equipment.getMainFile();
+                if (file != null) {
+                    FileDto fileDto = new FileDto();
+                    fileDto.setId(file.getId());
+                    fileDto.setName(file.getName());
+                    fileDto.setExtensions(file.getExtensionsArray());
+                    fileDto.setFileLink(file.getFileLink());
+                    files.add(fileDto);
+                }
+            }
+//            if(imageUrls.isEmpty()){
+//                throw new RuntimeException("No related images found for LotoPoint with id: " + id);
+//            }
+            System.out.println("Related images found for LotoPoint with id: " + id + " - " + files.size() + " images found.");
+            return files;
+        }
+        throw new RuntimeException("LotoPoint not found with id: " + id);
+    }
 }
 

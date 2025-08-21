@@ -7,8 +7,9 @@ import { FileDto } from '../../models/file/file.model';
 import { LotoPointService } from '../../services/loto/loto-point.service';
 import { ImageZoomInteractiveComponent } from "../../shared/image/image-zoom-interactive/image-zoom-interactive.component";
 import { PdfDisplayIframeComponent } from "../../shared/pdf-dislplay-iframe/pdf-dislplay-iframe.component";
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { EquipmentDto } from '../../models/equipment/equipment.model';
+import { FileService } from '../../services/file.service';
 
 @Component({
   selector: 'app-loto-standard',
@@ -21,6 +22,7 @@ export class LotoStandardComponent implements OnInit  {
   @ViewChild('pdfDisplay') pdfDisplay!: PdfDisplayIframeComponent;
 
   currentLotoStandardService = inject(CurrentLotoStandardService);
+  fileService = inject(FileService);
   lotoPointService = inject(LotoPointService);
   destroyRef = inject(DestroyRef);
 
@@ -33,14 +35,20 @@ export class LotoStandardComponent implements OnInit  {
     return null; // Add this as a fallback
   });
 
-  currentFileLinks = signal<string[]>([]);
-  elements = new Observable<EquipmentDto[]>();
+  currentFiles = signal<FileDto[]>([]);
+  private elementsSubject = new BehaviorSubject<EquipmentDto[]>([]);
+  elements = this.elementsSubject.asObservable();
   currentFileLink = computed(() => {
-    const links = this.currentFileLinks();
+    const links = this.currentFiles();
     if (links.length > 0) {
-      console.log('currentFileLinks: ', links);
-      if(this.pdfDisplay) this.pdfDisplay.updateUrl(links[0])
-      return links[0] || '';
+      const fileDto = links[0];
+      let link = fileDto.fileLink;
+      if(fileDto.extensions.includes('jpg')){
+        link = link.replaceAll('pdf','jpg');
+        this.getFileElements(fileDto.id);
+      } 
+      if(this.pdfDisplay) this.pdfDisplay.updateUrl(link);
+      return link;
     }
     return '';
   });
@@ -54,15 +62,29 @@ export class LotoStandardComponent implements OnInit  {
       this.currentLotoPoint.set(lotoPoint);
     });
 
-    this.currentLotoStandardService.getCurrentFileLinks().pipe(
+    this.currentLotoStandardService.getCurrentFiles().pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(files => {
-      this.currentFileLinks.set(files);
+      this.currentFiles.set(files);
     });
   }
 
-  private generateUniqueUrl(url: string): string {
-    return `${url}?t=${new Date().getTime()}`;
+  private getFileElements(fileId: number): void {
+    this.fileService.getEquipmentByFileId(fileId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (response) => {
+        if (response) {  // Assuming there's a 'success' property
+          this.elementsSubject.next(response.responseData);
+          console.error('Failed to get equipment:', response.message);
+        }
+      },
+      error: (error) => {
+        console.error('Error fetching equipment:', error);
+        // Optionally, you can set an empty array or keep the previous state
+        // this.elementsSubject.next([]);
+      }
+    });
   }
 
 

@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { LotoPointDto } from "../../models/loto/loto-point.model";
 import { LotoPointService } from "../loto/loto-point.service";
+import { FileDto } from "../../models/file/file.model";
 
 @Injectable({
   providedIn: 'root'
@@ -29,8 +30,8 @@ export class CurrentLotoStandardService{
     private currentLotoPointSubject = new BehaviorSubject<LotoPointDto | null>(null);
     currentLotoPoint$ = this.currentLotoPointSubject.asObservable();
 
-    private currentFileLinksSubject = new BehaviorSubject<string[]>([]);
-    currentFileLinks$ = this.currentFileLinksSubject.asObservable();
+    private currentFilesSubject = new BehaviorSubject<FileDto[]>([]);
+    currentFiles$ = this.currentFilesSubject.asObservable();
 
     loadStandardsFromServer() {
       this.lotoStandardService.getAllLotoStandards().pipe(
@@ -156,32 +157,32 @@ export class CurrentLotoStandardService{
     setCurrentLotoPoint(lotoPoint: LotoPointDto | null) {
       this.currentLotoPointSubject.next(lotoPoint);
       if (lotoPoint) {
-        this.loadCurrentFileLinks(lotoPoint.id);
+        this.loadCurrentFiles(lotoPoint.id);
       } else {
         this.clearCurrentFileLinks();
       }
     }
 
-    getCurrentFileLinks(): Observable<string[]> {
-      return this.currentFileLinks$;
+    getCurrentFiles(): Observable<FileDto[]> {
+      return this.currentFiles$;
     }
 
-    loadCurrentFileLinks(lotoPointId: number) {
-      this.lotoPointService.getRelatedImages(lotoPointId).pipe(
+    loadCurrentFiles(lotoPointId: number) {
+      this.lotoPointService.getRelatedFiles(lotoPointId).pipe(
         takeUntilDestroyed(this.destroyRef),
-        map((response: SpringApiResponse<string[]>) => response.responseData),
-        tap((fileLinks: string[]) => {
-          this.currentFileLinksSubject.next([...fileLinks]);
+        map((response: SpringApiResponse<FileDto[]>) => response.responseData),
+        tap((files: FileDto[]) => {
+          this.currentFilesSubject.next([...files]);
         }),
         catchError((error) => {
           console.error('Error fetching LOTO point file links:', error);
-          this.currentFileLinksSubject.next([]);
+          this.currentFilesSubject.next([]);
           return of([]);
         })
       ).subscribe()
     }
 
     clearCurrentFileLinks() {
-      this.currentFileLinksSubject.next([]);
+      this.currentFilesSubject.next([]);
     }
 }

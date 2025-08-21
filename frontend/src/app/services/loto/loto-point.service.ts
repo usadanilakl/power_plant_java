@@ -7,6 +7,7 @@ import { SpringApiResponse } from '../../models/api/spring-api-response.model';
 import { SpringPaginatedResponse } from '../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
 import { LotoPointIdDto } from '../../models/loto/loto-point-id.model';
+import { FileDto } from '../../models/file/file.model';
 
 @Injectable({
   providedIn: 'root'
@@ -92,6 +93,9 @@ export class LotoPointService {
   
   getRelatedImages(id: number): Observable<SpringApiResponse<string[]>> {
     return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/${id}/related-images`);
+  }
+  getRelatedFiles(lotoPointId: number): Observable<SpringApiResponse<FileDto[]>> {
+    return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/${lotoPointId}/related-files`);
   }
 
   

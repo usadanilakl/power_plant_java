@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.angular.loto;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -111,6 +112,18 @@ public class NgLotoPointController {
         try {
             List<String> relatedImages = ngLotoPointService.getRelatedImages(id);
             NgApiResponse<List<String>> response = new NgApiResponse<>(relatedImages, "Related images retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/related-files")
+    public ResponseEntity<NgApiResponse<List<FileDto>>> getRelatedFiles(@PathVariable Long id) {
+        try {
+            List<FileDto> relatedImages = ngLotoPointService.getRelatedFiles(id);
+            NgApiResponse<List<FileDto>> response = new NgApiResponse<>(relatedImages, "Related file retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();

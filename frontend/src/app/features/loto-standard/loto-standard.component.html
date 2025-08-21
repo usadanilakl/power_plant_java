@@ -2,7 +2,7 @@
   @if (currentFileLink() && currentFileLink()!=='') {
     @if(currentFileLink().endsWith('.jpg')){
       <app-image-zoom-interactive
-        [imageUrl]="currentFileLinks()[0]"
+        [imageUrl]="currentFileLink()"
         [elements]="elements"
         >
       </app-image-zoom-interactive>
