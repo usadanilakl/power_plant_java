@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, output } from '@angular/core';
 import { CurrentLotoStandardService } from '../../../services/current-items-services/current-loto-standard.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { TableComponent } from "../../../shared/table/table.component";
@@ -20,6 +20,8 @@ export class LotoStandardTableComponent implements OnInit {
     lotoStandards$ = this.currentLotoStandardService.allStandards$
     columns: Column[] = LotoStandardDto.toTableColumns();
 
+    rowTableLeftClcikEvent = output<LotoStandardDto>();
+
     ngOnInit(): void {
     //   this.lotoStandards$.pipe(
     //     takeUntilDestroyed(this.destroyRef)
@@ -32,5 +34,6 @@ export class LotoStandardTableComponent implements OnInit {
     onStandardTableRowClick(lotoStandard: LotoStandardDto): void {
       // console.log('Clicked on loto standard:', lotoStandard);
       this.currentLotoStandardService.setCurrentStandard(lotoStandard.id);
+      this.rowTableLeftClcikEvent.emit(lotoStandard);
     }
 }

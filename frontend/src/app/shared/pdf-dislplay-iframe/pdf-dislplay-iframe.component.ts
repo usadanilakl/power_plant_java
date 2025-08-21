@@ -33,4 +33,9 @@ export class PdfDisplayIframeComponent implements OnInit {
       this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
     }
   }
+
+  updateUrl(url: string){
+    const fullUrl = `http://localhost:8082/${url}`;
+    this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
+  }
 }

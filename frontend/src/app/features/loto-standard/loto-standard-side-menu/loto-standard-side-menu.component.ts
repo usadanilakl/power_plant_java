@@ -140,10 +140,15 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   showStandardList(){
     this.isStandardListDisplayed.set(!this.isStandardListDisplayed());
   }
+
+  createnewStandard(){
+    this.currentLotoStandardService.setCurrentStandard(0);
+  }
   
   onLotoStandardTableRowClick(lotoStandard: LotoStandardDto) {
     // Perform the required actions when a loto standard row is clicked
     console.log('Clicked on loto standard:', lotoStandard);
+    this.isStandardListDisplayed.set(false);
   }
 
   /*************************************************************************************************************

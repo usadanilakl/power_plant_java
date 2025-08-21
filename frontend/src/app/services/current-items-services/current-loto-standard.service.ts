@@ -127,6 +127,10 @@ export class CurrentLotoStandardService{
     }
 
     setCurrentStandard(lotoStandardId: number) {
+      if(lotoStandardId === null || lotoStandardId === 0){
+        this.currentStandardSubject.next(new LotoStandardDto());
+        return;
+      } 
         this.lotoStandardService.getLotoStandardById(lotoStandardId).pipe(
             takeUntilDestroyed(this.destroyRef),
             map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
@@ -167,7 +171,7 @@ export class CurrentLotoStandardService{
         takeUntilDestroyed(this.destroyRef),
         map((response: SpringApiResponse<string[]>) => response.responseData),
         tap((fileLinks: string[]) => {
-          this.currentFileLinksSubject.next(fileLinks);
+          this.currentFileLinksSubject.next([...fileLinks]);
         }),
         catchError((error) => {
           console.error('Error fetching LOTO point file links:', error);

@@ -1,13 +1,16 @@
 <div class="image-container">
-  @if (currentFileLinks() && currentFileLinks().length>0) {
-    @if(currentFileLinks()[0].endsWith('.jpg')){
+  @if (currentFileLink() && currentFileLink()!=='') {
+    @if(currentFileLink().endsWith('.jpg')){
       <app-image-zoom-interactive
         [imageUrl]="currentFileLinks()[0]"
         [elements]="elements"
         >
       </app-image-zoom-interactive>
-    } @else if(currentFileLinks()[0].endsWith('.pdf')){
-      <app-pdf-display-iframe [pdfSrc]="currentFileLinks()[0]"></app-pdf-display-iframe>
+    } @else if(currentFileLink().endsWith('.pdf')){
+      <app-pdf-display-iframe 
+        #pdfDisplay 
+        [pdfSrc]="currentFileLink()">
+      </app-pdf-display-iframe>
     }
   } @else {
     <div class="no-file-selected">

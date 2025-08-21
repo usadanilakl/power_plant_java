@@ -3,6 +3,7 @@
   <button (click)="createnewStandard()">Create New Standard</button>
   @if((allStandardsSignal()!==null && allStandardsSignal().length>0 && !currentLotoStandardSignal()) || isStandardListDisplayed()){
     <app-loto-standard-table
+    (rowTableLeftClcikEvent)="onLotoStandardTableRowClick($event)"
     ></app-loto-standard-table>
   }@else {
   <div class="resizable-panel top-panel">

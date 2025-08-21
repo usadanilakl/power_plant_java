@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, OnInit, Signal, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, Signal, signal, ViewChild } from '@angular/core';
 import { LotoStandardFormComponent } from "./loto-standard-form/loto-standard-form.component";
 import { CurrentLotoStandardService } from '../../services/current-items-services/current-loto-standard.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -18,6 +18,8 @@ import { EquipmentDto } from '../../models/equipment/equipment.model';
 })
 export class LotoStandardComponent implements OnInit  {
 
+  @ViewChild('pdfDisplay') pdfDisplay!: PdfDisplayIframeComponent;
+
   currentLotoStandardService = inject(CurrentLotoStandardService);
   lotoPointService = inject(LotoPointService);
   destroyRef = inject(DestroyRef);
@@ -33,6 +35,15 @@ export class LotoStandardComponent implements OnInit  {
 
   currentFileLinks = signal<string[]>([]);
   elements = new Observable<EquipmentDto[]>();
+  currentFileLink = computed(() => {
+    const links = this.currentFileLinks();
+    if (links.length > 0) {
+      console.log('currentFileLinks: ', links);
+      if(this.pdfDisplay) this.pdfDisplay.updateUrl(links[0])
+      return links[0] || '';
+    }
+    return '';
+  });
 
   constructor() { }
 
@@ -48,6 +59,10 @@ export class LotoStandardComponent implements OnInit  {
     ).subscribe(files => {
       this.currentFileLinks.set(files);
     });
+  }
+
+  private generateUniqueUrl(url: string): string {
+    return `${url}?t=${new Date().getTime()}`;
   }
 
 
