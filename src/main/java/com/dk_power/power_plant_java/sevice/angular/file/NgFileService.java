@@ -522,4 +522,8 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         }
 
     }
+
+    public List<FileObject> getFilesWithRelatedTags() {
+        return fileRepo.findByRelatedTagsIsNotNull();
+    }
 }

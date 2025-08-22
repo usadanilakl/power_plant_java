@@ -52,5 +52,8 @@ public interface FileRepo extends BaseRepository<FileObject> {
     
     @Query("SELECT f FROM FileObject f WHERE f.extensions IS NULL OR trim(f.extensions) = ''")
     List<FileObject> findByExtensionsIsNullOrBlank();
+
+    List<FileObject> findByRelatedTagsIsNotNull();
+
 }
 
