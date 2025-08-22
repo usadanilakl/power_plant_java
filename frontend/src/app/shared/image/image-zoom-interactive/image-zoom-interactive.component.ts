@@ -17,6 +17,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   imageUrl = input<string>();
   imageName = input<string>();
   elements = input.required<Observable<EquipmentDto[]>>();
+  selectedShapeIds = input<number[]>([]);
   isEditEnabled = input<boolean>(false);
 
   newShapeCreated = output<Shape | null>();
@@ -143,6 +144,12 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       if(sh.scaleToCurrentImage !== 1){
         this.scaleShapeToCurrentImage(sh);
       }
+      if(this.selectedShapeIds() && this.selectedShapeIds().length > 0){
+        if(this.selectedShapeIds().includes(sh.id)){
+          sh.isSecondarySelected = true;
+          console.log('Selected shape found', sh);
+        }
+      }
       return sh;
     });
     this.shapes.set(converted);
@@ -266,7 +273,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
                   rect.height
                 );
     
-                if (shape.isSelected) {
+                if (shape.isSelected || shape.isSecondarySelected) {
                   // Draw selection handles
                   this.drawSelectionHandles(ctx, shape);
                 }

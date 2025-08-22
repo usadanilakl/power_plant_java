@@ -4,6 +4,7 @@
       <app-image-zoom-interactive
         [imageUrl]="currentFileLink()"
         [elements]="elements"
+        [selectedShapeIds]="selectedItemIds()"
         >
       </app-image-zoom-interactive>
     } @else if(currentFileLink().endsWith('.pdf')){

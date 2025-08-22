@@ -36,6 +36,8 @@ export class LotoStandardComponent implements OnInit  {
   });
 
   currentFiles = signal<FileDto[]>([]);
+  selectedItemIds = signal<number[]>([]);
+
   private elementsSubject = new BehaviorSubject<EquipmentDto[]>([]);
   elements = this.elementsSubject.asObservable();
   currentFileLink = computed(() => {
@@ -53,6 +55,8 @@ export class LotoStandardComponent implements OnInit  {
     return '';
   });
 
+
+
   constructor() { }
 
   ngOnInit(): void {
@@ -67,6 +71,20 @@ export class LotoStandardComponent implements OnInit  {
     ).subscribe(files => {
       this.currentFiles.set(files);
     });
+
+  this.currentLotoStandardService.getCurrentStandard().pipe(
+    takeUntilDestroyed(this.destroyRef)
+  ).subscribe(standard => {
+    console.log('Received standard:', standard);  // Add this log
+    if (standard) {
+      const lotoPoints: LotoPointDto[] | null = standard.lotoPoints;
+      console.log('lotoPoints:', lotoPoints);
+      this.selectedItemIds.set(lotoPoints?.flatMap(lotoPoint => lotoPoint.equipmentIdList ?? []).filter(id => id !== null && id !== undefined) ?? []);
+    } else {
+      console.log('Standard is null or undefined');
+      this.selectedItemIds.set([]);
+    }
+  });
   }
 
   private getFileElements(fileId: number): void {

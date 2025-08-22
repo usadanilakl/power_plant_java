@@ -127,23 +127,44 @@ export class CurrentLotoStandardService{
       ).subscribe();
     }
 
+    // setCurrentStandard(lotoStandardId: number) {
+    //   if(lotoStandardId === null || lotoStandardId === 0){
+    //     this.currentStandardSubject.next(new LotoStandardDto());
+    //     return;
+    //   } 
+    //     this.lotoStandardService.getLotoStandardById(lotoStandardId).pipe(
+    //         takeUntilDestroyed(this.destroyRef),
+    //         map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
+    //         tap((standard: LotoStandardDto) => {
+    //             this.currentStandardSubject.next(new LotoStandardDto(standard));
+    //         }),
+    //         catchError((error) => {
+    //             console.error('Error fetching LOTO standard:', error);
+    //             this.currentStandardSubject.next(null);
+    //             return of(null);
+    //         })
+    //     ).subscribe();
+    // }
     setCurrentStandard(lotoStandardId: number) {
-      if(lotoStandardId === null || lotoStandardId === 0){
+      if (lotoStandardId === null || lotoStandardId === 0) {
         this.currentStandardSubject.next(new LotoStandardDto());
-        return;
-      } 
+      } else {
+        console.log('Setting current standard with id: ', lotoStandardId);
         this.lotoStandardService.getLotoStandardById(lotoStandardId).pipe(
-            takeUntilDestroyed(this.destroyRef),
-            map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
-            tap((standard: LotoStandardDto) => {
-                this.currentStandardSubject.next(new LotoStandardDto(standard));
-            }),
-            catchError((error) => {
-                console.error('Error fetching LOTO standard:', error);
-                this.currentStandardSubject.next(null);
-                return of(null);
-            })
-        ).subscribe();
+          takeUntilDestroyed(this.destroyRef),
+          map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
+          catchError((error) => {
+            console.error('Error fetching LOTO standard:', error);
+            return of(null);
+          })
+        ).subscribe((standard: LotoStandardDto | null) => {
+          if (standard) {
+            this.currentStandardSubject.next(new LotoStandardDto(standard));
+          } else {
+            this.currentStandardSubject.next(new LotoStandardDto());
+          }
+        });
+      }
     }
 
     getCurrentStandard(): Observable<LotoStandardDto | null> {

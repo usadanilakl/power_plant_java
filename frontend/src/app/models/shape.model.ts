@@ -5,6 +5,7 @@ export interface BaseShape {
   originalPictureWidth: number;
   originalPictureHeight: number;
   isSelected: boolean;
+  isSecondarySelected: boolean;
   currentImgWidth: number;
   currentImgHeigth: number;
   scaleToCurrentImage: number;

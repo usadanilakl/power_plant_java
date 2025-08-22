@@ -33,6 +33,7 @@ export class LotoStandardTableComponent implements OnInit {
 
     onStandardTableRowClick(lotoStandard: LotoStandardDto): void {
       // console.log('Clicked on loto standard:', lotoStandard);
+      console.log('Clicked on loto standard:', lotoStandard);
       this.currentLotoStandardService.setCurrentStandard(lotoStandard.id);
       this.rowTableLeftClcikEvent.emit(lotoStandard);
     }
