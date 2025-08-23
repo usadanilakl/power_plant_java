@@ -6,6 +6,7 @@
         [elements]="elements"
         [selectedShapeIds]="selectedItemIds()"
         [singleSelectedShapeId]="singleSelectedItemId()"
+        (shapeSelected)="showShapeDetails($event)"
         >
       </app-image-zoom-interactive>
     } @else if(currentFileLink().endsWith('.pdf')){
@@ -49,3 +50,15 @@
     </div>
   </div>
 </div>
+
+<app-floating-menu
+  [title]="'Details'"
+  [open]="isShapeDetailsOpen()"
+  [height]="60"
+  [width]="40"
+  (close)="closeShapeDetails()"
+>
+  <app-equipment-details
+    (lotoPointClickEvent)="addLotoPointToStandard($event)"
+  ></app-equipment-details>
+</app-floating-menu>

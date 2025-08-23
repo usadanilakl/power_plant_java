@@ -10,10 +10,14 @@ import { PdfDisplayIframeComponent } from "../../shared/pdf-dislplay-iframe/pdf-
 import { BehaviorSubject, Observable } from 'rxjs';
 import { EquipmentDto } from '../../models/equipment/equipment.model';
 import { FileService } from '../../services/file.service';
+import { Shape } from '../../models/shape.model';
+import { FloatingMenuComponent } from "../../shared/menu/floating-menu/floating-menu.component";
+import { EquipmentDetailsComponent } from "../equipment/equipment-details/equipment-details.component";
+import { CurrentEquipmentService } from '../../services/current-items-services/current-equipment.service';
 
 @Component({
   selector: 'app-loto-standard',
-  imports: [LotoStandardFormComponent, ImageZoomInteractiveComponent, PdfDisplayIframeComponent],
+  imports: [LotoStandardFormComponent, ImageZoomInteractiveComponent, PdfDisplayIframeComponent, FloatingMenuComponent, EquipmentDetailsComponent],
   templateUrl: './loto-standard.component.html',
   styleUrl: './loto-standard.component.css'
 })
@@ -22,6 +26,7 @@ export class LotoStandardComponent implements OnInit  {
   @ViewChild('pdfDisplay') pdfDisplay!: PdfDisplayIframeComponent;
 
   currentLotoStandardService = inject(CurrentLotoStandardService);
+  currentEquipmentService = inject(CurrentEquipmentService);
   fileService = inject(FileService);
   lotoPointService = inject(LotoPointService);
   destroyRef = inject(DestroyRef);
@@ -37,6 +42,8 @@ export class LotoStandardComponent implements OnInit  {
 
   currentFiles = signal<FileDto[]>([]);
   selectedItemIds = signal<number[]>([]);
+  isShapeDetailsOpen = signal<boolean>(false);
+  selectedShape = signal<Shape | null>(null);
   singleSelectedItemId = computed(() => {
     const currentPoint = this._currentLotoPoint();
     if (currentPoint && currentPoint.equipmentIdList && currentPoint.equipmentIdList.length > 0) {
@@ -109,6 +116,23 @@ export class LotoStandardComponent implements OnInit  {
         // this.elementsSubject.next([]);
       }
     });
+  }
+
+  showShapeDetails(shape: Shape | null): void {
+    this.selectedShape.set(shape);
+    if(shape && shape.id){
+      this.currentEquipmentService.setCurrentShape(shape)
+      this.isShapeDetailsOpen.set(true);
+    }
+  }
+
+  closeShapeDetails(){
+    this.selectedShape.set(null);
+    this.isShapeDetailsOpen.set(false);
+  }
+  
+  addLotoPointToStandard(lotoPoint: LotoPointDto) {
+      this.currentLotoStandardService.addLotoPointToStandard(lotoPoint);
   }
 
 

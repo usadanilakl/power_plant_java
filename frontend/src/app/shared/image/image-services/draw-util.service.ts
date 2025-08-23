@@ -91,8 +91,8 @@ export class DrawUtilService {
         return true;
       }
     }else if (this.selectedShape){
-      console.log('Editing is disabled. Cannot change shape with left click');
-      this.isDragAndDropEnabled = true;
+      this.selectShape(event);
+      // this.isDragAndDropEnabled = true; //needs to be implemented
     }
     return false;
   }

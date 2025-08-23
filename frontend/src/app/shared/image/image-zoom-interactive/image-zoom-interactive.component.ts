@@ -495,7 +495,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       this.toggleDraggingClass(true);
       this.setTransition('0s'); // Remove transition during dragging
     }
-
   }
 
   onMiddleClick(event: MouseEvent) {

@@ -1,4 +1,4 @@
-  <div class="tables-container">
+  <!-- <div class="tables-container">
     <div class="table-wrapper">
       <h3>Selected Points</h3>
         <app-equipment-table
@@ -20,5 +20,29 @@
             (searchTableEvent)="onSearchtable($event)"
         >
         </app-equipment-table>
+    </div>
+  </div> -->
+  <div class="tables-container">
+    <div class="table-wrapper">
+      <h3>Selected Points</h3>
+      <app-equipment-table
+        [equipmentList]="currentItems"
+      ></app-equipment-table>
+    </div>
+    <div class="table-wrapper">
+      <h3>Search Points</h3>
+      <div class="search-controls">
+        <app-searchable-dropdown
+          [label]="'Get Points From Selected File'"
+          [options]="fileOptions()"
+          (valueChange)="handleFileSelect($event)"
+        ></app-searchable-dropdown>
+        <button (click)="copyAllPoints()">Copy All Points</button>
+      </div>
+      <app-equipment-table
+        [equipmentList]="filteredItems"
+        (equipmentDoubleClicked)="copyEquipmentToCurrent($event.item)"
+        (searchTableEvent)="onSearchtable($event)"
+      ></app-equipment-table>
     </div>
   </div>

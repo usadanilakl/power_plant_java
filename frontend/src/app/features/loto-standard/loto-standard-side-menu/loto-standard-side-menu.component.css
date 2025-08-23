@@ -5,6 +5,11 @@
   overflow: hidden;
 }
 
+app-loto-standard-table {
+  flex: 1;
+  overflow: auto;
+}
+
 .resizable-panel {
   overflow: auto;
 }

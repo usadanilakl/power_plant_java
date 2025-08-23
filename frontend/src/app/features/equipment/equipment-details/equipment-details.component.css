@@ -1,0 +1,139 @@
+.equipment-details {
+  font-family: Arial, sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+h2 {
+  color: #333;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.detail-item {
+  margin-bottom: 15px;
+}
+
+.detail-item strong {
+  font-weight: bold;
+  color: #555;
+  display: inline-block;
+  width: 150px;
+}
+
+.loto-points-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.loto-point-item {
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.loto-point-item details {
+  background-color: #fff;
+}
+
+.loto-point-item summary {
+  cursor: pointer;
+  padding: 10px 15px;
+  background-color: #f0f0f0;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.loto-point-item summary:hover {
+  background-color: #e0e0e0;
+}
+
+.loto-point-details {
+  padding: 15px;
+}
+
+.loto-point-details p {
+  margin: 5px 0;
+}
+
+.loto-point-details ul {
+  list-style-type: none;
+  padding-left: 20px;
+}
+
+.loto-point-details ul li {
+  margin-bottom: 5px;
+}
+
+/* Styling for nested lists (Associated Equipment and LOTOs) */
+.loto-point-details > ul {
+  border-left: 2px solid #ddd;
+  padding-left: 15px;
+  margin-top: 10px;
+}
+
+/* Add a subtle animation for expanding/collapsing */
+.loto-point-item details[open] summary {
+  background-color: #e8e8e8;
+}
+
+.loto-point-item details[open] .loto-point-details {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.loto-point-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.loto-point-header details {
+  flex-grow: 1;
+}
+
+.loto-point-button {
+  margin-left: 10px;
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.loto-point-button:hover {
+  background-color: #0056b3;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 600px) {
+  .equipment-details {
+    padding: 10px;
+  }
+
+  .detail-item strong {
+    display: block;
+    width: 100%;
+    margin-bottom: 5px;
+  }
+
+  .loto-point-item summary {
+    padding: 8px 10px;
+  }
+
+  .loto-point-details {
+    padding: 10px;
+  }
+}

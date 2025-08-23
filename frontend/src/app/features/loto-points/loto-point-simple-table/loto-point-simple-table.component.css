@@ -1,0 +1,4 @@
+.table-container {
+  flex: 1;
+  overflow: auto;
+}

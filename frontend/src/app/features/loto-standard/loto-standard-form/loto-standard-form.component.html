@@ -1,6 +1,6 @@
-
+<!-- 
   <div class="loto-standard-form">
-    <!-- Name input -->
+
     <div class="form-field">
       <label for="name">Name:</label>
       <input id="name" type="text" [(ngModel)]="lotoStandard()().name" (ngModelChange)="onNameChange()">
@@ -9,7 +9,6 @@
       }
     </div>
   
-    <!-- Description input -->
     <div class="form-field">
       <label for="description">Description:</label>
       <input id="description" type="text" [(ngModel)]="lotoStandard()().description" (ngModelChange)="onDescriptionChange()">
@@ -18,19 +17,41 @@
       }
     </div>
   
-    <!-- LOTO Points list -->
-    <!-- <div class="loto-points-list">
-      <h3>LOTO Points</h3>
-      @for (point of lotoStandard().lotoPoints; track point.id) {
-        <div class="loto-point-item">
-          <span>{{ point.tagNumber }} - {{ point.description }}</span>
-          <button class="remove-button" (click)="removePoint(point)">Remove</button>
-        </div>
-      }
-    </div> -->
     <app-loto-point-simple-table
       [initialItems]="lotoPoints()"
       (doubleClickEvent)="removePoint($event)"
       (leftClickEvent)="showPoint($event)"
     ></app-loto-point-simple-table>
+  </div> -->
+
+  <div class="loto-standard-form">
+    <div class="form-fields">
+      <!-- Name input -->
+      <div class="form-field">
+        <label for="name">Name:</label>
+        <input id="name" type="text" [(ngModel)]="lotoStandard()().name" (ngModelChange)="onNameChange()">
+        @if (showNameSubmitButton) {
+          <button (click)="onNameSubmit()">Submit Name</button>
+        }
+      </div>
+  
+      <!-- Description input -->
+      <div class="form-field">
+        <label for="description">Description:</label>
+        <input id="description" type="text" [(ngModel)]="lotoStandard()().description" (ngModelChange)="onDescriptionChange()">
+        @if (showDescriptionSubmitButton) {
+          <button (click)="onDescriptionSubmit()">Submit Description</button>
+        }
+      </div>
+    </div>
+  
+    <!-- LOTO Points table -->
+    <div class="table-wrapper">
+      <h3>LOTO Points</h3>
+      <app-loto-point-simple-table
+        [initialItems]="lotoPoints()"
+        (doubleClickEvent)="removePoint($event)"
+        (leftClickEvent)="showPoint($event)"
+      ></app-loto-point-simple-table>
+    </div>
   </div>

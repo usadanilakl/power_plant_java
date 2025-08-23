@@ -1,8 +1,67 @@
-
-    
-
-
     @if(selectedCurrentEquipment()){
+      <button (click)="resetSelectedEquipment()">Back</button>
+      <div class="equipment-forms-container">
+        <div class="equipment-form-wrapper">
+          <h3>Current Equipment</h3>
+          <app-equipment-form
+            #currentForm
+            [layout]="'column'"
+            [values]="selectedCurrentEquipment()!"
+            [isCustomESearchTableDoubleClick]="true"
+            [isCustomExistingTableDoubleClick]="true"
+            (customExistingTableDoubleClick)="removeLotoPoint($event, true)"
+            (customSearchTableDoubleClick)="addLotoPoint($event, true)"
+            (formSubmit)="onSubmit($event)">
+          </app-equipment-form>
+        </div>
+        <div class="equipment-form-wrapper">
+          <h3>Other Equipment</h3>
+          <app-equipment-form
+            #otherForm
+            [layout]="'column'"
+            [values]="selectedOtherEquipment()!"
+            [isCustomESearchTableDoubleClick]="true"
+            [isCustomExistingTableDoubleClick]="true"
+            (customExistingTableDoubleClick)="removeLotoPoint($event, false)"
+            (customSearchTableDoubleClick)="addLotoPoint($event, false)"
+            (formSubmit)="onSubmit($event)">
+          </app-equipment-form>
+        </div>
+      </div>
+      <button (click)="resetSelectedEquipment()">Back</button>
+
+    }@else{
+    <div class="file-point-discrepancies-container">
+      <app-searchable-dropdown
+        [options]="fileOptions()"
+        (valueChange)="fetchOtherUnitItems($event)">
+      </app-searchable-dropdown>
+    
+      <div class="tables-container">
+        <div class="table-wrapper">
+          <h3>Current Items</h3>
+          <app-equipment-table
+            #currentTable
+            [equipmentList]="currentItems"
+            [columnsInput]="columns"
+            (equipmentClicked)="onItemClick($event, true)">
+          </app-equipment-table>
+        </div>
+    
+        <div class="table-wrapper">
+          <h3>Other Unit Items</h3>
+          <app-equipment-table
+            #otherTable
+            [equipmentList]="otherUnitItems"
+            [columnsInput]="columns"
+            (equipmentClicked)="onItemClick($event, false)">
+          </app-equipment-table>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- @if(selectedCurrentEquipment()){
       <button (click)="resetSelectedEquipment()">Back</button>
       <div class="equipment-forms-container">
         <div class="equipment-form-wrapper">
@@ -61,4 +120,4 @@
         </app-equipment-table>
       </div>
     </div>
-    }
+    } -->

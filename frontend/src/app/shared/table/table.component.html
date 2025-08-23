@@ -13,6 +13,68 @@
     </div>
   </div>
 
+  <cdk-virtual-scroll-viewport itemSize="50" class="table-container" (scrolledIndexChange)="handleScroll()">
+    <table>
+      <thead>
+        <tr>
+          @for (column of columns; track column.id) {
+            <th (click)="sortColumn(column)">
+              {{ column.header }}
+              <div class="resizer"></div>
+            </th>
+          }
+        </tr>
+        <tr>
+          @for (column of columns; track column.id) {
+            <th>
+              <input appCopyPaste type="text" class="filter-input" 
+                     [placeholder]="'Filter ' + column.header" 
+                     [(ngModel)]="columnFilters[column.id]" 
+                     (ngModelChange)="onColumnSearchChange()">
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody #tableBody>
+        <tr *cdkVirtualFor="let item of filteredItems; let i = index; trackBy: trackByFn"
+            (mouseenter)="onRowHover(item)"
+            (click)="onRowClick(item, $event)"
+            (dblclick)="onRowDoubleClick(item)"
+            (contextmenu)="onRowRightClick(item, $event)"
+            (auxclick)="onRowClick(item, $event)"
+            [class.selected]="selectedItems.includes(item)"
+            [attr.data-item-id]="item.id"
+            [attr.data-index]="i">
+          @for (column of columns; track column.id) {
+            <td 
+              (click)="registerLastClickedCell(item, column, $event)"
+              [ngStyle]="getCellStyle(item, column)"
+            >
+              {{ getCellValue(item, column) }}
+            </td>
+          }
+        </tr>
+      </tbody>
+    </table>
+  </cdk-virtual-scroll-viewport>
+</div>
+
+
+<!-- <div class="table-wrapper">
+  <div class="table-controls">
+    <div class="default-controls">
+      <div class="button-row">
+        <button (click)="onDeleteSelectedItems()">Delete Selected</button>
+        <ng-content select="[table-controls]"></ng-content>
+      </div>
+      <div class="search-row">
+        <input appCopyPaste type="text" class="search-input" placeholder="Global Search..." 
+               [(ngModel)]="globalSearchQuery" 
+               (ngModelChange)="onGlobalSearchChange()">
+      </div>
+    </div>
+  </div>
+
   <div class="table-container" #tableContainer (scroll)="handleScroll($event)">
     <table>
       <thead>
@@ -57,5 +119,5 @@
       </tbody>
     </table>
   </div>
-</div>
+</div> -->
 

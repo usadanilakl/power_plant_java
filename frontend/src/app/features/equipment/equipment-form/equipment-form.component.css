@@ -1,97 +1,62 @@
-/* .container {
+:host {
   display: flex;
   flex-direction: column;
-  height: 95%;
-  overflow-y: auto;
+  height: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.equipment-form-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.button-container {
+  display: flex;
+  gap: 1rem;
 }
 
 .form-container {
   flex: 0 0 auto;
-  min-height: 200px;
-  overflow-y: auto;
-  padding: 1rem;
 }
 
 .tables-container {
-  flex: 1 1 auto; 
   display: flex;
   flex-direction: column;
-  min-height: 600px; 
+  gap: 1rem;
+  flex: 1;
+  overflow: hidden;
+  min-height: 400px; /* Adjust as needed */
 }
 
 .table-wrapper {
-  flex: 1 1 50%;
-  min-height: 300px;
-  overflow-y: hidden;
-  padding: 1rem;
-}
-
-.form-container, .table-wrapper {
-  margin-bottom: 1rem;
-}
-
-app-details-form, app-loto-point-simple-table {
-  width: 100%;
-} */
-
-* {
-  box-sizing: border-box;
-}
-
-.container {
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow-y: auto;
-  padding: 0; /* Remove any padding if not needed */
-  margin: 0; /* Remove any margin if not needed */
+  flex: 1;
+  min-height: 400px;
+  border: 1px solid #ccc;
+  overflow: hidden;
 }
 
-.form-container {
-  flex: 0 0 auto; /* Don't grow, don't shrink, size based on content */
-  padding: 1rem;
+h3 {
+  margin: 0;
+  padding: 0.5rem;
+  background-color: #f0f0f0;
 }
 
-.tables-container {
-  flex: 1 1 auto; /* Grow and shrink as needed */
-  display: flex;
-  flex-direction: column;
-  min-height: 800px; /* Minimum height for tables container */
-}
-
-.table-wrapper {
-  flex: 1 1 0; /* Grow and shrink equally, but allow shrinking to 0 */
-  min-height: 350px; /* Minimum height for each table */
-  display: flex;
-  flex-direction: column;
-  padding: 1rem;
-}
-
-.table-wrapper h3 {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
-}
-
-/* Ensure the app-reactive-form and app-loto-point-simple-table components take full width */
-app-reactive-form, app-loto-point-simple-table {
-  width: 100%;
-}
-
-/* Add some spacing between elements */
-.form-container, .table-wrapper:first-child {
-  margin-bottom: 1rem;
-}
-
-/* Style for the table content */
 app-loto-point-simple-table {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* Hide overflow at this level */
+  overflow: auto;
 }
 
-app-loto-point-simple-table ::ng-deep .table-container {
-  flex: 1;
-  overflow-y: auto; /* Allow scrolling within each table */
+/* Debug styles - remove after fixing layout */
+.equipment-form-container,
+.form-container,
+.tables-container,
+.table-wrapper,
+app-loto-point-simple-table {
+  border: 1px solid red;
 }

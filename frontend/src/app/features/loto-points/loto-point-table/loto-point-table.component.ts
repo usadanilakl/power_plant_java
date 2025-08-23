@@ -126,6 +126,7 @@ export class LotoPointTableComponent implements OnInit {
       this.isLoading = true;
   
       this.lotoPointService.getLotoPoints(this.currentPage, this.pageSize).pipe(
+        takeUntilDestroyed(this.destroyRef),
         map((response: SpringPaginatedResponse<LotoPointDto[]>) => 
           response.responseData.content.map(item => LotoPointDto.fromJson(item))
         ),

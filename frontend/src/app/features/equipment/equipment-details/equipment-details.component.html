@@ -1,0 +1,55 @@
+<div class="equipment-details">
+  <h2>Equipment Details</h2>
+  
+  <div class="detail-item">
+    <strong>Tag Number:</strong> {{ equipment().tagNumber }}
+  </div>
+  
+  <div class="detail-item">
+    <strong>Description:</strong> {{ equipment().description }}
+  </div>
+  
+  <!-- <div class="detail-item">
+    <strong>Specific Location:</strong> {{ equipment().specificLocation }}
+  </div> -->
+  
+  <div class="detail-item">
+    <strong>Equipment Type:</strong> {{ equipment().eqType?.name }}
+  </div>
+  
+  <div class="detail-item">
+    <strong>Vendor:</strong> {{ equipment().vendor?.name }}
+  </div>
+  
+  <div class="detail-item">
+    <strong>Location:</strong> {{ equipment().location?.name }}
+  </div>
+  
+  <div class="detail-item">
+    <strong>System:</strong> {{ equipment().system?.name }}
+  </div>
+  
+  <div class="detail-item">
+    <strong>LOTO Points:</strong>
+    <ul class="loto-points-list">
+      @for (point of equipment().lotoPoints; track point.id) {
+        <li class="loto-point-item">
+          <div class="loto-point-header">
+            <details>
+              <summary>{{ point.tagNumber }} - {{ point.description }}</summary>
+              <div class="loto-point-details">
+                <p><strong>Unit:</strong> {{ point.unit }}</p>
+                <p><strong>Tagged:</strong> {{ point.tagged }}</p>
+                <p><strong>ISO Position:</strong> {{ point.isoPos?.name }}</p>
+                <p><strong>Normal Position:</strong> {{ point.normPos?.name }}</p>
+                <p><strong>Specific Location:</strong> {{ point.specificLocation }}</p>
+                <p><strong>General Location:</strong> {{ point.generalLocation }}</p>
+              </div>
+            </details>
+            <button class="loto-point-button" (click)="onLotoPointClick(point)">{{buttonText}}</button>
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+</div>

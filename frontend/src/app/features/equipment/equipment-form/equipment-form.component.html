@@ -1,4 +1,4 @@
-<div class="container">
+<!-- <div class="container">
   <button (click)="applyPresetData()">Apply Preset Data</button>
   <button (click)="setPresetData()">Use This Form As Preset Data</button>
   <div class="form-container">
@@ -23,6 +23,48 @@
         (doubleClickEvent)="onExistingLotoPointDoubleClick($event)">
     </app-loto-point-simple-table>
     <button (click)="onAddNewLotoPoint()">Add New Loto Point</button>
+    </div>
+    <div class="table-wrapper">
+      <h3>Search LOTO Points</h3>
+      <app-loto-point-simple-table 
+        [enableSearch]="true"
+        [initialSearchQuery]="initialSearchCriteria()"
+        (rightClickEvent)="onLotoPointRowRightClick($event)"
+        (doubleClickEvent)="onSearchedLotoPointDoubleClick($event)">
+      </app-loto-point-simple-table>
+    </div>
+  </div>
+</div> -->
+
+<div class="equipment-form-container">
+  <div class="button-container">
+    <button (click)="applyPresetData()">Apply Preset Data</button>
+    <button (click)="setPresetData()">Use This Form As Preset Data</button>
+  </div>
+  
+  <div class="form-container">
+    @if (isFormReady()) {
+      <app-reactive-form
+        [fields]="fields()"
+        [values]="values()"
+        [layout]="layout()"
+        (formSubmit)="onFormSubmit($event)"
+        (formDelete)="onFormDelete()">
+      </app-reactive-form>
+    } @else {
+      <p>Loading form...</p>
+    }
+  </div>
+  
+  <div class="tables-container">
+    <div class="table-wrapper">
+      <h3>Associated LOTO Points</h3>
+      <app-loto-point-simple-table 
+        [initialItems]="lotoPointsWithDefault()"
+        (rightClickEvent)="onLotoPointRowRightClick($event)"
+        (doubleClickEvent)="onExistingLotoPointDoubleClick($event)">
+      </app-loto-point-simple-table>
+      <button (click)="onAddNewLotoPoint()">Add New Loto Point</button>
     </div>
     <div class="table-wrapper">
       <h3>Search LOTO Points</h3>
