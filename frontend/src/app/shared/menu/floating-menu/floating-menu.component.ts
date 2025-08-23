@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, output, input, signal, SimpleChanges, inject, Renderer2 } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, output, input, signal, SimpleChanges, inject, Renderer2, OnDestroy } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 
 export enum MenuPosition {
@@ -6,7 +6,9 @@ export enum MenuPosition {
   TopRight,
   BottomLeft,
   BottomRight,
-  Center
+  Center,
+  CenterLeft,
+  CenterRight
 }
 
 @Component({
@@ -16,9 +18,12 @@ export enum MenuPosition {
   standalone: true,
   imports: [DragDropModule]
 })
-export class FloatingMenuComponent implements AfterViewInit {
+export class FloatingMenuComponent implements AfterViewInit, OnDestroy {
   @ViewChild('menuContainer') menuContainer!: ElementRef;
   private renderer = inject(Renderer2);
+
+  static highestZIndex = 1000;
+  private currentZIndex = 1000;
 
   title = input<string>("");
   height = input<number>(50);
@@ -35,11 +40,11 @@ export class FloatingMenuComponent implements AfterViewInit {
   private initialSize = { width: 0, height: 0 };
   private resizingHandle: string | null = null;
 
+
+
   ngAfterViewInit() {
-    // this.setupDragging();
-    // this.setupResizing();
-    // this.applyInitialDimensions();
-    // this.applyPosition();
+    this.bringToFront();
+    this.menuContainer.nativeElement.addEventListener('mousedown', this.bringToFront.bind(this));
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -51,6 +56,10 @@ export class FloatingMenuComponent implements AfterViewInit {
         this.applyPosition();
       });
     }
+  }
+
+  ngOnDestroy() {
+    this.menuContainer.nativeElement.removeEventListener('mousedown', this.bringToFront.bind(this));
   }
 
   private applyInitialDimensions() {
@@ -89,7 +98,21 @@ export class FloatingMenuComponent implements AfterViewInit {
         element.style.top = `${(window.innerHeight - rect.height) / 2}px`;
         element.style.left = `${(window.innerWidth - rect.width) / 2}px`;
         break;
+      case MenuPosition.CenterLeft:
+        element.style.top = `${(window.innerHeight - rect.height) / 2}px`;
+        element.style.left = '0';
+        break;
+      case MenuPosition.CenterRight:
+        element.style.top = `${(window.innerHeight - rect.height) / 2}px`;
+        element.style.left = `${window.innerWidth - rect.width}px`;
+        break;
     }
+  }
+
+  private bringToFront() {
+    FloatingMenuComponent.highestZIndex++;
+    this.currentZIndex = FloatingMenuComponent.highestZIndex;
+    this.menuContainer.nativeElement.style.zIndex = this.currentZIndex.toString();
   }
 
   closeMenu() {
@@ -111,6 +134,7 @@ export class FloatingMenuComponent implements AfterViewInit {
       y: e.clientY - rect.top
     };
     this.renderer.addClass(document.body, 'dragging');
+    this.bringToFront();
   }
 
   private drag(e: MouseEvent) {

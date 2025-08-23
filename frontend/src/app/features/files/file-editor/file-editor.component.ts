@@ -9,7 +9,7 @@ import { FileBulkEditorMenuComponent } from "./file-bulk-editor-menu/file-bulk-e
 import { RectangleShape, Shape } from '../../../models/shape.model';
 import { catchError, combineLatest, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
+import { FloatingMenuComponent, MenuPosition } from "../../../shared/menu/floating-menu/floating-menu.component";
 import { DataPresetMenuComponent } from "./data-preset-menu/data-preset-menu.component";
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
@@ -46,6 +46,7 @@ export class FileEditorComponent {
   isDataPresetMenuOpen = signal<boolean>(false);
 
   isEqFormOpen = signal<boolean>(false);
+  position: MenuPosition = MenuPosition.CenterLeft
   isLoading = signal<boolean>(false);
   isLotoPointFormOpen = signal<boolean>(false);
 
@@ -56,6 +57,7 @@ export class FileEditorComponent {
   isTextRecongnitionEnabled = signal<boolean>(true);
   isGetJustTextEnabled = signal<boolean>(false);
   isTagNumberGeneratorOpen = signal<boolean>(false);
+
 
 
   constructor(
