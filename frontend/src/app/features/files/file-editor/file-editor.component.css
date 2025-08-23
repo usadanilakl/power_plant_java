@@ -59,7 +59,14 @@
 }
 
 .form-container {
-  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 20px); /* Subtract total vertical padding (10px top + 10px bottom) */
+  min-height: 0;
+  overflow: hidden; /* Change to auto to allow scrolling within the form container */
+  padding: 10px; /* Match the padding of menu-content */
+  box-sizing: border-box; /* Include padding in the height calculation */
 }
 
 .generate-tag-button {

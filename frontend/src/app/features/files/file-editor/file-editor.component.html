@@ -81,25 +81,6 @@
     (closeEvent)="onDataPresetMenuOpen()">
   </app-data-preset-menu>
 
-  <!-- <app-popup-projection
-    [isOpen]="isEqFormOpen()"
-    [title]="'Equipment Details'"
-    [size]="'large'"
-    (close)="closeEqForm()">
-    
-      <div class="form-container">
-        <app-equipment-form
-          [values]="currentEquipment()"
-          (formSubmit)="submitEquipment($event)"
-          (formDelete)="onEqDelete()"
-          (addNewLotoPointEvent)="createNewLotoPoint($event)"
-          (lotoPointRowRightClickEvent)="onLotoPointFormOpen($event)">
-        </app-equipment-form>
-      
-        <button (click)="openTagNumberGenerator()" class="control-button generate-tag-button">Generate Tag</button>
-      </div>
-  </app-popup-projection> -->
-
   <app-floating-menu 
     [title]="'Equipmnet Details'"
     (close)="closeEqForm()"
@@ -109,7 +90,6 @@
         <app-equipment-form
           [values]="currentEquipment()"
           (createNewEqAndAddLotoPointEvent)="createEquipmentAndAddLotoPoint($event)"
-          (valuesChange)="applyEqValueChanges($event)"
           (formSubmit)="submitEquipment($event)"
           (formDelete)="onEqDelete()"
           (addNewLotoPointEvent)="createNewLotoPoint($event)"
@@ -129,7 +109,6 @@
     <div class="form-container">
       <app-loto-point-detail-form
         [values]="lpToEdit()"
-        (valuesChange)="applyLpValueChanges($event)"
         (formDelete)="onLotoPointFormDelete()"
         (formSubmit)="onLotoPointFormSubmit($event)">
       </app-loto-point-detail-form>

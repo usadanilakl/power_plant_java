@@ -31,9 +31,10 @@
 
 .menu-content {
   padding: 10px;
-  overflow-y: auto;
-  overflow-x:scroll;
+  overflow: hidden;
   height: calc(100% - 40px);
+  display: flex;
+  flex-direction: column;
 }
 
 .resize-handle {

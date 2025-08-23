@@ -2,16 +2,19 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 100vh;
+  /* min-height: 100vh; */
   overflow: hidden;
 }
 
 .equipment-form-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0; /* Allow container to shrink */
+  overflow: auto; /* Allow scrolling for the entire container */
   padding: 1rem;
   gap: 1rem;
+  box-sizing: border-box; /* Include padding in the element's total width and height */
 }
 
 .button-container {
@@ -21,6 +24,7 @@
 
 .form-container {
   flex: 0 0 auto;
+  overflow: visible; /* Allow form content to be fully visible */
 }
 
 .tables-container {
@@ -28,15 +32,15 @@
   flex-direction: column;
   gap: 1rem;
   flex: 1;
-  overflow: hidden;
-  min-height: 400px; /* Adjust as needed */
+  min-height: 0; /* Allow container to shrink */
+  overflow: visible; /* Allow tables to be fully visible */
 }
 
 .table-wrapper {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 400px;
+  min-height: 300px; /* Reduced from 400px */
   border: 1px solid #ccc;
   overflow: hidden;
 }
@@ -50,9 +54,10 @@ h3 {
 app-loto-point-simple-table {
   flex: 1;
   overflow: auto;
+  min-height: 0; /* Allow table to shrink */
 }
 
-/* Debug styles - remove after fixing layout */
+/* Debug styles - keep for now */
 .equipment-form-container,
 .form-container,
 .tables-container,
