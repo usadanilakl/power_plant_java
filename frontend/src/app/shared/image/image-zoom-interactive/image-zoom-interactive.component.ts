@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, effect, ElementRef, inject, input, output, signal, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, computed, DestroyRef, effect, ElementRef, inject, input, output, signal, ViewChild } from '@angular/core';
 import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../../models/shape.model';
 import { DrawUtilService } from '../image-services/draw-util.service';
 import { ShapeFactoryService } from '../image-services/shape-factory.service';
@@ -18,6 +18,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   imageName = input<string>();
   elements = input.required<Observable<EquipmentDto[]>>();
   selectedShapeIds = input<number[]>([]);
+  singleSelectedShapeId = input<number | null>();
   isEditEnabled = input<boolean>(false);
 
   newShapeCreated = output<Shape | null>();
@@ -32,6 +33,10 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
   constructor() {
     this.drawingService = new DrawUtilService(this.shapeFactory, this.shapeUtil);
+  effect(() => {
+    this.drawingService.updateSecondarySelectedShapes(this.selectedShapeIds());
+    this.drawShapes();
+  });
   }
 
 //Subscriptions  
@@ -147,7 +152,11 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       if(this.selectedShapeIds() && this.selectedShapeIds().length > 0){
         if(this.selectedShapeIds().includes(sh.id)){
           sh.isSecondarySelected = true;
-          console.log('Selected shape found', sh);
+        }
+      }
+      if(this.singleSelectedShapeId()){
+        if(this.singleSelectedShapeId() === sh.id){
+          sh.isSelected = true;
         }
       }
       return sh;
@@ -246,9 +255,26 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
 
   //Shape functionalities
-  drawShapes(){
+  // drawShapes(){
+  //   const ctx = this._canvas.getContext('2d');
+  //   if (!ctx) return;
+  //   ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+  //   this.shapes().forEach(shape => {
+  //     this.drawShape(ctx, shape);
+  //   });
+  // }
+  drawShapes() {
+    if (!this._canvas) {
+      console.warn('Canvas is not initialized yet');
+      return;
+    }
+  
     const ctx = this._canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.error('Unable to get 2D context from canvas');
+      return;
+    }
+  
     ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
     this.shapes().forEach(shape => {
       this.drawShape(ctx, shape);
@@ -273,7 +299,12 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
                   rect.height
                 );
     
-                if (shape.isSelected || shape.isSecondarySelected) {
+                if (shape.isSecondarySelected) {
+                  // Draw selection handles
+                  this.drawSelectionHandles(ctx, shape, "orange");
+                }
+    
+                if (shape.isSelected) {
                   // Draw selection handles
                   this.drawSelectionHandles(ctx, shape);
                 }
@@ -305,10 +336,10 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
             }
   }
 
-  private drawSelectionHandles(ctx: CanvasRenderingContext2D, shape: Shape) {
+  private drawSelectionHandles(ctx: CanvasRenderingContext2D, shape: Shape, color: string = 'blue') {
     const scale = this.calculateCurrentScale();
     const handleSize = 8;
-    ctx.fillStyle = 'blue';
+    ctx.fillStyle = color;
   
     let corners: [number, number][] = [];
   

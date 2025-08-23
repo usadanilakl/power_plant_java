@@ -31,5 +31,6 @@
     <app-loto-point-simple-table
       [initialItems]="lotoPoints()"
       (doubleClickEvent)="removePoint($event)"
+      (leftClickEvent)="showPoint($event)"
     ></app-loto-point-simple-table>
   </div>

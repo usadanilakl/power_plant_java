@@ -103,17 +103,14 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    *************************************************************************************************************/
   onLotoPointTableRowLeftClick(lotoPoint: LotoPointDto) {
     this.currentLotoStandardService.setCurrentLotoPoint(lotoPoint);
-    // console.log('Clicked on loto point:', lotoPoint);
 
   }
 
   onLotoPointTableRowRightClick(lotoPoint: LotoPointDto) {
     // Perform the required actions when a loto point row is right-clicked
-    // console.log('Right-clicked on loto point:', lotoPoint);
   }
 
   onLotoPointTableRowDoubleClick(lotoPoint: LotoPointDto) {
-    console.log('Double-clicked on loto point:', lotoPoint);
     this.addLotoPointToStandard(lotoPoint);
   }
 
@@ -122,7 +119,6 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   }
 
   private addLotoPointToStandard(lotoPoint: LotoPointDto) {
-    console.log('Adding loto point to standard:', lotoPoint);
     this.currentLotoStandardService.addLotoPointToStandard(lotoPoint);
   }
 
@@ -131,7 +127,6 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    *********************************************************************************************************/
   onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
     // Perform the required actions when the loto point form is submitted
-    // console.log('Submitted loto point:', lotoPoint);
   }
 
   /*************************************************************************************************************
@@ -147,7 +142,6 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   
   onLotoStandardTableRowClick(lotoStandard: LotoStandardDto) {
     // Perform the required actions when a loto standard row is clicked
-    console.log('Clicked on loto standard:', lotoStandard);
     this.isStandardListDisplayed.set(false);
   }
 
@@ -156,11 +150,10 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    *************************************************************************************************************/ 
   onLotoStandardFormSubmit(lotoStandard: LotoStandardDto) {
     this.currentLotoStandardService.addStandard(lotoStandard)
-    // console.log('Submitted loto standard:', lotoStandard);
   }
 
   onRemoveLotoPointFromStandard(lotoPoint: LotoPointDto) {
     this.currentLotoStandardService.removeLotoPointFromStandard(lotoPoint.id);
-    // console.log('Removed loto point from standard:', lotoPoint.id);
   }
+
 }

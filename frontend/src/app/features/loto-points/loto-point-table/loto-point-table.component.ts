@@ -103,7 +103,6 @@ export class LotoPointTableComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
         next: (response) => {
-          console.log('Export successful:', response.responseData);
           // Handle successful export (e.g., show a success message)
           this.isExporting.set(false);
         },
@@ -229,7 +228,6 @@ export class LotoPointTableComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
         next: (response) => {
-          console.log('LOTO point created successfully:', response);
           // Update the local data
           this.updateLocalData(response.responseData);
           // Show success message
@@ -267,7 +265,6 @@ export class LotoPointTableComponent implements OnInit {
   private showSuccessMessage(message: string) {
     // Implement your success message display logic here
     // For example, you could use a snackbar or toast notification
-    console.log(message);
   }
   
   private showErrorMessage(message: string) {
@@ -388,7 +385,6 @@ export class LotoPointTableComponent implements OnInit {
           takeUntilDestroyed(this.destroyRef)
         ).subscribe({
           next: (response) => {
-            console.log('LOTO point deleted successfully:', response);
             this.removeDeletedItemFromLocalData(this.selectedItem!.id);
             this.showSuccessMessage('LOTO point deleted successfully');
           },

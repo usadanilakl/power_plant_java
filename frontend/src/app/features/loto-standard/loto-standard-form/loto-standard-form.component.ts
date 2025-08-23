@@ -18,6 +18,7 @@ export class LotoStandardFormComponent {
   updateNameEvent = output<LotoStandardDto>();
   updateDescriptionEvent = output<LotoStandardDto>();
   removePointEvent = output<LotoPointDto>();
+  showPointEvent = output<LotoPointDto>();
 
   showNameSubmitButton = false;
   showDescriptionSubmitButton = false;
@@ -26,7 +27,6 @@ export class LotoStandardFormComponent {
   
   lotoPoints = computed(() => {
     const points = this.lotoStandard()().lotoPoints ?? [];
-    // console.log('loto points updated: ', points);
     this.lotoPointsSubject.next(points);
     return this.lotoPointsSubject.asObservable();
   });
@@ -53,5 +53,9 @@ export class LotoStandardFormComponent {
 
   removePoint(point: LotoPointDto) {
     this.removePointEvent.emit(point);
+  }
+
+  showPoint(point: LotoPointDto){
+    this.showPointEvent.emit(point);
   }
 }

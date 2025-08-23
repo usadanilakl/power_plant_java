@@ -228,6 +228,16 @@ export class DrawUtilService {
     this.shapesSubject.next(this.shapes);
   }
 
+  updateSecondarySelectedShapes(ids: number[]){
+    this.shapes.forEach(shape => {
+      if (ids.includes(shape.id)) {
+        shape.isSecondarySelected = true;
+      } else {
+        shape.isSecondarySelected = false;
+      }
+    });
+  }
+
   getSelectedShape(): Shape | null {
     return this.selectedShape;
   }

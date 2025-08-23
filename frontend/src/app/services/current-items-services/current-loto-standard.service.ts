@@ -149,7 +149,6 @@ export class CurrentLotoStandardService{
       if (lotoStandardId === null || lotoStandardId === 0) {
         this.currentStandardSubject.next(new LotoStandardDto());
       } else {
-        console.log('Setting current standard with id: ', lotoStandardId);
         this.lotoStandardService.getLotoStandardById(lotoStandardId).pipe(
           takeUntilDestroyed(this.destroyRef),
           map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
