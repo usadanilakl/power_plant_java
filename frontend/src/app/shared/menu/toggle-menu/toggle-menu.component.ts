@@ -2,10 +2,11 @@ import { Component, input, OnInit, output, signal } from '@angular/core';
 import { NestedItem } from '../../../models/ui/nested-item.model';
 import { ToggleListComponent } from "../../list/toggle-list/toggle-list.component";
 import { FileService } from '../../../services/file.service';
+import { ToggleListVirtualScrollComponent } from "../../list/toggle-list-virtual-scroll/toggle-list-virtual-scroll.component";
 
 @Component({
   selector: 'app-toggle-menu',
-  imports: [ToggleListComponent],
+  imports: [ToggleListComponent, ToggleListVirtualScrollComponent],
   templateUrl: './toggle-menu.component.html',
   styleUrl: './toggle-menu.component.css'
 })

@@ -43,23 +43,32 @@ export class FloatingMenuComponent implements AfterViewInit, OnDestroy {
 
 
   ngAfterViewInit() {
-    this.bringToFront();
-    this.menuContainer.nativeElement.addEventListener('mousedown', this.bringToFront.bind(this));
+    if (this.menuContainer && this.menuContainer.nativeElement) {
+      this.bringToFront();
+      this.menuContainer.nativeElement.addEventListener('mousedown', this.bringToFront.bind(this));
+    }
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['open'] && !changes['open'].firstChange && changes['open'].currentValue) {
+    if (changes['open'] && changes['open'].currentValue) {
       setTimeout(() => {
-        this.setupDragging();
-        this.setupResizing();
-        this.applyInitialDimensions();
-        this.applyPosition();
+        if (this.menuContainer && this.menuContainer.nativeElement) {
+          this.bringToFront();
+          this.setupDragging();
+          this.setupResizing();
+          this.applyInitialDimensions();
+          this.applyPosition();
+          this.menuContainer.nativeElement.addEventListener('mousedown', this.bringToFront.bind(this));
+        }
       });
     }
   }
 
+  
   ngOnDestroy() {
-    this.menuContainer.nativeElement.removeEventListener('mousedown', this.bringToFront.bind(this));
+    if (this.menuContainer && this.menuContainer.nativeElement) {
+      this.menuContainer.nativeElement.removeEventListener('mousedown', this.bringToFront.bind(this));
+    }
   }
 
   private applyInitialDimensions() {
@@ -110,9 +119,11 @@ export class FloatingMenuComponent implements AfterViewInit, OnDestroy {
   }
 
   private bringToFront() {
-    FloatingMenuComponent.highestZIndex++;
-    this.currentZIndex = FloatingMenuComponent.highestZIndex;
-    this.menuContainer.nativeElement.style.zIndex = this.currentZIndex.toString();
+    if (this.menuContainer && this.menuContainer.nativeElement) {
+      FloatingMenuComponent.highestZIndex++;
+      this.currentZIndex = FloatingMenuComponent.highestZIndex;
+      this.menuContainer.nativeElement.style.zIndex = this.currentZIndex.toString();
+    }
   }
 
   closeMenu() {

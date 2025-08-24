@@ -6,24 +6,31 @@
   [open]="isOpen()"
   (close)="handleClose()">
 
-
-  <button (click)="toggleLookupMenu()">Lookup Menu</button>
-  <button (click)="toggleDiscrepanciesMenu()">Discrepancies Menu</button>
-  <app-equipment-table
-    [equipmentList]="equipmentData"
-    (equipmentClicked)="onEquipmentSelected($event)"
-    (equipmentDoubleClicked)="onEquipmentEdit($event.item, $event.column)"
-    (equipmentRightClicked)="onEquipmentContextMenu($event)"
-    (equipmentHovered)="onEquipmentHover($event)"
-    (equipmentDeleted)="onEquipmentDelete($event)"
-    (selectedItemsEvent)="onSelectedItems($event)"
->
-  @if(selectedItems().length > 0) {
-    <div table-controls>
-      <button (click)="applyPresetValues()">Apply Preset Values</button>
+  <div class="scroll-container">
+    <div class="buttons">
+      <button (click)="toggleLookupMenu()">Lookup Menu</button>
+      <button (click)="toggleDiscrepanciesMenu()">Discrepancies Menu</button>
     </div>
-  }
-</app-equipment-table>
+    <div class="table">
+      <app-equipment-table
+        [equipmentList]="equipmentData"
+        (equipmentClicked)="onEquipmentSelected($event)"
+        (equipmentDoubleClicked)="onEquipmentEdit($event.item, $event.column)"
+        (equipmentRightClicked)="onEquipmentContextMenu($event)"
+        (equipmentHovered)="onEquipmentHover($event)"
+        (equipmentDeleted)="onEquipmentDelete($event)"
+        (selectedItemsEvent)="onSelectedItems($event)">
+      @if(selectedItems().length > 0) {
+        <div table-controls>
+          <button (click)="applyPresetValues()">Apply Preset Values</button>
+        </div>
+      }
+      </app-equipment-table>
+    </div>
+
+
+    
+  </div>
 
 </app-floating-menu>
 

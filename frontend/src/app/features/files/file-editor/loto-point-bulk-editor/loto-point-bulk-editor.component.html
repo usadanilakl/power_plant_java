@@ -7,11 +7,10 @@
   (close)="handleClose()">
 
   <app-loto-point-simple-table
-  [initialItems]="lotoPoints$"
-  (leftClickEvent)="onLotoPointSelected($event)"
-  (cellDboubleClickEvent)="onEquipmentEdit($event.item, $event.column)"
-  (selectedItemsEvent)="onSelectedItems($event)"
->
+    [initialItems]="lotoPoints$"
+    (leftClickEvent)="onLotoPointSelected($event)"
+    (cellDboubleClickEvent)="onEquipmentEdit($event.item, $event.column)"
+    (selectedItemsEvent)="onSelectedItems($event)">
   @if(selectedItems().length > 0) {
     <div table-controls>
       <button (click)="applyPresetValues()">Apply Preset Values</button>

@@ -1,0 +1,73 @@
+
+.toggle-list {
+  height: 400px; /* Adjust as needed */
+}
+
+.item-content {
+  padding: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.item-content:hover {
+  background-color: #f0f0f0;
+  transform: translateX(5px);
+}
+
+/* .item-content.clicked {
+  border: 2px solid #007bff;
+}
+
+.item-content.last-clicked {
+  border: 2px solid #ff003c;
+} */
+
+.clicked {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  /* text-underline-offset: 4px; */
+  font-weight: bold;
+}
+
+.last-clicked {
+  border-left: 3px solid #007bff;
+}
+
+.toggle-icon {
+  margin-right: 8px;
+}
+
+.highlighted:hover {
+  background-color: #f0f0f0;
+}
+
+.level-1 {
+  margin-left: 0;
+}
+
+.level-2 {
+  margin-left: 20px;
+}
+
+.level-3 {
+  margin-left: 40px;
+}
+
+/* Adjust scrollbar styles for better appearance */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

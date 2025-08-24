@@ -27,7 +27,8 @@ import { SearchCriteria } from '../../../models/api/search-criteria.model';
         <ng-content select="[table-controls]"></ng-content>
       </div>
   </app-shared-table>
-  `
+  `,
+  styleUrl: './equipment-table.component.css'
 })
 export class EquipmentTableComponent extends TableComponent{
   equipmentList = input.required<Signal<EquipmentDto[]> | null>();

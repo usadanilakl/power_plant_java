@@ -1,6 +1,6 @@
 
   @if (menuItems().length > 0) {
-    <app-toggle-list 
+    <!-- <app-toggle-list 
     [items]="menuItems()"
     [trackLastClicked]="true"
     [trackAllClicked]="true"
@@ -8,7 +8,18 @@
     (itemClicked)="onItemClick($event)"
     (itemDoubleClicked)="onItemDoubleClicked($event)"
     (itemRightClicked)="onItemRightClicked($event)"
-    (itemMiddleClicked)="onItemMiddleClicked($event)"></app-toggle-list>
+    (itemMiddleClicked)="onItemMiddleClicked($event)">
+  </app-toggle-list> -->
+    <app-toggle-list-virtual-scroll 
+    [items]="menuItems()"
+    [trackLastClicked]="true"
+    [trackAllClicked]="true"
+    [highlightOnHover]="false"
+    (itemClicked)="onItemClick($event)"
+    (itemDoubleClicked)="onItemDoubleClicked($event)"
+    (itemRightClicked)="onItemRightClicked($event)"
+    (itemMiddleClicked)="onItemMiddleClicked($event)">
+  </app-toggle-list-virtual-scroll>
   } @else {
     <p>No categories found.</p>
   }
