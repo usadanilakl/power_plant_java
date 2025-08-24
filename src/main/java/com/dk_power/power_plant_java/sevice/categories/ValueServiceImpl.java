@@ -24,7 +24,7 @@ import java.util.*;
 @Service
 //@AllArgsConstructor
 @Transactional
-public class ValueServiceImpl implements ValueService{
+public class ValueServiceImpl implements ValueService {
     private final ValueRepo valueRepo;
     private final ValueMapper valueMapper;
     private final SessionFactory sessionFactory;
@@ -68,13 +68,14 @@ public class ValueServiceImpl implements ValueService{
     public SessionFactory getSessionFactory() {
         return sessionFactory;
     }
+
     @Override
-    public Value valueSetup(String cat, String val){
+    public Value valueSetup(String cat, String val) {
         Category category = categoryService.getCategoryByName(cat);
-        if(category==null) category = new Category(cat);
+        if (category == null) category = new Category(cat);
         Value value = category.getValueByName(val);
-        if(value!=null) return value;
-        else{
+        if (value != null) return value;
+        else {
             value = new Value(val);
             value.setCategory(category);
             category.addValue(value);
@@ -84,43 +85,44 @@ public class ValueServiceImpl implements ValueService{
         return value;
     }
 
-@Override
-public Value valueSetupWithAlias(String cat, String val) {
-    Category category = categoryService.getByAlias(cat);
-    if(category == null) {
-        category = categoryService.save(new Category(cat));
+    @Override
+    public Value valueSetupWithAlias(String cat, String val) {
+        Category category = categoryService.getByAlias(cat);
+        if (category == null) {
+            category = categoryService.save(new Category(cat));
+        }
+        Value value = category.getValueByName(val);
+        if (value != null) return value;
+        else {
+            value = new Value(val);
+            value.setCategory(category);
+            category.addValue(value);
+            save(value);
+            categoryService.save(category);
+        }
+        return value;
     }
-    Value value = category.getValueByName(val);
-    if(value != null) return value;
-    else {
-        value = new Value(val);
-        value.setCategory(category);
-        category.addValue(value);
-        save(value);
-        categoryService.save(category);
-    }
-    return value;
-}
 
     @Override
     public ValueDto getValueFromCategory(String cat, String val) {
         Set<ValueDto> valuesOfCat = categoryService.getValuesOfCat(cat);
         Optional<ValueDto> first = valuesOfCat.stream().filter(e -> e.getName().equals(val)).findFirst();
-        return  first.orElse(null);
+        return first.orElse(null);
     }
 
 
     public List<LotoPointDto> deleteValue(Value entity) {
         List<LotoPoint> byIsoPos = lotoPointService.getByIsoPos(entity);
-        List<LotoPointDto> lotoPointDtos =(List) lotoPointService.convertAllToDto(byIsoPos);
-        if(byIsoPos.isEmpty()) {
+        List<LotoPointDto> lotoPointDtos = (List) lotoPointService.convertAllToDto(byIsoPos);
+        if (byIsoPos.isEmpty()) {
             hardDelete(entity);
             return lotoPointDtos;
-        }else {
+        } else {
             return lotoPointDtos;
         }
     }
-    public void refractorIsoPosValue(Value old, Value _new){
+
+    public void refractorIsoPosValue(Value old, Value _new) {
         for (LotoPoint i : lotoPointService.getByIsoPos(old)) {
             i.setIsoPos(_new);
             lotoPointService.save(i);
@@ -136,10 +138,10 @@ public Value valueSetupWithAlias(String cat, String val) {
         all.addAll(equipment);
         all.addAll(files);
 
-        if(all.isEmpty()) {
+        if (all.isEmpty()) {
             hardDelete(entity);
             return all;
-        }else {
+        } else {
             return all;
         }
     }
@@ -147,9 +149,14 @@ public Value valueSetupWithAlias(String cat, String val) {
 
     @Override
     public void refactor(Value old, Value _new) {
-        equipmentService.refactor(old,_new);
-        fileService.refactor(old,_new);
-        lotoPointService.refactor(old,_new);
+        equipmentService.refactor(old, _new);
+        fileService.refactor(old, _new);
+        lotoPointService.refactor(old, _new);
     }
 
+    @Override
+    public ValueDto getDtoById(Long id) {
+        Value entity = getEntityById(id);
+        return getMapper().convertToDto(entity);
+    }
 }
