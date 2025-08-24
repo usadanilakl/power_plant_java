@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
+import com.dk_power.power_plant_java.mappers.ValueMapper;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
@@ -25,16 +26,16 @@ import java.util.*;
 @Transactional
 public class ValueServiceImpl implements ValueService{
     private final ValueRepo valueRepo;
-    private final UniversalMapper universalMapper;
+    private final ValueMapper valueMapper;
     private final SessionFactory sessionFactory;
     private final CategoryService categoryService;
     private final LotoPointService lotoPointService;
     private final EquipmentService equipmentService;
     private final FileService fileService;
 
-    public ValueServiceImpl(ValueRepo valueRepo, UniversalMapper universalMapper, SessionFactory sessionFactory, CategoryService categoryService, @Lazy LotoPointService lotoPointService, @Lazy EquipmentService equipmentService, @Lazy FileService fileService) {
+    public ValueServiceImpl(ValueRepo valueRepo, ValueMapper valueMapper, SessionFactory sessionFactory, CategoryService categoryService, @Lazy LotoPointService lotoPointService, @Lazy EquipmentService equipmentService, @Lazy FileService fileService) {
         this.valueRepo = valueRepo;
-        this.universalMapper = universalMapper;
+        this.valueMapper = valueMapper;
         this.sessionFactory = sessionFactory;
         this.categoryService = categoryService;
         this.lotoPointService = lotoPointService;
@@ -58,9 +59,10 @@ public class ValueServiceImpl implements ValueService{
     }
 
     @Override
-    public UniversalMapper getMapper() {
-        return universalMapper;
+    public ValueMapper getMapper() {
+        return valueMapper;
     }
+
 
     @Override
     public SessionFactory getSessionFactory() {
@@ -149,4 +151,5 @@ public Value valueSetupWithAlias(String cat, String val) {
         fileService.refactor(old,_new);
         lotoPointService.refactor(old,_new);
     }
+
 }

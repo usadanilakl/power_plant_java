@@ -59,8 +59,8 @@ public class FileMapper implements BaseMapper {
             fileDto.setPoints(file.getPoints().stream().map(e -> equipmentService.getDtoById(e.getId())).toList());
 //        if(file.getHeatTrace()!=null) fileDto.setHeatTraceList(file.getHeatTrace().stream().map(heatTraceService::convertToDto).toList());
         if (file.getBulkEditStep() != null) fileDto.setBulkEditStep(file.getBulkEditStep());
-        if (file.getHighlights() != null)
-            fileDto.setHighlights(file.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
+//        if (file.getHighlights() != null)
+//            fileDto.setHighlights(file.getHighlights().stream().map(highlightMapper::convertToDtoLight).toList());
         if (file.getDocNum() != null) fileDto.setDocNum(file.getDocNum());
         if (file.getIsVerified() != null) fileDto.setIsVerified(file.getIsVerified());
         if(file.getExtensions()!=null && !file.getExtensions().isEmpty()) fileDto.setExtensions(file.getExtensionsArray());
