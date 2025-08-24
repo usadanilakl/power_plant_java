@@ -26,7 +26,7 @@ export class LotoPointSimpleTableComponent implements OnInit {
   private itemsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   items$ = this.itemsSubject.asObservable();
 
-  columns = computed(() => LotoPointDto.toTableColumns([ 'isVerified', 'tagNumber', 'description', 'specificLocation', 'isoPos', 'normPos']));
+  columns = computed(() => LotoPointDto.toTableColumns([ 'isVerified', 'tagNumber', 'description', 'specificLocation', 'isoPos', 'normPos','zeroEnergyMethod']));
 
   itemsUpdated = output<LotoPointDto[]>();
   doubleClickEvent = output<LotoPointDto>();

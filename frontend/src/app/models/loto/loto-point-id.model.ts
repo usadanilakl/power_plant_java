@@ -22,6 +22,7 @@ export class LotoPointIdDto extends BaseDto {
   conflictStatus: string | null;
   lotos: number[] | null;
   lotoIds: number[] | null;
+  zeroEnergyMethod: string | null;
 
   constructor(data: Partial<LotoPointIdDto> = {}) {
     console.log('Creating LotoPointIdDto',data);
@@ -48,6 +49,7 @@ export class LotoPointIdDto extends BaseDto {
     this.conflictStatus = data.conflictStatus ?? null;
     this.lotos = data.lotos ?? null;
     this.lotoIds = data.lotoIds ?? null;
+    this.zeroEnergyMethod = data.zeroEnergyMethod?? null;
   }
 
 
@@ -117,7 +119,8 @@ export class LotoPointIdDto extends BaseDto {
       fileIds: this.fileIds,
       conflictStatus: this.conflictStatus,
       lotos: this.lotos,
-      lotoIds: this.lotoIds
+      lotoIds: this.lotoIds,
+      zeroEnergyMethod: this.zeroEnergyMethod,
     };
   }
 
@@ -149,7 +152,8 @@ export class LotoPointIdDto extends BaseDto {
       fileIds: json.fileIds || "",
       conflictStatus: json.conflictStatus,
       lotos: json.lotos || [],
-      lotoIds: json.lotoIds || []
+      lotoIds: json.lotoIds || [],
+      zeroEnergyMethod: json.zeroEnergyMethod,
     });
   }
 }

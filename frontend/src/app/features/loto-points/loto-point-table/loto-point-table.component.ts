@@ -53,6 +53,7 @@ export class LotoPointTableComponent implements OnInit {
     },
     { id: 'isoPos', header: 'ISO Pos', accessorKey: 'isoPos.name' },
     { id: 'normPos', header: 'Norm Pos', accessorKey: 'normPos.name' },
+    { id: 'zeroEnergyMethod', header: 'Zero Energy Method', accessorKey: 'zeroEnergyMethod' },
   ];
 
   selectedItem: LotoPointDto | null = null;

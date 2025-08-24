@@ -31,4 +31,5 @@ public class LotoPointIdDto extends BaseDto {
     private Long isUpdated;
     private String fileIds ;
     private String conflictStatus;
+    private String zeroEnergyMethod;
 }

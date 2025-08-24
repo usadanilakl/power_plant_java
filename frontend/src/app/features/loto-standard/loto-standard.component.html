@@ -1,3 +1,9 @@
+<div class="carousel-container">
+  <app-image-carousel
+  [images]="currentFileLinks">
+  </app-image-carousel>
+</div>
+
 <div class="image-container">
   @if (currentFileLink() && currentFileLink()!=='') {
     @if(currentFileLink().endsWith('.jpg')){

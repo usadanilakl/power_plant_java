@@ -38,5 +38,6 @@ public class LotoPointDtoLight extends BaseDto {
 
     private String oldId;
     private String objectType;
+    private String zeroEnergyMethod;
 
 }

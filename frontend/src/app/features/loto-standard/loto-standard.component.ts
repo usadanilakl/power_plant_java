@@ -14,10 +14,11 @@ import { Shape } from '../../models/shape.model';
 import { FloatingMenuComponent } from "../../shared/menu/floating-menu/floating-menu.component";
 import { EquipmentDetailsComponent } from "../equipment/equipment-details/equipment-details.component";
 import { CurrentEquipmentService } from '../../services/current-items-services/current-equipment.service';
+import { ImageCarouselComponent } from "../../shared/image/image-carusel/image-carousel.component";
 
 @Component({
   selector: 'app-loto-standard',
-  imports: [LotoStandardFormComponent, ImageZoomInteractiveComponent, PdfDisplayIframeComponent, FloatingMenuComponent, EquipmentDetailsComponent],
+  imports: [LotoStandardFormComponent, ImageZoomInteractiveComponent, PdfDisplayIframeComponent, FloatingMenuComponent, EquipmentDetailsComponent, ImageCarouselComponent],
   templateUrl: './loto-standard.component.html',
   styleUrl: './loto-standard.component.css'
 })
@@ -67,6 +68,14 @@ export class LotoStandardComponent implements OnInit  {
       return link;
     }
     return '';
+  });
+  currentFileLinks = computed(() => {
+    const links = this.currentFiles();
+    if (links.length > 0) {
+      console.log('currentFileLinks: ', links);
+      return links.map(fileDto => fileDto.fileLink);
+    }
+    return [];
   });
 
 

@@ -7,10 +7,7 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.Entity;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -67,6 +64,8 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private Set<LotoStandard> lotoStandards = new HashSet<>();
     private String conflictStatus;
     private String conflictId;
+    @Column(columnDefinition = "TEXT")
+    private String zeroEnergyMethod;
 
     public void addLoto(Loto entity) {
         lotos.add(entity);

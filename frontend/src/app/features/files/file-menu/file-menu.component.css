@@ -4,7 +4,10 @@
   border-radius: 5px;
   height: 99%;
   width: 99%;
-  overflow-y: auto;
+  overflow-y: visible;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
 }
 
 /* .file-menu-container {

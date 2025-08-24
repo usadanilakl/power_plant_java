@@ -1,7 +1,7 @@
 <div class="carousel-container">
   <button class="nav-button left" (click)="scrollToLeft()">&lt;</button>
   <div class="carousel" #carousel>
-    @for (image of displayImages; track image) {
+    @for (image of displayImages(); track image) {
       <img [src]="image" (click)="onImageClick(image)" alt="Carousel image">
     }
   </div>

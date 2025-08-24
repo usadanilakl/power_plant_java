@@ -28,6 +28,7 @@ export interface LotoPointModel extends BaseModel{
   fileIds: string | null;
   conflictStatus: string | null;
   lotos: LotoDto[] | null;
+  zeroEnergyMethod: string | null;
 }
 
 export interface LotoPointFormField {
@@ -58,6 +59,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   fileIds: string | null;
   conflictStatus: string | null;
   lotos: LotoDto[] | null;
+  zeroEnergyMethod: string | null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     super(data);  // This should handle id, name, objectType, and isVerified
@@ -82,6 +84,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.fileIds = data.fileIds ?? null;
     this.conflictStatus = data.conflictStatus ?? null;
     this.lotos = data.lotos ?? null;
+    this.zeroEnergyMethod = data.zeroEnergyMethod?? null;
   }
 
   // export class LotoPointDto extends BaseDto implements LotoPointModel {
@@ -156,7 +159,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       isUpdated: this.isUpdated || 0,
       fileIds: this.fileIds || '',
       conflictStatus: this.conflictStatus || '',
-      lotos: this.lotos?.map(loto => loto.toJson())
+      lotos: this.lotos?.map(loto => loto.toJson()),
+      zeroEnergyMethod: this.zeroEnergyMethod || null
     };
   }
 
@@ -199,7 +203,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       isUpdated: json.isUpdated || 0,
       fileIds: json.fileIds || '',
       conflictStatus: json.conflictStatus || '',
-      lotos: Array.isArray(json.lotos)? json.lotos.map((lotoJson: any) => LotoDto.fromJson(lotoJson)): []
+      lotos: Array.isArray(json.lotos)? json.lotos.map((lotoJson: any) => LotoDto.fromJson(lotoJson)): [],
+      zeroEnergyMethod: json.zeroEnergyMethod || null
     });
   }
 
@@ -208,7 +213,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     dto: LotoPointDto, 
     isoPosOptions: Option[], 
     normPosOptions: Option[],
-    fields: LotoPointFieldName[] = ['tagNumber', 'description', 'unit', 'tagged', 'isoPos', 'normPos', 'specificLocation', 'standard', 'generalLocation', 'isVerified']
+    fields: LotoPointFieldName[] = ['tagNumber', 'description', 'unit', 'tagged', 'isoPos', 'normPos', 'specificLocation', 'standard', 'generalLocation', 'isVerified', 'zeroEnergyMethod']
   ): LotoPointFormField[] {
     const allFields: { [key in LotoPointFieldName]: LotoPointFormField } = {
       tagNumber: { name: 'tagNumber', label: 'Tag Number', type: 'text', validators: [Validators.required], initialValue: dto.tagNumber },
@@ -255,6 +260,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         ], 
         initialValue: dto.isVerified?.toString() 
       },
+      zeroEnergyMethod: { name: 'zeroEnergyMethod', label: 'Zero Energy Method', type: 'text', initialValue: dto.zeroEnergyMethod }
     };
   
     return fields.map(fieldName => allFields[fieldName]);
@@ -302,6 +308,7 @@ static toTableColumns(
       conditionalStyling: (item: any, column: Column) => 
       item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
     },
+    zeroEnergyMethod: { id: 'zeroEnergyMethod', header: 'Zero Energy Method', accessorKey: 'zeroEnergyMethod' }
   };
 
   return fields.map(fieldName => allColumns[fieldName]);
@@ -312,7 +319,7 @@ static toTableColumns(
       'id', 'unit', 'tagged', 'tagNumber', 'description', 'isoPos', 'normPos',
       'specificLocation', 'standard', 'generalLocation', 'equipmentIdList',
       'normalPosition', 'isolatedPosition', 'equipmentList', 'oldId',
-      'objectType', 'isUpdated', 'fileIds', 'conflictStatus', 'lotos','isVerified'
+      'objectType', 'isUpdated', 'fileIds', 'conflictStatus', 'lotos','isVerified', 'zeroEnergyMethod'
     ];
     return validKeys.includes(key as keyof LotoPointModel);
   }
@@ -341,7 +348,8 @@ static toTableColumns(
       // fileIds: this.fileIds.split(',').map(id => id.trim()).filter(id => id !== ''),
       fileIds: this.fileIds,
       conflictStatus: this.conflictStatus,
-      lotoIds: this.lotos?.map(loto => loto.id)
+      lotoIds: this.lotos?.map(loto => loto.id),
+      zeroEnergyMethod: this.zeroEnergyMethod
     });
   }
   toOption(): Option {

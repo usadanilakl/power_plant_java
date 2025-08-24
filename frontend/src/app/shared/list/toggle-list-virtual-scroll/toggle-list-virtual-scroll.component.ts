@@ -20,8 +20,6 @@ interface FlatItem extends NestedItem {
 })
 export class ToggleListVirtualScrollComponent implements OnInit {
   @ViewChild(CdkVirtualScrollViewport) viewport: CdkVirtualScrollViewport | null = null;
-  private flatItemsSubject = new BehaviorSubject<FlatItem[]>([]);
-  flatItems$ = this.flatItemsSubject.asObservable();
 
   @Input() items: NestedItem[] = [];
   @Input() highlightOnHover = false;
@@ -53,7 +51,6 @@ export class ToggleListVirtualScrollComponent implements OnInit {
 
   flattenItems() {
     const flatItems = this.flattenChildrenRecursively(this.items, 0);
-    this.flatItemsSubject.next(flatItems);
     this.flatItemsSignal.set(flatItems);
   }
   
@@ -131,17 +128,12 @@ export class ToggleListVirtualScrollComponent implements OnInit {
   }
 
   
-  // ... (previous code remains the same)
-  
   private updateClickedState(clickedItem: FlatItem): void {
-    const all = [...this.flatItemsSubject.value];
+    const all = [...this.flatItemsSignal()];
     all.forEach(item => {
       item.isClicked = item.id === clickedItem.id;
       item.isLastClicked = clickedItem.id === clickedItem.id;
     });
-    this.flatItemsSubject.next(all);
-    
-    
       this.flatItemsSignal.set(all);
   }
   

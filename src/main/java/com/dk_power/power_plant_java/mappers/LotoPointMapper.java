@@ -93,6 +93,7 @@ public class LotoPointMapper implements BaseMapper{
                 })
                 .collect(Collectors.toList()));
         }
+        if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
         return dto;
     }
 
@@ -131,6 +132,7 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getIsUpdated() != null) entity.setIsUpdated(dto.getIsUpdated());
         if(dto.getFileIds()!=null) entity.setFileIds(dto.getFileIds());
         if(dto.getConflictStatus()!=null) entity.setConflictStatus(dto.getConflictStatus());
+        if(dto.getZeroEnergyMethod()!=null) entity.setZeroEnergyMethod(dto.getZeroEnergyMethod());
         return entity;
     }
 
@@ -178,6 +180,7 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getIsUpdated() != null) lotoPoint.setIsUpdated(dto.getIsUpdated());
         if (dto.getFileIds() != null) lotoPoint.setFileIds(dto.getFileIds());
         if (dto.getConflictStatus() != null) lotoPoint.setConflictStatus(dto.getConflictStatus());
+        if(dto.getZeroEnergyMethod()!=null) lotoPoint.setZeroEnergyMethod(dto.getZeroEnergyMethod());
 
 
         // Handle equipmentList

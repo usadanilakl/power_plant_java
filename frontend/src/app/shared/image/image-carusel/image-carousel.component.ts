@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit, inject, OnDestroy, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit, inject, OnDestroy, SimpleChanges, Signal, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { catchError, map, Observable, of, Subscription } from 'rxjs';
 import { PopupComponent } from "../../popup/popup.component";
@@ -6,6 +6,7 @@ import { ImageZoomInteractiveComponent } from '../image-zoom-interactive/image-z
 import { FileService } from '../../../services/file.service';
 import { FileDto } from '../../../models/file/file.model';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-image-carousel',
@@ -15,12 +16,12 @@ import { EquipmentDto } from '../../../models/equipment/equipment.model';
   styleUrls: ['./image-carousel.component.css']
 })
 export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
-  @Input() images: string[] | Observable<string[]> = [];
+  @Input() images: string[] | Observable<string[]> | Signal<string[]> = [];
   @Output() imageClick = new EventEmitter<string>();
   @Input() equipmentFilter: { key: string; filterFn: (value: any) => boolean }[] = [];
   @ViewChild('carousel') carouselRef!: ElementRef;
 
-  displayImages: string[] = [];
+  displayImages: any;
 
   private startX: number = 0;
   private scrollLeftPosition: number = 0;
@@ -30,14 +31,24 @@ export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
   ImageZoomInteractiveComponent = ImageZoomInteractiveComponent;
   private imagesSubscription: Subscription | null = null;
   fileService = inject(FileService);
+  link = environment.baseApiUrl;
 
   ngOnInit() {
     if (this.images instanceof Observable) {
       this.imagesSubscription = this.images.subscribe(imageArray => {
-        this.displayImages = imageArray;
+        const uniqueImages = Array.from(new Set(imageArray.map(image => this.link+'/'+image.replaceAll('pdf', 'jpg'))));
+        this.displayImages.set(uniqueImages);
+      });
+    } else if (typeof this.images === 'function') {
+      this.displayImages = computed(() => {
+        const imageArray = (this.images as () => string[])();
+        console.log('Images input:', imageArray);
+        const uniqueImages = Array.from(new Set(imageArray.map(image => this.link+'/'+image.replaceAll('pdf', 'jpg'))));
+        return uniqueImages;
       });
     } else {
-      this.displayImages = this.images;
+      const uniqueImages = Array.from(new Set((this.images as string[]).map(image => this.link+'/'+image.replaceAll('pdf', 'jpg'))));
+      this.displayImages.set(uniqueImages);
     }
   }
 

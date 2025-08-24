@@ -50,5 +50,6 @@ public class LotoPointDto extends BaseDto {
     private Long isUpdated;
     private String fileIds ;
     private String conflictStatus;
+    private String zeroEnergyMethod;
 
 }
