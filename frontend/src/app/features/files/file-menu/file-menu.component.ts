@@ -196,7 +196,7 @@ constructor(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
-        console.log('File deleted successfully');
+        // console.log('File deleted successfully');
         this.fileSubmitMessage.set('File deleted successfully');
         
         // Remove the deleted file from the menu items

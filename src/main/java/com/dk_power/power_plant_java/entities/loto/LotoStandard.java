@@ -8,8 +8,8 @@ import lombok.Setter;
 import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Entity
 @Getter
@@ -23,20 +23,52 @@ public class LotoStandard extends BaseAuditEntity {
             joinColumns = @JoinColumn(name = "loto_standard_id"),
             inverseJoinColumns = @JoinColumn(name = "loto_point_id")
     )
-    private Set<LotoPoint> lotoPoints = new HashSet<>();
+    @OrderColumn(name = "point_order")
+    private Set<LotoPoint> lotoPoints = new LinkedHashSet<>();
 
     private String description;
-    
+
     public void addLotoPoint(LotoPoint lotoPoint) {
         if (this.lotoPoints == null) {
-            this.lotoPoints = new HashSet<>();
+            this.lotoPoints = new LinkedHashSet<>();
         }
         this.lotoPoints.add(lotoPoint);
     }
 
     public void removeLotoPoint(LotoPoint lotoPoint) {
-        if (this.lotoPoints!= null) {
+        if (this.lotoPoints != null) {
             this.lotoPoints.remove(lotoPoint);
         }
     }
+
+    public void reorderLotoPoints(List<Long> orderedLotoPointIds) {
+        if (orderedLotoPointIds == null || orderedLotoPointIds.isEmpty()) {
+            throw new IllegalArgumentException("Ordered LOTO point IDs list cannot be null or empty");
+        }
+
+        Set<Long> existingIds = lotoPoints.stream().map(BaseIdEntity::getId).collect(Collectors.toSet());
+        if (!existingIds.containsAll(orderedLotoPointIds)) {
+            throw new IllegalArgumentException("Some provided LOTO point IDs do not exist in this standard");
+        }
+
+        LinkedHashSet<LotoPoint> reorderedPoints = new LinkedHashSet<>();
+        for (Long id : orderedLotoPointIds) {
+            lotoPoints.stream()
+                    .filter(point -> point.getId().equals(id))
+                    .findFirst()
+                    .ifPresent(reorderedPoints::add);
+        }
+        this.lotoPoints = reorderedPoints;
+    }
+
+    public Map<Long, Integer> getLotoPointOrderMap() {
+        Map<Long, Integer> orderMap = new LinkedHashMap<>();
+        int order = 1;
+        for (LotoPoint point : lotoPoints) {
+            orderMap.put(point.getId(), order++);
+        }
+        return orderMap;
+    }
+
+
 }

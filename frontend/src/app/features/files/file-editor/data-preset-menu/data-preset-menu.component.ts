@@ -211,6 +211,12 @@ export class DataPresetMenuComponent implements OnInit {
         type: 'select',
         options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }],
         initialValue: currentPresetData.tagNumber || null
+      },
+      {
+        name: 'zeroEnergyMethod',
+        label: 'Zero Energy Method',
+        type: 'text',
+        initialValue: currentPresetData.zeroEnergyMethod || null
       }
     ];
   }

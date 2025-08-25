@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentIdDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
@@ -121,14 +122,14 @@ public class NgEquipmentRestController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize) {
         try {
-            if(!SearchCriteria.SearchType.GLOBAL.equals(criteria.getType())){
+            if (!SearchCriteria.SearchType.GLOBAL.equals(criteria.getType())) {
                 throw new IllegalArgumentException("Invalid search type. Only global search is supported for base tag number.");
             }
             if (criteria.getQuery() == null || criteria.getQuery().isEmpty()) {
                 throw new IllegalArgumentException("Base tag number is required for global search.");
             }
             String baseTagNumber = NgEquipmentService.getTagNumberBase(criteria.getQuery());
-            if(baseTagNumber == null || baseTagNumber.isEmpty()){
+            if (baseTagNumber == null || baseTagNumber.isEmpty()) {
                 throw new IllegalArgumentException("Base tag number not found.");
             }
             Page<EquipmentDto> searchResults = ngEquipmentService.complexSearch(criteria.getQuery(), page - 1, pageSize);
@@ -140,6 +141,7 @@ public class NgEquipmentRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
     @PostMapping("/copy")
     public ResponseEntity<NgApiResponse<EquipmentDto>> copyEquipment(@RequestBody Map<String, Object> requestBody) {
         try {
@@ -160,15 +162,26 @@ public class NgEquipmentRestController {
             String tagNumber = requestBody.get("tagNumber");
             String baseTagNumber = tagNumber.substring(2);
             String unit = tagNumber.trim().substring(0, 2);
-            String otherUnitTagNumber = unit.equals("01") ? "02" : unit.equals("02")? "01" : "00";
+            String otherUnitTagNumber = unit.equals("01") ? "02" : unit.equals("02") ? "01" : "00";
             System.out.println("Other unit tag number: " + otherUnitTagNumber + baseTagNumber);
 
-            List<EquipmentDto> byTagNumber = ngEquipmentService.getByTagNumber(otherUnitTagNumber+baseTagNumber);
-            if(byTagNumber.isEmpty()) throw new IllegalArgumentException("Other unit equipment not found.");
+            List<EquipmentDto> byTagNumber = ngEquipmentService.getByTagNumber(otherUnitTagNumber + baseTagNumber);
+            if (byTagNumber.isEmpty()) throw new IllegalArgumentException("Other unit equipment not found.");
             return ResponseEntity.ok(new NgApiResponse<>(byTagNumber.get(0), "Other unit equipment retrieved successfully"));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving other unit equipment: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/related-files")
+    public ResponseEntity<NgApiResponse<List<FileDto>>> getRelatedFiles(@PathVariable Long id) {
+        try {
+            List<FileDto> relatedFiles = ngEquipmentService.getRelatedFiles(id);
+            return ResponseEntity.ok(new NgApiResponse<>(relatedFiles, "Related files retrieved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving related files: " + e.getMessage()));
         }
     }
 }

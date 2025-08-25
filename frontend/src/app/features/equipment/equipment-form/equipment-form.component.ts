@@ -220,8 +220,11 @@ export class EquipmentFormComponent implements OnInit {
   
       // If you're using a reactive form, you might need to update it as well
       // this.form.patchValue(updatedValues);
+      if(this.reactiveForm) {
+        this.reactiveForm.updateFormValues(updatedValues);
+      }
   
-      console.log('Preset data applied:', updatedValues);
+      // console.log('Preset data applied:', updatedValues);
     } else {
       console.warn('No preset data available');
     }

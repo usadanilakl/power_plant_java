@@ -383,7 +383,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   }
 
   applyPresetValue(equipment: EquipmentDto): EquipmentDto {
-    console.log('Applying preset value:', equipment);
+    // console.log('Applying preset value:', equipment);
     Object.keys(equipment).forEach(key => {
       if (EquipmentDto.isValidKey(key)) {
         const value = equipment[key];

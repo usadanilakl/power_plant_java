@@ -92,7 +92,7 @@ export class CurrentFileService {
       );
     }
   updateLocalLotoPoints(updatedLotoPoints: LotoPointDto[]): void {
-    console.log('Updating local LOTO points:', updatedLotoPoints);
+    // console.log('Updating local LOTO points:', updatedLotoPoints);
   
     // Update associatedLotoPointsSubject
     const currentLotoPoints = this.associatedLotoPointsSubject.getValue();
@@ -198,7 +198,7 @@ export class CurrentFileService {
     }
 
     updateRenderedEquipment(updatedEquipment: EquipmentDto[]): void {
-      console.log('Updating rendered equipment:', updatedEquipment);
+      // console.log('Updating rendered equipment:', updatedEquipment);
     
       // Update elementsToRenderSubject
       const currentElements = this.elementsToRenderSubject.getValue();

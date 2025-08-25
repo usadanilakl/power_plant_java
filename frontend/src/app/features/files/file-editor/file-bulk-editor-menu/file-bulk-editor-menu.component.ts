@@ -182,7 +182,7 @@ export class FileBulkEditorMenuComponent implements OnInit {
           );
           this.equipmentData.set(updatedEquipmentData);
 
-          console.log('items: ', this.equipmentData())
+          // console.log('items: ', this.equipmentData())
   
           // Optionally, update the items on the server
           this.updateItemsOnServer(updatedItems);

@@ -1,6 +1,5 @@
 package com.dk_power.power_plant_java.controller.angular.file;
 
-import com.dk_power.power_plant_java.api.ApiResponse;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
@@ -17,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -181,6 +179,22 @@ public class NgFileRestController {
         }
     }
     
+    
+    @PostMapping("/file-by-link")
+    public ResponseEntity<NgApiResponse<FileDto>> getEquipmentByFileLink(@RequestBody Map<String, String> body) {
+        try {
+            String fileLink = body.get("fileLink");
+            if (fileLink == null || fileLink.isEmpty()) {
+                return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "File link is required"));
+            }
+
+            FileDto fileDto = ngFileService.getFileByLink(fileLink);
+            return ResponseEntity.ok(new NgApiResponse<>(fileDto, "File retrieved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving file: " + e.getMessage()));
+        }
+    }
 
 
 }

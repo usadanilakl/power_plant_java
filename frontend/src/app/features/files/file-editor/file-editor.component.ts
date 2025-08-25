@@ -363,7 +363,7 @@ export class FileEditorComponent {
           // Close the equipment form if it's open
           this.isEqFormOpen.set(false);
           
-          console.log('Equipment deleted successfully');
+          // console.log('Equipment deleted successfully');
           // Optionally, you can show a success message here
         } else {
           console.warn('Equipment deletion did not return a response');

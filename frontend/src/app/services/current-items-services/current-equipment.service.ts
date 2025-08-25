@@ -79,7 +79,7 @@ export class CurrentEquipmentService {
       );
       // Create a new array to ensure change detection
       this.allShapesSubject.next([...updatedShapes]);
-      console.log('currently selected shape is: ', this.shapeSubject.getValue());
+      // console.log('currently selected shape is: ', this.shapeSubject.getValue());
     }
     
     private areShapesEqual(shape1: RectangleShape, shape2: RectangleShape): boolean {
@@ -281,7 +281,7 @@ export class CurrentEquipmentService {
     }
 
     setCurrentPresetData(data: EquipmentDto): void {
-      console.log('Current presetData', data);
+      // console.log('Current presetData', data);
       this.currentPresetDataSubject.next(data);
     }
     
@@ -302,7 +302,7 @@ export class CurrentEquipmentService {
     }
     
     setCurrentPresetLpData(arg0: LotoPointDto) {
-      console.log('Current presetLpData', arg0);
+      // console.log('Current presetLpData', arg0);
       this.currentLotoPointPresetDataSubject.next(arg0);
     }
 

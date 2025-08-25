@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.sevice.angular.loto;
 
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -13,7 +14,10 @@ import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -133,5 +137,20 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         } catch (Exception e) {
             throw new RuntimeException("Error removing LotoPoint from LotoStandard: " + e.getMessage(), e);
         }
+    }
+
+    public List<FileDto> getRelatedFiles(Long lotoStandardId) {
+        LotoStandard standard = getEntityById(lotoStandardId);
+        if (standard == null) {
+            throw new EntityNotFoundException("LotoStandard not found");
+        }
+        Set<LotoPoint> points = standard.getLotoPoints();
+        if(points==null || points.isEmpty()) return List.of();
+        Set<FileDto> files = new HashSet<>();
+        for(LotoPoint point : points){
+            files.addAll(ngLotoPointService.getRelatedFiles(point.getId()));
+        }
+
+        return files.stream().distinct().toList();
     }
 }

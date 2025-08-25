@@ -4,7 +4,6 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentIdDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -13,9 +12,7 @@ import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
-import com.dk_power.power_plant_java.sevice.file.FileService;
 import jakarta.persistence.EntityManager;
-import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -278,5 +275,25 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
         List<Equipment> byTagNumber = equipmentRepo.findByTagNumber(tagNumber);
         return byTagNumber.stream().map(this::toDto).collect(Collectors.toList());
 
+    }
+
+    public List<FileDto> getRelatedFiles(Long id) {
+        Equipment equipment = findById(id).orElseThrow(() -> new RuntimeException("Equipment not found with id: " + id));
+
+        // Get all related equipment, including the original equipment
+        Set<Equipment> relatedEquipment = new HashSet<>();
+        relatedEquipment.add(equipment);
+        relatedEquipment.addAll(equipment.getLotoPoints().stream()
+                .flatMap(lotoPoint -> lotoPoint.getEquipmentList().stream())
+                .collect(Collectors.toSet()));
+
+        // Collect files from all related equipment
+        Set<FileObject> relatedFiles = relatedEquipment.stream()
+                .map(Equipment::getMainFile)
+                .collect(Collectors.toSet());
+
+        return relatedFiles.stream()
+                .map(fileService::toDto)
+                .collect(Collectors.toList());
     }
 }

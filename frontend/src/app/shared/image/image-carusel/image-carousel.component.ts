@@ -42,7 +42,7 @@ export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
     } else if (typeof this.images === 'function') {
       this.displayImages = computed(() => {
         const imageArray = (this.images as () => string[])();
-        console.log('Images input:', imageArray);
+        // console.log('Images input:', imageArray);
         const uniqueImages = Array.from(new Set(imageArray.map(image => this.link+'/'+image.replaceAll('pdf', 'jpg'))));
         return uniqueImages;
       });

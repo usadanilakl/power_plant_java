@@ -60,4 +60,8 @@ export class EquipmentService {
   copyEquipment(id: number, fileId: number): Observable<SpringApiResponse<EquipmentDto>> {
     return this.http.post<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}/copy`, {eqId: id, fileId: fileId });
   }
+
+  getRelatedFiles(id: number): Observable<SpringApiResponse<FileDto[]>> {
+    return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/${id}/related-files`);
+  }
 }

@@ -28,7 +28,7 @@ export class ValueTableComponent implements OnInit {
     this.currentValueService.getAllValueDtos().pipe(
       tap(values => {
         this.items.set(values);
-        console.log('Loaded categories:', values);
+        // console.log('Loaded categories:', values);
       })
     ).subscribe({
       error: (err) => console.error('Error loading categories:', err)

@@ -220,6 +220,25 @@ export class ReactiveFormComponent {
     return null;
   }
 
+  updateFormValues(newValues: any) {
+    const form = this.form();
+    if (form) {
+      this.fields().forEach((field) => {
+        if (form.get(field.name)) {
+          let value = this.getNestedValue(newValues, field.name);
+          
+          if (field.type !== 'file') {
+            if (field.type === 'select' && typeof value === 'object' && value !== null) {
+              value = value.id;
+            }
+            form.get(field.name)!.setValue(value || null);
+          }
+        }
+      });
+      form.updateValueAndValidity();
+    }
+  }
+
 
 
 }

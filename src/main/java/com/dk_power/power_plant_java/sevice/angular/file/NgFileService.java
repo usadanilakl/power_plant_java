@@ -526,4 +526,18 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     public List<FileObject> getFilesWithRelatedTags() {
         return fileRepo.findByRelatedTagsIsNotNull();
     }
+
+    public FileDto getFileByLink(String fileLink) {
+        String pdfLink = fileLink.replaceAll("jpg","pdf");
+        FileObject entityByFileLink = fileRepo.findByFileLink(pdfLink);
+        System.out.println(entityByFileLink);
+        if(entityByFileLink == null){
+            String fileNumber = FileObject.getFileNumberFromLink(fileLink);
+            System.out.println("FileNumber: " + fileNumber);
+            entityByFileLink = fileRepo.findByFileNumber(fileNumber);
+            System.out.println(entityByFileLink);
+        }
+        if (entityByFileLink == null) return null;
+        return toDto(entityByFileLink);
+    }
 }

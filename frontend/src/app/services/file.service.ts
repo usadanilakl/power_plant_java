@@ -29,6 +29,10 @@ export class FileService {
   getEquipmentByFileId(fileId: any): Observable<SpringApiResponse<EquipmentDto[]>> {
     return this.http.post<SpringApiResponse<EquipmentDto[]>>(`${this.apiUrl}/eq-by-file`, { id: fileId });
   }
+
+  getFileByLink(fileLink: string): Observable<SpringApiResponse<FileDto>> {
+    return this.http.post<SpringApiResponse<FileDto>>(`${this.apiUrl}/file-by-link`, { fileLink });
+  }
   
   getByFileType(fileType: string) {
     return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/by-type/${fileType}`);

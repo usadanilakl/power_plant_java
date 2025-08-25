@@ -11,10 +11,7 @@ import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -58,7 +55,7 @@ public class BrLotoStandardMapper {
         if(dto.getLotoPoints()!=null && !dto.getLotoPoints().isEmpty()) entity.setLotoPoints(dto.getLotoPoints().stream()
                 .map(lotoPointRepo::findById)
                 .map(Optional::get)
-                .collect(Collectors.toSet()));
+                .collect(Collectors.toCollection(LinkedHashSet::new)));
         return entity;
     }
 }

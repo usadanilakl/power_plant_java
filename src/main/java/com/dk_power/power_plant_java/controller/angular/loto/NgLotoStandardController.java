@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.controller.angular.loto;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoStandardService;
@@ -76,5 +77,16 @@ public class NgLotoStandardController {
         }
     }
 
+
+    @GetMapping("/{lotoStandardId}/related-files")
+    public ResponseEntity<NgApiResponse<List<FileDto>>> getRelatedFiles(@PathVariable Long lotoStandardId) {
+        try {
+            List<FileDto> relatedFiles = lotoStandardService.getRelatedFiles(lotoStandardId);
+            return ResponseEntity.ok(new NgApiResponse<>(relatedFiles, "Related files retrieved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(new NgApiResponse<>(null, "Error retrieving related files: " + e.getMessage()));
+        }
+    }
 
 }

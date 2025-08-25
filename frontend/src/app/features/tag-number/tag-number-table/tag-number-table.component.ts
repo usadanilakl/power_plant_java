@@ -75,7 +75,7 @@ export class TagNumberTableComponent implements OnInit {
   
     this.lotoPointService.updateLotoPoint(updatedItem).subscribe(
       (response) => {
-        console.log('Tag number updated successfully', response.responseData);
+        // console.log('Tag number updated successfully', response.responseData);
         const currentItems = (this.initialItems$ as BehaviorSubject<any[]>).getValue();
         const updatedItems = currentItems.map(item => 
           item.id === this.selectedItem().id ? updatedItem : item

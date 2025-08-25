@@ -1,8 +1,17 @@
 <div class="carousel-container">
   <app-image-carousel
-  [images]="currentFileLinks">
+  [images]="currentFileLinks"
+  (imageClick)="fetchAndShowImageByLink($event)">
   </app-image-carousel>
 </div>
+
+@if(currentLotoPointFileLinks() && currentLotoPointFileLinks().length > 1){
+  <div class="carousel-container">
+    <app-image-carousel
+    [images]="currentLotoPointFileLinks">
+    </app-image-carousel>
+  </div>
+}
 
 <div class="image-container">
   @if (currentFileLink() && currentFileLink()!=='') {
@@ -66,5 +75,6 @@
 >
   <app-equipment-details
     (lotoPointClickEvent)="addLotoPointToStandard($event)"
+    (fileClickEvent)="showFile($event)"
   ></app-equipment-details>
 </app-floating-menu>

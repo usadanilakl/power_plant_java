@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.LinkedHashSet;
 import java.util.Set;
 @Getter
 @Setter
@@ -12,5 +13,6 @@ public class LotoStandardDto extends BaseDto {
     private Long id;
     private String name;
     private String description;
-    private Set<LotoPointDto> lotoPoints;
+    private LinkedHashSet<LotoPointDto> lotoPoints;
+    private String lotoPointOrder;
 }

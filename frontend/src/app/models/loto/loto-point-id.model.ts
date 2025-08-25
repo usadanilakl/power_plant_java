@@ -25,7 +25,7 @@ export class LotoPointIdDto extends BaseDto {
   zeroEnergyMethod: string | null;
 
   constructor(data: Partial<LotoPointIdDto> = {}) {
-    console.log('Creating LotoPointIdDto',data);
+    // console.log('Creating LotoPointIdDto',data);
     super(data);
 
     this.unit = data.unit ?? null;

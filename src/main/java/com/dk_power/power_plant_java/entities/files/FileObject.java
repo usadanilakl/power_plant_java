@@ -210,4 +210,12 @@ public void setRelatedSystems(String system) {
     public void removePoint(Equipment entity) {
         points.removeIf(e->e.getId()==entity.getId());
     }
+    
+    
+public static String getFileNumberFromLink(String link) {
+    String[] parts = link.split("[/\\\\]");
+    String fileName = parts[parts.length - 1];
+    int lastDotIndex = fileName.lastIndexOf('.');
+    return lastDotIndex != -1 ? fileName.substring(0, lastDotIndex) : fileName;
+}
 }

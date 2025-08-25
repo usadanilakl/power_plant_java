@@ -147,7 +147,7 @@ export class LotoBoxTableComponent implements OnInit {
     if (this.selectedItem) {
       this.lotoBoxService.deleteLotoBox(this.selectedItem.id.toString()).subscribe(
         () => {
-          console.log('LOTO lotoBox deleted successfully');
+          // console.log('LOTO lotoBox deleted successfully');
           const updatedItems = this.initialItemsSubject.value.filter(item => item.id !== this.selectedItem?.id);
           this.initialItemsSubject.next(updatedItems);
           this.selectedItem = null;

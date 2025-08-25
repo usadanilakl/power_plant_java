@@ -33,6 +33,9 @@ export class CurrentLotoStandardService{
     private currentFilesSubject = new BehaviorSubject<FileDto[]>([]);
     currentFiles$ = this.currentFilesSubject.asObservable();
 
+    private currentStandardFilesSubject = new BehaviorSubject<FileDto[]>([]);
+    currentStandardFiles$ = this.currentStandardFilesSubject.asObservable();
+
     loadStandardsFromServer() {
       this.lotoStandardService.getAllLotoStandards().pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -87,6 +90,7 @@ export class CurrentLotoStandardService{
           // Always update the current standard
           this.currentStandardSubject.next(standardDto);
           this.setCurrentLotoPoint(lotoPoint);
+          this.loadCurrentStandardFiles(standardDto.id);
         }),
         catchError((error) => {
           console.error('Error adding LOTO point to standard:', error);
@@ -119,6 +123,7 @@ export class CurrentLotoStandardService{
           
           // Always update the current standard
           this.currentStandardSubject.next(standardDto);
+          this.loadCurrentStandardFiles(standardDto.id);
         }),
         catchError((error) => {
           console.error('Error removing LOTO point from standard:', error);
@@ -127,24 +132,6 @@ export class CurrentLotoStandardService{
       ).subscribe();
     }
 
-    // setCurrentStandard(lotoStandardId: number) {
-    //   if(lotoStandardId === null || lotoStandardId === 0){
-    //     this.currentStandardSubject.next(new LotoStandardDto());
-    //     return;
-    //   } 
-    //     this.lotoStandardService.getLotoStandardById(lotoStandardId).pipe(
-    //         takeUntilDestroyed(this.destroyRef),
-    //         map((response: SpringApiResponse<LotoStandardDto>) => response.responseData),
-    //         tap((standard: LotoStandardDto) => {
-    //             this.currentStandardSubject.next(new LotoStandardDto(standard));
-    //         }),
-    //         catchError((error) => {
-    //             console.error('Error fetching LOTO standard:', error);
-    //             this.currentStandardSubject.next(null);
-    //             return of(null);
-    //         })
-    //     ).subscribe();
-    // }
     setCurrentStandard(lotoStandardId: number) {
       if (lotoStandardId === null || lotoStandardId === 0) {
         this.currentStandardSubject.next(new LotoStandardDto());
@@ -159,6 +146,7 @@ export class CurrentLotoStandardService{
         ).subscribe((standard: LotoStandardDto | null) => {
           if (standard) {
             this.currentStandardSubject.next(new LotoStandardDto(standard));
+            this.loadCurrentStandardFiles(standard.id);
           } else {
             this.currentStandardSubject.next(new LotoStandardDto());
           }
@@ -187,6 +175,10 @@ export class CurrentLotoStandardService{
       return this.currentFiles$;
     }
 
+    getCurrentStandardFiles(): Observable<FileDto[]> {
+      return this.currentStandardFiles$;
+    }
+
     loadCurrentFiles(lotoPointId: number) {
       this.lotoPointService.getRelatedFiles(lotoPointId).pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -200,6 +192,45 @@ export class CurrentLotoStandardService{
           return of([]);
         })
       ).subscribe()
+    }
+
+    loadCurrentStandardFiles(lotoStandardId: number) {
+      this.lotoStandardService.getRelatedFiles(lotoStandardId).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map((response: SpringApiResponse<FileDto[]>) => response.responseData),
+        tap((files: FileDto[]) => {
+          this.currentStandardFilesSubject.next([...files]);
+        }),
+        catchError((error) => {
+          console.error('Error fetching LOTO standard file links:', error);
+          this.currentStandardFilesSubject.next([]);
+          return of([]);
+        })
+      ).subscribe();
+    }
+
+    addFileToCurrentStandardFiles(fileDto: FileDto) {
+      const currentFiles = this.currentStandardFilesSubject.getValue();
+      const fileExists = currentFiles.some(file => file.id === fileDto.id);
+    
+      if (!fileExists) {
+        // If the file doesn't exist, add it to the array
+        this.currentStandardFilesSubject.next([...currentFiles, fileDto]);
+      } else {
+        // If the file already exists, you might want to update it
+        const updatedFiles = currentFiles.map(file => 
+          file.id === fileDto.id ? fileDto : file
+        );
+        this.currentStandardFilesSubject.next(updatedFiles);
+      }
+    
+      // console.log(`File ${fileExists ? 'updated' : 'added'} in current standard files:`, fileDto);
+    }
+
+    removeFileFromCurrentStandardFiles(fileId: number) {
+      const currentFiles = this.currentStandardFilesSubject.getValue();
+      const updatedFiles = currentFiles.filter(file => file.id!== fileId);
+      this.currentStandardFilesSubject.next(updatedFiles);
     }
 
     clearCurrentFileLinks() {
