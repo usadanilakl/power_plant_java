@@ -1,9 +1,9 @@
-import { AfterViewInit, Component, computed, DestroyRef, effect, ElementRef, inject, input, output, signal, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, computed, DestroyRef, effect, ElementRef, inject, input, OnInit, output, signal, ViewChild } from '@angular/core';
 import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from '../../../models/shape.model';
 import { DrawUtilService } from '../image-services/draw-util.service';
 import { ShapeFactoryService } from '../image-services/shape-factory.service';
 import { ShapeUtilService } from '../image-services/shape-util.service';
-import { Observable, Subscription } from 'rxjs';
+import { distinctUntilChanged, Observable, Subscription } from 'rxjs';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -14,7 +14,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   templateUrl: './image-zoom-interactive.component.html',
   styleUrl: './image-zoom-interactive.component.css'
 })
-export class ImageZoomInteractiveComponent implements AfterViewInit {
+export class ImageZoomInteractiveComponent implements AfterViewInit, OnInit{
   imageUrl = input<string>();
   imageName = input<string>();
   elements = input.required<Observable<EquipmentDto[]>>();
@@ -32,21 +32,17 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   private currentEquipmentService = inject(CurrentEquipmentService);
   private destroyRef = inject(DestroyRef);
 
-  constructor() {
-    this.drawingService = new DrawUtilService(this.shapeFactory, this.shapeUtil);
-  effect(() => {
-    this.drawingService.updateSecondarySelectedShapes(this.selectedShapeIds());
-    this.drawShapes();
-  });
-  }
-
-//Subscriptions  
+//Subscriptions
     private shapesSubscription!: Subscription;
     private cursorSubscription!: Subscription;
     private elementsSubscription: Subscription | undefined;
     private newShapeSubscription!: Subscription;
     private selectedShapeSubscription!: Subscription;
     private currentEquipmentSubscription: Subscription |undefined;
+    private subscriptionsAreSet: boolean = false;
+
+
+  private subscriptions = new Subscription();
 
 //Zooming and panning functionality variables
   private scale: number = 1;
@@ -101,6 +97,20 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     return this._canvas;
   }
 
+  constructor() {
+    this.drawingService = new DrawUtilService(this.shapeFactory, this.shapeUtil);
+
+    this.initializeServices();
+  effect(() => {
+    this.drawingService.updateSecondarySelectedShapes(this.selectedShapeIds());
+    this.drawShapes('effect');
+  });
+  }
+
+  ngOnInit() {
+    if(!this.subscriptionsAreSet)this.setSubscriptions();
+  }
+
 
   //Initialization
   ngAfterViewInit(): void {
@@ -120,23 +130,15 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this._canvas = this.canvasRef.nativeElement;
 
     //Initialize shapes and picture dimensions
-    this.elements().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(elements => {
-      this.initializeShapes(elements, this._img.naturalWidth, this._img.naturalHeight);
-      this.drawShapes();
-    });
     this.pictureOriginalWidth = img.naturalWidth;
     this.pictureOriginalHeight = img.naturalHeight;
     this.pictureCurrentWidth = this.img.width;
     this.pictureCurrentHeight = this.img.height;
     this.zoomElementRef.nativeElement.addEventListener('contextmenu', this.onContextMenu.bind(this));
-  
-    this.initializeServices();
-
-    this.setSubscriptions();
 
     this.updateCanvasSize();
     // this.updateImageAndCanvasSize();
-  
+
   }
 
   initializeShapes(elements: any[], originalWidth: number, originalHeight: number) {
@@ -171,51 +173,82 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this.drawingService.isEditingEnabled.set(this.isEditEnabled());
   }
 
+
   setSubscriptions() {
-    this.shapesSubscription = this.drawingService.shapes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(shapes => {
-      this.shapes.set(shapes);
-      this.drawShapes();
+    this.elementsSubscription = this.elements().pipe(
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(elements => {
+      this.initializeShapes(elements, this._img.naturalWidth, this._img.naturalHeight);
+      this.drawShapes('this.elements().subscribe');
     });
 
-    this.shapesSubscription = this.drawingService.newShape$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(newShape => {
+    this.shapesSubscription = this.drawingService.shapes$.pipe(
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(shapes => {
+      this.shapes.set(shapes);
+      this.drawShapes('this.drawingService.shapes$.subscribe');
+    });
+
+    this.shapesSubscription = this.drawingService.newShape$.pipe(
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(newShape => {
       this.newShapeCreated.emit(newShape);
     });
 
-    this.selectedShapeSubscription = this.drawingService.selectedShape$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(selectedShape => {
+    this.selectedShapeSubscription = this.drawingService.selectedShape$.pipe(
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(selectedShape => {
       this.shapeSelected.emit(selectedShape);
     });
 
-    this.currentEquipmentSubscription = this.currentEquipmentService.currentShape$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(shape => {
+    this.currentEquipmentSubscription = this.currentEquipmentService.currentShape$.pipe(
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(shape => {
       if (shape !== this.drawingService.getSelectedShape()) {
         this.drawingService.updateSelectedShape(shape);
-        this.drawShapes();
+        this.drawShapes('this.currentEquipmentService.currentShape$.subscribe');
       }
     });
-    this.currentEquipmentService.allShapes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(shapes => {
+    this.currentEquipmentService.allShapes$.pipe(
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(shapes => {
       this.drawingService.setShapes(shapes);
       this.shapes.set(shapes);
     });
+    this.subscriptionsAreSet = true;
+  }
 
-    this.destroyRef.onDestroy(() => {
-      if (this.shapesSubscription) {
-        this.shapesSubscription.unsubscribe();
-      }
-      if (this.cursorSubscription) {
-        this.cursorSubscription.unsubscribe();
-      }
-      if(this.elementsSubscription) {
-        this.elementsSubscription.unsubscribe();
-      }
-      if(this.newShapeSubscription) {
-        this.newShapeSubscription.unsubscribe();
-      }
-      if(this.selectedShapeSubscription) {
-        this.selectedShapeSubscription.unsubscribe();
-      }
-      if(this.currentEquipmentSubscription) {
-        this.currentEquipmentSubscription.unsubscribe();
-      }
-    });
+  unsubscribeAll() {
+    if (this.shapesSubscription) this.shapesSubscription.unsubscribe();
+    if (this.newShapeSubscription) this.newShapeSubscription.unsubscribe();
+    if (this.selectedShapeSubscription) this.selectedShapeSubscription.unsubscribe();
+    if (this.currentEquipmentSubscription) this.currentEquipmentSubscription.unsubscribe();
+    if (this.elementsSubscription) this.elementsSubscription.unsubscribe();
+  }
+
+  resetComponent() {
+    // Unsubscribe from existing subscriptions
+    this.unsubscribeAll();
+  
+    // Reset state
+    this.shapes.set([]);
+    this.scale = 1;
+    this.pointX = 0;
+    this.pointY = 0;
+  
+    // Reinitialize services and subscriptions
+    this.initializeServices();
+    this.setSubscriptions();
+  
+    // Reset canvas and redraw
+    this.updateCanvasSize();
+    this.drawShapes('resetComponent');
   }
 
 
@@ -234,7 +267,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       const imgRect = this.img.getBoundingClientRect();
       this.canvas.width = imgRect.width;
       this.canvas.height = imgRect.height;
-      this.drawShapes();
+      this.drawShapes('this.updateCanvasSize');
     } else {
       console.error('Canvas not available for size update');
     }
@@ -264,19 +297,20 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   //     this.drawShape(ctx, shape);
   //   });
   // }
-  drawShapes() {
-    console.log('drawing shapes..');
+  drawShapes(source: string | null = null) {
+    // if(source) console.log(`Drawing shapes from ${source}`);
+    // else console.log('Drawing shapes with no source');
     if (!this._canvas) {
       console.warn('Canvas is not initialized yet');
       return;
     }
-  
+
     const ctx = this._canvas.getContext('2d');
     if (!ctx) {
       console.error('Unable to get 2D context from canvas');
       return;
     }
-  
+
     ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
     this.shapes().forEach(shape => {
       this.drawShape(ctx, shape);
@@ -300,12 +334,12 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
                   rect.width,
                   rect.height
                 );
-    
+
                 if (shape.isSecondarySelected) {
                   // Draw selection handles
                   this.drawSelectionHandles(ctx, shape, "orange");
                 }
-    
+
                 if (shape.isSelected) {
                   // Draw selection handles
                   this.drawSelectionHandles(ctx, shape);
@@ -342,9 +376,9 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     const scale = this.calculateCurrentScale();
     const handleSize = 8;
     ctx.fillStyle = color;
-  
+
     let corners: [number, number][] = [];
-  
+
     switch (shape.type) {
       case 'rectangle':
         const rect = shape as RectangleShape;
@@ -382,7 +416,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       //   ];
       //   break;
     }
-  
+
     corners.forEach(([x, y]) => {
       ctx.fillRect(
         x * scale - handleSize / 2,
@@ -419,7 +453,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   private updateShapes(shapes: Shape[]) {
     if (shapes) {
       this.drawingService.setShapes(shapes);
-      this.drawShapes();
+      this.drawShapes('updateShapes');
     }
   }
 
@@ -467,7 +501,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
 
     this.lastX = event.clientX;
     this.lastY = event.clientY;
-  
+
     if (timeSinceLastClick < this.DOUBLE_CLICK_DELAY) {
       this.isDoubleClick = true;
       clearTimeout(this.clickTimeout);
@@ -479,12 +513,12 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
           this.onLeftClick(event);
         }else if (event.button === 1) { // Middle click
           this.onMiddleClick(event);
-        } else if (event.button === 2) { // Right click 
+        } else if (event.button === 2) { // Right click
           this.onRightClick(event);
         }
       }, this.DOUBLE_CLICK_DELAY);
     }
-  
+
     this.lastClickTime = currentTime;
     event.preventDefault();
   }
@@ -507,7 +541,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     const { x, y } = this.viewportToPictureCoordinates(event.clientX, event.clientY);
     this.drawingService.handleRightClick(event,x,y);
   }
-  
+
   onDoubleClick(event: MouseEvent) {
     const { x, y } = this.viewportToPictureCoordinates(event.clientX, event.clientY);
     this.drawingService.handleDoubleClick({
@@ -524,29 +558,29 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this.drawingService.handleMouseUp(event);
     clearTimeout(this.clickTimeout);
   }
-  
+
   onWheel(event: WheelEvent) {
     event.preventDefault();
     const zoomOuterRect = this.zoomOuter.getBoundingClientRect();
     const mouseX = event.clientX - zoomOuterRect.left;
     const mouseY = event.clientY - zoomOuterRect.top;
-  
+
     const delta = event.deltaY > 0 ? 0.8 : 1.2;
     const newScale = Math.min(Math.max(0.1, this.scale * delta), 10);
-  
+
     // Calculate the new position
     const newPosition = this.positioner(mouseX, mouseY, this.scale, newScale);
-  
+
     // Set transition for smooth zooming
     this.setTransition('0.1s');
-  
+
     // Update the scale and position
     this.scale = newScale;
     this.pointX = newPosition.left;
     this.pointY = newPosition.top;
-  
+
     this.transform();
-  
+
     // Remove transition after zooming
     setTimeout(() => this.setTransition('0s'), 100);
   }
@@ -566,29 +600,29 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   private positioner(mouseX: number, mouseY: number, oldScale: number, newScale: number): { left: number, top: number } {
     const containerRect = this.zoomOuter.getBoundingClientRect();
     const imageRect = this.zoomElement.getBoundingClientRect();
-  
+
     // Calculate the position of the mouse relative to the image's current position
     const relativeX = (mouseX - this.pointX) / imageRect.width;
     const relativeY = (mouseY - this.pointY) / imageRect.height;
-  
+
     // Calculate the new dimensions of the image
     const newWidth = imageRect.width * newScale / oldScale;
     const newHeight = imageRect.height * newScale / oldScale;
-  
+
     // Calculate the new position to keep the mouse at the same relative point on the image
     let newLeft = mouseX - relativeX * newWidth;
     let newTop = mouseY - relativeY * newHeight;
-  
+
     // Calculate the bounds for the image position
     const minLeft = Math.min(0, containerRect.width - newWidth);
     const maxLeft = Math.max(0, containerRect.width - newWidth);
     const minTop = Math.min(0, containerRect.height - newHeight);
     const maxTop = Math.max(0, containerRect.height - newHeight);
-  
+
     // // Adjust the position to keep the image within the container bounds
     // newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
     // newTop = Math.max(minTop, Math.min(newTop, maxTop));
-  
+
     return { left: newLeft, top: newTop };
   }
 
@@ -598,7 +632,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
           this.zoomElement.style.setProperty('--transition-timing-function', timingFunction);
       }
   }
-  
+
   private toggleDraggingClass(isDragging: boolean) {
       if (this.zoomElement && this.zoomElement) {
           if (isDragging) {
@@ -612,32 +646,32 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   viewportToPictureCoordinates(viewportX: number, viewportY: number): { x: number, y: number } {
     const imgRect = this.img.getBoundingClientRect();
     const scale = this.calculateCurrentScale();
-  
+
     // Calculate click position relative to the image
     const imageX = viewportX - imgRect.left;
     const imageY = viewportY - imgRect.top;
-  
+
     // Convert to original image coordinates
     const originalX = imageX / scale;
     const originalY = imageY / scale;
-  
+
     return {
       x: Math.round(originalX),
       y: Math.round(originalY)
     };
   }
-  
+
   pictureToViewportCoordinates(imageX: number, imageY: number): { x: number, y: number } {
     const imgRect = this.img.getBoundingClientRect();
-  
+
     // Scale the coordinates
     const scaledX = imageX * this.scale;
     const scaledY = imageY * this.scale;
-  
+
     // Add the image's position in the viewport
     const viewportX = scaledX + imgRect.left;
     const viewportY = scaledY + imgRect.top;
-  
+
     return {
       x: Math.round(viewportX),
       y: Math.round(viewportY)
@@ -656,7 +690,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     return currentImageScale * shapeToNaturalImageRatio;
   }
 
-  scaleShapeToCurrentImage(shape: RectangleShape){ 
+  scaleShapeToCurrentImage(shape: RectangleShape){
     const scale = shape.scaleToCurrentImage;
     shape.width *= scale;
     shape.height *= scale;
@@ -670,7 +704,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     const visibleShapes: Shape[] = [];
     const containerRect = this.zoomOuter.getBoundingClientRect();
     const scale = this.calculateCurrentScale();
-  
+
     // Calculate the container bounds in image coordinates
     const containerBounds = {
       left: -this.pointX / scale,
@@ -678,11 +712,11 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       right: (-this.pointX + containerRect.width) / scale,
       bottom: (-this.pointY + containerRect.height) / scale
     };
-  
+
     for (const shape of this.shapes()) {
       let isInContainerBounds = false;
-  
-  
+
+
       switch (shape.type) {
         case 'rectangle':
           isInContainerBounds = this.isRectangleInBounds(shape as RectangleShape, containerBounds);
@@ -697,14 +731,14 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
           isInContainerBounds = this.isTextInBounds(shape as TextShape, containerBounds);
           break;
       }
-  
+
       if (isInContainerBounds) {
         visibleShapes.push(shape);
       }
     }
     return visibleShapes;
   }
-  
+
   private isRectangleInBounds(rect: RectangleShape, bounds: any): boolean {
     return (
       rect.x < bounds.right &&
@@ -713,7 +747,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       rect.y + rect.height > bounds.top
     );
   }
-  
+
   private isCircleInBounds(circle: CircleShape, bounds: any): boolean {
     return (
       circle.x + circle.radius > bounds.left &&
@@ -722,17 +756,17 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
       circle.y - circle.radius < bounds.bottom
     );
   }
-  
+
   private isLineInBounds(line: LineShape, bounds: any): boolean {
     return (
       (line.startX >= bounds.left && line.startX <= bounds.right &&
        line.startY >= bounds.top && line.startY <= bounds.bottom) ||
       (line.endX >= bounds.left && line.endX <= bounds.right &&
-       line.endY >= bounds.top && line.endY <= bounds.bottom) 
+       line.endY >= bounds.top && line.endY <= bounds.bottom)
       // this.lineIntersectsRectangle(line, bounds)
     );
   }
-  
+
   private isTextInBounds(text: TextShape, bounds: any): boolean {
     const estimatedWidth = text.text.length * 8; // Rough estimate of text width
     const estimatedHeight = 16; // Assuming 16px font size
