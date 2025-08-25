@@ -63,7 +63,9 @@ export class LotoPointBulkEditorComponent implements OnInit {
 
 
   ngOnInit(): void {
-    this.currentFileService.getAssociatedLotoPoints().subscribe(lotoPointList => {
+    this.currentFileService.getAssociatedLotoPoints().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(lotoPointList => {
       this.lotoPoints.set(lotoPointList);
     });
     

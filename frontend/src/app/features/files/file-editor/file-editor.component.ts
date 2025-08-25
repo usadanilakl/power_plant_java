@@ -105,6 +105,7 @@ export class FileEditorComponent {
         const updatedEq = new EquipmentDto().setCoordinatesFromShape(shape as RectangleShape);
 
         this.equipmentService.updateEquipment(new EquipmentDto({...updatedEq,id:shape.id})).pipe(
+          takeUntilDestroyed(this.destroyRef),
           catchError(error => {
             console.error('Error updating equipment:', error);
             // You can add more specific error handling here, such as displaying a user-friendly message
@@ -242,6 +243,7 @@ export class FileEditorComponent {
       .map(eq => eq.type);
   
     this.currentFileService.getElements().pipe(
+      takeUntilDestroyed(this.destroyRef),
       map(elements => elements.filter(el => {
         if (!el.eqType || !el.eqType.name) {
           return selectedTypes.includes('Unknown');
@@ -306,6 +308,7 @@ export class FileEditorComponent {
     this.isLoading.set(true);
   
     this.equipmentService.updateEquipment(eqWithFile).pipe(
+      takeUntilDestroyed(this.destroyRef),
       tap(resp => {
         // You could trigger a notification here
         // this.notificationService.showSuccess('Equipment updated successfully');

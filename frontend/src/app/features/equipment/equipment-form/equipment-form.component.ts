@@ -280,6 +280,7 @@ export class EquipmentFormComponent implements OnInit {
     });
   
     this.equipmentService.updateEquipment(updatedEquipment).pipe(
+      takeUntilDestroyed(this.destroyRef),
       tap(resp => {
         if (resp && resp.responseData) {
           const updatedEquipmentDto = new EquipmentDto(resp.responseData);
@@ -341,6 +342,7 @@ export class EquipmentFormComponent implements OnInit {
     }
   
     this.equipmentService.updateEquipment(updatedEquipment).pipe(
+      takeUntilDestroyed(this.destroyRef),
       tap(resp => {
         if (resp && resp.responseData) {
           const updatedEquipmentDto = new EquipmentDto(resp.responseData);

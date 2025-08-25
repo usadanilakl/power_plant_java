@@ -6,6 +6,7 @@ import { ShapeUtilService } from '../image-services/shape-util.service';
 import { Observable, Subscription } from 'rxjs';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-image-zoom-interactive',
@@ -119,7 +120,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
     this._canvas = this.canvasRef.nativeElement;
 
     //Initialize shapes and picture dimensions
-    this.elements().subscribe(elements => {
+    this.elements().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(elements => {
       this.initializeShapes(elements, this._img.naturalWidth, this._img.naturalHeight);
       this.drawShapes();
     });
@@ -171,26 +172,26 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   }
 
   setSubscriptions() {
-    this.shapesSubscription = this.drawingService.shapes$.subscribe(shapes => {
+    this.shapesSubscription = this.drawingService.shapes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(shapes => {
       this.shapes.set(shapes);
       this.drawShapes();
     });
 
-    this.shapesSubscription = this.drawingService.newShape$.subscribe(newShape => {
+    this.shapesSubscription = this.drawingService.newShape$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(newShape => {
       this.newShapeCreated.emit(newShape);
     });
 
-    this.selectedShapeSubscription = this.drawingService.selectedShape$.subscribe(selectedShape => {
+    this.selectedShapeSubscription = this.drawingService.selectedShape$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(selectedShape => {
       this.shapeSelected.emit(selectedShape);
     });
 
-    this.currentEquipmentSubscription = this.currentEquipmentService.currentShape$.subscribe(shape => {
+    this.currentEquipmentSubscription = this.currentEquipmentService.currentShape$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(shape => {
       if (shape !== this.drawingService.getSelectedShape()) {
         this.drawingService.updateSelectedShape(shape);
         this.drawShapes();
       }
     });
-    this.currentEquipmentService.allShapes$.subscribe(shapes => {
+    this.currentEquipmentService.allShapes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(shapes => {
       this.drawingService.setShapes(shapes);
       this.shapes.set(shapes);
     });
@@ -264,6 +265,7 @@ export class ImageZoomInteractiveComponent implements AfterViewInit {
   //   });
   // }
   drawShapes() {
+    console.log('drawing shapes..');
     if (!this._canvas) {
       console.warn('Canvas is not initialized yet');
       return;

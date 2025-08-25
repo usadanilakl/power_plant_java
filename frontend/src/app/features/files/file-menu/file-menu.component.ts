@@ -9,6 +9,7 @@ import { CurrentFileService } from '../../../services/current-file.service';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { FileDetailFormComponent } from "../file-detail-form/file-detail-form.component";
 import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
+import { tap } from 'rxjs';
 
 @Component({
   selector: 'app-file-menu',
@@ -55,7 +56,9 @@ constructor(
 
   loadFiles(type: string = 'pid'): void {
     this.isLoading.set(true);
-    this.fileService.getByFileType(type).subscribe(
+    this.fileService.getByFileType(type).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(
       (response) => {
         this.isLoading.set(false);
         // Choose 'vendor', 'system', or 'fileType' as the grouping criteria
@@ -170,7 +173,9 @@ constructor(
     
   
     // Update in the backend
-    this.fileService.updateFile(formDataToSend).subscribe(
+    this.fileService.updateFile(formDataToSend).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(
       (response) => {
 
         this.fileSubmitMessage.set('File updated successfully');
@@ -244,21 +249,49 @@ constructor(
     this.handleFileEditClick(item);
   }
   
+  // private handleFileEditClick(item: NestedItem): void {
+  //   if (item.values && item.values.length > 0) return;
+  //   // console.log('Handling click for edit route', item);
+
+  //   this.fileService.getFileById(item.id.toString()).pipe(
+  //     takeUntilDestroyed(this.destroyRef)
+  //   ).subscribe(
+  //     (response) => {
+  //       const file = FileDto.fromJson(response.responseData);
+  //       file.fileLink = file.fileLink.replaceAll('pdf','jpg');
+  //       this.currentFileService.setCurrentFile(file);
+  //       this.currentFile.set(file);
+  //     },
+  //     (error) => {
+  //       console.error('Error getting file for edit:', error);
+  //     }
+  //   );
+  // }
   private handleFileEditClick(item: NestedItem): void {
     if (item.values && item.values.length > 0) return;
-    // console.log('Handling click for edit route', item);
-
-    this.fileService.getFileById(item.id.toString()).subscribe(
-      (response) => {
+  
+    const startTime = performance.now();
+  
+    this.fileService.getFileById(item.id.toString()).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(() => {
+        const endTime = performance.now();
+        console.log(`File fetch time: ${endTime - startTime}ms`);
+      })
+    ).subscribe({
+      next: (response) => {
         const file = FileDto.fromJson(response.responseData);
         file.fileLink = file.fileLink.replaceAll('pdf','jpg');
         this.currentFileService.setCurrentFile(file);
         this.currentFile.set(file);
+  
+        const totalTime = performance.now() - startTime;
+        console.log(`Total operation time: ${totalTime}ms`);
       },
-      (error) => {
+      error: (error) => {
         console.error('Error getting file for edit:', error);
       }
-    );
+    });
   }
   
   private handleFileTreeClick(item: NestedItem): void {

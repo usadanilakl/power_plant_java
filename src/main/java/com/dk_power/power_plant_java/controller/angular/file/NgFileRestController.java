@@ -8,6 +8,9 @@ import com.dk_power.power_plant_java.dto.files.FileIdDto;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.java.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +27,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class NgFileRestController {
     private final NgFileService ngFileService;
+    private final Logger log = LoggerFactory.getLogger(NgFileRestController.class);
     @Value("${files.root.path}")
     private String rootPath;
 
@@ -45,31 +49,53 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
     @GetMapping("/with-points")
     public ResponseEntity<NgApiResponse<Page<FileDto>>> getFilesWithPoints() {
-        try{
+        try {
             Page<FileDto> paginatedFiles = ngFileService.findAllWithProjectionPaginated(
                     new ArrayList<>(Arrays.asList("id", "fileNumber", "name", "vendor.name")),
                     PageRequest.of(0, 10000)).map(ngFileService::toDto);
             NgApiResponse<Page<FileDto>> response = new NgApiResponse<>(paginatedFiles, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
 
+//    @GetMapping("/{id}")
+//    public ResponseEntity<NgApiResponse<FileDto>> getFileById(@PathVariable Long id) {
+//        try {
+//            FileDto fileDto = ngFileService.findById(id).orElse(null);
+//            if (fileDto == null) {
+//                return ResponseEntity.notFound().build();
+//            }
+//            NgApiResponse<FileDto> response = new NgApiResponse<>(fileDto, "File retrieved successfully");
+//            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+//        }
+//    }
+
     @GetMapping("/{id}")
     public ResponseEntity<NgApiResponse<FileDto>> getFileById(@PathVariable Long id) {
+        log.info("Received request for file with id: {}", id);
         try {
-            FileDto fileDto = ngFileService.findById(id).orElse(null);
-            if (fileDto == null) {
+            long startTime = System.currentTimeMillis();
+            Optional<FileDto> fileDtoOptional = ngFileService.findById(id);
+            long endTime = System.currentTimeMillis();
+            log.info("Time taken to fetch file: {} ms", endTime - startTime);
+
+            if (fileDtoOptional.isEmpty()) {
+                log.warn("File with id {} not found", id);
                 return ResponseEntity.notFound().build();
             }
-            NgApiResponse<FileDto> response = new NgApiResponse<>(fileDto, "File retrieved successfully");
+            NgApiResponse<FileDto> response = new NgApiResponse<>(fileDtoOptional.get(), "File retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error retrieving file with id {}: {}", id, e.getMessage(), e);
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
@@ -118,9 +144,9 @@ public class NgFileRestController {
         System.out.println(fileDto.getRelatedSystems());
         try {
             Object responseObject = null;
-            if(file!= null){
+            if (file != null) {
                 responseObject = ngFileService.processPidFile(fileDto, file, overrideFile);
-            }else{
+            } else {
                 responseObject = ngFileService.updateFileObject(fileDto);
             }
             return ResponseEntity.ok(new NgApiResponse<>(responseObject, "Files updated successfully", LocalDateTime.now()));
@@ -146,6 +172,7 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<NgApiResponse<Void>> deleteFile(@PathVariable Long id) {
         try {
@@ -169,7 +196,7 @@ public class NgFileRestController {
     }
 
     @PostMapping("/eq-by-file")
-    public ResponseEntity<NgApiResponse<List<EquipmentDto>>> getEquipmentByFile(@RequestBody Map<String,String> fileId) {
+    public ResponseEntity<NgApiResponse<List<EquipmentDto>>> getEquipmentByFile(@RequestBody Map<String, String> fileId) {
         try {
             List<EquipmentDto> equipmentDtos = ngFileService.getEquipmentByFile(fileId.get("id"));
             return ResponseEntity.ok(new NgApiResponse<>(equipmentDtos, "Equipment retrieved successfully"));
@@ -178,8 +205,8 @@ public class NgFileRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving equipment: " + e.getMessage()));
         }
     }
-    
-    
+
+
     @PostMapping("/file-by-link")
     public ResponseEntity<NgApiResponse<FileDto>> getEquipmentByFileLink(@RequestBody Map<String, String> body) {
         try {

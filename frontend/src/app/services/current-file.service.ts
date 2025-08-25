@@ -1,14 +1,16 @@
-import { Injectable } from '@angular/core';
+import { DestroyRef, inject, Injectable } from '@angular/core';
 import { BehaviorSubject, map, Observable, take } from 'rxjs';
 import { FileDto } from '../models/file/file.model';
 import { EquipmentDto } from '../models/equipment/equipment.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { LotoPointDto } from '../models/loto/loto-point.model';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CurrentFileService {
+    private destroyRef = inject(DestroyRef);
     private currentFileSubject = new BehaviorSubject<FileDto | null>(null);
     currentFile$: Observable<FileDto | null> = this.currentFileSubject.asObservable();
 
@@ -26,7 +28,6 @@ export class CurrentFileService {
 
     private equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
   
-
 
     setCurrentFile(file: FileDto | null): void {
         this.currentFileSubject.next(file);
@@ -78,6 +79,7 @@ export class CurrentFileService {
 
     getAssociatedLotoPoints(): Observable<LotoPointDto[]> {
       return this.elementsToRender$.pipe(
+        takeUntilDestroyed(this.destroyRef),
         map(items => items.flatMap(item => item.lotoPoints || [])),
         map(lotoPoints => lotoPoints.filter((point): point is LotoPointDto => point !== null && point !== undefined)),
         map(lotoPoints => {
@@ -169,6 +171,7 @@ export class CurrentFileService {
     updateEquipmentInList(updatedEquipment: EquipmentDto) {
       // Update elementsSubject
       this.elementsSubject.pipe(
+        takeUntilDestroyed(this.destroyRef),
         take(1),
         map(equipmentList => equipmentList.map(item => 
           item.id === updatedEquipment.id ? updatedEquipment : item

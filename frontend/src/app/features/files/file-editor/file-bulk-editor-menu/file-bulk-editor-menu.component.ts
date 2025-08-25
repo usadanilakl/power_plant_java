@@ -58,7 +58,9 @@ export class FileBulkEditorMenuComponent implements OnInit {
   isDiscrepanciesMenuOpen = signal<boolean>(false);
 
   ngOnInit(): void {
-    this.currentFileService.getElementsToRender().subscribe(equipmentList => {
+    this.currentFileService.getElementsToRender().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(equipmentList => {
       this.equipmentData.set(equipmentList);
     });
     forkJoin({

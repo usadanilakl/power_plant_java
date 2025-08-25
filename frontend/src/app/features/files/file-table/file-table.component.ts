@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
@@ -15,6 +15,7 @@ import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-file-table',
@@ -97,6 +98,7 @@ export class FileTableComponent implements OnInit {
   constructor() {}
 
   private fileService = inject(FileService);
+  private destroyRef = inject(DestroyRef);
 
   private initialItemsSubject = new BehaviorSubject<any[]>([]);
   initialItems$ = this.initialItemsSubject.asObservable();
@@ -114,6 +116,7 @@ export class FileTableComponent implements OnInit {
     this.isLoading = true;
 
     this.fileService.getFiles(this.currentPage, this.pageSize).pipe(
+      takeUntilDestroyed(this.destroyRef),
       map((response: SpringPaginatedResponse<FileDto[]>) => response.responseData.content),
       tap(newItems => {
         const currentItems = this.initialItemsSubject.value;
@@ -152,6 +155,7 @@ export class FileTableComponent implements OnInit {
 
   private performSearch(criteria: SearchCriteria) {
     this.fileService.searchFiles(criteria, this.pageSize).pipe(
+      takeUntilDestroyed(this.destroyRef),
       tap(results => {
         if (criteria.page === 1) {
           this.initialItemsSubject.next(results.responseData.content);
@@ -189,6 +193,7 @@ export class FileTableComponent implements OnInit {
   
   fetchElements(itemId: number) {
     this.fileService.getFileById(itemId.toString()).pipe(
+      takeUntilDestroyed(this.destroyRef),
       tap((response: SpringApiResponse<FileDto>) => {
         if (response && response.responseData) {
           // Update selectedItem with the full version
@@ -255,7 +260,9 @@ export class FileTableComponent implements OnInit {
       formDataToSend.append('overrideFile', overrideFile);
   
     // Update in the backend
-    this.fileService.updateFile(formDataToSend).subscribe(
+    this.fileService.updateFile(formDataToSend).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(
       (response) => {
 
         this.fileSubmitMessage.set('File updated successfully');
@@ -316,7 +323,9 @@ export class FileTableComponent implements OnInit {
       formDataToSend.append('overrideFile', overrideFile);
 
     // Update in the backend
-    this.fileService.updateFile(formDataToSend).subscribe(
+    this.fileService.updateFile(formDataToSend).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(
       (response) => {
         
         // Add the new item to the table
@@ -344,7 +353,9 @@ export class FileTableComponent implements OnInit {
 
   onFormDelete() {
     if (this.selectedItem) {
-      this.fileService.deleteFile(this.selectedItem.id.toString()).subscribe(
+      this.fileService.deleteFile(this.selectedItem.id.toString()).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(
         () => {
           const updatedItems = this.initialItemsSubject.value.filter(item => item.id !== this.selectedItem?.id);
           this.initialItemsSubject.next(updatedItems);
@@ -375,7 +386,9 @@ export class FileTableComponent implements OnInit {
   }
 
   deleteFile(item: string) {
-    this.fileService.deleteFile(item).subscribe(
+    this.fileService.deleteFile(item).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(
       (response) => {
         // Handle successful deletion (e.g., remove the item from the list)
       },
