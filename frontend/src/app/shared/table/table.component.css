@@ -58,6 +58,12 @@ cdk-virtual-scroll-viewport.table-container {
   min-height: 0;
   width: 100%;
   overflow: auto;
+  height: 100%;
+}
+
+.cdk-virtual-scroll-content-wrapper {
+  width: 100%;
+  min-width: 100%;
 }
 
 table {

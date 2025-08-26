@@ -32,6 +32,7 @@ export class TableComponent implements OnInit {
   @ViewChild('tableContainer') tableContainer!: ElementRef;
   @ViewChild('tableBody') tableBody!: ElementRef;
   @ViewChild(CdkVirtualScrollViewport) viewport!: CdkVirtualScrollViewport;
+  private resizeObserver?: ResizeObserver;
 
   @Output() loadMoreItems = new EventEmitter<SearchCriteria>();
   @Output() search = new EventEmitter<SearchCriteria>();
@@ -85,7 +86,7 @@ export class TableComponent implements OnInit {
     }
   }
 
-
+  
   ngAfterViewInit() {
     setTimeout(() => {
       if (this.tableBody && this.tableBody.nativeElement) {
@@ -95,9 +96,21 @@ export class TableComponent implements OnInit {
           if (this.viewport) {
             this.viewport.checkViewportSize();
           }
-          this.cdr.detectChanges(); // Trigger change detection
+          this.cdr.detectChanges();
         }
       }
+  
+      this.resizeObserver = new ResizeObserver(() => {
+        this.viewport.checkViewportSize();
+      });
+      this.resizeObserver.observe(this.viewport.elementRef.nativeElement);
+  
+      // Use destroyRef for cleanup
+      this.destroyRef.onDestroy(() => {
+        if (this.resizeObserver) {
+          this.resizeObserver.disconnect();
+        }
+      });
     });
   }
 

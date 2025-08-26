@@ -43,7 +43,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   currentLotoStandardSignal = toSignal(this.currentLotoStandardService.currentStandard$, { initialValue: new LotoStandardDto() });
   currentLotoStandard = computed(() => this.currentLotoStandardSignal() || new LotoStandardDto());
   allStandardsSignal = toSignal(this.currentLotoStandardService.allStandards$, { initialValue: [] });
-  isStandardListDisplayed = signal<boolean>(false);
+  isStandardListDisplayed = signal<boolean>(true);
 
   ngAfterViewInit() {
     setTimeout(() => {
@@ -65,10 +65,10 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
         const handle = this.resizeHandleRef?.nativeElement;
     
         if (container && topPanel && bottomPanel && handle) {
-          console.log('Setting up resize handlers');
+          // console.log('Setting up resize handlers');
           handle.addEventListener('mousedown', this.startResize.bind(this));
         } else {
-          console.log('Resizable panels not visible yet, retry count:', retryCount);
+          // console.log('Resizable panels not visible yet, retry count:', retryCount);
           if (retryCount < 5) {  // Try up to 5 times
             this.setupResizeHandlersIfVisible(retryCount + 1);
           } else {
@@ -80,7 +80,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   }
   
   private startResize(e: MouseEvent) {
-    console.log('Start resizing', e);
+    // console.log('Start resizing', e);
     const topPanel = this.topPanelRef?.nativeElement;
     const bottomPanel = this.bottomPanelRef?.nativeElement;
     if (!topPanel || !bottomPanel) {
@@ -92,7 +92,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
     this.startY = e.clientY;
     this.startTopHeight = topPanel.offsetHeight;
     this.startBottomHeight = bottomPanel.offsetHeight;
-    console.log('Resize initialized', { startY: this.startY, startTopHeight: this.startTopHeight, startBottomHeight: this.startBottomHeight });
+    // console.log('Resize initialized', { startY: this.startY, startTopHeight: this.startTopHeight, startBottomHeight: this.startBottomHeight });
 
     // Add mousemove and mouseup listeners
     this.ngZone.runOutsideAngular(() => {
@@ -119,18 +119,18 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
     topPanel.style.flex = `1 1 ${newTopHeight}px`;
     bottomPanel.style.flex = `1 1 ${containerRect.height - newTopHeight - 10}px`; // 10px for resize handle
   
-    console.log('Resizing', {
-      containerHeight: containerRect.height,
-      deltaY,
-      newTopHeight,
-      newBottomHeight: containerRect.height - newTopHeight - 10,
-      currentTopHeight: topPanel.offsetHeight,
-      currentBottomHeight: bottomPanel.offsetHeight
-    });
+    // console.log('Resizing', {
+    //   containerHeight: containerRect.height,
+    //   deltaY,
+    //   newTopHeight,
+    //   newBottomHeight: containerRect.height - newTopHeight - 10,
+    //   currentTopHeight: topPanel.offsetHeight,
+    //   currentBottomHeight: bottomPanel.offsetHeight
+    // });
   }
 
   private onMouseUp = () => {
-    console.log('Stop resizing');
+    // console.log('Stop resizing');
     this.isResizing = false;
     
     // Remove mousemove and mouseup listeners
