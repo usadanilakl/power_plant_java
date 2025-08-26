@@ -13,6 +13,7 @@ export class RedTagService{
     constructor(private http: HttpClient) {}
 
     simpleBuild(lotoPoints: LotoPointDto[]): Observable<SpringApiResponse<string>> {
-        return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/simple-build`, lotoPoints);
+        const lotoPointIdDtos = lotoPoints.map(lotoPoint => lotoPoint.toIdModel());
+        return this.http.post<SpringApiResponse<string>>(`${this.apiUrl}/simple-build`, lotoPointIdDtos);
     }
 }

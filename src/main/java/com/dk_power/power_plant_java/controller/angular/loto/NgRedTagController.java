@@ -2,7 +2,11 @@ package com.dk_power.power_plant_java.controller.angular.loto;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,11 +17,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/ng/red-tag")
+@RequiredArgsConstructor
 public class NgRedTagController {
+    private final NgLotoPointService lotoPointService;
     @PostMapping("/simple-build")
-    public ResponseEntity<NgApiResponse<String>> simpleBuild(@RequestBody List<LotoPointDto> lotoPoints) {
+    public ResponseEntity<NgApiResponse<String>> simpleBuild(@RequestBody List<LotoPointIdDto> lotoPoints) {
         try {
-            LotoBuilderService.buildLotowWithNewPoints(lotoPoints);
+            List<LotoPointDto> list = lotoPoints.stream().map(lotoPointService::convertIdDtoToEntity).map(lotoPointService::toDto).toList();
+            LotoBuilderService.buildLotowWithNewPoints(list);
             String result = "success";
             return ResponseEntity.ok(new NgApiResponse<>(result, "Simple build completed successfully"));
         } catch (Exception e) {
