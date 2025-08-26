@@ -49,21 +49,20 @@ public class BaseAuditEntity extends BaseIdEntity {
 //        this.setDateModified(LocalDateTime.now());
 //    }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        BaseAuditEntity otherEntity = (BaseAuditEntity) obj;
-        if(getId()!=null)return getId().equals(otherEntity.getId());
-        else return false;
+@Override
+public boolean equals(Object obj) {
+    if (this == obj) {
+        return true;
     }
+    if (obj == null || getClass() != obj.getClass()) {
+        return false;
+    }
+    BaseAuditEntity otherEntity = (BaseAuditEntity) obj;
+    return Objects.equals(getId(), otherEntity.getId());
+}
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(getId());
-    }
+@Override
+public int hashCode() {
+    return getId() != null ? getId().hashCode() : System.identityHashCode(this);
+}
 }

@@ -9,10 +9,7 @@ import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -46,8 +43,8 @@ public class LotoStandardMapper implements BaseMapper {
                         .map(points -> points.stream()
                                 .filter(Objects::nonNull)
                                 .map(lotoPointService::convertToDto)
-                                .collect(Collectors.toCollection(LinkedHashSet::new)))
-                        .orElse(new LinkedHashSet<>())
+                                .toList())
+                        .orElse(new ArrayList<>())
         );
 
         return dto;
@@ -69,8 +66,8 @@ public class LotoStandardMapper implements BaseMapper {
                         .map(points -> points.stream()
                                 .filter(Objects::nonNull)
                                 .map(ls -> lotoPointService.getEntityById(ls.getId()))
-                                .collect(Collectors.toCollection(LinkedHashSet::new)))
-                        .orElse(new LinkedHashSet<>())
+                                .toList())
+                        .orElse(new ArrayList<>())
         );
 
         return entity;
@@ -94,8 +91,8 @@ public class LotoStandardMapper implements BaseMapper {
                         .map(points -> points.stream()
                                 .filter(Objects::nonNull)
                                 .map(lotoPointService::getEntityById)
-                                .collect(Collectors.toCollection(LinkedHashSet::new)))
-                        .orElse(new LinkedHashSet<>())
+                                .toList())
+                        .orElse(new ArrayList<>())
         );
 
         return entity;

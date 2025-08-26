@@ -22,6 +22,7 @@ export class LotoPointSimpleTableComponent implements OnInit {
   initialItems = input<Observable<LotoPointDto[]> | LotoPointDto[]>();
   enableSearch = input<boolean>();
   initialSearchQuery = input<SearchCriteria>();
+  isReorderEnabled = input<boolean>(false);
 
   private itemsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   items$ = this.itemsSubject.asObservable();
@@ -34,6 +35,7 @@ export class LotoPointSimpleTableComponent implements OnInit {
   rightClickEvent = output<LotoPointDto>();
   leftClickEvent = output<LotoPointDto>();
   selectedItemsEvent = output<LotoPointDto[]>();
+  itemReordered = output<LotoPointDto[]>();
 
     constructor() {
     effect(() => {
@@ -100,5 +102,11 @@ export class LotoPointSimpleTableComponent implements OnInit {
   updateItems(items: LotoPointDto[]) {
     this.itemsSubject.next(items);
     this.itemsUpdated.emit(items);
+  }
+
+  onItemReordered(items: LotoPointDto[]) {
+    // console.log('Item reordered:', items);
+    this.itemsSubject.next([...items]);
+    this.itemReordered.emit(items);
   }
 }

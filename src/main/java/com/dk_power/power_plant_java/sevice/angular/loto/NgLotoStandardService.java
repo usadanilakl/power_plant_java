@@ -144,7 +144,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         if (standard == null) {
             throw new EntityNotFoundException("LotoStandard not found");
         }
-        Set<LotoPoint> points = standard.getLotoPoints();
+        List<LotoPoint> points = standard.getLotoPoints();
         if(points==null || points.isEmpty()) return List.of();
         Set<FileDto> files = new HashSet<>();
         for(LotoPoint point : points){

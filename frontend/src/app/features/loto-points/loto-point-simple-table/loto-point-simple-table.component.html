@@ -1,10 +1,12 @@
 <app-shared-table 
   [items]="items$" 
+  [isDragAndDropEnabled]="isReorderEnabled()"
   [doubleClickCallback]="onRowDoubleClick.bind(this)" 
   [cellDoubleClickCallback]="onCellDbouleClick.bind(this)"
   [columns]="columns()"
   [rightClickCallback]="onRowRightClick.bind(this)" 
   [clickCallback]="onRowClick.bind(this)"
+  (itemsReordered)="onItemReordered($event)"
   (selectedItemsEvent)="onSelectedItems($event)"
   (search)="onSearch($event)">
       <div table-controls>

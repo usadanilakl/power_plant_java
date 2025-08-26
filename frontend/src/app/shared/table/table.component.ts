@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef, output, input, inject, DestroyRef } from '@angular/core';
+import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef, output, input, inject, DestroyRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
@@ -27,6 +27,7 @@ export class TableComponent implements OnInit {
   @Input() cellDoubleClickCallback?: (item: any, column: Column) => void;
   @Input() deleteItem?: (item: string) => void;
   hoverDebounceTime = input<number>(0);
+  isDragAndDropEnabled = input<boolean>(false);
 
   @ViewChild('tableContainer') tableContainer!: ElementRef;
   @ViewChild('tableBody') tableBody!: ElementRef;
@@ -36,9 +37,19 @@ export class TableComponent implements OnInit {
   @Output() search = new EventEmitter<SearchCriteria>();
   rowHoveredEvent = output<any>();
   selectedItemsEvent = output<any[]>();
+  itemsReordered = output<any[]>();
 
   selectedItems: any[] = [];
   lastClickedItem: any = null;
+  private lastClickTime: number = 0;
+  private isDoubleClickHandled: boolean = false;
+  lastClickedCell!: { item: any, column: Column };
+  rowHeight = 50;
+
+  isDraggingAndDropping = false;
+  draggedItem: any = null;
+  private startDragPosition: { x: number, y: number } = { x: 0, y: 0 };
+  ghostRowIndex: number | null = null;
 
   private _items = new BehaviorSubject<any[]>([]);
   filteredItems: any[] = [];
@@ -55,17 +66,7 @@ export class TableComponent implements OnInit {
   constructor(private cdr: ChangeDetectorRef) {}
 
   private itemsSubscription: Subscription | null = null;
-  
-  // @Input() set items(value: any[] | Observable<any[]>) {
-  //   if (Array.isArray(value)) {
-  //     this._items.next(value);
-  //   } else if (value instanceof Observable) {
-  //     this.itemsSubscription?.unsubscribe();
-  //     this.itemsSubscription = value.pipe(
-  //       takeUntilDestroyed(this.destroyRef)
-  //     ).subscribe(items => this._items.next(items));
-  //   }
-  // }
+
 
   @Input() set items(value: any[] | Observable<any[]>) {
     // console.log('Items input received:', value);
@@ -84,7 +85,6 @@ export class TableComponent implements OnInit {
     }
   }
 
-  rowHeight = 50;
 
   ngAfterViewInit() {
     setTimeout(() => {
@@ -95,6 +95,7 @@ export class TableComponent implements OnInit {
           if (this.viewport) {
             this.viewport.checkViewportSize();
           }
+          this.cdr.detectChanges(); // Trigger change detection
         }
       }
     });
@@ -118,11 +119,9 @@ ngOnInit() {
   ).subscribe(item => {
     this.rowHoveredEvent.emit(item);
   });
-}
 
-  // ngAfterViewInit() {
-  //   this.tableContainer.nativeElement.addEventListener('scroll', this.handleScroll.bind(this));
-  // }
+  this.updateItemIndices();
+}
 
   updateItems(newItems: any[]) {
     this._items.next(newItems);
@@ -168,6 +167,14 @@ ngOnInit() {
     if (this.currentSortColumn) {
       this.sortColumn(this.columns.find(col => col.id === this.currentSortColumn) || this.columns[0]);
     }
+
+      // Maintain the current order of items
+      const orderedItems = this._items.value.filter(item => 
+        this.filteredItems.some(filteredItem => filteredItem.id === item.id)
+      );
+
+      this.filteredItems = orderedItems;
+      this.updateItemIndices();
   }
 
   handleScroll() {
@@ -219,8 +226,128 @@ ngOnInit() {
     }, obj);
   }
 
-  private lastClickTime: number = 0;
-  private isDoubleClickHandled: boolean = false;
+  onMouseDown(event: MouseEvent, item: any) {
+    // console.log('onMouseDown called', { isDragAndDropEnabled: this.isDragAndDropEnabled(), item });
+    if (this.isDragAndDropEnabled()) {
+      this.isDraggingAndDropping = true;
+      this.draggedItem = item;
+      this.startDragPosition = { x: event.clientX, y: event.clientY };
+      event.preventDefault(); // Prevent text selection
+      // console.log('Drag started', { draggedItem: this.draggedItem, startPosition: this.startDragPosition });
+    }
+  }
+  
+  // onMouseMove(event: MouseEvent) {
+  //   if (this.isDraggingAndDropping) {
+  //     // console.log('onMouseMove - dragging', { clientY: event.clientY, draggedItem: this.draggedItem });
+  //     const currentY = event.clientY;
+  //     const rows = this.tableBody.nativeElement.querySelectorAll('tr');
+      
+  //     for (let i = 0; i < rows.length; i++) {
+  //       const row = rows[i];
+  //       const rect = row.getBoundingClientRect();
+        
+  //       if (currentY > rect.top && currentY < rect.bottom) {
+  //         if (i !== this.draggedItem.index) {
+  //           // console.log('Moving item', { from: this.draggedItem.index, to: i });
+  //           this.moveItem(this.draggedItem.index, i);
+  //           break;
+  //         }
+  //       }
+  //     }
+  //   } else {
+  //     // console.log('onMouseMove - not dragging');
+  //   }
+  // }
+
+  onMouseMove(event: MouseEvent) {
+    if (this.isDraggingAndDropping && this.draggedItem) {
+      // console.log('onMouseMove - dragging', { clientY: event.clientY, draggedItem: this.draggedItem });
+      const currentY = event.clientY;
+      const rows = this.tableBody.nativeElement.querySelectorAll('tr');
+      
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rect = row.getBoundingClientRect();
+        
+        if (currentY > rect.top && currentY < rect.bottom) {
+          if (i !== this.draggedItem.index) {
+            this.ghostRowIndex = i;
+            this.cdr.detectChanges(); // Trigger change detection
+            break;
+          }
+        }
+      }
+    } else {
+      // console.log('onMouseMove - not dragging');
+    }
+  }
+  
+  // onMouseUp(event: MouseEvent) {
+  //   // console.log('onMouseUp called', { isDraggingAndDropping: this.isDraggingAndDropping });
+  //   if (this.isDraggingAndDropping) {
+  //     this.isDraggingAndDropping = false;
+  //     this.draggedItem = null;
+  //     setTimeout(() => {
+  //       // console.log('Emitting reordered items', this.filteredItems);
+  //       this.itemsReordered.emit(this.filteredItems);
+  //     });
+  //   }
+  // }
+
+  onMouseUp(event: MouseEvent) {
+    // console.log('onMouseUp called', { isDraggingAndDropping: this.isDraggingAndDropping });
+    if (this.isDraggingAndDropping && this.draggedItem && this.ghostRowIndex !== null) {
+      this.moveItem(this.draggedItem.index, this.ghostRowIndex);
+      this.isDraggingAndDropping = false;
+      this.draggedItem = null;
+      this.ghostRowIndex = null;
+      this.cdr.detectChanges(); // Trigger change detection
+      setTimeout(() => {
+        // console.log('Emitting reordered items', this.filteredItems);
+        this.itemsReordered.emit(this.filteredItems);
+      });
+    }
+  }
+
+  
+
+  onDragOver(event: MouseEvent) {
+    event.preventDefault(); // Necessary to allow dropping
+  }
+  
+  moveItem(fromIndex: number, toIndex: number) {
+    // console.log('moveItem called', { fromIndex, toIndex });
+    requestAnimationFrame(() => {
+      const item = this.filteredItems[fromIndex];
+      this.filteredItems.splice(fromIndex, 1);
+      this.filteredItems.splice(toIndex, 0, item);
+      this.updateItemIndices();
+      this.cdr.detectChanges();
+      // console.log('Item moved', { newFilteredItems: this.filteredItems });
+    });
+  }
+  
+  updateItemIndices() {
+    // console.log('updateItemIndices called');
+    this.filteredItems.forEach((item, index) => {
+      item.index = index;
+    });
+    this.cdr.markForCheck();
+    // console.log('Item indices updated', { filteredItems: this.filteredItems });
+  }
+  
+  // @HostListener('document:mousemove', ['$event'])
+  // onDocumentMouseMove(event: MouseEvent) {
+  //   // console.log('document:mousemove', { clientY: event.clientY, isDraggingAndDropping: this.isDraggingAndDropping });
+  //   // this.onMouseMove(event);
+  // }
+  
+  // @HostListener('document:mouseup', ['$event'])
+  // onDocumentMouseUp(event: MouseEvent) {
+  //   // console.log('document:mouseup');
+  //   // this.onMouseUp(event);
+  // }
   
   onRowClick(item: any, event: MouseEvent) {
     if (event.button === 0) { // Left click
@@ -346,8 +473,6 @@ ngOnInit() {
     this.lastClickedItem = null;
   }
 
-  lastClickedCell!: { item: any, column: Column };
-
   registerLastClickedCell(item: any, column: Column, event: MouseEvent) {
     this.lastClickedCell = { item, column };
   }
@@ -375,45 +500,6 @@ ngOnInit() {
       // Trigger change detection
       this.cdr.detectChanges();
     }
-  }
-
-  scrollToIndex(index: number) {
-    if (this.tableBody && this.tableBody.nativeElement) {
-      const rows = this.tableBody.nativeElement.querySelectorAll('tr');
-      if (rows[index]) {
-        rows[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // console.log('Scrolled to row:', index);
-        // Optionally, highlight the row
-        rows[index].classList.add('highlighted');
-        setTimeout(() => {
-          rows[index].classList.remove('highlighted');
-        }, 2000); // Remove highlight after 2 seconds
-      }
-    }
-  }
-
-  // Method to get the index of an item
-  // getItemIndex(item: any): number {
-  //   console.log('filteredItems: ', this.filteredItems)
-  //   return this.filteredItems.findIndex(i => i.id === item.id);
-  // }
-  getItemIndex(item: any): number {
-    if (!this.tableBody) {
-      console.warn('Table body not available');
-      return -1;
-    }
-
-    const rows = this.tableBody.nativeElement.querySelectorAll('tr');
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (row.dataset.itemId === item.id.toString()) {
-        // console.log(`Item found at visual index ${i}`);
-        return i;
-      }
-    }
-
-    // console.warn('Item not found in table body');
-    return -1;
   }
 
 }

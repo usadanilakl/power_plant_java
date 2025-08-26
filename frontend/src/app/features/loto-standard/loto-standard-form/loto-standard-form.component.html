@@ -1,29 +1,3 @@
-<!-- 
-  <div class="loto-standard-form">
-
-    <div class="form-field">
-      <label for="name">Name:</label>
-      <input id="name" type="text" [(ngModel)]="lotoStandard()().name" (ngModelChange)="onNameChange()">
-      @if (showNameSubmitButton) {
-        <button (click)="onNameSubmit()">Submit Name</button>
-      }
-    </div>
-  
-    <div class="form-field">
-      <label for="description">Description:</label>
-      <input id="description" type="text" [(ngModel)]="lotoStandard()().description" (ngModelChange)="onDescriptionChange()">
-      @if (showDescriptionSubmitButton) {
-        <button (click)="onDescriptionSubmit()">Submit Description</button>
-      }
-    </div>
-  
-    <app-loto-point-simple-table
-      [initialItems]="lotoPoints()"
-      (doubleClickEvent)="removePoint($event)"
-      (leftClickEvent)="showPoint($event)"
-    ></app-loto-point-simple-table>
-  </div> -->
-
   <div class="loto-standard-form">
     <div class="form-fields">
       <!-- Name input -->
@@ -50,6 +24,7 @@
       <h3>LOTO Points</h3>
       <app-loto-point-simple-table
         [initialItems]="lotoPoints()"
+        [isReorderEnabled]="true"
         (doubleClickEvent)="removePoint($event)"
         (leftClickEvent)="showPoint($event)"
       ></app-loto-point-simple-table>

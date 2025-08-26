@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
 import java.util.Set;
 
 @EqualsAndHashCode(callSuper = true)
@@ -12,7 +13,7 @@ public class LotoStandardIdDto extends BaseDto {
     private Long id;
     private String name;
     private String description;
-    private Set<Long> lotoPoints;
+    private List<Long> lotoPoints;
     private String lotoPointOrder;
 
 }

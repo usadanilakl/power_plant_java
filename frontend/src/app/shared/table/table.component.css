@@ -141,6 +141,24 @@ tr.selected:hover {
   transition: background-color 0.5s ease;
 }
 
+.ghost-row {
+  opacity: 0.5;
+  background-color: #e0e0e0;
+}
+
+.dragging {
+  opacity: 0.9;
+  background-color: #f0f0f0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+  z-index: 1000;
+  pointer-events: none;
+  cursor: grabbing;
+}
+
+
+
 
 /* .table-wrapper {
   display: flex;

@@ -55,7 +55,7 @@ public class BrLotoStandardMapper {
         if(dto.getLotoPoints()!=null && !dto.getLotoPoints().isEmpty()) entity.setLotoPoints(dto.getLotoPoints().stream()
                 .map(lotoPointRepo::findById)
                 .map(Optional::get)
-                .collect(Collectors.toCollection(LinkedHashSet::new)));
+                .toList());
         return entity;
     }
 }

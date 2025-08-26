@@ -23,14 +23,13 @@ public class LotoStandard extends BaseAuditEntity {
             joinColumns = @JoinColumn(name = "loto_standard_id"),
             inverseJoinColumns = @JoinColumn(name = "loto_point_id")
     )
-    @OrderColumn(name = "point_order")
-    private Set<LotoPoint> lotoPoints = new LinkedHashSet<>();
+    private List<LotoPoint> lotoPoints = new ArrayList<>();
 
     private String description;
 
     public void addLotoPoint(LotoPoint lotoPoint) {
         if (this.lotoPoints == null) {
-            this.lotoPoints = new LinkedHashSet<>();
+            this.lotoPoints = new ArrayList<>();
         }
         this.lotoPoints.add(lotoPoint);
     }
@@ -51,7 +50,7 @@ public class LotoStandard extends BaseAuditEntity {
             throw new IllegalArgumentException("Some provided LOTO point IDs do not exist in this standard");
         }
 
-        LinkedHashSet<LotoPoint> reorderedPoints = new LinkedHashSet<>();
+        List<LotoPoint> reorderedPoints = new ArrayList<>();
         for (Long id : orderedLotoPointIds) {
             lotoPoints.stream()
                     .filter(point -> point.getId().equals(id))
