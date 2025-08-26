@@ -19,6 +19,7 @@ export class LotoStandardFormComponent {
   updateDescriptionEvent = output<LotoStandardDto>();
   removePointEvent = output<LotoPointDto>();
   showPointEvent = output<LotoPointDto>();
+  reorderedItemsEvent = output<LotoPointDto[]>();
 
   showNameSubmitButton = false;
   showDescriptionSubmitButton = false;
@@ -53,6 +54,10 @@ export class LotoStandardFormComponent {
 
   removePoint(point: LotoPointDto) {
     this.removePointEvent.emit(point);
+  }
+
+  submitReorderdItems(lotoPoints: LotoPointDto[]){
+    this.reorderedItemsEvent.emit(lotoPoints);
   }
 
   showPoint(point: LotoPointDto){

@@ -153,4 +153,14 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
 
         return files.stream().distinct().toList();
     }
+
+    public LotoStandardDto reorderLotoPoints(Long currentStandardId, List<Long> lotoPoints) {
+        LotoStandard standard = getEntityById(currentStandardId);
+        if (standard == null) {
+            throw new EntityNotFoundException("LotoStandard not found");
+        }
+        standard.reorderLotoPoints(lotoPoints);
+        LotoStandard savedStandard = save(standard);
+        return toDto(savedStandard);
+    }
 }

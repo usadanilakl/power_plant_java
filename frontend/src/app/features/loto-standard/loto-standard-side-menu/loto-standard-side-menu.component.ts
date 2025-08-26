@@ -157,4 +157,8 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
     this.currentLotoStandardService.removeLotoPointFromStandard(lotoPoint.id);
   }
 
+  reorderLotoPoints(lotoPoints: LotoPointDto[]): void {
+    this.currentLotoStandardService.reorderLotoPoints(lotoPoints);
+  }
+
 }

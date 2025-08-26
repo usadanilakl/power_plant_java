@@ -106,6 +106,8 @@ export class FileTableComponent implements OnInit {
   private elementsSubject = new BehaviorSubject<EquipmentDto[]>([]);
   elements$ = this.elementsSubject.asObservable();
 
+  private currentSearchCriteria: SearchCriteria | null = null;
+
 
   ngOnInit() {
     this.loadItems();
@@ -133,26 +135,6 @@ export class FileTableComponent implements OnInit {
     ).subscribe();
   }
 
-  // If you need to reset and load from the beginning
-  resetAndLoadItems(): void {
-    this.currentPage = 1;
-    this.initialItemsSubject.next([]);
-    this.loadItems();
-  }
-
-  onSearch(criteria: SearchCriteria) {
-    this.currentPage = 1;
-    this.performSearch(criteria);
-  }
-
-  loadMoreItems(criteria: SearchCriteria | void) {
-    if (criteria && 'page' in criteria) {
-      this.performSearch(criteria);
-    } else {
-      this.loadItems();
-    }
-  }
-
   private performSearch(criteria: SearchCriteria) {
     this.fileService.searchFiles(criteria, this.pageSize).pipe(
       takeUntilDestroyed(this.destroyRef),
@@ -169,6 +151,30 @@ export class FileTableComponent implements OnInit {
         return of(null);
       })
     ).subscribe();
+  }
+
+  // If you need to reset and load from the beginning
+  resetAndLoadItems(): void {
+    this.currentPage = 1;
+    this.initialItemsSubject.next([]);
+    this.loadItems();
+  }
+
+  onSearch(criteria: SearchCriteria) {
+    this.currentPage = 1;
+    this.performSearch(criteria);
+  }
+
+  loadMoreItems(criteria: SearchCriteria | void) {
+    console.log('Load more items', criteria);
+    if(criteria){
+      criteria.page = this.currentPage+1;
+      this.currentSearchCriteria = criteria;
+      this.performSearch(criteria);
+    } else {
+      this.currentSearchCriteria = null;
+      this.loadItems();
+    }
   }
     onItemClick = (item: any, event: MouseEvent) => {
     if (event.ctrlKey) {

@@ -89,4 +89,17 @@ public class NgLotoStandardController {
         }
     }
 
+    @PutMapping("/{currentStandardId}/reorder-loto-points")
+    public ResponseEntity<NgApiResponse<LotoStandardDto>> reorderLotoPoints(
+            @PathVariable Long currentStandardId,
+            @RequestBody List<Long> lotoPoints) {
+        try {
+            LotoStandardDto reorderedStandard = lotoStandardService.reorderLotoPoints(currentStandardId, lotoPoints);
+            return ResponseEntity.ok(new NgApiResponse<>(reorderedStandard, "LOTO points reordered successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(new NgApiResponse<>(null, "Error reordering LOTO points: " + e.getMessage()));
+        }
+    }
+
 }

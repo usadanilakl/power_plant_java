@@ -6,6 +6,7 @@ import { SpringApiResponse } from "../../models/api/spring-api-response.model";
 import { LotoStandardDto } from "../../models/loto/loto-standard.model";
 import { LotoStandardIdDto } from "../../models/loto/loto-standard-id.model";
 import { FileDto } from "../../models/file/file.model";
+import { LotoPointDto } from "../../models/loto/loto-point.model";
 
 @Injectable({
   providedIn: 'root'
@@ -32,6 +33,9 @@ export class LotoStandardService {
     }
     removeLotoPointFromStandard(lotoPointId: number, lotoStandardId: number): Observable<SpringApiResponse<LotoStandardDto>> {
       return this.http.delete<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/${lotoPointId}/remove-loto-point/${lotoStandardId}`);
+    }
+    reorderLotoPoints(currentStandardId: number, lotoPoints: number[]): Observable<SpringApiResponse<LotoStandardDto>> {
+      return this.http.put<SpringApiResponse<LotoStandardDto>>(`${this.apiUrl}/${currentStandardId}/reorder-loto-points`, lotoPoints);
     }
     getRelatedFiles(lotoStandardId: number): Observable<SpringApiResponse<FileDto[]>> {
       return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/${lotoStandardId}/related-files`);

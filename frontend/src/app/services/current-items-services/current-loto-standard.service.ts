@@ -132,6 +132,41 @@ export class CurrentLotoStandardService{
       ).subscribe();
     }
 
+    reorderLotoPoints(lotoPoints: LotoPointDto[]) {
+      const currentStandardId = this.currentStandardSubject.getValue()?.id;
+      if (!currentStandardId) {
+        console.error('No current LOTO standard selected');
+        return;
+      }
+      const lotoPointsIds = lotoPoints.map(p => p.id);
+      if(!lotoPointsIds.length) {
+        console.error('No LOTO points provided');
+        return;
+      }
+      this.lotoStandardService.reorderLotoPoints(currentStandardId,lotoPointsIds).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((response) => {
+          if(response && response.responseData){
+            const currentStandards = this.allStandards.getValue();
+            const existingStandardIndex = currentStandards.findIndex(s => s.id === currentStandardId);
+            if (existingStandardIndex!== -1) {
+              // If the standard exists, update it in the array
+              const updatedStandards = [...currentStandards];
+              updatedStandards[existingStandardIndex] = new LotoStandardDto({...response.responseData});
+              this.allStandards.next(updatedStandards);
+            }
+
+            this.currentStandardSubject.next(new LotoStandardDto({...response.responseData}));
+            this.loadCurrentStandardFiles(currentStandardId);
+          }
+        }),
+        catchError((error) => {
+          console.error('Error reordering LOTO points:', error);
+          return of(null);
+        })
+      ).subscribe();
+    }
+
     setCurrentStandard(lotoStandardId: number) {
       if (lotoStandardId === null || lotoStandardId === 0) {
         this.currentStandardSubject.next(new LotoStandardDto());

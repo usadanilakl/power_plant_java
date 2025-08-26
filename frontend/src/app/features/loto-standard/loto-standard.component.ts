@@ -111,7 +111,7 @@ export class LotoStandardComponent implements OnInit  {
     this.currentLotoStandardService.getCurrentStandardFiles().pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(files => {
-      console.log('currentStandardFiles: ', files);
+      // console.log('currentStandardFiles: ', files);
       this.currentStandardFiles.set(files);
     });
 

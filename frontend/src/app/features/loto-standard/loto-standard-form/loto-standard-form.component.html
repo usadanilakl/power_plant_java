@@ -27,6 +27,7 @@
         [isReorderEnabled]="true"
         (doubleClickEvent)="removePoint($event)"
         (leftClickEvent)="showPoint($event)"
+        (itemReordered)="submitReorderdItems($event)">
       ></app-loto-point-simple-table>
     </div>
   </div>

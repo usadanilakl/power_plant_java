@@ -61,15 +61,15 @@ public interface FlexibleQueryInterface {
         Pageable pageable,
         boolean andLogicIsEnabled) {
 
-    System.out.println("Entering complexSearchWithPagination");
-    System.out.println("Filters: " + criteria.getFilters());
+//    System.out.println("Entering complexSearchWithPagination");
+//    System.out.println("Filters: " + criteria.getFilters());
     Specification<T> spec = buildComplexSpecification(criteria, andLogicIsEnabled);
-    System.out.println("Specification: " + spec);
-    System.out.println("Repository: " + repository.getClass().getName());
-    System.out.println("Pageable: " + pageable);
+//    System.out.println("Specification: " + spec);
+//    System.out.println("Repository: " + repository.getClass().getName());
+//    System.out.println("Pageable: " + pageable);
     try {
         Page<T> result = repository.findAll(spec, pageable);
-        System.out.println("Result size: " + (result != null ? result.getContent().size() : "null"));
+//        System.out.println("Result size: " + (result != null ? result.getContent().size() : "null"));
         return result;
     } catch (Exception e) {
         System.err.println("Error in findAll: " + e.getMessage());

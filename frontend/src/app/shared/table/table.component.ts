@@ -147,10 +147,13 @@ ngOnInit() {
       page: 1
     };
 
+    this.columnFilters = {...filters}
+
     this.search.emit(searchCriteria);
   }
 
   private updateFilteredItems() {
+    // console.log('Updating filtered items: ', this._items.value.length);
     this.filteredItems = this._items.value.filter(item => {
       if (this.globalSearchQuery) {
         return Object.values(item).some(value => 
@@ -159,6 +162,8 @@ ngOnInit() {
       }
       return true;
     }).filter(item => {
+      // console.log('Filter conditions:', this.columnFilters);
+      // console.log('Item:', item);
       return Object.entries(this.columnFilters).every(([key, value]) => 
         !value || String(this.getNestedProperty(item, key)).toLowerCase().includes(value.toLowerCase())
       );
@@ -175,32 +180,47 @@ ngOnInit() {
 
       this.filteredItems = orderedItems;
       this.updateItemIndices();
+      // console.log('Filtered items updated:', this.filteredItems.length);
   }
 
   handleScroll() {
-    // This method will be called when the viewport is scrolled
     const end = this.viewport.getRenderedRange().end;
     const total = this.filteredItems.length;
+    const searchCriteria: SearchCriteria = {
+      type:  this.globalSearchQuery !== '' ? 'global' : 'column',
+      query: this.globalSearchQuery,
+      filters: this.columnFilters
+    }
     if (end === total) {
-      this.loadMoreItems.emit();
+      if(this.globalSearchQuery!=='' || Object.values(this.columnFilters).some(filter => filter !== ''))this.loadMoreItems.emit(searchCriteria);
+      else this.loadMoreItems.emit();
     }
   }
 
-  // Add this method for virtual scrolling
   trackByFn(index: number, item: any): any {
     return item.id; // Assuming each item has a unique 'id' property
   }
 
   sortColumn(column: Column) {
+    if(this.isDragAndDropEnabled()) return;
     const columnKey = column.accessorKey || column.id;
     this.isAscending = this.currentSortColumn === columnKey ? !this.isAscending : true;
     this.currentSortColumn = columnKey;
-
-    this.filteredItems.sort((a, b) => {
-      const aValue = this.getCellValue(a, column).toString();
-      const bValue = this.getCellValue(b, column).toString();
-      return this.isAscending ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+  
+    this.filteredItems = [...this.filteredItems].sort((a, b) => {
+      const aValue = this.getCellValue(a, column);
+      const bValue = this.getCellValue(b, column);
+  
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return this.isAscending ? aValue - bValue : bValue - aValue;
+      } else {
+        return this.isAscending ? 
+          String(aValue).localeCompare(String(bValue)) : 
+          String(bValue).localeCompare(String(aValue));
+      }
     });
+  
+    this.cdr.detectChanges();
   }
 
   getCellValue(item: any, column: Column): string {
@@ -236,29 +256,6 @@ ngOnInit() {
       // console.log('Drag started', { draggedItem: this.draggedItem, startPosition: this.startDragPosition });
     }
   }
-  
-  // onMouseMove(event: MouseEvent) {
-  //   if (this.isDraggingAndDropping) {
-  //     // console.log('onMouseMove - dragging', { clientY: event.clientY, draggedItem: this.draggedItem });
-  //     const currentY = event.clientY;
-  //     const rows = this.tableBody.nativeElement.querySelectorAll('tr');
-      
-  //     for (let i = 0; i < rows.length; i++) {
-  //       const row = rows[i];
-  //       const rect = row.getBoundingClientRect();
-        
-  //       if (currentY > rect.top && currentY < rect.bottom) {
-  //         if (i !== this.draggedItem.index) {
-  //           // console.log('Moving item', { from: this.draggedItem.index, to: i });
-  //           this.moveItem(this.draggedItem.index, i);
-  //           break;
-  //         }
-  //       }
-  //     }
-  //   } else {
-  //     // console.log('onMouseMove - not dragging');
-  //   }
-  // }
 
   onMouseMove(event: MouseEvent) {
     if (this.isDraggingAndDropping && this.draggedItem) {
@@ -282,18 +279,6 @@ ngOnInit() {
       // console.log('onMouseMove - not dragging');
     }
   }
-  
-  // onMouseUp(event: MouseEvent) {
-  //   // console.log('onMouseUp called', { isDraggingAndDropping: this.isDraggingAndDropping });
-  //   if (this.isDraggingAndDropping) {
-  //     this.isDraggingAndDropping = false;
-  //     this.draggedItem = null;
-  //     setTimeout(() => {
-  //       // console.log('Emitting reordered items', this.filteredItems);
-  //       this.itemsReordered.emit(this.filteredItems);
-  //     });
-  //   }
-  // }
 
   onMouseUp(event: MouseEvent) {
     // console.log('onMouseUp called', { isDraggingAndDropping: this.isDraggingAndDropping });
