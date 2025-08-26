@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, computed, ElementRef, HostListener, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, computed, effect, ElementRef, HostListener, inject, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoStandardFormComponent } from "../loto-standard-form/loto-standard-form.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
@@ -16,18 +16,27 @@ import { LotoStandardIdDto } from '../../../models/loto/loto-standard-id.model';
   styleUrl: './loto-standard-side-menu.component.css'
 })
 export class LotoStandardSideMenuComponent implements AfterViewInit {
-
-  private currentLotoStandardService = inject(CurrentLotoStandardService);
+  @ViewChild('container') containerRef!: ElementRef;
+  @ViewChild('topPanel') topPanelRef!: ElementRef;
+  @ViewChild('bottomPanel') bottomPanelRef!: ElementRef;
+  @ViewChild('resizeHandle') resizeHandleRef!: ElementRef;
 
   private isResizing = false;
-  private container: HTMLElement | null = null;
-  private topPanel: HTMLElement | null = null;
-  private bottomPanel: HTMLElement | null = null;
   private startY = 0;
   private startTopHeight = 0;
   private startBottomHeight = 0;
 
-  constructor(private el: ElementRef) {}
+  private currentLotoStandardService = inject(CurrentLotoStandardService);
+
+
+  constructor(private el: ElementRef, private ngZone: NgZone, private renderer: Renderer2) {
+    effect(() => {
+      const isDisplayed = this.isStandardListDisplayed();
+      if (!isDisplayed) {
+        this.setupResizeHandlersIfVisible();
+      }
+    });
+  }
 
   currentImageUrl: string | null = null;
   currentCarouselItems: string[] = [];
@@ -38,6 +47,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
 
   ngAfterViewInit() {
     setTimeout(() => {
+      // console.log('View initialized, setting up resize handlers');
       // this.setupResizeHandlers();
     });
   }
@@ -46,57 +56,89 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
    * Resize functionality using drag and drop on the resize handle.
    *************************************************************************************************************/
 
-  
-  // private setupResizeHandlers() {
-  //   this.container = this.el.nativeElement.querySelector('.container');
-  //   if (!this.container) {
-  //     console.error('Container element not found');
-  //     return;
-  //   }
-  //   this.topPanel = this.container.querySelector('.top-panel');
-  //   this.bottomPanel = this.container.querySelector('.bottom-panel');
-  //   const handle = this.container.querySelector('.resize-handle');
-  
-  //   if (this.topPanel && this.bottomPanel && handle) {
-  //     handle.addEventListener('mousedown', this.startResize.bind(this));
-  //   } else {
-  //     console.error('Required elements not found');
-  //   }
-  // }
-
-  // checkAndSetupResizeHandlers() {
-  //   if (!this.container) {
-  //     this.setupResizeHandlers();
-  //   }
-  // }
-
-  // private startResize(e: Event) {
-  //   if (!this.topPanel || !this.bottomPanel) return;
+  private setupResizeHandlersIfVisible(retryCount = 0) {
+    this.ngZone.runOutsideAngular(() => {
+      setTimeout(() => {
+        const container = this.containerRef?.nativeElement;
+        const topPanel = this.topPanelRef?.nativeElement;
+        const bottomPanel = this.bottomPanelRef?.nativeElement;
+        const handle = this.resizeHandleRef?.nativeElement;
     
-  //   const mouseEvent = e as MouseEvent;
-  //   this.isResizing = true;
-  //   this.startY = mouseEvent.clientY;
-  //   this.startTopHeight = this.topPanel.offsetHeight;
-  //   this.startBottomHeight = this.bottomPanel.offsetHeight;
-  // }
-
-  @HostListener('document:mousemove', ['$event'])
-  onMouseMove(e: MouseEvent) {
-  if (!this.isResizing || !this.topPanel || !this.bottomPanel) return;
-
-    const deltaY = e.clientY - this.startY;
-    const newTopHeight = this.startTopHeight + deltaY;
-    const newBottomHeight = this.startBottomHeight - deltaY;
-
-    if (newTopHeight > 50 && newBottomHeight > 50) {
-      this.topPanel.style.flexBasis = `${newTopHeight}px`;
-      this.bottomPanel.style.flexBasis = `${newBottomHeight}px`;
+        if (container && topPanel && bottomPanel && handle) {
+          console.log('Setting up resize handlers');
+          handle.addEventListener('mousedown', this.startResize.bind(this));
+        } else {
+          console.log('Resizable panels not visible yet, retry count:', retryCount);
+          if (retryCount < 5) {  // Try up to 5 times
+            this.setupResizeHandlersIfVisible(retryCount + 1);
+          } else {
+            console.error('Failed to set up resize handlers after multiple attempts');
+          }
+        }
+      }, 100);  // Wait for 100ms before checking
+    });
+  }
+  
+  private startResize(e: MouseEvent) {
+    console.log('Start resizing', e);
+    const topPanel = this.topPanelRef?.nativeElement;
+    const bottomPanel = this.bottomPanelRef?.nativeElement;
+    if (!topPanel || !bottomPanel) {
+      console.error('Panels not found in startResize');
+      return;
     }
+    
+    this.isResizing = true;
+    this.startY = e.clientY;
+    this.startTopHeight = topPanel.offsetHeight;
+    this.startBottomHeight = bottomPanel.offsetHeight;
+    console.log('Resize initialized', { startY: this.startY, startTopHeight: this.startTopHeight, startBottomHeight: this.startBottomHeight });
+
+    // Add mousemove and mouseup listeners
+    this.ngZone.runOutsideAngular(() => {
+      document.addEventListener('mousemove', this.onMouseMove);
+      document.addEventListener('mouseup', this.onMouseUp);
+    });
+  }
+  
+  private onMouseMove = (e: MouseEvent) => {
+    if (!this.isResizing) return;
+  
+    const topPanel = this.topPanelRef?.nativeElement;
+    const bottomPanel = this.bottomPanelRef?.nativeElement;
+    const container = this.containerRef?.nativeElement;
+    if (!topPanel || !bottomPanel || !container) {
+      console.error('Panels or container not found in onMouseMove');
+      return;
+    }
+  
+    const containerRect = container.getBoundingClientRect();
+    const deltaY = e.clientY - this.startY;
+    const newTopHeight = Math.max(50, Math.min(this.startTopHeight + deltaY, containerRect.height - 60)); // 60 = min bottom height + handle height
+    
+    topPanel.style.flex = `1 1 ${newTopHeight}px`;
+    bottomPanel.style.flex = `1 1 ${containerRect.height - newTopHeight - 10}px`; // 10px for resize handle
+  
+    console.log('Resizing', {
+      containerHeight: containerRect.height,
+      deltaY,
+      newTopHeight,
+      newBottomHeight: containerRect.height - newTopHeight - 10,
+      currentTopHeight: topPanel.offsetHeight,
+      currentBottomHeight: bottomPanel.offsetHeight
+    });
   }
 
-  @HostListener('document:mouseup')
-  onMouseUp() {
+  private onMouseUp = () => {
+    console.log('Stop resizing');
     this.isResizing = false;
+    
+    // Remove mousemove and mouseup listeners
+    document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('mouseup', this.onMouseUp);
+    
+    // Ensure any final changes are detected
+    this.ngZone.run(() => {});
   }
 
   /*************************************************************************************************************
@@ -133,17 +175,18 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
   /*************************************************************************************************************
    * Loto Standard Table functionality.
    *************************************************************************************************************/ 
-  showStandardList(){
-    this.isStandardListDisplayed.set(!this.isStandardListDisplayed());
+  showStandardList() {
+    this.isStandardListDisplayed.update(value => !value);
   }
 
-  createnewStandard(){
+  createnewStandard() {
     this.currentLotoStandardService.setCurrentStandard(0);
+    this.isStandardListDisplayed.set(false);
   }
   
   onLotoStandardTableRowClick(lotoStandard: LotoStandardDto) {
-    // Perform the required actions when a loto standard row is clicked
     this.isStandardListDisplayed.set(false);
+    this.currentLotoStandardService.setCurrentStandard(lotoStandard.id);
   }
 
   /*************************************************************************************************************

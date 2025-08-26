@@ -1,6 +1,10 @@
-<div class="container">
-  <button (click)="showStandardList()">Toggle Menu</button>
-  <button (click)="createnewStandard()">Create New Standard</button>
+<!-- <div class="container">
+  <div class="button-container">
+    <button class="action-button" (click)="showStandardList()">
+      {{ isStandardListDisplayed() ? 'Points' : 'Standards' }}
+    </button>
+    <button class="action-button create-button" (click)="createnewStandard()">Create New Standard</button>
+  </div>
   @if((allStandardsSignal()!==null && allStandardsSignal().length>0 && !currentLotoStandardSignal()) || isStandardListDisplayed()){
     <app-loto-standard-table
     (rowTableLeftClcikEvent)="onLotoStandardTableRowClick($event)"
@@ -23,5 +27,39 @@
       [clickCallback]="onLotoPointTableRowLeftClick.bind(this)"
     ></app-loto-point-table>
   </div>
+  }
+</div> -->
+
+<div class="container" #container>
+  <div class="button-container">
+    <button class="action-button" (click)="showStandardList()">
+      {{ isStandardListDisplayed() ? 'Points' : 'Standards' }}
+    </button>
+    <button class="action-button create-button" (click)="createnewStandard()">Create New Standard</button>
+  </div>
+  @if(isStandardListDisplayed()){
+    <app-loto-standard-table
+    (rowTableLeftClcikEvent)="onLotoStandardTableRowClick($event)"
+    ></app-loto-standard-table>
+  }@else {
+    <div class="panels-container">
+      <div class="resizable-panel top-panel" #topPanel>
+        <app-loto-standard-form
+          [lotoStandard]="currentLotoStandard"
+          (updateNameEvent)="onLotoStandardFormSubmit($event)"
+          (updateDescriptionEvent)="onLotoStandardFormSubmit($event)"
+          (removePointEvent)="onRemoveLotoPointFromStandard($event)"
+          (showPointEvent)="onLotoPointTableRowLeftClick($event)"
+          (reorderedItemsEvent)="reorderLotoPoints($event)"
+        ></app-loto-standard-form>
+      </div>
+      <div class="resize-handle" #resizeHandle></div>
+      <div class="resizable-panel bottom-panel" #bottomPanel>
+        <app-loto-point-table
+          [doubleClickCallback]="onLotoPointTableRowDoubleClick.bind(this)"
+          [clickCallback]="onLotoPointTableRowLeftClick.bind(this)"
+        ></app-loto-point-table>
+      </div>
+    </div>
   }
 </div>

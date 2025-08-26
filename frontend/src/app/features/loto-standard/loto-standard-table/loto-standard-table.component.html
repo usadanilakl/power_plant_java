@@ -1,5 +1,8 @@
-<app-shared-table
-    [items]="lotoStandards$"
-    [columns]="columns"
-    [clickCallback]="onStandardTableRowClick.bind(this)"
-></app-shared-table>
+
+<div class="table-wrapper">
+    <app-shared-table
+        [items]="lotoStandards$"
+        [columns]="columns"
+        [clickCallback]="onStandardTableRowClick.bind(this)"
+    ></app-shared-table>
+</div>

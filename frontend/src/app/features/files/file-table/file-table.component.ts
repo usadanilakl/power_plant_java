@@ -166,7 +166,7 @@ export class FileTableComponent implements OnInit {
   }
 
   loadMoreItems(criteria: SearchCriteria | void) {
-    console.log('Load more items', criteria);
+    // console.log('Load more items', criteria);
     if(criteria){
       criteria.page = this.currentPage+1;
       this.currentSearchCriteria = criteria;

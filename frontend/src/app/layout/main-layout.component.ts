@@ -19,7 +19,7 @@ export class MainLayoutComponent implements AfterViewInit {
 
   isResizing = false;
   isFooterResizing = false;
-  menuWidth = 200; // Initial width
+  menuWidth = 400; // Initial width
   footerHeight = 100; // Initial height
 
   header = input<string>();

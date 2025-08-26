@@ -1,23 +1,19 @@
   <div class="loto-standard-form">
-    <div class="form-fields">
-      <!-- Name input -->
+
+  <div class="form-fields">
+    <!-- Name and Description inputs side by side -->
+    <div class="form-field-row">
       <div class="form-field">
         <label for="name">Name:</label>
-        <input id="name" type="text" [(ngModel)]="lotoStandard()().name" (ngModelChange)="onNameChange()">
-        @if (showNameSubmitButton) {
-          <button (click)="onNameSubmit()">Submit Name</button>
-        }
+        <input id="name" type="text" [(ngModel)]="lotoStandard()().name" (ngModelChange)="onNameChange()" (blur)="onNameSubmit()">
       </div>
-  
-      <!-- Description input -->
+
       <div class="form-field">
         <label for="description">Description:</label>
-        <input id="description" type="text" [(ngModel)]="lotoStandard()().description" (ngModelChange)="onDescriptionChange()">
-        @if (showDescriptionSubmitButton) {
-          <button (click)="onDescriptionSubmit()">Submit Description</button>
-        }
+        <input id="description" type="text" [(ngModel)]="lotoStandard()().description" (ngModelChange)="onDescriptionChange()" (blur)="onDescriptionSubmit()">
       </div>
     </div>
+  </div>
   
     <!-- LOTO Points table -->
     <div class="table-wrapper">

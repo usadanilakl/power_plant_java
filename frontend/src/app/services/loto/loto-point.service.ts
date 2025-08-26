@@ -17,19 +17,19 @@ export class LotoPointService {
 
   constructor(private http: HttpClient) {}
 
-  getLotoPoints(page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<LotoPointDto[]>> {
+  getLotoPoints(page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<LotoPointDto>> {
     const params = new HttpParams()
       .set('page', page.toString())
       .set('pageSize', pageSize.toString());
-    return this.http.get<SpringPaginatedResponse<LotoPointDto[]>>(`${this.apiUrl}/paginated`, { params });
+    return this.http.get<SpringPaginatedResponse<LotoPointDto>>(`${this.apiUrl}/paginated`, { params });
   }
 
-  searchLotoPoints(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<LotoPointDto[]>> {
+  searchLotoPoints(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<LotoPointDto>> {
     const params = new HttpParams()
       .set('page', (criteria.page ?? 1).toString())
       .set('pageSize', pageSize.toString());
 
-    return this.http.post<SpringPaginatedResponse<LotoPointDto[]>>(`${this.apiUrl}/search`, criteria, { params });
+    return this.http.post<SpringPaginatedResponse<LotoPointDto>>(`${this.apiUrl}/search`, criteria, { params });
   }
   searchLpByBaseTagNumber(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<LotoPointDto>> {
     const params = new HttpParams()

@@ -118,6 +118,42 @@ export class LotoPointTableComponent implements OnInit {
     this.isExporting.set(false);
   }
 
+  resetAndLoadItems(): void {
+    this.currentPage = 1;
+    if (this.clientSideData$) {
+      this.clientSideData$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
+        this.initialItemsSubject.next(data);
+      });
+    } else {
+      this.initialItemsSubject.next([]);
+      this.loadItems();
+    }
+  }
+  
+  onSearch(criteria: SearchCriteria) {
+    if(!criteria) return;
+    this.currentPage = 1;
+    if (this.clientSideData$) {
+      this.updateClientSideData(criteria);
+    } else {
+      this.performSearch(criteria);
+    }
+  }
+  
+  loadMoreItems(criteria: SearchCriteria | void) {
+    if (this.clientSideData$) {
+      this.currentPage++;
+      this.updateClientSideData(criteria as SearchCriteria);
+    } else {
+      if (criteria) {
+        criteria.page = this.currentPage+1;
+        this.performSearch(criteria);
+      } else {
+        this.loadItems();
+      }
+    }
+  }
+
 
   loadItems(): void {
     if (this.clientSideData$) {
@@ -128,7 +164,7 @@ export class LotoPointTableComponent implements OnInit {
   
       this.lotoPointService.getLotoPoints(this.currentPage, this.pageSize).pipe(
         takeUntilDestroyed(this.destroyRef),
-        map((response: SpringPaginatedResponse<LotoPointDto[]>) => 
+        map((response: SpringPaginatedResponse<LotoPointDto>) => 
           response.responseData.content.map(item => LotoPointDto.fromJson(item))
         ),
         tap(newItems => {
@@ -152,7 +188,7 @@ export class LotoPointTableComponent implements OnInit {
       this.updateClientSideData(criteria);
     } else {
       this.lotoPointService.searchLotoPoints(criteria, this.pageSize).pipe(
-        map((response: SpringPaginatedResponse<LotoPointDto[]>) => 
+        map((response: SpringPaginatedResponse<LotoPointDto>) => 
           response.responseData.content.map(item => LotoPointDto.fromJson(item))
         ),
         tap(results => {
@@ -273,40 +309,6 @@ export class LotoPointTableComponent implements OnInit {
     // Implement your error message display logic here
     // For example, you could use a snackbar or toast notification
     console.error(message);
-  }
-
-  resetAndLoadItems(): void {
-    this.currentPage = 1;
-    if (this.clientSideData$) {
-      this.clientSideData$.pipe(take(1)).subscribe(data => {
-        this.initialItemsSubject.next(data);
-      });
-    } else {
-      this.initialItemsSubject.next([]);
-      this.loadItems();
-    }
-  }
-  
-  onSearch(criteria: SearchCriteria) {
-    this.currentPage = 1;
-    if (this.clientSideData$) {
-      this.updateClientSideData(criteria);
-    } else {
-      this.performSearch(criteria);
-    }
-  }
-  
-  loadMoreItems(criteria: SearchCriteria | void) {
-    if (this.clientSideData$) {
-      this.currentPage++;
-      this.updateClientSideData(criteria as SearchCriteria);
-    } else {
-      if (criteria && 'page' in criteria) {
-        this.performSearch(criteria);
-      } else {
-        this.loadItems();
-      }
-    }
   }
 
   onItemClick = (item: LotoPointDto) => {
