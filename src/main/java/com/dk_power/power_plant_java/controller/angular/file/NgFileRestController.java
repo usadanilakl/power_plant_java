@@ -81,15 +81,15 @@ public class NgFileRestController {
 
     @GetMapping("/{id}")
     public ResponseEntity<NgApiResponse<FileDto>> getFileById(@PathVariable Long id) {
-        log.info("Received request for file with id: {}", id);
+//        log.info("Received request for file with id: {}", id);
         try {
             long startTime = System.currentTimeMillis();
             Optional<FileDto> fileDtoOptional = ngFileService.findById(id);
             long endTime = System.currentTimeMillis();
-            log.info("Time taken to fetch file: {} ms", endTime - startTime);
+//            log.info("Time taken to fetch file: {} ms", endTime - startTime);
 
             if (fileDtoOptional.isEmpty()) {
-                log.warn("File with id {} not found", id);
+//                log.warn("File with id {} not found", id);
                 return ResponseEntity.notFound().build();
             }
             NgApiResponse<FileDto> response = new NgApiResponse<>(fileDtoOptional.get(), "File retrieved successfully");

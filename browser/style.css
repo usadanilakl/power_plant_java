@@ -185,7 +185,7 @@ button:hover {
 }
 
 .left-side {
-    width: 250px;
+    width: 500px;
     background-color: var(--left-side-bg);
     overflow-y: auto;
     will-change: width;
