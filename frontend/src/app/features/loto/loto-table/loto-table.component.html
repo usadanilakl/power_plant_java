@@ -31,8 +31,11 @@
   [doubleClickCallback]="onItemDoubleClick"
   [rightClickCallback]="onItemRightClick"
   [middleClickCallback]="onItemMiddleClick"
-></app-shared-table>
-
+>
+  <div table-controls>
+    <button (click)="createNewLoto()">Create New LOTO</button>
+  </div>
+</app-shared-table>
 <app-popup
   [isOpen]="isPopupOpen"
   [title]="'LOTO Details'"
@@ -46,5 +49,3 @@
   }"
   (close)="closePopup()"
 ></app-popup>
-
-<button (click)="createNewLoto()">Create New LOTO</button>

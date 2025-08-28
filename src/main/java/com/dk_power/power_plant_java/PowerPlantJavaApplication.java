@@ -104,7 +104,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        referenceObjectService.printAll();
 
 //        lotoService.deleteAllLotos();
-        lotoService.modifyLotoSchema();
+//        lotoService.modifyLotoSchema();
 
 
         System.err.println("=====================================================");

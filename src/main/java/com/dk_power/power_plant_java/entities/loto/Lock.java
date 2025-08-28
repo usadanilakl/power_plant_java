@@ -23,7 +23,7 @@ public class Lock extends BaseAuditEntity {
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name="loto_accessory_status_id")
     private Value lotoAccessoryStatus;
-//    @ManyToOne
-//    @JoinColumn(name = "loto_id")
-//    private Loto loto;
+    @ManyToOne
+    @JoinColumn(name = "loto_id")
+    private Loto loto;
 }

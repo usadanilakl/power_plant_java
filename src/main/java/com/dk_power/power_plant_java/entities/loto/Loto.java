@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.entities.loto;
 
+import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.envers.Audited;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -23,40 +25,28 @@ public class Loto extends BasePermitEntity {
         return this.getLotoBox().getNumber();
     }
 
-//    @OneToOne(mappedBy = "loto", cascade = CascadeType.ALL, orphanRemoval = true)
-//    private LotoBox lotoBox;
-//    @OneToMany(mappedBy = "loto")
-//    private List<Lock> locks;
-//    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-//    @JoinTable(
-//            name = "loto_loto_point",
-//            joinColumns = @JoinColumn(name = "loto_id"),
-//            inverseJoinColumns = @JoinColumn(name = "loto_point_id")
-//    )
-//    private Set<LotoPoint> lotoPoints = new HashSet<>();
+    @OneToOne(mappedBy = "loto", cascade = CascadeType.ALL, orphanRemoval = true)
+    private LotoBox lotoBox;
+    @OneToMany(mappedBy = "loto")
+    private List<Lock> locks;
+    @OneToMany(mappedBy = "loto")
+    private Set<LotoSnapshot> snapshots = new HashSet<>();
+
 
     @Transient
     private Set<LotoPoint> lotoPoints = new HashSet<>();
     @Transient
-    private LotoBox lotoBox;
-    @Transient
-    private List<Lock> locks;
-
-//    public void addLotoPoint(LotoPoint lotoPoint) {
-//        this.lotoPoints.add(lotoPoint);
-//        lotoPoint.getLotos().add(this);
-//    }
-//
-//    public void removeLotoPoint(LotoPoint lotoPoint) {
-//        this.lotoPoints.remove(lotoPoint);
-//        lotoPoint.getLotos().remove(this);
-//    }
-
-
-    public LotoBox getLotoBox() {
-        if (lotoBox != null) return lotoBox;
-        else return lotoBox;
+    private LotoSnapshot getLatestSnapshot() {
+        return this.getSnapshots().stream().max(Comparator.comparing(LotoSnapshot::getDateCreated)).orElse(null);
     }
+    @Transient
+    public Set<LotoPointIdDto> getLotoPointDtos() {
+        return this.getLatestSnapshot().getLotoPointDtos();
+    }
+
+    public static List<String> lightDtoFields = List.of("id", "lotoBox.number", "locks", "snapshots.id");
+
+
 
 }
 
