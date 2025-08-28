@@ -128,16 +128,16 @@ public class LotoController {
         return "testRunner";
     }
 private final LotoPointService lotoPointService;
-    @PostMapping("/update-points")
-    public String updatePoints(@RequestBody LotoDto loto){
-        System.out.println(loto.getLotoPoints().get(0));
-        Loto tempLoto = lotoService.save(loto);
-        tempLoto.getLotoPoints().forEach(e->{
-            e.addLoto(tempLoto);
-            lotoPointService.save(e);
-        });
-        return "redirect:/lotos/create";
-    }
+//    @PostMapping("/update-points")
+//    public String updatePoints(@RequestBody LotoDto loto){
+//        System.out.println(loto.getLotoPoints().get(0));
+//        Loto tempLoto = lotoService.save(loto);
+//        tempLoto.getLotoPoints().forEach(e->{
+//            e.addLoto(tempLoto);
+//            lotoPointService.save(e);
+//        });
+//        return "redirect:/lotos/create";
+//    }
 
     @PostMapping("/save-temp")
     public String saveTempLoto(@ModelAttribute("loto") LotoDto lotoDto){

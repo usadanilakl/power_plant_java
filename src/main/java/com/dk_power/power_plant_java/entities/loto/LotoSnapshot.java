@@ -1,5 +1,11 @@
 package com.dk_power.power_plant_java.entities.loto;
 
+
+import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
+import com.dk_power.power_plant_java.enums.Status;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,13 +29,39 @@ public class LotoSnapshot {
     @JoinColumn(name = "loto_id")
     private Loto loto;
 
+    private String boxNumber;
     @Column(columnDefinition = "TEXT")
-    private String lotoData;
+    private String locks;
+    private String requestorName;
+    private String workAuthority;
+    private LocalDateTime requestTime;
+    private LocalDateTime workAuthorityTime;
+    private Status status;
 
     @ElementCollection
     @CollectionTable(name = "loto_snapshot_points", joinColumns = @JoinColumn(name = "loto_snapshot_id"))
     @Column(name = "loto_point_data", columnDefinition = "TEXT")
     private Set<String> lotoPointsData = new HashSet<>();
 
-    private LocalDateTime snapshotTime;
+
+
+    public Set<LotoPointIdDto> getLotoPointDtos() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        Set<LotoPointIdDto> dtos = new HashSet<>();
+
+        for (String jsonData : lotoPointsData) {
+            try {
+                LotoPointIdDto dto = objectMapper.readValue(jsonData, LotoPointIdDto.class);
+                dtos.add(dto);
+            } catch (JsonProcessingException e) {
+                // Handle or log the error
+                e.printStackTrace();
+            }
+        }
+
+        return dtos;
+    }
+
+
+
 }

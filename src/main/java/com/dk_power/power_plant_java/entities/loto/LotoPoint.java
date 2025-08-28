@@ -55,8 +55,8 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     @JoinColumn(name = "normPos_id")
     private Value normPos;
 
-    @ManyToMany(mappedBy = "lotoPoints")
-    private Set<Loto> lotos = new HashSet<>();
+//    @ManyToMany(mappedBy = "lotoPoints")
+//    private Set<Loto> lotos = new HashSet<>();
     @ManyToMany(mappedBy = "lotoPoints")
     @JsonIgnore
     private Set<Equipment> equipmentList;
@@ -67,9 +67,9 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     @Column(columnDefinition = "TEXT")
     private String zeroEnergyMethod;
 
-    public void addLoto(Loto entity) {
-        lotos.add(entity);
-    }
+//    public void addLoto(Loto entity) {
+//        lotos.add(entity);
+//    }
 
     public void addEquipment(Equipment equipment) {
         if (equipmentList == null) equipmentList = new HashSet<>();
@@ -90,12 +90,12 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
         conflictId += "," + id;
     }
 
-    public void removeLoto(Loto loto) {
-        if (loto != null && this.lotos != null) {
-            this.lotos.remove(loto);
-            loto.getLotoPoints().remove(this);
-        }
-    }
+//    public void removeLoto(Loto loto) {
+//        if (loto != null && this.lotos != null) {
+//            this.lotos.remove(loto);
+//            loto.getLotoPoints().remove(this);
+//        }
+//    }
 
     public List<String> getFileLinks() {
         if (this.equipmentList == null || this.equipmentList.isEmpty()) return new ArrayList<>();

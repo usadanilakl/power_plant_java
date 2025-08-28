@@ -4,6 +4,7 @@ package com.dk_power.power_plant_java;
 import com.dk_power.power_plant_java.controller.permits.automation.RedTagAutomationService;
 import com.dk_power.power_plant_java.entities.EtaProPoint;
 import com.dk_power.power_plant_java.entities.files.FileObject;
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.EtaProService;
 import com.dk_power.power_plant_java.sevice.angular.DefaultValueGeneratorService;
@@ -11,6 +12,7 @@ import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.file.ReferenceObjectService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.data_transfer.ExcelWriterService;
+import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +40,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     private final DefaultValueGeneratorService defaultValueGeneratorService;
     private final NgFileService fileService;
     private final ReferenceObjectService referenceObjectService;
+    private final LotoService lotoService;
 
     @Value("${files.root.path}")
     private String filesRoot;
@@ -100,6 +103,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 
 //        referenceObjectService.printAll();
 
+//        lotoService.deleteAllLotos();
+//        lotoService.modifyLotoSchema();
 
 
         System.err.println("=====================================================");

@@ -6,9 +6,13 @@ import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.sevice.base_services.PermitService;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 public interface LotoService extends PermitService<Loto,LotoDto, LotoRepo, UniversalMapper> {
 
+    @Transactional
+    void deleteAllLotos();
+    void modifyLotoSchema();
 }

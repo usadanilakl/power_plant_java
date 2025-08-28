@@ -83,16 +83,7 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
         if(entity.getFileIds()!=null) dto.setFileIds(entity.getFileIds());
         if(entity.getConflictStatus()!=null) dto.setConflictStatus(entity.getConflictStatus());
-        if (entity.getLotos() != null) {
-            dto.setLotos(entity.getLotos().stream()
-                .map(loto -> {
-                    LotoDto lotoDto = new LotoDto();
-                    lotoDto.setId(loto.getId());
-                    lotoDto.setWorkScope(loto.getWorkScope());
-                    return lotoDto;
-                })
-                .collect(Collectors.toList()));
-        }
+
         if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
         return dto;
     }
@@ -192,14 +183,6 @@ public class LotoPointMapper implements BaseMapper{
             lotoPoint.setEquipmentList(equipment);
         }
 
-        // Handle lotos
-        if (dto.getLotos() != null && !dto.getLotos().isEmpty()) {
-            Set<Loto> lotos = dto.getLotos().stream()
-                    .map(id -> lotoService.findById(id).orElse(null))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            lotoPoint.setLotos(lotos);
-        }
 
         return lotoPoint;
     }

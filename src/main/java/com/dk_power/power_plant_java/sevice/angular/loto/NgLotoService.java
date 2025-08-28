@@ -137,20 +137,6 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 .filter(point -> !newLotoPointIds.contains(point.getId()))
                 .collect(Collectors.toSet());
 
-        for (LotoPoint point : pointsToRemove) {
-            loto.removeLotoPoint(point);
-        }
-
-        // Add new LotoPoints
-        for (Long id : newLotoPointIds) {
-            LotoPoint lotoPoint = lotoPointService.findById(id)
-                    .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + id));
-
-            if (!loto.getLotoPoints().contains(lotoPoint)) {
-                loto.addLotoPoint(lotoPoint);
-            }
-        }
-
         // Handle LotoBox
         if (loto.getLotoBox() != null) {
             loto.getLotoBox().setLoto(loto);

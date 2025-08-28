@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.repository.loto;
 
+import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,4 +20,8 @@ public interface LotoBoxRepo extends BaseRepository<LotoBox> {
     LotoBox findByNumber(Integer number);
 
     List<LotoBox> findByLotoId(Long lotoId);
+
+    LotoBox findByLoto(Loto loto);
+
+    List<LotoBox> findAllByLoto(Loto loto);
 }
