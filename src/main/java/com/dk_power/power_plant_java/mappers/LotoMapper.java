@@ -258,15 +258,6 @@ public void updateLotoFromDto(LotoIdDto dto, Loto loto) {
         loto.setLotoBox(lotoBoxService.findById(dto.getLotoBox()).orElse(null));
     }
 
-    // Update Locks
-    if (dto.getLocks() != null && !dto.getLocks().isEmpty()) {
-        List<Lock> updatedLocks = dto.getLocks().stream()
-                .map(id -> lockService.findById(id).orElse(null))
-                .filter(Objects::nonNull)
-                .peek(lock -> lock.setLoto(loto))
-                .collect(Collectors.toList());
-        loto.setLocks(updatedLocks);
-    }
 
     // Don't update lotoPoints here, as it's handled separately in the service
 }

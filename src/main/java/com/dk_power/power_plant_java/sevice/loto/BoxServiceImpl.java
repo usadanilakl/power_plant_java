@@ -26,10 +26,12 @@ public class BoxServiceImpl implements BoxService {
     public List<LotoBox> getAllBoxes() {
         return lotoBoxRepo.findAll();
     }
+
     @Override
     public List<LotoBox> getEmptyBoxes() {
-        return lotoBoxRepo.getEmptyBoxes().toList();
+        return List.of();
     }
+
     @Override
     public void addNewBox() {
         Integer number = lotoBoxRepo.getMaxNumber();
@@ -43,20 +45,15 @@ public class BoxServiceImpl implements BoxService {
     }
     @Override
     public LotoBox getEmptyBox() {
-        return lotoBoxRepo.getEmptyBox();
+        return null;
     }
     @Override
     public void changeBoxStatus(LotoBox lotoBox) {
-        if(lotoBox.getLoto()==null){
             lotoBox.setLotoAccessoryStatus(ngValueService.createValue("LOTO Accessory Status", "Available"));
-        }else{
-            lotoBox.setLotoAccessoryStatus(ngValueService.createValue("LOTO Accessory Status", "In Use"));
-        }
     }
     @Override
     public LotoBox assignLoto(Loto loto) {
         LotoBox lotoBox = getEmptyBox();
-        lotoBox.setLoto(loto);
         loto.setLotoBox(lotoBox);
         changeBoxStatus(lotoBox);
         lotoBoxRepo.save(lotoBox);
@@ -66,7 +63,6 @@ public class BoxServiceImpl implements BoxService {
 
     @Override
     public void resetLoto(LotoBox lotoBox) {
-        lotoBox.setLoto(null);
         changeBoxStatus(lotoBox);
     }
 
@@ -94,7 +90,6 @@ public class BoxServiceImpl implements BoxService {
 
     @Override
     public void assignBoxAndLoto(LotoBox lotoBox, Loto loto) {
-        lotoBox.setLoto(loto);
         loto.setLotoBox(lotoBox);
         changeBoxStatus(lotoBox);
         lotoBoxRepo.save(lotoBox);

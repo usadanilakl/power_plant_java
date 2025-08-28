@@ -86,10 +86,6 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
         return this.lotoBoxMapper.convertToEntity(dto);
     }
 
-    public List<LotoBoxDto> getLotoBoxesByLotoId(Long lotoId) {
-        List<LotoBox> lotoBoxes = lotoBoxRepo.findByLotoId(lotoId);
-        return lotoBoxes.stream().map(this::toDto).toList();
-    }
 
     // Add any additional methods specific to LotoBox here
 }

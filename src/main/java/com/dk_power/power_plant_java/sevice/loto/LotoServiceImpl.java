@@ -127,29 +127,29 @@ public void modifyLotoSchema() {
     try {
         transaction.begin();
 
-//        // Drop the foreign key constraint in the BOX table
-//        entityManager.createNativeQuery("ALTER TABLE BOX DROP CONSTRAINT IF EXISTS FK_BOX_LOTO")
-//                .executeUpdate();
-//
-//        // Drop the LOTO column from the BOX table
-//        entityManager.createNativeQuery("ALTER TABLE BOX DROP COLUMN IF EXISTS LOTO")
-//                .executeUpdate();
-//
-//        // Drop the foreign key constraint in the LOCK table
-//        entityManager.createNativeQuery("ALTER TABLE LOCK DROP CONSTRAINT IF EXISTS FK_LOCK_LOTO")
-//                .executeUpdate();
-//
-//        // Drop the LOTO_ID column from the LOCK table
-//        entityManager.createNativeQuery("ALTER TABLE LOCK DROP COLUMN IF EXISTS LOTO_ID")
-//                .executeUpdate();
+        // Drop the foreign key constraint in the BOX table
+        entityManager.createNativeQuery("ALTER TABLE BOX DROP CONSTRAINT IF EXISTS FK_BOX_LOTO")
+                .executeUpdate();
+
+        // Drop the LOTO column from the BOX table
+        entityManager.createNativeQuery("ALTER TABLE BOX DROP COLUMN IF EXISTS LOTO")
+                .executeUpdate();
+
+        // Drop the foreign key constraint in the LOCK table
+        entityManager.createNativeQuery("ALTER TABLE LOCK DROP CONSTRAINT IF EXISTS FK_LOCK_LOTO")
+                .executeUpdate();
+
+        // Drop the LOTO_ID column from the LOCK table
+        entityManager.createNativeQuery("ALTER TABLE LOCK DROP COLUMN IF EXISTS LOTO_ID")
+                .executeUpdate();
 
         // Drop the junction table for the many-to-many relationship
         entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_points")
                 .executeUpdate();
 
-//        // Remove the LOTO_BOX column from the LOTO table if it exists
-//        entityManager.createNativeQuery("ALTER TABLE LOTO DROP COLUMN IF EXISTS LOTO_BOX")
-//                .executeUpdate();
+        // Remove the LOTO_BOX column from the LOTO table if it exists
+        entityManager.createNativeQuery("ALTER TABLE LOTO DROP COLUMN IF EXISTS LOTO_BOX")
+                .executeUpdate();
 
         transaction.commit();
     } catch (Exception e) {

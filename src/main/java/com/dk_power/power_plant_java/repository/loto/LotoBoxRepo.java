@@ -10,18 +10,8 @@ import java.util.List;
 import java.util.stream.Stream;
 @Transactional
 public interface LotoBoxRepo extends BaseRepository<LotoBox> {
-    @Query("SELECT b FROM LotoBox b WHERE b.loto IS NULL ORDER BY b.number ASC")
-    Stream<LotoBox> getEmptyBoxes();
-    default LotoBox getEmptyBox() {
-        return getEmptyBoxes().findFirst().orElse(null);
-    }
     @Query("SELECT MAX(b.number) FROM LotoBox b")
     Integer getMaxNumber();
     LotoBox findByNumber(Integer number);
 
-    List<LotoBox> findByLotoId(Long lotoId);
-
-    LotoBox findByLoto(Loto loto);
-
-    List<LotoBox> findAllByLoto(Loto loto);
 }

@@ -86,10 +86,6 @@ public class NgLockService implements NgCrudService<Lock, LockDto, LockRepo, Loc
         return this.lockMapper.convertToEntity(dto);
     }
 
-    public List<LockDto> getLocksByLotoId(Long lotoId) {
-        List<Lock> locks = lockRepo.findByLotoId(lotoId);
-        return locks.stream().map(this::toDto).toList();
-    }
 
     // Add any additional methods specific to Lock here
 }

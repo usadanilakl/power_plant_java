@@ -15,9 +15,9 @@ import org.hibernate.envers.Audited;
 @Table(name = "loto_boxes")
 public class LotoBox extends BaseAuditEntity {
     private Integer number = 0;
-    @OneToOne
-    @JoinColumn(name = "loto")
-    private Loto loto;
+//    @OneToOne
+//    @JoinColumn(name = "loto")
+//    private Loto loto;
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name="loto_accessory_status_id")
     private Value lotoAccessoryStatus;

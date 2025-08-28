@@ -73,15 +73,4 @@ public class NgLotoBoxController {
         }
     }
 
-    @GetMapping("/by-loto/{lotoId}")
-    public ResponseEntity<NgApiResponse<List<LotoBoxDto>>> getLotoBoxesByLotoId(@PathVariable Long lotoId) {
-        try {
-            List<LotoBoxDto> lotoBoxes = ngLotoBoxService.getLotoBoxesByLotoId(lotoId);
-            NgApiResponse<List<LotoBoxDto>> response = new NgApiResponse<>(lotoBoxes, "LotoBoxes retrieved successfully");
-            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
-        }
-    }
 }

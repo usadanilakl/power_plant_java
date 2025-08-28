@@ -36,6 +36,8 @@ public class LotoSnapshot {
     private String workAuthority;
     private LocalDateTime requestTime;
     private LocalDateTime workAuthorityTime;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private Status status;
 
     @ElementCollection

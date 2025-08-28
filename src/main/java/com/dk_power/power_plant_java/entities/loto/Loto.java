@@ -23,10 +23,10 @@ public class Loto extends BasePermitEntity {
         return this.getLotoBox().getNumber();
     }
 
-    @OneToOne(mappedBy = "loto", cascade = CascadeType.ALL, orphanRemoval = true)
-    private LotoBox lotoBox;
-    @OneToMany(mappedBy = "loto")
-    private List<Lock> locks;
+//    @OneToOne(mappedBy = "loto", cascade = CascadeType.ALL, orphanRemoval = true)
+//    private LotoBox lotoBox;
+//    @OneToMany(mappedBy = "loto")
+//    private List<Lock> locks;
 //    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
 //    @JoinTable(
 //            name = "loto_loto_point",
@@ -37,6 +37,10 @@ public class Loto extends BasePermitEntity {
 
     @Transient
     private Set<LotoPoint> lotoPoints = new HashSet<>();
+    @Transient
+    private LotoBox lotoBox;
+    @Transient
+    private List<Lock> locks;
 
 //    public void addLotoPoint(LotoPoint lotoPoint) {
 //        this.lotoPoints.add(lotoPoint);

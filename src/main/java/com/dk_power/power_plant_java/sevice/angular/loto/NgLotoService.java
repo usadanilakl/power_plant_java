@@ -137,21 +137,6 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
                 .filter(point -> !newLotoPointIds.contains(point.getId()))
                 .collect(Collectors.toSet());
 
-        // Handle LotoBox
-        if (loto.getLotoBox() != null) {
-            loto.getLotoBox().setLoto(loto);
-            lotoBoxService.save(loto.getLotoBox());
-        }
-
-        // Handle Locks
-        if (loto.getLocks() != null) {
-            for (Lock lock : loto.getLocks()) {
-                if (lock != null) {
-                    lock.setLoto(loto);
-                    lockService.save(lock);
-                }
-            }
-        }
 
         return repo.save(loto);
     }

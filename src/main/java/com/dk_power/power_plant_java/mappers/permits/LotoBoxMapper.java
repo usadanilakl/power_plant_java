@@ -40,10 +40,6 @@ public class LotoBoxMapper implements BaseMapper {
             dto.setNumber(entity.getNumber());
         }
 
-        if (entity.getLoto() != null) {
-            dto.setLoto(lotoService.convertToDto(entity.getLoto()));
-        }
-
         if (entity.getLotoAccessoryStatus() != null) {
             dto.setLotoAccessoryStatus(valueService.getDtoById(entity.getLotoAccessoryStatus().getId()));
         }
@@ -78,10 +74,6 @@ public class LotoBoxMapper implements BaseMapper {
 
         if (source.getNumber() != null) {
             entity.setNumber(source.getNumber());
-        }
-
-        if (source.getLoto() != null) {
-            entity.setLoto(lotoService.convertToEntity(source.getLoto()));
         }
 
         if (source.getLotoAccessoryStatus() != null) {
