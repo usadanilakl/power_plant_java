@@ -186,4 +186,30 @@ public class LotoPointMapper implements BaseMapper{
 
         return lotoPoint;
     }
+
+    public LotoPointIdDto toIdDto(LotoPoint lotoPoint) {
+        if (lotoPoint == null) return null;
+
+        LotoPointIdDto dto = new LotoPointIdDto();
+        dto.setId(lotoPoint.getId());
+        dto.setUnit(lotoPoint.getUnit());
+        dto.setTagged(lotoPoint.getTagged());
+        dto.setTagNumber(lotoPoint.getTagNumber());
+        dto.setDescription(lotoPoint.getDescription());
+        dto.setIsoPos(lotoPoint.getIsoPos()!= null? lotoPoint.getIsoPos().getId() : null);
+        dto.setNormPos(lotoPoint.getNormPos()!= null? lotoPoint.getNormPos().getId() : null);
+        dto.setSpecificLocation(lotoPoint.getSpecificLocation());
+//        dto.setStandard(lotoPoint.getStandard()!= null? lotoPoint.getStandard().getId() : null);
+        dto.setGeneralLocation(lotoPoint.getGeneralLocation());
+        dto.setNormalPosition(lotoPoint.getNormalPosition());
+        dto.setIsolatedPosition(lotoPoint.getIsolatedPosition());
+        dto.setOldId(lotoPoint.getOldId());
+        dto.setIsUpdated(lotoPoint.getIsUpdated());
+        dto.setFileIds(lotoPoint.getFileIds());
+        dto.setConflictStatus(lotoPoint.getConflictStatus());
+        dto.setZeroEnergyMethod(lotoPoint.getZeroEnergyMethod());
+
+
+        return dto;
+    }
 }

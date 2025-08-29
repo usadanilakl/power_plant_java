@@ -4,11 +4,13 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.loto.Lock;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
+import com.dk_power.power_plant_java.repository.loto.LotoSnapshotRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
@@ -34,6 +36,7 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     private final NgLotoPointService lotoPointService;
     private final NgLotoBoxService lotoBoxService;
     private final NgLockService lockService;
+    private final LotoSnapshotRepo lotoSnapshotRepo;
 
     @Override
     public LotoRepo getRepo() {
@@ -132,21 +135,40 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
             loto.setLotoPoints(new HashSet<>());
         }
 
-        // Remove LotoPoints that are no longer associated
-        Set<LotoPoint> pointsToRemove = loto.getLotoPoints().stream()
-                .filter(point -> !newLotoPointIds.contains(point.getId()))
-                .collect(Collectors.toSet());
-
+        loto.getSnapshots().forEach(s->{
+            if(s.getId()==null) lotoSnapshotRepo.save(s);
+        });
 
         return repo.save(loto);
     }
 
     public List<LotoPointDto> getActiveLotoPoints() {
-        return repo.findAll().stream()
-                .filter(loto -> loto.getLotoPoints() != null && !loto.getLotoPoints().isEmpty())
-                .flatMap(loto -> loto.getLotoPoints().stream())
-                .distinct()
-                .map(lotoPointService::toDto)
-                .collect(Collectors.toList());
+//        return repo.findAll().stream()
+//                .filter(loto -> loto.getLotoPoints() != null && !loto.getLotoPoints().isEmpty())
+//                .flatMap(loto -> loto.getLotoPoints().stream())
+//                .distinct()
+//                .map(lotoPointService::toDto)
+//                .collect(Collectors.toList());
+        return null;
+    }
+
+    public LotoDto addLotoPointToLoto(Long pointId, Long lotoId) {
+        Loto loto = repo.findById(lotoId)
+               .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+
+        LotoPoint point = lotoPointService.findById(pointId)
+               .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + pointId));
+
+        if (loto.getLotoPoints() !=null && !loto.getLotoPoints().isEmpty()) {
+            LotoPointIdDto dto = toIdDto(point);
+            loto.addLotoPoint(dto);
+            loto = repo.save(loto);
+        }
+
+        return toDto(loto);
+    }
+
+    private LotoPointIdDto toIdDto(LotoPoint point) {
+        return this.mapper.toIdDto(point);
     }
 }

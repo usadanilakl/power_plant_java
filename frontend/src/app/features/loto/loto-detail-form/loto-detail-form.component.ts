@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, Input, OnInit, DestroyRef, input} from '@angular/core';
+import { Component, Output, EventEmitter, Input, OnInit, DestroyRef, input, Signal, ɵunwrapWritableSignal, signal} from '@angular/core';
 import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -23,7 +23,7 @@ import { Column } from '../../../models/column.model';
   styleUrl: './loto-detail-form.component.css'
 })
 export class LotoDetailFormComponent implements OnInit {
-  @Input() values: any = {};
+  @Input() values: Signal<LotoDto> = signal<LotoDto>(new LotoDto());
   @Input() formSubmit!: (data: any) => void;
   @Input() formDelete!: () => void;
   @Input() openImage!: () => void;
@@ -73,7 +73,7 @@ export class LotoDetailFormComponent implements OnInit {
   ngOnInit() {
     forkJoin({
       // lotoStatuses: this.loadOptions(this.sharedDataService.loadPermitStatuses()),
-      lotoStatuses: this.loadOptions(of([new ValueDto({ name: 'Active' }), new ValueDto({ name: 'Inactive' })])),
+      lotoStatuses: this.loadOptions(of([new ValueDto({ name: 'ACTIVE' }), new ValueDto({ name: 'INACTIVE' })])),
     }).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(({ lotoStatuses }) => {
@@ -196,6 +196,10 @@ export class LotoDetailFormComponent implements OnInit {
 
   addOnDoubleClick = (item: any) => {
     this.onSelectPoint(item);
+  }
+
+  addPointToLoto(point: LotoPointDto){
+    
   }
 
   removeOnDoubleClick = (item: any) => {

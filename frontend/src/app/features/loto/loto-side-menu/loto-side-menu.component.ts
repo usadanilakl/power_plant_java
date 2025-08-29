@@ -1,8 +1,11 @@
-import { Component, effect, ElementRef, inject, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
 import { LotoTableComponent } from "../loto-table/loto-table.component";
 import { LotoDetailFormComponent } from "../loto-detail-form/loto-detail-form.component";
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { CurrentLotoService } from '../../../services/current-items-services/current-loto.service';
+import { LotoDto } from '../../../models/loto/loto.model';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-loto-side-menu',
@@ -24,17 +27,18 @@ export class LotoSideMenuComponent {
   private el = inject(ElementRef);
   private ngZone = inject(NgZone);
   private renderer = inject(Renderer2);
+  private currentLotoService = inject(CurrentLotoService);
 
   currentImageUrl: string | null = null;
   // currentCarouselItems: string[] = [];
-  // currentLotoStandardSignal = toSignal(this.currentLotoStandardService.currentStandard$, { initialValue: new LotoStandardDto() });
-  // currentLotoStandard = computed(() => this.currentLotoStandardSignal() || new LotoStandardDto());
-  // allStandardsSignal = toSignal(this.currentLotoStandardService.allStandards$, { initialValue: [] });
-  isStandardListDisplayed = signal<boolean>(true);
+  currentLotoStandardSignal = toSignal(this.currentLotoService.currentLoto$, { initialValue: new LotoDto() });
+  currentLoto = computed(() => this.currentLotoStandardSignal() || new LotoDto());
+  allLotossSignal = toSignal(this.currentLotoService.allLotos$, { initialValue: [] });
+  isLotoListDisplayed = signal<boolean>(true);
 
   constructor() {
     effect(() => {
-      const isDisplayed = this.isStandardListDisplayed();
+      const isDisplayed = this.isLotoListDisplayed();
       if (!isDisplayed) {
         // this.setupResizeHandlersIfVisible();
       }
@@ -155,11 +159,23 @@ export class LotoSideMenuComponent {
       // this.currentLotoStandardService.addLotoPointToStandard(lotoPoint);
     }
 
-
+    /*************************************************************************************************************
+     * Loto Table functionality.
+     *************************************************************************************************************/
+   
 
     
 showLotoList() {
-    this.isStandardListDisplayed.update(value => !value);
+    this.isLotoListDisplayed.update(value => !value);
+}
+
+onLotoTableRowLeftClick(loto: LotoDto) {
+  this.currentLotoService.setCurrentLoto(loto);
+}
+
+onLotoFormSubmit(loto: LotoDto) {
+  console.log('Loto form submitted', loto);
+  this.currentLotoService.processLotoChanges(loto);
 }
 
 

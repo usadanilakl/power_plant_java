@@ -34,19 +34,59 @@ public class Loto extends BasePermitEntity {
 
 
     @Transient
-    private Set<LotoPoint> lotoPoints = new HashSet<>();
+    private Set<LotoPointIdDto> lotoPoints = new HashSet<>();
+    public Set<LotoPointIdDto> getLotoPoints(){
+        return this.getLotoPointDtos();
+    }
+    public void setLotoPoints(Set<LotoPointIdDto> lotoPoints) {
+        this.lotoPoints = lotoPoints;
+        this.getLatestSnapshot().setLotoPointDtos(lotoPoints);
+    }
     @Transient
     private LotoSnapshot getLatestSnapshot() {
         return this.getSnapshots().stream().max(Comparator.comparing(LotoSnapshot::getDateCreated)).orElse(null);
     }
     @Transient
     public Set<LotoPointIdDto> getLotoPointDtos() {
+        if(this.getLatestSnapshot() == null){
+            LotoSnapshot snapShot = new LotoSnapshot();
+            snapShot.setLoto(this);
+            this.snapshots.add(snapShot);
+            this.getLatestSnapshot().setLotoPointDtos(new HashSet<>());
+        }
         return this.getLatestSnapshot().getLotoPointDtos();
     }
 
-    public static List<String> lightDtoFields = List.of("id", "lotoBox.number", "locks", "snapshots.id");
+    public static List<String> lightDtoFields = List.of("id", "lotoBox.number", "locks", "snapshots.id", "workScope");
 
 
+    public void addLotoPoint(LotoPointIdDto dto) {
+        LotoSnapshot newSnapShot = this.duplicateLatestSnapshot();
+        if(newSnapShot == null) {
+            newSnapShot = new LotoSnapshot();
+            newSnapShot.setLoto(this);
+            this.snapshots.add(newSnapShot);
+        }
+        Set<LotoPointIdDto> lotoPointDtos = newSnapShot.getLotoPointDtos();
+        if(lotoPointDtos == null) lotoPointDtos = new HashSet<>();
+        lotoPointDtos.add(dto);
+        newSnapShot.setLotoPointDtos(lotoPointDtos);
 
+    }
+    
+    private LotoSnapshot duplicateLatestSnapshot() {
+        LotoSnapshot latestSnapshot = this.getLatestSnapshot();
+        LotoSnapshot newSnapshot = null;
+        try {
+            newSnapshot = (LotoSnapshot) latestSnapshot.clone();
+            newSnapshot.setId(null);
+            newSnapshot.setDateCreated(java.time.LocalDateTime.now());
+            newSnapshot.setLoto(this);
+            this.snapshots.add(newSnapshot);
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+        }
+        return newSnapshot;
+    }
 }
 

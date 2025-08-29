@@ -15,8 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -35,6 +33,7 @@ public class NgLotoController {
             Page<LotoDto> paginatedLotos = ngLotoService.findAllWithProjectionPaginated(
                     Loto.lightDtoFields,
                     PageRequest.of(page - 1, pageSize)).map(ngLotoService::toDto);
+            System.out.println(paginatedLotos.getTotalElements() + " files found");
             NgApiResponse<Page<LotoDto>> response = new NgApiResponse<>(paginatedLotos, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
 //            return ResponseEntity.ok(response);
@@ -114,6 +113,18 @@ public class NgLotoController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving active LOTO points: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/add/{pointId}/to/{lotoId}")
+    public ResponseEntity<NgApiResponse<LotoDto>> addLotoPointToLoto(@PathVariable Long pointId, @PathVariable Long lotoId) {
+        try {
+            LotoDto updatedLoto = ngLotoService.addLotoPointToLoto(pointId, lotoId);
+            NgApiResponse<LotoDto> response = new NgApiResponse<>(updatedLoto, "LOTO point added to LOTO successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error adding LOTO point to LOTO: " + e.getMessage()));
         }
     }
 

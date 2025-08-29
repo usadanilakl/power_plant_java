@@ -18,11 +18,11 @@ export class LotoService {
 
   constructor(private http: HttpClient) {}
 
-  getLotos(page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<LotoDto[]>> {
+  getLotos(page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<LotoDto>> {
     const params = new HttpParams()
       .set('page', page.toString())
       .set('pageSize', pageSize.toString());
-    return this.http.get<SpringPaginatedResponse<LotoDto[]>>(`${this.apiUrl}/paginated`, { params });
+    return this.http.get<SpringPaginatedResponse<LotoDto>>(`${this.apiUrl}/paginated`, { params });
   }
 
   searchLotos(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<LotoDto[]>> {
@@ -63,5 +63,8 @@ export class LotoService {
   }
   getActiveLotoPoints(): Observable<SpringApiResponse<LotoPointDto[]>> {
     return this.http.get<SpringApiResponse<LotoPointDto[]>>(`${this.apiUrl}/active`);
+  }
+  addLotoPointToLoto(pointId: number, lotoId: number): Observable<SpringApiResponse<LotoDto>> {
+      return this.http.post<SpringApiResponse<LotoDto>>(`${this.apiUrl}/add/${pointId}/to/${lotoId}`, {});
   }
 }

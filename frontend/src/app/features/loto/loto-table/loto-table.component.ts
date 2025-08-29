@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ViewChild } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
@@ -10,6 +10,7 @@ import { SpringApiResponse } from '../../../models/api/spring-api-response.model
 import { LotoDto } from '../../../models/loto/loto.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../../models/api/search-criteria.model';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-loto-table',
@@ -28,6 +29,9 @@ export class LotoTableComponent implements OnInit {
   ];
 
   @ViewChild(TableComponent) tableComponent!: TableComponent;
+  private destroyRef = inject(DestroyRef);
+
+  onTableRowLeftClickEvent = output<LotoDto>();
 
   selectedItem: LotoDto | null = null;
   isPopupOpen: boolean = false;
@@ -49,12 +53,13 @@ export class LotoTableComponent implements OnInit {
   private lotoService = inject(LotoService);
 
   ngOnInit() {
-    this.items$ = this.loadItems();
+    this.items$ = this.loadItems()
   }
 
   loadItems(): Observable<LotoDto[]> {
     return this.lotoService.getLotos(this.currentPage, this.pageSize).pipe(
-      map((response: SpringPaginatedResponse<LotoDto[]>) => 
+      takeUntilDestroyed(this.destroyRef),
+      map((response: SpringPaginatedResponse<LotoDto>) => 
         response.responseData.content.map(item => LotoDto.fromJson(item))
       ),
       catchError(error => {
@@ -122,33 +127,37 @@ export class LotoTableComponent implements OnInit {
   }
 
   onItemClick = (item: LotoDto) => {
-    this.selectedItem = item;
-    this.isPopupOpen = true;
-  
-    this.lotoService.getLotoById(item.id.toString()).pipe(
-      tap((response: SpringApiResponse<LotoDto>) => {
-        if (response.responseData) {
-          this.selectedItem = LotoDto.fromJson(response.responseData);
-        } else {
-          console.error('No data received for LOTO:', item.id);
-        }
-      }),
-      switchMap(() => this.lotoService.getRelatedImages(item.id))
-    ).subscribe(
-      (imageResponse: SpringApiResponse<string[]>) => {
-        if (imageResponse.responseData) {
-          const fullUrls = imageResponse.responseData.map(url => `http://localhost:8082/${url}`);
-          this.relatedImagesSubject.next(fullUrls);
-        } else {
-          this.relatedImagesSubject.next([]);
-        }
-      },
-      error => {
-        console.error('Error fetching LOTO details or related images:', error);
-        this.relatedImagesSubject.next([]);
-      }
-    );
+    this.onTableRowLeftClickEvent.emit(item);
   }
+
+  // onItemClick = (item: LotoDto) => {
+  //   this.selectedItem = item;
+  //   this.isPopupOpen = true;
+  
+  //   this.lotoService.getLotoById(item.id.toString()).pipe(
+  //     tap((response: SpringApiResponse<LotoDto>) => {
+  //       if (response.responseData) {
+  //         this.selectedItem = LotoDto.fromJson(response.responseData);
+  //       } else {
+  //         console.error('No data received for LOTO:', item.id);
+  //       }
+  //     }),
+  //     switchMap(() => this.lotoService.getRelatedImages(item.id))
+  //   ).subscribe(
+  //     (imageResponse: SpringApiResponse<string[]>) => {
+  //       if (imageResponse.responseData) {
+  //         const fullUrls = imageResponse.responseData.map(url => `http://localhost:8082/${url}`);
+  //         this.relatedImagesSubject.next(fullUrls);
+  //       } else {
+  //         this.relatedImagesSubject.next([]);
+  //       }
+  //     },
+  //     error => {
+  //       console.error('Error fetching LOTO details or related images:', error);
+  //       this.relatedImagesSubject.next([]);
+  //     }
+  //   );
+  // }
 
   onItemDoubleClick = (item: any) => {
     console.log('Double clicked item:', item);

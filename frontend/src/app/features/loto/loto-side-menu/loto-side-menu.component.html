@@ -1,11 +1,13 @@
 <div class="container" #container>
   <div class="button-container">
     <button class="action-button" (click)="showLotoList()">
-      {{ isStandardListDisplayed() ? 'Points' : 'Standards' }}
+      {{ isLotoListDisplayed() ? 'Points' : 'Standards' }}
     </button>
   </div>
-  @if(isStandardListDisplayed()){
-    <app-loto-table></app-loto-table>
+  @if(isLotoListDisplayed()){
+    <app-loto-table
+      (onTableRowLeftClickEvent)="onLotoTableRowLeftClick($event)"
+    ></app-loto-table>
   }@else {
     <!-- <div class="panels-container">
       <div class="resizable-panel top-panel" #topPanel>
@@ -19,6 +21,9 @@
         ></app-loto-point-table>
       </div>
     </div> -->
-        <app-loto-detail-form></app-loto-detail-form>
+        <app-loto-detail-form
+          [values]="currentLoto"
+          (formSubmitEvent)="onLotoFormSubmit($event)"
+        ></app-loto-detail-form>
   }
 </div>

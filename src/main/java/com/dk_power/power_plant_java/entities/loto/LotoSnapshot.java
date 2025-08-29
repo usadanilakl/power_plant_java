@@ -22,7 +22,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @Audited
-public class LotoSnapshot extends BaseAuditEntity {
+public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
 
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -39,6 +39,7 @@ public class LotoSnapshot extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private Status status;
+    private String workScope;
 
     @ElementCollection
     @CollectionTable(name = "loto_snapshot_points", joinColumns = @JoinColumn(name = "loto_snapshot_id"))
@@ -62,6 +63,27 @@ public class LotoSnapshot extends BaseAuditEntity {
         }
 
         return dtos;
+    }
+
+    public void setLotoPointDtos(Set<LotoPointIdDto> dtos) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        lotoPointsData = new HashSet<>();
+
+        for (LotoPointIdDto dto : dtos) {
+            try {
+                String jsonData = objectMapper.writeValueAsString(dto);
+                lotoPointsData.add(jsonData);
+            } catch (JsonProcessingException e) {
+                // Handle or log the error
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        LotoSnapshot clone = (LotoSnapshot) super.clone();
+        return clone;
     }
 
 

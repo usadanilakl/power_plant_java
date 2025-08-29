@@ -2,9 +2,11 @@ package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.Lock;
 import com.dk_power.power_plant_java.entities.loto.Loto;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.NgUserService;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
@@ -17,9 +19,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -60,7 +60,7 @@ public LotoDto convertToDto(Loto loto){
     if(loto == null) return null;
     LotoDto dto = new LotoDto();
     if(loto.getId()!=null) dto.setId(loto.getId());
-    if(loto.getLotoPoints()!=null && !loto.getLotoPoints().isEmpty()) dto.setLotoPoints(loto.getLotoPoints().stream().map(lotoPointService::toDto).collect(Collectors.toList()));
+    if(loto.getLotoPoints()!=null && !loto.getLotoPoints().isEmpty()) dto.setLotoPoints(new ArrayList<>(loto.getLotoPoints()));
     if(loto.getLocks()!=null && !loto.getLocks().isEmpty()) dto.setLocks(loto.getLocks().stream().map(lockService::toDto).collect(Collectors.toList()));
     if(loto.getLotoBox()!=null) dto.setLotoBox(lotoBoxService.toDto(loto.getLotoBox()));
     if(loto.getControlAuthority()!=null) dto.setControlAuthority(userService.toDto(loto.getControlAuthority()));
@@ -84,7 +84,7 @@ public Loto convertToEntity(LotoDto lotoDto) {
     
     if (lotoDto.getId() != null) loto.setId(lotoDto.getId());
     if (lotoDto.getLotoPoints() != null && !lotoDto.getLotoPoints().isEmpty()) 
-        loto.setLotoPoints(lotoDto.getLotoPoints().stream().map(lotoPointService::toEntity).collect(Collectors.toSet()));
+        loto.setLotoPoints(new HashSet<>(lotoDto.getLotoPoints()));
     if (lotoDto.getLocks() != null && !lotoDto.getLocks().isEmpty()) 
         loto.setLocks(lotoDto.getLocks().stream().map(lockService::toEntity).collect(Collectors.toList()));
     if (lotoDto.getLotoBox() != null) loto.setLotoBox(lotoBoxService.toEntity(lotoDto.getLotoBox()));
@@ -195,10 +195,10 @@ public Loto convertIdDtoToEntity(LotoIdDto lotoDto) {
 
     // Set fields specific to LotoIdDto
     if (lotoDto.getLotoPoints() != null && !lotoDto.getLotoPoints().isEmpty()) {
-        loto.setLotoPoints(lotoDto.getLotoPoints().stream()
-                .map(id -> lotoPointService.findById(id).orElse(null))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet()));
+        loto.setLotoPoints(new HashSet<>(lotoDto.getLotoPoints()
+                .stream().map(id -> lotoPointService.findById(id).orElse(null))
+                .map(lotoPointService::toIdDto)
+                .collect(Collectors.toSet())));
     }
     if (lotoDto.getLocks() != null && !lotoDto.getLocks().isEmpty()) {
         loto.setLocks(lotoDto.getLocks().stream()
@@ -260,5 +260,50 @@ public void updateLotoFromDto(LotoIdDto dto, Loto loto) {
 
 
     // Don't update lotoPoints here, as it's handled separately in the service
+}
+
+public LotoPointIdDto toIdDto(LotoPoint point) {
+    if (point == null) {
+        return null;
+    }
+
+    LotoPointIdDto idDto = new LotoPointIdDto();
+
+    // Set fields from BaseDto
+    idDto.setId(point.getId());
+    idDto.setDeleted(point.getDeleted());
+    idDto.setName(point.getName());
+    idDto.setNote(point.getNote());
+    idDto.setCreatedBy(point.getCreatedBy());
+    idDto.setObjectType(point.getObjectType());
+    idDto.setDataServiceItemId(point.getDataServiceItemId());
+    idDto.setRefactorNotes(point.getRefactorNotes());
+    idDto.setDateCreated(point.getDateCreated());
+    idDto.setDateModified(point.getDateModified());
+
+    // Set specific fields from LotoPoint
+    idDto.setUnit(point.getUnit());
+    idDto.setTagged(point.getTagged());
+    idDto.setTagNumber(point.getTagNumber());
+    idDto.setDescription(point.getDescription());
+    idDto.setIsoPos(point.getIsoPos() != null ? point.getIsoPos().getId() : null);
+    idDto.setNormPos(point.getNormPos() != null ? point.getNormPos().getId() : null);
+    idDto.setSpecificLocation(point.getSpecificLocation());
+    idDto.setStandard(point.getStandard());
+    idDto.setGeneralLocation(point.getGeneralLocation());
+    idDto.setEquipmentIdList(point.getEquipmentList() != null ? 
+        point.getEquipmentList().stream().map(Equipment::getId).collect(Collectors.toList()) : null);
+    idDto.setNormalPosition(point.getNormalPosition());
+    idDto.setIsolatedPosition(point.getIsolatedPosition());
+    idDto.setEquipmentList(point.getEquipmentList() != null ? 
+        point.getEquipmentList().stream().map(Equipment::getId).collect(Collectors.toSet()) : null);
+    idDto.setOldId(point.getOldId());
+    idDto.setObjectType(point.getObjectType());
+    idDto.setIsUpdated(point.getIsUpdated());
+    idDto.setFileIds(point.getFileIds());
+    idDto.setConflictStatus(point.getConflictStatus());
+    idDto.setZeroEnergyMethod(point.getZeroEnergyMethod());
+
+    return idDto;
 }
 }

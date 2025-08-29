@@ -245,5 +245,9 @@ private String processDescription(String text, String fromUnit, String toUnit) {
         }
         throw new RuntimeException("LotoPoint not found with id: " + id);
     }
+
+    public LotoPointIdDto toIdDto(LotoPoint lotoPoint) {
+        return this.lotoPointMapper.toIdDto(lotoPoint);
+    }
 }
 
