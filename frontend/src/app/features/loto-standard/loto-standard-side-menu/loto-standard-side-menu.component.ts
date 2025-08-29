@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, computed, effect, ElementRef, HostListener, inject, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, inject, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoStandardFormComponent } from "../loto-standard-form/loto-standard-form.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';

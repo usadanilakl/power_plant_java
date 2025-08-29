@@ -1,60 +1,78 @@
-@if (isFormReady) {
-  <app-details-form
-    [fields]="fields"
-    [values]="values"
-    (formSubmit)="onFormSubmit($event)"
-    (formDelete)="onFormDelete()"
-  ></app-details-form>
+<div class="form-container">
 
-  <!-- <app-image-carousel
-    [images]="imageUrls$ | async | nonNullable"
-    [equipmentFilter]="lotoPointsFilter$ | async | nonNullable"
-  ></app-image-carousel> -->
-  @if (imageUrls$ | async; as imageUrls) {
-    @if (imageUrls.length > 0) {
-      <app-image-carousel
-        [images]="imageUrls"
-        [equipmentFilter]="lotoPointsFilter$ | async | nonNullable">
-      </app-image-carousel>
-    } @else {
-      <p>No images found.</p>
+    @if (isFormReady) {
+      <app-details-form
+        [fields]="fields"
+        [values]="values"
+        (formSubmit)="onFormSubmit($event)"
+        (formDelete)="onFormDelete()"
+      ></app-details-form>
+
+      @if (imageUrls$ | async; as imageUrls) {
+        @if (imageUrls.length > 0) {
+          <app-image-carousel
+            [images]="imageUrls"
+            [equipmentFilter]="lotoPointsFilter$ | async | nonNullable">
+          </app-image-carousel>
+        } @else {
+          <p>No images found.</p>
+        }
+      } @else {
+        <p>Loading images...</p>
+      }
+    @if(withPopup()){
+
+      <button type="button" (click)="onAddPoints()">Add LOTO Points</button>
+
+    @if(isAddPointsPopupOpen){  <div class="full-screen-overlay">
+        <div class="modal-content">
+          <div class="table-container right">
+            <h2>Selected LOTO Points</h2>
+            <app-loto-point-table
+              [clientSideData$]="selectedLotoPoints$"
+              [deleteCallback]="onRemovePoint"
+              [doubleClickCallback]="removeOnDoubleClick"
+            ></app-loto-point-table>
+          </div>
+          <div class="table-container left">
+            <h2>All LOTO Points</h2>
+            <app-loto-point-table
+            [submitCallback]="onSelectPoint"
+            [doubleClickCallback]="addOnDoubleClick.bind(this)"
+            ></app-loto-point-table>
+          </div>
+          <div class="modal-actions">
+            <button (click)="onSaveSelectedPoints()">Save</button>
+            <button (click)="onCloseModal()">Close</button>
+          </div>
+        </div>
+      </div>
     }
-  } @else {
-    <p>Loading images...</p>
-  }
-
-  <button type="button" (click)="onAddPoints()">Add LOTO Points</button>
-  <app-loto-point-table
-    [clientSideData$]="selectedLotoPoints$"
-    [deleteCallback]="onRemovePoint"
-    [cellDoubleClickCallback]="onCellDoubleClick"
-  ></app-loto-point-table>
-
-@if(isAddPointsPopupOpen){  <div class="full-screen-overlay">
-    <div class="modal-content">
-      <div class="table-container left">
-        <h2>All LOTO Points</h2>
-        <app-loto-point-table
-        [submitCallback]="onSelectPoint"
-        [doubleClickCallback]="addOnDoubleClick.bind(this)"
-        ></app-loto-point-table>
+    }@else{
+      <div class="tables-container">
+        <div class="table-container right">
+          <h2>Selected LOTO Points</h2>
+          <app-loto-point-table
+            [clientSideData$]="selectedLotoPoints$"
+            [deleteCallback]="onRemovePoint"
+            [doubleClickCallback]="removeOnDoubleClick"
+          ></app-loto-point-table>
+        </div>
+        <div class="table-container left">
+          <h2>All LOTO Points</h2>
+          <app-loto-point-table
+            [submitCallback]="onSelectPoint"
+            [doubleClickCallback]="addOnDoubleClick.bind(this)"
+          ></app-loto-point-table>
+        </div>
+        <div class="modal-actions">
+          <button (click)="onSaveSelectedPoints()">Save</button>
+          <button (click)="onCloseModal()">Close</button>
+        </div>
       </div>
-      <div class="table-container right">
-        <h2>Selected LOTO Points</h2>
-        <app-loto-point-table
-          [clientSideData$]="selectedLotoPoints$"
-          [deleteCallback]="onRemovePoint"
-          [doubleClickCallback]="removeOnDoubleClick"
-        ></app-loto-point-table>
-      </div>
-      <div class="modal-actions">
-        <button (click)="onSaveSelectedPoints()">Save</button>
-        <button (click)="onCloseModal()">Close</button>
-      </div>
-    </div>
-  </div>
-}
+    }
+  }@else {
+        <p>Loading form...</p>
+      }
 
-} @else {
-    <p>Loading form...</p>
-  }
+</div>

@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { LotoPageComponent } from './loto.component';
+import { LotoComponent } from './loto.component';
 
 describe('LotoComponent', () => {
-  let component: LotoPageComponent;
-  let fixture: ComponentFixture<LotoPageComponent>;
+  let component: LotoComponent;
+  let fixture: ComponentFixture<LotoComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LotoPageComponent]
+      imports: [LotoComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(LotoPageComponent);
+    fixture = TestBed.createComponent(LotoComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

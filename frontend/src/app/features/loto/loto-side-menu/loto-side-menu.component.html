@@ -1,0 +1,24 @@
+<div class="container" #container>
+  <div class="button-container">
+    <button class="action-button" (click)="showLotoList()">
+      {{ isStandardListDisplayed() ? 'Points' : 'Standards' }}
+    </button>
+  </div>
+  @if(isStandardListDisplayed()){
+    <app-loto-table></app-loto-table>
+  }@else {
+    <!-- <div class="panels-container">
+      <div class="resizable-panel top-panel" #topPanel>
+        <app-loto-detail-form></app-loto-detail-form>
+      </div>
+      <div class="resize-handle" #resizeHandle></div>
+      <div class="resizable-panel bottom-panel" #bottomPanel>
+        <app-loto-point-table
+          [doubleClickCallback]="onLotoPointTableRowDoubleClick.bind(this)"
+          [clickCallback]="onLotoPointTableRowLeftClick.bind(this)"
+        ></app-loto-point-table>
+      </div>
+    </div> -->
+        <app-loto-detail-form></app-loto-detail-form>
+  }
+</div>

@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home.component';
-import { LotoComponent } from './pages/loto/loto.component';
+import { LotoPageComponent } from './pages/loto/loto.component';
 import { TagNumberComponent } from './pages/tag-number/tag-number.component';
 import { LotoPointComponent } from './pages/loto-point/loto-point.component';
 import { PrintComponent } from './pages/print/print.component';
@@ -17,6 +17,8 @@ import { BackupComponent } from './pages/backup/backup.component';
 import { SchedulerPageComponent } from './pages/scheduler-page/scheduler-page.component';
 import { SchedulerComponent } from './features/scheduler/scheduler.component';
 import { LotoStandardComponent } from './features/loto-standard/loto-standard.component';
+import { LotoStandardSideMenuComponent } from './features/loto-standard/loto-standard-side-menu/loto-standard-side-menu.component';
+import { LotoComponent } from './features/loto/loto.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -33,12 +35,12 @@ export const routes: Routes = [
 
     {
       path: 'loto',
-      component: LotoComponent,
-      data: {menuType: 'loto'},
+      component: LotoPageComponent,
+      // data: {menuType: 'loto'},
       children: [
         { path: '', redirectTo: 'loto', pathMatch: 'full' },
-        { path: 'loto', component: LotoTableComponent },
-        { path: 'loto-standard', component: LotoStandardComponent },
+        { path: 'loto', component: LotoComponent },
+        { path: 'loto-standard', component: LotoStandardComponent,data: {leftMenu: LotoStandardSideMenuComponent} },
         { path: 'loto-points', component: LotoPointTableComponent },
         { path: 'loto-points-active', component: ActiveLotoPointsComponent },
         { path: 'loto-boxes', component: LotoBoxTableComponent },

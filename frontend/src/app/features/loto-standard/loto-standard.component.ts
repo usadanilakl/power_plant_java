@@ -1,5 +1,4 @@
 import { Component, computed, DestroyRef, inject, OnInit, Signal, signal, ViewChild } from '@angular/core';
-import { LotoStandardFormComponent } from "./loto-standard-form/loto-standard-form.component";
 import { CurrentLotoStandardService } from '../../services/current-items-services/current-loto-standard.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LotoPointDto } from '../../models/loto/loto-point.model';
@@ -19,7 +18,7 @@ import { ImageCarouselComponent } from "../../shared/image/image-carusel/image-c
 @Component({
   selector: 'app-loto-standard',
   standalone: true,
-  imports: [LotoStandardFormComponent, ImageZoomInteractiveComponent, PdfDisplayIframeComponent, FloatingMenuComponent, EquipmentDetailsComponent, ImageCarouselComponent],
+  imports: [ImageZoomInteractiveComponent, PdfDisplayIframeComponent, FloatingMenuComponent, EquipmentDetailsComponent, ImageCarouselComponent],
   templateUrl: './loto-standard.component.html',
   styleUrl: './loto-standard.component.css'
 })

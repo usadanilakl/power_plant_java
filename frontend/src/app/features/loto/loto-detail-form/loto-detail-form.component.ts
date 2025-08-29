@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, Input, OnInit, DestroyRef} from '@angular/core';
+import { Component, Output, EventEmitter, Input, OnInit, DestroyRef, input} from '@angular/core';
 import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -41,6 +41,7 @@ export class LotoDetailFormComponent implements OnInit {
       this.selectedLotoPointsSubject.next([]);
     }
   }
+  withPopup = input<boolean>(false);
   
   get selectedItem(): LotoDto | null {
     return this._selectedItem;
@@ -71,7 +72,8 @@ export class LotoDetailFormComponent implements OnInit {
   
   ngOnInit() {
     forkJoin({
-      lotoStatuses: this.loadOptions(this.sharedDataService.loadPermitStatuses()),
+      // lotoStatuses: this.loadOptions(this.sharedDataService.loadPermitStatuses()),
+      lotoStatuses: this.loadOptions(of([new ValueDto({ name: 'Active' }), new ValueDto({ name: 'Inactive' })])),
     }).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(({ lotoStatuses }) => {

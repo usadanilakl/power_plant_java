@@ -103,6 +103,8 @@ public class LotoServiceImpl implements LotoService {
             // Remove LotoPoint associations
             entityManager.createNativeQuery("DELETE FROM LOTO_POINTS")
                     .executeUpdate();
+            entityManager.createNativeQuery("DELETE FROM LOTO_LOTO_POINT")
+                    .executeUpdate();
 
             // Delete all Lotos
             entityManager.createNativeQuery("DELETE FROM LOTO")
@@ -145,6 +147,12 @@ public void modifyLotoSchema() {
 
         // Drop the junction table for the many-to-many relationship
         entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_points")
+                .executeUpdate();
+        entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_points_aud")
+                .executeUpdate();
+        entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_loto_point")
+                .executeUpdate();
+        entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_loto_point_aud")
                 .executeUpdate();
 
         // Remove the LOTO_BOX column from the LOTO table if it exists
