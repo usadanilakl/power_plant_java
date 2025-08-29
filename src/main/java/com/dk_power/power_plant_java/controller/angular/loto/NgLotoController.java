@@ -30,10 +30,12 @@ public class NgLotoController {
             @RequestParam(defaultValue = "50") int pageSize) {
         try {
 //            Page<FileObjectDto> paginatedFiles = fileService.getAll(page - 1, pageSize);
-            Page<LotoDto> paginatedLotos = ngLotoService.findAllWithProjectionPaginated(
-                    Loto.lightDtoFields,
-                    PageRequest.of(page - 1, pageSize)).map(ngLotoService::toDto);
+//            Page<LotoDto> paginatedLotos = ngLotoService.findAllWithProjectionPaginated(
+//                    Loto.lightDtoFields,
+//                    PageRequest.of(page - 1, pageSize)).map(ngLotoService::toDto);
+            Page<LotoDto> paginatedLotos = ngLotoService.getAll(page-1,pageSize);
             System.out.println(paginatedLotos.getTotalElements() + " files found");
+            paginatedLotos.getContent().forEach(System.out::println);
             NgApiResponse<Page<LotoDto>> response = new NgApiResponse<>(paginatedLotos, "Files retrieved successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
 //            return ResponseEntity.ok(response);

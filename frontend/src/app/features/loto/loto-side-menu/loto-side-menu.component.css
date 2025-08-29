@@ -13,3 +13,10 @@
   height: 100%;
   padding: 20px;
 }
+
+app-loto-table{
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    overflow: visible
+}

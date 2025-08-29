@@ -32,6 +32,8 @@ export class LotoTableComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   onTableRowLeftClickEvent = output<LotoDto>();
+  createNewLotoEvent = output<void>();
+
 
   selectedItem: LotoDto | null = null;
   isPopupOpen: boolean = false;
@@ -57,7 +59,8 @@ export class LotoTableComponent implements OnInit {
   }
 
   loadItems(): Observable<LotoDto[]> {
-    return this.lotoService.getLotos(this.currentPage, this.pageSize).pipe(
+    console.log('Loading items',this.currentPage);
+    return this.lotoService.getLotos(1, this.pageSize).pipe(
       takeUntilDestroyed(this.destroyRef),
       map((response: SpringPaginatedResponse<LotoDto>) => 
         response.responseData.content.map(item => LotoDto.fromJson(item))
@@ -202,8 +205,12 @@ export class LotoTableComponent implements OnInit {
     this.selectedImagePath = null;
   }
 
-  createNewLoto() {
+  createNewLotoFromStandard() {
     this.selectedItem = new LotoDto();
     this.isPopupOpen = true;
+  }
+
+  createNewLoto() {
+    this.createNewLotoEvent.emit();
   }
 }

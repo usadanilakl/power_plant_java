@@ -7,6 +7,7 @@
   @if(isLotoListDisplayed()){
     <app-loto-table
       (onTableRowLeftClickEvent)="onLotoTableRowLeftClick($event)"
+      (createNewLotoEvent)="onCreateNewLoto()"
     ></app-loto-table>
   }@else {
     <!-- <div class="panels-container">

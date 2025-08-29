@@ -41,6 +41,7 @@ export class LotoDetailFormComponent implements OnInit {
       this.selectedLotoPointsSubject.next([]);
     }
   }
+  layout = input<"row" | "column" | "reactive">('column');
   withPopup = input<boolean>(false);
   
   get selectedItem(): LotoDto | null {

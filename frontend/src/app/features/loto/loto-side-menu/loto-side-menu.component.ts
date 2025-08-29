@@ -1,4 +1,4 @@
-import { Component, computed, effect, ElementRef, inject, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, input, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
 import { LotoTableComponent } from "../loto-table/loto-table.component";
 import { LotoDetailFormComponent } from "../loto-detail-form/loto-detail-form.component";
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
@@ -171,11 +171,17 @@ showLotoList() {
 
 onLotoTableRowLeftClick(loto: LotoDto) {
   this.currentLotoService.setCurrentLoto(loto);
+  this.isLotoListDisplayed.set(false);
 }
 
 onLotoFormSubmit(loto: LotoDto) {
   console.log('Loto form submitted', loto);
   this.currentLotoService.processLotoChanges(loto);
+}
+
+onCreateNewLoto() {
+  this.currentLotoService.setCurrentLoto(new LotoDto());
+  this.isLotoListDisplayed.set(false);
 }
 
 

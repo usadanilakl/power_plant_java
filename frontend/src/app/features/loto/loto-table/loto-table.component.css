@@ -1,0 +1,14 @@
+:host{
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+}
+
+/* app-shared-table{
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    overflow: visible
+} */
