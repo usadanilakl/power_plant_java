@@ -9,9 +9,9 @@
         (formDelete)="onFormDelete()"
       ></app-details-form>
 
-      @if (imageUrls() && imageUrls.length > 0) {
+      @if (imageUrls()() && imageUrls()().length > 0) {
           <app-image-carousel
-            [images]="imageUrls">
+            [images]="imageUrls()">
           </app-image-carousel>
       } @else {
         <p>Loading images...</p>

@@ -14,6 +14,7 @@ import { PopupComponent } from "../../../shared/popup/popup.component";
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { Column } from '../../../models/column.model';
+import { FileService } from '../../../services/file.service';
 
 @Component({
   selector: 'app-loto-detail-form',
@@ -27,7 +28,7 @@ export class LotoDetailFormComponent implements OnInit {
   @Input() formSubmit!: (data: any) => void;
   @Input() formDelete!: () => void;
   @Input() openImage!: () => void;
-  @Input() imageUrls: Signal<string[]> = signal<string[]>([]);
+  imageUrls = input<Signal<string[]>>(signal<string[]>([]));
   private _selectedItem: LotoDto | null = null;
   
   @Input() set selectedItem(value: LotoDto | null) {
@@ -237,4 +238,6 @@ export class LotoDetailFormComponent implements OnInit {
     console.log('Cell double clicked column:', column);
     // Implement your cell double-click logic here
   }
+
+
 }

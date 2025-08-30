@@ -6,6 +6,7 @@ import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { CurrentLotoService } from '../../../services/current-items-services/current-loto.service';
 import { LotoDto } from '../../../models/loto/loto.model';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { LotoComponent } from '../loto.component';
 
 @Component({
   selector: 'app-loto-side-menu',

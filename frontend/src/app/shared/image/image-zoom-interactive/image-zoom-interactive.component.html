@@ -17,7 +17,13 @@
     (mouseleave)="onMouseLeave($event)"
     (wheel)="onWheel($event)">
         <div class="image-canvas-container">
-            <img #imageElement [src]="'http://localhost:8082/' + imageUrl()" />
+            @if (imageUrl() && imageUrl()!.startsWith("http")) {
+                <img #imageElement [src]="imageUrl()" />
+            } @else {
+                <img #imageElement [src]="'http://localhost:8082/' + imageUrl()" />
+            }
+
+            <!-- <img #imageElement [src]="'http://localhost:8082/' + imageUrl()" /> -->
             <canvas #canvasElement></canvas>
         </div>
     </div>

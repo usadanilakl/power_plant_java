@@ -7,15 +7,17 @@ import { FileService } from '../../../services/file.service';
 import { FileDto } from '../../../models/file/file.model';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
 import { environment } from '../../../../environments/environment';
+import { PopupProjectionComponent } from "../../popup-projection/popup-projection.component";
 
 @Component({
   selector: 'app-image-carousel',
   standalone: true,
-  imports: [CommonModule, PopupComponent],
+  imports: [CommonModule, PopupComponent, PopupProjectionComponent, ImageZoomInteractiveComponent],
   templateUrl: './image-carousel.component.html',
   styleUrls: ['./image-carousel.component.css']
 })
 export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
+
   @Input() images: string[] | Observable<string[]> | Signal<string[]> = [];
   @Output() imageClick = new EventEmitter<string>();
   @Input() equipmentFilter: { key: string; filterFn: (value: any) => boolean }[] = [];
@@ -27,6 +29,7 @@ export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
   private scrollLeftPosition: number = 0;
   isImagePopupOpen = false;
   selectedImage$: Observable<FileDto | null> | null = null;
+  imageUrl = signal<string>('');
   elements$: Observable<EquipmentDto[]> | null = null;
   ImageZoomInteractiveComponent = ImageZoomInteractiveComponent;
   private imagesSubscription: Subscription | null = null;
@@ -78,11 +81,15 @@ export class ImageCarouselComponent implements AfterViewInit, OnDestroy {
       this.selectedImage$ = this.getFullFileDto(image);
       this.filterEquipment();
       this.isImagePopupOpen = true;
+      this.imageUrl.set(image);
     }
   }
+closeImagePopup() {
+  this.isImagePopupOpen=false;
+}
 
   private getFullFileDto(image: string): Observable<FileDto | null> {
-    return this.fileService.getFileByUrl(image).pipe(
+    return this.fileService.getFileByUrl(image.replaceAll('jpg','pdf')).pipe(
       map(response => response.responseData),
       catchError(error => {
         console.error('Error fetching file:', error);

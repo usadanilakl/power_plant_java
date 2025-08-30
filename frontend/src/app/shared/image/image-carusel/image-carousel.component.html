@@ -9,7 +9,7 @@
 </div>
 
 @if(isImagePopupOpen){
-  <app-popup
+  <!-- <app-popup
     [isOpen]="isImagePopupOpen"
     [title]="'Image View'"
     [contentComponent]="ImageZoomInteractiveComponent"
@@ -19,7 +19,20 @@
       elements: elements$
     }"
     (close)="isImagePopupOpen = false"
-  ></app-popup>
+  ></app-popup> -->
+
+  <app-popup-projection
+    [isOpen]="isImagePopupOpen"
+    [title]="'Image View'"
+    (close)="isImagePopupOpen=false"
+  >
+    <app-image-zoom-interactive
+      *ngIf="selectedImage$ | async as selectedImage"
+      [imageUrl]="imageUrl()"
+      [elements]="elements$!"
+      (close)="closeImagePopup()"
+    ></app-image-zoom-interactive>
+  </app-popup-projection>
 }
 
 <!-- <div class="carousel-container">
