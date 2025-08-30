@@ -12,11 +12,26 @@
           body: body ? JSON.stringify(body) : null
         });
         const data = await response.text();
-        alert("Response: " + data);
+        // alert("Response: " + data);
       } catch (error) {
         alert("Error: " + error);
       }
     }
+    
+    async function runSequence() {
+      try {
+        await sendRequest('/open-app');
+        await sendRequest('/login');
+        await sendRequest('/open-loto-builder');
+        await sendRequest('/build-loto-with-no-standard');
+        await sendRequest('/build-loto-with-new-points');
+        alert("Sequence completed successfully");
+      } catch (error) {
+
+      }
+    }
+
+    
   </script>
 </head>
 <body>
@@ -24,5 +39,8 @@
   <button onclick="sendRequest('/login')">Login</button>
   <button onclick="sendRequest('/open-loto-builder')">Open Loto Builder</button>
   <button onclick="sendRequest('/build-loto-with-no-standard')">LOTO with no standard</button>
+  <button onclick="sendRequest('/build-loto-with-new-points')">Build With New Points</button>
+  <button onclick="sendRequest('/complete-loto-build')">Complete Loto Build</button>
+  <button onclick="runSequence()">Run Sequence</button>
 </body>
 </html>

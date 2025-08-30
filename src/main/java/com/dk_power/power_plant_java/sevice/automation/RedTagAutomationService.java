@@ -1,13 +1,21 @@
 package com.dk_power.power_plant_java.sevice.automation;
 
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.repository.loto.LotoRepo;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
+import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.sikuli.basics.Settings;
 import org.sikuli.script.*;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.List;
 
 @Service
+@Transactional
 public class RedTagAutomationService {
 
     private static final String BASE_PATH = "J:/Jackson Generation P&IDs/Manager App/managed_apps/RedTagIntegration/images/";
@@ -32,6 +40,11 @@ public class RedTagAutomationService {
     private static final Pattern LOTO_BUILDER_LOTO_TYPE_DROPDOWN = new Pattern(BASE_PATH + "lotoBuilderLotoTypeDropdown.png");
     private static final Pattern LOTO_BUILDER_EQUIPMENT_DESCRIPTION = new Pattern(BASE_PATH + "lotoBuilderEquipmentDescriptionField.png");
     private static final Pattern LOTO_BUILDER_EQUIPMENT_TAG_NUMBER = new Pattern(BASE_PATH + "lotoBuilderEquipmentTagNumber.png");
+    private static final Pattern RED_TAG_LOGO_IN_TITLE_BAR = new Pattern(BASE_PATH + "redTagLogoInTitleBar.png");
+    private static final Pattern LOTO_BUILDER_CONTINUE_BUTTON = new Pattern(BASE_PATH + "lotoBuilderContinueButton.png");
+    private static final Pattern LOTO_BUILDER_INFORMATION_FORM = new Pattern(BASE_PATH + "lotoInformationForm.png");
+    private static final Pattern INFORMATION_FORM_LOCK_BOX_DROPDOWN = new Pattern(BASE_PATH + "infoFormLockBoxDropdown.png");
+
 
     private Screen screen;
     private Region appWindow;
@@ -51,8 +64,9 @@ public class RedTagAutomationService {
             System.out.println("Starting " + appName + "...");
             Runtime.getRuntime().exec(appPath);
 
-            // Wait for the application to start
-            Thread.sleep(10000);  // Adjust this delay as needed
+            if(isLoggedIn()) return;
+
+            screen.wait(LOG_IN_BUTTON,40);
         } else {
             System.out.println("Application is already running.");
             maximizeWindow();
@@ -60,6 +74,9 @@ public class RedTagAutomationService {
     }
 
     public String login() throws FindFailed {
+
+        if(isLoggedIn()) return "Alredy Logged In";
+
         this.findAndClickElement(LOG_IN_BUTTON);
         Region loginMenu = screen.wait(LOGIN_MENU,5);
         loginMenu = new Region(loginMenu.x,loginMenu.y,loginMenu.w,loginMenu.h);
@@ -83,7 +100,7 @@ public class RedTagAutomationService {
 
         Region inp2 = loginMenu.find(PASSWORD_INPUT_FIELD);
         inp2.offset(inp2.w/2-20, inp2.h/2-10).click();
-        App.setClipboard("a87168814B");
+        App.setClipboard("redtag");
         screen.type("v", KeyModifier.CTRL);
 
 //        try{
@@ -171,11 +188,35 @@ public class RedTagAutomationService {
 
     }
 
+    public String buildWithNewPoints(List<LotoPointDto> points){
+        LotoBuilderService.buildLotowWithNewPoints(points);
+        return "Success";
+    }
+
+    public String completeLotoBuilding() throws FindFailed {
+        screen.find(LOTO_BUILDER_CONTINUE_BUTTON).click();
+        Region infoForm = screen.wait(LOTO_BUILDER_INFORMATION_FORM,2);
+        infoForm = new Region(infoForm.x,infoForm.y,infoForm.w,infoForm.h);
+
+        infoForm.find(INFORMATION_FORM_LOCK_BOX_DROPDOWN).offset(100,0).click();
+
+        screen.type("33");
+
+        return "Success";
+
+    }
+
+
+
     private boolean isProcessRunning(String processName) throws IOException {
         ProcessBuilder processBuilder = new ProcessBuilder("tasklist.exe");
         Process process = processBuilder.start();
         String tasksList = new String(process.getInputStream().readAllBytes());
         return tasksList.contains(processName);
+    }
+
+    private boolean isLoggedIn() {
+        return screen.exists(LOGOUT_BUTTON) != null;
     }
 
     private void maximizeWindow() throws FindFailed {
@@ -191,6 +232,10 @@ public class RedTagAutomationService {
             // If minimize button is not found, the window is not maximized
             screen.click(iconInactive);
             System.out.println("Window maximized.");
+        }
+
+        if(screen.wait(RED_TAG_LOGO_IN_TITLE_BAR,1) ==null){
+            screen.click(iconInactive);
         }
     }
 
