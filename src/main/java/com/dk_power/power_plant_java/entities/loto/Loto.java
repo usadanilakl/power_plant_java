@@ -19,11 +19,22 @@ import java.util.Set;
 @NoArgsConstructor
 @Audited
 public class Loto extends BasePermitEntity {
-
-    public Integer boxNumber() {
-        return this.getLotoBox().getNumber();
+    {
+        if(this.getPermitStatus()==null || this.getPermitStatus().getName() == null){
+            this.isArchived = false;
+            this.isMutable = true;
+        }else if(this.getPermitStatus().getName().equals("Closed")){
+            this.isArchived = true;
+            this.isMutable = false;
+        }else if(this.getPermitStatus().getName().equals("Active")){
+            this.isArchived = false;
+            this.isMutable = false;
+        }
     }
 
+    /*********************************************************************************************************************
+     * PRESISTED FIELDS
+     ******************************************************************************************************************/
     @OneToOne(mappedBy = "loto", cascade = CascadeType.ALL, orphanRemoval = true)
     private LotoBox lotoBox;
     @OneToMany(mappedBy = "loto")
@@ -31,34 +42,18 @@ public class Loto extends BasePermitEntity {
     @OneToMany(mappedBy = "loto")
     private Set<LotoSnapshot> snapshots = new HashSet<>();
 
-
+    /*********************************************************************************************************************
+     * TRANSIENT FIELDS
+     ******************************************************************************************************************/
     @Transient
     private Set<LotoPointIdDto> lotoPoints = new HashSet<>();
-
-    public Set<LotoPointIdDto> getLotoPoints() {
-        return this.getLotoPointDtos();
-    }
-
-    public void setLotoPoints(Set<LotoPointIdDto> lotoPoints) {
-        this.lotoPoints = lotoPoints;
-        this.getLatestSnapshot().setLotoPointDtos(lotoPoints);
-    }
-
     @Transient
-    private LotoSnapshot getLatestSnapshot() {
-        return this.getSnapshots().stream().max(Comparator.comparing(LotoSnapshot::getDateCreated)).orElse(new LotoSnapshot());
-    }
+    private boolean isMutable = false;
+    private boolean isArchived = true;
 
-    @Transient
-    public Set<LotoPointIdDto> getLotoPointDtos() {
-        if (this.getLatestSnapshot() == null) {
-            LotoSnapshot snapShot = new LotoSnapshot();
-            snapShot.setLoto(this);
-            this.snapshots.add(snapShot);
-            this.getLatestSnapshot().setLotoPointDtos(new HashSet<>());
-        }
-        return this.getLatestSnapshot().getLotoPointDtos();
-    }
+    /*********************************************************************************************************************
+     * HELPER METHODS
+     ******************************************************************************************************************/
 
     public static List<String> lightDtoFields = List.of("id", "lotoBox.number", "locks", "snapshots.id", "workScope");
 
@@ -104,6 +99,35 @@ public class Loto extends BasePermitEntity {
         newSnapShot.setLotoPointDtos(lotoPointDtos);
 
 
+    }
+
+    /*******************************************************************************************************************
+     * MODIFIED GETTERS AND SETTERS
+     ******************************************************************************************************************/
+
+    public Set<LotoPointIdDto> getLotoPoints() {
+        return this.getLotoPointDtos();
+    }
+
+    public void setLotoPoints(Set<LotoPointIdDto> lotoPoints) {
+        this.lotoPoints = lotoPoints;
+        this.getLatestSnapshot().setLotoPointDtos(lotoPoints);
+    }
+
+    @Transient
+    public LotoSnapshot getLatestSnapshot() {
+        return this.getSnapshots().stream().max(Comparator.comparing(LotoSnapshot::getDateCreated)).orElse(new LotoSnapshot());
+    }
+
+    @Transient
+    public Set<LotoPointIdDto> getLotoPointDtos() {
+        if (this.getLatestSnapshot() == null) {
+            LotoSnapshot snapShot = new LotoSnapshot();
+            snapShot.setLoto(this);
+            this.snapshots.add(snapShot);
+            this.getLatestSnapshot().setLotoPointDtos(new HashSet<>());
+        }
+        return this.getLatestSnapshot().getLotoPointDtos();
     }
 }
 

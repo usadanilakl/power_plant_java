@@ -225,4 +225,16 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 //        LotoStandard savedStandard = save(standard);
 //        return toDto(savedStandard);
 //    }
+
+//    public LotoDto createFirstVersionOfLoto(LotoDto loto){
+//        Loto entity = toEntity(loto);
+//    }
+//
+//    public LotoDto updateWithVersion(LotoDto loto){
+//
+//    }
+//
+//    public LotoDto updateWithNoVersion(LotoDto loto){
+//
+//    }
 }
