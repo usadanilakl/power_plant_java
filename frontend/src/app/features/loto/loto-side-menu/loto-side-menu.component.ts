@@ -32,6 +32,8 @@ export class LotoSideMenuComponent {
   currentLotoListSignal = toSignal(this.currentLotoService.allLotos$, { initialValue: [] });
   currentLotoSignal = toSignal(this.currentLotoService.currentLoto$, { initialValue: new LotoDto() });
   currentLoto = computed(() => this.currentLotoSignal() || new LotoDto());
+  currentLotoFilesSignal = toSignal(this.currentLotoService.currentLotoFiles$, { initialValue: [] });
+  currentLotoFileLinks = computed<string[]>(() => this.currentLotoFilesSignal().map(f=>f.fileLink) || []);
   allLotossSignal = toSignal(this.currentLotoService.allLotos$, { initialValue: [] });
   isLotoListDisplayed = signal<boolean>(true);
 

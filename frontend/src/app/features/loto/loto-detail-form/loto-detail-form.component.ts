@@ -27,7 +27,7 @@ export class LotoDetailFormComponent implements OnInit {
   @Input() formSubmit!: (data: any) => void;
   @Input() formDelete!: () => void;
   @Input() openImage!: () => void;
-  @Input() imageUrls$: Observable<string[]> = new Observable<string[]>();
+  @Input() imageUrls: Signal<string[]> = signal<string[]>([]);
   private _selectedItem: LotoDto | null = null;
   
   @Input() set selectedItem(value: LotoDto | null) {

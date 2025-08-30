@@ -14,6 +14,7 @@
         <app-loto-detail-form
           [values]="currentLoto"
           [selectedItem]="currentLoto()"
+          [imageUrls]="currentLotoFileLinks"
           (formSubmitEvent)="onLotoFormSubmit($event)"
           (addPointToLotoEvent)="addPointToLoto($event)"
           (removePointFromLotoEvent)="removePointFromLoto($event)"

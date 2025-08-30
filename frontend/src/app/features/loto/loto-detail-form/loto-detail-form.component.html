@@ -9,15 +9,10 @@
         (formDelete)="onFormDelete()"
       ></app-details-form>
 
-      @if (imageUrls$ | async; as imageUrls) {
-        @if (imageUrls.length > 0) {
+      @if (imageUrls() && imageUrls.length > 0) {
           <app-image-carousel
-            [images]="imageUrls"
-            [equipmentFilter]="lotoPointsFilter$ | async | nonNullable">
+            [images]="imageUrls">
           </app-image-carousel>
-        } @else {
-          <p>No images found.</p>
-        }
       } @else {
         <p>Loading images...</p>
       }
@@ -57,6 +52,7 @@
             [clientSideData$]="selectedLotoPoints$"
             [deleteCallback]="onRemovePoint"
             [doubleClickCallback]="removePointFromLoto"
+            [clickCallback]="onRowLeftClick.bind(this)"
           ></app-loto-point-table>
         </div>
         <div class="table-container left">

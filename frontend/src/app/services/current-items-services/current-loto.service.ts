@@ -116,6 +116,7 @@ export class CurrentLotoService{
     getCurrentLotoPoint(): Observable<LotoPointDto | null>   {
       return this.currentLotoPoint$;
     }
+    
     setCurrentLotoPoint(lotoPoint: LotoPointDto | null) {
       this.currentLotoPointSubject.next(lotoPoint);
       if(lotoPoint && lotoPoint.id)this.loadCurrentLotoPoitFiles(lotoPoint.id);
