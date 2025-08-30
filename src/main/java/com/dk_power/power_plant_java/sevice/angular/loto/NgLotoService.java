@@ -1,14 +1,13 @@
 package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
-import com.dk_power.power_plant_java.entities.loto.Lock;
-import com.dk_power.power_plant_java.entities.loto.Loto;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
-import com.dk_power.power_plant_java.entities.loto.LotoSnapshot;
+import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
+import com.dk_power.power_plant_java.entities.loto.*;
 import com.dk_power.power_plant_java.mappers.LotoMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoSnapshotRepo;
@@ -200,4 +199,30 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         });
         return toDto(save(loto));
     }
+
+
+    public List<FileDto> getRelatedFiles(Long lotoStandardId) {
+        Loto loto = getEntityById(lotoStandardId);
+        if (loto == null) {
+            throw new EntityNotFoundException("Loto not found");
+        }
+        List<LotoPoint> points = loto.getLotoPoints().stream().map(lotoPointService::convertIdDtoToEntity).toList();
+        if(points==null || points.isEmpty()) return List.of();
+        Set<FileDto> files = new HashSet<>();
+        for(LotoPoint point : points){
+            files.addAll(lotoPointService.getRelatedFiles(point.getId()));
+        }
+
+        return files.stream().distinct().toList();
+    }
+
+//    public LotoStandardDto reorderLotoPoints(Long currentStandardId, List<Long> lotoPoints) {
+//        Loto loto = getEntityById(currentStandardId);
+//        if (loto == null) {
+//            throw new EntityNotFoundException("LotoStandard not found");
+//        }
+//        loto.reorderLotoPoints(lotoPoints);
+//        LotoStandard savedStandard = save(standard);
+//        return toDto(savedStandard);
+//    }
 }

@@ -1,1 +1,61 @@
-<p>loto works!</p>
+<div class="carousel-container">
+  <app-image-carousel
+  [images]="currentFileLinks"
+  (imageClick)="fetchAndShowImageByLink($event)">
+  </app-image-carousel>
+</div>
+
+@if(currentLotoPointFileLinks() && currentLotoPointFileLinks().length > 1){
+  <div class="carousel-container">
+    <app-image-carousel
+    [images]="currentLotoPointFileLinks">
+    </app-image-carousel>
+  </div>
+}
+
+<div class="image-container">
+  @if (currentFileLink() && currentFileLink()!=='') {
+    @if(currentFileLink().endsWith('.jpg')){
+      <app-image-zoom-interactive
+        [imageUrl]="currentFileLink()"
+        [elements]="elements"
+        [selectedShapeIds]="selectedItemIds()"
+        [singleSelectedShapeId]="singleSelectedItemId()"
+        (shapeSelected)="showShapeDetails($event)"
+        >
+      </app-image-zoom-interactive>
+    } @else if(currentFileLink().endsWith('.pdf')){
+      <app-pdf-display-iframe 
+        #pdfDisplay 
+        [pdfSrc]="currentFileLink()">
+      </app-pdf-display-iframe>
+    }
+  } @else {
+    <div class="no-file-selected">
+      <p>No file selected. Please select a file to view and edit.</p>
+      <!-- You can add a button or other UI elements here to guide the user -->
+      <!-- <button (click)="onSelectFile()" class="select-file-button">Select a File</button> -->
+    </div>
+  }
+
+  
+  <!-- New control section added at the bottom of the image container -->
+  <div class="control-section">
+    <div class="button-row">
+        <button>Some Buttons...</button>
+    </div>
+  </div>
+</div>
+
+<app-floating-menu
+  [title]="'Details'"
+  [open]="isShapeDetailsOpen()"
+  [height]="60"
+  [width]="40"
+  (close)="closeShapeDetails()"
+>
+  <app-equipment-details
+    (lotoPointClickEvent)="addLotoPointToStandard($event)"
+    (fileClickEvent)="showFile($event)"
+  ></app-equipment-details>
+</app-floating-menu>
