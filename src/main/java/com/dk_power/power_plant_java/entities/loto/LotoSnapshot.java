@@ -82,8 +82,11 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
 
     @Override
     public Object clone() throws CloneNotSupportedException {
-        LotoSnapshot clone = (LotoSnapshot) super.clone();
-        return clone;
+        LotoSnapshot cloned = (LotoSnapshot) super.clone();
+        if (this.lotoPointsData != null) {
+            cloned.lotoPointsData = new HashSet<>(this.lotoPointsData);
+        }
+        return cloned;
     }
 
 

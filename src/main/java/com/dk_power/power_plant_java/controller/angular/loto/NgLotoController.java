@@ -129,6 +129,18 @@ public class NgLotoController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error adding LOTO point to LOTO: " + e.getMessage()));
         }
     }
+    
+    @DeleteMapping("/remove/{pointId}/from/{lotoId}")
+    public ResponseEntity<NgApiResponse<LotoDto>> removeLotoPointFromLoto(@PathVariable Long pointId, @PathVariable Long lotoId) {
+        try {
+            LotoDto updatedLoto = ngLotoService.removeLotoPointFromLoto(pointId, lotoId);
+            NgApiResponse<LotoDto> response = new NgApiResponse<>(updatedLoto, "LOTO point removed from LOTO successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error removing LOTO point from LOTO: " + e.getMessage()));
+        }
+    }
 
 
 }

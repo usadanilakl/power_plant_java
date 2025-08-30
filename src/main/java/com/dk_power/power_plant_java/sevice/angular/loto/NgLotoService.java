@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.loto.Lock;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.loto.LotoSnapshot;
 import com.dk_power.power_plant_java.mappers.LotoMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoSnapshotRepo;
@@ -71,6 +72,20 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
     @Override
     public Class<Loto> getEntityClass() {
         return Loto.class;
+    }
+
+    @Override
+    public Loto save(Loto entity) {
+        Set<LotoSnapshot> snapshots = entity.getSnapshots();
+        if(snapshots!= null) {
+            snapshots.forEach(s -> {
+                if(s.getId() == null) {
+                    s.setLoto(entity);
+                    lotoSnapshotRepo.save(s);
+                }
+            });
+        }
+        return this.repo.save(entity);
     }
 
     public Optional<Loto> findById(Long id) {
@@ -159,16 +174,30 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         LotoPoint point = lotoPointService.findById(pointId)
                .orElseThrow(() -> new EntityNotFoundException("LotoPoint not found with id: " + pointId));
 
-        if (loto.getLotoPoints() !=null && !loto.getLotoPoints().isEmpty()) {
-            LotoPointIdDto dto = toIdDto(point);
-            loto.addLotoPoint(dto);
-            loto = repo.save(loto);
-        }
+        loto.addLotoPoint(lotoPointService.toIdDto(point));
 
-        return toDto(loto);
+        return toDto(save(loto));
     }
 
     private LotoPointIdDto toIdDto(LotoPoint point) {
         return this.mapper.toIdDto(point);
+    }
+
+    public LotoDto removeLotoPointFromLoto(Long pointId, Long lotoId) {
+        Loto loto = repo.findById(lotoId)
+               .orElseThrow(() -> new EntityNotFoundException("Loto not found with id: " + lotoId));
+
+
+        loto.getLotoPoints().forEach(p -> {
+            System.out.println(p.getTagNumber());
+        });
+        System.out.println("==================");
+
+        loto.removeLotoPoint(pointId);
+
+        loto.getLotoPoints().forEach(p -> {
+            System.out.println(p.getTagNumber());
+        });
+        return toDto(save(loto));
     }
 }

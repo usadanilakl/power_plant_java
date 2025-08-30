@@ -2,7 +2,6 @@ package com.dk_power.power_plant_java.entities.loto;
 
 import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,20 +34,24 @@ public class Loto extends BasePermitEntity {
 
     @Transient
     private Set<LotoPointIdDto> lotoPoints = new HashSet<>();
-    public Set<LotoPointIdDto> getLotoPoints(){
+
+    public Set<LotoPointIdDto> getLotoPoints() {
         return this.getLotoPointDtos();
     }
+
     public void setLotoPoints(Set<LotoPointIdDto> lotoPoints) {
         this.lotoPoints = lotoPoints;
         this.getLatestSnapshot().setLotoPointDtos(lotoPoints);
     }
+
     @Transient
     private LotoSnapshot getLatestSnapshot() {
-        return this.getSnapshots().stream().max(Comparator.comparing(LotoSnapshot::getDateCreated)).orElse(null);
+        return this.getSnapshots().stream().max(Comparator.comparing(LotoSnapshot::getDateCreated)).orElse(new LotoSnapshot());
     }
+
     @Transient
     public Set<LotoPointIdDto> getLotoPointDtos() {
-        if(this.getLatestSnapshot() == null){
+        if (this.getLatestSnapshot() == null) {
             LotoSnapshot snapShot = new LotoSnapshot();
             snapShot.setLoto(this);
             this.snapshots.add(snapShot);
@@ -62,18 +65,18 @@ public class Loto extends BasePermitEntity {
 
     public void addLotoPoint(LotoPointIdDto dto) {
         LotoSnapshot newSnapShot = this.duplicateLatestSnapshot();
-        if(newSnapShot == null) {
+        if (newSnapShot == null) {
             newSnapShot = new LotoSnapshot();
             newSnapShot.setLoto(this);
             this.snapshots.add(newSnapShot);
         }
         Set<LotoPointIdDto> lotoPointDtos = newSnapShot.getLotoPointDtos();
-        if(lotoPointDtos == null) lotoPointDtos = new HashSet<>();
+        if (lotoPointDtos == null) lotoPointDtos = new HashSet<>();
         lotoPointDtos.add(dto);
         newSnapShot.setLotoPointDtos(lotoPointDtos);
 
     }
-    
+
     private LotoSnapshot duplicateLatestSnapshot() {
         LotoSnapshot latestSnapshot = this.getLatestSnapshot();
         LotoSnapshot newSnapshot = null;
@@ -87,6 +90,20 @@ public class Loto extends BasePermitEntity {
             e.printStackTrace();
         }
         return newSnapshot;
+    }
+
+    public void removeLotoPoint(Long pointId) {
+        LotoSnapshot newSnapShot = this.duplicateLatestSnapshot();
+        if (newSnapShot == null) return;
+        Set<LotoPointIdDto> lotoPointDtos = newSnapShot.getLotoPointDtos();
+        if (lotoPointDtos == null) return;
+        lotoPointDtos.removeIf(p ->{
+            return p.getId().equals(pointId);
+        });
+
+        newSnapShot.setLotoPointDtos(lotoPointDtos);
+
+
     }
 }
 

@@ -56,14 +56,14 @@
           <app-loto-point-table
             [clientSideData$]="selectedLotoPoints$"
             [deleteCallback]="onRemovePoint"
-            [doubleClickCallback]="removeOnDoubleClick"
+            [doubleClickCallback]="removePointFromLoto"
           ></app-loto-point-table>
         </div>
         <div class="table-container left">
           <h2>All LOTO Points</h2>
           <app-loto-point-table
             [submitCallback]="onSelectPoint"
-            [doubleClickCallback]="addOnDoubleClick.bind(this)"
+            [doubleClickCallback]="addPointToLoto.bind(this)"
           ></app-loto-point-table>
         </div>
         <div class="modal-actions">

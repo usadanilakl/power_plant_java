@@ -51,6 +51,21 @@ export class CurrentLotoService{
         }
     }
 
+    removeLotoPointFromCurrentLoto(id: number) {
+      // Remove the point from the current loto
+      if(this.currentLotoSubject.value) {
+          // Save the changes to the server
+          this.lotoService.removeLotoPointFromLoto(id, this.currentLotoSubject.value.id).pipe(
+              takeUntilDestroyed(this.destroyRef)
+          ).subscribe((response: SpringApiResponse<LotoDto>) => {
+              // Update the current loto
+              const receivedLoto = new LotoDto(response.responseData);
+              this.updateLotoInList(receivedLoto);
+              this.currentLotoSubject.next(receivedLoto);
+          });
+      }
+    }
+
     updateLotoInList(loto: LotoDto) {
         const currentLotos = this.allLotosSubject.value;
         const updatedLotos = currentLotos.map(l => l.id === loto.id? loto : l);

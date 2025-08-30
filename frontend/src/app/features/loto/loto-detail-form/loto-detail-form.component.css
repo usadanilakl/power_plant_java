@@ -14,6 +14,10 @@
   max-height: calc(100% - 40px); /* Subtract the padding of .container */
 }
 
+app-details-form{
+  width: 100%;
+}
+
 .tables-container {
   display: flex;
   flex-direction: column;

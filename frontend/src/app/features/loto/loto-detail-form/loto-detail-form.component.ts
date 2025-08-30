@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, Input, OnInit, DestroyRef, input, Signal, ɵunwrapWritableSignal, signal} from '@angular/core';
+import { Component, Output, EventEmitter, Input, OnInit, DestroyRef, input, Signal, ɵunwrapWritableSignal, signal, output, effect} from '@angular/core';
 import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -31,6 +31,7 @@ export class LotoDetailFormComponent implements OnInit {
   private _selectedItem: LotoDto | null = null;
   
   @Input() set selectedItem(value: LotoDto | null) {
+    console.log('selectedItem', value);
     this._selectedItem = value;
     if (value) {
       this.initializeFilters();
@@ -52,6 +53,8 @@ export class LotoDetailFormComponent implements OnInit {
   @Output() formSubmitEvent = new EventEmitter<any>();
   @Output() formDeleteEvent = new EventEmitter<void>();
   @Output() lotoUpdated = new EventEmitter<LotoDto>();
+  addPointToLotoEvent = output<LotoPointDto>();
+  removePointFromLotoEvent = output<LotoPointDto>();
 
   private lotoStatusOptions = new BehaviorSubject<Option[]>([]);
   lotoPointsFilter$ = new BehaviorSubject<{ key: string; filterFn: (value: any) => boolean }[]>([]);
@@ -69,6 +72,10 @@ export class LotoDetailFormComponent implements OnInit {
   ) {
     this.onSelectPoint = this.onSelectPoint.bind(this);
     this.onRemovePoint = this.onRemovePoint.bind(this);
+    effect(() => {
+      this.selectedLotoPointsSubject.next(this.values()?.lotoPoints || []);
+      console.log('selectedLotoPointsSubject', this.selectedLotoPointsSubject.value);
+    });
   }
   
   ngOnInit() {
@@ -200,11 +207,15 @@ export class LotoDetailFormComponent implements OnInit {
   }
 
   addPointToLoto(point: LotoPointDto){
-    
+    this.addPointToLotoEvent.emit(point); 
   }
 
   removeOnDoubleClick = (item: any) => {
     this.onRemovePoint(item.id);
+  }
+
+  removePointFromLoto = (item: LotoPointDto) => {
+    this.removePointFromLotoEvent.emit(item);
   }
   
   onItemRightClick = (item: any, event: MouseEvent) => {

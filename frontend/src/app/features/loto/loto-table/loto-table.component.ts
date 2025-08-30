@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit, output, ViewChild } from '@angular/core';
+import { Component, DestroyRef, effect, inject, input, OnInit, output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
@@ -31,6 +31,8 @@ export class LotoTableComponent implements OnInit {
   @ViewChild(TableComponent) tableComponent!: TableComponent;
   private destroyRef = inject(DestroyRef);
 
+  itemsInput = input<LotoDto[]>([]);
+
   onTableRowLeftClickEvent = output<LotoDto>();
   createNewLotoEvent = output<void>();
 
@@ -43,23 +45,34 @@ export class LotoTableComponent implements OnInit {
   selectedImagePath: string | null = null;
 
   private currentPage = 1;
-  private pageSize = 50;
+  private pageSize = 5000;
 
-  items$: Observable<LotoDto[]> = of([]);
+  private itemsSubject = new BehaviorSubject<LotoDto[]>([]);
+  items$ = this.itemsSubject.asObservable();
 
   private relatedImagesSubject = new BehaviorSubject<string[]>([]);
   relatedImages$ = this.relatedImagesSubject.asObservable();
 
-  constructor() {}
+  constructor() {
+    effect(() => {
+      const inputItems = this.itemsInput();
+      if (inputItems) {
+        // console.log('Received new items:', inputItems);
+        this.itemsSubject.next(inputItems);
+      } else {
+        // this.loadItems().subscribe(items => this.itemsSubject.next(items));
+      }
+    });
+  }
 
   private lotoService = inject(LotoService);
 
   ngOnInit() {
-    this.items$ = this.loadItems()
+    // this.items$ = this.loadItems()
   }
 
   loadItems(): Observable<LotoDto[]> {
-    console.log('Loading items',this.currentPage);
+    return of([])
     return this.lotoService.getLotos(1, this.pageSize).pipe(
       takeUntilDestroyed(this.destroyRef),
       map((response: SpringPaginatedResponse<LotoDto>) => 

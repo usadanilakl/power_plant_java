@@ -67,4 +67,7 @@ export class LotoService {
   addLotoPointToLoto(pointId: number, lotoId: number): Observable<SpringApiResponse<LotoDto>> {
       return this.http.post<SpringApiResponse<LotoDto>>(`${this.apiUrl}/add/${pointId}/to/${lotoId}`, {});
   }
+  removeLotoPointFromLoto(id: number, id1: number): Observable<SpringApiResponse<LotoDto>> {
+      return this.http.delete<SpringApiResponse<LotoDto>>(`${this.apiUrl}/remove/${id}/from/${id1}`);
+  }
 }

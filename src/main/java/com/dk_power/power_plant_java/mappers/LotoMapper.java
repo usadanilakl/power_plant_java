@@ -74,6 +74,7 @@ public LotoDto convertToDto(Loto loto){
     if(loto.getDocNum()!=null) dto.setDocNum(loto.getDocNum());
     if(loto.getPermitStatus()!=null) dto.setPermitStatus(valueService.valueToDto(loto.getPermitStatus()));
     if(loto.getTemp()!=null) dto.setTemp(loto.getTemp());
+    if(loto.getLotoPoints()!=null) dto.setLotoPoints(new ArrayList(loto.getLotoPoints()));
     
     return dto;
 }

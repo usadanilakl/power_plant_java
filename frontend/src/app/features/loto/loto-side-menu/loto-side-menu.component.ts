@@ -29,10 +29,9 @@ export class LotoSideMenuComponent {
   private renderer = inject(Renderer2);
   private currentLotoService = inject(CurrentLotoService);
 
-  currentImageUrl: string | null = null;
-  // currentCarouselItems: string[] = [];
-  currentLotoStandardSignal = toSignal(this.currentLotoService.currentLoto$, { initialValue: new LotoDto() });
-  currentLoto = computed(() => this.currentLotoStandardSignal() || new LotoDto());
+  currentLotoListSignal = toSignal(this.currentLotoService.allLotos$, { initialValue: [] });
+  currentLotoSignal = toSignal(this.currentLotoService.currentLoto$, { initialValue: new LotoDto() });
+  currentLoto = computed(() => this.currentLotoSignal() || new LotoDto());
   allLotossSignal = toSignal(this.currentLotoService.allLotos$, { initialValue: [] });
   isLotoListDisplayed = signal<boolean>(true);
 
@@ -182,6 +181,13 @@ onLotoFormSubmit(loto: LotoDto) {
 onCreateNewLoto() {
   this.currentLotoService.setCurrentLoto(new LotoDto());
   this.isLotoListDisplayed.set(false);
+}
+
+addPointToLoto(lotoPoint: LotoPointDto) {
+  this.currentLotoService.addLotoPointToCurrentLoto(lotoPoint.id);
+}
+removePointFromLoto($event: LotoPointDto) {
+  this.currentLotoService.removeLotoPointFromCurrentLoto($event.id);
 }
 
 
