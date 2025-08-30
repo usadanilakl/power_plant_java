@@ -64,6 +64,7 @@
           <app-loto-point-table
             [submitCallback]="onSelectPoint"
             [doubleClickCallback]="addPointToLoto.bind(this)"
+            [clickCallback]="onRowLeftClick.bind(this)"
           ></app-loto-point-table>
         </div>
         <div class="modal-actions">

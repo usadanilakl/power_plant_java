@@ -55,6 +55,7 @@ export class LotoDetailFormComponent implements OnInit {
   @Output() lotoUpdated = new EventEmitter<LotoDto>();
   addPointToLotoEvent = output<LotoPointDto>();
   removePointFromLotoEvent = output<LotoPointDto>();
+  rowLeftClickEvent = output<LotoPointDto>();
 
   private lotoStatusOptions = new BehaviorSubject<Option[]>([]);
   lotoPointsFilter$ = new BehaviorSubject<{ key: string; filterFn: (value: any) => boolean }[]>([]);
@@ -208,6 +209,10 @@ export class LotoDetailFormComponent implements OnInit {
 
   addPointToLoto(point: LotoPointDto){
     this.addPointToLotoEvent.emit(point); 
+  }
+
+  onRowLeftClick(lotoPoint: LotoPointDto){
+    this.rowLeftClickEvent.emit(lotoPoint);
   }
 
   removeOnDoubleClick = (item: any) => {

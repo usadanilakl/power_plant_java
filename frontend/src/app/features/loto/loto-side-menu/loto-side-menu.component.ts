@@ -190,5 +190,9 @@ removePointFromLoto($event: LotoPointDto) {
   this.currentLotoService.removeLotoPointFromCurrentLoto($event.id);
 }
 
+setCurrentLotoPoint(lotoPoint: LotoPointDto | null) {
+  this.currentLotoService.setCurrentLotoPoint(lotoPoint);
+}
+
 
 }
