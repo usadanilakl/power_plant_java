@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.controller.automation;
 
-import com.dk_power.power_plant_java.controller.permits.automation.RedTagAutomationService;
+import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import org.sikuli.script.FindFailed;
 import org.springframework.beans.factory.annotation.Autowired;

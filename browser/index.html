@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jackson</title>
-    <!-- <link rel="stylesheet" href="browser/style.css">
-    <link rel="stylesheet" href="browser/app/dom/table/table-style.css">
-    <link rel="stylesheet" href="browser/app/dom/image/interactive-image.css">
-    <link rel="stylesheet" href="browser/app/dom/image/grid-image.css">
-    <link rel="stylesheet" href="browser/app/dom/image/carousel-image.css"> -->
     <script>
         (function() {
             var isSpringBoot = window.location.hostname !== "" && window.location.hostname === "localhost";
@@ -49,6 +44,7 @@
                 <button class="server-dependent" onclick="angularApi.navigateToFiles()">Edit Files</button>
                 <button class="server-dependent" onclick="angularApi.navigateToLotoPoints()">LOTO Points</button>
                 <button class="server-dependent" onclick="angularApi.navigateToTags()">Manage Tag Numbers</button>
+                <button class="server-dependent" onclick="openRedTagControls()">Red Tag</button>
                 <button class="server-dependent" onclick="stopServer()">Shut Down Server</button>
             </div>
         </header>
@@ -65,26 +61,6 @@
             </div>
         </div>
     </div>
-
-    <!-- <script src="browser/properties/static-resources.js"></script>
-
-    <script src="browser/data/equipment.js"></script>
-    <script src="browser/data/files.js"></script>
-
-    <script src="browser/app/server/server-status.js"></script>
-    <script src="browser/app/server/updates.js"></script>
-    <script src="browser/app/server/angular-api.js"></script>
-
-    <script src="browser/app/utils/theme-switcher.js"></script>
-    <script src="browser/app/utils/main-layout-resizer.js"></script>
-    <script src="browser/app/dom/table/table.js"></script>
-    <script src="browser/app/files/file-table.js"></script>
-    <script src="browser/app/files/file-service.js"></script>
-    <script src="browser/app/dom/image/interactive-image.js"></script>
-    <script src="browser/app/dom/image/grid-image.js"></script>
-    <script src="browser/app/dom/image/carousel-image.js"></script>
-    <script src="browser/app/equipment/equipment-service.js"></script>
-    <script src="browser/app/equipment/equipment-table.js"></script> -->
 
     <script>
         let appIsLoades = false;
@@ -140,6 +116,9 @@
             });
         })();
         const caruselElement = document.getElementById('carousel-container');
+        function openRedTagControls() {
+            window.open('red-tag-controls.html', '_blank', 'width=600,height=400');
+        }
     </script>
 
 

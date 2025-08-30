@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Control Buttons Example</title>
+  <script>
+    const baseUrl = 'http://localhost:8082/red-tag-controls'
+    async function sendRequest(url, method='GET', body=null) {
+      try {
+        const response = await fetch(baseUrl+url, {
+          method: method,
+          headers: {'Content-Type': 'application/json'},
+          body: body ? JSON.stringify(body) : null
+        });
+        const data = await response.text();
+        alert("Response: " + data);
+      } catch (error) {
+        alert("Error: " + error);
+      }
+    }
+  </script>
+</head>
+<body>
+  <button onclick="sendRequest('/open-app')">Open Red Tag</button>
+  <button onclick="sendRequest('/login')">Login</button>
+  <button onclick="sendRequest('/open-loto-builder')">Open Loto Builder</button>
+  <button onclick="sendRequest('/build-loto-with-no-standard')">LOTO with no standard</button>
+</body>
+</html>
