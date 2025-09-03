@@ -34,16 +34,24 @@ export class LotoPageComponent implements OnInit {
   constructor(private route: ActivatedRoute, private router: Router) {}
 
   ngOnInit(): void {
+    // Set initial route
+    this.setCurrentRoute();
+
+    // Listen for route changes
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe(() => {
-      let child = this.route.firstChild;
-      if (child) {
-        this.currentRoute = child.snapshot.url[0]?.path || '';
-      } else {
-        this.currentRoute = '';
-      }
-      console.log('Current child route:', this.currentRoute);
+      this.setCurrentRoute();
     });
+  }
+
+  private setCurrentRoute(): void {
+    let child = this.route.firstChild;
+    if (child) {
+      this.currentRoute = child.snapshot.url[0]?.path || '';
+    } else {
+      this.currentRoute = '';
+    }
+    console.log('Current child route:', this.currentRoute);
   }
 }

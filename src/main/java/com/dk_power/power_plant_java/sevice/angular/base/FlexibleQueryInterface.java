@@ -24,7 +24,7 @@ public interface FlexibleQueryInterface {
             criteria.getFilters().forEach((key, value) -> {
                 if (value != null && !value.isEmpty()) {
                     predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get(key)), "%" + value.toLowerCase() + "%"));
-                    System.out.println(key + ": " + value);
+//                    System.out.println(key + ": " + value);
                 }
             });
 

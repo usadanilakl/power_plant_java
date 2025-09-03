@@ -105,9 +105,9 @@ public class NgValueService {
 
     @Transactional
     public Value addValueToCategoryByAlias(String categoryName, String valueName) {
-        System.out.println(categoryName + " " + valueName);
+//        System.out.println(categoryName + " " + valueName);
         Category category = categoryRepo.findByAlias(categoryName);
-        System.out.println(category.getAlias());
+//        System.out.println(category.getAlias());
         if (category == null) throw new RuntimeException("Category not found");
 
         Value existingValue = category.getValueByName(valueName);
@@ -122,9 +122,9 @@ public class NgValueService {
 
     @Transactional
     public Value addValueToCategoryByAlias(String categoryName, String valueName, String valueAlias) {
-        System.out.println(categoryName + " " + valueName);
+//        System.out.println(categoryName + " " + valueName);
         Category category = categoryRepo.findByAlias(categoryName);
-        System.out.println(category.getAlias());
+//        System.out.println(category.getAlias());
         if (category == null) throw new RuntimeException("Category not found");
 
         Value existingValue = category.getValueByName(valueName);

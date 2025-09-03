@@ -52,7 +52,7 @@ public class BaseIdEntity {
 
     @PreUpdate
     protected void onUpdate() {
-        System.out.println("updating...");
+//        System.out.println("updating...");
         this.setDateModified(LocalDateTime.now());
     }
 

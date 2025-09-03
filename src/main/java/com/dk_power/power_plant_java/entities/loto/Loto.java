@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.entities.loto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import jakarta.persistence.*;
+import jdk.swing.interop.SwingInterOpUtils;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,18 +20,6 @@ import java.util.Set;
 @NoArgsConstructor
 @Audited
 public class Loto extends BasePermitEntity {
-    {
-        if(this.getPermitStatus()==null || this.getPermitStatus().getName() == null){
-            this.isArchived = false;
-            this.isMutable = true;
-        }else if(this.getPermitStatus().getName().equals("Closed")){
-            this.isArchived = true;
-            this.isMutable = false;
-        }else if(this.getPermitStatus().getName().equals("Active")){
-            this.isArchived = false;
-            this.isMutable = false;
-        }
-    }
 
     /*********************************************************************************************************************
      * PRESISTED FIELDS
@@ -49,7 +38,32 @@ public class Loto extends BasePermitEntity {
     private Set<LotoPointIdDto> lotoPoints = new HashSet<>();
     @Transient
     private boolean isMutable = false;
+    @Transient
     private boolean isArchived = true;
+
+
+    /*********************************************************************************************************************
+     * INITIATION METHOD
+     ******************************************************************************************************************/
+    @PostLoad
+    private void initializeFields(){
+        if (getPermitStatus() == null || getPermitStatus().getName() == null) {
+            System.out.println(getPermitStatus());
+            this.isArchived = false;
+            this.isMutable = true;
+            System.out.println("Permit status is null or permit status name is null, setting mutable to true and archived to false");
+        } else if (getPermitStatus().getName().equals("Closed")) {
+            this.isArchived = true;
+            this.isMutable = false;
+            System.out.println("Permit status is 'Closed', setting mutable to false and archived to true");
+        } else if (getPermitStatus().getName().equals("Active")) {
+            this.isArchived = false;
+            this.isMutable = false;
+            System.out.println("Permit status is 'Active', setting mutable to false and archived to false");
+        }
+
+//        System.out.println("isMutable: " + isMutable + ", isArchived: " + isArchived);
+    }
 
     /*********************************************************************************************************************
      * HELPER METHODS
@@ -58,18 +72,16 @@ public class Loto extends BasePermitEntity {
     public static List<String> lightDtoFields = List.of("id", "lotoBox.number", "locks", "snapshots.id", "workScope");
 
 
-    public void addLotoPoint(LotoPointIdDto dto) {
-        LotoSnapshot newSnapShot = this.duplicateLatestSnapshot();
-        if (newSnapShot == null) {
-            newSnapShot = new LotoSnapshot();
-            newSnapShot.setLoto(this);
-            this.snapshots.add(newSnapShot);
-        }
-        Set<LotoPointIdDto> lotoPointDtos = newSnapShot.getLotoPointDtos();
+    public LotoSnapshot addLotoPoint(LotoPointIdDto dto) {
+        if (this.isArchived) throw new RuntimeException("Loto is archived and can't be modified");
+        LotoSnapshot currentSnapshot;
+        if (this.isMutable) currentSnapshot = this.getLatestSnapshot();
+        else currentSnapshot = this.duplicateLatestSnapshot();
+        Set<LotoPointIdDto> lotoPointDtos = currentSnapshot.getLotoPointDtos();
         if (lotoPointDtos == null) lotoPointDtos = new HashSet<>();
         lotoPointDtos.add(dto);
-        newSnapShot.setLotoPointDtos(lotoPointDtos);
-
+        currentSnapshot.setLotoPointDtos(lotoPointDtos);
+        return currentSnapshot;
     }
 
     private LotoSnapshot duplicateLatestSnapshot() {
@@ -87,16 +99,19 @@ public class Loto extends BasePermitEntity {
         return newSnapshot;
     }
 
-    public void removeLotoPoint(Long pointId) {
-        LotoSnapshot newSnapShot = this.duplicateLatestSnapshot();
-        if (newSnapShot == null) return;
-        Set<LotoPointIdDto> lotoPointDtos = newSnapShot.getLotoPointDtos();
-        if (lotoPointDtos == null) return;
-        lotoPointDtos.removeIf(p ->{
+    public LotoSnapshot removeLotoPoint(Long pointId) {
+        if (this.isArchived) throw new RuntimeException("Loto is archived and can't be modified");
+        LotoSnapshot currentSnapshot;
+        if (this.isMutable) currentSnapshot = this.getLatestSnapshot();
+        else currentSnapshot = this.duplicateLatestSnapshot();
+        Set<LotoPointIdDto> lotoPointDtos = currentSnapshot.getLotoPointDtos();
+        if (lotoPointDtos == null) throw new RuntimeException("LotoPoint not found with id: " + pointId);
+        lotoPointDtos.removeIf(p -> {
             return p.getId().equals(pointId);
         });
 
-        newSnapShot.setLotoPointDtos(lotoPointDtos);
+        currentSnapshot.setLotoPointDtos(lotoPointDtos);
+        return currentSnapshot;
 
 
     }
@@ -109,24 +124,38 @@ public class Loto extends BasePermitEntity {
         return this.getLotoPointDtos();
     }
 
-    public void setLotoPoints(Set<LotoPointIdDto> lotoPoints) {
+    public LotoSnapshot setLotoPoints(Set<LotoPointIdDto> lotoPoints) {
         this.lotoPoints = lotoPoints;
         this.getLatestSnapshot().setLotoPointDtos(lotoPoints);
+        return this.getLatestSnapshot();
     }
 
     @Transient
     public LotoSnapshot getLatestSnapshot() {
-        return this.getSnapshots().stream().max(Comparator.comparing(LotoSnapshot::getDateCreated)).orElse(new LotoSnapshot());
+        if (this.getSnapshots() == null || this.getSnapshots().isEmpty()) {
+            return createNewSnapshot();
+        }
+        return this.getSnapshots().stream()
+                .max(Comparator.comparing(LotoSnapshot::getDateCreated))
+                .orElseGet(this::createNewSnapshot);
+    }
+
+    @Transient
+    public LotoSnapshot createNewSnapshot() {
+        LotoSnapshot newSnapshot = new LotoSnapshot();
+        newSnapshot.setLoto(this);
+        newSnapshot.setDateCreated(java.time.LocalDateTime.now());
+        newSnapshot.setLotoPointDtos(new HashSet<>());
+        if (this.snapshots == null) {
+            this.snapshots = new HashSet<>();
+        }
+        this.snapshots.add(newSnapshot);
+        return newSnapshot;
     }
 
     @Transient
     public Set<LotoPointIdDto> getLotoPointDtos() {
-        if (this.getLatestSnapshot() == null) {
-            LotoSnapshot snapShot = new LotoSnapshot();
-            snapShot.setLoto(this);
-            this.snapshots.add(snapShot);
-            this.getLatestSnapshot().setLotoPointDtos(new HashSet<>());
-        }
+        if (this.getLatestSnapshot() == null) this.createNewSnapshot();
         return this.getLatestSnapshot().getLotoPointDtos();
     }
 }

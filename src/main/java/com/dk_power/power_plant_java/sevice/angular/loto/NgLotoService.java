@@ -75,15 +75,8 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
 
     @Override
     public Loto save(Loto entity) {
-        Set<LotoSnapshot> snapshots = entity.getSnapshots();
-        if(snapshots!= null) {
-            snapshots.forEach(s -> {
-                if(s.getId() == null) {
-                    s.setLoto(entity);
-                    lotoSnapshotRepo.save(s);
-                }
-            });
-        }
+        if(entity.isArchived()) throw new IllegalArgumentException("Archived loto cannot be saved");
+        lotoSnapshotRepo.save(entity.getLatestSnapshot());
         return this.repo.save(entity);
     }
 

@@ -82,8 +82,8 @@ export class LotoDetailFormComponent implements OnInit {
   
   ngOnInit() {
     forkJoin({
-      // lotoStatuses: this.loadOptions(this.sharedDataService.loadPermitStatuses()),
-      lotoStatuses: this.loadOptions(of([new ValueDto({ name: 'ACTIVE' }), new ValueDto({ name: 'INACTIVE' })])),
+      lotoStatuses: this.loadOptions(this.sharedDataService.loadPermitStatuses()),
+      // lotoStatuses: this.loadOptions(of([new ValueDto({ name: 'ACTIVE' }), new ValueDto({ name: 'INACTIVE' })])),
     }).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap(({ lotoStatuses }) => {
@@ -114,7 +114,7 @@ export class LotoDetailFormComponent implements OnInit {
     this.fields = [
       { name: 'docNum', label: 'LOTO Number', type: 'text', validators: [Validators.required] },
       { name: 'workScope', label: 'Scope of work', type: 'text', validators: [Validators.required] },
-      { name: 'status.name', label: 'Status', type: 'select', options: this.lotoStatusOptions },
+      { name: 'permitStatus.id', label: 'Status', type: 'select', options: this.lotoStatusOptions },
       { name: 'requestor.name', label: 'Start Date', type: 'date' },
       { name: 'controlAuthority.name', label: 'End Date', type: 'date' }
     ];
@@ -135,6 +135,7 @@ export class LotoDetailFormComponent implements OnInit {
 
   onFormSubmit(formData: any) {
     // The selectedItem already contains the updated LOTO points
+    console.log('onFormSubmit', formData);
     const updatedFormData = {
       ...formData,
       lotoPoints: this.selectedItem?.lotoPoints || []

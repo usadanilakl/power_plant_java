@@ -25,8 +25,9 @@ import java.util.Set;
 public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
 
 
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "loto_id")
+    @JoinColumn(name = "loto_id", unique = false)
     private Loto loto;
 
     private String boxNumber;

@@ -15,4 +15,6 @@ public interface LotoService extends PermitService<Loto,LotoDto, LotoRepo, Unive
     @Transactional
     void deleteAllLotos();
     void modifyLotoSchema();
+    void modifyLotoSnapshotSchema();
+    void deleteLotoSnapshotTable();
 }

@@ -120,53 +120,135 @@ public class LotoServiceImpl implements LotoService {
             entityManager.close();
         }
     }
-    
-@Transactional
-public void modifyLotoSchema() {
-    EntityManager entityManager = entityManagerFactory.createEntityManager();
-    EntityTransaction transaction = entityManager.getTransaction();
 
-    try {
-        transaction.begin();
+    @Transactional
+    public void modifyLotoSchema() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        EntityTransaction transaction = entityManager.getTransaction();
 
-        // Drop the foreign key constraint in the BOX table
-        entityManager.createNativeQuery("ALTER TABLE BOX DROP CONSTRAINT IF EXISTS FK_BOX_LOTO")
-                .executeUpdate();
+        try {
+            transaction.begin();
 
-        // Drop the LOTO column from the BOX table
-        entityManager.createNativeQuery("ALTER TABLE BOX DROP COLUMN IF EXISTS LOTO")
-                .executeUpdate();
+            // Drop the foreign key constraint in the BOX table
+            entityManager.createNativeQuery("ALTER TABLE BOX DROP CONSTRAINT IF EXISTS FK_BOX_LOTO")
+                    .executeUpdate();
 
-        // Drop the foreign key constraint in the LOCK table
-        entityManager.createNativeQuery("ALTER TABLE LOCK DROP CONSTRAINT IF EXISTS FK_LOCK_LOTO")
-                .executeUpdate();
+            // Drop the LOTO column from the BOX table
+            entityManager.createNativeQuery("ALTER TABLE BOX DROP COLUMN IF EXISTS LOTO")
+                    .executeUpdate();
 
-        // Drop the LOTO_ID column from the LOCK table
-        entityManager.createNativeQuery("ALTER TABLE LOCK DROP COLUMN IF EXISTS LOTO_ID")
-                .executeUpdate();
+            // Drop the foreign key constraint in the LOCK table
+            entityManager.createNativeQuery("ALTER TABLE LOCK DROP CONSTRAINT IF EXISTS FK_LOCK_LOTO")
+                    .executeUpdate();
 
-        // Drop the junction table for the many-to-many relationship
-        entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_points")
-                .executeUpdate();
-        entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_points_aud")
-                .executeUpdate();
-        entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_loto_point")
-                .executeUpdate();
-        entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_loto_point_aud")
-                .executeUpdate();
+            // Drop the LOTO_ID column from the LOCK table
+            entityManager.createNativeQuery("ALTER TABLE LOCK DROP COLUMN IF EXISTS LOTO_ID")
+                    .executeUpdate();
 
-        // Remove the LOTO_BOX column from the LOTO table if it exists
-        entityManager.createNativeQuery("ALTER TABLE LOTO DROP COLUMN IF EXISTS LOTO_BOX")
-                .executeUpdate();
+            // Drop the junction table for the many-to-many relationship
+            entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_points")
+                    .executeUpdate();
+            entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_points_aud")
+                    .executeUpdate();
+            entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_loto_point")
+                    .executeUpdate();
+            entityManager.createNativeQuery("DROP TABLE IF EXISTS loto_loto_point_aud")
+                    .executeUpdate();
 
-        transaction.commit();
-    } catch (Exception e) {
-        if (transaction.isActive()) {
-            transaction.rollback();
+            // Remove the LOTO_BOX column from the LOTO table if it exists
+            entityManager.createNativeQuery("ALTER TABLE LOTO DROP COLUMN IF EXISTS LOTO_BOX")
+                    .executeUpdate();
+
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction.isActive()) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Failed to modify Loto schema", e);
+        } finally {
+            entityManager.close();
         }
-        throw new RuntimeException("Failed to modify Loto schema", e);
-    } finally {
-        entityManager.close();
     }
-}
+
+    @Override
+    @Transactional
+    public void modifyLotoSnapshotSchema() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        EntityTransaction transaction = entityManager.getTransaction();
+
+        try {
+            transaction.begin();
+
+            // Drop the unique constraint on loto_id if it exists
+            // H2 doesn't support IF EXISTS for dropping constraints, so we'll use a try-catch block
+            try {
+                entityManager.createNativeQuery(
+                        "ALTER TABLE loto_snapshot DROP CONSTRAINT UK_CVAK75JCVYNRCSW6VLO4DG3DX"
+                ).executeUpdate();
+                System.out.println("Constraint (by name) dropped successfully");
+            } catch (Exception e) {
+                // Constraint doesn't exist, continue
+                System.out.println("Constraint (by name) not found or has a different name");
+            }
+
+            // H2 doesn't support querying information_schema for constraints in the same way
+            // We'll try to drop any unique constraint on the loto_id column
+            try {
+                entityManager.createNativeQuery(
+                        "ALTER TABLE loto_snapshot DROP CONSTRAINT IF EXISTS loto_snapshot_loto_id_key"
+                ).executeUpdate();
+                System.out.println("Constraint (by key) dropped successfully");
+            } catch (Exception e) {
+                // Constraint doesn't exist or has a different name, continue
+                System.out.println("Constraint (by key) not found or has a different name");
+            }
+
+            // Ensure the loto_id column is not marked as unique
+            // H2 doesn't support ALTER COLUMN DROP NOT NULL, so we'll modify the column
+            entityManager.createNativeQuery(
+                    "ALTER TABLE loto_snapshot ALTER COLUMN loto_id BIGINT"
+            ).executeUpdate();
+            System.out.println("Table loto_snapshot column loto_id was altered and set to BIGINT");
+
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction.isActive()) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Failed to modify LotoSnapshot schema", e);
+        } finally {
+            entityManager.close();
+        }
+    }
+
+    @Override
+    public void deleteLotoSnapshotTable() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        EntityTransaction transaction = entityManager.getTransaction();
+
+        try {
+            transaction.begin();
+
+            entityManager.createNativeQuery("DROP TABLE IF EXISTS LOTO_SNAPSHOT_POINTS_AUD")
+                    .executeUpdate();
+
+            entityManager.createNativeQuery("DROP TABLE IF EXISTS LOTO_SNAPSHOT_POINTS")
+                    .executeUpdate();
+
+            entityManager.createNativeQuery("DROP TABLE IF EXISTS LOTO_SNAPSHOT_AUD")
+                    .executeUpdate();
+
+            entityManager.createNativeQuery("DROP TABLE IF EXISTS LOTO_SNAPSHOT")
+                    .executeUpdate();
+
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction.isActive()) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Failed to modify Loto schema", e);
+        } finally {
+            entityManager.close();
+        }
+    }
 }

@@ -44,15 +44,15 @@ export class BasePermitDto extends BaseDto implements BasePermitModel {
   override toJson(): any {
     return {
       ...super.toJson(),
-      workScope: this.workScope,
-      system: this.system.toJson(),
-      equipment: this.equipment.map(eq => eq.toJson()),
-      requestor: this.requestor.toJson(),
-      controlAuthority: this.controlAuthority.toJson(),
-      permitType: this.permitType.toJson(),
-      docNum: this.docNum,
-      permitStatus: this.permitStatus.toJson(),
-      temp: this.temp
+      workScope: this.workScope ?? '',
+      system: this.system?.toJson() ?? null,
+      equipment: this.equipment?.map(eq => eq?.toJson() ?? null).filter(Boolean) ?? [],
+      requestor: new UserDto(this.requestor)?.toJson() ?? null,
+      controlAuthority: new UserDto(this.controlAuthority)?.toJson() ?? null,
+      permitType: this.permitType?.toJson() ?? null,
+      docNum: this.docNum ?? 0,
+      permitStatus: new ValueDto(this.permitStatus)?.toJson() ?? null,
+      temp: this.temp ?? false
     };
   }
 
