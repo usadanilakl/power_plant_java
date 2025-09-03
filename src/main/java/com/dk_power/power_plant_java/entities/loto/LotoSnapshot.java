@@ -47,6 +47,10 @@ public class LotoSnapshot extends BaseAuditEntity implements Cloneable {
     @Column(name = "loto_point_data", columnDefinition = "TEXT")
     private Set<String> lotoPointsData = new HashSet<>();
 
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String lotoPointOrder;
+
 
 
     public Set<LotoPointIdDto> getLotoPointDtos() {
