@@ -76,7 +76,7 @@ public class RedTagControlsRestController {
     public ResponseEntity<NgApiResponse<String>> buildLotoWithNewPoints() {
         try {
             Loto first = lotoService.getAll().getFirst();
-            Set<LotoPointIdDto> lotoPoints = first.getLotoPoints();
+            List<LotoPointIdDto> lotoPoints = first.getLotoPoints();
             List<LotoPointDto> list = lotoPoints.stream().map(lotoPointService::convertIdDtoToEntity).map(lotoPointService::toDto).toList();
             String login = redTagAutomationService.buildWithNewPoints(list);
             return ResponseEntity.ok(new NgApiResponse<>(null, "Loto Builder open operation is "+login));

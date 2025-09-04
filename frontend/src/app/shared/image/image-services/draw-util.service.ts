@@ -205,7 +205,7 @@ export class DrawUtilService {
     }
     
     // Notify subscribers of the change
-    this.shapesSubject.next(this.shapes);
+    this.shapesSubject.next([...this.shapes]);
     this.selectedShapeSubject.next(this.selectedShape);
   
   }
@@ -362,7 +362,7 @@ export class DrawUtilService {
     }
   
     // Notify subscribers of the change
-    this.shapesSubject.next(this.shapes);
+    this.shapesSubject.next([...this.shapes]);
   }
 
   private resizeExistingShape(event: MouseEvent) {

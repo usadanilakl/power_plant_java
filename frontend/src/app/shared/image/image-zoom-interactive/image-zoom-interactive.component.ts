@@ -100,15 +100,15 @@ export class ImageZoomInteractiveComponent implements AfterViewInit, OnInit{
   constructor() {
     this.drawingService = new DrawUtilService(this.shapeFactory, this.shapeUtil);
 
-    this.initializeServices();
   effect(() => {
     this.drawingService.updateSecondarySelectedShapes(this.selectedShapeIds());
     this.drawShapes('effect');
+    this.drawingService.isEditingEnabled.set(this.isEditEnabled());
   });
   }
 
   ngOnInit() {
-    if(!this.subscriptionsAreSet)this.setSubscriptions();
+    // if(!this.subscriptionsAreSet)this.setSubscriptions();
   }
 
 
@@ -138,6 +138,8 @@ export class ImageZoomInteractiveComponent implements AfterViewInit, OnInit{
 
     this.updateCanvasSize();
     // this.updateImageAndCanvasSize();
+    this.drawingService.init(this.img, this.shapes());
+    if(!this.subscriptionsAreSet)this.setSubscriptions();
 
   }
 
@@ -170,7 +172,6 @@ export class ImageZoomInteractiveComponent implements AfterViewInit, OnInit{
 
   initializeServices(){
     this.drawingService.init(this.img, this.shapes());
-    this.drawingService.isEditingEnabled.set(this.isEditEnabled());
   }
 
 
