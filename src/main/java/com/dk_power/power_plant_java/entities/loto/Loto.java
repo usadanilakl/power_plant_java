@@ -6,7 +6,6 @@ import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
-import jdk.swing.interop.SwingInterOpUtils;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
