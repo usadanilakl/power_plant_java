@@ -74,4 +74,7 @@ export class LotoService {
   removeLotoPointFromLoto(id: number, id1: number): Observable<SpringApiResponse<LotoDto>> {
       return this.http.delete<SpringApiResponse<LotoDto>>(`${this.apiUrl}/remove/${id}/from/${id1}`);
   }
+  reorderLotoPoints(currentLotoId: number, lotoPointsIds: number[]): Observable<SpringApiResponse<LotoDto>> {
+    return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}/${currentLotoId}/reorder-loto-points`, lotoPointsIds);
+  }
 }

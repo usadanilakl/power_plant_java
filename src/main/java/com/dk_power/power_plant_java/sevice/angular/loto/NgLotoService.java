@@ -209,6 +209,15 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return files.stream().distinct().toList();
     }
 
+    public LotoDto reorderLotoPoints(Long currentLotoId, List<Long> lotoPoints) {
+        Loto loto = getEntityById(currentLotoId);
+        if(loto == null) {
+            throw new EntityNotFoundException("Loto not found");
+        }
+        loto.reorderLotoPoints(lotoPoints);
+        return toDto(save(loto));
+    }
+
 //    public LotoStandardDto reorderLotoPoints(Long currentStandardId, List<Long> lotoPoints) {
 //        Loto loto = getEntityById(currentStandardId);
 //        if (loto == null) {

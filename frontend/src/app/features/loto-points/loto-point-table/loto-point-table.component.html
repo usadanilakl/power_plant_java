@@ -1,12 +1,14 @@
 <app-shared-table
   [columns]="columns"
   [items]="initialItems$"
+  [isDragAndDropEnabled]="isReorderEnabled()"
   [clickCallback]="onLeftClick.bind(this)"
   [doubleClickCallback]="onDoubleClick.bind(this)"
   [rightClickCallback]="onRightClick.bind(this)"
   [middleClickCallback]="onMiddleClick.bind(this)"
   [cellDoubleClickCallback]="onColumnDoubleClick.bind(this)"
   (loadMoreItems)="loadMoreItems($event)"
+  (itemsReordered)="onItemReordered($event)"
   (search)="onSearch($event)">
   <ng-container table-controls>
     <button (click)="exportToExcel()">Export To Excel</button>

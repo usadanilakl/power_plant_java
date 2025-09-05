@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, OnInit, DestroyRef, effect } from '@angular/core';
+import { Component, computed, inject, input, output, OnInit, DestroyRef, effect, signal } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { TableComponent } from "../../../shared/table/table.component";
@@ -8,11 +8,13 @@ import { BehaviorSubject, Observable, catchError, isObservable, map, of, tap } f
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Column } from '../../../models/column.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
+import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
+import { LotoPointDetailFormComponent } from "../loto-point-detail-form/loto-point-detail-form.component";
 
 @Component({
   selector: 'app-loto-point-simple-table',
   standalone: true,
-  imports: [TableComponent],
+  imports: [TableComponent, PopupProjectionComponent, LotoPointDetailFormComponent],
   templateUrl: './loto-point-simple-table.component.html',
   styleUrl: './loto-point-simple-table.component.css'
 })
@@ -24,6 +26,7 @@ export class LotoPointSimpleTableComponent implements OnInit {
   enableSearch = input<boolean>();
   initialSearchQuery = input<SearchCriteria>();
   isReorderEnabled = input<boolean>(false);
+  isEditEnabled = input<boolean>(false);
 
   private itemsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   items$ = this.itemsSubject.asObservable();
@@ -40,6 +43,9 @@ export class LotoPointSimpleTableComponent implements OnInit {
   leftClickEvent = output<LotoPointDto>();
   selectedItemsEvent = output<LotoPointDto[]>();
   itemReordered = output<LotoPointDto[]>();
+
+  selectedItem = signal<LotoPointDto | null>(null);
+  isPopupOpen = false;
 
     constructor() {
     effect(() => {
@@ -86,74 +92,6 @@ export class LotoPointSimpleTableComponent implements OnInit {
       }
     });
   }
-
-    // onSearch(searchCriteria: SearchCriteria) {
-    //   if (!this.enableSearch()) return;
-
-    //   if(!searchCriteria) return;
-    //   searchCriteria.page = 1;
-      
-    //   this.performSearch(searchCriteria);
-    // }
-
-    // loadItems(): void {
-    //   if (this.isLoading) return;
-    //   this.isLoading = true;
-  
-    //   this.lotoPointService.getLotoPoints(this.pageNumber, this.pageSize).pipe(
-    //     takeUntilDestroyed(this.destroyRef),
-    //     map((response: SpringPaginatedResponse<LotoPointDto>) => response.responseData.content),
-    //     tap(newItems => {
-    //       const currentItems = this.itemsSubject.value;
-    //       const updatedItems = this.pageNumber === 1 ? newItems : [...currentItems, ...newItems];
-    //       this.itemsSubject.next(updatedItems);
-    //       this.pageNumber++;
-    //       this.isLoading = false;
-    //     }),
-    //     catchError(error => {
-    //       console.error('Error loading items:', error);
-    //       this.isLoading = false;
-    //       return of([]);
-    //     })
-    //   ).subscribe();
-    // }
-
-    // private performSearch(criteria: SearchCriteria) {
-    //   this.lotoPointService.searchLotoPoints(criteria, 500).pipe(
-    //     takeUntilDestroyed(this.destroyRef),
-    //     tap(results => {
-    //       if (criteria.page === 1) {
-    //         this.itemsSubject.next(results.responseData.content);
-    //       } else {
-    //         const currentItems = this.itemsSubject.value;
-    //         const newItems = [...currentItems, ...results.responseData.content];
-    //         this.itemsSubject.next(newItems);
-    //         this.itemsUpdated.emit(newItems);
-    //       }
-    //     }),
-    //     catchError(error => {
-    //       console.error('Error performing search:', error);
-    //       return of(null);
-    //     })
-    //   ).subscribe();
-    // }
-
-    // loadMoreItems(criteria: SearchCriteria | void) {
-    //   // console.log('Load more items', criteria);
-    //   if(criteria){
-    //     criteria.page = this.pageNumber+1;
-    //     this.performSearch(criteria);
-    //   } else {
-    //     this.loadItems();
-    //   }
-    // }
-
-    // resetAndLoadItems(): void {
-    //   this.pageNumber = 1;
-    //   this.itemsSubject.next([]);
-    //   this.loadItems();
-    // }
-
   onRowDoubleClick(item: LotoPointDto) {
     this.doubleClickEvent.emit(item);
   }
@@ -164,6 +102,10 @@ export class LotoPointSimpleTableComponent implements OnInit {
 
   onRowRightClick(item: LotoPointDto) {
     this.rightClickEvent.emit(item);
+    if(this.isEditEnabled()) {
+      this.selectedItem.set(item);
+      this.isPopupOpen = true;
+    }
   }
 
   onRowClick = (item: LotoPointDto) => {
@@ -183,5 +125,54 @@ export class LotoPointSimpleTableComponent implements OnInit {
     // console.log('Item reordered:', items);
     this.itemsSubject.next([...items]);
     this.itemReordered.emit(items);
+  }
+
+  onFormSubmit(formData: Partial<LotoPointDto>) {
+    if (!this.selectedItem) {
+      console.error('No item selected for update');
+      return;
+    }
+  
+      // Default behavior
+      const updatedItem = new LotoPointDto({ ...this.selectedItem, ...formData });
+      this.lotoPointService.updateLotoPoint(updatedItem).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: (response) => {
+          // Update the local data
+          this.updateLocalData(response.responseData);
+          // Show success message
+        },
+        error: (error) => {
+          console.error('Error creating LOTO point:', error);
+          // Show error message
+        },
+        complete: () => {
+          this.closePopup();
+        }
+      });
+    
+
+  }
+  
+  private updateLocalData(updatedItem: LotoPointDto) {
+    const currentItems = this.itemsSubject.value;
+    const itemIndex = currentItems.findIndex(item => item.id === updatedItem.id);
+  
+    if (itemIndex !== -1) {
+      // Update existing item
+      const updatedItems = [...currentItems];
+      updatedItems[itemIndex] = updatedItem;
+      this.itemsSubject.next(updatedItems);
+    } else {
+      // Add new item
+      const updatedItems = [updatedItem, ...currentItems];
+      this.itemsSubject.next(updatedItems);
+    }
+  }
+
+  closePopup() {
+    this.isPopupOpen = false;
+    this.selectedItem.set(null);
   }
 }

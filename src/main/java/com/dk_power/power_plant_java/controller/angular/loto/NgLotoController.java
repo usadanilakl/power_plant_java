@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import lombok.RequiredArgsConstructor;
@@ -152,6 +153,19 @@ public class NgLotoController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error retrieving related files: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{currentLotoId}/reorder-loto-points")
+    public ResponseEntity<NgApiResponse<LotoDto>> reorderLotoPoints(
+            @PathVariable Long currentLotoId,
+            @RequestBody List<Long> lotoPoints) {
+        try {
+            LotoDto reorderedLoto = ngLotoService.reorderLotoPoints(currentLotoId, lotoPoints);
+            return ResponseEntity.ok(new NgApiResponse<>(reorderedLoto, "LOTO points reordered successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(new NgApiResponse<>(null, "Error reordering LOTO points: " + e.getMessage()));
         }
     }
 

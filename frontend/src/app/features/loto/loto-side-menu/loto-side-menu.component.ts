@@ -197,5 +197,10 @@ setCurrentLotoPoint(lotoPoint: LotoPointDto | null) {
   this.currentLotoService.setCurrentLotoPoint(lotoPoint);
 }
 
+submitReorderdItems(itemsInput: LotoPointDto[]) {
+  console.log('Submitting reordered items', itemsInput);
+  this.currentLotoService.reorderLotoPoints(itemsInput);
+}
+
 
 }

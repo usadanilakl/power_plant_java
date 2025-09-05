@@ -327,7 +327,7 @@ export class DrawUtilService {
     }
   
     // Notify subscribers of the change
-    this.shapesSubject.next(this.shapes);
+    this.shapesSubject.next([...this.shapes]);
   }
 
 
@@ -419,7 +419,7 @@ export class DrawUtilService {
     }
   
     // Notify subscribers of the change
-    this.shapesSubject.next(this.shapes);
+    this.shapesSubject.next([...this.shapes]);
   }
 
   drawWithRightClick(event: MouseEvent, imgX: number, imgY: number) {

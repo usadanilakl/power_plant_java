@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef, output, input, inject, DestroyRef, HostListener } from '@angular/core';
+import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef, output, input, inject, DestroyRef, HostListener, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
@@ -64,7 +64,9 @@ export class TableComponent implements OnInit {
   private clickDelay = 250; // milliseconds
   private hoverSubject = new Subject<any>();
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(private cdr: ChangeDetectorRef) {
+
+  }
 
   private itemsSubscription: Subscription | null = null;
 
@@ -112,6 +114,8 @@ export class TableComponent implements OnInit {
         }
       });
     });
+
+    console.log('isDragAndDropEnabled:', this.isDragAndDropEnabled());
   }
 
 ngOnInit() {

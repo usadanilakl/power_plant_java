@@ -27,8 +27,17 @@
             <app-loto-point-table
               [clientSideData$]="selectedLotoPoints$"
               [deleteCallback]="onRemovePoint"
+              [isReorderEnabled]="isReorderEnabled()"
               [doubleClickCallback]="removeOnDoubleClick"
+              (itemReordered)="submitReorderdItems($event)"
             ></app-loto-point-table>
+            <!-- <app-loto-point-simple-table
+              [initialItems]="selectedLotoPoints$"
+              [isReorderEnabled]="true"
+              [isEditEnabled]="true"
+              (doubleClickEvent)="removeOnDoubleClick($event)"
+              (itemReordered)="submitReorderdItems($event)"
+            ></app-loto-point-simple-table> -->
           </div>
           <div class="table-container left">
             <h2>All LOTO Points</h2>
@@ -53,6 +62,8 @@
             [deleteCallback]="onRemovePoint"
             [doubleClickCallback]="removePointFromLoto"
             [clickCallback]="onRowLeftClick.bind(this)"
+              [isReorderEnabled]="isReorderEnabled()"
+              (itemReordered)="submitReorderdItems($event)"
           ></app-loto-point-table>
         </div>
         <div class="table-container left">

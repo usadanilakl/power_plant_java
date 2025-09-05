@@ -15,11 +15,12 @@ import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { Column } from '../../../models/column.model';
 import { FileService } from '../../../services/file.service';
+import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
 
 @Component({
   selector: 'app-loto-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, PopupComponent, LotoPointTableComponent],
+  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, PopupComponent, LotoPointTableComponent, LotoPointSimpleTableComponent],
   templateUrl: './loto-detail-form.component.html',
   styleUrl: './loto-detail-form.component.css'
 })
@@ -57,7 +58,10 @@ export class LotoDetailFormComponent implements OnInit {
   addPointToLotoEvent = output<LotoPointDto>();
   removePointFromLotoEvent = output<LotoPointDto>();
   rowLeftClickEvent = output<LotoPointDto>();
+  reorderedItemsEvent = output<LotoPointDto[]>();
 
+  isReorderEnabled = signal<boolean>(true);
+  
   private lotoStatusOptions = new BehaviorSubject<Option[]>([]);
   lotoPointsFilter$ = new BehaviorSubject<{ key: string; filterFn: (value: any) => boolean }[]>([]);
 
@@ -76,7 +80,7 @@ export class LotoDetailFormComponent implements OnInit {
     this.onRemovePoint = this.onRemovePoint.bind(this);
     effect(() => {
       this.selectedLotoPointsSubject.next(this.values()?.lotoPoints || []);
-      console.log('selectedLotoPointsSubject', this.selectedLotoPointsSubject.value);
+      // console.log('selectedLotoPointsSubject', this.selectedLotoPointsSubject.value);
     });
   }
   
@@ -238,6 +242,11 @@ export class LotoDetailFormComponent implements OnInit {
     console.log('Cell double clicked item:', item);
     console.log('Cell double clicked column:', column);
     // Implement your cell double-click logic here
+  }
+
+  submitReorderdItems(lotoPoints: LotoPointDto[]){
+    this.reorderedItemsEvent.emit(lotoPoints);
+    console.log('reorderedItemsEvent', lotoPoints);
   }
 
 

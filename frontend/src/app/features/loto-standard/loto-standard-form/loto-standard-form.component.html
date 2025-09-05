@@ -21,9 +21,10 @@
       <app-loto-point-simple-table
         [initialItems]="lotoPoints()"
         [isReorderEnabled]="true"
+        [isEditEnabled]="true"
         (doubleClickEvent)="removePoint($event)"
         (leftClickEvent)="showPoint($event)"
-        (itemReordered)="submitReorderdItems($event)">
+        (itemReordered)="submitReorderdItems($event)"
       ></app-loto-point-simple-table>
     </div>
 

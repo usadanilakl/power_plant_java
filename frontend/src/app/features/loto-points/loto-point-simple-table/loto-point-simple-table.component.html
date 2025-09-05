@@ -13,3 +13,16 @@
         <ng-content select="[table-controls]"></ng-content>
       </div>
 </app-shared-table>
+
+<app-popup-projection
+  [isOpen]="isPopupOpen"
+  [title]="'LOTO Point Details'"
+  [size]="'medium'"
+  (close)="closePopup()"
+  >
+<app-loto-point-detail-form
+  [values]="selectedItem()"
+  [selectedItem]="selectedItem()"
+  (formSubmit)="onFormSubmit($event)"
+></app-loto-point-detail-form>
+</app-popup-projection>

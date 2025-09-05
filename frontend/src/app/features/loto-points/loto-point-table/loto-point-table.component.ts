@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, Input, inject, OnInit, DestroyRef, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, Input, inject, OnInit, DestroyRef, signal, output, input, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
@@ -29,8 +29,10 @@ export class LotoPointTableComponent implements OnInit {
   @Input() rightClickCallback?: (item: any) => void;
   @Input() middleClickCallback?: (item: any) => void;
   @Input() cellDoubleClickCallback?: (item: any, column: Column) => void;
+  isReorderEnabled = input<boolean>(false);
 
   @Input() clientSideData$: Observable<LotoPointDto[]> | null = null;
+  itemReordered = output<LotoPointDto[]>();
   
 
   columns: Column[] = [
@@ -81,6 +83,12 @@ export class LotoPointTableComponent implements OnInit {
 
   exportMessage = signal<string | null>(null);
   isExporting = signal<boolean>(false);
+
+  constructor() {
+    effect(() => {
+      console.log('isReorderEnabled:', this.isReorderEnabled());
+    });
+  }
 
   ngOnInit() {
     if (this.clientSideData$) {
@@ -417,5 +425,11 @@ export class LotoPointTableComponent implements OnInit {
   closeImagePopup() {
     this.isImagePopupOpen = false;
     this.selectedImagePath = null;
+  }
+
+  onItemReordered(items: LotoPointDto[]) {
+    console.log('Item reordered:', items);
+    this.initialItemsSubject.next([...items]);
+    this.itemReordered.emit(items);
   }
 }
