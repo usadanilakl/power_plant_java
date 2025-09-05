@@ -5,6 +5,8 @@ import com.dk_power.power_plant_java.repository.loto.LotoRepo;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.sikuli.basics.Settings;
@@ -44,6 +46,7 @@ public class RedTagAutomationService {
     private static final Pattern LOTO_BUILDER_CONTINUE_BUTTON = new Pattern(BASE_PATH + "lotoBuilderContinueButton.png");
     private static final Pattern LOTO_BUILDER_INFORMATION_FORM = new Pattern(BASE_PATH + "lotoInformationForm.png");
     private static final Pattern INFORMATION_FORM_LOCK_BOX_DROPDOWN = new Pattern(BASE_PATH + "infoFormLockBoxDropdown.png");
+    private static final Pattern NO_ONE_LOGGED_ID = new Pattern(BASE_PATH + "noOneLoggedIn.png");
 
 
     private Screen screen;
@@ -59,17 +62,20 @@ public class RedTagAutomationService {
     public void openApp() throws IOException, InterruptedException, FindFailed {
         String appName = "Redtag.exe";
         String appPath = "J://RedTag/Redtag.exe";
+        String appShortcut = "J://RedTag/Redtag - Shortcut";
+
 
         if (!isProcessRunning(appName)) {
             System.out.println("Starting " + appName + "...");
-            Runtime.getRuntime().exec(appPath);
+            Runtime.getRuntime().exec(appShortcut);
 
             if(isLoggedIn()) return;
 
-            screen.wait(LOG_IN_BUTTON,40);
+            screen.wait(LOG_IN_BUTTON,60);
         } else {
             System.out.println("Application is already running.");
-            maximizeWindow();
+//
+            Runtime.getRuntime().exec(appShortcut);
         }
     }
 
@@ -215,8 +221,8 @@ public class RedTagAutomationService {
         return tasksList.contains(processName);
     }
 
-    private boolean isLoggedIn() {
-        return screen.exists(LOGOUT_BUTTON) != null;
+    private boolean isLoggedIn() throws FindFailed {
+        return screen.exists(NO_ONE_LOGGED_ID) == null;
     }
 
     private void maximizeWindow() throws FindFailed {
@@ -238,6 +244,16 @@ public class RedTagAutomationService {
             screen.click(iconInactive);
         }
     }
+
+    public static void maximizeWindowWindows(String windowTitle) {
+        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowTitle);
+        if (hwnd != null) {
+            User32.INSTANCE.ShowWindow(hwnd, 3); // 3 = SW_MAXIMIZE
+        } else {
+            System.out.println("Window not found: " + windowTitle);
+        }
+    }
+
 
     public void findAndClickElement(Pattern pattern) throws FindFailed {
         Region element = screen.find(pattern);
