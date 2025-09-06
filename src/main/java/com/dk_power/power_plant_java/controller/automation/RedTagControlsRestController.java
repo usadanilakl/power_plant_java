@@ -110,4 +110,24 @@ public class RedTagControlsRestController {
         }
     }
 
+    @GetMapping("/fill-safework-form")
+    public ResponseEntity<NgApiResponse<String>> fillOutSafeWorkForm() {
+        try {
+            String login = redTagAutomationService.fillOutSafeWorkForm();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Form is filled out "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/save-safework-form")
+    public ResponseEntity<NgApiResponse<String>> saveOutSafeWorkForm() {
+        try {
+            String login = redTagAutomationService.saveSafeWork();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Form saved: "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to save safe work: " + e.getMessage()));
+        }
+    }
+
 }

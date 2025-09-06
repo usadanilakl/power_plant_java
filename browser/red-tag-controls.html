@@ -30,6 +30,19 @@
 
       }
     }
+    
+    async function runSwSequence() {
+      try {
+        await sendRequest('/open-app');
+        await sendRequest('/login');
+        await sendRequest('/open-safework-builder');
+        await sendRequest('/fill-safework-form');
+        await sendRequest('/save-safework-form');
+        alert("Sequence completed successfully");
+      } catch (error) {
+
+      }
+    }
 
     
   </script>
@@ -45,5 +58,8 @@
   <br><br>
   
   <button onclick="sendRequest('/open-safework-builder')">Open Safe-Work Builder</button>
+  <button onclick="sendRequest('/fill-safework-form')">Fill Out SW Form</button>
+  <button onclick="sendRequest('/save-safework-form')">Save SW Form</button>
+  <button onclick="runSwSequence()">Run SW Sequence</button>
 </body>
 </html>

@@ -55,6 +55,61 @@ public class RedTagAutomationService {
     private static final Pattern NEW_PERMIT_BUTTON = new Pattern(SAFE_WORK_PATH + "/newPermitButton.png");
     private static final Pattern ISSUE_WITH_NO_TEMPLATE_BUTTON = new Pattern(SAFE_WORK_PATH + "/issueWithNoTemplateButton.png");
     private static final Pattern SHRINK_BUTTON = new Pattern(SAFE_WORK_PATH + "/shrinkButton.png");
+    private static final Pattern SW_DATE_ISSUED = new Pattern(SAFE_WORK_PATH + "/swDateIssued.png");
+    private static final Pattern SW_LOCATION = new Pattern(SAFE_WORK_PATH + "/swLocation.png");
+    private static final Pattern SW_HIGH_TEMP = new Pattern(SAFE_WORK_PATH + "/swHighTemp.png");
+    private static final Pattern SW_HIGH_PRESSURE = new Pattern(SAFE_WORK_PATH + "/swHighPressure.png");
+    private static final Pattern SW_ENERGIZED = new Pattern(SAFE_WORK_PATH + "/swEnergized.png");
+    private static final Pattern SW_STORED_ENERGY = new Pattern(SAFE_WORK_PATH + "/swStoredEnergy.png");
+    private static final Pattern SW_EYE_HAZARD = new Pattern(SAFE_WORK_PATH + "/swEyeHazard.png");
+    private static final Pattern SW_EGRESS_ACCESS = new Pattern(SAFE_WORK_PATH + "/SW_EGRESS_ACCESS.png");
+    private static final Pattern SW_ERGONOMIC_HAZARD = new Pattern(SAFE_WORK_PATH + "/SW_ERGONOMIC_HAZARD.png");
+    private static final Pattern SW_FALLING_OBJECT = new Pattern(SAFE_WORK_PATH + "/SW_FALLING_OBJECT.png");
+    private static final Pattern SW_HIGH_NOISE = new Pattern(SAFE_WORK_PATH + "/SW_HIGH_NOISE.png");
+    private static final Pattern SW_DUST_PARTICULATE = new Pattern(SAFE_WORK_PATH + "/SW_DUST_PARTICULATE.png");
+    private static final Pattern SW_COMBUSTABLE_DUST = new Pattern(SAFE_WORK_PATH + "/SW_COMBUSTABLE_DUST.png");
+    private static final Pattern SW_FIRE_HAZARD = new Pattern(SAFE_WORK_PATH + "/SW_FIRE_HAZARD.png");
+    private static final Pattern SW_HOT_SURFACE = new Pattern(SAFE_WORK_PATH + "/SW_HOT_SURFACE.png");
+    private static final Pattern SW_SLIPPERY = new Pattern(SAFE_WORK_PATH + "/SW_SLIPPERY.png");
+    private static final Pattern SW_VENTILATION_REQUIRED = new Pattern(SAFE_WORK_PATH + "/SW_VENTILATION_REQUIRED.png");
+    private static final Pattern SW_LIGHTING_RESTRICTIONS = new Pattern(SAFE_WORK_PATH + "/SW_LIGHTING_RESTRICTIONS.png");
+    private static final Pattern SW_CHEMICAL_EXPOSURE = new Pattern(SAFE_WORK_PATH + "/SW_CHEMICAL_EXPOSURE.png");
+    private static final Pattern SW_LIFTING_HAZARD = new Pattern(SAFE_WORK_PATH + "/SW_LIFTING_HAZARD.png");
+    private static final Pattern SW_HAND_TRAPS = new Pattern(SAFE_WORK_PATH + "/SW_HAND_TRAPS.png");
+    private static final Pattern SW_HEAT_COLD_STRESS = new Pattern(SAFE_WORK_PATH + "/SW_HEAT_COLD_STRESS.png");
+    private static final Pattern SW_ELEVATED_SURFACE = new Pattern(SAFE_WORK_PATH + "/SW_ELEVATED_SURFACE.png");
+    private static final Pattern SW_ENVIRONMENTAL = new Pattern(SAFE_WORK_PATH + "/SW_ENVIRONMENTAL.png");
+
+    private static final Pattern SW_LOTO_REQUIRED = new Pattern(SAFE_WORK_PATH + "/SW_LOTO_REQUIRED.png");
+    private static final Pattern SW_CONFINED_SPACE = new Pattern(SAFE_WORK_PATH + "/SW_CONFINED_SPACE.png");
+    private static final Pattern SW_HOT_WORK = new Pattern(SAFE_WORK_PATH + "/SW_HOT_WORK.png");
+    private static final Pattern SW_VENTING_PURGING = new Pattern(SAFE_WORK_PATH + "/SW_VENTING_PURGING.png");
+    private static final Pattern SW_JHA = new Pattern(SAFE_WORK_PATH + "/SW_JHA.png");
+    private static final Pattern SW_GAS_TESTING = new Pattern(SAFE_WORK_PATH + "/SW_GAS_TESTING.png");
+    private static final Pattern SW_EXCAVATION_PERMIT = new Pattern(SAFE_WORK_PATH + "/SW_EXCAVATION_PERMIT.png");
+    private static final Pattern SW_ENERGIZED_PERMIT = new Pattern(SAFE_WORK_PATH + "/SW_ENERGIZED_PERMIT.png");
+    private static final Pattern SW_HARDHAT = new Pattern(SAFE_WORK_PATH + "/SW_HARDHAT.png");
+    private static final Pattern SW_SAFETY_GLASSES = new Pattern(SAFE_WORK_PATH + "/SW_SAFETY_GLASSES.png");
+    private static final Pattern SW_HEARING_PROTECTION = new Pattern(SAFE_WORK_PATH + "/SW_HEARING_PROTECTION.png");
+    private static final Pattern SW_BOOTS = new Pattern(SAFE_WORK_PATH + "/SW_BOOTS.png");
+    private static final Pattern SW_FALL_PROTECTION = new Pattern(SAFE_WORK_PATH + "/SW_FALL_PROTECTION.png");
+    private static final Pattern SW_GFI = new Pattern(SAFE_WORK_PATH + "/SW_GFI.png");
+    private static final Pattern SW_RESPIRATOR = new Pattern(SAFE_WORK_PATH + "/SW_RESPIRATOR.png");
+    private static final Pattern SW_DUST_MASK = new Pattern(SAFE_WORK_PATH + "/SW_DUST_MASK.png");
+    private static final Pattern SW_GLOVES = new Pattern(SAFE_WORK_PATH + "/SW_GLOVES.png");
+    private static final Pattern SW_ICE_CLEATS = new Pattern(SAFE_WORK_PATH + "/SW_ICE_CLEATS.png");
+    private static final Pattern SW_ACID_SUIT = new Pattern(SAFE_WORK_PATH + "/SW_ACID_SUIT.png");
+    private static final Pattern SW_BARRICADE = new Pattern(SAFE_WORK_PATH + "/SW_BARRICADE.png");
+    private static final Pattern SW_FACE_SHIELD = new Pattern(SAFE_WORK_PATH + "/SW_FACE_SHIELD.png");
+    private static final Pattern SW_GAS_MONITOR = new Pattern(SAFE_WORK_PATH + "/SW_GAS_MONITOR.png");
+    private static final Pattern SW_ARC_FLASH_PPE = new Pattern(SAFE_WORK_PATH + "/SW_ARC_FLASH_PPE.png");
+    private static final Pattern SW_WELDING_JACKET = new Pattern(SAFE_WORK_PATH + "/SW_WELDING_JACKET.png");
+    private static final Pattern SW_WELDING_SHIELD = new Pattern(SAFE_WORK_PATH + "/SW_WELDING_SHIELD.png");
+    private static final Pattern SW_WELDING_GLOVES = new Pattern(SAFE_WORK_PATH + "/SW_WELDING_GLOVES.png");
+    private static final Pattern SW_PURGIN_VENTILATION = new Pattern(SAFE_WORK_PATH + "/SW_PURGIN_VENTILATION.png");
+    private static final Pattern SW_SPECIAL_INSTRUCTIONS = new Pattern(SAFE_WORK_PATH + "/SW_SPECIAL_INSTRUCTIONS.png");
+    private static final Pattern SW_REQUESTOR = new Pattern(SAFE_WORK_PATH + "/SW_REQUESTOR.png");
+    private static final Pattern SW_SAVE_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_SAVE_BUTTON.png");
 
 
 
@@ -82,7 +137,6 @@ public class RedTagAutomationService {
             screen.wait(LOG_IN_BUTTON,60);
         } else {
             System.out.println("Application is already running.");
-//
             maximizeWindowWindows("Redtag Enterprise");
         }
     }
@@ -158,7 +212,7 @@ public class RedTagAutomationService {
 
     public String openNewLotoBuilder() throws FindFailed {
         screen.find(LOTO_TAB).click();
-        Region mainMenu = screen.find(MAIN_MENU);
+        Region mainMenu = screen.wait(MAIN_MENU,2);
         mainMenu = new Region(mainMenu.x,mainMenu.y,mainMenu.w,mainMenu.h);
 
         Region newLotoBtn = mainMenu.find(MAIN_MENU_NEW_ISO_BUTTON);
@@ -224,9 +278,11 @@ public class RedTagAutomationService {
     }
 
 
+
+
     public String openNewSafeWorkBuilder() throws FindFailed {
         screen.find(SAFEWORK_TAB).click();
-        screen.find(NEW_PERMIT_BUTTON).click();
+        screen.wait(NEW_PERMIT_BUTTON,1).click();
         screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON,3).click();
         Region shrink = screen.wait(SHRINK_BUTTON,10);
         shrink.click();
@@ -235,6 +291,116 @@ public class RedTagAutomationService {
         return "Success";
     }
 
+    public String fillOutSafeWorkForm() throws FindFailed {
+        Region dateIssued = screen.wait(SW_DATE_ISSUED,1);
+        dateIssued.offset(0,15).click();
+        pasteText("09/07/2025");
+        screen.type(Key.TAB);
+        pasteText("0700");
+        screen.type(Key.TAB);
+        pasteText("Kiewit/Mike Miles");
+
+        Region location = screen.find(SW_LOCATION);
+        location.offset(250,0).click();
+        pasteText("HRSG U2");
+
+        location.offset(250,20).click();
+        pasteText("Repairs");
+
+        clickLeftSideOfElement(SW_HIGH_TEMP,2);
+
+        Region hiPressure = screen.find(SW_HIGH_PRESSURE);
+        hiPressure.offset(-hiPressure.w/2-15,0).click();
+
+        clickLeftSideOfElement(SW_ENERGIZED,2);
+        clickLeftSideOfElement(SW_STORED_ENERGY,2);
+        clickLeftSideOfElement(SW_EYE_HAZARD,2);
+        clickLeftSideOfElement(SW_EGRESS_ACCESS,2);
+        clickLeftSideOfElement(SW_ERGONOMIC_HAZARD,2);
+        clickLeftSideOfElement(SW_FALLING_OBJECT,2);
+        clickLeftSideOfElement(SW_HIGH_NOISE,2);
+        clickLeftSideOfElement(SW_DUST_PARTICULATE,2);
+        clickLeftSideOfElement(SW_COMBUSTABLE_DUST,2);
+        clickLeftSideOfElement(SW_FIRE_HAZARD,2);
+        clickLeftSideOfElement(SW_HOT_SURFACE,2);
+        clickLeftSideOfElement(SW_SLIPPERY,2);
+        clickLeftSideOfElement(SW_VENTILATION_REQUIRED,2);
+        clickLeftSideOfElement(SW_LIGHTING_RESTRICTIONS,2);
+        clickLeftSideOfElement(SW_CHEMICAL_EXPOSURE,2);
+        clickLeftSideOfElement(SW_LIFTING_HAZARD,2);
+        clickLeftSideOfElement(SW_HAND_TRAPS,2);
+        clickLeftSideOfElement(SW_HEAT_COLD_STRESS,2);
+        clickLeftSideOfElement(SW_ELEVATED_SURFACE,2);
+        clickLeftSideOfElement(SW_ENVIRONMENTAL,2);
+
+        clickYesNo(SW_LOTO_REQUIRED,true);
+        clickYesNo(SW_CONFINED_SPACE,true);
+        clickYesNo(SW_HOT_WORK,true);
+        clickYesNo(SW_VENTING_PURGING,true);
+        clickYesNo(SW_JHA,true);
+        clickYesNo(SW_GAS_TESTING,true);
+        clickYesNo(SW_EXCAVATION_PERMIT,true);
+        clickYesNo(SW_ENERGIZED_PERMIT,true);
+        clickYesNo(SW_HARDHAT,true);
+        clickYesNo(SW_SAFETY_GLASSES,true);
+        clickYesNo(SW_HEARING_PROTECTION,true);
+        clickYesNo(SW_BOOTS,true);
+        clickYesNo(SW_FALL_PROTECTION,true);
+        clickYesNo(SW_GFI,true);
+        clickYesNo(SW_RESPIRATOR,true);
+        clickYesNo(SW_DUST_MASK,true);
+        clickYesNo(SW_GLOVES,true);
+        clickYesNo(SW_ICE_CLEATS,true);
+        clickYesNo(SW_ACID_SUIT,true);
+        clickYesNo(SW_BARRICADE,true);
+        clickYesNo(SW_FACE_SHIELD,true);
+        clickYesNo(SW_GAS_MONITOR,true);
+        clickYesNo(SW_ARC_FLASH_PPE,true);
+        clickYesNo(SW_WELDING_JACKET,true);
+        clickYesNo(SW_WELDING_SHIELD,true);
+        clickYesNo(SW_WELDING_GLOVES,true);
+        clickYesNo(SW_PURGIN_VENTILATION,true);
+
+        clickYesNo(SW_LOTO_REQUIRED,false);
+        clickYesNo(SW_CONFINED_SPACE,false);
+        clickYesNo(SW_HOT_WORK,false);
+        clickYesNo(SW_VENTING_PURGING,false);
+        clickYesNo(SW_JHA,false);
+        clickYesNo(SW_GAS_TESTING,false);
+        clickYesNo(SW_EXCAVATION_PERMIT,false);
+        clickYesNo(SW_ENERGIZED_PERMIT,false);
+        clickYesNo(SW_HARDHAT,false);
+        clickYesNo(SW_SAFETY_GLASSES,false);
+        clickYesNo(SW_HEARING_PROTECTION,false);
+        clickYesNo(SW_BOOTS,false);
+        clickYesNo(SW_FALL_PROTECTION,false);
+        clickYesNo(SW_GFI,false);
+        clickYesNo(SW_RESPIRATOR,false);
+        clickYesNo(SW_DUST_MASK,false);
+        clickYesNo(SW_GLOVES,false);
+        clickYesNo(SW_ICE_CLEATS,false);
+        clickYesNo(SW_ACID_SUIT,false);
+        clickYesNo(SW_BARRICADE,false);
+        clickYesNo(SW_FACE_SHIELD,false);
+        clickYesNo(SW_GAS_MONITOR,false);
+        clickYesNo(SW_ARC_FLASH_PPE,false);
+        clickYesNo(SW_WELDING_JACKET,false);
+        clickYesNo(SW_WELDING_SHIELD,false);
+        clickYesNo(SW_WELDING_GLOVES,false);
+        clickYesNo(SW_PURGIN_VENTILATION,false);
+
+        screen.find(SW_SPECIAL_INSTRUCTIONS).offset(0,15).click();
+        pasteText("Special instructions are here");
+        screen.find(SW_REQUESTOR).offset(0,15).click();
+        pasteText("Adam Bunker");
+
+        return "success";
+    }
+
+    public String saveSafeWork() throws FindFailed {
+        screen.find(SW_SAVE_BUTTON).hover();
+        return "success";
+    }
 
 
     private boolean isProcessRunning(String processName) throws IOException {
@@ -245,7 +411,7 @@ public class RedTagAutomationService {
     }
 
     private boolean isLoggedIn() throws FindFailed {
-        return screen.exists(NO_ONE_LOGGED_ID) == null;
+        return screen.exists(NO_ONE_LOGGED_ID,2) == null;
     }
 
     private void maximizeWindow() throws FindFailed {
@@ -312,6 +478,20 @@ public class RedTagAutomationService {
         Region dropdown = appWindow.find(locableDropdown);
         dropdown.offset(dropdown.w - 5, dropdown.h / 2 - 5).click();
         dropdown.offset(dropdown.w - 5, dropdown.h + 5).click();
+    }
+
+    private void pasteText(String text){
+        App.setClipboard(text);
+        screen.type("v", KeyModifier.CTRL);
+    }
+
+    private void clickLeftSideOfElement(Pattern pattern, int offsetFromLeft) throws FindFailed {
+        Region element = screen.find(pattern);
+        element.offset(-element.w/2+offsetFromLeft,0).click();
+    }
+    private void clickYesNo(Pattern pattern, boolean yes) throws FindFailed {
+        if(yes) clickLeftSideOfElement(pattern,7);
+        else clickLeftSideOfElement(pattern,40);
     }
 
 
