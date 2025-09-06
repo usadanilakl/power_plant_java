@@ -208,6 +208,8 @@ public class LotoPointMapper implements BaseMapper{
         dto.setFileIds(lotoPoint.getFileIds());
         dto.setConflictStatus(lotoPoint.getConflictStatus());
         dto.setZeroEnergyMethod(lotoPoint.getZeroEnergyMethod());
+        dto.setEquipmentList(lotoPoint.getEquipmentList().stream().map(Equipment::getId).collect(Collectors.toSet()));
+        dto.setEquipmentIdList(lotoPoint.getEquipmentList().stream().map(Equipment::getId).toList());
 
 
         return dto;

@@ -118,6 +118,7 @@ export class LotoStandardComponent implements OnInit  {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(standard => {
       if (standard) {
+        console.log("currentLotoService.currentLoto$ standard: ", standard);
         const lotoPoints: LotoPointDto[] = Array.isArray(standard.lotoPoints) ? [...standard.lotoPoints] : [];
         this.selectedItemIds.set([
           ...lotoPoints.flatMap(lotoPoint => lotoPoint.equipmentIdList || [])

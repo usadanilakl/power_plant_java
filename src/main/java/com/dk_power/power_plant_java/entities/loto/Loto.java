@@ -146,6 +146,10 @@ public class Loto extends BasePermitEntity {
             this.isArchived = false;
             this.isMutable = false;
             System.out.println("Permit status is 'Active', setting mutable to false and archived to false");
+        }else{
+            this.isArchived = false;
+            this.isMutable = true;
+            System.out.println("Permit status is not 'Closed' or 'Active', setting mutable to true and archived to false");
         }
 
 //        System.out.println("isMutable: " + isMutable + ", isArchived: " + isArchived);
@@ -217,7 +221,7 @@ public class Loto extends BasePermitEntity {
         if (this.isArchived) throw new RuntimeException("Loto is archived and can't be modified");
         if(lotoPoints == null) lotoPoints = new HashSet<>();
         this.lotoPoints = lotoPoints;
-        this.reorderLotoPoints(lotoPoints.stream().map(LotoPointIdDto::getId).collect(Collectors.toList()));
+//        this.reorderLotoPoints(lotoPoints.stream().map(LotoPointIdDto::getId).collect(Collectors.toList()));
         this.getLatestSnapshot().setLotoPointDtos(lotoPoints);
         return this.getLatestSnapshot();
     }

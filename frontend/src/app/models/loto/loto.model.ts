@@ -41,7 +41,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
 
     return new LotoDto({
       ...super.fromJson(json),
-      lotoPoints: (json.lotoPoints ?? []).map((point: any) => LotoPointDto.fromJson(point)),
+      lotoPoints: json.lotoPoints?.map((pointJson: any) => LotoPointDto.fromJson(pointJson)) || null,
       locks: (json.locks ?? []).map((lock: any) => LockDto.fromJson(lock)),
       lotoBox: json.lotoBox ? LotoBoxDto.fromJson(json.lotoBox, true) : null
     });
