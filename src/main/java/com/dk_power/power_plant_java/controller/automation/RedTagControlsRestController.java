@@ -116,7 +116,7 @@ public class RedTagControlsRestController {
             String login = redTagAutomationService.fillOutSafeWorkForm();
             return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Form is filled out "+login));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to fill out safe work: " + e.getMessage()));
         }
     }
 
@@ -127,6 +127,39 @@ public class RedTagControlsRestController {
             return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Form saved: "+login));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to save safe work: " + e.getMessage()));
+        }
+    }
+
+
+
+
+    @GetMapping("/open-cs-builder")
+    public ResponseEntity<NgApiResponse<String>> openCsBuilder() {
+        try {
+            String login = redTagAutomationService.openNewConfinedSpaceBuilder();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "CS Builder open operation is "+login));
+        } catch (FindFailed e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/fill-cs-form")
+    public ResponseEntity<NgApiResponse<String>> fillOutCsForm() {
+        try {
+            String login = redTagAutomationService.fillOutCSForm();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "CS Form is filled out "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to fill out CS: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/save-cs-form")
+    public ResponseEntity<NgApiResponse<String>> saveCsForm() {
+        try {
+            String login = redTagAutomationService.saveCsForm();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "CS Form saved: "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to save CS: " + e.getMessage()));
         }
     }
 

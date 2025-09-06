@@ -25,6 +25,7 @@
         await sendRequest('/open-loto-builder');
         await sendRequest('/build-loto-with-no-standard');
         await sendRequest('/build-loto-with-new-points');
+        await sendRequest('/complete-loto-build');
         alert("Sequence completed successfully");
       } catch (error) {
 
@@ -38,6 +39,19 @@
         await sendRequest('/open-safework-builder');
         await sendRequest('/fill-safework-form');
         await sendRequest('/save-safework-form');
+        alert("Sequence completed successfully");
+      } catch (error) {
+
+      }
+    }
+    
+    async function runCsSequence() {
+      try {
+        await sendRequest('/open-app');
+        await sendRequest('/login');
+        await sendRequest('/open-cs-builder');
+        await sendRequest('/fill-cs-form');
+        await sendRequest('/save-cs-form');
         alert("Sequence completed successfully");
       } catch (error) {
 
@@ -61,5 +75,12 @@
   <button onclick="sendRequest('/fill-safework-form')">Fill Out SW Form</button>
   <button onclick="sendRequest('/save-safework-form')">Save SW Form</button>
   <button onclick="runSwSequence()">Run SW Sequence</button>
+  <br><br>
+  
+  <button onclick="sendRequest('/open-cs-builder')">Open CS Builder</button>
+  <button onclick="sendRequest('/fill-cs-form')">Fill Out CS Form</button>
+  <button onclick="sendRequest('/save-cs-form')">Save CS Form</button>
+  <button onclick="runCsSequence()">Run SW Sequence</button>
+  <br><br>
 </body>
 </html>

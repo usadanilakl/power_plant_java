@@ -49,6 +49,10 @@ public class RedTagAutomationService {
     private static final Pattern INFORMATION_FORM_LOCK_BOX_DROPDOWN = new Pattern(BASE_PATH + "infoFormLockBoxDropdown.png");
     private static final Pattern NO_ONE_LOGGED_ID = new Pattern(BASE_PATH + "noOneLoggedIn.png");
     private static final Pattern LOTO_TAB = new Pattern(BASE_PATH + "lotoTab.png");
+    private static final Pattern LOTO_REQUESTOR = new Pattern(BASE_PATH + "LOTO_REQUESTOR.png");
+    private static final Pattern LOTO_REQUESTED_BY = new Pattern(BASE_PATH + "LOTO_REQUESTED_BY.png");
+    private static final Pattern LOTO_WORK_SCOPE = new Pattern(BASE_PATH + "LOTO_WORK_SCOPE.png");
+    private static final Pattern LOTO_MENU_OK_BUTTON = new Pattern(BASE_PATH + "LOTO_MENU_OK_BUTTON.png");
 
     private static final String SAFE_WORK_PATH = Paths.get(BASE_PATH+"safework").toString();
     private static final Pattern SAFEWORK_TAB = new Pattern(SAFE_WORK_PATH + "/safeWorkTab.png");
@@ -110,6 +114,23 @@ public class RedTagAutomationService {
     private static final Pattern SW_SPECIAL_INSTRUCTIONS = new Pattern(SAFE_WORK_PATH + "/SW_SPECIAL_INSTRUCTIONS.png");
     private static final Pattern SW_REQUESTOR = new Pattern(SAFE_WORK_PATH + "/SW_REQUESTOR.png");
     private static final Pattern SW_SAVE_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_SAVE_BUTTON.png");
+
+
+    private static final String CS_PATH = Paths.get(BASE_PATH+"confined-space").toString();
+    private static final Pattern CS_TAB = new Pattern(CS_PATH + "/CS_TAB.png");
+    private static final Pattern CS_SPACE = new Pattern(CS_PATH + "/CS_SPACE.png");
+    private static final Pattern CS_PURPOSE = new Pattern(CS_PATH + "/CS_PURPOSE.png");
+    private static final Pattern CS_ISSUED_TO = new Pattern(CS_PATH + "/CS_ISSUED_TO.png");
+    private static final Pattern CS_ENTRY_DATE = new Pattern(CS_PATH + "/CS_ENTRY_DATE.png");
+    private static final Pattern CS_START_TIME = new Pattern(CS_PATH + "/CS_START_TIME.png");
+    private static final Pattern CS_DURATION = new Pattern(CS_PATH + "/CS_DURATION.png");
+    private static final Pattern CS_OXIGEN_DEFF = new Pattern(CS_PATH + "/CS_OXIGEN_DEFF.png");
+    private static final Pattern CS_FLAMEBLE_GAS = new Pattern(CS_PATH + "/CS_FLAMEBLE_GAS.png");
+    private static final Pattern CS_COMBUSTIBLE_DUST = new Pattern(CS_PATH + "/CS_COMBUSTIBLE_DUST.png");
+    private static final Pattern CS_TOXIC_GAS = new Pattern(CS_PATH + "/CS_TOXIC_GAS.png");
+    private static final Pattern CS_ROTATING_EQ = new Pattern(CS_PATH + "/CS_ROTATING_EQ.png");
+    private static final Pattern CS_ELECTRICAL_SHOCK = new Pattern(CS_PATH + "/CS_ELECTRICAL_SHOCK.png");
+    private static final Pattern CS_ENTRAPMENT = new Pattern(CS_PATH + "/CS_ENTRAPMENT.png");
 
 
 
@@ -270,8 +291,24 @@ public class RedTagAutomationService {
         infoForm = new Region(infoForm.x,infoForm.y,infoForm.w,infoForm.h);
 
         infoForm.find(INFORMATION_FORM_LOCK_BOX_DROPDOWN).offset(100,0).click();
+        screen.type("35");
+//        infoForm.find(INFORMATION_FORM_LOCK_BOX_DROPDOWN).offset(100,0).click();
 
-        screen.type("33");
+        infoForm.find(LOTO_REQUESTOR).offset(300,0).click();
+        infoForm.find(LOTO_REQUESTOR).offset(300,0).click();
+        screen.type("Sedler");
+
+        infoForm.find(LOTO_WORK_SCOPE).offset(100,20).click();
+        infoForm.find(LOTO_WORK_SCOPE).offset(100,20).click();
+        screen.type("WORK SCOPE");
+
+        infoForm.find(LOTO_REQUESTED_BY).offset(100,40).click();
+        infoForm.find(LOTO_REQUESTED_BY).offset(100,40).click();
+        screen.type("Sedler");
+
+        infoForm.find(LOTO_MENU_OK_BUTTON).hover();
+
+
 
         return "Success";
 
@@ -399,6 +436,27 @@ public class RedTagAutomationService {
 
     public String saveSafeWork() throws FindFailed {
         screen.find(SW_SAVE_BUTTON).hover();
+        return "success";
+    }
+
+
+
+    public String openNewConfinedSpaceBuilder() throws FindFailed{
+        screen.find(CS_TAB).click();
+        screen.wait(NEW_PERMIT_BUTTON,1).click();
+        screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON,3).click();
+        Region shrink = screen.wait(SHRINK_BUTTON,10);
+        shrink.click();
+        shrink.click();
+        shrink.click();
+        return "Success";
+    }
+
+    public String fillOutCSForm() throws FindFailed{
+        return "success";
+    }
+
+    public String saveCsForm() throws FindFailed{
         return "success";
     }
 
