@@ -57,6 +57,19 @@
 
       }
     }
+    
+    async function runHwSequence() {
+      try {
+        await sendRequest('/open-app');
+        await sendRequest('/login');
+        await sendRequest('/open-hw-builder');
+        await sendRequest('/fill-hw-form');
+        await sendRequest('/save-hw-form');
+        alert("Sequence completed successfully");
+      } catch (error) {
+
+      }
+    }
 
     
   </script>
@@ -80,7 +93,17 @@
   <button onclick="sendRequest('/open-cs-builder')">Open CS Builder</button>
   <button onclick="sendRequest('/fill-cs-form')">Fill Out CS Form</button>
   <button onclick="sendRequest('/save-cs-form')">Save CS Form</button>
-  <button onclick="runCsSequence()">Run SW Sequence</button>
+  <button onclick="runCsSequence()">Run CS Sequence</button>
   <br><br>
+  
+  <button onclick="sendRequest('/open-hw-builder')">Open HW Builder</button>
+  <button onclick="sendRequest('/fill-hw-form')">Fill Out HW Form</button>
+  <button onclick="sendRequest('/save-hw-form')">Save HW Form</button>
+  <button onclick="runHwSequence()">Run HW Sequence</button>
+  <br><br>
+  
+  <button onclick="sendRequest('/get-permit-number')">Get Permit Number</button>
+  <button onclick="sendRequest('/get-first-row-text')">Get First Row Text</button>
+  <button onclick="sendRequest('/search')">Search</button>
 </body>
 </html>

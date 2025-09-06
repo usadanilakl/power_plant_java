@@ -163,4 +163,67 @@ public class RedTagControlsRestController {
         }
     }
 
+
+
+
+    @GetMapping("/open-hw-builder")
+    public ResponseEntity<NgApiResponse<String>> openHwBuilder() {
+        try {
+            String login = redTagAutomationService.openNewHwBuilder();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "HW Builder open operation is "+login));
+        } catch (FindFailed e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/fill-hw-form")
+    public ResponseEntity<NgApiResponse<String>> fillOutHwForm() {
+        try {
+            String login = redTagAutomationService.fillOutHwForm();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "HW Form is filled out "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to fill out HW: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/save-hw-form")
+    public ResponseEntity<NgApiResponse<String>> saveHwForm() {
+        try {
+            String login = redTagAutomationService.saveHwForm();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "HW Form saved: "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to save HW: " + e.getMessage()));
+        }
+    }
+
+
+
+    @GetMapping("/get-permit-number")
+    public ResponseEntity<NgApiResponse<String>> getPermitNumber() {
+        try {
+            String login = redTagAutomationService.getPermitNumber();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Permit Number is retrieved: "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"failed to retrieve : " + e.getMessage()));
+        }
+    }
+    @GetMapping("/get-first-row-text")
+    public ResponseEntity<NgApiResponse<String>> getFirstRowText() {
+        try {
+            String login = redTagAutomationService.getFirstRowText();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Row Text retrieved: "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"failed to retrieve row text : " + e.getMessage()));
+        }
+    }
+    @GetMapping("/search")
+    public ResponseEntity<NgApiResponse<String>> search() {
+        try {
+            String login = redTagAutomationService.searchByPermitNumber("3025");
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Row Text retrieved: "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"failed to retrieve row text : " + e.getMessage()));
+        }
+    }
+
 }

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -116,6 +117,19 @@ public class RedTagAutomationService {
     private static final Pattern SW_SAVE_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_SAVE_BUTTON.png");
 
 
+    private static final Pattern SW_PERMIT_NUMBER_COLUMN = new Pattern(SAFE_WORK_PATH + "/SW_PERMIT_NUMBER_COLUMN.png");
+
+
+    private static final Pattern SW_MODIFY_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_MODIFY_BUTTON.png");
+    private static final Pattern SW_ASSOCIATE_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_ASSOCIATE_BUTTON.png");
+    private static final Pattern SW_ISSUED_PERMITS = new Pattern(SAFE_WORK_PATH + "/SW_ISSUED_PERMITS.png");
+    private static final Pattern SW_SEARCH_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_SEARCH_BUTTON.png");
+    private static final Pattern SW_CONTINUE_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_CONTINUE_BUTTON.png");
+    private static final Pattern SW_ASSOCIATE_PERMITS_TOP_BAR = new Pattern(SAFE_WORK_PATH + "/SW_ASSOCIATE_PERMITS_TOP_BAR.png");
+
+
+
+
     private static final String CS_PATH = Paths.get(BASE_PATH+"confined-space").toString();
     private static final Pattern CS_TAB = new Pattern(CS_PATH + "/CS_TAB.png");
     private static final Pattern CS_SPACE = new Pattern(CS_PATH + "/CS_SPACE.png");
@@ -131,6 +145,37 @@ public class RedTagAutomationService {
     private static final Pattern CS_ROTATING_EQ = new Pattern(CS_PATH + "/CS_ROTATING_EQ.png");
     private static final Pattern CS_ELECTRICAL_SHOCK = new Pattern(CS_PATH + "/CS_ELECTRICAL_SHOCK.png");
     private static final Pattern CS_ENTRAPMENT = new Pattern(CS_PATH + "/CS_ENTRAPMENT.png");
+    private static final Pattern CS_ENGULFMENT = new Pattern(CS_PATH + "/CS_ENGULFMENT.png");
+    private static final Pattern CS_HEAT_STRESS = new Pattern(CS_PATH + "/CS_HEAT_STRESS.png");
+    private static final Pattern CS_LOTO = new Pattern(CS_PATH + "/CS_LOTO.png");
+    private static final Pattern CS_HOT_WORK = new Pattern(CS_PATH + "/CS_HOT_WORK.png");
+    private static final Pattern CS_VENTILATION = new Pattern(CS_PATH + "/CS_VENTILATION.png");
+    private static final Pattern CS_BLANK_FLANGED = new Pattern(CS_PATH + "/CS_BLANK_FLANGED.png");
+    private static final Pattern CS_W_BLOCK = new Pattern(CS_PATH + "/CS_W_BLOCK.png");
+
+
+    private static final Pattern CS_FACE_SHIELD = new Pattern(CS_PATH + "/CS_FACE_SHIELD.png");
+    private static final Pattern CS_GFCI = new Pattern(CS_PATH + "/CS_GFCI.png");
+    private static final Pattern CS_LOW_VOLTAGE_TOOLS = new Pattern(CS_PATH + "/CS_LOW_VOLTAGE_TOOLS.png");
+    private static final Pattern CS_EXPLOSIONPROOF_TOOLS = new Pattern(CS_PATH + "/CS_EXPLOSIONPROOF_TOOLS.png");
+    private static final Pattern CS_NONSPARKING_TOOLS = new Pattern(CS_PATH + "/CS_NONSPARKING_TOOLS.png");
+    private static final Pattern CS_FALL_PROTECTION = new Pattern(CS_PATH + "/CS_FALL_PROTECTION.png");
+    private static final Pattern CS_RETRIVAL_SYSTEM = new Pattern(CS_PATH + "/CS_RETRIVAL_SYSTEM.png");
+    private static final Pattern CS_LIFE_LINE = new Pattern(CS_PATH + "/CS_LIFE_LINE.png");
+    private static final Pattern CS_ATM_METER = new Pattern(CS_PATH + "/CS_ATM_METER.png");
+    private static final Pattern CS_TRIPOD = new Pattern(CS_PATH + "/CS_TRIPOD.png");
+    private static final Pattern CS_METER_DATA = new Pattern(CS_PATH + "/CS_METER_DATA.png");
+
+
+
+
+    private static final String HW_PATH = Paths.get(BASE_PATH+"hot-work").toString();
+    private static final Pattern HW_TAB = new Pattern(HW_PATH + "/HW_TAB.png");
+    private static final Pattern HW_LOCATION = new Pattern(HW_PATH + "/HW_LOCATION.png");
+    private static final Pattern HW_METER_MODEL = new Pattern(HW_PATH + "/HW_METER_MODEL.png");
+    private static final Pattern HW_FIRE_WATCH_REQUIRED = new Pattern(HW_PATH + "/HW_FIRE_WATCH_REQUIRED.png");
+    private static final Pattern HW_MEASURES_TAKEN_CKECKBOXES = new Pattern(HW_PATH + "/HW_MEASURES_TAKEN_CKECKBOXES.png");
+    private static final Pattern HW_SPECIAL_INSTRUCTIONS = new Pattern(HW_PATH + "/HW_SPECIAL_INSTRUCTIONS.png");
 
 
 
@@ -453,11 +498,188 @@ public class RedTagAutomationService {
     }
 
     public String fillOutCSForm() throws FindFailed{
+        screen.wait(CS_SPACE,1);
+        clickRightSideOfElement(CS_SPACE,20);
+        pasteText("Test Space");
+        clickRightSideOfElement(CS_PURPOSE,20);
+        pasteText("Testing");
+        clickRightSideOfElement(CS_ISSUED_TO,20);
+        pasteText("Test Person");
+        clickRightSideOfElement(CS_ENTRY_DATE,20);
+        pasteText(LocalDateTime.now().toString());
+        clickRightSideOfElement(CS_START_TIME,20);
+        pasteText("0700");
+        clickRightSideOfElement(CS_DURATION,20);
+        pasteText("12 hours");
+
+        clickLeftSideOfElement(CS_OXIGEN_DEFF,5);
+        clickLeftSideOfElement(CS_FLAMEBLE_GAS,5);
+        clickLeftSideOfElement(CS_COMBUSTIBLE_DUST,5);
+        clickLeftSideOfElement(CS_TOXIC_GAS,5);
+        clickLeftSideOfElement(CS_ROTATING_EQ,5);
+        clickLeftSideOfElement(CS_ELECTRICAL_SHOCK,5);
+        clickLeftSideOfElement(CS_ENTRAPMENT,5);
+        clickLeftSideOfElement(CS_ENGULFMENT,5);
+        clickLeftSideOfElement(CS_HEAT_STRESS,5);
+        clickLeftSideOfElement(CS_FACE_SHIELD,5);
+        clickLeftSideOfElement(CS_GFCI,5);
+        clickLeftSideOfElement(CS_LOW_VOLTAGE_TOOLS,5);
+        clickLeftSideOfElement(CS_EXPLOSIONPROOF_TOOLS,5);
+        clickLeftSideOfElement(CS_NONSPARKING_TOOLS,5);
+        clickLeftSideOfElement(CS_FALL_PROTECTION,5);
+        clickLeftSideOfElement(CS_RETRIVAL_SYSTEM,5);
+        clickLeftSideOfElement(CS_LIFE_LINE,5);
+        clickLeftSideOfElement(CS_ATM_METER,5);
+        clickLeftSideOfElement(CS_TRIPOD,5);
+
+        clickRightSideOfElement(CS_LOTO,20);
+        pasteText("123456");
+        clickRightSideOfElement(CS_HOT_WORK,20);
+        pasteText("654321");
+        clickLeftSideOfElement(CS_VENTILATION,5);
+        clickLeftSideOfElement(CS_BLANK_FLANGED,5);
+        clickLeftSideOfElement(CS_W_BLOCK,5);
+
+        Region meterData = screen.find(CS_METER_DATA);
+        int width = meterData.w / 2-5;
+        int height = meterData.h/2;
+        meterData.offset(width,30-height).click();
+        pasteText(LocalDateTime.now().toString());
+
+//        try{Thread.sleep(1000);}catch (Exception e){}
+
+        meterData.offset(width,60-height).click();
+        pasteText("RKI GX-3R PRO");
+
+//        try{Thread.sleep(1000);}catch (Exception e){}
+
+        meterData.offset(width,90-height).click();
+        pasteText("3");
+
+//        try{Thread.sleep(1000);}catch (Exception e){}
+
+        meterData.offset(width,120-height).click();
+        pasteText(LocalDateTime.now().toString());
+
+//        try{Thread.sleep(1000);}catch (Exception e){}
+
+        meterData.offset(width,140-height).click();
+        pasteText("Y");
+
         return "success";
     }
 
     public String saveCsForm() throws FindFailed{
+        screen.find(SW_SAVE_BUTTON).click();
         return "success";
+    }
+
+
+
+    public String openNewHwBuilder() throws FindFailed{
+        screen.find(HW_TAB).click();
+        screen.wait(NEW_PERMIT_BUTTON,1).click();
+        screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON,3).click();
+        Region shrink = screen.wait(SHRINK_BUTTON,10);
+        shrink.click();
+        shrink.click();
+        shrink.click();
+        return "Success";
+    }
+
+    public String fillOutHwForm() throws FindFailed{
+//        Region location = screen.wait(HW_LOCATION,2);
+//        location.offset(location.w/2-5,0).click();
+//        pasteText("Test Location");
+//        screen.type(Key.TAB);
+//        pasteText(LocalDateTime.now().toString());
+//        screen.type(Key.TAB);
+//        pasteText("Test Person Performing Work");
+//        screen.type(Key.TAB);
+//        pasteText("Test Fire Watch Name");
+//
+//        Region model = screen.wait(HW_METER_MODEL,2);
+//        model.offset(model.w/2-5,0).click();
+//        pasteText("RKI GX-3R PRO");
+//        screen.type(Key.TAB);
+//        pasteText("test");
+//        screen.type(Key.TAB);
+//        pasteText(LocalDateTime.now().toString());
+//
+//        clickRightSideOfElement(HW_FIRE_WATCH_REQUIRED,-2);
+//
+        Region check = screen.wait(HW_MEASURES_TAKEN_CKECKBOXES,2);
+        int wY = 5-check.w/2;
+        int wN = check.w/2-12;
+        int h = 7-check.h/2;
+//
+//        check.offset(wY,h).click();
+//        check.offset(wN,h).click();
+//        check.offset(wY,h+25).click();
+//        check.offset(wN,h+25).click();
+//        check.offset(wY,h+50).click();
+//        check.offset(wN,h+50).click();
+//        check.offset(wY,h+75).click();
+//        check.offset(wN,h+75).click();
+//        check.offset(wY,h+100).click();
+//        check.offset(wN,h+100).click();
+
+        int correction = 7;
+
+        check.offset(wY,h+150-correction).click();
+        check.offset(wN,h+150-correction).click();
+        try{Thread.sleep(1000);}catch (Exception e){}
+        check.offset(wY,h+175-correction).click();
+        check.offset(wN,h+175-correction).click();
+        try{Thread.sleep(1000);}catch (Exception e){}
+        correction = 25;
+        check.offset(wY,h+200-correction).click();
+        check.offset(wN,h+200-correction).click();
+        try{Thread.sleep(1000);}catch (Exception e){}
+        check.offset(wY,h+225-correction).click();
+        check.offset(wN,h+225-correction).click();
+        try{Thread.sleep(1000);}catch (Exception e){}
+        check.offset(wY,h+250-correction).click();
+        check.offset(wN,h+250-correction).click();
+        try{Thread.sleep(1000);}catch (Exception e){}
+        check.offset(wY,h+275-correction).click();
+        check.offset(wN,h+275-correction).click();
+        try{Thread.sleep(1000);}catch (Exception e){}
+        check.offset(wY,h+300-correction-10).click();
+        check.offset(wN,h+300-correction-10).click();
+
+        clickRightSideOfElement(HW_SPECIAL_INSTRUCTIONS,0);
+        pasteText("Some Special Instructions");
+
+        return "success";
+    }
+
+    public String saveHwForm() throws FindFailed{
+//        screen.find(SW_SAVE_BUTTON).click();
+        return "success";
+    }
+
+
+
+    public String getPermitNumber() throws FindFailed {
+        Region column = screen.wait(SW_PERMIT_NUMBER_COLUMN,2);
+        Region firstRow = new Region(column.x,column.y+10,column.w,column.h+10);
+        System.out.println(firstRow.text());
+        return "success";
+    }
+
+    public String getFirstRowText() throws FindFailed {
+        Region column = screen.wait(SW_PERMIT_NUMBER_COLUMN,2);
+        Region firstRow = new Region(column.x-10,column.y+10,screen.w,column.h+10);
+        System.out.println(firstRow.text());
+        return "success";
+    }
+
+    public String searchByPermitNumber(String permitNumber) throws FindFailed {
+        getPermitNumber();
+        screen.click();
+        screen.wheel(Button.WHEEL_DOWN,1);
+        return "Success";
     }
 
 
@@ -547,10 +769,15 @@ public class RedTagAutomationService {
         Region element = screen.find(pattern);
         element.offset(-element.w/2+offsetFromLeft,0).click();
     }
+    private void clickRightSideOfElement(Pattern pattern, int offsetFromRight) throws FindFailed {
+        Region element = screen.find(pattern);
+        element.offset(element.w/2+offsetFromRight,0).click();
+    }
     private void clickYesNo(Pattern pattern, boolean yes) throws FindFailed {
         if(yes) clickLeftSideOfElement(pattern,7);
         else clickLeftSideOfElement(pattern,40);
     }
+
 
 
 
