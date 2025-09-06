@@ -46,8 +46,19 @@ export class CurrentLotoService{
     }
 
     setCurrentLoto(loto: LotoDto | null) {
-        this.currentLotoSubject.next(loto);
-        if(loto && loto.id)this.loadCurrentLotoFiles(loto.id);
+      if(loto && loto.id && loto.id!=0){
+        this.lotoService.getLotoById(loto.id.toString()).pipe(
+          takeUntilDestroyed(this.destroyRef),
+          map((response: SpringApiResponse<LotoDto>) => response.responseData)
+        ).subscribe((lotoFromServer: LotoDto) => {
+          if(lotoFromServer){
+            this.currentLotoSubject.next(lotoFromServer);
+            this.loadCurrentLotoFiles(lotoFromServer.id);
+          }
+        });
+      }else{
+        this.currentLotoSubject.next(new LotoDto());
+      }
     }
 
     addLotoPointToCurrentLoto(pointId: number) {

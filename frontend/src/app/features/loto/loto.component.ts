@@ -48,6 +48,7 @@ export class LotoComponent implements OnInit  {
   selectedShape = signal<Shape | null>(null);
   singleSelectedItemId = computed(() => {
     const currentPoint = this._currentLotoPoint();
+    console.log('singleSelectedItemId: ', currentPoint?.equipmentIdList);
     if (currentPoint && currentPoint.equipmentIdList && currentPoint.equipmentIdList.length > 0) {
       return currentPoint.equipmentIdList[0];
     }
@@ -117,11 +118,13 @@ export class LotoComponent implements OnInit  {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(standard => {
       if (standard) {
+        console.log('currentLotoFiles: ', standard.lotoPoints);
         const lotoPoints: LotoPointDto[] = Array.isArray(standard.lotoPoints) ? [...standard.lotoPoints] : [];
         this.selectedItemIds.set([
           ...lotoPoints.flatMap(lotoPoint => lotoPoint.equipmentIdList || [])
                        .filter((id): id is number => id !== null && id !== undefined)
         ]);
+        console.log('selectedItemIds: ', this.selectedItemIds());
       } else {
         this.selectedItemIds.set([]);
       }
