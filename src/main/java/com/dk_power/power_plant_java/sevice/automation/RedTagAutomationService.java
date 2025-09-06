@@ -14,6 +14,7 @@ import org.sikuli.script.*;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.List;
 
 @Service
@@ -47,6 +48,14 @@ public class RedTagAutomationService {
     private static final Pattern LOTO_BUILDER_INFORMATION_FORM = new Pattern(BASE_PATH + "lotoInformationForm.png");
     private static final Pattern INFORMATION_FORM_LOCK_BOX_DROPDOWN = new Pattern(BASE_PATH + "infoFormLockBoxDropdown.png");
     private static final Pattern NO_ONE_LOGGED_ID = new Pattern(BASE_PATH + "noOneLoggedIn.png");
+    private static final Pattern LOTO_TAB = new Pattern(BASE_PATH + "lotoTab.png");
+
+    private static final String SAFE_WORK_PATH = Paths.get(BASE_PATH+"safework").toString();
+    private static final Pattern SAFEWORK_TAB = new Pattern(SAFE_WORK_PATH + "/safeWorkTab.png");
+    private static final Pattern NEW_PERMIT_BUTTON = new Pattern(SAFE_WORK_PATH + "/newPermitButton.png");
+    private static final Pattern ISSUE_WITH_NO_TEMPLATE_BUTTON = new Pattern(SAFE_WORK_PATH + "/issueWithNoTemplateButton.png");
+    private static final Pattern SHRINK_BUTTON = new Pattern(SAFE_WORK_PATH + "/shrinkButton.png");
+
 
 
     private Screen screen;
@@ -62,12 +71,11 @@ public class RedTagAutomationService {
     public void openApp() throws IOException, InterruptedException, FindFailed {
         String appName = "Redtag.exe";
         String appPath = "J://RedTag/Redtag.exe";
-        String appShortcut = "J://RedTag/Redtag - Shortcut";
 
 
         if (!isProcessRunning(appName)) {
             System.out.println("Starting " + appName + "...");
-            Runtime.getRuntime().exec(appShortcut);
+            Runtime.getRuntime().exec(appPath);
 
             if(isLoggedIn()) return;
 
@@ -75,7 +83,7 @@ public class RedTagAutomationService {
         } else {
             System.out.println("Application is already running.");
 //
-            Runtime.getRuntime().exec(appShortcut);
+            maximizeWindowWindows("Redtag Enterprise");
         }
     }
 
@@ -146,7 +154,10 @@ public class RedTagAutomationService {
         return "Fail";
     }
 
+
+
     public String openNewLotoBuilder() throws FindFailed {
+        screen.find(LOTO_TAB).click();
         Region mainMenu = screen.find(MAIN_MENU);
         mainMenu = new Region(mainMenu.x,mainMenu.y,mainMenu.w,mainMenu.h);
 
@@ -213,6 +224,18 @@ public class RedTagAutomationService {
     }
 
 
+    public String openNewSafeWorkBuilder() throws FindFailed {
+        screen.find(SAFEWORK_TAB).click();
+        screen.find(NEW_PERMIT_BUTTON).click();
+        screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON,3).click();
+        Region shrink = screen.wait(SHRINK_BUTTON,10);
+        shrink.click();
+        shrink.click();
+        shrink.click();
+        return "Success";
+    }
+
+
 
     private boolean isProcessRunning(String processName) throws IOException {
         ProcessBuilder processBuilder = new ProcessBuilder("tasklist.exe");
@@ -248,6 +271,8 @@ public class RedTagAutomationService {
     public static void maximizeWindowWindows(String windowTitle) {
         WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowTitle);
         if (hwnd != null) {
+            User32.INSTANCE.ShowWindow(hwnd, 9); // 3 = SW_RESTORE
+            User32.INSTANCE.SetForegroundWindow(hwnd);
             User32.INSTANCE.ShowWindow(hwnd, 3); // 3 = SW_MAXIMIZE
         } else {
             System.out.println("Window not found: " + windowTitle);

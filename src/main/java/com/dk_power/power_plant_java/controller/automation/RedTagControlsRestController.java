@@ -97,4 +97,17 @@ public class RedTagControlsRestController {
         }
     }
 
+
+
+
+    @GetMapping("/open-safework-builder")
+    public ResponseEntity<NgApiResponse<String>> openSafeworkBuilder() {
+        try {
+            String login = redTagAutomationService.openNewSafeWorkBuilder();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Builder open operation is "+login));
+        } catch (FindFailed e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));
+        }
+    }
+
 }
