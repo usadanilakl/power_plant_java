@@ -93,7 +93,12 @@
         requestor: "Mike Miles",
         company: "Kiewit",
         location: "ACC MCC",
-        workScope: "Welding Breakers"
+        workScope: "Welding Breakers",
+        hotWorkRequired:true,
+        forman:"Mike Miles", 
+        fireWatch:"Mile Mikes",
+        confinedSpaceRequired: true, 
+        space: "MVB Basement"
       },
       sw:{
         date: this.req.date,
@@ -162,11 +167,65 @@
       hwPermits:[
         {
           date: this.req.date,
+          forman: this.req.forman,
+          fireWatch: this.req.fireWatch,
+          meterModel: "RKI GX-3R PRO",
+          meterNum:"N", 
+          specialInstructions:"Do not swim in the water down there",
+          measures:{
+            areaIsClean:true,
+            flammablesAreSecured:true,
+            noCombustibleDustOrDebrisPresent: true,
+            radiativeHeatPreventiveMeasuresAreTaken: true,
+            vesslsArePurged:true,
+            openingsAreCovered:true,
+            ductVentilationIsSecured:true,
+            lockOutIsCompleted:true,
+            communicationIsEstablished:true,
+            fireWatchIsAwareOfDuties:true,
+            fireExtinguisherPresent:true,
+            fireProtectionIsInService:true
+          }
         }
       ],
       csPermits:[
         {
           date: this.req.date,
+          time: this.req.time,
+          space: this.req.space,
+          workScope: this.req.workScope,
+          issuedTo: this.req.requestor,
+          duration: "12 Hours",
+          hazards : {
+            oxygenDeficiency: true,
+            flammableGas: true,
+            combustibleDust: true,
+            toxicGas: true,
+            rotatingEquipment: true,
+            electricalShock: true,
+            entrapment: true,
+            engulfment: true,
+            heatStress: true,
+            faceShield: true,
+            gfcI: true,
+            lowVoltageTools: true,
+            explosionProofTools: true,
+            nonSparkingTools: true,
+            fallProtection: true,
+            retrievalSystem: true,
+            lifeLine: true,
+            atmMeter: true,
+            tripod: true
+          },
+          lotoNum: "123456",
+          hotWorkNum:"654321",
+          ventilation: false,
+          blankFlanged: false,
+          meterModel:"RKI GX-3R PRO",
+          meterNum: "4",
+          calibrated:true,
+
+
         }
       ],
       lotos:[

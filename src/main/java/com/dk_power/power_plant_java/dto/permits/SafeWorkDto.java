@@ -17,7 +17,7 @@ public class SafeWorkDto extends BasePermitDto {
     private String location;
     private String workScope;
     private String specialInstructions;
-    private String requestor;
+    private String requestedBy;
 
     private SwHazards hazards;
     private SwPermits permits;

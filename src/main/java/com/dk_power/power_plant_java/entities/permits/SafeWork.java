@@ -10,12 +10,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.envers.Audited;
 
-import java.util.HashMap;
-import java.util.Map;
 @Getter
 @Setter
 @Entity
+@Audited
 public class SafeWork extends BasePermitEntity {
 
     private String date;
@@ -24,7 +24,7 @@ public class SafeWork extends BasePermitEntity {
     private String location;
     private String workScope;
     private String specialInstructions;
-    private String requestor;
+    private String requestedBy;
 
     @Column(columnDefinition = "TEXT")
     private String hazardsJson;

@@ -25,7 +25,7 @@ public class SafeWorkMapper implements BaseMapper {
         if (safeWork.getLocation() != null) dto.setLocation(safeWork.getLocation());
         if (safeWork.getWorkScope() != null) dto.setWorkScope(safeWork.getWorkScope());
         if (safeWork.getSpecialInstructions() != null) dto.setSpecialInstructions(safeWork.getSpecialInstructions());
-        if (safeWork.getRequestor() != null) dto.setRequestor(safeWork.getRequestor());
+        if (safeWork.getRequestedBy() != null) dto.setRequestedBy(safeWork.getRequestedBy());
 
         // Convert JSON fields to POJOs and set in DTO
         try {
@@ -60,7 +60,7 @@ public class SafeWorkMapper implements BaseMapper {
         if (dto.getLocation() != null) entity.setLocation(dto.getLocation());
         if (dto.getWorkScope() != null) entity.setWorkScope(dto.getWorkScope());
         if (dto.getSpecialInstructions() != null) entity.setSpecialInstructions(dto.getSpecialInstructions());
-        if (dto.getRequestor() != null) entity.setRequestor(dto.getRequestor());
+        if (dto.getRequestedBy() != null) entity.setRequestedBy(dto.getRequestedBy());
 
         // Convert POJOs to JSON strings and set into entity JSON fields
         try {
