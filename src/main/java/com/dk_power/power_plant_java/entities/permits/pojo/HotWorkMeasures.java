@@ -1,5 +1,8 @@
 package com.dk_power.power_plant_java.entities.permits.pojo;
 
+import lombok.Data;
+
+@Data
 public class HotWorkMeasures {
     private boolean areaIsClean;
     private boolean flammablesAreSecured;
@@ -14,6 +17,4 @@ public class HotWorkMeasures {
     private boolean fireExtinguisherPresent;
     private boolean fireProtectionIsInService;
 
-    // Getters and setters for all fields
-    // ...
 }

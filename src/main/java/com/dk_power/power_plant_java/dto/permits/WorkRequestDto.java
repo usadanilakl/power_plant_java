@@ -1,9 +1,11 @@
 package com.dk_power.power_plant_java.dto.permits;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class WorkRequestDto {
 
     @JsonProperty("Date of work to be performed")

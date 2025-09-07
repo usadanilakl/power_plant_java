@@ -1,25 +1,20 @@
 package com.dk_power.power_plant_java.controller.automation;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
 import lombok.RequiredArgsConstructor;
 import org.sikuli.script.FindFailed;
 import org.springframework.http.ResponseEntity;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/red-tag-controls")
@@ -29,6 +24,21 @@ public class RedTagControlsRestController {
     private final NgLotoPointService lotoPointService;
 
     private final RedTagAutomationService redTagAutomationService;
+
+
+
+    @PostMapping
+    public ResponseEntity<NgApiResponse<String>> buildPacksge(){
+        try {
+            redTagAutomationService.buildDailyPermitPackage();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Built successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"Failed Building Package: " + e.getMessage()));
+        }
+    }
+
+
+
 
     @GetMapping("/open-app")
     public ResponseEntity<NgApiResponse<String>> openApp() {
@@ -113,7 +123,7 @@ public class RedTagControlsRestController {
     @GetMapping("/fill-safework-form")
     public ResponseEntity<NgApiResponse<String>> fillOutSafeWorkForm() {
         try {
-            String login = redTagAutomationService.fillOutSafeWorkForm();
+            String login = redTagAutomationService.fillOutSafeWorkFormTest();
             return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Form is filled out "+login));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to fill out safe work: " + e.getMessage()));
@@ -146,7 +156,7 @@ public class RedTagControlsRestController {
     @GetMapping("/fill-cs-form")
     public ResponseEntity<NgApiResponse<String>> fillOutCsForm() {
         try {
-            String login = redTagAutomationService.fillOutCSForm();
+            String login = redTagAutomationService.fillOutCSFormTest();
             return ResponseEntity.ok(new NgApiResponse<>(null, "CS Form is filled out "+login));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to fill out CS: " + e.getMessage()));
@@ -179,7 +189,7 @@ public class RedTagControlsRestController {
     @GetMapping("/fill-hw-form")
     public ResponseEntity<NgApiResponse<String>> fillOutHwForm() {
         try {
-            String login = redTagAutomationService.fillOutHwForm();
+            String login = redTagAutomationService.fillOutHwFormTest();
             return ResponseEntity.ok(new NgApiResponse<>(null, "HW Form is filled out "+login));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to fill out HW: " + e.getMessage()));

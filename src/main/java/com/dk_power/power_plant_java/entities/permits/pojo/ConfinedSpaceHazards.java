@@ -24,6 +24,4 @@ public class ConfinedSpaceHazards {
     private boolean atmMeter;
     private boolean tripod;
 
-    // Getters and setters for all fields
-    // ...
 }

@@ -1,14 +1,10 @@
 package com.dk_power.power_plant_java.sevice.automation;
 
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
-import com.dk_power.power_plant_java.repository.loto.LotoRepo;
-import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
+import com.dk_power.power_plant_java.dto.permits.*;
 import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
-import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
 import org.sikuli.basics.Settings;
 import org.sikuli.script.*;
 import org.springframework.stereotype.Service;
@@ -16,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 
 @Service
@@ -197,6 +194,7 @@ public class RedTagAutomationService {
     private String lotoNumber1 = "24087";
     private String lotoNumber2 = "24299";
 
+
     public RedTagAutomationService() {
         screen = new Screen(0);
         screen.setAutoWaitTimeout(30);
@@ -287,6 +285,44 @@ public class RedTagAutomationService {
         }
 
         return "Fail";
+    }
+
+
+
+
+    public String buildDailyPermitPackage() throws FindFailed, IOException, InterruptedException {
+        openApp();
+        login();
+        DailyPermitPackageDto packageDto = initData();
+        for (SafeWorkDto safeWork : packageDto.getSafeWorks()) {
+            openNewSafeWorkBuilder();
+            fillOutSafeWorkForm(safeWork);
+        }
+
+        for(HotWorkDto hw : packageDto.getHotWorks()){
+            openNewHwBuilder();
+            fillOutHwForm(hw);
+        }
+
+        for(ConfinedSpaceDto cs : packageDto.getConfinedSpaces()){
+
+        }
+
+        return "success";
+    }
+
+    private DailyPermitPackageDto initData(){
+        DailyPermitPackageDto packageDto = new DailyPermitPackageDto();
+        SafeWorkDto safeWork = SafeWorkDto.createTestInstance();
+        HotWorkDto hotwork = HotWorkDto.createTestInstance();
+        ConfinedSpaceDto confinedSpace = ConfinedSpaceDto.createTestInstance();
+
+        packageDto.setConfinedSpaces(new HashSet<>(List.of(confinedSpace)));
+        packageDto.setHotWorks(new HashSet<>(List.of(hotwork)));
+        packageDto.setSafeWorks(new HashSet<>(List.of(safeWork)));
+
+        return packageDto;
+
     }
 
 
@@ -388,7 +424,7 @@ public class RedTagAutomationService {
         return "Success";
     }
 
-    public String fillOutSafeWorkForm() throws FindFailed {
+    public String fillOutSafeWorkFormTest() throws FindFailed {
         Region dateIssued = screen.wait(SW_DATE_ISSUED,1);
         dateIssued.offset(0,15).click();
         pasteText("09/07/2025");
@@ -494,6 +530,115 @@ public class RedTagAutomationService {
         return "success";
     }
 
+    public String fillOutSafeWorkForm(SafeWorkDto sw) throws FindFailed {
+        Region dateIssued = screen.wait(SW_DATE_ISSUED,1);
+        dateIssued.offset(0,15).click();
+        pasteText(sw.getDate());
+        screen.type(Key.TAB);
+        pasteText(sw.getTime());
+        screen.type(Key.TAB);
+        pasteText(sw.getCompanyPerson());
+
+        Region location = screen.find(SW_LOCATION);
+        location.offset(250,0).click();
+        pasteText(sw.getLocation());
+
+        location.offset(250,20).click();
+        pasteText(sw.getWorkScope());
+
+        clickLeftSideOfElement(SW_HIGH_TEMP,2);
+
+        if(sw.getHazards().isHighPressure()){
+            Region hiPressure = screen.find(SW_HIGH_PRESSURE);
+            hiPressure.offset(-hiPressure.w / 2 - 15, 0).click();
+        }
+
+        if(sw.getHazards().isEnergized())clickLeftSideOfElement(SW_ENERGIZED,2);
+        if(sw.getHazards().isStoredEnergy())clickLeftSideOfElement(SW_STORED_ENERGY,2);
+        if(sw.getHazards().isEyeHazard())clickLeftSideOfElement(SW_EYE_HAZARD,2);
+        if(sw.getHazards().isEgressAccess())clickLeftSideOfElement(SW_EGRESS_ACCESS,2);
+        if(sw.getHazards().isErgonomicHazard())clickLeftSideOfElement(SW_ERGONOMIC_HAZARD,2);
+        if(sw.getHazards().isFallingObject())clickLeftSideOfElement(SW_FALLING_OBJECT,2);
+        if(sw.getHazards().isHighNoise())clickLeftSideOfElement(SW_HIGH_NOISE,2);
+        if(sw.getHazards().isDustParticulate())clickLeftSideOfElement(SW_DUST_PARTICULATE,2);
+        if(sw.getHazards().isCombustibleDust())clickLeftSideOfElement(SW_COMBUSTABLE_DUST,2);
+        if(sw.getHazards().isFireHazard())clickLeftSideOfElement(SW_FIRE_HAZARD,2);
+        if(sw.getHazards().isHotSurface())clickLeftSideOfElement(SW_HOT_SURFACE,2);
+        if(sw.getHazards().isSlippery())clickLeftSideOfElement(SW_SLIPPERY,2);
+        if(sw.getHazards().isVentilationRequired())clickLeftSideOfElement(SW_VENTILATION_REQUIRED,2);
+        if(sw.getHazards().isLightingRestrictions())clickLeftSideOfElement(SW_LIGHTING_RESTRICTIONS,2);
+        if(sw.getHazards().isChemicalExposure())clickLeftSideOfElement(SW_CHEMICAL_EXPOSURE,2);
+        if(sw.getHazards().isLiftingHazard())clickLeftSideOfElement(SW_LIFTING_HAZARD,2);
+        if(sw.getHazards().isHandTraps())clickLeftSideOfElement(SW_HAND_TRAPS,2);
+        if(sw.getHazards().isHeatColdStress())clickLeftSideOfElement(SW_HEAT_COLD_STRESS,2);
+        if(sw.getHazards().isElevatedSurface())clickLeftSideOfElement(SW_ELEVATED_SURFACE,2);
+        if(sw.getHazards().isEnvironmental())clickLeftSideOfElement(SW_ENVIRONMENTAL,2);
+
+//        clickYesNo(SW_LOTO_REQUIRED,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_CONFINED_SPACE,sw.getPermits().isConfinedSpace());
+//        clickYesNo(SW_HOT_WORK,sw.getPermits().isHotWork());
+//        clickYesNo(SW_VENTING_PURGING,sw.getPermits().isVentingPurging());
+//        clickYesNo(SW_JHA,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_GAS_TESTING,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_EXCAVATION_PERMIT,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_ENERGIZED_PERMIT,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_HARDHAT,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_SAFETY_GLASSES,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_HEARING_PROTECTION,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_BOOTS,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_FALL_PROTECTION,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_GFI,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_RESPIRATOR,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_DUST_MASK,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_GLOVES,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_ICE_CLEATS,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_ACID_SUIT,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_BARRICADE,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_FACE_SHIELD,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_GAS_MONITOR,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_ARC_FLASH_PPE,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_WELDING_JACKET,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_WELDING_SHIELD,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_WELDING_GLOVES,sw.getPermits().isLotoRequired());
+//        clickYesNo(SW_PURGIN_VENTILATION,sw.getPermits().isLotoRequired());
+
+        clickYesNo(SW_LOTO_REQUIRED, sw.getPermits().isLotoRequired());
+        clickYesNo(SW_CONFINED_SPACE, sw.getPermits().isConfinedSpace());
+        clickYesNo(SW_HOT_WORK, sw.getPermits().isHotWork());
+        clickYesNo(SW_VENTING_PURGING, sw.getPermits().isVentingPurging());
+        clickYesNo(SW_JHA, sw.getPermits().isJha());
+        clickYesNo(SW_GAS_TESTING, sw.getPermits().isGasTesting());
+        clickYesNo(SW_EXCAVATION_PERMIT, sw.getPermits().isExcavationPermit());
+        clickYesNo(SW_ENERGIZED_PERMIT, sw.getPermits().isEnergizedPermit());
+
+        clickYesNo(SW_HARDHAT, sw.getPpe().isHardhat());
+        clickYesNo(SW_SAFETY_GLASSES, sw.getPpe().isSafetyGlasses());
+        clickYesNo(SW_HEARING_PROTECTION, sw.getPpe().isHearingProtection());
+        clickYesNo(SW_BOOTS, sw.getPpe().isBoots());
+        clickYesNo(SW_FALL_PROTECTION, sw.getPpe().isFallProtection());
+        clickYesNo(SW_GFI, sw.getPpe().isGfi());
+        clickYesNo(SW_RESPIRATOR, sw.getPpe().isRespirator());
+        clickYesNo(SW_DUST_MASK, sw.getPpe().isDustMask());
+        clickYesNo(SW_GLOVES, sw.getPpe().isGloves());
+        clickYesNo(SW_ICE_CLEATS, sw.getPpe().isIceCleats());
+        clickYesNo(SW_ACID_SUIT, sw.getPpe().isAcidSuit());
+        clickYesNo(SW_BARRICADE, sw.getPpe().isBarricade());
+        clickYesNo(SW_FACE_SHIELD, sw.getPpe().isFaceShield());
+        clickYesNo(SW_GAS_MONITOR, sw.getPpe().isGasMonitor());
+        clickYesNo(SW_ARC_FLASH_PPE, sw.getPpe().isArcFlashPpe());
+        clickYesNo(SW_WELDING_JACKET, sw.getPpe().isWeldingJacket());
+        clickYesNo(SW_WELDING_SHIELD, sw.getPpe().isWeldingShield());
+        clickYesNo(SW_WELDING_GLOVES, sw.getPpe().isWeldingGloves());
+        clickYesNo(SW_PURGIN_VENTILATION, sw.getPpe().isPurgingVentilation());
+
+        screen.find(SW_SPECIAL_INSTRUCTIONS).offset(0,15).click();
+        pasteText("Special instructions are here");
+        screen.find(SW_REQUESTOR).offset(0,15).click();
+        pasteText("Adam Bunker");
+
+        return "success";
+    }
+
     public String saveSafeWork() throws FindFailed {
         screen.find(SW_SAVE_BUTTON).click();
         safeWorkNumber = getPermitNumber();
@@ -521,7 +666,7 @@ public class RedTagAutomationService {
         return "Success";
     }
 
-    public String fillOutCSForm() throws FindFailed{
+    public String fillOutCSFormTest() throws FindFailed{
         screen.wait(CS_SPACE,1);
         clickRightSideOfElement(CS_SPACE,20);
         pasteText("Test Space");
@@ -612,7 +757,7 @@ public class RedTagAutomationService {
         return "Success";
     }
 
-    public String fillOutHwForm() throws FindFailed{
+    public String fillOutHwFormTest() throws FindFailed{
         Region location = screen.wait(HW_LOCATION,2);
         location.offset(location.w/2-5,0).click();
         pasteText("Test Location");
@@ -672,6 +817,73 @@ public class RedTagAutomationService {
 //        try{Thread.sleep(1000);}catch (Exception e){}
         check.offset(wY,h+300-correction-7).click();
         check.offset(wN,h+300-correction-7).click();
+
+        clickRightSideOfElement(HW_SPECIAL_INSTRUCTIONS,0);
+        pasteText("Some Special Instructions");
+
+        return "success";
+    }
+
+    public String fillOutHwForm(HotWorkDto hw) throws FindFailed{
+        Region location = screen.wait(HW_LOCATION,2);
+        location.offset(location.w/2-5,0).click();
+        pasteText(hw.getLocation());
+        screen.type(Key.TAB);
+        pasteText(hw.getDate());
+        screen.type(Key.TAB);
+        pasteText(hw.getForman());
+        screen.type(Key.TAB);
+        pasteText(hw.getFireWatch());
+
+        Region model = screen.wait(HW_METER_MODEL,2);
+        model.offset(model.w/2-5,0).click();
+        pasteText(hw.getMeterModel());
+        screen.type(Key.TAB);
+        pasteText(hw.getMeterNum());
+        screen.type(Key.TAB);
+        pasteText(hw.getDate());
+
+        clickRightSideOfElement(HW_FIRE_WATCH_REQUIRED,-2);
+//
+        Region check = screen.wait(HW_MEASURES_TAKEN_CKECKBOXES,2);
+        int wY = 5-check.w/2;
+        int wN = check.w/2-12;
+        int h = 7-check.h/2;
+
+        if(hw.getMeasures().isAreaIsClean()) check.offset(wY,h).click();
+        else check.offset(wN,h).click();
+        if(hw.getMeasures().isFlammablesAreSecured()) check.offset(wY,h+25).click();
+        else check.offset(wN,h+25).click();
+        if(hw.getMeasures().isNoCombustibleDustOrDebrisPresent()) check.offset(wY,h+50).click();
+        else check.offset(wN,h+50).click();
+        if(hw.getMeasures().isRadiativeHeatPreventiveMeasuresAreTaken()) check.offset(wY,h+75).click();
+        else check.offset(wN,h+75).click();
+        if(hw.getMeasures().isVesslsArePurged()) check.offset(wY,h+100).click();
+        else check.offset(wN,h+100).click();
+
+        int correction = 7;
+
+        if(hw.getMeasures().isOpeningsAreCovered()) check.offset(wY,h+150-correction).click();
+        else check.offset(wN,h+150-correction).click();
+//        try{Thread.sleep(1000);}catch (Exception e){}
+        if(hw.getMeasures().isDuctVentilationIsSecured()) check.offset(wY,h+175-correction).click();
+        else check.offset(wN,h+175-correction).click();
+//        try{Thread.sleep(1000);}catch (Exception e){}
+        correction = 25;
+        if(hw.getMeasures().isLockOutIsCompleted()) check.offset(wY,h+200-correction+3).click();
+        else check.offset(wN,h+200-correction+3).click();
+//        try{Thread.sleep(1000);}catch (Exception e){}
+        if(hw.getMeasures().isCommunicationIsEstablished()) check.offset(wY,h+225-correction).click();
+        else check.offset(wN,h+225-correction).click();
+//        try{Thread.sleep(1000);}catch (Exception e){}
+        if(hw.getMeasures().isFireWatchIsAwareOfDuties()) check.offset(wY,h+250-correction).click();
+        else check.offset(wN,h+250-correction).click();
+//        try{Thread.sleep(1000);}catch (Exception e){}
+        if(hw.getMeasures().isFireExtinguisherPresent()) check.offset(wY,h+275-correction).click();
+        else check.offset(wN,h+275-correction).click();
+//        try{Thread.sleep(1000);}catch (Exception e){}
+        if(hw.getMeasures().isFireProtectionIsInService()) check.offset(wY,h+300-correction-7).click();
+        else check.offset(wN,h+300-correction-7).click();
 
         clickRightSideOfElement(HW_SPECIAL_INSTRUCTIONS,0);
         pasteText("Some Special Instructions");

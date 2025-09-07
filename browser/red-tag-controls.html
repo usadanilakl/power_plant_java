@@ -3,237 +3,251 @@
 <head>
   <title>Control Buttons Example</title>
   <script>
-    const baseUrl = 'http://localhost:8082/red-tag-controls'
-    async function sendRequest(url, method='GET', body=null) {
-      try {
-        const response = await fetch(baseUrl+url, {
-          method: method,
-          headers: {'Content-Type': 'application/json'},
-          body: body ? JSON.stringify(body) : null
-        });
-        const data = await response.text();
-        // alert("Response: " + data);
-      } catch (error) {
-        alert("Error: " + error);
-      }
-    }
-    
-    async function runSequence() {
-      try {
-        await sendRequest('/open-app');
-        await sendRequest('/login');
-        await sendRequest('/open-loto-builder');
-        await sendRequest('/build-loto-with-no-standard');
-        await sendRequest('/build-loto-with-new-points');
-        await sendRequest('/complete-loto-build');
-        alert("Sequence completed successfully");
-      } catch (error) {
+    // document.addEventListener('DOMContentLoaded', () => {
 
-      }
-    }
-    
-    async function runSwSequence() {
-      try {
-        await sendRequest('/open-app');
-        await sendRequest('/login');
-        await sendRequest('/open-safework-builder');
-        await sendRequest('/fill-safework-form');
-        await sendRequest('/save-safework-form');
-        alert("Sequence completed successfully");
-      } catch (error) {
+      const baseUrl = 'http://localhost:8082/red-tag-controls'
 
-      }
-    }
-    
-    async function runCsSequence() {
-      try {
-        await sendRequest('/open-app');
-        await sendRequest('/login');
-        await sendRequest('/open-cs-builder');
-        await sendRequest('/fill-cs-form');
-        await sendRequest('/save-cs-form');
-        alert("Sequence completed successfully");
-      } catch (error) {
+    const req = {
+      date: formatDate(new Date(Date.now())),
+      time: formatTime(new Date(Date.now())),
+      requestedBy: "Mike Miles",
+      company: "Kiewit",
+      location: "U2 ACC MCC",
+      equipment: "ACC Fan 2B",
+      workScope: "Welding Breakers",
+      hotWorkRequired: true,
+      forman: "Mike Miles",
+      fireWatch: "Mile Mikes",
+      confinedSpaceRequired: true,
+      space: "MVB Basement",
+      lotoRequired: true,
+    };
 
-      }
-    }
-    
-    async function runHwSequence() {
-      try {
-        await sendRequest('/open-app');
-        await sendRequest('/login');
-        await sendRequest('/open-hw-builder');
-        await sendRequest('/fill-hw-form');
-        await sendRequest('/save-hw-form');
-        alert("Sequence completed successfully");
-      } catch (error) {
-
-      }
-    }
-
-    function formatDate(date) {
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const day = date.getDate().toString().padStart(2, '0');
-      const year = date.getFullYear();
-      return `${month}/${day}/${year}`;
-    } 
-  function formatTime(date) {
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      const seconds = date.getSeconds().toString().padStart(2, '0');
-      return `${hours}:${minutes}:${seconds}`;
-  }
-
-
-
-    const permitBuldingData = {
-      req:{
-        date: formatDate(new Date(Date.now())),
-        time: formatTime(this.date),
-        requestor: "Mike Miles",
-        company: "Kiewit",
-        location: "ACC MCC",
-        workScope: "Welding Breakers",
-        hotWorkRequired:true,
-        forman:"Mike Miles", 
-        fireWatch:"Mile Mikes",
-        confinedSpaceRequired: true, 
-        space: "MVB Basement"
-      },
-      sw:{
-        date: this.req.date,
-        time: this.req.time,
-        companyPerson: this.req.company+"/"+this.req.requestor,
-        location: this.req.location,
-        workScope: this.req.workScope,
-        hazards : {
-          highTemp:true,
-          highPressure:false,
-          energized:true,
-          storedEnergy: false,
-          eyeHazard: true,
-          egressAccess: false,
-          ergonomicHazard: true,
-          fallingObject: true,
-          highNoise: false,
-          dustParticulate: true,
-          combustibleDust: false,
-          fireHazard: true,
-          hotSurface: false,
-          slippery: true,
-          ventilationRequired: true,
-          lightingRestrictions: false,
-          chemicalExposure: true,
-          liftingHazard: true,
-          handTraps: false,
-          heatColdStress: true,
-          elevatedSurface: false,
-          environmental: false
-        },
-        permits:{
-          lotoRequired: true,
-          confinedSpace: true,
-          hotWork: true,
-          ventingPurging: true,
-          jha: true,             
-          gasTesting: true,
-          excavationPermit: true,
-          energizedPermit: true
-        },
-        ppe:{
-          hardhat: true,
-          safetyGlasses: true,
-          hearingProtection: true,
-          boots: true,
-          fallProtection: true,
-          gfi: true,
-          respirator: true,
-          dustMask: true,
-          gloves: true,
-          iceCleats: true,
-          acidSuit: true,
-          barricade: true,
-          faceShield: true,
-          gasMonitor: true,
-          arcFlashPpe: true,
-          weldingJacket: true,
-          weldingShield: true,
-          weldingGloves: true,
-          purgingVentilation: true
-        },
-        specialInstructions:"Weld Safely, do not trip breakers",
-        requestor: this.req.requestor
-      },
-      hwPermits:[
-        {
-          date: this.req.date,
-          forman: this.req.forman,
-          fireWatch: this.req.fireWatch,
-          meterModel: "RKI GX-3R PRO",
-          meterNum:"N", 
-          specialInstructions:"Do not swim in the water down there",
-          measures:{
-            areaIsClean:true,
-            flammablesAreSecured:true,
-            noCombustibleDustOrDebrisPresent: true,
-            radiativeHeatPreventiveMeasuresAreTaken: true,
-            vesslsArePurged:true,
-            openingsAreCovered:true,
-            ductVentilationIsSecured:true,
-            lockOutIsCompleted:true,
-            communicationIsEstablished:true,
-            fireWatchIsAwareOfDuties:true,
-            fireExtinguisherPresent:true,
-            fireProtectionIsInService:true
+      const permitBuldingData = {
+        safeWorks:[
+          {
+            date:  req.date,
+            time: req.time,
+            companyPerson:  req.company+"/"+ req.requestor,
+            location:  req.location,
+            workScope:  req.workScope,
+            hazards : {
+              highTemp:true,
+              highPressure:false,
+              energized:true,
+              storedEnergy: false,
+              eyeHazard: true,
+              egressAccess: false,
+              ergonomicHazard: true,
+              fallingObject: true,
+              highNoise: false,
+              dustParticulate: true,
+              combustibleDust: false,
+              fireHazard: true,
+              hotSurface: false,
+              slippery: true,
+              ventilationRequired: true,
+              lightingRestrictions: false,
+              chemicalExposure: true,
+              liftingHazard: true,
+              handTraps: false,
+              heatColdStress: true,
+              elevatedSurface: false,
+              environmental: false
+            },
+            permits:{
+              lotoRequired: true,
+              confinedSpace: true,
+              hotWork: true,
+              ventingPurging: true,
+              jha: true,             
+              gasTesting: true,
+              excavationPermit: true,
+              energizedPermit: true
+            },
+            ppe:{
+              hardhat: true,
+              safetyGlasses: true,
+              hearingProtection: true,
+              boots: true,
+              fallProtection: true,
+              gfi: true,
+              respirator: true,
+              dustMask: true,
+              gloves: true,
+              iceCleats: true,
+              acidSuit: true,
+              barricade: true,
+              faceShield: true,
+              gasMonitor: true,
+              arcFlashPpe: true,
+              weldingJacket: true,
+              weldingShield: true,
+              weldingGloves: true,
+              purgingVentilation: true
+            },
+            specialInstructions:"Weld Safely, do not trip breakers",
+            requestedBy:  req.requestedBy
           }
-        }
-      ],
-      csPermits:[
-        {
-          date: this.req.date,
-          time: this.req.time,
-          space: this.req.space,
-          workScope: this.req.workScope,
-          issuedTo: this.req.requestor,
-          duration: "12 Hours",
-          hazards : {
-            oxygenDeficiency: true,
-            flammableGas: true,
-            combustibleDust: true,
-            toxicGas: true,
-            rotatingEquipment: true,
-            electricalShock: true,
-            entrapment: true,
-            engulfment: true,
-            heatStress: true,
-            faceShield: true,
-            gfcI: true,
-            lowVoltageTools: true,
-            explosionProofTools: true,
-            nonSparkingTools: true,
-            fallProtection: true,
-            retrievalSystem: true,
-            lifeLine: true,
-            atmMeter: true,
-            tripod: true
-          },
-          lotoNum: "123456",
-          hotWorkNum:"654321",
-          ventilation: false,
-          blankFlanged: false,
-          meterModel:"RKI GX-3R PRO",
-          meterNum: "4",
-          calibrated:true,
+        ],
+        hotWorks:[
+          {
+            date:  req.date,
+            forman:  req.forman,
+            fireWatch:  req.fireWatch,
+            meterModel: "RKI GX-3R PRO",
+            meterNum:"N", 
+            specialInstructions:"Do not swim in the water down there",
+            measures:{
+              areaIsClean:true,
+              flammablesAreSecured:true,
+              noCombustibleDustOrDebrisPresent: true,
+              radiativeHeatPreventiveMeasuresAreTaken: true,
+              vesslsArePurged:true,
+              openingsAreCovered:true,
+              ductVentilationIsSecured:true,
+              lockOutIsCompleted:true,
+              communicationIsEstablished:true,
+              fireWatchIsAwareOfDuties:true,
+              fireExtinguisherPresent:true,
+              fireProtectionIsInService:true
+            }
+          }
+        ],
+        confinedSpaces:[
+          {
+            date:  req.date,
+            time:  req.time,
+            space:  req.space,
+            workScope:  req.workScope,
+            issuedTo:  req.requestedBy,
+            duration: "12 Hours",
+            hazards : {
+              oxygenDeficiency: true,
+              flammableGas: true,
+              combustibleDust: true,
+              toxicGas: true,
+              rotatingEquipment: true,
+              electricalShock: true,
+              entrapment: true,
+              engulfment: true,
+              heatStress: true,
+              faceShield: true,
+              gfcI: true,
+              lowVoltageTools: true,
+              explosionProofTools: true,
+              nonSparkingTools: true,
+              fallProtection: true,
+              retrievalSystem: true,
+              lifeLine: true,
+              atmMeter: true,
+              tripod: true
+            },
+            lotoNum: "123456",
+            hotWorkNum:"654321",
+            ventilation: false,
+            blankFlanged: false,
+            meterModel:"RKI GX-3R PRO",
+            meterNum: "4",
+            calibrated:true,
 
 
+          }
+        ],
+        lotos:[],
+      }
+      
+      
+      async function sendRequest(url, method='GET', body=null) {
+        try {
+          const response = await fetch(baseUrl+url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: body ? JSON.stringify(body) : null
+          });
+          const data = await response.text();
+          // alert("Response: " + data);
+        } catch (error) {
+          alert("Error: " + error);
         }
-      ],
-      lotos:[
-        {}
-      ],
+      }
+      
+      async function runSequence() {
+        try {
+          await sendRequest('/open-app');
+          await sendRequest('/login');
+          await sendRequest('/open-loto-builder');
+          await sendRequest('/build-loto-with-no-standard');
+          await sendRequest('/build-loto-with-new-points');
+          await sendRequest('/complete-loto-build');
+          alert("Sequence completed successfully");
+        } catch (error) {
+
+        }
+      }
+      
+      async function runSwSequence() {
+        try {
+          await sendRequest('/open-app');
+          await sendRequest('/login');
+          await sendRequest('/open-safework-builder');
+          await sendRequest('/fill-safework-form');
+          await sendRequest('/save-safework-form');
+          alert("Sequence completed successfully");
+        } catch (error) {
+
+        }
+      }
+      
+      async function runCsSequence() {
+        try {
+          await sendRequest('/open-app');
+          await sendRequest('/login');
+          await sendRequest('/open-cs-builder');
+          await sendRequest('/fill-cs-form');
+          await sendRequest('/save-cs-form');
+          alert("Sequence completed successfully");
+        } catch (error) {
+
+        }
+      }
+      
+      async function runHwSequence() {
+        try {
+          await sendRequest('/open-app');
+          await sendRequest('/login');
+          await sendRequest('/open-hw-builder');
+          await sendRequest('/fill-hw-form');
+          await sendRequest('/save-hw-form');
+          alert("Sequence completed successfully");
+        } catch (error) {
+
+        }
+      }
+
+
+
+      function formatDate(date) {
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const year = date.getFullYear();
+        return `${month}/${day}/${year}`;
+      } 
+    function formatTime(date) {
+      console.log(date)
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
     }
 
-    
+      function buildPackage(){
+        sendRequest('','POST', permitBuldingData)
+      }
+      function test(){
+        console.log("Hello")
+      }
+    // });
   </script>
 </head>
 <body>
@@ -269,5 +283,9 @@
   <button onclick="sendRequest('/search')">Search</button>
   <button onclick="sendRequest('/group-by-status')">Group By Status</button>
   <button onclick="sendRequest('/ungroup-by-status')">Ungroup By Status</button>
+  <br><br>
+
+  
+  <button onclick="buildPackage()">Build Package</button>
 </body>
 </html>
