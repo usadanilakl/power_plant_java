@@ -71,6 +71,109 @@
       }
     }
 
+    function formatDate(date) {
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
+    } 
+  function formatTime(date) {
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const seconds = date.getSeconds().toString().padStart(2, '0');
+      return `${hours}:${minutes}:${seconds}`;
+  }
+
+
+
+    const permitBuldingData = {
+      req:{
+        date: formatDate(new Date(Date.now())),
+        time: formatTime(this.date),
+        requestor: "Mike Miles",
+        company: "Kiewit",
+        location: "ACC MCC",
+        workScope: "Welding Breakers"
+      },
+      sw:{
+        date: this.req.date,
+        time: this.req.time,
+        companyPerson: this.req.company+"/"+this.req.requestor,
+        location: this.req.location,
+        workScope: this.req.workScope,
+        hazards : {
+          highTemp:true,
+          highPressure:false,
+          energized:true,
+          storedEnergy: false,
+          eyeHazard: true,
+          egressAccess: false,
+          ergonomicHazard: true,
+          fallingObject: true,
+          highNoise: false,
+          dustParticulate: true,
+          combustibleDust: false,
+          fireHazard: true,
+          hotSurface: false,
+          slippery: true,
+          ventilationRequired: true,
+          lightingRestrictions: false,
+          chemicalExposure: true,
+          liftingHazard: true,
+          handTraps: false,
+          heatColdStress: true,
+          elevatedSurface: false,
+          environmental: false
+        },
+        permits:{
+          lotoRequired: true,
+          confinedSpace: true,
+          hotWork: true,
+          ventingPurging: true,
+          jha: true,             
+          gasTesting: true,
+          excavationPermit: true,
+          energizedPermit: true
+        },
+        ppe:{
+          hardhat: true,
+          safetyGlasses: true,
+          hearingProtection: true,
+          boots: true,
+          fallProtection: true,
+          gfi: true,
+          respirator: true,
+          dustMask: true,
+          gloves: true,
+          iceCleats: true,
+          acidSuit: true,
+          barricade: true,
+          faceShield: true,
+          gasMonitor: true,
+          arcFlashPpe: true,
+          weldingJacket: true,
+          weldingShield: true,
+          weldingGloves: true,
+          purgingVentilation: true
+        },
+        specialInstructions:"Weld Safely, do not trip breakers",
+        requestor: this.req.requestor
+      },
+      hwPermits:[
+        {
+          date: this.req.date,
+        }
+      ],
+      csPermits:[
+        {
+          date: this.req.date,
+        }
+      ],
+      lotos:[
+        {}
+      ],
+    }
+
     
   </script>
 </head>
@@ -105,5 +208,7 @@
   <button onclick="sendRequest('/get-permit-number')">Get Permit Number</button>
   <button onclick="sendRequest('/get-first-row-text')">Get First Row Text</button>
   <button onclick="sendRequest('/search')">Search</button>
+  <button onclick="sendRequest('/group-by-status')">Group By Status</button>
+  <button onclick="sendRequest('/ungroup-by-status')">Ungroup By Status</button>
 </body>
 </html>

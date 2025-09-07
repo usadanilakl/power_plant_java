@@ -225,5 +225,25 @@ public class RedTagControlsRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"failed to retrieve row text : " + e.getMessage()));
         }
     }
+    @GetMapping("/group-by-status")
+    public ResponseEntity<NgApiResponse<String>> groupByStatus() {
+        try {
+            String login = redTagAutomationService.groupByStatus();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Grouped by status: "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"failed to group : " + e.getMessage()));
+        }
+    }
+    @GetMapping("/ungroup-by-status")
+    public ResponseEntity<NgApiResponse<String>> ungroupByStatus() {
+        try {
+            String login = redTagAutomationService.ungroupByStatus();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Ungrouped by status: "+login));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"failed to ungroup : " + e.getMessage()));
+        }
+    }
+
+
 
 }

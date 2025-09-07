@@ -117,7 +117,16 @@ public class RedTagAutomationService {
     private static final Pattern SW_SAVE_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_SAVE_BUTTON.png");
 
 
+    private static final Pattern SW_VIEW_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_VIEW_BUTTON.png");
+    private static final Pattern SW_VIEW_MENU = new Pattern(SAFE_WORK_PATH + "/SW_VIEW_MENU.png");
+    private static final Pattern SW_VIEW_MENU_ACT_INACT = new Pattern(SAFE_WORK_PATH + "/SW_VIEW_MENU_ACT_INACT.png");
+    private static final Pattern VIEW_MENU_ACT_INACT = new Pattern(BASE_PATH + "/VIEW_MENU_ACT_INACT.png");
+    private static final Pattern SW_DRAD_COLUMN = new Pattern(SAFE_WORK_PATH + "/SW_DRAD_COLUMN.png");
+    private static final Pattern SW_ACTIVE_TAB = new Pattern(SAFE_WORK_PATH + "/SW_ACTIVE_TAB.png");
+    private static final Pattern SW_INACTIVE_TAB = new Pattern(SAFE_WORK_PATH + "/SW_INACTIVE_TAB.png");
     private static final Pattern SW_PERMIT_NUMBER_COLUMN = new Pattern(SAFE_WORK_PATH + "/SW_PERMIT_NUMBER_COLUMN.png");
+    private static final Pattern SW_STATUS_COLUMN = new Pattern(SAFE_WORK_PATH + "/SW_STATUS_COLUMN.png");
+    private static final Pattern SW_STATUS_COLUMN_GROUPED = new Pattern(SAFE_WORK_PATH + "/SW_STATUS_COLUMN_GROUPED.png");
 
 
     private static final Pattern SW_MODIFY_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_MODIFY_BUTTON.png");
@@ -181,6 +190,12 @@ public class RedTagAutomationService {
 
     private Screen screen;
     private Region appWindow;
+
+    private String safeWorkNumber = "";
+    private String hotWorkNumber = "";
+    private String confinedSpaceNumber = "";
+    private String lotoNumber1 = "24087";
+    private String lotoNumber2 = "24299";
 
     public RedTagAutomationService() {
         screen = new Screen(0);
@@ -480,7 +495,16 @@ public class RedTagAutomationService {
     }
 
     public String saveSafeWork() throws FindFailed {
-        screen.find(SW_SAVE_BUTTON).hover();
+        screen.find(SW_SAVE_BUTTON).click();
+        safeWorkNumber = getPermitNumber();
+        return "success";
+    }
+
+    public String associatePermits() throws FindFailed {
+        screen.find(SAFEWORK_TAB).click();
+        screen.wait(SW_MODIFY_BUTTON,1).click();
+        Region topBar = screen.wait(SW_ASSOCIATE_PERMITS_TOP_BAR);
+//        topBar.find()
         return "success";
     }
 
@@ -571,6 +595,7 @@ public class RedTagAutomationService {
 
     public String saveCsForm() throws FindFailed{
         screen.find(SW_SAVE_BUTTON).click();
+        confinedSpaceNumber = getPermitNumber();
         return "success";
     }
 
@@ -588,65 +613,65 @@ public class RedTagAutomationService {
     }
 
     public String fillOutHwForm() throws FindFailed{
-//        Region location = screen.wait(HW_LOCATION,2);
-//        location.offset(location.w/2-5,0).click();
-//        pasteText("Test Location");
-//        screen.type(Key.TAB);
-//        pasteText(LocalDateTime.now().toString());
-//        screen.type(Key.TAB);
-//        pasteText("Test Person Performing Work");
-//        screen.type(Key.TAB);
-//        pasteText("Test Fire Watch Name");
-//
-//        Region model = screen.wait(HW_METER_MODEL,2);
-//        model.offset(model.w/2-5,0).click();
-//        pasteText("RKI GX-3R PRO");
-//        screen.type(Key.TAB);
-//        pasteText("test");
-//        screen.type(Key.TAB);
-//        pasteText(LocalDateTime.now().toString());
-//
-//        clickRightSideOfElement(HW_FIRE_WATCH_REQUIRED,-2);
+        Region location = screen.wait(HW_LOCATION,2);
+        location.offset(location.w/2-5,0).click();
+        pasteText("Test Location");
+        screen.type(Key.TAB);
+        pasteText(LocalDateTime.now().toString());
+        screen.type(Key.TAB);
+        pasteText("Test Person Performing Work");
+        screen.type(Key.TAB);
+        pasteText("Test Fire Watch Name");
+
+        Region model = screen.wait(HW_METER_MODEL,2);
+        model.offset(model.w/2-5,0).click();
+        pasteText("RKI GX-3R PRO");
+        screen.type(Key.TAB);
+        pasteText("test");
+        screen.type(Key.TAB);
+        pasteText(LocalDateTime.now().toString());
+
+        clickRightSideOfElement(HW_FIRE_WATCH_REQUIRED,-2);
 //
         Region check = screen.wait(HW_MEASURES_TAKEN_CKECKBOXES,2);
         int wY = 5-check.w/2;
         int wN = check.w/2-12;
         int h = 7-check.h/2;
-//
-//        check.offset(wY,h).click();
-//        check.offset(wN,h).click();
-//        check.offset(wY,h+25).click();
-//        check.offset(wN,h+25).click();
-//        check.offset(wY,h+50).click();
-//        check.offset(wN,h+50).click();
-//        check.offset(wY,h+75).click();
-//        check.offset(wN,h+75).click();
-//        check.offset(wY,h+100).click();
-//        check.offset(wN,h+100).click();
+
+        check.offset(wY,h).click();
+        check.offset(wN,h).click();
+        check.offset(wY,h+25).click();
+        check.offset(wN,h+25).click();
+        check.offset(wY,h+50).click();
+        check.offset(wN,h+50).click();
+        check.offset(wY,h+75).click();
+        check.offset(wN,h+75).click();
+        check.offset(wY,h+100).click();
+        check.offset(wN,h+100).click();
 
         int correction = 7;
 
         check.offset(wY,h+150-correction).click();
         check.offset(wN,h+150-correction).click();
-        try{Thread.sleep(1000);}catch (Exception e){}
+//        try{Thread.sleep(1000);}catch (Exception e){}
         check.offset(wY,h+175-correction).click();
         check.offset(wN,h+175-correction).click();
-        try{Thread.sleep(1000);}catch (Exception e){}
+//        try{Thread.sleep(1000);}catch (Exception e){}
         correction = 25;
-        check.offset(wY,h+200-correction).click();
-        check.offset(wN,h+200-correction).click();
-        try{Thread.sleep(1000);}catch (Exception e){}
+        check.offset(wY,h+200-correction+3).click();
+        check.offset(wN,h+200-correction+3).click();
+//        try{Thread.sleep(1000);}catch (Exception e){}
         check.offset(wY,h+225-correction).click();
         check.offset(wN,h+225-correction).click();
-        try{Thread.sleep(1000);}catch (Exception e){}
+//        try{Thread.sleep(1000);}catch (Exception e){}
         check.offset(wY,h+250-correction).click();
         check.offset(wN,h+250-correction).click();
-        try{Thread.sleep(1000);}catch (Exception e){}
+//        try{Thread.sleep(1000);}catch (Exception e){}
         check.offset(wY,h+275-correction).click();
         check.offset(wN,h+275-correction).click();
-        try{Thread.sleep(1000);}catch (Exception e){}
-        check.offset(wY,h+300-correction-10).click();
-        check.offset(wN,h+300-correction-10).click();
+//        try{Thread.sleep(1000);}catch (Exception e){}
+        check.offset(wY,h+300-correction-7).click();
+        check.offset(wN,h+300-correction-7).click();
 
         clickRightSideOfElement(HW_SPECIAL_INSTRUCTIONS,0);
         pasteText("Some Special Instructions");
@@ -655,17 +680,19 @@ public class RedTagAutomationService {
     }
 
     public String saveHwForm() throws FindFailed{
-//        screen.find(SW_SAVE_BUTTON).click();
+        screen.find(SW_SAVE_BUTTON).click();
+        hotWorkNumber = getPermitNumber();
         return "success";
     }
 
 
 
     public String getPermitNumber() throws FindFailed {
-        Region column = screen.wait(SW_PERMIT_NUMBER_COLUMN,2);
-        Region firstRow = new Region(column.x,column.y+10,column.w,column.h+10);
+        Region column = screen.wait(SW_PERMIT_NUMBER_COLUMN,5);
+        Region firstRow = new Region(column.x-10,column.y+10,column.w+10,column.h+10);
+        String number = firstRow.text().replaceAll("[^0-9]", "");
         System.out.println(firstRow.text());
-        return "success";
+        return number;
     }
 
     public String getFirstRowText() throws FindFailed {
@@ -680,6 +707,24 @@ public class RedTagAutomationService {
         screen.click();
         screen.wheel(Button.WHEEL_DOWN,1);
         return "Success";
+    }
+
+    public String groupByStatus() throws FindFailed {
+        screen.wait(SW_STATUS_COLUMN);
+        if(screen.exists(SW_DRAD_COLUMN,1)!=null){
+            screen.dragDrop(SW_STATUS_COLUMN,SW_DRAD_COLUMN);
+        }
+        return "success";
+    }
+
+    public String ungroupByStatus() throws FindFailed {
+        screen.wait(SW_STATUS_COLUMN_GROUPED);
+        if(screen.exists(SW_DRAD_COLUMN,1)==null){
+            Region permNum = screen.find(SW_PERMIT_NUMBER_COLUMN);
+            permNum = new Region(permNum.x+permNum.w,permNum.y,permNum.w,permNum.h);
+            screen.dragDrop(SW_STATUS_COLUMN_GROUPED,permNum);
+        }
+        return "success";
     }
 
 
