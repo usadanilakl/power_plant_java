@@ -202,7 +202,8 @@
     async function loadAndDisplay() {
         buildTableFromJSON();
         // const data = await getAllRequestsOld();
-        const data = await getAllRequests();
+        // const data = await getAllRequests();
+        const data = await getAllActiveRequests();
         // const data = await getAllLaterThanRequests();
         if (data.responseData) {
             buildTableFromJSON(data.responseData);

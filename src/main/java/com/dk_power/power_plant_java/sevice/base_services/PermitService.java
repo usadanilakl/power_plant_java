@@ -25,7 +25,7 @@ public interface PermitService
     default E createNew(D dto){
         Value permitStatus = getNgValueService().createValue("Permit Status", "Inactive");
         E permit = getMapper().convert(dto, getEntity());
-        permit.setDocNum(generatePermitNum());
+//        permit.setDocNum(generatePermitNum());
         permit.setPermitStatus(permitStatus);
         permit.setTemp(false);
         return save(permit);
@@ -59,16 +59,16 @@ public interface PermitService
         return entity;
 
     }
-    default Long generatePermitNum(){
-        Long lastCreatedNumber = getRepo().findMaxPermitNum();
-        String yearr = LocalDateTime.now().getYear()+"0000";
-        Long year =Long.parseLong(yearr.substring(2));
-        if(lastCreatedNumber == null||year>lastCreatedNumber){
-            return year;
-        }else{
-            return lastCreatedNumber+1;
-        }
-    }
+//    default Long generatePermitNum(){
+//        Long lastCreatedNumber = getRepo().findMaxPermitNum();
+//        String yearr = LocalDateTime.now().getYear()+"0000";
+//        Long year =Long.parseLong(yearr.substring(2));
+//        if(lastCreatedNumber == null||year>lastCreatedNumber){
+//            return year;
+//        }else{
+//            return lastCreatedNumber+1;
+//        }
+//    }
     default void resetFields(){
         E tempPermit = getTempPermit();
         Long id = tempPermit.getId();

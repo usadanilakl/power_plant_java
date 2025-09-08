@@ -33,7 +33,7 @@ public class WorkRequestDto {
     private Boolean isHotWorkRequired;
     @JsonProperty("Foreman Name")
     private String foreman;
-    @JsonProperty("Fire-watch name")
+    @JsonProperty("Fire-watch Name")
     private String fireWatch;
 
     @JsonProperty("Is LOTO Required?")
@@ -43,6 +43,8 @@ public class WorkRequestDto {
     private Boolean isConfinedSpaceEntryRequired;
     @JsonProperty("Space to be entered:")
     private String space;
+    @JsonProperty("ID")
+    private String sharepointId;
 
     public void setIsHotWorkRequired(String isHotWorkRequired) {
         this.isHotWorkRequired = convertYesNoToBooleanString(isHotWorkRequired);

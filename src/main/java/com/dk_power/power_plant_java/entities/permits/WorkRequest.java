@@ -27,4 +27,5 @@ public class WorkRequest extends BasePermitEntity {
     private Boolean isLotoRequired;
     private Boolean isConfinedSpaceEntryRequired;
     private String space;
+    private String sharepointId;
 }

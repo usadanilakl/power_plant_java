@@ -30,6 +30,7 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setBooleanIsLotoRequired(entity.getIsLotoRequired());
         dto.setBooleanIsConfinedSpaceEntryRequired(entity.getIsConfinedSpaceEntryRequired());
         dto.setSpace(entity.getSpace());
+        dto.setSharepointId(entity.getSharepointId());
 
         return dto;
     }
@@ -52,6 +53,7 @@ public class WorkRequestMapper implements BaseMapper {
         entity.setIsLotoRequired(dto.getIsLotoRequired());
         entity.setIsConfinedSpaceEntryRequired(dto.getIsConfinedSpaceEntryRequired());
         entity.setSpace(dto.getSpace());
+        entity.setSharepointId(dto.getSharepointId());
 
         return entity;
     }

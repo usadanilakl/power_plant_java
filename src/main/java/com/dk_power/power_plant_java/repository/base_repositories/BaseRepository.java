@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.repository.base_repositories;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,6 +21,5 @@ public interface BaseRepository<E> extends JpaRepository<E,Long>, JpaSpecificati
     Page<E> findAllByDateModifiedAfterOrderByDateModifiedAsc(LocalDateTime since, Pageable pageable);
 
     Page<E> findAllByDateModifiedBetween(LocalDateTime since, LocalDateTime until, Pageable pageable);
-
 }
 
