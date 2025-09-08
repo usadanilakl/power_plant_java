@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>POST to Power Automate</title>
+
+  <style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        color: #333;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    th, td {
+        border: 1px solid #ccc;
+        padding: 10px 12px;
+        text-align: left;
+    }
+
+    th {
+        background-color: #4CAF50;
+        color: white;
+        font-weight: bold;
+    }
+
+    tbody tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+
+    tbody tr:hover {
+        background-color: #e0f7e9;
+        cursor: pointer;
+    }
+
+    caption {
+        caption-side: top;
+        font-size: 18px;
+        font-weight: bold;
+        padding: 10px 0;
+    }
+
+  </style>
+</head>
+<body>
+<h1>Send POST to Power Automate HTTP trigger</h1>
+<button id="sendRequest">Get Updates</button>
+<label>Auto Update Interval</label>
+<select id="updateInterval">
+  <option value="1">1 min</option>
+  <option value="5">5 min</option>
+  <option value="15">15 min</option>
+  <option value="30">30 min</option>
+  <option value="60" selected>1 hour</option>
+  <option value="180">3 hours</option>
+  <option value="360">6 hours</option>
+</select>
+
+<pre id="responseOutput" style="background:#f4f4f4; padding:10px; border:1px solid #ccc;"></pre>
+
+<div id="table-container"></div>
+
+<script src="./work-request-service.js"></script>
+
+<script>
+  const jsonData = [
+    {
+      "@odata.etag": "",
+      "ItemInternalId": "0062029c-011f-4cb9-9657-a267b127d948",
+      "Date of work to be performed": "2025-09-06T00:00:00.000Z",
+      "Time of work to be performed": "1901-11-30T00:00:00.000Z",
+      "Work Requested By": "Danil",
+      "Company": "JG",
+      "Location Of Work": "U2 HRSG",
+      "Affected Equipment": "BFP B",
+      "Work Scope": "Repairs",
+      "Is LOTO Required?": "Yes",
+      "Is Confined Space Entry Required?": "No",
+      "Is Hot Work Required (welding, cutting, griding, open flame, sparks)": "Yes"
+    }
+  ];
+
+  const skipHeders = ["@odata.etag","ItemInternalId"];
+
+  let currentRequests = [];
+
+  let intervalId = null;
+
+  function formatDate(dateString) {
+    if (!dateString) return "";
+    // Format as YYYY-MM-DD
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  }
+
+  function formatTime(timeString) {
+    try{
+        if (!timeString) return "";
+        // Try extracting HH:mm or HH:mm:ss using regex (covers most formats)
+        const match = timeString.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (match) {
+          // Always output in HH:mm (leading zero if needed)
+          let h = match[21].padStart(2, '0');
+          let m = match[22].padStart(2, '0');
+          return `${h}:${m}`;
+        }
+        // Fallback: Try native Date parsing
+        const date = new Date(timeString);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString().substring(11, 16);
+        }
+        // If both regex and date parsing fail, return the original string
+        return timeString;
+    }catch{
+      return timeString;
+    }
+  }
+
+
+  function buildTableFromJSON(data) {
+    document.getElementById('table-container').innerHTML = '';
+    if (!data || !data.length) {
+      document.getElementById('table-container').innerHTML = 'Loading...';
+      return;
+    }
+
+    // Extract keys for table headers
+    const headers = Object.keys(data[0]);
+
+    let table = '<table><thead><tr>';
+
+    headers.forEach(header => {
+        if(!skipHeders.includes(header)){
+            table += `<th>${header}</th>`;
+        }
+    });
+    table += '</tr></thead><tbody>';
+
+    // Create rows
+    data.forEach(row => {
+      table += '<tr>';
+      headers.forEach(header => {
+        if(!skipHeders.includes(header)){
+            let cellValue = row[header];
+
+            // Format the date and time columns nicely
+            if (header === 'Date of work to be performed') {
+            cellValue = formatDate(cellValue);
+            } else if (header === 'Time of work to be performed') {
+            cellValue = formatTime(cellValue);
+            }
+
+            table += `<td>${cellValue}</td>`;
+
+        }
+      });
+      table += '</tr>';
+    });
+
+    table += '</tbody></table>';
+
+    document.getElementById('table-container').innerHTML = table;
+  }
+
+    
+  async function getAllLaterThanRequests() {
+      const url = 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms';
+
+      const body = {
+          actionType: "laterThan",
+          date: "2025-09-05T00:00:00.000Z"
+      };
+
+      try {
+          const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+          });
+
+          if (!response.ok) {
+          throw new Error('HTTP error ' + response.status);
+          }
+
+          const data = await response.json();
+
+          document.getElementById('responseOutput').textContent = '';
+          const now = new Date();
+          const formattedDateTime = now.toLocaleString();
+          document.getElementById('responseOutput').textContent = `Last Update was performed: ${formattedDateTime}`;
+
+          currentRequests = data;
+          return data;
+      } catch (error) {
+          document.getElementById('responseOutput').textContent = 'Error: ' + error.message;
+          return null;
+      }
+  }
+
+    async function loadAndDisplay() {
+        buildTableFromJSON();
+        // const data = await getAllRequestsOld();
+        const data = await getAllRequests();
+        // const data = await getAllLaterThanRequests();
+        if (data.responseData) {
+            buildTableFromJSON(data.responseData);
+        }
+    }
+
+  function startIntervalLoop(callback) {
+    const select = document.getElementById('updateInterval');
+
+    function setupInterval() {
+      // Clear any existing interval
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+
+      // Get selected interval in minutes and convert to milliseconds
+      const minutes = parseInt(select.value, 10);
+      const intervalMs = minutes * 60 * 1000;
+
+      // Run callback immediately once
+      callback();
+
+      // Set callback to repeat on the selected interval
+      intervalId = setInterval(callback, intervalMs);
+    }
+
+    // Listen for changes in the select element
+    select.addEventListener('change', () => {
+      setupInterval();
+    });
+
+    // Initial setup
+    setupInterval();
+  }
+
+  document.getElementById('sendRequest').addEventListener('click', () => loadAndDisplay());
+
+    startIntervalLoop(loadAndDisplay)
+</script>
+
+</body>
+</html>

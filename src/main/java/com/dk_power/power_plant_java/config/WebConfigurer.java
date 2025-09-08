@@ -106,6 +106,10 @@ public class WebConfigurer implements WebMvcConfigurer {
         // Ensure JSON conversion is available
         restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
 
+        restTemplate.getInterceptors().add(new LoggingInterceptor());
+
+
+
         return restTemplate;
     }
 }
