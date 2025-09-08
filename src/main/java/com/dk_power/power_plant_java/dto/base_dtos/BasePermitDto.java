@@ -24,18 +24,18 @@ import java.util.HashSet;
         property = "id")
 public class BasePermitDto extends BaseDto {
     private String workScope;
-    @JsonIgnore
+//    @JsonIgnore
     private ValueDto system;
     @JsonIgnore
     private Set<EquipmentDto> equipment = new HashSet<>();
-    @JsonIgnore
+//    @JsonIgnore
     private UserDto requestor;
-    @JsonIgnore
+//    @JsonIgnore
     private UserDto controlAuthority;
-    @JsonIgnore
+//    @JsonIgnore
     private ValueDto permitType;
     private Long docNum;
-    @JsonIgnore
+//    @JsonIgnore
     private ValueDto permitStatus;
     private Boolean temp;
     private String redTagNum;

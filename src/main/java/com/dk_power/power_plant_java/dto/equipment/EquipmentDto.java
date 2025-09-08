@@ -32,6 +32,7 @@ public class EquipmentDto extends BaseEquipmentDto {
     private Long mainFileId;
     private Set<LotoPointDto> lotoPoints;
     private List<HeatTraceDto> heatTraceList;
+//    @JsonIgnore
     private HighlightDto highlight;
     private String isUpdated;
     private String conflictStatus;

@@ -46,36 +46,36 @@ public class RedTagControlsRestController {
 
 
             ObjectMapper mapper = new ObjectMapper();
-//            DailyPermitPackageDto packageDto = mapper.convertValue(dto, new TypeReference<DailyPermitPackageDto>() {});
-//            System.out.println("packageDto.getHotWorks().size() = " + packageDto.getHotWorks().size());
+            DailyPermitPackageDto packageDto = mapper.convertValue(dto, new TypeReference<DailyPermitPackageDto>() {});
+            System.out.println("packageDto.getHotWorks().size() = " + packageDto.getHotWorks().size());
 
-//             Deserialize "safeWorks" list from DTO map to List<SafeWorkDto>
-            List<SafeWorkDto> safeWorkDtos = mapper.convertValue(
-                    dto.get("safeWorks"),
-                    new TypeReference<List<SafeWorkDto>>() {}
-            );
-            System.out.println("safeWorkDtos first workScope = " + safeWorkDtos.get(0).getWorkScope());
-
-            // Deserialize "hotWorks" list to List<HotWorkDto>
-            List<HotWorkDto> hotWorkDtos = mapper.convertValue(
-                    dto.get("hotWorks"),
-                    new TypeReference<List<HotWorkDto>>() {}
-            );
-            System.out.println("hotWorkDtos first location = " + hotWorkDtos.get(0).getForman());
-
-            // Deserialize "confinedSpaces" list to List<ConfinedSpaceDto>
-            List<ConfinedSpaceDto> confSpaces = mapper.convertValue(
-                    dto.get("confinedSpaces"),
-                    new TypeReference<List<ConfinedSpaceDto>>() {}
-            );
-            System.out.println("confinedSpaces first space = " + confSpaces.get(0).getSpace());
-
-            // Deserialize "confinedSpaces" list to List<ConfinedSpaceDto>
-            List<LotoDto> lotos = mapper.convertValue(
-                    dto.get("lotos"),
-                    new TypeReference<List<LotoDto>>() {}
-            );
-            System.out.println("lotos first space = " + lotos.size());
+////             Deserialize "safeWorks" list from DTO map to List<SafeWorkDto>
+//            List<SafeWorkDto> safeWorkDtos = mapper.convertValue(
+//                    dto.get("safeWorks"),
+//                    new TypeReference<List<SafeWorkDto>>() {}
+//            );
+//            System.out.println("safeWorkDtos first workScope = " + safeWorkDtos.get(0).getWorkScope());
+//
+//            // Deserialize "hotWorks" list to List<HotWorkDto>
+//            List<HotWorkDto> hotWorkDtos = mapper.convertValue(
+//                    dto.get("hotWorks"),
+//                    new TypeReference<List<HotWorkDto>>() {}
+//            );
+//            System.out.println("hotWorkDtos first location = " + hotWorkDtos.get(0).getForman());
+//
+//            // Deserialize "confinedSpaces" list to List<ConfinedSpaceDto>
+//            List<ConfinedSpaceDto> confSpaces = mapper.convertValue(
+//                    dto.get("confinedSpaces"),
+//                    new TypeReference<List<ConfinedSpaceDto>>() {}
+//            );
+//            System.out.println("confinedSpaces first space = " + confSpaces.get(0).getSpace());
+//
+//            // Deserialize "confinedSpaces" list to List<ConfinedSpaceDto>
+//            List<LotoDto> lotos = mapper.convertValue(
+//                    dto.get("lotos"),
+//                    new TypeReference<List<LotoDto>>() {}
+//            );
+//            System.out.println("lotos first space = " + lotos.size());
 
             return ResponseEntity.ok(new NgApiResponse<>(null, "Built successfully"));
         } catch (Exception e) {
