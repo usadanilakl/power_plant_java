@@ -4,15 +4,18 @@ import com.dk_power.power_plant_java.dto.base_dtos.BasePermitDto;
 import com.dk_power.power_plant_java.entities.permits.pojo.SwHazards;
 import com.dk_power.power_plant_java.entities.permits.pojo.SwPermits;
 import com.dk_power.power_plant_java.entities.permits.pojo.SwPpe;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import lombok.*;
 
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonIdentityInfo(
+        generator = ObjectIdGenerators.PropertyGenerator.class,
+        property = "id")
+@NoArgsConstructor
 public class SafeWorkDto extends BasePermitDto {
 
     private String date;
@@ -67,30 +70,30 @@ public class SafeWorkDto extends BasePermitDto {
         permits.setLotoRequired(true);
         permits.setConfinedSpace(true);
         permits.setHotWork(true);
-        permits.setVentingPurging(true);
+        permits.setVentingPurging(false);
         permits.setJha(true);
         permits.setGasTesting(true);
-        permits.setExcavationPermit(true);
-        permits.setEnergizedPermit(true);
+        permits.setExcavationPermit(false);
+        permits.setEnergizedPermit(false);
         dto.setPermits(permits);
 
         SwPpe ppe = new SwPpe();
         ppe.setHardhat(true);
-        ppe.setSafetyGlasses(true);
+        ppe.setSafetyGlasses(false);
         ppe.setHearingProtection(true);
         ppe.setBoots(true);
-        ppe.setFallProtection(true);
+        ppe.setFallProtection(false);
         ppe.setGfi(true);
         ppe.setRespirator(true);
-        ppe.setDustMask(true);
+        ppe.setDustMask(false);
         ppe.setGloves(true);
-        ppe.setIceCleats(true);
+        ppe.setIceCleats(false);
         ppe.setAcidSuit(true);
-        ppe.setBarricade(true);
+        ppe.setBarricade(false);
         ppe.setFaceShield(true);
-        ppe.setGasMonitor(true);
+        ppe.setGasMonitor(false);
         ppe.setArcFlashPpe(true);
-        ppe.setWeldingJacket(true);
+        ppe.setWeldingJacket(false);
         ppe.setWeldingShield(true);
         ppe.setWeldingGloves(true);
         ppe.setPurgingVentilation(true);

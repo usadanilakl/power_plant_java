@@ -2,13 +2,20 @@ package com.dk_power.power_plant_java.dto.permits;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BasePermitDto;
 import com.dk_power.power_plant_java.entities.permits.pojo.HotWorkMeasures;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonIdentityInfo(
+        generator = ObjectIdGenerators.PropertyGenerator.class,
+        property = "id")
+@NoArgsConstructor
 public class HotWorkDto extends BasePermitDto {
     private String date;
     private String location;
@@ -35,13 +42,13 @@ public class HotWorkDto extends BasePermitDto {
         HotWorkMeasures measures = new HotWorkMeasures();
         measures.setAreaIsClean(true);
         measures.setFlammablesAreSecured(true);
-        measures.setNoCombustibleDustOrDebrisPresent(true);
+        measures.setNoCombustibleDustOrDebrisPresent(false);
         measures.setRadiativeHeatPreventiveMeasuresAreTaken(true);
-        measures.setVesslsArePurged(true);
+        measures.setVesslsArePurged(false);
         measures.setOpeningsAreCovered(true);
         measures.setDuctVentilationIsSecured(true);
         measures.setLockOutIsCompleted(true);
-        measures.setCommunicationIsEstablished(true);
+        measures.setCommunicationIsEstablished(false);
         measures.setFireWatchIsAwareOfDuties(true);
         measures.setFireExtinguisherPresent(true);
         measures.setFireProtectionIsInService(true);

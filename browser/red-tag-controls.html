@@ -257,25 +257,26 @@
   <button onclick="sendRequest('/build-loto-with-no-standard')">LOTO with no standard</button>
   <button onclick="sendRequest('/build-loto-with-new-points')">Build With New Points</button>
   <button onclick="sendRequest('/complete-loto-build')">Complete Loto Build</button>
-  <button onclick="runSequence()">Run Sequence</button>
+  <!-- <button onclick="runSequence()">Run Sequence</button> -->
   <br><br>
   
   <button onclick="sendRequest('/open-safework-builder')">Open Safe-Work Builder</button>
   <button onclick="sendRequest('/fill-safework-form')">Fill Out SW Form</button>
   <button onclick="sendRequest('/save-safework-form')">Save SW Form</button>
-  <button onclick="runSwSequence()">Run SW Sequence</button>
+  <button onclick="sendRequest('/associate-safework-form')">Associate SW</button>
+  <!-- <button onclick="runSwSequence()">Run SW Sequence</button> -->
   <br><br>
   
   <button onclick="sendRequest('/open-cs-builder')">Open CS Builder</button>
   <button onclick="sendRequest('/fill-cs-form')">Fill Out CS Form</button>
   <button onclick="sendRequest('/save-cs-form')">Save CS Form</button>
-  <button onclick="runCsSequence()">Run CS Sequence</button>
+  <!-- <button onclick="runCsSequence()">Run CS Sequence</button> -->
   <br><br>
   
   <button onclick="sendRequest('/open-hw-builder')">Open HW Builder</button>
   <button onclick="sendRequest('/fill-hw-form')">Fill Out HW Form</button>
   <button onclick="sendRequest('/save-hw-form')">Save HW Form</button>
-  <button onclick="runHwSequence()">Run HW Sequence</button>
+  <!-- <button onclick="runHwSequence()">Run HW Sequence</button> -->
   <br><br>
   
   <button onclick="sendRequest('/get-permit-number')">Get Permit Number</button>
@@ -286,6 +287,7 @@
   <br><br>
 
   
-  <button onclick="buildPackage()">Build Package</button>
+  <!-- <button onclick="buildPackage()">Build Package</button> -->
+  <button onclick="sendRequest('/test-data', 'POST',permitBuldingData)">Test Data</button>
 </body>
 </html>

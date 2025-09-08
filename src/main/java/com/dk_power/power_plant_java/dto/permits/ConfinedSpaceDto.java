@@ -2,13 +2,20 @@ package com.dk_power.power_plant_java.dto.permits;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BasePermitDto;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceHazards;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonIdentityInfo(
+        generator = ObjectIdGenerators.PropertyGenerator.class,
+        property = "id")
+@NoArgsConstructor
 public class ConfinedSpaceDto extends BasePermitDto {
 
     private String date;
@@ -45,23 +52,23 @@ public class ConfinedSpaceDto extends BasePermitDto {
 
         ConfinedSpaceHazards hazards = new ConfinedSpaceHazards();
 
-        hazards.setOxygenDeficiency(true);
+        hazards.setOxygenDeficiency(false);
         hazards.setFlammableGas(true);
-        hazards.setCombustibleDust(true);
-        hazards.setToxicGas(true);
+        hazards.setCombustibleDust(false);
+        hazards.setToxicGas(false);
         hazards.setRotatingEquipment(true);
         hazards.setElectricalShock(true);
         hazards.setEntrapment(true);
-        hazards.setEngulfment(true);
+        hazards.setEngulfment(false);
         hazards.setHeatStress(true);
-        hazards.setFaceShield(true);
+        hazards.setFaceShield(false);
         hazards.setGfcI(true);
-        hazards.setLowVoltageTools(true);
+        hazards.setLowVoltageTools(false);
         hazards.setExplosionProofTools(true);
-        hazards.setNonSparkingTools(true);
+        hazards.setNonSparkingTools(false);
         hazards.setFallProtection(true);
         hazards.setRetrievalSystem(true);
-        hazards.setLifeLine(true);
+        hazards.setLifeLine(false);
         hazards.setAtmMeter(true);
         hazards.setTripod(true);
 

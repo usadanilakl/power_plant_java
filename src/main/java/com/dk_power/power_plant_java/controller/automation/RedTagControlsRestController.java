@@ -1,20 +1,22 @@
 package com.dk_power.power_plant_java.controller.automation;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
-import com.dk_power.power_plant_java.dto.permits.DailyPermitPackageDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
+import com.dk_power.power_plant_java.dto.permits.*;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.sikuli.script.FindFailed;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/red-tag-controls")
@@ -36,6 +38,52 @@ public class RedTagControlsRestController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"Failed Building Package: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/test-data")
+    public ResponseEntity<NgApiResponse<String>> testData(@RequestBody Map<String,Object> dto) {
+        try {
+//            System.out.println("dto.getHotWorks().size() = " + dto.getHotWorks().size());
+
+
+            ObjectMapper mapper = new ObjectMapper();
+//            DailyPermitPackageDto packageDto = mapper.convertValue(dto, new TypeReference<DailyPermitPackageDto>() {});
+//            System.out.println("packageDto.getHotWorks().size() = " + packageDto.getHotWorks().size());
+
+//             Deserialize "safeWorks" list from DTO map to List<SafeWorkDto>
+            List<SafeWorkDto> safeWorkDtos = mapper.convertValue(
+                    dto.get("safeWorks"),
+                    new TypeReference<List<SafeWorkDto>>() {}
+            );
+            System.out.println("safeWorkDtos first workScope = " + safeWorkDtos.get(0).getWorkScope());
+
+            // Deserialize "hotWorks" list to List<HotWorkDto>
+            List<HotWorkDto> hotWorkDtos = mapper.convertValue(
+                    dto.get("hotWorks"),
+                    new TypeReference<List<HotWorkDto>>() {}
+            );
+            System.out.println("hotWorkDtos first location = " + hotWorkDtos.get(0).getForman());
+
+            // Deserialize "confinedSpaces" list to List<ConfinedSpaceDto>
+            List<ConfinedSpaceDto> confSpaces = mapper.convertValue(
+                    dto.get("confinedSpaces"),
+                    new TypeReference<List<ConfinedSpaceDto>>() {}
+            );
+            System.out.println("confinedSpaces first space = " + confSpaces.get(0).getSpace());
+
+            // Deserialize "confinedSpaces" list to List<ConfinedSpaceDto>
+            List<LotoDto> lotos = mapper.convertValue(
+                    dto.get("lotos"),
+                    new TypeReference<List<LotoDto>>() {}
+            );
+            System.out.println("lotos first space = " + lotos.size());
+
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Built successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Failed Building Package: " + e.getMessage()));
+        }
+    }
+
 
 
 
@@ -140,6 +188,16 @@ public class RedTagControlsRestController {
         }
     }
 
+//    @GetMapping("/associate-safework-form")
+//    public ResponseEntity<NgApiResponse<String>> associateOutSafeWorkForm() {
+//        try {
+//            String login = redTagAutomationService.associatePermits();
+//            return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Form associated: "+login));
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to associate safe work: " + e.getMessage()));
+//        }
+//    }
+
 
 
 
@@ -229,7 +287,7 @@ public class RedTagControlsRestController {
     @GetMapping("/search")
     public ResponseEntity<NgApiResponse<String>> search() {
         try {
-            String login = redTagAutomationService.searchByPermitNumber("3025");
+            String login = redTagAutomationService.searchByPermitNumber("31845");
             return ResponseEntity.ok(new NgApiResponse<>(null, "Row Text retrieved: "+login));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"failed to retrieve row text : " + e.getMessage()));

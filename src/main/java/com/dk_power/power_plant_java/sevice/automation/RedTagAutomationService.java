@@ -12,8 +12,10 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -132,6 +134,12 @@ public class RedTagAutomationService {
     private static final Pattern SW_SEARCH_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_SEARCH_BUTTON.png");
     private static final Pattern SW_CONTINUE_BUTTON = new Pattern(SAFE_WORK_PATH + "/SW_CONTINUE_BUTTON.png");
     private static final Pattern SW_ASSOCIATE_PERMITS_TOP_BAR = new Pattern(SAFE_WORK_PATH + "/SW_ASSOCIATE_PERMITS_TOP_BAR.png");
+    private static final Pattern SW_ASSOCIATE_WINDOW_CONTROLS = new Pattern(SAFE_WORK_PATH + "/SW_ASSOCIATE_WINDOW_CONTROLS.png");
+    private static final Pattern SW_ASSOCIATE_PERMIT_NUMBER_COLUMN = new Pattern(SAFE_WORK_PATH + "/SW_ASSOCIATE_PERMIT_NUMBER_COLUMN.png");
+    private static final Pattern SW_ASSOCIATE_ISSUED_LOTOS = new Pattern(SAFE_WORK_PATH + "/SW_ASSOCIATE_ISSUED_LOTOS.png");
+    private static final Pattern SW_ASSOCIATE_PERMIT_TABS = new Pattern(SAFE_WORK_PATH + "/SW_ASSOCIATE_PERMIT_TABS.png");
+    private static final Pattern SW_ASSOCIATE_ISSUED_SIDE = new Pattern(SAFE_WORK_PATH + "/SW_ASSOCIATE_ISSUED_SIDE.png");
+    private static final Pattern SW_ASSOCIATED_LOTO_NUM_COLUMN = new Pattern(SAFE_WORK_PATH + "/SW_ASSOCIATED_LOTO_NUM_COLUMN.png");
 
 
 
@@ -294,32 +302,44 @@ public class RedTagAutomationService {
         openApp();
         login();
         DailyPermitPackageDto packageDto = initData();
-        for (SafeWorkDto safeWork : packageDto.getSafeWorks()) {
-            openNewSafeWorkBuilder();
-            fillOutSafeWorkForm(safeWork);
-        }
 
         for(HotWorkDto hw : packageDto.getHotWorks()){
             openNewHwBuilder();
             fillOutHwForm(hw);
+            String permitNum = saveHwForm();
+            hw.setRedTagNum(permitNum);
+            System.out.println(permitNum + " HW saved");
         }
 
         for(ConfinedSpaceDto cs : packageDto.getConfinedSpaces()){
+            openNewConfinedSpaceBuilder();
+            fillOutCSForm(cs);
+            String permitNum = saveCsForm();
+            cs.setRedTagNum(permitNum);
+            System.out.println(permitNum + " CS saved");
+        }
 
+        for (SafeWorkDto safeWork : packageDto.getSafeWorks()) {
+            openNewSafeWorkBuilder();
+            fillOutSafeWorkForm(safeWork);
+            String permitNum = saveSafeWork();
+            safeWork.setRedTagNum(permitNum);
+            System.out.println(permitNum + " SW saved");
+            associatePermits(packageDto);
         }
 
         return "success";
     }
 
-    private DailyPermitPackageDto initData(){
+    public DailyPermitPackageDto initData(){
         DailyPermitPackageDto packageDto = new DailyPermitPackageDto();
         SafeWorkDto safeWork = SafeWorkDto.createTestInstance();
         HotWorkDto hotwork = HotWorkDto.createTestInstance();
         ConfinedSpaceDto confinedSpace = ConfinedSpaceDto.createTestInstance();
 
-        packageDto.setConfinedSpaces(new HashSet<>(List.of(confinedSpace)));
-        packageDto.setHotWorks(new HashSet<>(List.of(hotwork)));
-        packageDto.setSafeWorks(new HashSet<>(List.of(safeWork)));
+        packageDto.setConfinedSpaces(new ArrayList<>(List.of(confinedSpace)));
+        packageDto.setHotWorks(new ArrayList<>(List.of(hotwork)));
+        packageDto.setSafeWorks(new ArrayList<>(List.of(safeWork)));
 
         return packageDto;
 
@@ -641,15 +661,50 @@ public class RedTagAutomationService {
 
     public String saveSafeWork() throws FindFailed {
         screen.find(SW_SAVE_BUTTON).click();
-        safeWorkNumber = getPermitNumber();
-        return "success";
+        String num = getPermitNumber();
+        safeWorkNumber = num;
+        return num;
     }
 
-    public String associatePermits() throws FindFailed {
+    public String associatePermits(DailyPermitPackageDto packageDto) throws FindFailed {
+
+        List<String> one = new ArrayList<>(packageDto.getConfinedSpaces().stream().map(ConfinedSpaceDto::getWorkScope).toList());
+        one.addAll(packageDto.getHotWorks().stream().map(HotWorkDto::getLocation).toList());
+        List<String> two = new ArrayList<>(packageDto.getLotos().stream().map(LotoDto::getWorkScope).toList());
+
         screen.find(SAFEWORK_TAB).click();
         screen.wait(SW_MODIFY_BUTTON,1).click();
+        screen.wait(SW_ASSOCIATE_BUTTON,5).click();
         Region topBar = screen.wait(SW_ASSOCIATE_PERMITS_TOP_BAR);
-//        topBar.find()
+        topBar.find(SW_ASSOCIATE_WINDOW_CONTROLS).click();
+        Region permitTabs = screen.wait(SW_ASSOCIATE_PERMIT_TABS,3);
+        permitTabs.find(SW_ISSUED_PERMITS).click();
+        Region issuedPermitsSide = screen.wait(SW_ASSOCIATE_ISSUED_SIDE,2);
+        issuedPermitsSide = new Region(issuedPermitsSide.x, issuedPermitsSide.y, issuedPermitsSide.w,issuedPermitsSide.h*15);
+
+
+        for (String s : one) {
+            Region searchBtn = issuedPermitsSide.find(SW_SEARCH_BUTTON);
+            searchBtn.offset(0,+20).click();
+            searchBtn.offset(-50,0).click();
+            pasteText(s);
+            searchBtn.click();
+            Region column = issuedPermitsSide.wait(SW_ASSOCIATE_PERMIT_NUMBER_COLUMN);
+            column.offset(0,12).click();
+            column.offset(0,12).click();
+        }
+        permitTabs.find(SW_ASSOCIATE_ISSUED_LOTOS).click();
+
+        for (String s : two) {
+            Region searchBtn = issuedPermitsSide.wait(SW_SEARCH_BUTTON,1);
+            searchBtn.offset(0,+20).click();
+            searchBtn.offset(-50,0).click();
+            pasteText(s);
+            searchBtn.click();
+            Region column = issuedPermitsSide.wait(SW_ASSOCIATED_LOTO_NUM_COLUMN);
+            column.offset(0,12).click();
+            column.offset(0,12).click();
+        }
         return "success";
     }
 
@@ -738,10 +793,108 @@ public class RedTagAutomationService {
         return "success";
     }
 
+    public String fillOutCSForm(ConfinedSpaceDto cs) throws FindFailed{
+        screen.wait(CS_SPACE,1);
+        clickRightSideOfElement(CS_SPACE,20);
+        pasteText(cs.getSpace());
+        clickRightSideOfElement(CS_PURPOSE,20);
+        pasteText(cs.getWorkScope());
+        clickRightSideOfElement(CS_ISSUED_TO,20);
+        pasteText(cs.getIssuedTo());
+        clickRightSideOfElement(CS_ENTRY_DATE,20);
+        pasteText(cs.getDate());
+        clickRightSideOfElement(CS_START_TIME,20);
+        pasteText(cs.getTime());
+        clickRightSideOfElement(CS_DURATION,20);
+        pasteText(cs.getDuration());
+
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_OXIGEN_DEFF,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_FLAMEBLE_GAS,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_COMBUSTIBLE_DUST,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_TOXIC_GAS,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ROTATING_EQ,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ELECTRICAL_SHOCK,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ENTRAPMENT,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ENGULFMENT,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_HEAT_STRESS,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_FACE_SHIELD,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_GFCI,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_LOW_VOLTAGE_TOOLS,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_EXPLOSIONPROOF_TOOLS,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_NONSPARKING_TOOLS,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_FALL_PROTECTION,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_RETRIVAL_SYSTEM,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_LIFE_LINE,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ATM_METER,5);
+//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_TRIPOD,5);
+
+        if (cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_OXIGEN_DEFF, 5);
+        if (cs.getHazards().isFlammableGas()) clickLeftSideOfElement(CS_FLAMEBLE_GAS, 5);
+        if (cs.getHazards().isCombustibleDust()) clickLeftSideOfElement(CS_COMBUSTIBLE_DUST, 5);
+        if (cs.getHazards().isToxicGas()) clickLeftSideOfElement(CS_TOXIC_GAS, 5);
+        if (cs.getHazards().isRotatingEquipment()) clickLeftSideOfElement(CS_ROTATING_EQ, 5);
+        if (cs.getHazards().isElectricalShock()) clickLeftSideOfElement(CS_ELECTRICAL_SHOCK, 5);
+        if (cs.getHazards().isEntrapment()) clickLeftSideOfElement(CS_ENTRAPMENT, 5);
+        if (cs.getHazards().isEngulfment()) clickLeftSideOfElement(CS_ENGULFMENT, 5);
+        if (cs.getHazards().isHeatStress()) clickLeftSideOfElement(CS_HEAT_STRESS, 5);
+        if (cs.getHazards().isFaceShield()) clickLeftSideOfElement(CS_FACE_SHIELD, 5);
+        if (cs.getHazards().isGfcI()) clickLeftSideOfElement(CS_GFCI, 5);
+        if (cs.getHazards().isLowVoltageTools()) clickLeftSideOfElement(CS_LOW_VOLTAGE_TOOLS, 5);
+        if (cs.getHazards().isExplosionProofTools()) clickLeftSideOfElement(CS_EXPLOSIONPROOF_TOOLS, 5);
+        if (cs.getHazards().isNonSparkingTools()) clickLeftSideOfElement(CS_NONSPARKING_TOOLS, 5);
+        if (cs.getHazards().isFallProtection()) clickLeftSideOfElement(CS_FALL_PROTECTION, 5);
+        if (cs.getHazards().isRetrievalSystem()) clickLeftSideOfElement(CS_RETRIVAL_SYSTEM, 5);
+        if (cs.getHazards().isLifeLine()) clickLeftSideOfElement(CS_LIFE_LINE, 5);
+        if (cs.getHazards().isAtmMeter()) clickLeftSideOfElement(CS_ATM_METER, 5);
+        if (cs.getHazards().isTripod()) clickLeftSideOfElement(CS_TRIPOD, 5);
+
+
+        if(cs.getLotoNum()!=null && !cs.getLotoNum().isEmpty()) {
+            clickRightSideOfElement(CS_LOTO, 20);
+            pasteText(cs.getLotoNum());
+        }
+        if(cs.getHotWorkNum()!=null && !cs.getHotWorkNum().isEmpty()) {
+            clickRightSideOfElement(CS_HOT_WORK, 20);
+            pasteText(cs.getHotWorkNum());
+        }
+        if(cs.isVentilation()) clickLeftSideOfElement(CS_VENTILATION,5);
+        if(cs.isBlankFlanged()) clickLeftSideOfElement(CS_BLANK_FLANGED,5);
+        if(cs.isBlankFlanged()) clickLeftSideOfElement(CS_W_BLOCK,5);
+
+        Region meterData = screen.find(CS_METER_DATA);
+        int width = meterData.w / 2-5;
+        int height = meterData.h/2;
+        meterData.offset(width,30-height).click();
+        pasteText(cs.getDate());
+
+//        try{Thread.sleep(1000);}catch (Exception e){}
+
+        meterData.offset(width,60-height).click();
+        pasteText(cs.getMeterModel());
+
+//        try{Thread.sleep(1000);}catch (Exception e){}
+
+        meterData.offset(width,90-height).click();
+        pasteText(cs.getMeterNum());
+
+//        try{Thread.sleep(1000);}catch (Exception e){}
+
+        meterData.offset(width,120-height).click();
+        pasteText(cs.getDate());
+
+//        try{Thread.sleep(1000);}catch (Exception e){}
+
+        meterData.offset(width,140-height).click();
+        pasteText("Y");
+
+        return "success";
+    }
+
     public String saveCsForm() throws FindFailed{
         screen.find(SW_SAVE_BUTTON).click();
-        confinedSpaceNumber = getPermitNumber();
-        return "success";
+        String num = getPermitNumber();
+        confinedSpaceNumber = num;
+        return num;
     }
 
 
@@ -893,8 +1046,9 @@ public class RedTagAutomationService {
 
     public String saveHwForm() throws FindFailed{
         screen.find(SW_SAVE_BUTTON).click();
-        hotWorkNumber = getPermitNumber();
-        return "success";
+        String num = getPermitNumber();
+        hotWorkNumber = num;
+        return num;
     }
 
 
@@ -902,6 +1056,7 @@ public class RedTagAutomationService {
     public String getPermitNumber() throws FindFailed {
         Region column = screen.wait(SW_PERMIT_NUMBER_COLUMN,5);
         Region firstRow = new Region(column.x-10,column.y+10,column.w+10,column.h+10);
+        firstRow.click();
         String number = firstRow.text().replaceAll("[^0-9]", "");
         System.out.println(firstRow.text());
         return number;
@@ -915,11 +1070,30 @@ public class RedTagAutomationService {
     }
 
     public String searchByPermitNumber(String permitNumber) throws FindFailed {
-        getPermitNumber();
-        screen.click();
-        screen.wheel(Button.WHEEL_DOWN,1);
+        Region column = screen.wait(SW_PERMIT_NUMBER_COLUMN,5);
+        searchByColumn(column,permitNumber).click();
         return "Success";
     }
+
+    public Region searchByColumn(Region columnHeader, String value) throws FindFailed {
+        Region column = new Region(columnHeader.x, columnHeader.y, columnHeader.w, screen.getBounds().height);
+        int step = columnHeader.h;
+        int currentY = columnHeader.y;
+        int bottomY = column.y + column.h;
+
+        while (currentY + step <= bottomY) {
+            Region r = new Region(columnHeader.x, currentY, columnHeader.w, step);
+            String text = r.text();
+//            System.out.println("text = " + text);
+            if (text != null && text.toLowerCase().contains(value.toLowerCase())) {
+                return r;
+            }
+            currentY += step;
+        }
+        throw new RuntimeException("Value " + value + " wasn't found");
+    }
+
+
 
     public String groupByStatus() throws FindFailed {
         screen.wait(SW_STATUS_COLUMN);
@@ -1036,9 +1210,7 @@ public class RedTagAutomationService {
     }
 
 
-
-
-
-
-
+    public void testData(DailyPermitPackageDto dto) {
+        System.out.println(dto.getSafeWorks().size() + " safe-works");
+    }
 }

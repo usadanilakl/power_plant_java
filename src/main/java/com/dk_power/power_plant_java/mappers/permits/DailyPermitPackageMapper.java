@@ -30,7 +30,7 @@ public class DailyPermitPackageMapper implements BaseMapper {
                 entity.getSafeWorks()
                     .stream()
                     .map(safeWorkMapper::convertToDto)
-                    .collect(Collectors.toSet())
+                    .toList()
             );
         }
 
@@ -39,7 +39,7 @@ public class DailyPermitPackageMapper implements BaseMapper {
                 entity.getHotWorks()
                     .stream()
                     .map(hotWorkMapper::convertToDto)
-                    .collect(Collectors.toSet())
+                    .toList()
             );
         }
 
@@ -48,7 +48,7 @@ public class DailyPermitPackageMapper implements BaseMapper {
                 entity.getConfinedSpaces()
                     .stream()
                     .map(confinedSpaceMapper::convertToDto)
-                    .collect(Collectors.toSet())
+                    .toList()
             );
         }
 
@@ -57,7 +57,7 @@ public class DailyPermitPackageMapper implements BaseMapper {
                 entity.getLotos()
                     .stream()
                     .map(lotoMapper::convertToDto)
-                    .collect(Collectors.toSet())
+                    .toList()
             );
         }
 
