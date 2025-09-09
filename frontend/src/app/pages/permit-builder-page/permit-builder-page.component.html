@@ -1,0 +1,15 @@
+<app-main-layout>
+  <ng-container header>
+    <div class="header-menus">
+      <div class="menu-container">
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </div>
+      <div class="menu-container">
+        <app-router-menu [menuItems]="navMenuItems" [layout]="'row'"></app-router-menu>
+      </div>
+    </div>
+  </ng-container>
+  <ng-container main-content>
+    <p>permit-builder-page works!</p>
+  </ng-container>
+</app-main-layout>

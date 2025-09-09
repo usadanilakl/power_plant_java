@@ -15,7 +15,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/print', label: 'Print' },
     { route: '/backup', label: 'Backup' },
     { route: '/scheduler', label: 'Scheduler' },
-    // { route: '/file-editor', label: 'Edit File' }
+    { route: '/permit-builder', label: 'Permit Builder' }
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [
@@ -36,3 +36,9 @@ export const LOTO_NAV_MENU_ITEMS: RouterMenuItems = [
     { label: 'Locks', route: './locks' }
 
 ];
+
+export const PERMIT_BUILDER_NAV_MENU_ITEMS = [
+    { label: 'Safe Works', route: './safe-works' },
+    { label: 'Hot Works', route: './hot-works' },
+    { label: 'Confined Spaces', route: './confined-spaces' },
+]

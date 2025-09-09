@@ -38,6 +38,20 @@ async function getAllRequests() {
   }
 }
 
+async function getAllRequestsByStatus(status) {
+  try {
+    const url = `${baseUrl}/get-all-by-status/${status}`;
+    const result = await sendRequest(url);
+    // Optionally do something with the result here before returning
+    return result;
+  } catch (error) {
+    // Handle or display error for getAllRequests caller
+    console.error("Failed to get all requests: ", error.message);
+    // Return fallback value or re-throw based on design
+    throw error;
+  }
+}
+
 async function getAllActiveRequests() {
   try {
     const url = `${baseUrl}/get-all-active`;
@@ -47,6 +61,20 @@ async function getAllActiveRequests() {
   } catch (error) {
     // Handle or display error for getAllRequests caller
     console.error("Failed to get all requests: ", error.message);
+    // Return fallback value or re-throw based on design
+    throw error;
+  }
+}
+
+async function processRequest(id) {
+  try {
+    const url = `${baseUrl}/process/${id}`;
+    const result = await sendRequest(url);
+    // Optionally do something with the result here before returning
+    return result;
+  } catch (error) {
+    // Handle or display error for processRequest caller
+    console.error("Failed to process request: ", error.message);
     // Return fallback value or re-throw based on design
     throw error;
   }

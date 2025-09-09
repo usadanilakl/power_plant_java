@@ -139,8 +139,8 @@
     table += '</tr></thead><tbody>';
 
     // Create rows
-    data.forEach(row => {
-      table += '<tr>';
+    data.forEach((row,index) => {
+      table += `<tr data-row-index="${index}">`;
       headers.forEach(header => {
         if(!skipHeders.includes(header)){
             let cellValue = row[header];
@@ -162,7 +162,22 @@
     table += '</tbody></table>';
 
     document.getElementById('table-container').innerHTML = table;
+  
+    // Add click event listeners to rows
+    document.querySelectorAll('#table-container tr[data-row-index]').forEach(row => {
+      row.addEventListener('click', function() {
+        const rowIndex = this.getAttribute('data-row-index');
+        const rowData = data[rowIndex];
+        handleRowClick(rowData);
+      });
+    });
+
+    // Function to handle row click
+    function handleRowClick(rowData) {
+      console.log('Row clicked:', rowData);
+      processRequest(rowData['ID']);
   }
+}
 
     
   async function getAllLaterThanRequests() {
@@ -199,16 +214,17 @@
       }
   }
 
-    async function loadAndDisplay() {
-        buildTableFromJSON();
-        // const data = await getAllRequestsOld();
-        // const data = await getAllRequests();
-        const data = await getAllActiveRequests();
-        // const data = await getAllLaterThanRequests();
-        if (data.responseData) {
-            buildTableFromJSON(data.responseData);
-        }
-    }
+  async function loadAndDisplay() {
+      buildTableFromJSON();
+      // const data = await getAllRequestsOld();
+      // const data = await getAllRequests();
+      // const data = await getAllActiveRequests();
+      const data = await getAllRequestsByStatus('Closed');
+      // const data = await getAllLaterThanRequests();
+      if (data.responseData) {
+          buildTableFromJSON(data.responseData);
+      }
+  }
 
   function startIntervalLoop(callback) {
     const select = document.getElementById('updateInterval');

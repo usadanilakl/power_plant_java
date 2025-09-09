@@ -19,6 +19,7 @@ import { SchedulerComponent } from './features/scheduler/scheduler.component';
 import { LotoStandardComponent } from './features/loto-standard/loto-standard.component';
 import { LotoStandardSideMenuComponent } from './features/loto-standard/loto-standard-side-menu/loto-standard-side-menu.component';
 import { LotoComponent } from './features/loto/loto.component';
+import { PermitBuilderPageComponent } from './pages/permit-builder-page/permit-builder-page.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -54,7 +55,7 @@ export const routes: Routes = [
     {path: 'backup', component: BackupComponent},
 
 
-    {path: 'file-editor', component: FileEditorComponent, data: {menuType: 'main'}},
+    {path: 'permit-builder', component: PermitBuilderPageComponent},
 
     {
       path: 'scheduler',

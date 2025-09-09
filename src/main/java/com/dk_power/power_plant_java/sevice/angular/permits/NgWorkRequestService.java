@@ -110,10 +110,32 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
                 saved.add(save(entity));
             }
         }
-
-        if(!saved.isEmpty())powerAutomateClient.archiveWorkRequests();
-
         return saved;
+    }
+
+    public WorkRequestDto completeWorkRequest(Long id){
+        WorkRequest entity = getEntityById(id);
+        entity.setPermitStatus(valueService.createValue("Permit Status","Closed"));
+        powerAutomateClient.archiveWorkRequests(entity.getSharepointId());
+        return toDto(save(entity));
+    }
+
+    public WorkRequestDto completeWorkRequestBySharepointId(String id){
+        WorkRequest entity = getEntityBySharepointId(id);
+        entity.setPermitStatus(valueService.createValue("Permit Status","Closed"));
+        try{
+            powerAutomateClient.archiveWorkRequests(id);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+        WorkRequest saved = save(entity);
+        System.out.println("saved.getPermitStatus().getName() = " + saved.getPermitStatus().getName());
+
+        return toDto(saved);
+    }
+
+    private WorkRequest getEntityBySharepointId(String id) {
+        return workRequestRepo.findBySharepointId(id).orElse(null);
     }
 
     public boolean existsBySharepointId(String id){

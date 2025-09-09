@@ -6,9 +6,7 @@ import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -40,6 +38,34 @@ public class PowerAutomateController {
             List<WorkRequestDto> allRequests = workRequestService.getAndCombineLocalAndSharepointRequests();
             return ResponseEntity.ok(
                     new NgApiResponse<>(allRequests, "Successfully got all items from SharePoint")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to get all requests from SharePoint: " + e.getMessage())
+            );
+        }
+    }
+
+    @GetMapping("/get-all-by-status/{status}")
+    public ResponseEntity<NgApiResponse<List<WorkRequestDto>>> getAllByStatus(@PathVariable String status) {
+        try {
+            List<WorkRequestDto> allRequests = workRequestService.getAllDtosByStatus(status);
+            return ResponseEntity.ok(
+                    new NgApiResponse<>(allRequests, "Successfully got all requests with status '" + status + "' from local DB")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to get all requests with status: "+status+" with error: " + e.getMessage())
+            );
+        }
+    }
+
+    @GetMapping("/process/{sharepointId}")
+    public ResponseEntity<NgApiResponse<WorkRequestDto>> processRequest(@PathVariable String sharepointId) {
+        try {
+            WorkRequestDto workRequestDto = workRequestService.completeWorkRequestBySharepointId(sharepointId);
+            return ResponseEntity.ok(
+                    new NgApiResponse<>(workRequestDto, "Successfully processed request")
             );
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
