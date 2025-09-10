@@ -1,0 +1,33 @@
+package com.dk_power.power_plant_java.dto.permits;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+
+@Data
+public class NgWorkRequestDto{
+
+
+    private String dateOfWorkToBePerformed;
+
+    private String timeOfWorkToBePerformed;
+
+    private String requestedBy;
+
+    private String company;
+
+    private String location;
+
+    private String affectedEquipment;
+
+    private String workScope;
+
+    private Boolean isHotWorkRequired;
+    private String foreman;
+    private String fireWatch;
+
+    private Boolean isLotoRequired;
+
+    private Boolean isConfinedSpaceEntryRequired;
+    private String space;
+    private String sharepointId;
+}

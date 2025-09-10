@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.angular.permits;
 
 import com.dk_power.power_plant_java.clients.PowerAutomateClient;
+import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
@@ -140,6 +141,10 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
 
     public boolean existsBySharepointId(String id){
         return workRequestRepo.existsBySharepointId(id);
+    }
+
+    public NgWorkRequestDto toNgWorkRequestDto(WorkRequestDto workRequestDto) {
+        return workRequestMapper.toNgWorkRequestDto(workRequestDto);
     }
 
 }

@@ -9,7 +9,15 @@
       </div>
     </div>
   </ng-container>
+  <ng-container left-menu>
+    @if(currentRoute === 'jobs'){
+      <app-job-log-left-menu></app-job-log-left-menu>
+    }@else if(currentRoute === 'loto'){
+      <!-- <app-loto-side-menu></app-loto-side-menu> -->
+    }
+     <!-- <app-left-menu-outlet></app-left-menu-outlet> -->
+  </ng-container>
   <ng-container main-content>
-    <p>permit-builder-page works!</p>
+    <router-outlet></router-outlet>
   </ng-container>
 </app-main-layout>

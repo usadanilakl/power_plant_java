@@ -2,7 +2,10 @@ package com.dk_power.power_plant_java.controller.automation;
 
 import com.dk_power.power_plant_java.clients.PowerAutomateClient;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
+import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
+import com.dk_power.power_plant_java.entities.permits.WorkRequest;
+import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +20,7 @@ public class PowerAutomateController {
 
     private final PowerAutomateClient powerAutomateClient;
     private final NgWorkRequestService workRequestService;
+    private final WorkRequestMapper workRequestMapper;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<List<WorkRequestDto>>> getAllRequests() {
@@ -70,6 +74,20 @@ public class PowerAutomateController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(
                     new NgApiResponse<>(null, "Failed to get all requests from SharePoint: " + e.getMessage())
+            );
+        }
+    }
+
+    @GetMapping("/get-by-id/{id}")
+    public ResponseEntity<NgApiResponse<WorkRequestDto>> getById(@PathVariable Long id) {
+        try {
+            WorkRequestDto requestById = workRequestService.getDtoById(id);
+            return ResponseEntity.ok(
+                    new NgApiResponse<>(requestById, "Successfully got work request by id")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to get work request by id: " + e.getMessage())
             );
         }
     }
