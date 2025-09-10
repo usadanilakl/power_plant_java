@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, Input, OnInit, Signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, Input, OnInit, output, Signal } from '@angular/core';
 import { CurrentWorkRequestService } from '../../../../services/current-items-services/current-work-requests.service';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { WorkRequestDto } from '../../../../models/permits/work-request.model';
@@ -17,6 +17,7 @@ export class WorkRequestTableComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   @Input() itemsInput: Observable<WorkRequestDto[]> | null = null;
+  rowLeftClickEvent = output<WorkRequestDto>();
   globalItems = toSignal(this.currentWorkRequestService.allActiveRequests$, { initialValue: [] });
   
   itemsSignal = computed(() => {
@@ -40,6 +41,8 @@ export class WorkRequestTableComponent implements OnInit {
   onWorkRequestRowClick(workRequest: WorkRequestDto): void {
     this.currentWorkRequestService.setCurrentWorkRequest(workRequest.id);
     console.log('Handling click for work request:', workRequest);
+    this.rowLeftClickEvent.emit(workRequest);
     // Implement your row click logic here
   }
 }
+

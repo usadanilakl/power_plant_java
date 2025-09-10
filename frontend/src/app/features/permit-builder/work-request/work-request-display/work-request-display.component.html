@@ -1,0 +1,76 @@
+@if(workRequest()){
+    <div class="work-request-display">
+    <h2>Work Request Details</h2>
+    
+    <div class="detail-row">
+        <span class="label">Date of Work:</span>
+        <span class="value">{{ getProperty('dateOfWorkToBePerformed') | date:'mediumDate' }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Time of Work:</span>
+        <span class="value">{{ getProperty('timeOfWorkToBePerformed') }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Requested By:</span>
+        <span class="value">{{ getProperty('requestedBy') }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Company:</span>
+        <span class="value">{{ getProperty('company') }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Location:</span>
+        <span class="value">{{ getProperty('location') }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Affected Equipment:</span>
+        <span class="value">{{ getProperty('affectedEquipment') }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Work Scope:</span>
+        <span class="value">{{ getProperty('workScope') }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Hot Work Required:</span>
+        <span class="value">{{ getProperty('isHotWorkRequired') ? 'Yes' : 'No' }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Foreman:</span>
+        <span class="value">{{ getProperty('foreman') }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Fire Watch:</span>
+        <span class="value">{{ getProperty('fireWatch') }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">LOTO Required:</span>
+        <span class="value">{{ getProperty('isLotoRequired') ? 'Yes' : 'No' }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Confined Space Entry Required:</span>
+        <span class="value">{{ getProperty('isConfinedSpaceEntryRequired') ? 'Yes' : 'No' }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">Space:</span>
+        <span class="value">{{ getProperty('space') }}</span>
+    </div>
+    
+    <div class="detail-row">
+        <span class="label">SharePoint ID:</span>
+        <span class="value">{{ getProperty('sharepointId') }}</span>
+    </div>
+    </div>
+
+}

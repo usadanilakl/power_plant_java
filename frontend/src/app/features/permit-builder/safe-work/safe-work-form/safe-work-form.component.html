@@ -1,1 +1,11 @@
-<p>safe-work-form works!</p>
+@if(isFormReady()){
+    <app-reactive-form
+        [fields]="fields()"
+        [values]="values()"
+        (formSubmit)="onFormSubmit($event)"
+        (formDelete)="onFormDelete()"
+    ></app-reactive-form>
+
+}@else {
+    <p>Loading form...</p>
+}

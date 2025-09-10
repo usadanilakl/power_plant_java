@@ -64,7 +64,7 @@ export class LotoPointDetailFormComponent implements OnInit {
       // { name: 'equipmentList', label: 'Equipment', type: 'multi-select', options: this.equipmentOptions },
     ]);
     
-    isFormReady = signal<boolean>(false);;
+    isFormReady = signal<boolean>(false);
 
   constructor(
       private currentValueService: CurrentValueService,

@@ -14,7 +14,7 @@ export class CurrentWorkRequestService {
     private allActiveRequestsSubject = new BehaviorSubject<WorkRequestDto[] >([]);
     allActiveRequests$ = this.allActiveRequestsSubject.asObservable();
 
-    private selectedWorkRequestSubject = new BehaviorSubject<WorkRequestDto | null>(null);
+    private selectedWorkRequestSubject = new BehaviorSubject<WorkRequestDto>(new WorkRequestDto()  );
     selectedWorkRequest$ = this.selectedWorkRequestSubject.asObservable();
 
     constructor() {

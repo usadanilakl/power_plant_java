@@ -1,3 +1,16 @@
 <div class="container">
-    <app-work-request-table></app-work-request-table>
+    <app-work-request-table
+        (rowLeftClickEvent)="onWorkRequestTableRowLeftClick($event)"
+    ></app-work-request-table>
 </div>
+
+<app-popup-projection
+    [isOpen]="isDailyPermitPackageFormOpen"
+    [title]="'Daily Permit Package Details'"
+    [size]="'large'"
+    (close)="onDailyPermitPackageFormClose()"
+>
+    <app-daily-permit-package-form
+        [workRequest]="currentWorkRequest"
+    ></app-daily-permit-package-form>
+</app-popup-projection>
