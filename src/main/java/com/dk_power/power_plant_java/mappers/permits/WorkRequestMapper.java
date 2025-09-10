@@ -112,6 +112,9 @@ public class WorkRequestMapper implements BaseMapper {
 
         NgWorkRequestDto dto = new NgWorkRequestDto();
 
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setNote(entity.getNote());
         dto.setDateOfWorkToBePerformed(entity.getDateOfWorkToBePerformed());
         dto.setTimeOfWorkToBePerformed(entity.getTimeOfWorkToBePerformed());
         dto.setRequestedBy(entity.getRequestedBy());
@@ -135,6 +138,9 @@ public class WorkRequestMapper implements BaseMapper {
 
         WorkRequest entity = new WorkRequest();
 
+        entity.setId(dto.getId());
+        entity.setName(dto.getName());
+        entity.setNote(dto.getNote());
         entity.setDateOfWorkToBePerformed(dto.getDateOfWorkToBePerformed());
         entity.setTimeOfWorkToBePerformed(dto.getTimeOfWorkToBePerformed());
         entity.setRequestedBy(dto.getRequestedBy());

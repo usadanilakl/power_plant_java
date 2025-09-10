@@ -11,7 +11,7 @@ export class CurrentWorkRequestService {
     private workRequestService = inject(WorkRequestService);
     private destroyRef = inject(DestroyRef);
 
-    private allActiveRequestsSubject = new BehaviorSubject<WorkRequestDto[] | null>(null);
+    private allActiveRequestsSubject = new BehaviorSubject<WorkRequestDto[] >([]);
     allActiveRequests$ = this.allActiveRequestsSubject.asObservable();
 
     private selectedWorkRequestSubject = new BehaviorSubject<WorkRequestDto | null>(null);

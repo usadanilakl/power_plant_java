@@ -19,6 +19,7 @@ import java.util.*;
         property = "id")
 @NoArgsConstructor
 public class DailyPermitPackageDto extends BaseDto {
+    private List<NgWorkRequestDto> workRequests = new ArrayList<>();
     private List<SafeWorkDto> safeWorks = new ArrayList<>();
     private List<HotWorkDto> hotWorks = new ArrayList<>();
     private List<ConfinedSpaceDto> confinedSpaces = new ArrayList<>();

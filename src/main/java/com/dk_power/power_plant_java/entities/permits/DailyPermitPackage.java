@@ -22,6 +22,10 @@ public class DailyPermitPackage extends BaseAuditEntity {
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "daily_permit_package_id") // FK in permit's table
+    private Set<WorkRequest> workRequests = new HashSet<>();
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "daily_permit_package_id") // FK in permit's table
     private Set<SafeWork> safeWorks = new HashSet<>();
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)

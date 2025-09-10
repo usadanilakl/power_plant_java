@@ -231,7 +231,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     return fields.map(fieldName => allFields[fieldName]);
   }
 
-  static toTableColumns(fields: WorkRequestFieldName[] = ['requestedBy', 'company', 'location', 'isHotWorkRequired', 'isLotoRequired', 'isConfinedSpaceEntryRequired']): Column[] {
+  static toTableColumns(fields: WorkRequestFieldName[] = ['sharepointId','requestedBy', 'company', 'location', 'isHotWorkRequired', 'isLotoRequired', 'isConfinedSpaceEntryRequired']): Column[] {
     const allColumns: { [key in WorkRequestFieldName]: Column } = {
       id: { id: 'id', header: 'ID', accessorKey: 'id' },
       dateOfWorkToBePerformed: { id: 'dateOfWorkToBePerformed', header: 'Date of Work', accessorKey: 'dateOfWorkToBePerformed' },
@@ -265,7 +265,21 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
             item.isConfinedSpaceEntryRequired ? { 'background-color': '#FFCCCB' } : { 'background-color': '' }
         },
       space: { id: 'space', header: 'Space', accessorKey: 'space' },
-      sharepointId: { id: 'sharepointId', header: 'Sharepoint ID', accessorKey: 'sharepointId' },
+      sharepointId: { 
+        id: 'sharepointId', 
+        header: 'Sharepoint ID', 
+        accessorFn: (item: WorkRequestDto) => {
+          if (!item.sharepointId) return '';
+          const timestamp = item.sharepointId;
+          const year = timestamp.slice(0, 4);
+          const month = timestamp.slice(4, 6);
+          const day = timestamp.slice(6, 8);
+          const hour = timestamp.slice(8, 10);
+          const minute = timestamp.slice(10, 12);
+          const second = timestamp.slice(12, 14);
+          return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+        }
+      },
       name: { id: 'name', header: 'Name', accessorKey: 'name' },
       objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType' },
         isVerified: {

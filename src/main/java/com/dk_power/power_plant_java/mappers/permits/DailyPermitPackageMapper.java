@@ -17,6 +17,7 @@ public class DailyPermitPackageMapper implements BaseMapper {
     private final HotWorkMapper hotWorkMapper;
     private final ConfinedSpaceMapper confinedSpaceMapper;
     private final LotoMapper lotoMapper;
+    private final WorkRequestMapper workRequestMapper;
     private final ModelMapper modelMapper;
 
     public DailyPermitPackageDto convertToDto(DailyPermitPackage entity) {
@@ -24,6 +25,15 @@ public class DailyPermitPackageMapper implements BaseMapper {
 
         DailyPermitPackageDto dto = new DailyPermitPackageDto();
         dto.setId(entity.getId());
+
+        if(entity.getWorkRequests() != null && !entity.getWorkRequests().isEmpty()) {
+            dto.setWorkRequests(
+                entity.getWorkRequests()
+                    .stream()
+                    .map(workRequestMapper::convertToNgDto)
+                    .collect(Collectors.toList())
+            );
+        }
 
         if (entity.getSafeWorks() != null && !entity.getSafeWorks().isEmpty()) {
             dto.setSafeWorks(

@@ -1,9 +1,10 @@
 import { Component, computed, DestroyRef, inject, Input, OnInit, Signal } from '@angular/core';
 import { CurrentWorkRequestService } from '../../../../services/current-items-services/current-work-requests.service';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { WorkRequestDto } from '../../../../models/permits/work-request.model';
 import { TableComponent } from "../../../../shared/table/table.component";
 import { Column } from '../../../../models/column.model';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-work-request-table',
@@ -12,20 +13,21 @@ import { Column } from '../../../../models/column.model';
   styleUrl: './work-request-table.component.css'
 })
 export class WorkRequestTableComponent implements OnInit {
-  private currentWorkRequestService = inject(CurrentWorkRequestService);
+  currentWorkRequestService = inject(CurrentWorkRequestService);
   private destroyRef = inject(DestroyRef);
 
-  @Input() itemsInput: Signal<WorkRequestDto[]> | null = null;
-  globalItems = toSignal(this.currentWorkRequestService.allActiveRequests$, { initialValue: null as WorkRequestDto[] | null });
+  @Input() itemsInput: Observable<WorkRequestDto[]> | null = null;
+  globalItems = toSignal(this.currentWorkRequestService.allActiveRequests$, { initialValue: [] });
   
-  items = computed(() => {
+  itemsSignal = computed(() => {
     if (this.itemsInput) {
-      return this.itemsInput();
-    } else if (this.globalItems()) {
-      return [this.globalItems()!];
+      return toSignal(this.itemsInput, { initialValue: [] })();
+    } else {
+      return this.globalItems();
     }
-    return [];
   });
+
+  items: Observable<WorkRequestDto[]> = toObservable(this.itemsSignal);
 
   columns: Column[] = WorkRequestDto.toTableColumns();
 
@@ -37,6 +39,7 @@ export class WorkRequestTableComponent implements OnInit {
 
   onWorkRequestRowClick(workRequest: WorkRequestDto): void {
     this.currentWorkRequestService.setCurrentWorkRequest(workRequest.id);
+    console.log('Handling click for work request:', workRequest);
     // Implement your row click logic here
   }
 }

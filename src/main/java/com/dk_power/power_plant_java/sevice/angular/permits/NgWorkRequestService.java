@@ -65,6 +65,8 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
     }
 
     public List<WorkRequest> getAllByStatus(String status){
+        if(status == null || status.isEmpty()) throw new IllegalArgumentException("Status cannot be null or empty");
+        else if(status.equalsIgnoreCase("active")) downloadAndSaveNewRequests();
         List<WorkRequest> allIncomplete = workRequestRepo.findByPermitStatus_NameIgnoreCase(status);
         return allIncomplete;
     }

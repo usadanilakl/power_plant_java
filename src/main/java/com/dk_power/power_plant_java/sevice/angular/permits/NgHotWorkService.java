@@ -54,4 +54,15 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
     public Class<HotWork> getEntityClass() {
         return HotWork.class;
     }
+
+    public HotWorkDto createHotWorkRequest(HotWorkDto hotWorkDto) {
+        HotWork entity = toEntity(hotWorkDto);
+        return toDto(save(entity));
+    }
+
+    public HotWorkDto updateHotWorkRequest(String id, HotWorkDto hotWorkDto) {
+        HotWork entity = getEntityById(id);
+        entity.setMeasures(hotWorkDto.getMeasures());
+        return toDto(save(entity));
+    }
 }

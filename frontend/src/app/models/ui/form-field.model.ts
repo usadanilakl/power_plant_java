@@ -5,7 +5,7 @@ import { Question } from "./question.model";
 export interface FormField {
   name: string;
   label: string;
-  type: 'text' | 'select' | 'multi-select' | 'date' | 'time' | 'checkbox' | 'radio';
+  type: 'text' | 'textarea' | 'select' | 'multi-select' | 'date' | 'time' | 'checkbox' | 'radio';
   validators?: ValidatorFn[];
   options?: Option[];
   initialValue?: any;
