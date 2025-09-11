@@ -78,29 +78,6 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
     public List<WorkRequestDto> getAndCombineLocalAndSharepointRequests() {
         downloadAndSaveNewRequests();
         return getAllDtosByStatus("Active");
-//        List<WorkRequest> active = getAllByStatus("Active");
-//        List<WorkRequest> allRequests = powerAutomateClient.getAllRequests().stream()
-//                .map(workRequestMapper::convertToEntity)
-//                .toList();
-//
-//        // Combine both lists
-//        List<WorkRequest> combined = new ArrayList<>();
-//        combined.addAll(active);
-//        combined.addAll(allRequests);
-//
-//        // Use a map keyed by sharepointId to remove duplicates
-//        Map<String, WorkRequest> uniqueMap = combined.stream()
-//                .filter(wr -> wr.getSharepointId() != null) // ensure no null keys
-//                .collect(Collectors.toMap(
-//                        WorkRequest::getSharepointId,
-//                        wr -> wr,
-//                        (existing, replacement) -> existing // keep the existing one if duplicate found
-//                ));
-//
-//        // Convert unique values back to DTO list
-//        return uniqueMap.values().stream()
-//                .map(workRequestMapper::convertToDto)
-//                .toList();
     }
 
     public List<WorkRequest> downloadAndSaveNewRequests(){

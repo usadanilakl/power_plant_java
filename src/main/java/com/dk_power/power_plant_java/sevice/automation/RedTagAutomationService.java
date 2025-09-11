@@ -1013,7 +1013,7 @@ public class RedTagAutomationService {
         screen.type(Key.TAB);
         pasteText(hw.getDate());
         screen.type(Key.TAB);
-        pasteText(hw.getForman());
+        pasteText(hw.getForeman());
         screen.type(Key.TAB);
         pasteText(hw.getFireWatch());
 
@@ -1068,7 +1068,7 @@ public class RedTagAutomationService {
         else check.offset(wN,h+300-correction-7).click();
 
         clickRightSideOfElement(HW_SPECIAL_INSTRUCTIONS,0);
-        pasteText("Some Special Instructions");
+        pasteText(hw.getSpecialInstructions());
 
         return "success";
     }
@@ -1223,6 +1223,7 @@ public class RedTagAutomationService {
     private void pasteText(String text){
         App.setClipboard(text);
         screen.type("v", KeyModifier.CTRL);
+        System.out.println("Pasted: " + text);
     }
 
     private void clickLeftSideOfElement(Pattern pattern, int offsetFromLeft) throws FindFailed {
