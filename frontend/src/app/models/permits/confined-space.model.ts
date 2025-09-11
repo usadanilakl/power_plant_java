@@ -28,25 +28,25 @@ export class ConfinedSpaceHazards {
   tripod: boolean;
 
   constructor(data: Partial<ConfinedSpaceHazards> = {}) {
-    this.oxygenDeficiency = data.oxygenDeficiency ?? false;
-    this.flammableGas = data.flammableGas ?? false;
-    this.combustibleDust = data.combustibleDust ?? false;
-    this.toxicGas = data.toxicGas ?? false;
-    this.rotatingEquipment = data.rotatingEquipment ?? false;
-    this.electricalShock = data.electricalShock ?? false;
-    this.entrapment = data.entrapment ?? false;
-    this.engulfment = data.engulfment ?? false;
-    this.heatStress = data.heatStress ?? false;
-    this.faceShield = data.faceShield ?? false;
-    this.gfcI = data.gfcI ?? false;
-    this.lowVoltageTools = data.lowVoltageTools ?? false;
-    this.explosionProofTools = data.explosionProofTools ?? false;
-    this.nonSparkingTools = data.nonSparkingTools ?? false;
-    this.fallProtection = data.fallProtection ?? false;
-    this.retrievalSystem = data.retrievalSystem ?? false;
-    this.lifeLine = data.lifeLine ?? false;
-    this.atmMeter = data.atmMeter ?? false;
-    this.tripod = data.tripod ?? false;
+    this.oxygenDeficiency = data.oxygenDeficiency ?? true;
+    this.flammableGas = data.flammableGas ?? true;
+    this.combustibleDust = data.combustibleDust ?? true;
+    this.toxicGas = data.toxicGas ?? true;
+    this.rotatingEquipment = data.rotatingEquipment ?? true;
+    this.electricalShock = data.electricalShock ?? true;
+    this.entrapment = data.entrapment ?? true;
+    this.engulfment = data.engulfment ?? true;
+    this.heatStress = data.heatStress ?? true;
+    this.faceShield = data.faceShield ?? true;
+    this.gfcI = data.gfcI ?? true;
+    this.lowVoltageTools = data.lowVoltageTools ?? true;
+    this.explosionProofTools = data.explosionProofTools ?? true;
+    this.nonSparkingTools = data.nonSparkingTools ?? true;
+    this.fallProtection = data.fallProtection ?? true;
+    this.retrievalSystem = data.retrievalSystem ?? true;
+    this.lifeLine = data.lifeLine ?? true;
+    this.atmMeter = data.atmMeter ?? true;
+    this.tripod = data.tripod ?? true;
   }
 }
 

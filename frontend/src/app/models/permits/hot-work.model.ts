@@ -8,18 +8,18 @@ import { WorkRequestDto } from './work-request.model';
 
 
 export class HotWorkMeasures {
-  areaIsClean: boolean = false;
-  flammablesAreSecured: boolean = false;
-  noCombustibleDustOrDebrisPresent: boolean = false;
-  radiativeHeatPreventiveMeasuresAreTaken: boolean = false;
-  vesselsArePurged: boolean = false;
-  openingsAreCovered: boolean = false;
-  ductVentilationIsSecured: boolean = false;
-  lockOutIsCompleted: boolean = false;
-  communicationIsEstablished: boolean = false;
-  fireWatchIsAwareOfDuties: boolean = false;
-  fireExtinguisherPresent: boolean = false;
-  fireProtectionIsInService: boolean = false;
+  areaIsClean: boolean = true;
+  flammablesAreSecured: boolean = true;
+  noCombustibleDustOrDebrisPresent: boolean = true;
+  radiativeHeatPreventiveMeasuresAreTaken: boolean = true;
+  vesselsArePurged: boolean = true;
+  openingsAreCovered: boolean = true;
+  ductVentilationIsSecured: boolean = true;
+  lockOutIsCompleted: boolean = true;
+  communicationIsEstablished: boolean = true;
+  fireWatchIsAwareOfDuties: boolean = true;
+  fireExtinguisherPresent: boolean = true;
+  fireProtectionIsInService: boolean = true;
 
   constructor(data: Partial<HotWorkMeasures> = {}) {
     Object.assign(this, data);
