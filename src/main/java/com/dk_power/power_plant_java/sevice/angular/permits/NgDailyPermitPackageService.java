@@ -62,8 +62,8 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
 
     public DailyPermitPackageDto createDailyPermitPackage(DailyPermitPackageDto permitPackageDto) {
         DailyPermitPackage dailyPermitPackage = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
-        dailyPermitPackageRepo.save(dailyPermitPackage);
-        return dailyPermitPackageMapper.convertToDto(dailyPermitPackage);
+        DailyPermitPackage saved = dailyPermitPackageRepo.save(dailyPermitPackage);
+        return dailyPermitPackageMapper.convertToDto(saved);
     }
 
     public DailyPermitPackageDto updateDailyPermitPackage(String id, DailyPermitPackageDto permitPackageDto) {
@@ -75,6 +75,12 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
 
     public String buildPermits(DailyPermitPackageDto dailyPermitPackageDto) throws FindFailed, IOException, InterruptedException {
         DailyPermitPackage entity = toEntity(dailyPermitPackageDto);
+        redTagAutomationService.buildDailyPermitPackage(toDto(entity));
+        return "Permits built successfully!";
+    }
+
+    public String buildPermitsById(String id) throws FindFailed, IOException, InterruptedException {
+        DailyPermitPackage entity = getEntityById(id);
         redTagAutomationService.buildDailyPermitPackage(toDto(entity));
         return "Permits built successfully!";
     }

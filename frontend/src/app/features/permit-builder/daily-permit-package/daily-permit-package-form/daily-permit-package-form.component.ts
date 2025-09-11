@@ -13,6 +13,8 @@ import { CurrentDailyPermitPackageService } from '../../../../services/current-i
 import { CurrentSafeWorkService } from '../../../../services/current-items-services/current-safe-work.service';
 import { CurrentHotWorkService } from '../../../../services/current-items-services/current-hot-work.service';
 import { CurrentConfinedSpaceService } from '../../../../services/current-items-services/current-confined-space.service';
+import { DailyPermitPackageService } from '../../../../services/permits/daily-permit-package.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-daily-permit-package-form',
@@ -23,6 +25,7 @@ import { CurrentConfinedSpaceService } from '../../../../services/current-items-
 })
 export class DailyPermitPackageFormComponent {
   private currentDailyPermitPackage = inject(CurrentDailyPermitPackageService);
+  private dailyPermitPackage = inject(DailyPermitPackageService);
   private currentSafeWorkService = inject(CurrentSafeWorkService);
   private currentHotWorkService = inject(CurrentHotWorkService);
   private currentConfinedSpaceService = inject(CurrentConfinedSpaceService);
@@ -50,6 +53,7 @@ export class DailyPermitPackageFormComponent {
   );
 
   packageName: string = '';
+  packageId: string = '';
   safeWorkIds: number[] = [];
   hotWorkIds: number[] = [];
   confinedSpaceIds: number[] = [];
@@ -84,6 +88,7 @@ export class DailyPermitPackageFormComponent {
       this.currentDailyPermitPackage.createDailyPermitPackage(permitPackage).subscribe({
         next: (response) => {
           console.log('Permit package created successfully', response);
+          this.packageId = response.responseData.id.toString();
         },
         error: (err) => {
           console.error('Error creating permit package', err);
@@ -126,6 +131,19 @@ export class DailyPermitPackageFormComponent {
         console.error('Error creating confined space', err);
       }
     });
+  }
+
+  build(){
+    this.dailyPermitPackage.buildPermitsById(this.packageId).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (permits) => {
+        console.log('Permits built successfully', permits);
+      },
+      error: (err) => {
+        console.error('Error building permits', err);
+      }
+    })
   }
 
 }

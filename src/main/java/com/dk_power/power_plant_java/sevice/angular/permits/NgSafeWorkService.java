@@ -21,7 +21,7 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
     private final EntityManager entityManager;
     @Override
     public SafeWorkRepo getRepo() {
-        return null;
+        return safeWorkRepo;
     }
 
     @Override

@@ -93,7 +93,7 @@ public class DailyPermitPackageMapper implements BaseMapper {
         if (dto == null) return null;
 
         DailyPermitPackage entity = new DailyPermitPackage();
-        entity.setId(dto.getId());
+        if(dto.getId()!=0)entity.setId(dto.getId());
 
         if(dto.getWorkRequestIds() != null && !dto.getWorkRequestIds().isEmpty()){
             List<WorkRequest> workRequests = workRequestRepo.findAllById(dto.getWorkRequestIds());

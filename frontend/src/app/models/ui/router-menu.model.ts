@@ -39,6 +39,7 @@ export const LOTO_NAV_MENU_ITEMS: RouterMenuItems = [
 
 export const PERMIT_BUILDER_NAV_MENU_ITEMS = [
     { label: 'Job-Logs', route: './jobs' },
+    { label: 'Daily Packages', route: './daily-packages' },
     { label: 'Work Requests', route: './work-requests' },
     { label: 'Safe Works', route: './safe-works' },
     { label: 'Hot Works', route: './hot-works' },

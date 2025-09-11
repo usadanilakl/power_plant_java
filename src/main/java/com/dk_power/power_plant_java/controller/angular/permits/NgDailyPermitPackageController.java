@@ -93,5 +93,19 @@ public class NgDailyPermitPackageController {
         }
     }
 
+    @GetMapping("/build-permits/{id}")
+    public ResponseEntity<NgApiResponse<String>> buildPermitsById(@PathVariable String id) {
+        try {
+            String result = ngDailyPermitPackageService.buildPermitsById(id);
+            NgApiResponse<String> response = new NgApiResponse<>(result, "Permits built successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error building permits: " + e.getMessage()));
+        }
+    }
+
+
+
 
 }

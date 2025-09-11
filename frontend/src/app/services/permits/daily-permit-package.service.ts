@@ -35,4 +35,7 @@ export class DailyPermitPackageService {
   buildPermits(dailtyPermitPackage: DailyPermitPackageDto): Observable<SpringApiResponse<String>> {
     return this.http.post<SpringApiResponse<String>>(`${this.apiUrl}/build-permits`, dailtyPermitPackage);
   }
+  buildPermitsById(packageId: string): Observable<SpringApiResponse<String>> {
+    return this.http.get<SpringApiResponse<String>>(`${this.apiUrl}/build-permits/${packageId}`);
+  }
 }
