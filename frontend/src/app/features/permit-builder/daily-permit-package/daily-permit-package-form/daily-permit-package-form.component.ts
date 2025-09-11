@@ -138,7 +138,7 @@ export class DailyPermitPackageFormComponent {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (permits) => {
-        console.log('Permits built successfully', permits);
+        console.log('Permits built successfully', permits.responseData);
       },
       error: (err) => {
         console.error('Error building permits', err);
