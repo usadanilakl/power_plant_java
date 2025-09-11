@@ -20,7 +20,7 @@ public class HotWorkDto extends BasePermitDto {
     private String date;
     private String location;
     private String workScope;
-    private String forman;
+    private String foreman;
     private String fireWatch;
     private String meterModel;
     private String meterNum;
@@ -31,7 +31,7 @@ public class HotWorkDto extends BasePermitDto {
         HotWorkDto dto = new HotWorkDto();
 
         dto.setDate("09/07/2025");
-        dto.setForman("Mike Miles");
+        dto.setForeman("Mike Miles");
         dto.setFireWatch("Mile Mikes");
         dto.setMeterModel("RKI GX-3R PRO");
         dto.setMeterNum("N");

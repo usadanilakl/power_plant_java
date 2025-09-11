@@ -24,6 +24,7 @@ public class HotWork extends BasePermitEntity {
     private String meterModel;
     private String meterNum;
     private String specialInstructions;
+    private String location;
 
     @Column(columnDefinition = "TEXT")
     private String measuresJson;

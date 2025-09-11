@@ -18,11 +18,12 @@ public class HotWorkMapper implements BaseMapper {
 
         dto.setId(entity.getId());
         dto.setDate(entity.getDate());
-        dto.setForman(entity.getForeman());
+        dto.setForeman(entity.getForeman());
         dto.setFireWatch(entity.getFireWatch());
         dto.setMeterModel(entity.getMeterModel());
         dto.setMeterNum(entity.getMeterNum());
         dto.setSpecialInstructions(entity.getSpecialInstructions());
+        dto.setLocation(entity.getLocation());
 
         try {
             dto.setMeasures(entity.getMeasures());
@@ -38,11 +39,12 @@ public class HotWorkMapper implements BaseMapper {
 
         entity.setId(dto.getId());
         entity.setDate(dto.getDate());
-        entity.setForeman(dto.getForman());
+        entity.setForeman(dto.getForeman());
         entity.setFireWatch(dto.getFireWatch());
         entity.setMeterModel(dto.getMeterModel());
         entity.setMeterNum(dto.getMeterNum());
         entity.setSpecialInstructions(dto.getSpecialInstructions());
+        entity.setLocation(dto.getLocation());
 
         try {
             entity.setMeasures(dto.getMeasures());

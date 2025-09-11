@@ -3,8 +3,13 @@ package com.dk_power.power_plant_java.controller.automation;
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.permits.*;
 import com.dk_power.power_plant_java.entities.loto.Loto;
+import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
+import com.dk_power.power_plant_java.entities.permits.HotWork;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgConfinedSpaceService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgHotWorkService;
+import com.dk_power.power_plant_java.sevice.angular.permits.NgSafeWorkService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +28,9 @@ import java.util.Map;
 public class RedTagControlsRestController {
     private final NgLotoService lotoService;
     private final NgLotoPointService lotoPointService;
+    private final NgHotWorkService hotWorkService;
+    private final NgSafeWorkService safeWorkService;
+    private final NgConfinedSpaceService confinedSpaceService;
 
     private final RedTagAutomationService redTagAutomationService;
 
@@ -47,34 +55,6 @@ public class RedTagControlsRestController {
             ObjectMapper mapper = new ObjectMapper();
             DailyPermitPackageDto packageDto = mapper.convertValue(dto, new TypeReference<DailyPermitPackageDto>() {});
             System.out.println("packageDto.getHotWorks().size() = " + packageDto.getHotWorks().size());
-
-////             Deserialize "safeWorks" list from DTO map to List<SafeWorkDto>
-//            List<SafeWorkDto> safeWorkDtos = mapper.convertValue(
-//                    dto.get("safeWorks"),
-//                    new TypeReference<List<SafeWorkDto>>() {}
-//            );
-//            System.out.println("safeWorkDtos first workScope = " + safeWorkDtos.get(0).getWorkScope());
-//
-//            // Deserialize "hotWorks" list to List<HotWorkDto>
-//            List<HotWorkDto> hotWorkDtos = mapper.convertValue(
-//                    dto.get("hotWorks"),
-//                    new TypeReference<List<HotWorkDto>>() {}
-//            );
-//            System.out.println("hotWorkDtos first location = " + hotWorkDtos.get(0).getForman());
-//
-//            // Deserialize "confinedSpaces" list to List<ConfinedSpaceDto>
-//            List<ConfinedSpaceDto> confSpaces = mapper.convertValue(
-//                    dto.get("confinedSpaces"),
-//                    new TypeReference<List<ConfinedSpaceDto>>() {}
-//            );
-//            System.out.println("confinedSpaces first space = " + confSpaces.get(0).getSpace());
-//
-//            // Deserialize "confinedSpaces" list to List<ConfinedSpaceDto>
-//            List<LotoDto> lotos = mapper.convertValue(
-//                    dto.get("lotos"),
-//                    new TypeReference<List<LotoDto>>() {}
-//            );
-//            System.out.println("lotos first space = " + lotos.size());
 
             return ResponseEntity.ok(new NgApiResponse<>(null, "Built successfully"));
         } catch (Exception e) {
@@ -213,7 +193,10 @@ public class RedTagControlsRestController {
     @GetMapping("/fill-cs-form")
     public ResponseEntity<NgApiResponse<String>> fillOutCsForm() {
         try {
-            String login = redTagAutomationService.fillOutCSFormTest();
+//            String login = redTagAutomationService.fillOutCSFormTest();
+            ConfinedSpace first = confinedSpaceService.getAll().getFirst();
+            ConfinedSpaceDto dto = confinedSpaceService.toDto(first);
+            String login = redTagAutomationService.fillOutCSForm(dto);
             return ResponseEntity.ok(new NgApiResponse<>(null, "CS Form is filled out "+login));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to fill out CS: " + e.getMessage()));
@@ -246,7 +229,10 @@ public class RedTagControlsRestController {
     @GetMapping("/fill-hw-form")
     public ResponseEntity<NgApiResponse<String>> fillOutHwForm() {
         try {
-            String login = redTagAutomationService.fillOutHwFormTest();
+//            String login = redTagAutomationService.fillOutHwFormTest();
+            HotWork first = hotWorkService.getAll().getFirst();
+            HotWorkDto dto = hotWorkService.toDto(first);
+            String login = redTagAutomationService.fillOutHwForm(dto);
             return ResponseEntity.ok(new NgApiResponse<>(null, "HW Form is filled out "+login));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to fill out HW: " + e.getMessage()));
