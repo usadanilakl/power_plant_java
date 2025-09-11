@@ -17,6 +17,7 @@ public class ConfinedSpaceMapper implements BaseMapper {
 
         ConfinedSpaceDto dto = new ConfinedSpaceDto();
 
+        dto.setId(entity.getId());
         dto.setDate(entity.getDate());
         dto.setTime(entity.getTime());
         dto.setSpace(entity.getSpace());
@@ -44,6 +45,7 @@ public class ConfinedSpaceMapper implements BaseMapper {
 
         ConfinedSpace entity = new ConfinedSpace();
 
+        entity.setId(dto.getId());
         entity.setDate(dto.getDate());
         entity.setTime(dto.getTime());
         entity.setSpace(dto.getSpace());

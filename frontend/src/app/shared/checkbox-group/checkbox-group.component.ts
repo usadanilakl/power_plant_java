@@ -57,4 +57,8 @@ export class CheckboxGroupComponent implements ControlValueAccessor {
   closePopup() {
     this.showPopup = false;
   }
+
+  isBoolean(value: any): boolean {
+    return typeof value === 'boolean';
+  }
 }

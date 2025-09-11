@@ -1,1 +1,7 @@
-<p>daily-permit-package-side-menu works!</p>
+<ul>
+    @for (pkg of allPackages(); track pkg.id) {
+        <li (click)="packageSelected(pkg)">
+            {{ pkg.name }}
+        </li>
+    }
+</ul>

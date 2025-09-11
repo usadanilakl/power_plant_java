@@ -5,11 +5,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "work_request")
 @Getter
 @Setter
+@Audited
 public class WorkRequest extends BasePermitEntity {
 
     private String dateOfWorkToBePerformed;

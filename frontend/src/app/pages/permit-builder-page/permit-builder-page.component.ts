@@ -8,10 +8,11 @@ import { PermitBuilderComponent } from "../../features/permit-builder/permit-bui
 import { PermitBuilderLeftMenuComponent } from "../../features/permit-builder/menus/permit-builder-left-menu/permit-builder-left-menu.component";
 import { JobLogLeftMenuComponent } from "../../features/permit-builder/job-log/job-log-left-menu/job-log-left-menu.component";
 import { JobLogComponent } from "../../features/permit-builder/job-log/job-log.component";
+import { DailyPermitPackageSideMenuComponent } from "../../features/permit-builder/daily-permit-package/daily-permit-package-side-menu/daily-permit-package-side-menu.component";
 
 @Component({
   selector: 'app-permit-builder-page',
-  imports: [RouterMenuComponent, MainLayoutComponent, PermitBuilderComponent, PermitBuilderLeftMenuComponent, JobLogLeftMenuComponent, JobLogComponent, RouterModule],
+  imports: [RouterMenuComponent, MainLayoutComponent, PermitBuilderComponent, PermitBuilderLeftMenuComponent, JobLogLeftMenuComponent, JobLogComponent, RouterModule, DailyPermitPackageSideMenuComponent],
   templateUrl: './permit-builder-page.component.html',
   styleUrl: './permit-builder-page.component.css'
 })

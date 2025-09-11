@@ -14,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +31,7 @@ public class RedTagControlsRestController {
     @PostMapping
     public ResponseEntity<NgApiResponse<String>> buildPacksge(){
         try {
-            redTagAutomationService.buildDailyPermitPackage();
+            redTagAutomationService.buildDailyPermitPackageTest();
             return ResponseEntity.ok(new NgApiResponse<>(null, "Built successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"Failed Building Package: " + e.getMessage()));

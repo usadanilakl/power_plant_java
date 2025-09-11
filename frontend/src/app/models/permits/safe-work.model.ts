@@ -6,64 +6,74 @@ import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
 
 
-export interface SwHazards {
-  highTemp: boolean;
-  highPressure: boolean;
-  energized: boolean;
-  storedEnergy: boolean;
-  eyeHazard: boolean;
-  egressAccess: boolean;
-  ergonomicHazard: boolean;
-  fallingObject: boolean;
-  highNoise: boolean;
-  dustParticulate: boolean;
-  combustibleDust: boolean;
-  fireHazard: boolean;
-  hotSurface: boolean;
-  slippery: boolean;
-  ventilationRequired: boolean;
-  lightingRestrictions: boolean;
-  chemicalExposure: boolean;
-  liftingHazard: boolean;
-  handTraps: boolean;
-  heatColdStress: boolean;
-  elevatedSurface: boolean;
-  environmental: boolean;
+export class SwHazards {
+  highTemp: boolean = true;
+  highPressure: boolean = true;
+  energized: boolean = true;
+  storedEnergy: boolean = true;
+  eyeHazard: boolean = true;
+  egressAccess: boolean = true;
+  ergonomicHazard: boolean = true;
+  fallingObject: boolean = true;
+  highNoise: boolean = true;
+  dustParticulate: boolean = true;
+  combustibleDust: boolean = true;
+  fireHazard: boolean = true;
+  hotSurface: boolean = true;
+  slippery: boolean = true;
+  ventilationRequired: boolean = true;
+  lightingRestrictions: boolean = true;
+  chemicalExposure: boolean = true;
+  liftingHazard: boolean = true;
+  handTraps: boolean = true;
+  heatColdStress: boolean = true;
+  elevatedSurface: boolean = true;
+  environmental: boolean = true;
+
+  constructor(data: Partial<SwHazards> = {}) {
+    Object.assign(this, data);
+  }
 }
 
+export class SwPermits {
+  lotoRequired: boolean = true;
+  confinedSpace: boolean = true;
+  hotWork: boolean = true;
+  ventingPurging: boolean = true;
+  jha: boolean = true;
+  gasTesting: boolean = true;
+  excavationPermit: boolean = true;
+  energizedPermit: boolean = true;
 
-export interface SwPermits {
-  lotoRequired: boolean;
-  confinedSpace: boolean;
-  hotWork: boolean;
-  ventingPurging: boolean;
-  jha: boolean;
-  gasTesting: boolean;
-  excavationPermit: boolean;
-  energizedPermit: boolean;
+  constructor(data: Partial<SwPermits> = {}) {
+    Object.assign(this, data);
+  }
 }
 
+export class SwPpe {
+  hardhat: boolean = true;
+  safetyGlasses: boolean = true;
+  hearingProtection: boolean = true;
+  boots: boolean = true;
+  fallProtection: boolean = true;
+  gfi: boolean = true;
+  respirator: boolean = true;
+  dustMask: boolean = true;
+  gloves: boolean = true;
+  iceCleats: boolean = true;
+  acidSuit: boolean = true;
+  barricade: boolean = true;
+  faceShield: boolean = true;
+  gasMonitor: boolean = true;
+  arcFlashPpe: boolean = true;
+  weldingJacket: boolean = true;
+  weldingShield: boolean = true;
+  weldingGloves: boolean = true;
+  purgingVentilation: boolean = true;
 
-export interface SwPpe {
-  hardhat: boolean;
-  safetyGlasses: boolean;
-  hearingProtection: boolean;
-  boots: boolean;
-  fallProtection: boolean;
-  gfi: boolean;
-  respirator: boolean;
-  dustMask: boolean;
-  gloves: boolean;
-  iceCleats: boolean;
-  acidSuit: boolean;
-  barricade: boolean;
-  faceShield: boolean;
-  gasMonitor: boolean;
-  arcFlashPpe: boolean;
-  weldingJacket: boolean;
-  weldingShield: boolean;
-  weldingGloves: boolean;
-  purgingVentilation: boolean;
+  constructor(data: Partial<SwPpe> = {}) {
+    Object.assign(this, data);
+  }
 }
 
 export type SafeWorkFieldName = keyof SafeWorkModel;
@@ -102,9 +112,9 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     this.workScope = data.workScope ?? null;
     this.specialInstructions = data.specialInstructions ?? null;
     this.requestedBy = data.requestedBy ?? null;
-    this.hazards = data.hazards ?? null;
-    this.permits = data.permits ?? null;
-    this.ppe = data.ppe ?? null;
+    this.hazards = data.hazards ?? new SwHazards();
+    this.permits = data.permits ?? new SwPermits();
+    this.ppe = data.ppe ?? new SwPpe();
   }
 
   override toJson(): any {
@@ -126,16 +136,16 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
   static override fromJson(json: any): SafeWorkDto {
     return new SafeWorkDto({
       ...super.fromJson(json),
-      date: json.date || null,
+      date: json.date|| null,
       time: json.time || null,
       companyPerson: json.companyPerson || null,
       location: json.location || null,
       workScope: json.workScope || null,
       specialInstructions: json.specialInstructions || null,
       requestedBy: json.requestedBy || null,
-      hazards: json.hazards || null,
-      permits: json.permits || null,
-      ppe: json.ppe || null,
+      hazards: json.hazards || new SwHazards(),
+      permits: json.permits || new SwPermits(),
+      ppe: json.ppe || new SwPpe(),
     });
   }
 
@@ -152,7 +162,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     locationOptions: Option[],
     fields: SafeWorkFieldName[] = [
       'date', 'time', 'companyPerson', 'location', 'workScope',
-      'specialInstructions', 'requestedBy', 'hazards'
+      'specialInstructions', 'requestedBy', 'hazards', 'permits', 'ppe'
     ]
   ): FormField[] {
     const allFields: { [key in SafeWorkFieldName]: FormField } = {
@@ -162,7 +172,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         label: 'Date', 
         type: 'date', 
         validators: [Validators.required], 
-        initialValue: dto.date ? dto.date.split('T')[0] : null
+        initialValue: dto.date ? dto.date : null
       },
       time: { 
         name: 'time', 
@@ -181,7 +191,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
       location: {
         name: 'location',
         label: 'Location',
-        type: 'select',
+        type: 'text',
         options: locationOptions,
         validators: [Validators.required],
         initialValue: dto.location
@@ -206,9 +216,14 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         validators: [Validators.required], 
         initialValue: dto.requestedBy 
       },
-      hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox-group', options: SafeWorkDto.getHazardOptions(dto.hazards) },
-      permits: { name: 'permits', label: 'Permits', type: 'checkbox-group', initialValue: dto.permits },
-      ppe: { name: 'ppe', label: 'PPE', type: 'checkbox-group', initialValue: dto.ppe },
+      hazards: { 
+        name: 'hazards', 
+        label: 'Hazards', 
+        type: 'checkbox-group', 
+        options: SafeWorkDto.getHazardOptions(dto.hazards) || [],
+      },
+      permits: { name: 'permits', label: 'Permits', type: 'checkbox-group', initialValue: dto.permits, options: SafeWorkDto.getPermitOptions(dto.permits) || [] },
+      ppe: { name: 'ppe', label: 'PPE', type: 'checkbox-group', initialValue: dto.ppe, options: SafeWorkDto.getPpeOptions(dto.ppe) || [] },
       isVerified: { 
         name: 'isVerified', 
         label: 'Is Verified', 
@@ -267,7 +282,8 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
 
   static generatePermitFromRequest(request: WorkRequestDto): SafeWorkDto{
     return new SafeWorkDto({
-      date: request.dateOfWorkToBePerformed?.split("T")[0],
+      // date: request.dateOfWorkToBePerformed?.split("T")[0],
+      date: request.dateOfWorkToBePerformed?.split('T')[0] ?? null,
       time: request.timeOfWorkToBePerformed,
       companyPerson: request.company + "/" + request.requestedBy,
       location: request.location,
@@ -288,9 +304,43 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
 
     // Map over the keys to create the desired FormOption structure
     return hazardKeys.map(key => {
+      console.log(this.formatLabel(key),' formatted key ', key)
+      console.log(hazards[key],'value of the key: ', key)
       return {
         label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
         value: hazards[key]    // The boolean value (true/false)
+      };
+    });
+  }
+
+  static getPpeOptions(ppe: SwPpe | null): Option[] {
+    if(!ppe) return [];
+    // Get all keys from the hazards object in a type-safe way
+    const hazardKeys = Object.keys(ppe) as (keyof SwPpe)[];
+
+    // Map over the keys to create the desired FormOption structure
+    return hazardKeys.map(key => {
+      console.log(this.formatLabel(key),' formatted key ', key)
+      console.log(ppe[key],'value of the key: ', key)
+      return {
+        label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+        value: ppe[key]    // The boolean value (true/false)
+      };
+    });
+  }
+
+  static getPermitOptions(permits: SwPermits | null): Option[] {
+    if(!permits) return [];
+    // Get all keys from the hazards object in a type-safe way
+    const hazardKeys = Object.keys(permits) as (keyof SwPermits)[];
+
+    // Map over the keys to create the desired FormOption structure
+    return hazardKeys.map(key => {
+      console.log(this.formatLabel(key),' formatted key ', key)
+      console.log(permits[key],'value of the key: ', key)
+      return {
+        label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+        value: permits[key]    // The boolean value (true/false)
       };
     });
   }

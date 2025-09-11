@@ -22,6 +22,7 @@ import { LotoComponent } from './features/loto/loto.component';
 import { PermitBuilderPageComponent } from './pages/permit-builder-page/permit-builder-page.component';
 import { JobLogComponent } from './features/permit-builder/job-log/job-log.component';
 import { WorkRequestComponent } from './features/permit-builder/work-request/work-request.component';
+import { DailyPermitPackageComponent } from './features/permit-builder/daily-permit-package/daily-permit-package.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -63,6 +64,7 @@ export const routes: Routes = [
         { path: '', redirectTo: 'jobs', pathMatch: 'full' },
         { path: 'jobs', component: JobLogComponent },
         { path: 'work-requests', component: WorkRequestComponent },
+        { path: 'daily-packages', component: DailyPermitPackageComponent },
       ]
     },
 

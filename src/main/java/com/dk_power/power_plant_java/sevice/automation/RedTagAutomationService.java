@@ -13,9 +13,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -298,10 +296,41 @@ public class RedTagAutomationService {
 
 
 
-    public String buildDailyPermitPackage() throws FindFailed, IOException, InterruptedException {
+    public String buildDailyPermitPackageTest() throws FindFailed, IOException, InterruptedException {
         openApp();
         login();
         DailyPermitPackageDto packageDto = initData();
+
+        for(HotWorkDto hw : packageDto.getHotWorks()){
+            openNewHwBuilder();
+            fillOutHwForm(hw);
+            String permitNum = saveHwForm();
+            hw.setRedTagNum(permitNum);
+            System.out.println(permitNum + " HW saved");
+        }
+
+        for(ConfinedSpaceDto cs : packageDto.getConfinedSpaces()){
+            openNewConfinedSpaceBuilder();
+            fillOutCSForm(cs);
+            String permitNum = saveCsForm();
+            cs.setRedTagNum(permitNum);
+            System.out.println(permitNum + " CS saved");
+        }
+
+        for (SafeWorkDto safeWork : packageDto.getSafeWorks()) {
+            openNewSafeWorkBuilder();
+            fillOutSafeWorkForm(safeWork);
+            String permitNum = saveSafeWork();
+            safeWork.setRedTagNum(permitNum);
+            System.out.println(permitNum + " SW saved");
+            associatePermits(packageDto);
+        }
+
+        return "success";
+    }
+    public String buildDailyPermitPackage(DailyPermitPackageDto packageDto) throws FindFailed, IOException, InterruptedException {
+        openApp();
+        login();
 
         for(HotWorkDto hw : packageDto.getHotWorks()){
             openNewHwBuilder();

@@ -16,6 +16,7 @@ public class HotWorkMapper implements BaseMapper {
         if (entity == null) return null;
         HotWorkDto dto = new HotWorkDto();
 
+        dto.setId(entity.getId());
         dto.setDate(entity.getDate());
         dto.setForman(entity.getForeman());
         dto.setFireWatch(entity.getFireWatch());
@@ -35,6 +36,7 @@ public class HotWorkMapper implements BaseMapper {
         if (dto == null) return null;
         HotWork entity = new HotWork();
 
+        entity.setId(dto.getId());
         entity.setDate(dto.getDate());
         entity.setForeman(dto.getForman());
         entity.setFireWatch(dto.getFireWatch());

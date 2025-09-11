@@ -14,6 +14,11 @@ export interface DailyPermitPackageModel extends BaseModel {
   hotWorks: HotWorkDto[];
   confinedSpaces: ConfinedSpaceDto[];
   lotos: LotoDto[];
+  safeWorkIds: number[];
+  hotWorkIds: number[];
+  lotoIds: number[];
+  workRequestIds: number[];
+  confinedSpaceIds: number[];
 }
 
 export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackageModel {
@@ -22,6 +27,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
   hotWorks: HotWorkDto[];
   confinedSpaces: ConfinedSpaceDto[];
   lotos: LotoDto[];
+  safeWorkIds: number[];
+  hotWorkIds: number[]; 
+  lotoIds: number[];
+  workRequestIds: number[];
+  confinedSpaceIds: number[];
 
   constructor(data: Partial<DailyPermitPackageModel> = {}) {
     super(data);
@@ -30,6 +40,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
     this.hotWorks = data.hotWorks?.map(hw => new HotWorkDto(hw)) ?? [];
     this.confinedSpaces = data.confinedSpaces?.map(cs => new ConfinedSpaceDto(cs)) ?? [];
     this.lotos = data.lotos?.map(loto => new LotoDto(loto)) ?? [];
+    this.safeWorkIds = data.safeWorkIds?? [];
+    this.hotWorkIds = data.hotWorkIds?? [];
+    this.lotoIds = data.lotoIds?? [];
+    this.workRequestIds = data.workRequestIds?? [];
+    this.confinedSpaceIds = data.confinedSpaceIds?? [];
   }
 
   override toJson(): any {
@@ -40,6 +55,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       hotWorks: this.hotWorks.map(hw => hw.toJson()),
       confinedSpaces: this.confinedSpaces.map(cs => cs.toJson()),
       lotos: this.lotos.map(loto => loto.toJson()),
+      safeWorkIds: this.safeWorkIds,
+      hotWorkIds: this.hotWorkIds,
+      lotoIds: this.lotoIds,
+      workRequestIds: this.workRequestIds,
+      confinedSpaceIds: this.confinedSpaceIds,
     };
   }
 
@@ -51,6 +71,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       hotWorks: json.hotWorks?.map((hw: any) => HotWorkDto.fromJson(hw)) ?? [],
       confinedSpaces: json.confinedSpaces?.map((cs: any) => ConfinedSpaceDto.fromJson(cs)) ?? [],
       lotos: json.lotos?.map((loto: any) => LotoDto.fromJson(loto)) ?? [],
+      safeWorkIds: json.safeWorkIds,
+      hotWorkIds: json.hotWorkIds,
+      lotoIds: json.lotoIds,
+      workRequestIds: json.workRequestIds,
+      confinedSpaceIds: json.confinedSpaceIds,
     });
   }
 
@@ -148,7 +173,12 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
         accessorFn: (item: DailyPermitPackageDto) => item.isVerified ? 'Yes' : 'No' 
       },
       name: { id: 'name', header: 'Name', accessorKey: 'name' },
-      objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType' }
+      objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType' },
+      safeWorkIds: { id: 'workRequestIds', header: 'Work Request IDs', accessorFn: (item: DailyPermitPackageDto) => item.workRequestIds.join(', ') },
+      workRequestIds: { id: 'workRequestIds', header: 'Work Request IDs', accessorFn: (item: DailyPermitPackageDto) => item.workRequestIds.join(', ') },
+      hotWorkIds: { id: 'hotWorkIds', header: 'Hot Work IDs', accessorFn: (item: DailyPermitPackageDto) => item.hotWorkIds.join(', ') },
+      confinedSpaceIds: { id: 'confinedSpaceIds', header: 'Confined Space IDs', accessorFn: (item: DailyPermitPackageDto) => item.confinedSpaceIds.join(', ') },
+      lotoIds: { id: 'lotoIds', header: 'LOTO IDs', accessorFn: (item: DailyPermitPackageDto) => item.lotoIds.join(', ') }
     };
 
     return fields.map(fieldName => allColumns[fieldName]);

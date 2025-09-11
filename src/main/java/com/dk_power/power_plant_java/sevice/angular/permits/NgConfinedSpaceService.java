@@ -54,4 +54,15 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
     public Class<ConfinedSpace> getEntityClass() {
         return ConfinedSpace.class;
     }
+
+    public ConfinedSpaceDto createConfinedSpaceRequest(ConfinedSpaceDto confinedSpaceDto) {
+        ConfinedSpace confinedSpace = confinedSpaceMapper.convertToEntity(confinedSpaceDto);
+        return confinedSpaceMapper.convertToDto(confinedSpaceRepo.save(confinedSpace));
+    }
+
+    public ConfinedSpaceDto updateConfinedSpaceRequest(String id, ConfinedSpaceDto confinedSpaceDto) {
+        ConfinedSpace confinedSpace1 = confinedSpaceMapper.convertToEntity(confinedSpaceDto);
+        confinedSpace1.setId(Long.parseLong(id));
+        return confinedSpaceMapper.convertToDto(save(confinedSpace1));
+    }
 }

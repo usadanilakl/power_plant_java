@@ -19,6 +19,7 @@ public class SafeWorkMapper implements BaseMapper {
 
         SafeWorkDto dto = new SafeWorkDto();
 
+        if (safeWork.getId()!= null) dto.setId(safeWork.getId());
         if (safeWork.getDate() != null) dto.setDate(safeWork.getDate());
         if (safeWork.getTime() != null) dto.setTime(safeWork.getTime());
         if (safeWork.getCompanyPerson() != null) dto.setCompanyPerson(safeWork.getCompanyPerson());
@@ -54,6 +55,7 @@ public class SafeWorkMapper implements BaseMapper {
 
         SafeWork entity = new SafeWork();
 
+        if (dto.getId()!= null) entity.setId(dto.getId());
         if (dto.getDate() != null) entity.setDate(dto.getDate());
         if (dto.getTime() != null) entity.setTime(dto.getTime());
         if (dto.getCompanyPerson() != null) entity.setCompanyPerson(dto.getCompanyPerson());

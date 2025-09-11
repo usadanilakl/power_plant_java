@@ -39,6 +39,10 @@ export class CurrentHotWorkService {
         });
     }
 
+    setCurrentHotWorkWithDto(dto: HotWorkDto) {
+        this.selectedHotWorkSubject.next(dto);
+    }
+
     updateHotWorkInList(hotWork: HotWorkDto) {
         const currentHotWorks = this.allActiveHotWorksSubject.value;
         const updatedHotWorks = currentHotWorks.map(hw => hw.id === hotWork.id ? hotWork : hw);
@@ -63,7 +67,7 @@ export class CurrentHotWorkService {
                 if (response && response.responseData) {
                     const newHotWork = response.responseData;
                     this.addHotWorkToList(newHotWork);
-                    this.setCurrentHotWork(newHotWork.id);
+                    this.setCurrentHotWorkWithDto(new HotWorkDto(newHotWork));
                 }
             })
         );

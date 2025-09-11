@@ -39,6 +39,10 @@ export class CurrentSafeWorkService {
         });
     }
 
+    setCurrentSafeWorkWithDto(dto: SafeWorkDto) {
+        this.selectedSafeWorkSubject.next(dto);
+    }
+
     updateSafeWorkInList(safeWork: SafeWorkDto) {
         const currentSafeWorks = this.allActiveSafeWorksSubject.value;
         const updatedSafeWorks = currentSafeWorks.map(sw => sw.id === safeWork.id ? safeWork : sw);
@@ -63,7 +67,7 @@ export class CurrentSafeWorkService {
                 if (response && response.responseData) {
                     const newSafeWork = response.responseData;
                     this.addSafeWorkToList(newSafeWork);
-                    this.setCurrentSafeWork(newSafeWork.id);
+                    this.setCurrentSafeWorkWithDto(new SafeWorkDto(newSafeWork));
                 }
             })
         );

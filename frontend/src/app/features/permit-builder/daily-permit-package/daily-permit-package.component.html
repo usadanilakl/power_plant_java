@@ -1,1 +1,7 @@
-<p>daily-permit-package works!</p>
+<app-daily-permit-package-form
+    [workRequest]="workRequest"
+    [safeWorkInput]="safeWork"
+    [hotWorkInput]="hotWork"
+    [confinedSpaceInput]="confinedSpace"
+    (formSubmit)="buildPermits($event)"
+></app-daily-permit-package-form>

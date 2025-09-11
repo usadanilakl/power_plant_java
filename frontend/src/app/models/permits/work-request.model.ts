@@ -83,7 +83,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   static override fromJson(json: any): WorkRequestDto {
     return new WorkRequestDto({
       ...super.fromJson(json),
-      dateOfWorkToBePerformed: json.dateOfWorkToBePerformed || null,
+      dateOfWorkToBePerformed: json.dateOfWorkToBePerformed|| null,
       timeOfWorkToBePerformed: json.timeOfWorkToBePerformed || null,
       requestedBy: json.requestedBy || null,
       company: json.company || null,

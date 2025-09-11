@@ -6,7 +6,7 @@ import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
 
-export interface ConfinedSpaceHazards {
+export class ConfinedSpaceHazards {
   oxygenDeficiency: boolean;
   flammableGas: boolean;
   combustibleDust: boolean;
@@ -26,6 +26,28 @@ export interface ConfinedSpaceHazards {
   lifeLine: boolean;
   atmMeter: boolean;
   tripod: boolean;
+
+  constructor(data: Partial<ConfinedSpaceHazards> = {}) {
+    this.oxygenDeficiency = data.oxygenDeficiency ?? false;
+    this.flammableGas = data.flammableGas ?? false;
+    this.combustibleDust = data.combustibleDust ?? false;
+    this.toxicGas = data.toxicGas ?? false;
+    this.rotatingEquipment = data.rotatingEquipment ?? false;
+    this.electricalShock = data.electricalShock ?? false;
+    this.entrapment = data.entrapment ?? false;
+    this.engulfment = data.engulfment ?? false;
+    this.heatStress = data.heatStress ?? false;
+    this.faceShield = data.faceShield ?? false;
+    this.gfcI = data.gfcI ?? false;
+    this.lowVoltageTools = data.lowVoltageTools ?? false;
+    this.explosionProofTools = data.explosionProofTools ?? false;
+    this.nonSparkingTools = data.nonSparkingTools ?? false;
+    this.fallProtection = data.fallProtection ?? false;
+    this.retrievalSystem = data.retrievalSystem ?? false;
+    this.lifeLine = data.lifeLine ?? false;
+    this.atmMeter = data.atmMeter ?? false;
+    this.tripod = data.tripod ?? false;
+  }
 }
 
 export type ConfinedSpaceFieldName = keyof ConfinedSpaceModel;
@@ -75,10 +97,10 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     this.hotWorkNum = data.hotWorkNum ?? null;
     this.ventilation = data.ventilation ?? false;
     this.blankFlanged = data.blankFlanged ?? false;
-    this.meterModel = data.meterModel ?? null;
+    this.meterModel = data.meterModel ?? "RKI GX-3R PRO";
     this.meterNum = data.meterNum ?? null;
     this.calibrated = data.calibrated ?? false;
-    this.hazards = data.hazards ?? null;
+    this.hazards = data.hazards ?? new ConfinedSpaceHazards();
   }
 
   override toJson(): any {
@@ -114,10 +136,10 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       hotWorkNum: json.hotWorkNum || null,
       ventilation: json.ventilation || false,
       blankFlanged: json.blankFlanged || false,
-      meterModel: json.meterModel || null,
+      meterModel: json.meterModel || "RKI GX-3R PRO",
       meterNum: json.meterNum || null,
       calibrated: json.calibrated || false,
-      hazards: json.hazards || null,
+      hazards: json.hazards || new ConfinedSpaceHazards(),
     });
   }
 
@@ -135,7 +157,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     fields: ConfinedSpaceFieldName[] = [
       'date', 'time', 'space', 'workScope', 'issuedTo', 'duration',
       'lotoNum', 'hotWorkNum', 'ventilation', 'blankFlanged', 'meterModel',
-      'meterNum', 'calibrated'
+      'meterNum', 'calibrated', 'hazards'
     ]
   ): FormField[] {
     const allFields: { [key in ConfinedSpaceFieldName]: FormField } = {
@@ -145,7 +167,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         label: 'Date', 
         type: 'date', 
         validators: [Validators.required], 
-        initialValue: dto.date 
+        initialValue: dto.date
       },
       time: { 
         name: 'time', 
@@ -157,7 +179,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       space: {
         name: 'space',
         label: 'Confined Space',
-        type: 'select',
+        type: 'text',
         options: spaceOptions,
         validators: [Validators.required],
         initialValue: dto.space
@@ -198,13 +220,13 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       ventilation: { 
         name: 'ventilation', 
         label: 'Ventilation', 
-        type: 'checkbox-group', 
+        type: 'checkbox', 
         initialValue: dto.ventilation 
       },
       blankFlanged: { 
         name: 'blankFlanged', 
         label: 'Blank Flanged', 
-        type: 'checkbox-group', 
+        type: 'checkbox', 
         initialValue: dto.blankFlanged 
       },
       meterModel: { 
@@ -222,10 +244,10 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       calibrated: { 
         name: 'calibrated', 
         label: 'Calibrated', 
-        type: 'checkbox-group', 
+        type: 'checkbox', 
         initialValue: dto.calibrated 
       },
-      hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox-group', initialValue: dto.hazards },
+      hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox-group', initialValue: dto.hazards, options: ConfinedSpaceDto.getHazardOptions(dto.hazards) },
       isVerified: { 
         name: 'isVerified', 
         label: 'Is Verified', 
@@ -294,12 +316,31 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         return fields.map(fieldName => allColumns[fieldName]);
     }
       
-        static generatePermitFromRequest(request: WorkRequestDto): ConfinedSpaceDto{
-          return new ConfinedSpaceDto({
-            date: request.dateOfWorkToBePerformed,
-            issuedTo: request.requestedBy,
-            space: request.space,
-            workScope: request.workScope
-          });
-        }
+    static generatePermitFromRequest(request: WorkRequestDto): ConfinedSpaceDto{
+      return new ConfinedSpaceDto({
+        date: request.dateOfWorkToBePerformed?.split('T')[0],
+        issuedTo: request.requestedBy,
+        space: request.space,
+        workScope: request.workScope
+      });
+    }
+    
+    static formatLabel(key: string): string {
+      const result = key.replace(/([A-Z])/g, ' $1');
+      return result.charAt(0).toUpperCase() + result.slice(1);
+    }
+  
+    static getHazardOptions(hazards: ConfinedSpaceHazards | null): Option[] {
+      if(!hazards) return [];
+      // Get all keys from the hazards object in a type-safe way
+      const hazardKeys = Object.keys(hazards) as (keyof ConfinedSpaceHazards)[];
+  
+      // Map over the keys to create the desired FormOption structure
+      return hazardKeys.map(key => {
+        return {
+          label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+          value: hazards[key]    // The boolean value (true/false)
+        };
+      });
+    }
 }

@@ -7,19 +7,23 @@ import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
 
 
-export interface HotWorkMeasures {
-  areaIsClean: boolean;
-  flammablesAreSecured: boolean;
-  noCombustibleDustOrDebrisPresent: boolean;
-  radiativeHeatPreventiveMeasuresAreTaken: boolean;
-  vesselsArePurged: boolean;
-  openingsAreCovered: boolean;
-  ductVentilationIsSecured: boolean;
-  lockOutIsCompleted: boolean;
-  communicationIsEstablished: boolean;
-  fireWatchIsAwareOfDuties: boolean;
-  fireExtinguisherPresent: boolean;
-  fireProtectionIsInService: boolean;
+export class HotWorkMeasures {
+  areaIsClean: boolean = false;
+  flammablesAreSecured: boolean = false;
+  noCombustibleDustOrDebrisPresent: boolean = false;
+  radiativeHeatPreventiveMeasuresAreTaken: boolean = false;
+  vesselsArePurged: boolean = false;
+  openingsAreCovered: boolean = false;
+  ductVentilationIsSecured: boolean = false;
+  lockOutIsCompleted: boolean = false;
+  communicationIsEstablished: boolean = false;
+  fireWatchIsAwareOfDuties: boolean = false;
+  fireExtinguisherPresent: boolean = false;
+  fireProtectionIsInService: boolean = false;
+
+  constructor(data: Partial<HotWorkMeasures> = {}) {
+    Object.assign(this, data);
+  }
 }
 
 export type HotWorkFieldName = keyof HotWorkModel;
@@ -54,10 +58,10 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     this.workScope = data.workScope ?? null;
     this.foreman = data.foreman ?? null;
     this.fireWatch = data.fireWatch ?? null;
-    this.meterModel = data.meterModel ?? null;
+    this.meterModel = data.meterModel ?? "RKI GX-3R PRO";
     this.meterNum = data.meterNum ?? null;
     this.specialInstructions = data.specialInstructions ?? null;
-    this.measures = data.measures ?? null;
+    this.measures = data.measures ?? new HotWorkMeasures();
   }
 
   override toJson(): any {
@@ -83,10 +87,10 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       workScope: json.workScope || null,
       foreman: json.foreman || null,
       fireWatch: json.fireWatch || null,
-      meterModel: json.meterModel || null,
+      meterModel: json.meterModel || "RKI GX-3R PRO",
       meterNum: json.meterNum || null,
       specialInstructions: json.specialInstructions || null,
-      measures: json.measures || null,
+      measures: json.measures || new HotWorkMeasures(),
     });
   }
 
@@ -103,7 +107,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     locationOptions: Option[],
     fields: HotWorkFieldName[] = [
       'date', 'location', 'workScope', 'foreman', 'fireWatch',
-      'meterModel', 'meterNum', 'specialInstructions'
+      'meterModel', 'meterNum', 'specialInstructions', 'measures'
     ]
   ): FormField[] {
     const allFields: { [key in HotWorkFieldName]: FormField } = {
@@ -113,12 +117,12 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         label: 'Date', 
         type: 'date', 
         validators: [Validators.required], 
-        initialValue: dto.date 
+        initialValue: dto.date
       },
       location: {
         name: 'location',
         label: 'Location',
-        type: 'select',
+        type: 'text',
         options: locationOptions,
         validators: [Validators.required],
         initialValue: dto.location
@@ -162,7 +166,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         type: 'textarea', 
         initialValue: dto.specialInstructions 
       },
-      measures: { name: 'measures', label: 'Safety Measures', type: 'checkbox-group', initialValue: dto.measures },
+      measures: { name: 'measures', label: 'Safety Measures', type: 'checkbox-group', initialValue: dto.measures, options: HotWorkDto.getHwMeasuresOptions(dto.measures) },
       isVerified: { 
         name: 'isVerified', 
         label: 'Is Verified', 
@@ -212,11 +216,30 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
   
     static generatePermitFromRequest(request: WorkRequestDto): HotWorkDto{
       return new HotWorkDto({
-        date: request.dateOfWorkToBePerformed,
+        date: request.dateOfWorkToBePerformed?.split('T')[0],
         foreman: request.requestedBy,
         location: request.location,
         workScope: request.workScope,
         fireWatch: request.fireWatch
+      });
+    }
+
+    static formatLabel(key: string): string {
+      const result = key.replace(/([A-Z])/g, ' $1');
+      return result.charAt(0).toUpperCase() + result.slice(1);
+    }
+  
+    static getHwMeasuresOptions(measures: HotWorkMeasures | null): Option[] {
+      if(!measures) return [];
+      // Get all keys from the hazards object in a type-safe way
+      const hazardKeys = Object.keys(measures) as (keyof HotWorkMeasures)[];
+  
+      // Map over the keys to create the desired FormOption structure
+      return hazardKeys.map(key => {
+        return {
+          label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+          value: measures[key]    // The boolean value (true/false)
+        };
       });
     }
 }

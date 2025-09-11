@@ -37,6 +37,9 @@ export class CurrentConfinedSpaceService {
         ).subscribe(response => {
             this.selectedConfinedSpaceSubject.next(response.responseData);
         });
+    }    
+    setCurrentConfinedSpaceWithDto(dto: ConfinedSpaceDto) {
+        this.selectedConfinedSpaceSubject.next(dto);
     }
 
     updateConfinedSpaceInList(confinedSpace: ConfinedSpaceDto) {
@@ -63,7 +66,7 @@ export class CurrentConfinedSpaceService {
                 if (response && response.responseData) {
                     const newConfinedSpace = response.responseData;
                     this.addConfinedSpaceToList(newConfinedSpace);
-                    this.setCurrentConfinedSpace(newConfinedSpace.id);
+                    this.setCurrentConfinedSpaceWithDto(new ConfinedSpaceDto(newConfinedSpace));
                 }
             })
         );

@@ -24,4 +24,9 @@ public class DailyPermitPackageDto extends BaseDto {
     private List<HotWorkDto> hotWorks = new ArrayList<>();
     private List<ConfinedSpaceDto> confinedSpaces = new ArrayList<>();
     private List<LotoDto> lotos = new ArrayList<>();
+    private Set<Long> safeWorkIds = new HashSet<>();
+    private Set<Long> hotWorkIds = new HashSet<>();
+    private Set<Long> confinedSpaceIds = new HashSet<>();
+    private Set<Long> lotoIds = new HashSet<>();
+    private Set<Long> workRequestIds = new HashSet<>();
 }
