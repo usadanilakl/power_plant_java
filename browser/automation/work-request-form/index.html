@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Work Permit Form</title>
+    <style>
+        body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f8fa;
+        margin: 0;
+        padding: 1.5rem;
+        color: #2c3e50;
+        }
+
+        form {
+        max-width: 600px;
+        margin: 2rem auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgb(0 0 0 / 0.1);
+        box-sizing: border-box;
+        }
+
+        form label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.4rem;
+        margin-top: 1rem;
+        }
+
+        form input[type="text"],
+        form input[type="date"],
+        form input[type="time"],
+        form textarea,
+        form select {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        font-size: 1rem;
+        border: 1.5px solid #ccc;
+        border-radius: 5px;
+        transition: border-color 0.3s ease;
+        box-sizing: border-box;
+        }
+
+        form input[type="text"]:focus,
+        form input[type="date"]:focus,
+        form input[type="time"]:focus,
+        form textarea:focus,
+        form select:focus {
+        outline: none;
+        border-color: #0078d4;
+        box-shadow: 0 0 4px #0078d4a0;
+        }
+
+        form textarea {
+        resize: vertical;
+        min-height: 80px;
+        }
+
+        button[type="submit"],
+        button {
+        margin-top: 2rem;
+        background-color: #0078d4;
+        color: white;
+        border: none;
+        padding: 0.8rem 1.2rem;
+        font-size: 1.15rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.25s ease;
+        width: 100%;
+        box-sizing: border-box;
+        }
+
+        button[type="submit"]:hover,
+        button:hover {
+        background-color: #005ea6;
+        }
+
+        .radio-button {
+            display: inline-block;
+            cursor: pointer;
+            border: 2px solid #0078d4;
+            border-radius: 5px;
+            padding: 6px 15px;
+            margin-right: 10px;
+            user-select: none;
+            font-weight: 600;
+            color: #0078d4;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .radio-button input {
+            display: none;
+        }
+
+        .radio-button input:checked + span {
+            background-color: #0078d4;
+            color: white;
+            border-radius: 5px;
+        }
+
+        .radio-button:hover {
+            background-color: #e0f0ff;
+        }
+
+        .radio-button input:focus + span {
+            outline: 2px solid #005ea6;
+            outline-offset: 2px;
+        }
+
+        .conditional {
+            margin-top: 1rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="openFile('./login.html')">Resubmit previously submitted form</button>
+<form>
+    <label>Date of work to be performed:<br />
+        <input type="date" name="dateOfWork" required />
+    </label><br /><br />
+
+    <label>Time of work to be performed:<br />
+        <input type="time" name="timeOfWork" required />
+    </label><br /><br />
+
+    <label>Work Requested By:<br />
+        <input type="text" name="workRequestedBy" required />
+    </label><br /><br />
+
+    <label>Company:<br />
+        <input type="text" name="company" required />
+    </label><br /><br />
+
+    <label>Location Of Work:<br />
+        <input type="text" name="locationOfWork" required />
+    </label><br /><br />
+
+    <label>Affected Equipment:<br />
+        <input type="text" name="affectedEquipment" required />
+    </label><br /><br />
+
+    <label>Work Scope:<br />
+        <textarea name="workScope" rows="4" required></textarea>
+    </label><br /><br />
+
+
+  <div class="radio-group">
+    <label class="question-label">Is LOTO Required?</label>
+    <label class="radio-button">
+      <input type="radio" name="isLOTORequired" value="Yes" required />
+      <span>Yes</span>
+    </label>
+    <label class="radio-button">
+      <input type="radio" name="isLOTORequired" value="No" />
+      <span>No</span>
+    </label>
+  </div>
+
+  <div class="radio-group">
+    <label class="question-label">Is Confined Space Entry Required?</label>
+    <label class="radio-button">
+      <input type="radio" name="isConfinedSpaceEntryRequired" value="Yes" required />
+      <span>Yes</span>
+    </label>
+    <label class="radio-button">
+      <input type="radio" name="isConfinedSpaceEntryRequired" value="No" />
+      <span>No</span>
+    </label>
+  </div>
+
+    <!-- <label>Is LOTO Required?<br />
+        <select name="isLOTORequired" required>
+            <option value="">--Select--</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+        </select>
+    </label><br /><br />
+
+    <label>Is Confined Space Entry Required?<br />
+        <select name="isConfinedSpaceEntryRequired" id="confinedSpaceSelect" required>
+            <option value="">--Select--</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+        </select>
+    </label><br /><br /> -->
+
+    <div id="spaceToBeEnteredDiv" class="conditional">
+        <label>Space to be entered:<br />
+            <input type="text" name="spaceToBeEntered" />
+        </label><br /><br />
+    </div>
+
+    <!-- <label>Is Hot Work Required (welding, cutting, grinding, open flame, sparks)?<br />
+        <select name="isHotWorkRequired" id="hotWorkSelect" required>
+            <option value="">--Select--</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+        </select>
+    </label><br /><br /> -->
+
+  <div class="radio-group">
+    <label class="question-label">Is Hot Work Required (welding, cutting, grinding, open flame, sparks)?</label>
+    <label class="radio-button">
+      <input type="radio" name="isHotWorkRequired" value="Yes" required />
+      <span>Yes</span>
+    </label>
+    <label class="radio-button">
+      <input type="radio" name="isHotWorkRequired" value="No" />
+      <span>No</span>
+    </label>
+  </div>
+
+    <div id="foremanNameDiv" class="conditional">
+        <label>Foreman Name:<br />
+            <input type="text" name="foremanName" />
+        </label><br /><br />
+    </div>
+
+    <div id="fireWatchNameDiv" class="conditional">
+        <label>Fire-watch Name:<br />
+            <input type="text" name="fireWatchName" />
+        </label><br /><br />
+    </div>
+
+    <button type="submit">Submit</button>
+</form>
+
+<script src="./user.service.js"></script>
+<script src="./navigation.js"></script>
+
+<script>
+
+    function getRadioValue(name) {
+        const radios = document.getElementsByName(name);
+        for (const radio of radios) {
+            if (radio.checked) return radio.value;
+        }
+        return null;
+    }
+
+    function updateDependents() {
+        const hotWork = getRadioValue('isHotWorkRequired');
+        const confinedSpace = getRadioValue('isConfinedSpaceEntryRequired');
+
+        const foremanNameDiv = document.getElementById('foremanNameDiv');
+        const fireWatchNameDiv = document.getElementById('fireWatchNameDiv');
+        const spaceToBeEnteredDiv = document.getElementById('spaceToBeEnteredDiv');
+
+        if (hotWork === 'Yes') {
+            foremanNameDiv.style.display = 'block';
+            fireWatchNameDiv.style.display = 'block';
+        } else {
+            foremanNameDiv.style.display = 'none';
+            fireWatchNameDiv.style.display = 'none';
+        }
+
+        if (confinedSpace === 'Yes') {
+            spaceToBeEnteredDiv.style.display = 'block';
+        } else {
+            spaceToBeEnteredDiv.style.display = 'none';
+        }
+    }
+
+    // Attach event listeners to all radios that affect dependencies
+    document.querySelectorAll('input[name="isHotWorkRequired"], input[name="isConfinedSpaceEntryRequired"]').forEach(radio => {
+        radio.addEventListener('change', updateDependents);
+    });
+
+    // Run once on page load to set initial visibility
+    document.addEventListener('DOMContentLoaded', updateDependents);
+
+</script>
+</body>
+</html>
