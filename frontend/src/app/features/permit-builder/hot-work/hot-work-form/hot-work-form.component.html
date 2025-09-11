@@ -1,1 +1,13 @@
-<p>hot-work-form works!</p>
+@if(isFormReady()){
+    <app-reactive-form
+        [fields]="fields()"
+        [values]="values()"
+        [layout]="'column'"
+        [title]="'Hot Work'"
+        (formSubmit)="onFormSubmit($event)"
+        (formDelete)="onFormDelete()"
+    ></app-reactive-form>
+
+}@else {
+    <p>Loading form...</p>
+}

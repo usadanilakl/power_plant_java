@@ -1,1 +1,13 @@
-<p>confined-space-form works!</p>
+@if(isFormReady()){
+    <app-reactive-form
+        [fields]="fields()"
+        [layout]="'column'"
+        [values]="values()"
+        [title]="'Confined Space'"
+        (formSubmit)="onFormSubmit($event)"
+        (formDelete)="onFormDelete()"
+    ></app-reactive-form>
+
+}@else {
+    <p>Loading form...</p>
+}

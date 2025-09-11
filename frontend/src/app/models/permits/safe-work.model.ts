@@ -3,6 +3,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { Option } from '../option.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
+import { WorkRequestDto } from './work-request.model';
 
 
 export interface SwHazards {
@@ -151,7 +152,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     locationOptions: Option[],
     fields: SafeWorkFieldName[] = [
       'date', 'time', 'companyPerson', 'location', 'workScope',
-      'specialInstructions', 'requestedBy'
+      'specialInstructions', 'requestedBy', 'hazards'
     ]
   ): FormField[] {
     const allFields: { [key in SafeWorkFieldName]: FormField } = {
@@ -161,7 +162,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         label: 'Date', 
         type: 'date', 
         validators: [Validators.required], 
-        initialValue: dto.date 
+        initialValue: dto.date ? dto.date.split('T')[0] : null
       },
       time: { 
         name: 'time', 
@@ -205,9 +206,9 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         validators: [Validators.required], 
         initialValue: dto.requestedBy 
       },
-      hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox', initialValue: dto.hazards },
-      permits: { name: 'permits', label: 'Permits', type: 'checkbox', initialValue: dto.permits },
-      ppe: { name: 'ppe', label: 'PPE', type: 'checkbox', initialValue: dto.ppe },
+      hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox-group', options: SafeWorkDto.getHazardOptions(dto.hazards) },
+      permits: { name: 'permits', label: 'Permits', type: 'checkbox-group', initialValue: dto.permits },
+      ppe: { name: 'ppe', label: 'PPE', type: 'checkbox-group', initialValue: dto.ppe },
       isVerified: { 
         name: 'isVerified', 
         label: 'Is Verified', 
@@ -262,5 +263,35 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     };
 
     return fields.map(fieldName => allColumns[fieldName]);
+  }
+
+  static generatePermitFromRequest(request: WorkRequestDto): SafeWorkDto{
+    return new SafeWorkDto({
+      date: request.dateOfWorkToBePerformed?.split("T")[0],
+      time: request.timeOfWorkToBePerformed,
+      companyPerson: request.company + "/" + request.requestedBy,
+      location: request.location,
+      workScope: request.workScope,
+      requestedBy: request.requestedBy
+    });
+  }
+
+  static formatLabel(key: string): string {
+    const result = key.replace(/([A-Z])/g, ' $1');
+    return result.charAt(0).toUpperCase() + result.slice(1);
+  }
+
+  static getHazardOptions(hazards: SwHazards | null): Option[] {
+    if(!hazards) return [];
+    // Get all keys from the hazards object in a type-safe way
+    const hazardKeys = Object.keys(hazards) as (keyof SwHazards)[];
+
+    // Map over the keys to create the desired FormOption structure
+    return hazardKeys.map(key => {
+      return {
+        label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+        value: hazards[key]    // The boolean value (true/false)
+      };
+    });
   }
 }

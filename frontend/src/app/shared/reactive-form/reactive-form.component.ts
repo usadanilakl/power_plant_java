@@ -22,6 +22,7 @@ export class ReactiveFormComponent {
   fields = input<any[]>([]);
   values = input<any>({});
   layout = input<'row' | 'column' | 'reactive'>('reactive');
+  title = input<string>('');
   formSubmit = output<any>();
   formDelete = output<void>();
   addNewSelectOption = output<string>();

@@ -175,7 +175,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       isHotWorkRequired: { 
         name: 'isHotWorkRequired', 
         label: 'Is Hot Work Required', 
-        type: 'checkbox', 
+        type: 'checkbox-group', 
         initialValue: dto.isHotWorkRequired 
       },
       foreman: { 
@@ -193,13 +193,13 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       isLotoRequired: { 
         name: 'isLotoRequired', 
         label: 'Is LOTO Required', 
-        type: 'checkbox', 
+        type: 'checkbox-group', 
         initialValue: dto.isLotoRequired 
       },
       isConfinedSpaceEntryRequired: { 
         name: 'isConfinedSpaceEntryRequired', 
         label: 'Is Confined Space Entry Required', 
-        type: 'checkbox', 
+        type: 'checkbox-group', 
         initialValue: dto.isConfinedSpaceEntryRequired 
       },
       space: { 
@@ -292,6 +292,14 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
     };
 
     return fields.map(fieldName => allColumns[fieldName]);
+  }
+
+  getDate(): string {
+    if (!this.dateOfWorkToBePerformed) {
+      return '';
+    }
+    // Split the ISO string at 'T' and take the first part (date)
+    return this.dateOfWorkToBePerformed.split('T')[0];
   }
 
 }

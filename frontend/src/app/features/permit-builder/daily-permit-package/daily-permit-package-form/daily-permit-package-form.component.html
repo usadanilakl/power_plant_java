@@ -1,6 +1,25 @@
-<app-work-request-display
-    [workRequest]="workRequest"
-></app-work-request-display>
-<app-safe-work-form
-    [values]="safeWork()"
-></app-safe-work-form>
+<!-- <div class="permit-package-container">
+  <div class="work-request-section">
+    <app-work-request-display [workRequest]="workRequest"></app-work-request-display>
+  </div>
+  
+  <div class="forms-container">
+    <div class="forms-scroll-wrapper">
+      <app-safe-work-form [values]="safeWork()"></app-safe-work-form>
+      <app-hot-work-form [values]="hotWork()"></app-hot-work-form>
+      <app-confined-space-form [values]="confinedSpace()"></app-confined-space-form>
+    </div>
+  </div>
+</div> -->
+<div class="permit-package-container">
+  <div class="work-request-section">
+    <app-work-request-display [workRequest]="workRequest"></app-work-request-display>
+  </div>
+  
+  <div class="forms-container">
+    <!-- The wrapper div has been removed -->
+    <app-safe-work-form [values]="safeWork()"></app-safe-work-form>
+    <app-hot-work-form [values]="hotWork()"></app-hot-work-form>
+    <app-confined-space-form [values]="confinedSpace()"></app-confined-space-form>
+  </div>
+</div>

@@ -1,76 +1,83 @@
 @if(workRequest()){
     <div class="work-request-display">
-    <h2>Work Request Details</h2>
+        <h2>Work Request Details</h2>
     
-    <div class="detail-row">
-        <span class="label">Date of Work:</span>
-        <span class="value">{{ getProperty('dateOfWorkToBePerformed') | date:'mediumDate' }}</span>
-    </div>
+        <div class="details-grid">
+            <!-- General Information Section -->
+            <div class="details-card">
+                <h3 class="card-header">General Information</h3>
+                <div class="card-content">
+                    <span class="label">Requested By:</span>
+                    <span class="value">{{ getProperty('requestedBy') }}</span>
     
-    <div class="detail-row">
-        <span class="label">Time of Work:</span>
-        <span class="value">{{ getProperty('timeOfWorkToBePerformed') }}</span>
-    </div>
+                    <span class="label">Company:</span>
+                    <span class="value">{{ getProperty('company') }}</span>
     
-    <div class="detail-row">
-        <span class="label">Requested By:</span>
-        <span class="value">{{ getProperty('requestedBy') }}</span>
-    </div>
+                    <span class="label">Date of Work:</span>
+                    <span class="value">{{ getProperty('dateOfWorkToBePerformed') | date:'mediumDate' }}</span>
     
-    <div class="detail-row">
-        <span class="label">Company:</span>
-        <span class="value">{{ getProperty('company') }}</span>
-    </div>
+                    <span class="label">Time of Work:</span>
+                    <span class="value">{{ getProperty('timeOfWorkToBePerformed') }}</span>
     
-    <div class="detail-row">
-        <span class="label">Location:</span>
-        <span class="value">{{ getProperty('location') }}</span>
-    </div>
+                    <span class="label">SharePoint ID:</span>
+                    <span class="value">{{ getProperty('sharepointId') }}</span>
+                </div>
+            </div>
     
-    <div class="detail-row">
-        <span class="label">Affected Equipment:</span>
-        <span class="value">{{ getProperty('affectedEquipment') }}</span>
-    </div>
+            <!-- Work Scope Section -->
+            <div class="details-card">
+                <h3 class="card-header">Work Scope</h3>
+                <div class="card-content">
+                    <span class="label">Location:</span>
+                    <span class="value">{{ getProperty('location') }}</span>
     
-    <div class="detail-row">
-        <span class="label">Work Scope:</span>
-        <span class="value">{{ getProperty('workScope') }}</span>
-    </div>
+                    <span class="label">Affected Equipment:</span>
+                    <span class="value">{{ getProperty('affectedEquipment') }}</span>
     
-    <div class="detail-row">
-        <span class="label">Hot Work Required:</span>
-        <span class="value">{{ getProperty('isHotWorkRequired') ? 'Yes' : 'No' }}</span>
-    </div>
+                    <div class="detail-item full-width">
+                        <span class="label">Work Scope:</span>
+                        <span class="value scope-value">{{ getProperty('workScope') }}</span>
+                    </div>
+                </div>
+            </div>
     
-    <div class="detail-row">
-        <span class="label">Foreman:</span>
-        <span class="value">{{ getProperty('foreman') }}</span>
-    </div>
+            <!-- Safety Requirements Section -->
+            <div class="details-card">
+                <h3 class="card-header">Safety Requirements</h3>
+                <div class="safety-content">
+                    <div class="loto-item">
+                        <span class="label">LOTO Required:</span>
+                        <span class="value">{{ getProperty('isLotoRequired') ? 'Yes' : 'No' }}</span>
+                    </div>
     
-    <div class="detail-row">
-        <span class="label">Fire Watch:</span>
-        <span class="value">{{ getProperty('fireWatch') }}</span>
-    </div>
+                    <div class="safety-group">
+                        <h4 class="group-title">Hot Work</h4>
+                        <div class="group-content">
+                            <span class="label">Required:</span>
+                            <span class="value">{{ getProperty('isHotWorkRequired') ? 'Yes' : 'No' }}</span>
     
-    <div class="detail-row">
-        <span class="label">LOTO Required:</span>
-        <span class="value">{{ getProperty('isLotoRequired') ? 'Yes' : 'No' }}</span>
-    </div>
+                            <span class="label">Foreman:</span>
+                            <span class="value">{{ getProperty('foreman') }}</span>
     
-    <div class="detail-row">
-        <span class="label">Confined Space Entry Required:</span>
-        <span class="value">{{ getProperty('isConfinedSpaceEntryRequired') ? 'Yes' : 'No' }}</span>
-    </div>
+                            <span class="label">Fire Watch:</span>
+                            <span class="value">{{ getProperty('fireWatch') }}</span>
+                        </div>
+                    </div>
     
-    <div class="detail-row">
-        <span class="label">Space:</span>
-        <span class="value">{{ getProperty('space') }}</span>
-    </div>
+                    <div class="safety-group">
+                        <h4 class="group-title">Confined Space</h4>
+                        <div class="group-content">
+                            <span class="label">Entry Required:</span>
+                            <span class="value">{{ getProperty('isConfinedSpaceEntryRequired') ? 'Yes' : 'No' }}</span>
     
-    <div class="detail-row">
-        <span class="label">SharePoint ID:</span>
-        <span class="value">{{ getProperty('sharepointId') }}</span>
-    </div>
+                            <span class="label">Space:</span>
+                            <span class="value">{{ getProperty('space') }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 }
+

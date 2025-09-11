@@ -4,6 +4,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { Option } from '../option.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
+import { WorkRequestDto } from './work-request.model';
 
 export interface ConfinedSpaceHazards {
   oxygenDeficiency: boolean;
@@ -197,13 +198,13 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       ventilation: { 
         name: 'ventilation', 
         label: 'Ventilation', 
-        type: 'checkbox', 
+        type: 'checkbox-group', 
         initialValue: dto.ventilation 
       },
       blankFlanged: { 
         name: 'blankFlanged', 
         label: 'Blank Flanged', 
-        type: 'checkbox', 
+        type: 'checkbox-group', 
         initialValue: dto.blankFlanged 
       },
       meterModel: { 
@@ -221,10 +222,10 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       calibrated: { 
         name: 'calibrated', 
         label: 'Calibrated', 
-        type: 'checkbox', 
+        type: 'checkbox-group', 
         initialValue: dto.calibrated 
       },
-      hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox', initialValue: dto.hazards },
+      hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox-group', initialValue: dto.hazards },
       isVerified: { 
         name: 'isVerified', 
         label: 'Is Verified', 
@@ -292,4 +293,13 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
 
         return fields.map(fieldName => allColumns[fieldName]);
     }
+      
+        static generatePermitFromRequest(request: WorkRequestDto): ConfinedSpaceDto{
+          return new ConfinedSpaceDto({
+            date: request.dateOfWorkToBePerformed,
+            issuedTo: request.requestedBy,
+            space: request.space,
+            workScope: request.workScope
+          });
+        }
 }

@@ -1,0 +1,92 @@
+/* .permit-package-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.work-request-section {
+  flex: 0 0 auto;
+  padding: 20px;
+  background-color: #f0f0f0;
+}
+
+.forms-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.forms-scroll-wrapper {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 100%;
+  padding: 20px;
+}
+
+app-safe-work-form,
+app-hot-work-form,
+app-confined-space-form {
+  flex: 0 0 auto;
+  width: 400px;
+  margin-right: 20px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+
+app-confined-space-form {
+  margin-right: 0;
+} */
+
+:host {
+  display: block;
+  height: 100vh; /* Or 100% if it's inside a container with a defined height */
+  background-color: #f0f2f5;
+}
+
+.permit-package-container {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  gap: 16px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.work-request-section {
+  flex: 0 0 450px; /* Fixed width for the details section */
+  overflow-y: auto; /* Allows this section to scroll independently */
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.forms-container {
+  flex: 1 1 auto; /* Takes up the remaining available space */
+  display: flex;
+  flex-direction: row; /* Arrange forms horizontally */
+  min-width: 0; /* Crucial for flex layouts to prevent overflow */
+  gap: 16px;
+  padding: 16px;
+  box-sizing: border-box;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* 
+  This is the key change. We target any direct child of .forms-container.
+  This is more specific and reliable than :host-context.
+*/
+.forms-container > * {
+  /* Each form will grow equally to fill the space */
+  flex: 1; 
+  
+  /* This is important to allow forms to shrink below their content's natural width */
+  min-width: 0; 
+
+  /* This makes each INDIVIDUAL form scroll its own content vertically */
+  overflow-y: auto; 
+}

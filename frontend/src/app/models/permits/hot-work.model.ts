@@ -4,6 +4,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { Option } from '../option.model';
 import { FormField } from '../ui/form-field.model';
 import { Column } from '../column.model';
+import { WorkRequestDto } from './work-request.model';
 
 
 export interface HotWorkMeasures {
@@ -161,7 +162,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         type: 'textarea', 
         initialValue: dto.specialInstructions 
       },
-      measures: { name: 'measures', label: 'Safety Measures', type: 'checkbox', initialValue: dto.measures },
+      measures: { name: 'measures', label: 'Safety Measures', type: 'checkbox-group', initialValue: dto.measures },
       isVerified: { 
         name: 'isVerified', 
         label: 'Is Verified', 
@@ -208,4 +209,14 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
 
     return fields.map(fieldName => allColumns[fieldName]);
   }
+  
+    static generatePermitFromRequest(request: WorkRequestDto): HotWorkDto{
+      return new HotWorkDto({
+        date: request.dateOfWorkToBePerformed,
+        foreman: request.requestedBy,
+        location: request.location,
+        workScope: request.workScope,
+        fireWatch: request.fireWatch
+      });
+    }
 }

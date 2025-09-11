@@ -1,7 +1,9 @@
 @if(isFormReady()){
     <app-reactive-form
         [fields]="fields()"
+        [layout]="'column'"
         [values]="values()"
+        [title]="'Safe Work'"
         (formSubmit)="onFormSubmit($event)"
         (formDelete)="onFormDelete()"
     ></app-reactive-form>
