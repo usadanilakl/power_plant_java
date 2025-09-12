@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Registration Form</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    label {
+      display: block;
+      margin: 15px 0 5px;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      width: 100%;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>Register</h2>
+<form id="registerForm" action="#" method="POST">
+  <label for="firstName">First Name:</label>
+  <input type="text" id="firstName" name="FirstName" placeholder="Enter first name" required />
+
+  <label for="lastName">Last Name:</label>
+  <input type="text" id="lastName" name="LastName" placeholder="Enter last name" required />
+
+  <label for="company">Company:</label>
+  <input type="text" id="company" name="Company" placeholder="Enter company name" required />
+
+  <label for="email">Email:</label>
+  <input type="email" id="email" name="Email" placeholder="Enter email" required />
+
+  <label for="password">Password:</label>
+  <input type="password" id="password" name="Password" placeholder="Enter password" required />
+
+  <button type="submit">Register</button>
+</form>
+
+<script src="./header.js"></script>
+
+<script>
+  document.getElementById('registerForm').addEventListener('submit', async function(event) {
+    event.preventDefault(); // prevent default form submission
+
+    // collect the form values into an object matching your function
+    const user = {
+      FirstName: document.getElementById('firstName').value,
+      LastName: document.getElementById('lastName').value,
+      Company: document.getElementById('company').value,
+      Email: document.getElementById('email').value,
+      Password: document.getElementById('password').value
+    };
+
+    try {
+      // call your async function to create user
+      const result = await createNewUser(user);
+      console.log('User created:', result);
+      alert('User successfully registered!');
+      this.reset(); // clear the form
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Failed to register user.');
+    }
+  });
+
+  // Your existing createNewUser function should accept a user object:
+  async function createNewUser(user) {
+    const url = 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4';
+    const body = {
+        actionType: "addUser",
+        user: user
+    }
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) {
+      throw new Error('HTTP error ' + response.status);
+    }
+    return await response.json();
+  }
+</script>
+
+  
+    
+</body>
+</html>

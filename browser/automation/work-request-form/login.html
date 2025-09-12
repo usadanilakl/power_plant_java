@@ -34,19 +34,41 @@
 </head>
 <body>
   <h2>Login</h2>
-  <form action="#" method="POST">
-    <label for="username">Username:</label>
-    <input type="text" id="username" name="username" placeholder="Enter username" required />
+  <form id="login-form">
+    <label for="username">Email:</label>
+    <input type="text" id="username" name="username" placeholder="Enter email" required />
 
     <label for="password">Password:</label>
     <input type="password" id="password" name="password" placeholder="Enter password" required />
 
     <button type="button" onclick="openFile('./index.html')">Back To Form</button>
+    <button type="button" onclick="openFile('./register.html')">Create New Account</button>
     <button type="submit">Submit</button>
   </form>
 
     <script src="./user.service.js"></script>
-    <script src="./navigation.js"></script>
+    <script src="./header.js"></script>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async function(event) {
+        event.preventDefault(); // prevent default form submission
+
+        // collect the form values into an object matching your function
+        const email = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+          // call your async function to create user
+          const result = await authenticate(email,password);
+          console.log('User authenticated:', result);
+          alert('User successfully authenticated!');
+          this.reset(); // clear the form
+        } catch (error) {
+          console.error('Error authenticating user:', error);
+          alert('Failed to authenticate user.');
+        }
+      });
+    </script>
 
 </body>
 </html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Signature Pad Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 20px;
+    }
+    .signature-container {
+      border: 2px solid #444;
+      border-radius: 8px;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+    canvas {
+      border: 1px solid #222;
+      border-radius: 4px;
+      background: #fff;
+      touch-action: none; /* prevent scroll on touch devices */
+    }
+    .buttons {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    #saved-image {
+      margin-top: 20px;
+      border: 1px solid #aaa;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Signature Pad</h1>
+  <div class="signature-container">
+    <canvas id="signature-pad" width="400" height="200"></canvas>
+    <div class="buttons">
+      <button id="clear">Clear</button>
+      <button id="save">Save as PNG</button>
+    </div>
+  </div>
+  <img id="saved-image" alt="Saved signature will appear here" />
+
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@5.0.10/dist/signature_pad.umd.min.js"></script>
+    <script src="./header.js"></script>
+  <script>
+    const canvas = document.getElementById('signature-pad');
+    const signaturePad = new SignaturePad(canvas, {
+      backgroundColor: 'rgba(255, 255, 255, 1)',
+      penColor: 'black',
+    });
+
+    // Adjust canvas coordinate space for high-DPI devices
+    function resizeCanvas() {
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width = canvas.offsetWidth * ratio;
+      canvas.height = canvas.offsetHeight * ratio;
+      canvas.getContext('2d').scale(ratio, ratio);
+      signaturePad.clear(); // Clear after resize to avoid scaling signature
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    document.getElementById('clear').addEventListener('click', () => {
+      signaturePad.clear();
+      document.getElementById('saved-image').src = '';
+    });
+
+    document.getElementById('save').addEventListener('click', () => {
+      if (signaturePad.isEmpty()) {
+        alert('Please provide a signature first.');
+      } else {
+        const dataURL = signaturePad.toDataURL('image/png');
+        document.getElementById('saved-image').src = dataURL;
+      }
+    });
+  </script>
+</body>
+</html>
