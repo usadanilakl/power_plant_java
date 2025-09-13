@@ -304,10 +304,9 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
 
     // Map over the keys to create the desired FormOption structure
     return hazardKeys.map(key => {
-      console.log(this.formatLabel(key),' formatted key ', key)
-      console.log(hazards[key],'value of the key: ', key)
       return {
         label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+        key:key,
         value: hazards[key]    // The boolean value (true/false)
       };
     });
@@ -320,10 +319,9 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
 
     // Map over the keys to create the desired FormOption structure
     return hazardKeys.map(key => {
-      console.log(this.formatLabel(key),' formatted key ', key)
-      console.log(ppe[key],'value of the key: ', key)
       return {
         label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+        key:key,
         value: ppe[key]    // The boolean value (true/false)
       };
     });
@@ -336,10 +334,9 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
 
     // Map over the keys to create the desired FormOption structure
     return hazardKeys.map(key => {
-      console.log(this.formatLabel(key),' formatted key ', key)
-      console.log(permits[key],'value of the key: ', key)
       return {
         label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+        key:key,
         value: permits[key]    // The boolean value (true/false)
       };
     });

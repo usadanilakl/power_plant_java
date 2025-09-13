@@ -339,6 +339,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       return hazardKeys.map(key => {
         return {
           label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+          key:key,
           value: hazards[key]    // The boolean value (true/false)
         };
       });

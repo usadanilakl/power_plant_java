@@ -238,6 +238,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
       return hazardKeys.map(key => {
         return {
           label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
+          key:key,
           value: measures[key]    // The boolean value (true/false)
         };
       });

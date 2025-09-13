@@ -2,6 +2,7 @@ import { Component, Input, forwardRef, input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Question } from '../../models/ui/question.model';
 import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
+import { Option } from '../../models/option.model';
 
 @Component({
   selector: 'app-checkbox-group',
@@ -19,17 +20,32 @@ import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 })
 export class CheckboxGroupComponent implements ControlValueAccessor {
   @Input() label: string = '';
-  @Input() options: { value: any, label: string }[] = [];
+  @Input() options: Option[] = [];
   question = input<Question | null>(null)
   showPopup = false;
 
-  value: any[] = [];
+  value: any = {};
+  private mode: 'object' | 'array' = 'object';
 
   onChange: any = () => {};
   onTouched: any = () => {};
 
-  writeValue(value: any[]): void {
-    this.value = value || [];
+
+
+  // This is the key change. writeValue determines the mode.
+  writeValue(value: any): void {
+    if (Array.isArray(value)) {
+      this.mode = 'array';
+      this.value = value || [];
+    } else if (typeof value === 'object' && value !== null) {
+      this.mode = 'object';
+      this.value = value;
+    } else {
+      // Default to object mode if value is null/undefined,
+      // which is common for new forms.
+      this.mode = 'object';
+      this.value = {};
+    }
   }
 
   registerOnChange(fn: any): void {
@@ -40,13 +56,35 @@ export class CheckboxGroupComponent implements ControlValueAccessor {
     this.onTouched = fn;
   }
 
-  onCheckboxChange(option: { value: any, label: string }, event: Event) {
+  // onCheckboxChange(option: { value: any, label: string }, event: Event) {
+  //   const checkbox = event.target as HTMLInputElement;
+  //   if (checkbox.checked) {
+  //     this.value.push(option.value);
+  //   } else {
+  //     this.value = this.value.filter(val => val !== option.value);
+  //   }
+  //   this.onChange(this.value);
+  // }
+
+
+
+  // The change handler now uses the mode to update the value correctly.
+  onCheckboxChange(option: Option, event: Event) {
     const checkbox = event.target as HTMLInputElement;
-    if (checkbox.checked) {
-      this.value.push(option.value);
-    } else {
-      this.value = this.value.filter(val => val !== option.value);
+    const isChecked = checkbox.checked;
+
+    if (this.mode === 'object') {
+      this.value[option.key ?? option.label] = isChecked;
+    } else { // mode === 'array'
+      if (isChecked) {
+        this.value = [...this.value, option.value];
+      } else {
+        this.value = this.value.filter((val: any) => val !== option.value);
+      }
     }
+    
+    this.onTouched();
+    console.log('Value sent to form',this.value);
     this.onChange(this.value);
   }
 
@@ -62,3 +100,4 @@ export class CheckboxGroupComponent implements ControlValueAccessor {
     return typeof value === 'boolean';
   }
 }
+
