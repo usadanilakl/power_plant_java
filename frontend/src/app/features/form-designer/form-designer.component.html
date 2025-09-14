@@ -1,8 +1,21 @@
-
+<!-- 
 <div class="form-designer">
+  <div class="left-menu">
+    <select [(ngModel)]="selectedEntity" (change)="loadEntityFields()">
+      <option value="SafeWorkDto">Safe Work</option>
+      <option value="HotWorkDto">Hot Work</option>
+      <option value="ConfinedSpaceDto">Confined Space</option>
+      <option value="LotoDto">LOTO</option>
+    </select>
+    
+    <div *ngFor="let field of availableFields()" class="field-item">
+      <h4>{{ field.label }}</h4>
+      <p>Type: {{ field.type }}</p>
+      <button (click)="addFieldToDesign(field)">Add to Design</button>
+    </div>
+  </div>
   <div class="toolbar">
     <button (click)="addField({name: 'newField', label: 'New Field', type: 'text'})">Add Text Field</button>
-    <!-- Add more buttons for different field types -->
     
     <div class="form-size-controls">
       <label>
@@ -54,4 +67,84 @@
     (layoutChange)="updateFieldLayout(selectedFields()[0], $event.property, $event.value)"
     (lineToggle)="toggleFieldLine(selectedFields()[0], $event)">
   </app-field-properties>
+</div> -->
+
+<div class="form-designer">
+  <div class="toolbar">
+    <button (click)="addField({name: 'newField', label: 'New Field', type: 'text'})">Add Text Field</button>
+    <div class="form-size-controls">
+      <label>
+        Width (inches):
+        <input type="number" [(ngModel)]="formSize.width" (change)="updateFormSize()" min="1" step="0.1">
+      </label>
+      <label>
+        Height (inches):
+        <input type="number" [(ngModel)]="formSize.height" (change)="updateFormSize()" min="1" step="0.1">
+      </label>
+    </div>
+    <div class="alignment-controls">
+      <button (click)="alignFields('left')">Align Left</button>
+      <button (click)="alignFields('right')">Align Right</button>
+      <button (click)="alignFields('top')">Align Top</button>
+      <button (click)="alignFields('bottom')">Align Bottom</button>
+      <button (click)="distributeFields('horizontal')">Distribute Horizontally</button>
+      <button (click)="distributeFields('vertical')">Distribute Vertically</button>
+      <button (click)="matchSize('width')">Match Width</button>
+      <button (click)="matchSize('height')">Match Height</button>
+    </div>
+  </div>
+  
+  <div class="main-content">
+    <div class="left-panel">
+      <div class="entity-selector">
+        <select [(ngModel)]="selectedEntity" (change)="loadEntityFields()">
+          <option value="SafeWorkDto">Safe Work</option>
+          <option value="HotWorkDto">Hot Work</option>
+          <option value="ConfinedSpaceDto">Confined Space</option>
+          <option value="LotoDto">LOTO</option>
+        </select>
+      </div>
+      <div class="available-fields">
+        <div *ngFor="let field of availableFields()" class="field-item">
+          <h4>{{ field.label }}</h4>
+          <p>Type: {{ field.type }}</p>
+          <button (click)="addFieldToDesign(field)">Add to Design</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="center-panel">
+      <div class="design-area" #designArea [ngStyle]="{
+        'width.px': inchesToPixels(formSize.width),
+        'height.px': inchesToPixels(formSize.height),
+        'position': 'relative',
+        'background-color': '#ffffff',
+        'border': '1px solid #ccc'
+      }">
+        <div *ngFor="let field of formFields(); let i = index"
+             class="field-container"
+             cdkDrag
+             [cdkDragBoundary]="designArea"
+             (cdkDragEnded)="onDragEnd($event, i)"
+             (click)="selectField(field, $event)"
+             [class.selected]="selectedFields().includes(field)"
+             [ngStyle]="getContainerStyles(field)">
+          <div class="field-wrapper" [ngStyle]="getWrapperStyles(field)">
+            <label>{{ field.label }}</label>
+            <input [type]="field.type" [name]="field.name">
+            <div class="resize-handle bottom-right" (mousedown)="startResize($event, i, 'bottom-right')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="right-panel">
+      <!-- <app-field-properties 
+        [field]="selectedFields()[0]"
+        (styleChange)="updateFieldStyle(selectedFields()[0], $event.property, $event.value)"
+        (layoutChange)="updateFieldLayout(selectedFields()[0], $event.property, $event.value)"
+        (lineToggle)="toggleFieldLine(selectedFields()[0], $event)">
+      </app-field-properties> -->
+    </div>
+  </div>
 </div>

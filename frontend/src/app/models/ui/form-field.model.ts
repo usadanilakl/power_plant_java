@@ -22,6 +22,8 @@ export interface FormField {
     fontSize?: number;
     fontWeight?: 'normal' | 'bold';
     fontStyle?: 'normal' | 'italic';
+    border?: string;
+    padding?: string;
   };
   layout?: {
     padding?: number;

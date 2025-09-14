@@ -2,10 +2,14 @@ import { Component, Inject, inject, OnDestroy, OnInit, PLATFORM_ID, signal } fro
 import { FormField } from '../../models/ui/form-field.model';
 import { FormBuilderService } from '../../services/ui/form-builder.service';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { DragDropModule } from '@angular/cdk/drag-drop';
+import { CdkDragEnd, DragDropModule } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FieldPropertiesComponent } from "./field-properties/field-properties.component";
+import { SafeWorkDto } from '../../models/permits/safe-work.model';
+import { HotWorkDto } from '../../models/permits/hot-work.model';
+import { ConfinedSpaceDto } from '../../models/permits/confined-space.model';
+import { LotoDto } from '../../models/loto/loto.model';
 
 @Component({
   selector: 'app-form-designer',
@@ -19,6 +23,9 @@ export class FormDesignerComponent implements OnInit, OnDestroy {
   formFields = toSignal(this.formBuilderService.formFields$,{ initialValue:[]});
   formSize: { width: number; height: number } = { width: 8.5, height: 11 };
   selectedFields = signal<FormField[]>([]);
+  availableFields = signal<FormField[]>([]);
+  selectedEntity: string = 'SafeWorkDto';
+
 
   private resizingFieldIndex: number | null = null;
   private resizeStartX: number = 0;
@@ -28,6 +35,38 @@ export class FormDesignerComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
 
+  }
+
+  loadEntityFields() {
+    switch (this.selectedEntity) {
+      case 'SafeWorkDto':
+        this.availableFields.set(SafeWorkDto.toFormFields(new SafeWorkDto(), []));
+        break;
+      case 'HotWorkDto':
+        this.availableFields.set(HotWorkDto.toFormFields(new HotWorkDto(), []));
+        break;
+      case 'ConfinedSpaceDto':
+        this.availableFields.set(ConfinedSpaceDto.toFormFields(new ConfinedSpaceDto(), []));
+        break;
+      case 'LotoDto':
+        // this.availableFields.set(LotoDto.toFormFields(new LotoDto(), []));
+        break;
+    }
+  }
+
+  addFieldToDesign(field: FormField) {
+    const newField: FormField = {
+      ...field,
+      position: { x: 20, y: 20 },
+      size: { width: 200, height: 40 }, // Increased size for better visibility
+      style: {
+        backgroundColor: '#f9f9f9',
+        border: '1px solid #ccc',
+        padding: '5px',
+      },
+    };
+    this.formBuilderService.addField(newField);
+    console.log('Added field', this.formFields());
   }
 
   
@@ -48,10 +87,22 @@ export class FormDesignerComponent implements OnInit, OnDestroy {
   }
 
   // Implement methods for drag-and-drop, resizing, and positioning
-  onDragEnd(event: any, index: number) {
-    const updatedField = { ...this.formFields()[index], position: event.source.getFreeDragPosition() };
+  onDragEnd(event: CdkDragEnd, index: number) {
+    const draggedDistance = event.source.getFreeDragPosition();
+    const currentField = this.formFields()[index];
+    
+    const newPosition = {
+      x: Math.max(0, (currentField.position?.x || 0) + draggedDistance.x),
+      y: Math.max(0, (currentField.position?.y || 0) + draggedDistance.y)
+    };
+  
+    console.log('Drag ended', { index, newPosition, draggedDistance });
+    
+    const updatedField = { ...currentField, position: newPosition };
     this.formBuilderService.updateField(index, updatedField);
-    console.log('Drag end', updatedField);
+  
+    // Reset the drag
+    event.source.reset();
   }
 
   onResize(event: any, index: number) {
@@ -248,6 +299,12 @@ export class FormDesignerComponent implements OnInit, OnDestroy {
     this.selectedFields.update(fields => 
       fields.map(f => f.name === updatedField.name ? updatedField : f)
     );
+
+    // Also update the field in availableFields if it exists there
+    const availableIndex = this.availableFields().findIndex(f => f.name === updatedField.name);
+    if (availableIndex !== -1) {
+      this.availableFields()[availableIndex] = updatedField;
+    }
   }
 
   getFieldStyles(field: FormField): any {
@@ -259,10 +316,43 @@ export class FormDesignerComponent implements OnInit, OnDestroy {
       top: `${field.position?.y}px`,
       width: `${field.size?.width}px`,
       height: `${field.size?.height}px`,
-      border: field.lines?.top ? '1px solid black' : 'none',
-      borderRight: field.lines?.right ? '1px solid black' : 'none',
-      borderBottom: field.lines?.bottom ? '1px solid black' : 'none',
-      borderLeft: field.lines?.left ? '1px solid black' : 'none',
+      backgroundColor: 'rgba(255, 0, 0, 0.2)', // Semi-transparent red
+      border: '2px solid black',
+      zIndex: 10000,
+      padding: '5px',
+      boxSizing: 'border-box',
+      // display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      display: 'block !important',
+      visibility: 'visible !important',
+      opacity: '1 !important',
+    };
+  }
+
+  getContainerStyles(field: FormField): any {
+    return {
+      position: 'absolute',
+      left: `${field.position?.x || 0}px`,
+      top: `${field.position?.y || 0}px`,
+      width: `${field.size?.width}px`,
+      height: `${field.size?.height}px`,
+    };
+  }
+  
+  getWrapperStyles(field: FormField): any {
+    return {
+      width: `${field.size?.width}px`,
+      height: `${field.size?.height}px`,
+      ...field.style,
+      ...field.layout,
+      // Remove positioning from here as it's now on the container
+      backgroundColor: '#f9f9f9',
+      border: '1px solid #ccc',
+      padding: '5px',
+      boxSizing: 'border-box',
     };
   }
 
