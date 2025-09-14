@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, Input, input, OnInit, output, Signal, signal } from '@angular/core';
 import { CurrentValueService } from '../../../../services/current-value.service';
 import { HotWorkDto } from '../../../../models/permits/hot-work.model';
 import { Option } from '../../../../models/option.model';
@@ -16,7 +16,9 @@ export class HotWorkFormComponent implements OnInit  {
   private currentValueService = inject(CurrentValueService);
   private destroyRef = inject(DestroyRef);
 
-  values = input<HotWorkDto>(new HotWorkDto());
+  // values = input<HotWorkDto>(new HotWorkDto());
+  @Input() values: Signal<HotWorkDto> = signal(new HotWorkDto());
+  formChange = output<HotWorkDto>();
   formSubmit = output<HotWorkDto>();
   formDelete = output<number>();
   valuesChange = output<HotWorkDto>();

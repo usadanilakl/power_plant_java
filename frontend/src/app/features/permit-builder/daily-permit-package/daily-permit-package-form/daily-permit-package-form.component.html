@@ -1,40 +1,54 @@
-<!-- <div class="permit-package-container">
-  <div class="work-request-section">
-    <app-work-request-display [workRequest]="workRequest"></app-work-request-display>
-  </div>
-  
-  <div class="forms-container">
-    <app-safe-work-form [values]="safeWork()"></app-safe-work-form>
-    <app-hot-work-form [values]="hotWork()"></app-hot-work-form>
-    <app-confined-space-form [values]="confinedSpace()"></app-confined-space-form>
-  </div>
-</div> -->
+
 
 <div class="permit-package-container">
 
   <div class="package-submission-section">
-    <div class="form-group">
-      <label for="packageName">Package Name:</label>
-      <input 
-        type="text" 
-        id="packageName" 
-        name="packageName" 
-        [(ngModel)]="packageName" 
-        placeholder="Enter a name for this permit package"
-      >
+    <div class="form-controls">
+      <div class="form-group">
+        <label for="packageName">Package Name:</label>
+        <input 
+          type="text" 
+          id="packageName" 
+          name="packageName" 
+          [(ngModel)]="packageName" 
+          placeholder="Enter a name for this permit package"
+        >
+      </div>
+      <button (click)="onSubmitPackage()" [disabled]="!packageName">Submit Permit Package</button>
+      <button (click)="build()" [disabled]="!packageId">Build Package</button>
     </div>
-    <button (click)="onSubmitPackage()" [disabled]="!packageName">Submit Permit Package</button>
-    <button (click)="build()" [disabled]="!packageId">Build Package</button>
+    
+    <div class="toggle-buttons">
+      <button (click)="toggleSafeWorkVisibility()" [disabled]="!safeWork()">
+        {{ isSafeWorkVisible ? 'Hide' : 'Show' }} Safe Work
+      </button>
+
+      <button (click)="toggleConfinedSpaceVisibility()" [disabled]="!confinedSpace()">
+        {{ isConfinedSpaceVisible ? 'Hide' : 'Show' }} Confined Space
+      </button>
+
+      <button (click)="toggleHotWorkVisibility()" [disabled]="!hotWork()">
+        {{ isHotWorkVisible ? 'Hide' : 'Show' }} Hot Work
+      </button>
+
+      <button (click)="toggleWorkRequestVisibility()">
+        {{ isWorkRequestVisible ? 'Hide' : 'Show' }} Work Request
+      </button>
+    </div>
   </div>
 
-  <div class="work-request-section">
-    <app-work-request-display [workRequest]="workRequest"></app-work-request-display>
-  </div>
-  
+  @if(isWorkRequestVisible){
+    <div class="work-request-section">
+      <app-work-request-display [workRequest]="workRequest"></app-work-request-display>
+    </div>
+  }
   <div class="forms-container">
-    <app-safe-work-form [values]="safeWork()" (formSubmit)="onSumbitSafeWork($event)"></app-safe-work-form>
-    <app-hot-work-form [values]="hotWork()" (formSubmit)="onSumbitHotWork($event)"></app-hot-work-form>
-    <app-confined-space-form [values]="confinedSpace()" (formSubmit)="onSumbitConfinedSpace($event)"></app-confined-space-form>
+    @if(isSafeWorkVisible){<app-safe-work-form [values]="safeWork" (formSubmit)="onSumbitSafeWork($event)"></app-safe-work-form>}
+    @if(isHotWorkVisible){<app-hot-work-form [values]="hotWork" (formSubmit)="onSumbitHotWork($event)"></app-hot-work-form>}
+    @if(isConfinedSpaceVisible){<app-confined-space-form [values]="confinedSpace" (formSubmit)="onSumbitConfinedSpace($event)"></app-confined-space-form>}
+  </div>
+  <div class="loto-section">
+    
   </div>
 </div>
 

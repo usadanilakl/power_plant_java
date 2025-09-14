@@ -15,7 +15,7 @@ export class CurrentHotWorkService {
     private allActiveHotWorksSubject = new BehaviorSubject<HotWorkDto[]>([]);
     allActiveHotWorks$ = this.allActiveHotWorksSubject.asObservable();
 
-    private selectedHotWorkSubject = new BehaviorSubject<HotWorkDto | null>(null);
+    private selectedHotWorkSubject = new BehaviorSubject<HotWorkDto>(new HotWorkDto());
     selectedHotWork$ = this.selectedHotWorkSubject.asObservable();
 
     constructor() {

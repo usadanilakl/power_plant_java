@@ -23,6 +23,10 @@ import { PermitBuilderPageComponent } from './pages/permit-builder-page/permit-b
 import { JobLogComponent } from './features/permit-builder/job-log/job-log.component';
 import { WorkRequestComponent } from './features/permit-builder/work-request/work-request.component';
 import { DailyPermitPackageComponent } from './features/permit-builder/daily-permit-package/daily-permit-package.component';
+import { ConfinedSpaceComponent } from './features/permit-builder/confined-space/confined-space.component';
+import { HotWorkComponent } from './features/permit-builder/hot-work/hot-work.component';
+import { SafeWorkComponent } from './features/permit-builder/safe-work/safe-work.component';
+import { FormDesignerComponent } from './features/form-designer/form-designer.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -65,6 +69,9 @@ export const routes: Routes = [
         { path: 'jobs', component: JobLogComponent },
         { path: 'work-requests', component: WorkRequestComponent },
         { path: 'daily-packages', component: DailyPermitPackageComponent },
+        { path: 'safe-works', component: SafeWorkComponent },
+        { path: 'hot-works', component: HotWorkComponent },
+        { path: 'confined-spaces', component: ConfinedSpaceComponent },
       ]
     },
 
@@ -76,5 +83,15 @@ export const routes: Routes = [
         { path: 'flow', component: SchedulerComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
         { path: 'table', component: FileTableComponent }
       ]
+    },
+
+    {
+      path: 'form-designer',
+      component: FormDesignerComponent,
+      // children: [
+      //   { path: '', redirectTo: 'flow', pathMatch: 'full' },
+      //   { path: 'flow', component: SchedulerComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
+      //   { path: 'table', component: FileTableComponent }
+      // ]
     },
 ];

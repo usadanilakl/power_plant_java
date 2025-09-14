@@ -1,0 +1,70 @@
+
+<div *ngIf="field!">
+  <h3>field! Properties</h3>
+  <div>
+    <label>Background Color:</label>
+    <input type="color" [value]="field!.style?.backgroundColor || '#ffffff'" (change)="updateStyle('backgroundColor', $event)">
+  </div>
+  <div>
+    <label>Text Color:</label>
+    <input type="color" [value]="field!.style?.textColor || '#000000'" (change)="updateStyle('textColor', $event)">
+  </div>
+  <div>
+    <label>Border Color:</label>
+    <input type="color" [value]="field!.style?.borderColor || '#000000'" (change)="updateStyle('borderColor', $event)">
+  </div>
+  <div>
+    <label>Border Style:</label>
+    <select [value]="field!.style?.borderStyle || 'solid'" (change)="updateStyle('borderStyle', $event)">
+      <option value="solid">Solid</option>
+      <option value="dashed">Dashed</option>
+      <option value="dotted">Dotted</option>
+      <option value="none">None</option>
+    </select>
+  </div>
+  <div>
+    <label>Border Width:</label>
+    <input type="number" [value]="field!.style?.borderWidth || 1" (change)="updateStyle('borderWidth', $event)">
+  </div>
+  <div>
+    <label>Font Size:</label>
+    <input type="number" [value]="field!.style?.fontSize || 14" (change)="updateStyle('fontSize', $event)">
+  </div>
+  <div>
+    <label>Font Weight:</label>
+    <select [value]="field!.style?.fontWeight || 'normal'" (change)="updateStyle('fontWeight', $event)">
+      <option value="normal">Normal</option>
+      <option value="bold">Bold</option>
+    </select>
+  </div>
+  <div>
+    <label>Font Style:</label>
+    <select [value]="field!.style?.fontStyle || 'normal'" (change)="updateStyle('fontStyle', $event)">
+      <option value="normal">Normal</option>
+      <option value="italic">Italic</option>
+    </select>
+  </div>
+  <div>
+    <label>Padding:</label>
+    <input type="number" [value]="field!.layout?.padding || 0" (change)="updateLayout('padding', $event)">
+  </div>
+  <div>
+    <label>Margin:</label>
+    <input type="number" [value]="field!.layout?.margin || 0" (change)="updateLayout('margin', $event)">
+  </div>
+  <div>
+    <label>Alignment:</label>
+    <select [value]="field!.layout?.alignment || 'left'" (change)="updateLayout('alignment', $event)">
+      <option value="left">Left</option>
+      <option value="center">Center</option>
+      <option value="right">Right</option>
+    </select>
+  </div>
+  <div>
+    <label>Lines:</label>
+    <label><input type="checkbox" [checked]="field!.lines?.top" (change)="toggleLine('top')"> Top</label>
+    <label><input type="checkbox" [checked]="field!.lines?.right" (change)="toggleLine('right')"> Right</label>
+    <label><input type="checkbox" [checked]="field!.lines?.bottom" (change)="toggleLine('bottom')"> Bottom</label>
+    <label><input type="checkbox" [checked]="field!.lines?.left" (change)="toggleLine('left')"> Left</label>
+  </div>
+</div>

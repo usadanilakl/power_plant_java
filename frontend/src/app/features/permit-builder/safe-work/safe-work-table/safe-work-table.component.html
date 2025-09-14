@@ -1,1 +1,5 @@
-<p>safe-work-table works!</p>
+<app-shared-table
+    [items]="currentSafeWorkService.allActiveSafeWorks$"
+    [columns]="columns()"
+    [clickCallback]="onRowLeftClick.bind(this)"
+></app-shared-table>

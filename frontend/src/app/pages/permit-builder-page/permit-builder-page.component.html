@@ -9,11 +9,18 @@
       </div>
     </div>
   </ng-container>
-  <ng-container left-menu>
+  <ng-container left-menu class="left-menu-container">
     @if(currentRoute === 'jobs'){
       <app-job-log-left-menu></app-job-log-left-menu>
     }@else if(currentRoute === 'daily-packages'){
       <app-daily-permit-package-side-menu></app-daily-permit-package-side-menu>
+    }@else if(currentRoute === 'work-requests'){
+    }@else if(currentRoute === 'safe-works'){
+      <app-safe-work-side-menu></app-safe-work-side-menu>
+    }@else if(currentRoute === 'hot-works'){
+      <app-hot-work-side-menu></app-hot-work-side-menu>
+    }@else if(currentRoute === 'confined-spaces'){
+      <app-confined-space-side-menu></app-confined-space-side-menu>
     }
      <!-- <app-left-menu-outlet></app-left-menu-outlet> -->
   </ng-container>

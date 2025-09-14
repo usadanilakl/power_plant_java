@@ -52,6 +52,11 @@ export class DailyPermitPackageFormComponent {
     this.confinedSpaceInput?.() ?? ConfinedSpaceDto.generatePermitFromRequest(this.workRequest())
   );
 
+  isSafeWorkVisible = true;
+  isConfinedSpaceVisible = true;
+  isHotWorkVisible = true;
+  isWorkRequestVisible = true;
+
   packageName: string = '';
   packageId: string = '';
   safeWorkIds: number[] = [];
@@ -144,6 +149,22 @@ export class DailyPermitPackageFormComponent {
         console.error('Error building permits', err);
       }
     })
+  }
+
+  toggleSafeWorkVisibility(): void {
+    this.isSafeWorkVisible = !this.isSafeWorkVisible;
+  }
+
+  toggleConfinedSpaceVisibility(): void {
+    this.isConfinedSpaceVisible = !this.isConfinedSpaceVisible;
+  }
+
+  toggleHotWorkVisibility(): void {
+    this.isHotWorkVisible = !this.isHotWorkVisible;
+  }
+
+  toggleWorkRequestVisibility(): void {
+    this.isWorkRequestVisible = !this.isWorkRequestVisible;
   }
 
 }

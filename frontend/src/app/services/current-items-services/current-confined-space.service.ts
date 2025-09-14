@@ -15,7 +15,7 @@ export class CurrentConfinedSpaceService {
     private allActiveConfinedSpacesSubject = new BehaviorSubject<ConfinedSpaceDto[]>([]);
     allActiveConfinedSpaces$ = this.allActiveConfinedSpacesSubject.asObservable();
 
-    private selectedConfinedSpaceSubject = new BehaviorSubject<ConfinedSpaceDto | null>(null);
+    private selectedConfinedSpaceSubject = new BehaviorSubject<ConfinedSpaceDto>(new ConfinedSpaceDto());
     selectedConfinedSpace$ = this.selectedConfinedSpaceSubject.asObservable();
 
     constructor() {

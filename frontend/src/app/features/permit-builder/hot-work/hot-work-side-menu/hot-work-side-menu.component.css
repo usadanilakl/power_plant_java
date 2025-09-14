@@ -1,0 +1,18 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 500px;
+  width: 100%;
+  overflow: hidden;
+  flex:1;
+}
+app-hot-work-table {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 500px;
+  width: 100%;
+  overflow: hidden;
+  flex:1;
+}

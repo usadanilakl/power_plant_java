@@ -1,1 +1,5 @@
-<p>confined-space-table works!</p>
+<app-shared-table
+    [items]="currentConfinedSpaceService.allActiveConfinedSpaces$"
+    [columns]="columns()"
+    [clickCallback]="onRowLeftClick.bind(this)"
+></app-shared-table>

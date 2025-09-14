@@ -9,10 +9,13 @@ import { PermitBuilderLeftMenuComponent } from "../../features/permit-builder/me
 import { JobLogLeftMenuComponent } from "../../features/permit-builder/job-log/job-log-left-menu/job-log-left-menu.component";
 import { JobLogComponent } from "../../features/permit-builder/job-log/job-log.component";
 import { DailyPermitPackageSideMenuComponent } from "../../features/permit-builder/daily-permit-package/daily-permit-package-side-menu/daily-permit-package-side-menu.component";
+import { SafeWorkSideMenuComponent } from "../../features/permit-builder/safe-work/safe-work-side-menu/safe-work-side-menu.component";
+import { HotWorkSideMenuComponent } from "../../features/permit-builder/hot-work/hot-work-side-menu/hot-work-side-menu.component";
+import { ConfinedSpaceSideMenuComponent } from "../../features/permit-builder/confined-space/confined-space-side-menu/confined-space-side-menu.component";
 
 @Component({
   selector: 'app-permit-builder-page',
-  imports: [RouterMenuComponent, MainLayoutComponent, PermitBuilderComponent, PermitBuilderLeftMenuComponent, JobLogLeftMenuComponent, JobLogComponent, RouterModule, DailyPermitPackageSideMenuComponent],
+  imports: [RouterMenuComponent, MainLayoutComponent, PermitBuilderComponent, PermitBuilderLeftMenuComponent, JobLogLeftMenuComponent, JobLogComponent, RouterModule, DailyPermitPackageSideMenuComponent, SafeWorkSideMenuComponent, HotWorkSideMenuComponent, ConfinedSpaceSideMenuComponent],
   templateUrl: './permit-builder-page.component.html',
   styleUrl: './permit-builder-page.component.css'
 })

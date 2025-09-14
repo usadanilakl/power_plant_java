@@ -15,7 +15,8 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/print', label: 'Print' },
     { route: '/backup', label: 'Backup' },
     { route: '/scheduler', label: 'Scheduler' },
-    { route: '/permit-builder', label: 'Permit Builder' }
+    { route: '/permit-builder', label: 'Permit Builder' },
+    { route: '/form-designer', label: 'Form Designer' }
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [

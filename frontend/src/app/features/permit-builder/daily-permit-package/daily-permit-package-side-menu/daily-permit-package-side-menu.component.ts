@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject } from '@angular/core';
+import { Component, DestroyRef, effect, inject } from '@angular/core';
 import { CurrentDailyPermitPackageService } from '../../../../services/current-items-services/current-daily-permit-package.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DailyPermitPackageDto } from '../../../../models/permits/dailt-permit-package.model';
@@ -14,7 +14,10 @@ export class DailyPermitPackageSideMenuComponent {
 
   private currendDailyPermitPackageService = inject(CurrentDailyPermitPackageService);
   private destroyRef = inject(DestroyRef)
-  constructor() { }
+  constructor() { 
+
+    effect(() => {console.log('all packages: ',this.allPackages())});
+  }
 
   allPackages = toSignal(this.currendDailyPermitPackageService.allActiveDailyPermitPackages$);
 

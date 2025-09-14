@@ -15,7 +15,7 @@ export class CurrentSafeWorkService {
     private allActiveSafeWorksSubject = new BehaviorSubject<SafeWorkDto[]>([]);
     allActiveSafeWorks$ = this.allActiveSafeWorksSubject.asObservable();
 
-    private selectedSafeWorkSubject = new BehaviorSubject<SafeWorkDto | null>(null);
+    private selectedSafeWorkSubject = new BehaviorSubject<SafeWorkDto>(new SafeWorkDto());
     selectedSafeWork$ = this.selectedSafeWorkSubject.asObservable();
 
     constructor() {

@@ -11,4 +11,27 @@ export interface FormField {
   initialValue?: any;
   currentValue?: any;
   question?: Question
+  position?: { x: number; y: number };
+  size?: { width: number; height: number };
+  style?: {
+    backgroundColor?: string;
+    textColor?: string;
+    borderColor?: string;
+    borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
+    borderWidth?: number;
+    fontSize?: number;
+    fontWeight?: 'normal' | 'bold';
+    fontStyle?: 'normal' | 'italic';
+  };
+  layout?: {
+    padding?: number;
+    margin?: number;
+    alignment?: 'left' | 'center' | 'right';
+  };
+  lines?: {
+    top?: boolean;
+    right?: boolean;
+    bottom?: boolean;
+    left?: boolean;
+  };
 }

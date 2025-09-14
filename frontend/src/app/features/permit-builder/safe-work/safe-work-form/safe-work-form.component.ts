@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, Input, input, OnInit, output, Signal, signal } from '@angular/core';
 import { SafeWorkDto } from '../../../../models/permits/safe-work.model';
 import { ReactiveFormComponent } from "../../../../shared/reactive-form/reactive-form.component";
 import { Option } from '../../../../models/option.model';
@@ -16,7 +16,9 @@ export class SafeWorkFormComponent implements OnInit  {
   private currentValueService = inject(CurrentValueService);
   private destroyRef = inject(DestroyRef);
 
-  values = input<SafeWorkDto>(new SafeWorkDto());
+  // values = input<SafeWorkDto>(new SafeWorkDto());
+  @Input() values: Signal<SafeWorkDto> = signal(new SafeWorkDto());
+  formChange = output<SafeWorkDto>();
   formSubmit = output<SafeWorkDto>();
   formDelete = output<number>();
   valuesChange = output<SafeWorkDto>();
