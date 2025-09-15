@@ -50,6 +50,7 @@ export class CurrentPrintableFormService {
         ).subscribe({
             next: (form: PrintableFormDto) => {
                 this.formSubject.next(form);
+                this.formContainersSubject.next(form.formContainers);
             },
             error: (err) => {
                 console.error('Error loading form:', err);
@@ -60,6 +61,7 @@ export class CurrentPrintableFormService {
 
     setCurrentFormWithDto(dto: PrintableFormDto): void {
         this.formSubject.next(dto);
+        this.formContainersSubject.next(dto.formContainers);
     }
 
     updateForm(formDto: PrintableFormDto): void {
@@ -122,15 +124,30 @@ export class CurrentPrintableFormService {
           return;
         }
     
+        this.formContainerService.save(container).pipe(
+            takeUntilDestroyed(this.destroyRef),
+            map(response => new FormContainerDto(response.responseData))
+        ).subscribe({
+            next: (updatedContainer: FormContainerDto) => {
+                this.updateContainerInArray(updatedContainer);
+            },
+            error: (err) => {
+                console.error("Error updating container:", err);
+                // Here you could implement user-facing error messages
+            }
+        });
+      }
+
+      updateContainerInArray(container: FormContainerDto): void {
         const currentContainers = this.formContainersSubject.value;
         const index = currentContainers.findIndex(c => c.id === container.id);
-    
-        if (index !== -1) {
-          const updatedContainers = [...currentContainers];
-          updatedContainers[index] = container;
-          this.formContainersSubject.next(updatedContainers);
-        } else {
-          console.warn(`Container with ID ${container.id} not found for update.`);
+        if (index!== -1) {
+            const updatedContainers = [...currentContainers];
+            updatedContainers[index] = container;
+            this.formContainersSubject.next(updatedContainers);
+        }else{
+            const newContainers = [...currentContainers, container];
+            this.formContainersSubject.next(newContainers);
         }
       }
     

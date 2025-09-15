@@ -23,15 +23,21 @@ import { PrintableFormDto } from '../../../models/forms/printable-form.model';
 })
 export class PrintableFormDesignerComponent implements OnInit {
   @ViewChild('centerPanel') centerPanel!: ElementRef;
+  @ViewChild('designArea') designArea!: ElementRef<HTMLDivElement>;
   private currentPrintableFormService = inject(CurrentPrintableFormService);
   
-  availableFields = signal<FormField[]>([]);
-  selectedEntity = computed<string>(() => {
-    const type = this.currentForm().formType ?? 'SafeWork'
-    this.loadEntityFields(type);
-    console.log('Selected entity:', this.availableFields());
-    return type;
+
+  currentForm = toSignal(this.currentPrintableFormService.form$, { initialValue: new PrintableFormDto() });
+  formScale = 1;
+  sheetSize = computed(() => {return this.currentForm().size ?? {width:8.5,height:11}});
+  pixelsPerInch = 96; // Standard DPI
+  formSize = { width: 8.5 * 96, height: 11 * 96 };
+  
+  availableFields = computed<FormField[]>(() => {
+      const type = this.currentForm().formType ?? 'SafeWork';
+      return this.loadEntityFields(type);
   });
+  // containers = computed<FormContainerDto[]>(() => this.currentForm().formContainers?? []);
   containers = toSignal(this.currentPrintableFormService.formContainers$, { initialValue: [] });
   selectedContainers = signal<FormContainerDto[]>([]);
 
@@ -39,13 +45,11 @@ export class PrintableFormDesignerComponent implements OnInit {
   private resizingFieldIndex: number | null = null;
   private resizeStartX: number = 0;
   private resizeStartY: number = 0;
-  
 
-  currentForm = toSignal(this.currentPrintableFormService.form$, { initialValue: new PrintableFormDto() });
-  formScale = 1;
-  sheetSize = computed(() => {return this.currentForm().size});
-  pixelsPerInch = 96; // Standard DPI
-  formSize = { width: 8.5 * 96, height: 11 * 96 };
+  // Marquee selection state
+  isSelecting = signal(false);
+  selectionBox = signal<{ x: number, y: number, width: number, height: number } | null>(null);
+  private selectionStart = { x: 0, y: 0 };
 
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
@@ -110,14 +114,16 @@ export class PrintableFormDesignerComponent implements OnInit {
   loadEntityFields(type: string) {
     switch (type) {
       case 'SafeWork':
-        this.availableFields.set(SafeWorkDto.toFormFields(new SafeWorkDto(), []));
+        return SafeWorkDto.toFormFields(new SafeWorkDto(), []);
         break;
       case 'HotWork':
-        this.availableFields.set(HotWorkDto.toFormFields(new HotWorkDto(), []));
+        return HotWorkDto.toFormFields(new HotWorkDto(), []);
         break;
       case 'ConfinedSpace':
-        this.availableFields.set(ConfinedSpaceDto.toFormFields(new ConfinedSpaceDto(), []));
+        return ConfinedSpaceDto.toFormFields(new ConfinedSpaceDto(), []);
         break;
+      default:
+        return [];
     }
   }
 
@@ -192,6 +198,10 @@ export class PrintableFormDesignerComponent implements OnInit {
     };
   }
 
+  isContainerSelected(container: FormContainerDto): boolean {
+    return this.selectedContainers().includes(container);
+  }
+
 
   /*****************************************************************************
    * Drag and resize functions
@@ -261,6 +271,85 @@ export class PrintableFormDesignerComponent implements OnInit {
     }
   }
 
+  /*****************************************************************************
+   * Mouse Selection functions
+   ****************************************************************************/
+  onFormSheetMouseDown(event: MouseEvent) {
+    console.log('Mouse down on form sheet');
+    // Only start selection if clicking on the sheet itself, not a child element like a container
+    if (event.target !== this.designArea.nativeElement) {
+      console.log('Mouse down on a child element, ignoring');
+      return;
+    }
+    event.preventDefault();
+
+    this.isSelecting.set(true);
+    this.selectionStart = { x: event.offsetX, y: event.offsetY };
+    this.selectionBox.set({ ...this.selectionStart, width: 0, height: 0 });
+
+    console.log('Mouse down on form sheet');
+    console.log('Selection box:', this.selectionBox());
+    console.log('Selection start:', this.selectionStart);
+
+    if (!event.ctrlKey) {
+      this.selectedContainers.set([]);
+    }
+
+    document.addEventListener('mousemove', this.onDocumentMouseMove);
+    document.addEventListener('mouseup', this.onDocumentMouseUp);
+  }
+
+  private onDocumentMouseMove = (event: MouseEvent) => {
+    if (!this.isSelecting()) return;
+
+    const rect = this.designArea.nativeElement.getBoundingClientRect();
+    const currentX = event.clientX - rect.left;
+    const currentY = event.clientY - rect.top;
+
+    const x = Math.min(this.selectionStart.x, currentX);
+    const y = Math.min(this.selectionStart.y, currentY);
+    const width = Math.abs(currentX - this.selectionStart.x);
+    const height = Math.abs(currentY - this.selectionStart.y);
+
+    this.selectionBox.set({ x, y, width, height });
+    this.updateSelectionFromBox();
+  };
+
+  private onDocumentMouseUp = () => {
+    this.isSelecting.set(false);
+    this.selectionBox.set(null);
+    document.removeEventListener('mousemove', this.onDocumentMouseMove);
+    document.removeEventListener('mouseup', this.onDocumentMouseUp);
+
+    console.log('Mouse up on form sheet');
+    console.log('Selected containers:', this.selectedContainers());
+    console.log('Selection box:', this.selectionBox());
+    console.log('Selection start:', this.selectionStart);
+  };
+
+  private updateSelectionFromBox() {
+    const selectionBox = this.selectionBox();
+    if (!selectionBox) return;
+
+    const selected = this.containers().filter(container => {
+      const containerRect = {
+        x: container.position?.x ?? 0,
+        y: container.position?.y ?? 0,
+        width: container.size?.width ?? 0,
+        height: container.size?.height ?? 0
+      };
+
+      // Check for intersection
+      return (
+        selectionBox.x < containerRect.x + containerRect.width &&
+        selectionBox.x + selectionBox.width > containerRect.x &&
+        selectionBox.y < containerRect.y + containerRect.height &&
+        selectionBox.y + selectionBox.height > containerRect.y
+      );
+    });
+
+    this.selectedContainers.set(selected);
+  }
 
 
 

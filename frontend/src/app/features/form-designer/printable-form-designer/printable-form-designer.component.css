@@ -125,6 +125,14 @@
   transition: all 0.3s ease;
 }
 
+.selection-box {
+    position: absolute;
+    border: 1px dashed #007bff;
+    background-color: rgba(0, 123, 255, 0.2);
+    pointer-events: none; /* Allows events to pass through to elements underneath */
+    z-index: 9999;
+}
+
 .form-container::before,
 .form-container::after {
   content: '';

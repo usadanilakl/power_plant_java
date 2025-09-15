@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.forms;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,15 +24,19 @@ import java.util.Map;
 public class FormContainer extends BaseAuditEntity {
     @Lob
     @Column(columnDefinition = "TEXT")
+    @JsonProperty("content")
     private String contentJson;
     @Lob
     @Column(columnDefinition = "TEXT")
+    @JsonProperty("position")
     private String positionJson;
     @Lob
     @Column(columnDefinition = "TEXT")
+    @JsonProperty("size")
     private String sizeJson;
     @Lob
     @Column(columnDefinition = "TEXT")
+    @JsonProperty("style")
     private String styleJson;
 
     @Transient

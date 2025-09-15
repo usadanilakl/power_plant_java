@@ -21,8 +21,18 @@
     </div>
 
   <div class="center-panel" #centerPanel>
-    <div class="form-container" #designArea [ngStyle]="getFormContainerStyle()">
-      <div class="form-content">
+    <div 
+      class="form-container" 
+      #designArea 
+      [ngStyle]="getFormContainerStyle()">
+      
+      <!-- Selection Box -->
+      @if(selectionBox(); as box){
+        <div class="selection-box" [style.left.px]="box.x" [style.top.px]="box.y" [style.width.px]="box.width" [style.height.px]="box.height"></div>
+      }
+      <div 
+        class="form-content"
+        (mousedown)="onFormSheetMouseDown($event)">
         @for(container of containers(); track $index; let i = $index){
           <div class="draggable-container"
              cdkDrag
