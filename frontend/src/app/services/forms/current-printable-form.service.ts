@@ -15,7 +15,7 @@ export class CurrentPrintableFormService {
     private destroyRef = inject(DestroyRef);
 
     private formsSubject = new BehaviorSubject<PrintableFormDto[]>([]);
-    currentForm$: Observable<PrintableFormDto[]> = this.formsSubject.asObservable();
+    allForms$: Observable<PrintableFormDto[]> = this.formsSubject.asObservable();
 
     private formSubject = new BehaviorSubject<PrintableFormDto>(new PrintableFormDto());
     form$: Observable<PrintableFormDto> = this.formSubject.asObservable();

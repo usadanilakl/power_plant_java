@@ -28,6 +28,8 @@ import { HotWorkComponent } from './features/permit-builder/hot-work/hot-work.co
 import { SafeWorkComponent } from './features/permit-builder/safe-work/safe-work.component';
 import { FormDesignerComponent } from './features/form-designer/form-designer.component';
 import { PrintableFormDesignerComponent } from './features/form-designer/printable-form-designer/printable-form-designer.component';
+import { PrintableFormPageComponent } from './pages/printable-form-page/printable-form-page.component';
+import { PrintableFormComponent } from './features/form-designer/printable-form/printable-form.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -88,12 +90,12 @@ export const routes: Routes = [
 
     {
       path: 'form-designer',
-      component: PrintableFormDesignerComponent,
+      component: PrintableFormPageComponent,
       // component: FormDesignerComponent,
-      // children: [
-      //   { path: '', redirectTo: 'flow', pathMatch: 'full' },
-      //   { path: 'flow', component: SchedulerComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
-      //   { path: 'table', component: FileTableComponent }
-      // ]
+      children: [
+        { path: '', redirectTo: 'forms', pathMatch: 'full' },
+        { path: 'forms', component: PrintableFormComponent },
+        { path: 'design', component: PrintableFormDesignerComponent }
+      ]
     },
 ];

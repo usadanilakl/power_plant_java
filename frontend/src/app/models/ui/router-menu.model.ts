@@ -46,3 +46,8 @@ export const PERMIT_BUILDER_NAV_MENU_ITEMS = [
     { label: 'Hot Works', route: './hot-works' },
     { label: 'Confined Spaces', route: './confined-spaces' },
 ]
+
+export const FORM_DESIGNER_NAV_MENU_ITEMS = [
+    { label: 'Existing Froms', route: './forms' },
+    { label: 'Design New', route: './design' },
+]

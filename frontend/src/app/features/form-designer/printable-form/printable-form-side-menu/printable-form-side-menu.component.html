@@ -1,0 +1,22 @@
+<div class="menu-container">
+  <h2>Forms</h2>
+  <ul class="form-list">
+    @for (form of forms(); track form.id) {
+      <li class="form-item" (click)="setCurrentForm(form)">
+        {{ getFormName(form) }}
+      </li>
+    }
+      <li class="form-item" (click)="newFormPopup()">Create New Form</li>
+  </ul>
+</div>
+
+<app-popup-projection
+  [title]="'New Form'"
+  [isOpen]="isNewFormPopupOpen()"
+  (close)="closeNewFormPopup()"
+>
+    <app-single-field-form
+      [fieldLabel]="'Form Name'"
+      (formSubmitted)="saveForm($event)"
+    ></app-single-field-form>
+</app-popup-projection>

@@ -1,0 +1,70 @@
+app-main-layout{
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.header-menus {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.menu-container {
+  width: 100%;
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+.left-menu-container{
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.menu-container:first-child {
+  background-color: rgba(2, 43, 97, 0.644);
+  backdrop-filter: blur(10px);
+}
+
+.menu-container:first-child ::ng-deep app-router-menu {
+  --router-menu-text-color: white;
+  --router-menu-text-hover-color: rgb(163, 201, 237);
+}
+
+.menu-container:last-child {
+  background-color: rgba(2, 43, 97, 0.644);
+  backdrop-filter: blur(10px);
+}
+
+.menu-container:last-child ::ng-deep app-router-menu {
+  --router-menu-text-color: white;
+  --router-menu-text-hover-color: rgb(163, 201, 237);
+}
+
+.menu-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.menu-container ::ng-deep a {
+  color: white;
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.menu-container ::ng-deep a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}

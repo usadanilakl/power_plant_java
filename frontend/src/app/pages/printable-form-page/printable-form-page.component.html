@@ -1,0 +1,21 @@
+<app-main-layout>
+  <ng-container header>
+    <div class="header-menus">
+      <div class="menu-container">
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </div>
+      <div class="menu-container">
+        <app-router-menu [menuItems]="navMenuItems" [layout]="'row'"></app-router-menu>
+      </div>
+    </div>
+  </ng-container>
+  <ng-container left-menu class="left-menu-container">
+    @if(currentRoute === 'forms'){
+      <app-printable-form-side-menu></app-printable-form-side-menu>
+    }
+     <!-- <app-left-menu-outlet></app-left-menu-outlet> -->
+  </ng-container>
+  <ng-container main-content>
+    <router-outlet></router-outlet>
+  </ng-container>
+</app-main-layout>

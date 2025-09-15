@@ -15,18 +15,13 @@ import { ConfinedSpaceSideMenuComponent } from "../../features/permit-builder/co
 
 @Component({
   selector: 'app-permit-builder-page',
+  standalone:true,
   imports: [RouterMenuComponent, MainLayoutComponent, PermitBuilderComponent, PermitBuilderLeftMenuComponent, JobLogLeftMenuComponent, JobLogComponent, RouterModule, DailyPermitPackageSideMenuComponent, SafeWorkSideMenuComponent, HotWorkSideMenuComponent, ConfinedSpaceSideMenuComponent],
   templateUrl: './permit-builder-page.component.html',
   styleUrl: './permit-builder-page.component.css'
 })
 export class PermitBuilderPageComponent {
-  categories = [
-    { name: 'LOTO', route: './loto' },
-    { name: 'Active LOTO Points', route: './loto-points-active' },
-    { name: 'All LOTO Points', route: './loto-points' },
-    { name: 'LOTO Boxes', route: './loto-boxes' },
-    { name: 'Locks', route: './locks' }
-  ];
+  
   navMenuItems : RouterMenuItems = PERMIT_BUILDER_NAV_MENU_ITEMS;
 
   currentRoute: string = '';
