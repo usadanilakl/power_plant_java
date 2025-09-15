@@ -29,6 +29,7 @@ export class PrintableFormDesignerComponent implements OnInit {
   selectedEntity = computed<string>(() => {
     const type = this.currentForm().formType ?? 'SafeWork'
     this.loadEntityFields(type);
+    console.log('Selected entity:', this.availableFields());
     return type;
   });
   containers = toSignal(this.currentPrintableFormService.formContainers$, { initialValue: [] });
