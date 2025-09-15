@@ -87,51 +87,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.zeroEnergyMethod = data.zeroEnergyMethod?? null;
   }
 
-  // export class LotoPointDto extends BaseDto implements LotoPointModel {
-  // unit: string;
-  // tagged: string;
-  // tagNumber: string;
-  // description: string;
-  // isoPos: ValueDto;
-  // normPos: ValueDto;
-  // specificLocation: string;
-  // standard: string;
-  // generalLocation: string;
-  // equipmentIdList: number[];
-  // normalPosition: string;
-  // isolatedPosition: string;
-  // equipmentList: EquipmentDto[];
-  // oldId: string;
-  // isUpdated: number;
-  // fileIds: string;
-  // conflictStatus: string;
-  // lotos: LotoDto[];
 
-  // constructor(data: Partial<LotoPointModel> = {}) {
-  //   super();
-  //   this.id = data.id || 0;
-  //   this.unit = data.unit || '';
-  //   this.tagged = data.tagged || '';
-  //   this.tagNumber = data.tagNumber || '';
-  //   this.description = data.description || '';
-  //   this.isoPos = data.isoPos || new ValueDto();
-  //   this.normPos = data.normPos || new ValueDto();
-  //   this.specificLocation = data.specificLocation || '';
-  //   this.standard = data.standard || '';
-  //   this.generalLocation = data.generalLocation || '';
-  //   this.equipmentIdList = data.equipmentIdList || [];
-  //   this.normalPosition = data.normalPosition || '';
-  //   this.isolatedPosition = data.isolatedPosition || '';
-  //   this.equipmentList = data.equipmentList || [];
-  //   this.oldId = data.oldId || '';
-  //   this.objectType = data.objectType || '';
-  //   this.isUpdated = data.isUpdated || 0;
-  //   this.fileIds = data.fileIds || '';
-  //   this.conflictStatus = data.conflictStatus || '';
-  //   this.lotos = data.lotos || [];
-  // }
-
-  // Serialization method
   // Serialization method
   override toJson(): any {
     return {

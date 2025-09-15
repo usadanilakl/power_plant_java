@@ -3,8 +3,8 @@
   <div class="top-menu">
     <button (click)="addContainer()">Add Container</button>
     <!-- <button (click)="addColumn()">Add Column</button> -->
-    <input type="number" [(ngModel)]="sheetSize.width" (change)="updateSheetSize(sheetSize.width, sheetSize.height)">
-    <input type="number" [(ngModel)]="sheetSize.height" (change)="updateSheetSize(sheetSize.width, sheetSize.height)">
+    <input type="number" [(ngModel)]="sheetSize().width" (change)="updateSheetSize(sheetSize().width, sheetSize().height)">
+    <input type="number" [(ngModel)]="sheetSize().height" (change)="updateSheetSize(sheetSize().width, sheetSize().height)">
   </div>
 
   <div class="main-content">

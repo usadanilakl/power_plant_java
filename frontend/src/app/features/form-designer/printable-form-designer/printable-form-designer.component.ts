@@ -1,5 +1,5 @@
 
-import { Component, ElementRef, HostListener, Inject, inject, OnInit, PLATFORM_ID, signal, ViewChild } from '@angular/core';
+import { Component, computed, ElementRef, HostListener, Inject, inject, OnInit, PLATFORM_ID, signal, ViewChild } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormBuilderService } from '../../../services/ui/form-builder.service';
@@ -9,17 +9,10 @@ import { HotWorkDto } from '../../../models/permits/hot-work.model';
 import { ConfinedSpaceDto } from '../../../models/permits/confined-space.model';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CdkDragEnd, DragDropModule } from '@angular/cdk/drag-drop';
+import { FormContainerDto } from '../../../models/forms/form-container.model';
+import { CurrentPrintableFormService } from '../../../services/forms/current-printable-form.service';
+import { PrintableFormDto } from '../../../models/forms/printable-form.model';
 
-export class Container {
-  content: string | FormField | null = null;
-  position: { x: number, y: number } = { x: 0, y: 0 };
-  size: { width: number, height: number } = { width: 100, height: 100 };
-  style: Partial<CSSStyleDeclaration> = {};
-
-  constructor(data: Partial<Container> = {}) {
-    Object.assign(this, data);
-  }
-}
 
 @Component({
   selector: 'app-printable-form-designer',
@@ -30,12 +23,12 @@ export class Container {
 })
 export class PrintableFormDesignerComponent implements OnInit {
   @ViewChild('centerPanel') centerPanel!: ElementRef;
-  private formBuilderService = inject(FormBuilderService);
+  private currentPrintableFormService = inject(CurrentPrintableFormService);
   
   availableFields = signal<FormField[]>([]);
   selectedEntity: string = 'SafeWorkDto';
-  containers = toSignal(this.formBuilderService.formContainers$, { initialValue: [] });
-  selectedContainers = signal<Container[]>([]);
+  containers = toSignal(this.currentPrintableFormService.formContainers$, { initialValue: [] });
+  selectedContainers = signal<FormContainerDto[]>([]);
 
 
   private resizingFieldIndex: number | null = null;
@@ -43,10 +36,11 @@ export class PrintableFormDesignerComponent implements OnInit {
   private resizeStartY: number = 0;
   
 
+  currentForm = toSignal(this.currentPrintableFormService.form$, { initialValue: new PrintableFormDto() });
   formScale = 1;
-  sheetSize = { width: 8.5, height: 11 }; // Default to US Letter size
+  sheetSize = computed(() => {return this.currentForm().size});
   pixelsPerInch = 96; // Standard DPI
-  formSize = { width: 8.5 * 96, height: 11 * 96 }; // Initialize with default size
+  formSize = { width: 8.5 * 96, height: 11 * 96 };
 
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
@@ -70,7 +64,8 @@ export class PrintableFormDesignerComponent implements OnInit {
   }
 
   updateSheetSize(width: number, height: number) {
-    this.sheetSize = { width, height };
+    const newForm = new PrintableFormDto({...this.currentForm(), size: { width, height } });
+    this.currentPrintableFormService.updateForm(newForm);
     this.formSize = { width: width * this.pixelsPerInch, height: height * this.pixelsPerInch };
     this.adjustFormScale();
     // You might want to adjust field positions here if necessary
@@ -78,8 +73,8 @@ export class PrintableFormDesignerComponent implements OnInit {
 
   getSheetSizeInPixels() {
     return {
-      width: this.sheetSize.width * this.pixelsPerInch,
-      height: this.sheetSize.height * this.pixelsPerInch
+      width: this.sheetSize().width * this.pixelsPerInch,
+      height: this.sheetSize().height * this.pixelsPerInch
     };
   }
 
@@ -129,11 +124,11 @@ export class PrintableFormDesignerComponent implements OnInit {
    ****************************************************************************/
 
   addContainer(){
-    const newContainer = new Container();
-    this.formBuilderService.addContainer(newContainer);
+    const newContainer = new FormContainerDto();
+    this.currentPrintableFormService.createNewContainer(newContainer);
   }
 
-  selectContainer(container: Container, event: MouseEvent) {
+  selectContainer(container: FormContainerDto, event: MouseEvent) {
     this.selectedContainers.update(containers => {
       if (event.ctrlKey) {
         const index = containers.indexOf(container);
@@ -146,9 +141,18 @@ export class PrintableFormDesignerComponent implements OnInit {
         return [container];
       }
     });
+    console.log('Selected containers:', this.selectedContainers());
+  }
+
+  addTextToContainer(container: FormContainerDto, text: string) {
+    const newContainer = new FormContainerDto({
+      ...container,
+      content: text,
+    });
+    this.currentPrintableFormService.updateContainer(newContainer);
   }
   
-  getWrapperStyles(field: Container): any {
+  getWrapperStyles(field: FormContainerDto): any {
     return {
       width: `${field.size?.width}px`,
       height: `${field.size?.height}px`,
@@ -160,7 +164,7 @@ export class PrintableFormDesignerComponent implements OnInit {
     };
   }
 
-  getContainerStyles(field: Container): any {
+  getContainerStyles(field: FormContainerDto): any {
     return {
       ...field.style,
       position: 'absolute',
@@ -168,7 +172,6 @@ export class PrintableFormDesignerComponent implements OnInit {
       top: `${field.position?.y}px`,
       width: `${field.size?.width}px`,
       height: `${field.size?.height}px`,
-      backgroundColor: 'rgba(255, 0, 0, 0.2)', // Semi-transparent red
       border: '2px solid black',
       // zIndex: 1000,
       padding: '5px',
@@ -197,21 +200,17 @@ export class PrintableFormDesignerComponent implements OnInit {
       x: Math.max(0, (currentField.position?.x || 0) + draggedDistance.x),
       y: Math.max(0, (currentField.position?.y || 0) + draggedDistance.y)
     };
-  
-    console.log('Drag ended', { index, newPosition, draggedDistance });
     
-    const updatedContainer = { ...currentField, position: newPosition };
-    this.formBuilderService.updateContainer(index, updatedContainer);
-
-    console.log('Updated container', updatedContainer);
+    const updatedContainer = new FormContainerDto({ ...currentField, position: newPosition });
+    this.currentPrintableFormService.updateContainer(updatedContainer);
   
     // Reset the drag
     event.source.reset();
   }
 
   onResize(event: any, index: number) {
-    const updatedContainer = { ...this.containers()[index], size: event.size };
-    this.formBuilderService.updateContainer(index, updatedContainer);
+    const updatedContainer = new FormContainerDto({ ...this.containers()[index], size: event.size });
+    this.currentPrintableFormService.updateContainer(updatedContainer);
   }
 
   startResize(event: MouseEvent, index: number, corner: string) {
@@ -233,11 +232,11 @@ export class PrintableFormDesignerComponent implements OnInit {
       const dy = event.clientY - this.resizeStartY;
       const newWidth = Math.max(50, field.size!.width + dx);
       const newHeight = Math.max(20, field.size!.height + dy);
-      const updatedField = { 
+      const updatedField = new FormContainerDto({ 
         ...field, 
         size: { width: newWidth, height: newHeight } 
-      };
-      this.formBuilderService.updateContainer(this.resizingFieldIndex, updatedField);
+      });
+      this.currentPrintableFormService.updateContainer(updatedField);
       this.resizeStartX = event.clientX;
       this.resizeStartY = event.clientY;
     }
