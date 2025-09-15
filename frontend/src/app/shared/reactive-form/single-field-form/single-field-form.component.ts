@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -13,12 +13,20 @@ export class SingleFieldFormComponent {
   fieldLabel = input.required<string>();
   formSubmitted = output<string>();
 
-  fieldControl = new FormControl('', [Validators.required]);
+  form: FormGroup;
 
-  onSubmit(): void {
-    if (this.fieldControl.valid && this.fieldControl.value) {
-      this.formSubmitted.emit(this.fieldControl.value);
-      this.fieldControl.reset();
+  constructor(private fb: FormBuilder) {
+    this.form = this.fb.group({
+      field: ['', Validators.required]
+    });
+  }
+
+  // This method is no longer tied to ngSubmit
+  submitForm() {
+    if (this.form.valid) {
+      console.log('SingleFieldFormComponent: submitForm() called, emitting value.');
+      this.formSubmitted.emit(this.form.value.field);
+      this.form.reset();
     }
   }
 }

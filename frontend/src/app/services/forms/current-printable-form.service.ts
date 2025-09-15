@@ -58,6 +58,10 @@ export class CurrentPrintableFormService {
         });
     }
 
+    setCurrentFormWithDto(dto: PrintableFormDto): void {
+        this.formSubject.next(dto);
+    }
+
     updateForm(formDto: PrintableFormDto): void {
         this.formService.save(formDto).pipe(
             takeUntilDestroyed(this.destroyRef),
@@ -65,12 +69,26 @@ export class CurrentPrintableFormService {
         ).subscribe({
             next: (form: PrintableFormDto) => {
                 this.formSubject.next(form);
+                this.updateFormInArray(form);
             },
             error: (err) => {
                 console.error('Error updating form size:', err);
                 // Here you could implement user-facing error messages
             }
         });
+    }
+
+    updateFormInArray(form: PrintableFormDto): void {
+        const currentForms = this.formsSubject.value;
+        const index = currentForms.findIndex(f => f.id === form.id);
+        if (index!== -1) {
+            const updatedForms = [...currentForms];
+            updatedForms[index] = form;
+            this.formsSubject.next(updatedForms);
+        }else{
+            const newForms = [...currentForms, form];
+            this.formsSubject.next(newForms);
+        }
     }
 
     addFormContainer(formId: number, containerId: number): Observable<PrintableFormDto> {

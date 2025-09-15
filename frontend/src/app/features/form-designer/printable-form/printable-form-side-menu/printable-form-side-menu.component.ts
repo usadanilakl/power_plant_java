@@ -3,12 +3,14 @@ import { CurrentPrintableFormService } from '../../../../services/forms/current-
 import { toSignal } from '@angular/core/rxjs-interop';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 import { PopupProjectionComponent } from "../../../../shared/popup-projection/popup-projection.component";
-import { SingleFieldFormComponent } from '../../../../shared/reactive-form/single-field-form/single-field-form.component';
 import { Router } from '@angular/router';
+import { SingleFieldFormComponent } from '../../../../shared/reactive-form/single-field-form/single-field-form.component';
+import { PrintableFormFormComponent } from "../printable-form-form/printable-form-form.component";
 
 @Component({
   selector: 'app-printable-form-side-menu',
-  imports: [PopupProjectionComponent, SingleFieldFormComponent],
+  standalone: true,
+  imports: [PopupProjectionComponent, SingleFieldFormComponent, PrintableFormFormComponent],
   templateUrl: './printable-form-side-menu.component.html',
   styleUrl: './printable-form-side-menu.component.css'
 })
@@ -31,11 +33,32 @@ export class PrintableFormSideMenuComponent {
   closeNewFormPopup() {
     this.isNewFormPopupOpen.set(false);
   }
-  saveForm(formName: string): void {
-    const form = new PrintableFormDto({ name: formName });
+  // saveForm(formName: string): void {
+  //   const form = new PrintableFormDto({ name: formName });
+  //   this.currentPrintableFormService.updateForm(form);
+  //   this.closeNewFormPopup();
+  //   this.router.navigate(['/form-designer/design']);
+  // }
+  saveForm(form: PrintableFormDto): void {
     this.currentPrintableFormService.updateForm(form);
     this.closeNewFormPopup();
     this.router.navigate(['/form-designer/design']);
+  }
+
+  createnewForm(): void {
+    const form = new PrintableFormDto();
+    this.currentPrintableFormService.setCurrentFormWithDto(form);
+    this.newFormPopup()
+  }
+
+  editExistingForm(form: PrintableFormDto): void {
+    this.currentPrintableFormService.setCurrentFormById(form.id);
+    this.newFormPopup();
+  }
+
+  handleRightClick(form: PrintableFormDto, event: MouseEvent): void {
+    event.preventDefault(); // This is important to prevent the browser's default context menu
+    this.editExistingForm(form);
   }
 
 }

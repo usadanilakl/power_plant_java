@@ -26,7 +26,7 @@ public class PrintableFormRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error retrieving forms: " + e.getMessage()));
         }
     }
-    @GetMapping("/get-form-by-id/{id}")
+    @GetMapping("/get-by-id/{id}")
     public ResponseEntity<NgApiResponse<PrintableForm>> getFormById(@PathVariable String id) {
         try {
             Long formId = Long.parseLong(id);

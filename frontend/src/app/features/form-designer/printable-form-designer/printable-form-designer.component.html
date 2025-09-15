@@ -9,11 +9,11 @@
 
   <div class="main-content">
     <div class="left-panel">
-    <select [(ngModel)]="selectedEntity" (change)="loadEntityFields()">
+    <!-- <select [(ngModel)]="selectedEntity" (change)="loadEntityFields()">
       <option value="SafeWorkDto">Safe Work</option>
       <option value="HotWorkDto">Hot Work</option>
       <option value="ConfinedSpaceDto">Confined Space</option>
-    </select>
+    </select> -->
       <div *ngFor="let field of availableFields()" class="field-item">
         <h4>{{ field.label }}</h4>
         <!-- <button (click)="addFieldToCell(field)">Add to Form</button> -->

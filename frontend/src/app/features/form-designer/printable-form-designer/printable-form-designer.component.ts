@@ -26,7 +26,11 @@ export class PrintableFormDesignerComponent implements OnInit {
   private currentPrintableFormService = inject(CurrentPrintableFormService);
   
   availableFields = signal<FormField[]>([]);
-  selectedEntity: string = 'SafeWorkDto';
+  selectedEntity = computed<string>(() => {
+    const type = this.currentForm().formType ?? 'SafeWork'
+    this.loadEntityFields(type);
+    return type;
+  });
   containers = toSignal(this.currentPrintableFormService.formContainers$, { initialValue: [] });
   selectedContainers = signal<FormContainerDto[]>([]);
 
@@ -102,15 +106,15 @@ export class PrintableFormDesignerComponent implements OnInit {
    * Field functions
    ****************************************************************************/
 
-  loadEntityFields() {
-    switch (this.selectedEntity) {
-      case 'SafeWorkDto':
+  loadEntityFields(type: string) {
+    switch (type) {
+      case 'SafeWork':
         this.availableFields.set(SafeWorkDto.toFormFields(new SafeWorkDto(), []));
         break;
-      case 'HotWorkDto':
+      case 'HotWork':
         this.availableFields.set(HotWorkDto.toFormFields(new HotWorkDto(), []));
         break;
-      case 'ConfinedSpaceDto':
+      case 'ConfinedSpace':
         this.availableFields.set(ConfinedSpaceDto.toFormFields(new ConfinedSpaceDto(), []));
         break;
     }

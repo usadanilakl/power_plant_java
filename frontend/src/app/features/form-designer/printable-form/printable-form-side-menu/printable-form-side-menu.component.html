@@ -2,11 +2,14 @@
   <h2>Forms</h2>
   <ul class="form-list">
     @for (form of forms(); track form.id) {
-      <li class="form-item" (click)="setCurrentForm(form)">
+      <li 
+        class="form-item" 
+        (click)="setCurrentForm(form)"
+        (contextmenu)="handleRightClick(form, $event)">
         {{ getFormName(form) }}
       </li>
     }
-      <li class="form-item" (click)="newFormPopup()">Create New Form</li>
+      <li class="form-item" (click)="createnewForm()">Create New Form</li>
   </ul>
 </div>
 
@@ -15,8 +18,7 @@
   [isOpen]="isNewFormPopupOpen()"
   (close)="closeNewFormPopup()"
 >
-    <app-single-field-form
-      [fieldLabel]="'Form Name'"
-      (formSubmitted)="saveForm($event)"
-    ></app-single-field-form>
+    <app-printable-form-form
+      (submtEvent)="saveForm($event)"
+    ></app-printable-form-form>
 </app-popup-projection>

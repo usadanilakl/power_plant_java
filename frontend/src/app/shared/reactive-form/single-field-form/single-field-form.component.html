@@ -1,12 +1,7 @@
-<form (ngSubmit)="onSubmit()" class="single-field-form">
-  <div class="form-group">
-    <label [for]="fieldLabel()">{{ fieldLabel() }}:</label>
-    <input 
-      [id]="fieldLabel()"
-      type="text" 
-      [formControl]="fieldControl" 
-      [placeholder]="'Enter ' + fieldLabel()"
-    >
+<form [formGroup]="form"  class="single-field-form">
+  <div class="form-field">
+    <label>{{ fieldLabel() }}</label>
+    <input formControlName="field" type="text" />
   </div>
-  <button type="submit" [disabled]="fieldControl.invalid">Submit</button>
+  <button type="button" (click)="submitForm()" [disabled]="form.invalid">Submit</button>
 </form>
