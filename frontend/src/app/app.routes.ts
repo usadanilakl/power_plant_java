@@ -27,6 +27,7 @@ import { ConfinedSpaceComponent } from './features/permit-builder/confined-space
 import { HotWorkComponent } from './features/permit-builder/hot-work/hot-work.component';
 import { SafeWorkComponent } from './features/permit-builder/safe-work/safe-work.component';
 import { FormDesignerComponent } from './features/form-designer/form-designer.component';
+import { PrintableFormDesignerComponent } from './features/form-designer/printable-form-designer/printable-form-designer.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -87,7 +88,8 @@ export const routes: Routes = [
 
     {
       path: 'form-designer',
-      component: FormDesignerComponent,
+      component: PrintableFormDesignerComponent,
+      // component: FormDesignerComponent,
       // children: [
       //   { path: '', redirectTo: 'flow', pathMatch: 'full' },
       //   { path: 'flow', component: SchedulerComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
