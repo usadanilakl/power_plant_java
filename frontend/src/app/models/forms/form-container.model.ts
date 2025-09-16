@@ -7,6 +7,7 @@ export interface FormContainerModel extends BaseModel {
   position: { x: number; y: number };
   size: { width: number; height: number };
   style: Partial<CSSStyleDeclaration>;
+  groupId?: string | null;
 }
 
 export class FormContainerDto extends BaseDto implements FormContainerModel {
@@ -14,6 +15,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
   position: { x: number; y: number };
   size: { width: number; height: number };
   style: Partial<CSSStyleDeclaration>;
+  groupId?: string | null;
 
   constructor(data: Partial<FormContainerModel> = {}) {
     super(data);
@@ -21,6 +23,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
     this.position = data.position ?? { x: 0, y: 0 };
     this.size = data.size ?? { width: 100, height: 100 };
     this.style = data.style ?? {};
+    this.groupId = data.groupId?? null;
   }
 
   override toJson(): any {
@@ -30,6 +33,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
       positionJson: JSON.stringify(this.position),
       sizeJson: JSON.stringify(this.size),
       styleJson: JSON.stringify(this.style),
+      groupId: this.groupId,
     };
   }
 
@@ -40,6 +44,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
       position: json.positionJson ? JSON.parse(json.positionJson) : { x: 0, y: 0 },
       size: json.sizeJson ? JSON.parse(json.sizeJson) : { width: 100, height: 100 },
       style: json.styleJson ? JSON.parse(json.styleJson) : {},
+      groupId: json.groupId,
     });
   }
 }

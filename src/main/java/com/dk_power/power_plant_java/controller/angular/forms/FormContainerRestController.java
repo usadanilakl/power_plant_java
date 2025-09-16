@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/ng/form-containers")
 @RequiredArgsConstructor
@@ -46,6 +48,31 @@ public class FormContainerRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error saving form container: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/save-all")
+    public ResponseEntity<NgApiResponse<Iterable<FormContainer>>> saveAllForms(@RequestBody List<FormContainer> formContainers) {
+        try {
+            Iterable<FormContainer> savedFormContainers = formContainerRepo.saveAll(formContainers);
+            return ResponseEntity.ok(new NgApiResponse<>(savedFormContainers, "Form containers saved successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error saving form containers: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<Void>> deleteFormContainer(@PathVariable Long id) {
+        try {
+            if (!formContainerRepo.existsById(id)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new NgApiResponse<>(null, "Form container not found with id: " + id));
+            }
+            formContainerRepo.deleteById(id);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Form container deleted successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error deleting form container: " + e.getMessage()));
+        }
+    }
+
+
 
 
 

@@ -2,18 +2,16 @@
 <div class="printable-form-designer">
   <div class="top-menu">
     <button (click)="addContainer()">Add Container</button>
-    <!-- <button (click)="addColumn()">Add Column</button> -->
+    <button (click)="groupSelection()">Group</button>
+    <button (click)="ungroupSelection()">Ungroup</button>
+    <button (click)="deleteContainer()">Delete</button>
     <input type="number" [(ngModel)]="sheetSize().width" (change)="updateSheetSize(sheetSize().width, sheetSize().height)">
     <input type="number" [(ngModel)]="sheetSize().height" (change)="updateSheetSize(sheetSize().width, sheetSize().height)">
   </div>
 
   <div class="main-content">
     <div class="left-panel">
-    <!-- <select [(ngModel)]="selectedEntity" (change)="loadEntityFields()">
-      <option value="SafeWorkDto">Safe Work</option>
-      <option value="HotWorkDto">Hot Work</option>
-      <option value="ConfinedSpaceDto">Confined Space</option>
-    </select> -->
+
       <div *ngFor="let field of availableFields()" class="field-item">
         <h4>{{ field.label }}</h4>
         <!-- <button (click)="addFieldToCell(field)">Add to Form</button> -->
@@ -30,22 +28,30 @@
       @if(selectionBox(); as box){
         <div class="selection-box" [style.left.px]="box.x" [style.top.px]="box.y" [style.width.px]="box.width" [style.height.px]="box.height"></div>
       }
+
       <div 
         class="form-content"
+        #formContent
         (mousedown)="onFormSheetMouseDown($event)">
         @for(container of containers(); track $index; let i = $index){
-          <div class="draggable-container"
+          <!-- <div class="draggable-container"
              cdkDrag
              [cdkDragBoundary]="designArea"
-             (cdkDragEnded)="onDragEnd($event, i)"
+             (cdkDragEnded)="onDragEnd($event, container)"
              (click)="selectContainer(container, $event)"
              [class.selected]="selectedContainers().includes(container)"
              [ngStyle]="getContainerStyles(container)">
-          <!-- <div class="field-wrapper" [ngStyle]="getWrapperStyles(container)">
-            <label>{{ field.label }}</label>
-            <input [type]="field.type" [name]="field.name">
-          </div> -->
             <div class="resize-handle bottom-right" (mousedown)="startResize($event, i, 'bottom-right')"></div>
+        </div> -->
+        <div
+          class="draggable-container"
+          [ngStyle]="getContainerStyles(container)"
+          [class.selected]="isContainerSelected(container)"
+          (mousedown)="onDragStart($event, container)"
+          (click)="selectContainer(container,$event)">
+
+          <div class="resize-handle bottom-right" (mousedown)="startResize($event, i, 'bottom-right')"></div>
+
         </div>
 
         }
@@ -55,6 +61,7 @@
 
 
     <div class="right-panel">
+          <app-form-container-list></app-form-container-list>
       
     </div>
   </div>

@@ -12,18 +12,20 @@ import { CdkDragEnd, DragDropModule } from '@angular/cdk/drag-drop';
 import { FormContainerDto } from '../../../models/forms/form-container.model';
 import { CurrentPrintableFormService } from '../../../services/forms/current-printable-form.service';
 import { PrintableFormDto } from '../../../models/forms/printable-form.model';
+import { FormContainerPropertiesComponent } from "../form-container/form-container-properties/form-container-properties.component";
+import { FormContainerListComponent } from "../form-container/form-container-list/form-container-list.component";
 
 
 @Component({
   selector: 'app-printable-form-designer',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule,],
+  imports: [CommonModule, FormsModule, DragDropModule, FormContainerPropertiesComponent, FormContainerListComponent],
   templateUrl: './printable-form-designer.component.html',
   styleUrl: './printable-form-designer.component.css'
 })
 export class PrintableFormDesignerComponent implements OnInit {
   @ViewChild('centerPanel') centerPanel!: ElementRef;
-  @ViewChild('designArea') designArea!: ElementRef<HTMLDivElement>;
+  @ViewChild('formContent') formContentElement!: ElementRef<HTMLDivElement>;
   private currentPrintableFormService = inject(CurrentPrintableFormService);
   
 
@@ -39,12 +41,17 @@ export class PrintableFormDesignerComponent implements OnInit {
   });
   // containers = computed<FormContainerDto[]>(() => this.currentForm().formContainers?? []);
   containers = toSignal(this.currentPrintableFormService.formContainers$, { initialValue: [] });
-  selectedContainers = signal<FormContainerDto[]>([]);
+  // selectedContainers = signal<FormContainerDto[]>([]);
 
 
   private resizingFieldIndex: number | null = null;
   private resizeStartX: number = 0;
   private resizeStartY: number = 0;
+
+  private isDragging = false;
+  private dragStartX = 0;
+  private dragStartY = 0;
+  private initialPositions = new Map<string, { x: number; y: number }>();
 
   // Marquee selection state
   isSelecting = signal(false);
@@ -55,7 +62,6 @@ export class PrintableFormDesignerComponent implements OnInit {
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
 
   ngOnInit() {
-
   }
 
   ngAfterViewInit() {
@@ -140,19 +146,7 @@ export class PrintableFormDesignerComponent implements OnInit {
   }
 
   selectContainer(container: FormContainerDto, event: MouseEvent) {
-    this.selectedContainers.update(containers => {
-      if (event.ctrlKey) {
-        const index = containers.indexOf(container);
-        if (index > -1) {
-          return containers.filter(f => f !== container);
-        } else {
-          return [...containers, container];
-        }
-      } else {
-        return [container];
-      }
-    });
-    console.log('Selected containers:', this.selectedContainers());
+    this.currentPrintableFormService.selectContainer(container, event);
   }
 
   addTextToContainer(container: FormContainerDto, text: string) {
@@ -199,7 +193,16 @@ export class PrintableFormDesignerComponent implements OnInit {
   }
 
   isContainerSelected(container: FormContainerDto): boolean {
-    return this.selectedContainers().includes(container);
+    return this.currentPrintableFormService.isContainerSelected(container);
+  }
+
+  updateContainer(container: FormContainerDto) {
+    this.currentPrintableFormService.updateContainer(container);
+  }
+
+  deleteContainer(id: number = 0) {
+    const contId = !id || id === 0? this.currentPrintableFormService.selectedContainers()[0].id : id;
+    this.currentPrintableFormService.deleteContainer(id);
   }
 
 
@@ -207,21 +210,114 @@ export class PrintableFormDesignerComponent implements OnInit {
    * Drag and resize functions
    ****************************************************************************/
 
-  onDragEnd(event: CdkDragEnd, index: number) {
-    const draggedDistance = event.source.getFreeDragPosition();
-    const currentField = this.containers()[index];
+  // onDragEnd(event: CdkDragEnd, index: number) {
+  //   const draggedDistance = event.source.getFreeDragPosition();
+  //   const currentField = this.containers()[index];
     
-    const newPosition = {
-      x: Math.max(0, (currentField.position?.x || 0) + draggedDistance.x),
-      y: Math.max(0, (currentField.position?.y || 0) + draggedDistance.y)
-    };
+  //   const newPosition = {
+  //     x: Math.max(0, (currentField.position?.x || 0) + draggedDistance.x),
+  //     y: Math.max(0, (currentField.position?.y || 0) + draggedDistance.y)
+  //   };
     
-    const updatedContainer = new FormContainerDto({ ...currentField, position: newPosition });
-    this.currentPrintableFormService.updateContainer(updatedContainer);
+  //   const updatedContainer = new FormContainerDto({ ...currentField, position: newPosition });
+  //   this.currentPrintableFormService.updateContainer(updatedContainer);
   
-    // Reset the drag
-    event.source.reset();
+  //   // Reset the drag
+  //   event.source.reset();
+  // }
+
+
+
+
+  onDragStart(event: MouseEvent, container: FormContainerDto) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // this.selectContainer(container, event);
+
+    this.isDragging = true;
+    this.dragStartX = event.clientX;
+    this.dragStartY = event.clientY;
+
+    this.initialPositions.clear();
+    for (const c of this.currentPrintableFormService.selectedContainers()) {
+      this.initialPositions.set(c.id+''!, { x: c.position!.x, y: c.position!.y });
+    }
+
+    document.addEventListener('mousemove', this.onDragMove);
+    document.addEventListener('mouseup', this.onDragEnd);
   }
+
+  private onDragMove = (event: MouseEvent) => {
+    if (!this.isDragging) return;
+    event.preventDefault();
+
+    const dx = event.clientX - this.dragStartX;
+    const dy = event.clientY - this.dragStartY;
+
+    const formSheet = this.formContentElement.nativeElement;
+    const sheetWidth = formSheet.clientWidth;
+    const sheetHeight = formSheet.clientHeight;
+
+    const updatedContainers = this.currentPrintableFormService.selectedContainers().map(container => {
+      const initialPos = this.initialPositions.get(container.id+''!);
+      if (!initialPos) return container;
+
+      let newX = initialPos.x + dx;
+      let newY = initialPos.y + dy;
+
+      // Constrain to container bounds
+      newX = Math.max(0, Math.min(newX, sheetWidth - container.size!.width));
+      newY = Math.max(0, Math.min(newY, sheetHeight - container.size!.height));
+
+      const newPosition = {
+        x: newX,
+        y: newY
+      };
+      return new FormContainerDto({ ...container, position: newPosition });
+    });
+    
+    // Update local state for smooth UI feedback
+    this.currentPrintableFormService.updateContainersState(updatedContainers);
+  };
+
+  private onDragEnd = (event: MouseEvent) => {
+    if (!this.isDragging) return;
+    this.isDragging = false;
+    
+    const dx = event.clientX - this.dragStartX;
+    const dy = event.clientY - this.dragStartY;
+
+    const formSheet = this.formContentElement.nativeElement;
+    const sheetWidth = formSheet.clientWidth;
+    const sheetHeight = formSheet.clientHeight;
+
+    const finalContainers = this.currentPrintableFormService.selectedContainers().map(container => {
+      const initialPos = this.initialPositions.get(container.id+'');
+      if (!initialPos) return container;
+      
+      let newX = initialPos.x + dx;
+      let newY = initialPos.y + dy;
+
+      // Constrain to container bounds
+      newX = Math.max(0, Math.min(newX, sheetWidth - container.size!.width));
+      newY = Math.max(0, Math.min(newY, sheetHeight - container.size!.height));
+
+      const newPosition = {
+        x: newX,
+        y: newY
+      };
+      return new FormContainerDto({ ...container, position: newPosition });
+    });
+
+    if (finalContainers.length > 0) {
+      this.currentPrintableFormService.updateContainers(finalContainers);
+    }
+
+    document.removeEventListener('mousemove', this.onDragMove);
+    document.removeEventListener('mouseup', this.onDragEnd);
+  };
+
 
   onResize(event: any, index: number) {
     const updatedContainer = new FormContainerDto({ ...this.containers()[index], size: event.size });
@@ -251,7 +347,7 @@ export class PrintableFormDesignerComponent implements OnInit {
         ...field, 
         size: { width: newWidth, height: newHeight } 
       });
-      this.currentPrintableFormService.updateContainer(updatedField);
+      this.currentPrintableFormService.updateContainersState([updatedField]);
       this.resizeStartX = event.clientX;
       this.resizeStartY = event.clientY;
     }
@@ -275,12 +371,12 @@ export class PrintableFormDesignerComponent implements OnInit {
    * Mouse Selection functions
    ****************************************************************************/
   onFormSheetMouseDown(event: MouseEvent) {
-    console.log('Mouse down on form sheet');
     // Only start selection if clicking on the sheet itself, not a child element like a container
-    if (event.target !== this.designArea.nativeElement) {
+    if (event.target !== this.formContentElement.nativeElement) {
       console.log('Mouse down on a child element, ignoring');
       return;
     }
+    if(this.isDragging) return;
     event.preventDefault();
 
     this.isSelecting.set(true);
@@ -292,7 +388,7 @@ export class PrintableFormDesignerComponent implements OnInit {
     console.log('Selection start:', this.selectionStart);
 
     if (!event.ctrlKey) {
-      this.selectedContainers.set([]);
+      this.currentPrintableFormService.selectedContainers.set([]);
     }
 
     document.addEventListener('mousemove', this.onDocumentMouseMove);
@@ -302,7 +398,7 @@ export class PrintableFormDesignerComponent implements OnInit {
   private onDocumentMouseMove = (event: MouseEvent) => {
     if (!this.isSelecting()) return;
 
-    const rect = this.designArea.nativeElement.getBoundingClientRect();
+    const rect = this.formContentElement.nativeElement.getBoundingClientRect();
     const currentX = event.clientX - rect.left;
     const currentY = event.clientY - rect.top;
 
@@ -322,7 +418,7 @@ export class PrintableFormDesignerComponent implements OnInit {
     document.removeEventListener('mouseup', this.onDocumentMouseUp);
 
     console.log('Mouse up on form sheet');
-    console.log('Selected containers:', this.selectedContainers());
+    console.log('Selected containers:', this.currentPrintableFormService.selectedContainers());
     console.log('Selection box:', this.selectionBox());
     console.log('Selection start:', this.selectionStart);
   };
@@ -348,7 +444,45 @@ export class PrintableFormDesignerComponent implements OnInit {
       );
     });
 
-    this.selectedContainers.set(selected);
+    this.currentPrintableFormService.selectedContainers.set(selected);
+  }
+
+    /*****************************************************************************
+   * Grouping functions
+   ****************************************************************************/
+
+  groupSelection() {
+    const selected = this.currentPrintableFormService.selectedContainers();
+    if (selected.length < 2) return;
+
+    const groupId = `group-${Date.now()}`; // Simple unique ID
+    const updatedContainers = selected.map(container => {
+      return new FormContainerDto({ ...container, groupId: groupId });
+    });
+
+    this.currentPrintableFormService.updateContainers(updatedContainers);
+  }
+
+  ungroupSelection() {
+    const selected = this.currentPrintableFormService.selectedContainers();
+    if (selected.length === 0 || !selected[0].groupId) return;
+
+    const groupId = selected[0].groupId;
+    const allContainers = this.containers();
+    const containersInGroup = allContainers.filter(c => c.groupId === groupId);
+
+    const updatedContainers = containersInGroup.map(container => {
+      return new FormContainerDto({ ...container, groupId: null });
+    });
+
+    this.currentPrintableFormService.updateContainers(updatedContainers);
+    // After ungrouping, the original selection might still be valid
+    this.currentPrintableFormService.selectedContainers.set(updatedContainers);
+  }
+
+  isGroupSelected(): boolean {
+    const selected = this.currentPrintableFormService.selectedContainers();
+    return selected.length > 0 && !!selected[0].groupId;
   }
 
 

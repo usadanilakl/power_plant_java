@@ -1,0 +1,36 @@
+@if (container) {
+  <div class="properties-panel">
+    <h3>Container Properties</h3>
+    <div class="property-group">
+      <label>Position</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="posX">X</label>
+          <input id="posX" type="number" [(ngModel)]="container.position.x" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="posY">Y</label>
+          <input id="posY" type="number" [(ngModel)]="container.position.y" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Size</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="width">Width</label>
+          <input id="width" type="number" [(ngModel)]="container.size.width" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="height">Height</label>
+          <input id="height" type="number" [(ngModel)]="container.size.height" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="delete-button" (click)="onDelete()">Delete Container</button>
+    </div>
+  </div>
+}

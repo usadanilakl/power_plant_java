@@ -1,0 +1,20 @@
+<div class="container-list-wrapper">
+  <div class="list-header">
+    <h4>Layers</h4>
+  </div>
+  <ul class="container-list">
+    @for (container of containers(); track container.id) {
+      <li 
+        class="container-item"
+        [class.selected]="isSelected(container)"
+        (mouseenter)="onHover(container)"
+        (mouseleave)="onHover(null)"
+        (click)="selectContainer(container,$event)">
+        <span class="container-icon">■</span>
+        <span class="container-name">{{ getContainerName(container) }}</span>
+      </li>
+    } @empty {
+      <li class="empty-message">No layers found.</li>
+    }
+  </ul>
+</div>

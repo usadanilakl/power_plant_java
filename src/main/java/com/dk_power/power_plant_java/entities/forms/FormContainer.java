@@ -38,6 +38,7 @@ public class FormContainer extends BaseAuditEntity {
     @Column(columnDefinition = "TEXT")
     @JsonProperty("style")
     private String styleJson;
+    private String groupId;
 
     @Transient
     private static final ObjectMapper objectMapper = new ObjectMapper();

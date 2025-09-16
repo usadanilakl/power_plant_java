@@ -23,4 +23,10 @@ export class FormContainerService {
   save(formContainer: FormContainerDto): Observable<SpringApiResponse<FormContainerDto>> {
     return this.http.post<SpringApiResponse<FormContainerDto>>(this.apiUrl+"/save", formContainer);
   }
+  saveAll(containers: FormContainerDto[]): Observable<SpringApiResponse<FormContainerDto[]>> {
+      return this.http.post<SpringApiResponse<FormContainerDto[]>>(this.apiUrl+"/save-all", containers);
+  }
+  delete(id: number): Observable<SpringApiResponse<void>> {
+      return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
+  }
 }
