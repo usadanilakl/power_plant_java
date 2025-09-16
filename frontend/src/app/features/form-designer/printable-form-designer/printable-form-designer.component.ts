@@ -17,12 +17,21 @@ import { FormContainerListComponent } from "../form-container/form-container-lis
 import { Subject } from 'rxjs';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { FloatingMenuComponent, MenuPosition } from "../../../shared/menu/floating-menu/floating-menu.component";
+import { ContainerContentPipe } from '../../../pipes/container-content.pipe';
 
 
 @Component({
   selector: 'app-printable-form-designer',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule, FormContainerPropertiesComponent, FormContainerListComponent, PopupProjectionComponent, FloatingMenuComponent],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    DragDropModule, 
+    FormContainerPropertiesComponent, 
+    FormContainerListComponent, 
+    FloatingMenuComponent,
+    ContainerContentPipe
+  ],
   templateUrl: './printable-form-designer.component.html',
   styleUrl: './printable-form-designer.component.css'
 })
@@ -137,6 +146,13 @@ export class PrintableFormDesignerComponent implements OnInit {
       default:
         return [];
     }
+  }
+  getLabel(container: FormContainerDto) {
+    if(container.contentType==='formField'){
+      const field = container.content as FormField
+      return field.label?? `Field ${container.id}`;
+    }
+    return `Container ${container.id}`;
   }
 
 

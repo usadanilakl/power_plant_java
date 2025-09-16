@@ -83,6 +83,77 @@
       </div>
     </div>
 
+    <div class="property-group">
+      <label>Content</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="contentType">Content Type</label>
+          <select id="contentType" [(ngModel)]="container.contentType" (ngModelChange)="onContentTypeChange()">
+            <option value="text">Text</option>
+            <option value="formField">Dynamic Content</option>
+            <option value="image">Image</option>
+          </select>
+        </div>
+      </div>
+
+      @switch (container.contentType) {
+        @case ('text') {
+          <div class="input-row">
+            <div class="input-field">
+              <label for="textContent">Text</label>
+              <textarea id="textContent" [(ngModel)]="container.content" (ngModelChange)="onPropertyChange()"></textarea>
+            </div>
+          </div>
+        }
+        @case ('formField') {
+          <div class="input-row">
+            <div class="input-field">
+              <label for="formFieldContent">Field</label>
+              <select id="formFieldContent" [(ngModel)]="container.content" [compareWith]="compareFields" (ngModelChange)="onPropertyChange()">
+                <option [ngValue]="null">-- Select Field --</option>
+                @for (field of availableFields; track field) {
+                  <option [ngValue]="field">{{ field.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        }
+        @case ('image') {
+          <div class="input-row">
+            <div class="input-field">
+              <label for="imageContent">Image</label>
+              <input id="imageContent" type="file" (change)="onFileSelected($event)" accept="image/*">
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <div class="property-group">
+      <label>Content Position</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="justifyContent">Justify</label>
+          <select id="justifyContent" [(ngModel)]="container.style.justifyContent" (ngModelChange)="onPropertyChange()">
+            <option value="flex-start">Start</option>
+            <option value="center">Center</option>
+            <option value="flex-end">End</option>
+            <option value="space-between">Space Between</option>
+            <option value="space-around">Space Around</option>
+          </select>
+        </div>
+        <div class="input-field">
+          <label for="alignItems">Align</label>
+          <select id="alignItems" [(ngModel)]="container.style.alignItems" (ngModelChange)="onPropertyChange()">
+            <option value="flex-start">Start</option>
+            <option value="center">Center</option>
+            <option value="flex-end">End</option>
+            <option value="stretch">Stretch</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
     <div class="actions">
       <button class="delete-button" (click)="onDelete()">Delete Container</button>
     </div>

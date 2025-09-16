@@ -39,29 +39,53 @@ public class FormContainer extends BaseAuditEntity {
     @JsonProperty("style")
     private String styleJson;
     private String groupId;
+    private String contentType;
 
     @Transient
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-
-    public Map<String, Object> getContentJson() {
+    public Object getContentJson() {
+        if (contentJson == null || contentJson.isEmpty()) {
+            return null;
+        }
         try {
-            if (contentJson == null || contentJson.isEmpty()) {
-                return null;
-            }
-            return objectMapper.readValue(contentJson, new TypeReference<Map<String, Object>>() {});
+            return objectMapper.readValue(contentJson, new TypeReference<Object>() {});
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error parsing content JSON", e);
+            // If it fails to parse as JSON, return as a plain string.
+            return contentJson;
         }
     }
 
-    public void setContentJson(Map<String, Object> content) {
+    public void setContentJson(Object content) {
         try {
-            this.contentJson = objectMapper.writeValueAsString(content);
+            if (content instanceof String) {
+                this.contentJson = (String) content;
+            } else {
+                this.contentJson = objectMapper.writeValueAsString(content);
+            }
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error serializing content to JSON", e);
         }
     }
+
+//    public Map<String, Object> getContentJson() {
+//        try {
+//            if (contentJson == null || contentJson.isEmpty()) {
+//                return null;
+//            }
+//            return objectMapper.readValue(contentJson, new TypeReference<Map<String, Object>>() {});
+//        } catch (JsonProcessingException e) {
+//            throw new RuntimeException("Error parsing content JSON", e);
+//        }
+//    }
+//
+//    public void setContentJson(Map<String, Object> content) {
+//        try {
+//            this.contentJson = objectMapper.writeValueAsString(content);
+//        } catch (JsonProcessingException e) {
+//            throw new RuntimeException("Error serializing content to JSON", e);
+//        }
+//    }
 
     public Map<String, Object> getPositionJson() {
         try {

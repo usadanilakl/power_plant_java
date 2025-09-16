@@ -186,6 +186,7 @@
 
 .draggable-container {
   position: absolute;
+  display: flex;
 }
 
 .draggable-container.selected {

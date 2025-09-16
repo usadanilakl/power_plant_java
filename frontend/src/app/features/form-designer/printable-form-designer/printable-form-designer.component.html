@@ -81,6 +81,20 @@
           (mousedown)="onDragStart($event, container)"
           (click)="selectContainer(container,$event)"
           (contextmenu)="veiwPropertiesOfContainer(container,$event)">
+            @switch (container.contentType) {
+              @case ('text') {
+                <div class="text-content">{{ container.content }}</div>
+              }
+              @case ('formField') {
+                <div class="text-content">{{ container | containerContent }}</div>
+              }
+              @case ('image') {
+                <img [src]="container | containerContent" alt="Image content" style="width: 100%; height: 100%; object-fit: contain;">
+              }
+              @default {
+                <div class="text-content">{{ container | containerContent }}</div>
+              }
+            }
 
           <div class="resize-handle bottom-right" (mousedown)="startResize($event, i, 'bottom-right')"></div>
 
@@ -109,6 +123,7 @@
   >
     <app-form-container-properties
       [container]="currentPrintableFormService.propertiesOfContainer()"
+      [availableFields]="availableFields()"
     ></app-form-container-properties>
   </app-floating-menu>
   

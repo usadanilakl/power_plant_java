@@ -1,10 +1,11 @@
-import { Component, EventEmitter, inject, Input, OnInit, Output, DestroyRef } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnInit, Output, DestroyRef, signal, computed } from '@angular/core';
 import { FormContainerDto } from '../../../../models/forms/form-container.model';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrentPrintableFormService } from '../../../../services/forms/current-printable-form.service';
+import { FormField } from '../../../../models/ui/form-field.model';
 
 
 @Component({
@@ -16,6 +17,7 @@ import { CurrentPrintableFormService } from '../../../../services/forms/current-
 })
 export class FormContainerPropertiesComponent implements OnInit {
   @Input() container: FormContainerDto | null = null;
+  @Input() availableFields: FormField[] = [];
   @Output() updateContainer = new EventEmitter<FormContainerDto>();
   @Output() deleteContainer = new EventEmitter<number>();
 
@@ -77,6 +79,37 @@ export class FormContainerPropertiesComponent implements OnInit {
     const borderSide = `border${side}Width` as keyof CSSStyleDeclaration;
     const width = this.container.style[borderSide];
     return width !== '0px' && !!width;
+  }
+
+
+
+
+
+
+  onContentTypeChange(): void {
+    if (this.container) {
+      this.container.content = null;
+    }
+    this.onPropertyChange();
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0] && this.container) {
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (this.container) {
+          this.container.content = e.target?.result as string;
+          this.onPropertyChange();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  compareFields(f1: FormField, f2: FormField): boolean {
+    return f1 && f2 ? f1.name === f2.name : f1 === f2;
   }
 
 }
