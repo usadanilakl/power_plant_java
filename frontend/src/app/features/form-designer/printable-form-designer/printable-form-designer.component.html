@@ -80,7 +80,7 @@
           [class.hovered]="currentPrintableFormService.isContainerHovered(container)"
           (mousedown)="onDragStart($event, container)"
           (click)="selectContainer(container,$event)"
-          (contextmenu)="currentPrintableFormService.veiwPropertiesOfContainer(container,$event)">
+          (contextmenu)="veiwPropertiesOfContainer(container,$event)">
 
           <div class="resize-handle bottom-right" (mousedown)="startResize($event, i, 'bottom-right')"></div>
 
@@ -93,13 +93,22 @@
 
 
     <div class="right-panel">
-          <app-form-container-list></app-form-container-list>
+          <app-form-container-list
+            (rightClickEvent)="veiwPropertiesOfContainer($event.container, $event.event)"
+          ></app-form-container-list>
       
     </div>
   </div>
 </div>
 
-@if(currentPrintableFormService.propertiesOfContainer()){
-  <h4>Properties</h4>
-  <app-form-container-properties></app-form-container-properties>
-}
+  <app-floating-menu
+    [title]="'Container Properties'"
+    [position]="menuPosition.Center"
+    [open]="isPropertiesPopupOpen()"
+    (close)="closePropertiesPopup()"
+  >
+    <app-form-container-properties
+      [container]="currentPrintableFormService.propertiesOfContainer()"
+    ></app-form-container-properties>
+  </app-floating-menu>
+  

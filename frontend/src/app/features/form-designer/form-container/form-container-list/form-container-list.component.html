@@ -10,7 +10,7 @@
         (mouseenter)="onHover(container)"
         (mouseleave)="onHover(null)"
         (click)="selectContainer(container,$event)"
-        (contextmenu)="currentPrintableFormService.veiwPropertiesOfContainer(container,$event)">
+        (contextmenu)="onRightClick(container,$event)">
         <span class="container-icon">■</span>
         <span class="container-name">{{ getContainerName(container) }}</span>
       </li>

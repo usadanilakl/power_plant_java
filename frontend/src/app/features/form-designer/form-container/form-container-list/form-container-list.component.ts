@@ -18,6 +18,7 @@ export class FormContainerListComponent {
   containers = computed<FormContainerDto[]>(() => this.containersInput()?? this.containersFromService());
 
   hoverEvent = output<FormContainerDto | null>();
+  rightClickEvent = output<{container:FormContainerDto, event: MouseEvent}>();
   
   getContainerName(container: FormContainerDto){
     return container.name?? `Container ${container.id}`;
@@ -26,6 +27,10 @@ export class FormContainerListComponent {
   onHover(container: FormContainerDto | null): void {
     this.currentPrintableFormService.hoverContainer(container);
     this.hoverEvent.emit(container);
+  }
+
+  onRightClick(container: FormContainerDto, event: MouseEvent): void {
+    this.rightClickEvent.emit({ container, event  });
   }
 
   selectContainer(container: FormContainerDto, event: MouseEvent): void {

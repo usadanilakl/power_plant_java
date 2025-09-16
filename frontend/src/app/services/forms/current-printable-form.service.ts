@@ -274,10 +274,4 @@ export class CurrentPrintableFormService {
     isContainerHovered(container: FormContainerDto): boolean {
         return this.hoveredContainer()?.id === container.id;
     }
-
-    veiwPropertiesOfContainer(container: FormContainerDto | null, event: MouseEvent){
-        this.propertiesOfContainer.set(container);
-        event.preventDefault();
-        console.log('Properties of container:', this.propertiesOfContainer());
-    }
 }

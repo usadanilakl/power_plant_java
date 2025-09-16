@@ -1,6 +1,6 @@
 @if (container) {
   <div class="properties-panel">
-    <h3>Container Properties</h3>
+    <h3>{{getContainerName()}}</h3>
     <div class="property-group">
       <label>Position</label>
       <div class="input-row">
@@ -25,6 +25,60 @@
         <div class="input-field">
           <label for="height">Height</label>
           <input id="height" type="number" [(ngModel)]="container.size.height" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Style</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="backgroundColor">Background</label>
+          <input id="backgroundColor" type="color" [(ngModel)]="container.style.backgroundColor" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="borderColor">Border Color</label>
+          <input id="borderColor" type="color" [(ngModel)]="container.style.borderColor" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="borderRadius">Border Radius</label>
+          <input id="borderRadius" type="text" placeholder="e.g., 5px or 50%" [(ngModel)]="container.style.borderRadius" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Border Visibility</label>
+      <div class="input-row border-toggle-buttons">
+        <button (click)="toggleBorder('Top')" [class.active]="isBorderVisible('Top')">Top</button>
+        <button (click)="toggleBorder('Right')" [class.active]="isBorderVisible('Right')">Right</button>
+        <button (click)="toggleBorder('Bottom')" [class.active]="isBorderVisible('Bottom')">Bottom</button>
+        <button (click)="toggleBorder('Left')" [class.active]="isBorderVisible('Left')">Left</button>
+      </div>
+    </div>
+
+    <div class="property-group">
+      <label>Border Thickness</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="borderTopWidth">Top</label>
+          <input id="borderTopWidth" type="text" placeholder="e.g., 1px" [(ngModel)]="container.style.borderTopWidth" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="borderRightWidth">Right</label>
+          <input id="borderRightWidth" type="text" placeholder="e.g., 1px" [(ngModel)]="container.style.borderRightWidth" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="borderBottomWidth">Bottom</label>
+          <input id="borderBottomWidth" type="text" placeholder="e.g., 1px" [(ngModel)]="container.style.borderBottomWidth" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="borderLeftWidth">Left</label>
+          <input id="borderLeftWidth" type="text" placeholder="e.g., 1px" [(ngModel)]="container.style.borderLeftWidth" (ngModelChange)="onPropertyChange()">
         </div>
       </div>
     </div>

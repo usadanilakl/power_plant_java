@@ -22,8 +22,24 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
     this.content = data.content ?? null;
     this.position = data.position ?? { x: 0, y: 0 };
     this.size = data.size ?? { width: 100, height: 100 };
-    this.style = data.style ?? {};
     this.groupId = data.groupId?? null;
+
+    const defaultStyles = {
+      borderStyle: 'solid',
+      borderWidth: '1px',
+      borderColor: 'black',
+      borderRadius: '0px',
+      padding: '5px',
+      boxSizing: 'border-box',
+      backgroundColor: '#f9f9f9',
+      // Individual border widths for toggling
+      borderTopWidth: '1px',
+      borderRightWidth: '1px',
+      borderBottomWidth: '1px',
+      borderLeftWidth: '1px',
+    };
+
+    this.style = { ...defaultStyles, ...data.style };
   }
 
   override toJson(): any {

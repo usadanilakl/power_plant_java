@@ -15,12 +15,14 @@ import { PrintableFormDto } from '../../../models/forms/printable-form.model';
 import { FormContainerPropertiesComponent } from "../form-container/form-container-properties/form-container-properties.component";
 import { FormContainerListComponent } from "../form-container/form-container-list/form-container-list.component";
 import { Subject } from 'rxjs';
+import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
+import { FloatingMenuComponent, MenuPosition } from "../../../shared/menu/floating-menu/floating-menu.component";
 
 
 @Component({
   selector: 'app-printable-form-designer',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule, FormContainerPropertiesComponent, FormContainerListComponent],
+  imports: [CommonModule, FormsModule, DragDropModule, FormContainerPropertiesComponent, FormContainerListComponent, PopupProjectionComponent, FloatingMenuComponent],
   templateUrl: './printable-form-designer.component.html',
   styleUrl: './printable-form-designer.component.css'
 })
@@ -28,6 +30,7 @@ export class PrintableFormDesignerComponent implements OnInit {
   @ViewChild('centerPanel') centerPanel!: ElementRef;
   @ViewChild('formContent') formContentElement!: ElementRef<HTMLDivElement>;
   currentPrintableFormService = inject(CurrentPrintableFormService);
+  menuPosition = MenuPosition;
   
 
   currentForm = toSignal(this.currentPrintableFormService.form$, { initialValue: new PrintableFormDto() });
@@ -42,7 +45,7 @@ export class PrintableFormDesignerComponent implements OnInit {
   });
   // containers = computed<FormContainerDto[]>(() => this.currentForm().formContainers?? []);
   containers = toSignal(this.currentPrintableFormService.formContainers$, { initialValue: [] });
-  // selectedContainers = signal<FormContainerDto[]>([]);
+  isPropertiesPopupOpen = signal(false);
 
 
   private resizingFieldIndex: number | null = null;
@@ -172,6 +175,27 @@ export class PrintableFormDesignerComponent implements OnInit {
     };
   }
 
+  // getContainerStyles(field: FormContainerDto): any {
+  //   return {
+  //     ...field.style,
+  //     position: 'absolute',
+  //     left: `${field.position?.x}px`,
+  //     top: `${field.position?.y}px`,
+  //     width: `${field.size?.width}px`,
+  //     height: `${field.size?.height}px`,
+  //     border: '2px solid black',
+  //     padding: '5px',
+  //     boxSizing: 'border-box',
+  //     flexDirection: 'column',
+  //     alignItems: 'flex-start',
+  //     justifyContent: 'center',
+  //     overflow: 'hidden',
+  //     display: 'block !important',
+  //     visibility: 'visible !important',
+  //     opacity: '1 !important',
+  //   };
+  // }
+
   getContainerStyles(field: FormContainerDto): any {
     return {
       ...field.style,
@@ -180,18 +204,6 @@ export class PrintableFormDesignerComponent implements OnInit {
       top: `${field.position?.y}px`,
       width: `${field.size?.width}px`,
       height: `${field.size?.height}px`,
-      border: '2px solid black',
-      // zIndex: 1000,
-      padding: '5px',
-      boxSizing: 'border-box',
-      // display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'flex-start',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      display: 'block !important',
-      visibility: 'visible !important',
-      opacity: '1 !important',
     };
   }
 
@@ -206,6 +218,19 @@ export class PrintableFormDesignerComponent implements OnInit {
   deleteContainer(id: number = 0) {
     const contId = !id || id === 0? this.currentPrintableFormService.selectedContainers()[0].id : id;
     this.currentPrintableFormService.deleteContainer(contId);
+  }
+
+  veiwPropertiesOfContainer(container: FormContainerDto | null, event: MouseEvent){
+      this.currentPrintableFormService.propertiesOfContainer.set(container);
+      if(container)this.currentPrintableFormService.selectContainer(container, event);
+      // if(container)this.currentPrintableFormService.selectedContainers.set([container])
+      event.preventDefault();
+      this.isPropertiesPopupOpen.set(true);
+  }
+
+  closePropertiesPopup(){
+    this.isPropertiesPopupOpen.set(false);
+    this.currentPrintableFormService.propertiesOfContainer.set(null);
   }
 
 
