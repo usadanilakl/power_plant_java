@@ -205,7 +205,7 @@ export class PrintableFormDesignerComponent implements OnInit {
 
   deleteContainer(id: number = 0) {
     const contId = !id || id === 0? this.currentPrintableFormService.selectedContainers()[0].id : id;
-    this.currentPrintableFormService.deleteContainer(id);
+    this.currentPrintableFormService.deleteContainer(contId);
   }
 
 
@@ -410,43 +410,6 @@ export class PrintableFormDesignerComponent implements OnInit {
       document.removeEventListener('mouseup', this.stopResize);
     }
   }
-
-  // startResize(event: MouseEvent, index: number, corner: string) {
-  //   if (isPlatformBrowser(this.platformId)) {
-  //     event.preventDefault();
-  //     event.stopPropagation();
-  //     this.resizingFieldIndex = index;
-  //     this.resizeStartX = event.clientX;
-  //     this.resizeStartY = event.clientY;
-  //     document.addEventListener('mousemove', this.resize);
-  //     document.addEventListener('mouseup', this.stopResize);
-  //   }
-  // }
-  
-  // private resize = (event: MouseEvent) => {
-  //   if (isPlatformBrowser(this.platformId) && this.resizingFieldIndex !== null) {
-  //     const field = this.containers()[this.resizingFieldIndex];
-  //     const dx = event.clientX - this.resizeStartX;
-  //     const dy = event.clientY - this.resizeStartY;
-  //     const newWidth = Math.max(50, field.size!.width + dx);
-  //     const newHeight = Math.max(20, field.size!.height + dy);
-  //     const updatedField = new FormContainerDto({ 
-  //       ...field, 
-  //       size: { width: newWidth, height: newHeight } 
-  //     });
-  //     this.currentPrintableFormService.updateContainersState([updatedField]);
-  //     this.resizeStartX = event.clientX;
-  //     this.resizeStartY = event.clientY;
-  //   }
-  // }
-  
-  // private stopResize = () => {
-  //   if (isPlatformBrowser(this.platformId)) {
-  //     this.resizingFieldIndex = null;
-  //     document.removeEventListener('mousemove', this.resize);
-  //     document.removeEventListener('mouseup', this.stopResize);
-  //   }
-  // }
 
   ngOnDestroy() {
     if (isPlatformBrowser(this.platformId)) {

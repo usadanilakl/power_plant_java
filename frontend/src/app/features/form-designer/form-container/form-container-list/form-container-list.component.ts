@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
   styleUrl: './form-container-list.component.css'
 })
 export class FormContainerListComponent {
-  private currentPrintableFormService = inject(CurrentPrintableFormService);
+  currentPrintableFormService = inject(CurrentPrintableFormService);
   containersFromService = toSignal(this.currentPrintableFormService.formContainers$,{ initialValue: []  });
   containersInput = input<FormContainerDto[] | null>(null);
   containers = computed<FormContainerDto[]>(() => this.containersInput()?? this.containersFromService());

@@ -9,7 +9,8 @@
         [class.selected]="isSelected(container)"
         (mouseenter)="onHover(container)"
         (mouseleave)="onHover(null)"
-        (click)="selectContainer(container,$event)">
+        (click)="selectContainer(container,$event)"
+        (contextmenu)="currentPrintableFormService.veiwPropertiesOfContainer(container,$event)">
         <span class="container-icon">■</span>
         <span class="container-name">{{ getContainerName(container) }}</span>
       </li>

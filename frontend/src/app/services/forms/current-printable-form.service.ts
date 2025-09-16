@@ -221,6 +221,7 @@ export class CurrentPrintableFormService {
   // methods to update only the local state
     selectedContainers = signal<FormContainerDto[]>([]);
     hoveredContainer = signal<FormContainerDto | null>(null);
+    propertiesOfContainer = signal<FormContainerDto | null>(null);
     updateContainersState(updatedContainers: FormContainerDto[]) {
         const currentContainers = this.formContainersSubject.getValue();
         const updatedMap = new Map(updatedContainers.map(c => [c.id, c]));
@@ -272,5 +273,11 @@ export class CurrentPrintableFormService {
 
     isContainerHovered(container: FormContainerDto): boolean {
         return this.hoveredContainer()?.id === container.id;
+    }
+
+    veiwPropertiesOfContainer(container: FormContainerDto | null, event: MouseEvent){
+        this.propertiesOfContainer.set(container);
+        event.preventDefault();
+        console.log('Properties of container:', this.propertiesOfContainer());
     }
 }

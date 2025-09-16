@@ -79,7 +79,8 @@
           [class.selected]="isContainerSelected(container)"
           [class.hovered]="currentPrintableFormService.isContainerHovered(container)"
           (mousedown)="onDragStart($event, container)"
-          (click)="selectContainer(container,$event)">
+          (click)="selectContainer(container,$event)"
+          (contextmenu)="currentPrintableFormService.veiwPropertiesOfContainer(container,$event)">
 
           <div class="resize-handle bottom-right" (mousedown)="startResize($event, i, 'bottom-right')"></div>
 
@@ -97,3 +98,8 @@
     </div>
   </div>
 </div>
+
+@if(currentPrintableFormService.propertiesOfContainer()){
+  <h4>Properties</h4>
+  <app-form-container-properties></app-form-container-properties>
+}
