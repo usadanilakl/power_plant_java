@@ -14,6 +14,7 @@ import { CurrentPrintableFormService } from '../../../services/forms/current-pri
 import { PrintableFormDto } from '../../../models/forms/printable-form.model';
 import { FormContainerPropertiesComponent } from "../form-container/form-container-properties/form-container-properties.component";
 import { FormContainerListComponent } from "../form-container/form-container-list/form-container-list.component";
+import { Subject } from 'rxjs';
 
 
 @Component({
@@ -26,7 +27,7 @@ import { FormContainerListComponent } from "../form-container/form-container-lis
 export class PrintableFormDesignerComponent implements OnInit {
   @ViewChild('centerPanel') centerPanel!: ElementRef;
   @ViewChild('formContent') formContentElement!: ElementRef<HTMLDivElement>;
-  private currentPrintableFormService = inject(CurrentPrintableFormService);
+  currentPrintableFormService = inject(CurrentPrintableFormService);
   
 
   currentForm = toSignal(this.currentPrintableFormService.form$, { initialValue: new PrintableFormDto() });
@@ -57,6 +58,8 @@ export class PrintableFormDesignerComponent implements OnInit {
   isSelecting = signal(false);
   selectionBox = signal<{ x: number, y: number, width: number, height: number } | null>(null);
   private selectionStart = { x: 0, y: 0 };
+  private destroy$ = new Subject<void>();
+  private initialSizes: Map<string, { width: number; height: number }> = new Map();
 
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
@@ -210,6 +213,7 @@ export class PrintableFormDesignerComponent implements OnInit {
    * Drag and resize functions
    ****************************************************************************/
 
+  //Old function with use of CdkDrag
   // onDragEnd(event: CdkDragEnd, index: number) {
   //   const draggedDistance = event.source.getFreeDragPosition();
   //   const currentField = this.containers()[index];
@@ -331,6 +335,18 @@ export class PrintableFormDesignerComponent implements OnInit {
       this.resizingFieldIndex = index;
       this.resizeStartX = event.clientX;
       this.resizeStartY = event.clientY;
+
+      this.initialSizes.clear();
+      const selectedContainers = this.currentPrintableFormService.selectedContainers();
+      if (selectedContainers.length > 1) {
+        for (const c of selectedContainers) {
+          this.initialSizes.set(c.id + '', { width: c.size!.width, height: c.size!.height });
+        }
+      } else {
+        const container = this.containers()[index];
+        this.initialSizes.set(container.id + '', { width: container.size!.width, height: container.size!.height });
+      }
+
       document.addEventListener('mousemove', this.resize);
       document.addEventListener('mouseup', this.stopResize);
     }
@@ -338,33 +354,108 @@ export class PrintableFormDesignerComponent implements OnInit {
   
   private resize = (event: MouseEvent) => {
     if (isPlatformBrowser(this.platformId) && this.resizingFieldIndex !== null) {
-      const field = this.containers()[this.resizingFieldIndex];
       const dx = event.clientX - this.resizeStartX;
       const dy = event.clientY - this.resizeStartY;
-      const newWidth = Math.max(50, field.size!.width + dx);
-      const newHeight = Math.max(20, field.size!.height + dy);
-      const updatedField = new FormContainerDto({ 
-        ...field, 
-        size: { width: newWidth, height: newHeight } 
+  
+      const selectedContainers = this.currentPrintableFormService.selectedContainers();
+      const containersToResize = selectedContainers.length > 1 ? selectedContainers : [this.containers()[this.resizingFieldIndex]];
+  
+      const updatedContainers = containersToResize.map(container => {
+        const initialSize = this.initialSizes.get(container.id + '');
+        if (!initialSize) return container;
+  
+        const newWidth = Math.max(50, initialSize.width + dx);
+        const newHeight = Math.max(20, initialSize.height + dy);
+  
+        return new FormContainerDto({
+          ...container,
+          size: { width: newWidth, height: newHeight }
+        });
       });
-      this.currentPrintableFormService.updateContainersState([updatedField]);
-      this.resizeStartX = event.clientX;
-      this.resizeStartY = event.clientY;
+  
+      this.currentPrintableFormService.updateContainersState(updatedContainers);
     }
   }
   
-  private stopResize = () => {
+  private stopResize = (event?: MouseEvent) => {
     if (isPlatformBrowser(this.platformId)) {
+      if (this.resizingFieldIndex !== null && event) {
+        const dx = event.clientX - this.resizeStartX;
+        const dy = event.clientY - this.resizeStartY;
+    
+        const selectedContainers = this.currentPrintableFormService.selectedContainers();
+        const containersToResize = selectedContainers.length > 1 ? selectedContainers : [this.containers()[this.resizingFieldIndex]];
+    
+        const finalContainers = containersToResize.map(container => {
+          const initialSize = this.initialSizes.get(container.id + '');
+          if (!initialSize) return container;
+    
+          const newWidth = Math.max(50, initialSize.width + dx);
+          const newHeight = Math.max(20, initialSize.height + dy);
+    
+          return new FormContainerDto({
+            ...container,
+            size: { width: newWidth, height: newHeight }
+          });
+        });
+    
+        if (finalContainers.length > 0) {
+          this.currentPrintableFormService.updateContainers(finalContainers);
+        }
+      }
+
       this.resizingFieldIndex = null;
+      this.initialSizes.clear();
       document.removeEventListener('mousemove', this.resize);
       document.removeEventListener('mouseup', this.stopResize);
     }
   }
 
+  // startResize(event: MouseEvent, index: number, corner: string) {
+  //   if (isPlatformBrowser(this.platformId)) {
+  //     event.preventDefault();
+  //     event.stopPropagation();
+  //     this.resizingFieldIndex = index;
+  //     this.resizeStartX = event.clientX;
+  //     this.resizeStartY = event.clientY;
+  //     document.addEventListener('mousemove', this.resize);
+  //     document.addEventListener('mouseup', this.stopResize);
+  //   }
+  // }
+  
+  // private resize = (event: MouseEvent) => {
+  //   if (isPlatformBrowser(this.platformId) && this.resizingFieldIndex !== null) {
+  //     const field = this.containers()[this.resizingFieldIndex];
+  //     const dx = event.clientX - this.resizeStartX;
+  //     const dy = event.clientY - this.resizeStartY;
+  //     const newWidth = Math.max(50, field.size!.width + dx);
+  //     const newHeight = Math.max(20, field.size!.height + dy);
+  //     const updatedField = new FormContainerDto({ 
+  //       ...field, 
+  //       size: { width: newWidth, height: newHeight } 
+  //     });
+  //     this.currentPrintableFormService.updateContainersState([updatedField]);
+  //     this.resizeStartX = event.clientX;
+  //     this.resizeStartY = event.clientY;
+  //   }
+  // }
+  
+  // private stopResize = () => {
+  //   if (isPlatformBrowser(this.platformId)) {
+  //     this.resizingFieldIndex = null;
+  //     document.removeEventListener('mousemove', this.resize);
+  //     document.removeEventListener('mouseup', this.stopResize);
+  //   }
+  // }
+
   ngOnDestroy() {
     if (isPlatformBrowser(this.platformId)) {
       this.stopResize();
+      document.removeEventListener('mousemove', this.onDocumentMouseMove);
+      document.removeEventListener('mouseup', this.onDocumentMouseUp);
     }
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   /*****************************************************************************
@@ -484,6 +575,154 @@ export class PrintableFormDesignerComponent implements OnInit {
     const selected = this.currentPrintableFormService.selectedContainers();
     return selected.length > 0 && !!selected[0].groupId;
   }
+
+
+  /*****************************************************************************
+   * Alignment functions
+   ****************************************************************************/
+
+    alignContainers(alignment: 'left' | 'right' | 'top' | 'bottom' | 'h-center' | 'v-center') {
+      const selectedContainers = this.currentPrintableFormService.selectedContainers();
+      if (selectedContainers.length < 2) return;
+
+      const referenceContainer = selectedContainers[0];
+      const updatedContainers = selectedContainers.map(container => {
+        if (container.id === referenceContainer.id) {
+          return container; // No change to the reference container itself
+        }
+
+        const newPosition = { ...container.position! };
+        switch (alignment) {
+          case 'left':
+            newPosition.x = referenceContainer.position!.x;
+            break;
+          case 'right':
+            newPosition.x = referenceContainer.position!.x + referenceContainer.size!.width - container.size!.width;
+            break;
+          case 'top':
+            newPosition.y = referenceContainer.position!.y;
+            break;
+          case 'bottom':
+            newPosition.y = referenceContainer.position!.y + referenceContainer.size!.height - container.size!.height;
+            break;
+          case 'h-center':
+            newPosition.x = referenceContainer.position!.x + (referenceContainer.size!.width / 2) - (container.size!.width / 2);
+            break;
+          case 'v-center':
+            newPosition.y = referenceContainer.position!.y + (referenceContainer.size!.height / 2) - (container.size!.height / 2);
+            break;
+        }
+        return new FormContainerDto({ ...container, position: newPosition });
+      });
+
+      this.currentPrintableFormService.updateContainers(updatedContainers);
+    }
+
+    matchSize(dimension: 'width' | 'height' | 'both') {
+      const selectedContainers = this.currentPrintableFormService.selectedContainers();
+      if (selectedContainers.length < 2) return;
+
+      const referenceContainer = selectedContainers[0];
+      const referenceSize = referenceContainer.size!;
+
+      const updatedContainers = selectedContainers.map(container => {
+        if (container.id === referenceContainer.id) {
+          return container; // No change to the reference container itself
+        }
+
+        const newSize = { ...container.size! };
+        if (dimension === 'width' || dimension === 'both') {
+          newSize.width = referenceSize.width;
+        }
+        if (dimension === 'height' || dimension === 'both') {
+          newSize.height = referenceSize.height;
+        }
+
+        return new FormContainerDto({ ...container, size: newSize });
+      });
+
+      this.currentPrintableFormService.updateContainers(updatedContainers);
+    }
+
+    distributeContainers(direction: 'horizontal' | 'vertical') {
+      const selectedContainers = this.currentPrintableFormService.selectedContainers();
+      if (selectedContainers.length < 3) return;
+
+      const sortedContainers = [...selectedContainers].sort((a, b) =>
+        direction === 'horizontal' ? a.position!.x - b.position!.x : a.position!.y - b.position!.y
+      );
+
+      const firstContainer = sortedContainers[0];
+      const lastContainer = sortedContainers[sortedContainers.length - 1];
+      const middleContainers = sortedContainers.slice(1, -1);
+
+      const startEdge = direction === 'horizontal' ? firstContainer.position!.x + firstContainer.size!.width : firstContainer.position!.y + firstContainer.size!.height;
+      const endEdge = direction === 'horizontal' ? lastContainer.position!.x : lastContainer.position!.y;
+
+      const totalSpaceToDistribute = endEdge - startEdge;
+      const totalMiddleContainersSize = middleContainers.reduce((sum, container) =>
+        sum + (direction === 'horizontal' ? container.size!.width : container.size!.height), 0
+      );
+
+      const spacing = (totalSpaceToDistribute - totalMiddleContainersSize) / (middleContainers.length + 1);
+
+      const updatedContainers: FormContainerDto[] = [];
+      let currentPosition = startEdge + spacing;
+
+      for (const container of middleContainers) {
+        const newPosition = { ...container.position! };
+        if (direction === 'horizontal') {
+          newPosition.x = currentPosition;
+          currentPosition += container.size!.width + spacing;
+        } else {
+          newPosition.y = currentPosition;
+          currentPosition += container.size!.height + spacing;
+        }
+        updatedContainers.push(new FormContainerDto({ ...container, position: newPosition }));
+      }
+
+      this.currentPrintableFormService.updateContainers(updatedContainers);
+    }
+
+    arrangeSequentially(direction: 'horizontal' | 'vertical', gap: number = -2) {
+      const selectedContainers = this.currentPrintableFormService.selectedContainers();
+      if (selectedContainers.length < 2) return;
+
+      // Sort containers to establish a clear order for arrangement.
+      const sortedContainers = [...selectedContainers].sort((a, b) =>
+        direction === 'horizontal'
+          ? (a.position?.x ?? 0) - (b.position?.x ?? 0)
+          : (a.position?.y ?? 0) - (b.position?.y ?? 0)
+      );
+
+      const updatedContainers: FormContainerDto[] = [];
+      // The first container is the reference and doesn't move.
+      // We will position subsequent containers relative to the previously positioned one.
+      let previousContainer = sortedContainers[0];
+
+      // Iterate from the second container onwards.
+      for (let i = 1; i < sortedContainers.length; i++) {
+        const currentContainer = sortedContainers[i];
+        const newPosition = { ...(currentContainer.position!) };
+
+        if (direction === 'horizontal') {
+          // Position current container to the right of the previous one, plus the gap.
+          newPosition.x = (previousContainer.position!.x + previousContainer.size!.width) + gap;
+        } else { // 'vertical'
+          // Position current container below the previous one, plus the gap.
+          newPosition.y = (previousContainer.position!.y + previousContainer.size!.height) + gap;
+        }
+
+        const updatedContainer = new FormContainerDto({ ...currentContainer, position: newPosition });
+        updatedContainers.push(updatedContainer);
+
+        // The newly positioned container becomes the reference for the next one in the loop.
+        previousContainer = updatedContainer;
+      }
+
+      this.currentPrintableFormService.updateContainers(updatedContainers);
+    }
+
 
 
 

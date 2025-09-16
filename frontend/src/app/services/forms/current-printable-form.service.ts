@@ -219,47 +219,58 @@ export class CurrentPrintableFormService {
       }
   
   // methods to update only the local state
-  selectedContainers = signal<FormContainerDto[]>([]);
-  updateContainersState(updatedContainers: FormContainerDto[]) {
-    const currentContainers = this.formContainersSubject.getValue();
-    const updatedMap = new Map(updatedContainers.map(c => [c.id, c]));
-    const newContainers = currentContainers.map(c => updatedMap.get(c.id) || c);
-    this.formContainersSubject.next(newContainers);
-  }
-  selectContainer(container: FormContainerDto, event: MouseEvent) {
-    const allContainers = this.formContainersSubject.value;
-    const groupToSelect = container.groupId 
-      ? allContainers.filter(c => c.groupId === container.groupId) 
-      : [container];
+    selectedContainers = signal<FormContainerDto[]>([]);
+    hoveredContainer = signal<FormContainerDto | null>(null);
+    updateContainersState(updatedContainers: FormContainerDto[]) {
+        const currentContainers = this.formContainersSubject.getValue();
+        const updatedMap = new Map(updatedContainers.map(c => [c.id, c]));
+        const newContainers = currentContainers.map(c => updatedMap.get(c.id) || c);
+        this.formContainersSubject.next(newContainers);
+    }
 
-    this.selectedContainers.update(currentSelection => {
-      const isGroupPartiallyOrFullySelected = groupToSelect.some(c => currentSelection.includes(c));
+    selectContainer(container: FormContainerDto, event: MouseEvent) {
+        const allContainers = this.formContainersSubject.value;
+        const groupToSelect = container.groupId 
+        ? allContainers.filter(c => c.groupId === container.groupId) 
+        : [container];
 
-      if (event.ctrlKey) {
-        if (isGroupPartiallyOrFullySelected) {
-          // Remove the entire group from selection
-          const groupIds = new Set(groupToSelect.map(c => c.id));
-          return currentSelection.filter(c => !groupIds.has(c.id));
+        this.selectedContainers.update(currentSelection => {
+        const isGroupPartiallyOrFullySelected = groupToSelect.some(c => currentSelection.includes(c));
+
+        if (event.ctrlKey) {
+            if (isGroupPartiallyOrFullySelected) {
+            // Remove the entire group from selection
+            const groupIds = new Set(groupToSelect.map(c => c.id));
+            return currentSelection.filter(c => !groupIds.has(c.id));
+            } else {
+            // Add the entire group to the current selection
+            return [...currentSelection, ...groupToSelect];
+            }
         } else {
-          // Add the entire group to the current selection
-          return [...currentSelection, ...groupToSelect];
+            // If not using Ctrl, the new selection is just the clicked group,
+            // but only if it's not already the sole selection (to allow dragging).
+            const isSoleSelection = currentSelection.length === groupToSelect.length && 
+                                    groupToSelect.every(c => currentSelection.includes(c));
+            
+            if (isSoleSelection) {
+            return currentSelection; // Do nothing to enable dragging the group
+            }
+            
+            return groupToSelect;
         }
-      } else {
-        // If not using Ctrl, the new selection is just the clicked group,
-        // but only if it's not already the sole selection (to allow dragging).
-        const isSoleSelection = currentSelection.length === groupToSelect.length && 
-                                groupToSelect.every(c => currentSelection.includes(c));
-        
-        if (isSoleSelection) {
-          return currentSelection; // Do nothing to enable dragging the group
-        }
-        
-        return groupToSelect;
-      }
-    });
-  }
+        });
+    }
 
-  isContainerSelected(container: FormContainerDto): boolean {
-    return this.selectedContainers().some(c => c.id === container.id);
-  }
+    isContainerSelected(container: FormContainerDto): boolean {
+        return this.selectedContainers().some(c => c.id === container.id);
+    }
+
+    hoverContainer(container: FormContainerDto | null) {
+        this.hoveredContainer.set(container);
+        this.formContainersSubject.next([...this.formContainersSubject.value])
+    }
+
+    isContainerHovered(container: FormContainerDto): boolean {
+        return this.hoveredContainer()?.id === container.id;
+    }
 }

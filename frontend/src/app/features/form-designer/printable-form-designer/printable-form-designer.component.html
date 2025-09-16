@@ -1,12 +1,42 @@
 
 <div class="printable-form-designer">
   <div class="top-menu">
-    <button (click)="addContainer()">Add Container</button>
-    <button (click)="groupSelection()">Group</button>
-    <button (click)="ungroupSelection()">Ungroup</button>
-    <button (click)="deleteContainer()">Delete</button>
-    <input type="number" [(ngModel)]="sheetSize().width" (change)="updateSheetSize(sheetSize().width, sheetSize().height)">
-    <input type="number" [(ngModel)]="sheetSize().height" (change)="updateSheetSize(sheetSize().width, sheetSize().height)">
+    <div class="control-group">
+      <button (click)="addContainer()" title="Add Container">Add</button>
+      <button (click)="deleteContainer()" title="Delete Selected">Delete</button>
+    </div>
+
+    <div class="control-group">
+      <button (click)="groupSelection()" title="Group Selected">Group</button>
+      <button (click)="ungroupSelection()" title="Ungroup Selection">Ungroup</button>
+    </div>
+
+    <div class="control-group alignment-controls">
+      <button (click)="alignContainers('left')" title="Align Left">L</button>
+      <button (click)="alignContainers('h-center')" title="Align Horizontal Center">HC</button>
+      <button (click)="alignContainers('right')" title="Align Right">R</button>
+      <button (click)="alignContainers('top')" title="Align Top">T</button>
+      <button (click)="alignContainers('v-center')" title="Align Vertical Center">VC</button>
+      <button (click)="alignContainers('bottom')" title="Align Bottom">B</button>
+      <br>
+      <br>
+      <button (click)="matchSize('width')" title="Match Width">W</button>
+      <button (click)="matchSize('height')" title="Match Height">H</button>
+      <button (click)="matchSize('width')" title="Match Width & Height">WH</button>
+      <br>
+      <button (click)="distributeContainers('horizontal')" title="Distribute horizontaly">DH</button>
+      <button (click)="distributeContainers('vertical')" title="Distribute vertically">DV</button>
+
+      <button (click)="arrangeSequentially('horizontal')" title="Arrange Sequentially horizontally">AH</button>
+      <button (click)="arrangeSequentially('vertical')" title="Arrange Sequentially vertically">AV</button>
+    </div>
+
+    <div class="control-group sheet-size-controls">
+      <label>Sheet Size:</label>
+      <input type="number" [(ngModel)]="sheetSize().width" (change)="updateSheetSize(sheetSize().width, sheetSize().height)" title="Sheet Width">
+      <span>x</span>
+      <input type="number" [(ngModel)]="sheetSize().height" (change)="updateSheetSize(sheetSize().width, sheetSize().height)" title="Sheet Height">
+    </div>
   </div>
 
   <div class="main-content">
@@ -47,6 +77,7 @@
           class="draggable-container"
           [ngStyle]="getContainerStyles(container)"
           [class.selected]="isContainerSelected(container)"
+          [class.hovered]="currentPrintableFormService.isContainerHovered(container)"
           (mousedown)="onDragStart($event, container)"
           (click)="selectContainer(container,$event)">
 

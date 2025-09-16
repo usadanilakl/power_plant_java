@@ -24,6 +24,7 @@ export class FormContainerListComponent {
   }
 
   onHover(container: FormContainerDto | null): void {
+    this.currentPrintableFormService.hoverContainer(container);
     this.hoverEvent.emit(container);
   }
 
