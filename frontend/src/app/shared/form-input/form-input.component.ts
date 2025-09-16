@@ -3,9 +3,11 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { QaMenuComponent } from "../menu/qa-menu/qa-menu.component";
 import { Question } from '../../models/ui/question.model';
 import { CopyPasteDirective } from '../../directives/copy-paste.directive';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-form-input',
+  standalone: true,
   templateUrl: './form-input.component.html',
   styleUrls: ['./form-input.component.css'],
   encapsulation: ViewEncapsulation.None,
@@ -16,12 +18,13 @@ import { CopyPasteDirective } from '../../directives/copy-paste.directive';
       multi: true
     }
   ],
-  imports: [QaMenuComponent, CopyPasteDirective]
+  imports: [QaMenuComponent, CopyPasteDirective,CommonModule]
 })
 export class FormInputComponent implements ControlValueAccessor {
   @Input() label: string = '';
   @Input() type: string = 'text';
   @Input() value: any = '';
+  @Input() customStyle: { [key: string]: any } = {};
   @Output() valueChange = new EventEmitter<any>();
   question = input<Question | null>(null)
   showPopup = false;

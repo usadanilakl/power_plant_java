@@ -29,6 +29,8 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
     this.groupId = data.groupId?? null;
 
     const defaultStyles = {
+      position: 'absolute',
+      display: 'flex',
       borderStyle: 'solid',
       borderWidth: '1px',
       borderColor: 'black',

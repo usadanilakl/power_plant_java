@@ -30,6 +30,7 @@ import { FormDesignerComponent } from './features/form-designer/form-designer.co
 import { PrintableFormDesignerComponent } from './features/form-designer/printable-form-designer/printable-form-designer.component';
 import { PrintableFormPageComponent } from './pages/printable-form-page/printable-form-page.component';
 import { PrintableFormComponent } from './features/form-designer/printable-form/printable-form.component';
+import { PrintableFormPreviewComponent } from './features/form-designer/printable-form/printable-form-preview/printable-form-preview.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -95,6 +96,7 @@ export const routes: Routes = [
       children: [
         { path: '', redirectTo: 'forms', pathMatch: 'full' },
         { path: 'forms', component: PrintableFormComponent },
+        { path: 'perview', component: PrintableFormPreviewComponent },
         { path: 'design', component: PrintableFormDesignerComponent }
       ]
     },

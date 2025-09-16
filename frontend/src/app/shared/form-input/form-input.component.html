@@ -1,5 +1,5 @@
-<div class="form-input">
-  @if (label) {
+<div class="form-input" [ngStyle]="customStyle">
+  @if (label && label!=='') {
   <div class="label-container">
     <label>{{ label }}</label>
     @if (question()) {
@@ -9,7 +9,11 @@
     }
   </div>
   }
-  <input appCopyPaste [type]="type" [value]="value" (input)="onInputChange($event)">
+    <input 
+      [type]="type" 
+      [value]="value" 
+      (input)="onInputChange($event)"
+      class="form-input-element">
 </div>
 
   @if(showPopup){

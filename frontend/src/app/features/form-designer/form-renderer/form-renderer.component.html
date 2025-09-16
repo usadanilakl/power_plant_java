@@ -1,1 +1,111 @@
-<p>form-renderer works!</p>
+<div class="printable-sheet" [style.width.px]="sheetSize().width * pixelsPerInch" [style.height.px]="sheetSize().height * pixelsPerInch">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    @for (container of containers(); track container.id) {
+      <div class="form-container" [ngStyle]="getContainerStyles(container)">
+        @if (isFormField(container.content)) {
+          @switch (asFormField(container.content).type) {
+            @case ('text') {
+              <!-- Text, Number, Email, Password, Date Inputs -->
+              <app-form-input 
+                [ngStyle]="getContentStyle(container)"
+                [type]="'text'"
+                [formControlName]="asFormField(container.content).name!"
+                [label]="asFormField(container.content).label">
+              </app-form-input>
+            }
+            @case ('number') {
+              <app-form-input 
+                [type]="'number'"
+                [formControlName]="asFormField(container.content).name!"
+                [label]="asFormField(container.content).label">
+              </app-form-input>
+            }
+            @case ('date') {
+              <app-form-input 
+                [ngStyle]="getContentStyle(container)!"
+                [customStyle]="getContentStyle(container)!"
+                [type]="'date'"
+                [formControlName]="asFormField(container.content).name!"
+                [label]="asFormField(container.content).label">
+              </app-form-input>
+            }
+            @case ('textarea') {
+              <!-- Textarea -->
+              <div class="form-field">
+                <label>{{ asFormField(container.content).label }}</label>
+                <textarea [formControlName]="asFormField(container.content).name!"></textarea>
+              </div>
+            }
+            @case ('checkbox') {
+              <!-- Checkbox -->
+              <div class="form-field">
+                 <label>
+                   <input type="checkbox" [formControlName]="asFormField(container.content).name!">
+                   {{ asFormField(container.content).label }}
+                 </label>
+              </div>
+            }
+            @case ('checkbox-group') {
+              <!-- Checkbox Group -->
+              <app-checkbox-group 
+                [formControlName]="asFormField(container.content).name!"
+                [label]="asFormField(container.content).label"
+                [options]="asFormField(container.content).options || []">
+              </app-checkbox-group>
+            }
+            @case ('radio-group') {
+              <!-- Radio Group -->
+              <app-radio-group 
+                [formControlName]="asFormField(container.content).name!"
+                [label]="asFormField(container.content).label"
+                [options]="asFormField(container.content).options || []">
+              </app-radio-group>
+            }
+            @case ('select') {
+              <!-- Select/Dropdown -->
+              <app-searchable-dropdown
+                [formControlName]="asFormField(container.content).name!"
+                [label]="asFormField(container.content).label"
+                [options]="asFormField(container.content).options || []">
+              </app-searchable-dropdown>
+            }
+            @case ('multi-select') {
+              <!-- Multi-Select Dropdown -->
+              <app-multi-select-searchable-dropdown
+                [formControlName]="asFormField(container.content).name!"
+                [label]="asFormField(container.content).label"
+                [options]="asFormField(container.content).options || []">
+              </app-multi-select-searchable-dropdown>
+            }
+            @case ('file') {
+              <!-- File Input -->
+              <app-file-input
+                [formControlName]="asFormField(container.content).name!"
+                [label]="asFormField(container.content).label">
+              </app-file-input>
+            }
+            @case ('multi-input') {
+              <!-- Multi-Input -->
+              <app-multi-input
+                [formControlName]="asFormField(container.content).name!"
+                [label]="asFormField(container.content).label">
+              </app-multi-input>
+            }
+            @default {
+              <div>
+                Unsupported field type: {{ asFormField(container.content).type }}
+              </div>
+            }
+          }
+        } @else {
+          <div [innerHTML]="container | containerContent"></div>
+        }
+      </div>
+    }
+  </form>
+</div>
+
+<div class="form-actions">
+  <button type="button" (click)="onSubmit()">Submit</button>
+  <button type="button" (click)="print()">Print</button>
+</div>
