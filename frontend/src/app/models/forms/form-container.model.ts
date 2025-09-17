@@ -1,7 +1,7 @@
 import { BaseDto, BaseModel } from "../base/base.model";
 import { FormField } from "../ui/form-field.model";
 
-export type ContentType = 'text' | 'formField' | 'image';
+export type ContentType = 'text' | 'formField' | 'image' | 'variable';
 
 export interface FormContainerModel extends BaseModel {
   content: string | FormField | null;

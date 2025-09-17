@@ -42,11 +42,11 @@
   <div class="main-content">
     <div class="left-panel">
 
-      <div *ngFor="let field of availableFields()" class="field-item">
+      <!-- <div *ngFor="let field of availableFields()" class="field-item">
         <h4>{{ field.label }}</h4>
-        <!-- <button (click)="addFieldToCell(field)">Add to Form</button> -->
+        <button (click)="addFieldToCell(field)">Add to Form</button>
       </div>
-    </div>
+    </div> -->
 
   <div class="center-panel" #centerPanel>
     <div 
@@ -86,7 +86,21 @@
                 <div class="text-content">{{ container.content }}</div>
               }
               @case ('formField') {
-                <div class="text-content">{{ container | containerContent }}</div>
+                <!-- <div class="text-content">{{ container | containerContent }}</div> -->
+                 @switch (getFormFieldType(container)) {
+                  @case('text') {<app-invisible-input-field [type]="'text'"></app-invisible-input-field>}
+                  @case('date') {<app-invisible-input-field [type]="'date'"></app-invisible-input-field>}
+                  @case('time') {<app-invisible-input-field [type]="'time'"></app-invisible-input-field>}
+                  @case('file') {<app-invisible-input-field [type]="'file'"></app-invisible-input-field>}
+                  @case('checkbox') {<app-chekcbox-x></app-chekcbox-x>}
+                  @case('radio') {<app-radio-checkboxes [options]="[true, false]"></app-radio-checkboxes>}
+                  @case('select') {<app-invisible-searchable-select [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}]"></app-invisible-searchable-select>}
+                  @case('radio-checkboxes') {<app-radio-checkboxes [options]="[true, false]"></app-radio-checkboxes>}
+                  @case('select') {}
+                  @default {
+                    <div class="text-content">{{ container | containerContent }}</div>
+                  }
+                 }
               }
               @case ('image') {
                 <img [src]="container | containerContent" alt="Image content" style="width: 100%; height: 100%; object-fit: contain;">

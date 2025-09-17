@@ -18,20 +18,28 @@ import { Subject } from 'rxjs';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { FloatingMenuComponent, MenuPosition } from "../../../shared/menu/floating-menu/floating-menu.component";
 import { ContainerContentPipe } from '../../../pipes/container-content.pipe';
+import { RadioCheckboxesComponent } from "../inputs/radio-checkboxes/radio-checkboxes.component";
+import { InvisibleInputFieldComponent } from "../inputs/invisible-input-field/invisible-input-field.component";
+import { SquareCheckboxComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
+import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchable-select/invisible-searchable-select.component";
 
 
 @Component({
   selector: 'app-printable-form-designer',
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
-    DragDropModule, 
-    FormContainerPropertiesComponent, 
-    FormContainerListComponent, 
+    CommonModule,
+    FormsModule,
+    DragDropModule,
+    FormContainerPropertiesComponent,
+    FormContainerListComponent,
     FloatingMenuComponent,
-    ContainerContentPipe
-  ],
+    ContainerContentPipe,
+    RadioCheckboxesComponent,
+    InvisibleInputFieldComponent,
+    SquareCheckboxComponent,
+    InvisibleSearchableSelectComponent
+],
   templateUrl: './printable-form-designer.component.html',
   styleUrl: './printable-form-designer.component.css'
 })
@@ -48,9 +56,10 @@ export class PrintableFormDesignerComponent implements OnInit {
   pixelsPerInch = 96; // Standard DPI
   formSize = { width: 8.5 * 96, height: 11 * 96 };
   
-  availableFields = computed<FormField[]>(() => {
+  availableFields = computed<any>(() => {
       const type = this.currentForm().formType ?? 'SafeWork';
-      return this.loadEntityFields(type);
+      // return this.loadEntityFields(type);
+      return this.loadEntityDto(type);
   });
   // containers = computed<FormContainerDto[]>(() => this.currentForm().formContainers?? []);
   containers = toSignal(this.currentPrintableFormService.formContainers$, { initialValue: [] });
@@ -147,12 +156,32 @@ export class PrintableFormDesignerComponent implements OnInit {
         return [];
     }
   }
+
+  loadEntityDto(type: string) {
+    switch (type) {
+      case 'SafeWork':
+        return new SafeWorkDto();
+      case 'HotWork':
+        return new HotWorkDto();
+      case 'ConfinedSpace':
+        return new ConfinedSpaceDto();
+      default:
+        return null;
+    }
+  }
   getLabel(container: FormContainerDto) {
     if(container.contentType==='formField'){
       const field = container.content as FormField
       return field.label?? `Field ${container.id}`;
     }
     return `Container ${container.id}`;
+  }
+
+  getFormFieldType(container: FormContainerDto): string | undefined {
+    if (container.contentType === 'formField' && container.content) {
+      return (container.content as FormField).type;
+    }
+    return undefined;
   }
 
 

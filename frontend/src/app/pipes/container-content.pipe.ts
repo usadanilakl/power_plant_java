@@ -17,7 +17,10 @@ export class ContainerContentPipe implements PipeTransform {
         return typeof container.content === 'string' ? container.content : '';
       case 'formField':
         // Assuming content is a FormField-like object with a 'label'
-        return (container.content as FormField)?.label || '';
+        return this.formatLabel((container.content as FormField).name);
+      case 'variable':
+        // Assuming content is a FormField-like object with a 'label'
+        return this.formatLabel(container.content as string);
       case 'image':
         // Assuming content is a URL string for the image
         return typeof container.content === 'string' ? container.content : '';
@@ -28,5 +31,17 @@ export class ContainerContentPipe implements PipeTransform {
         // Fallback for formField or other object-like content
         return (container.content as FormField)?.label || '';
     }
+  }
+
+  private formatLabel(path: string): string {
+    if (!path) return '';
+
+    return path
+      .split('.')
+      .map((part) => {
+        const result = part.replace(/([A-Z])/g, ' $1');
+        return result.charAt(0).toUpperCase() + result.slice(1);
+      })
+      .join(' -> ');
   }
 }

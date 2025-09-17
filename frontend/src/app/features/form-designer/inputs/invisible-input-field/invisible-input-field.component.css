@@ -1,0 +1,42 @@
+.invisible-input-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  cursor: text;
+  position: relative; /* Needed for positioning hidden inputs */
+}
+
+.invisible-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background-color: transparent;
+  outline: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Hide the input but keep it functional */
+.hidden-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.display-value {
+  width: 100%;
+  height: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Ensure it aligns the same as the text inputs */
+  display: flex;
+  align-items: center;
+}

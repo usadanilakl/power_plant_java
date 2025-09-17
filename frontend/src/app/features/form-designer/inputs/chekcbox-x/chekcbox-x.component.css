@@ -1,0 +1,80 @@
+.square-checkbox-container {
+  display: inline-block;
+  position: relative;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  user-select: none;
+}
+
+/* Hide the browser's default checkbox */
+.square-checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Create a custom checkbox */
+.custom-square {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.square-checkbox-container:hover .custom-square {
+  background-color: #e0e0e0;
+}
+
+/* Style for the checked state */
+.square-checkbox-container input:checked ~ .custom-square {
+  background-color: #d0d0d0;
+  border-color: #999;
+}
+
+/* Create the "X" mark using pseudo-elements */
+.custom-square::after,
+.custom-square::before {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 14px;
+  background-color: #333;
+  top: 3px;
+  left: 9px;
+  transform-origin: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.custom-square::before {
+  transform: rotate(45deg);
+}
+
+.custom-square::after {
+  transform: rotate(-45deg);
+}
+
+/* Show the "X" when checkbox is checked */
+.square-checkbox-container input:checked ~ .custom-square::before,
+.square-checkbox-container input:checked ~ .custom-square::after {
+  opacity: 1;
+}
+
+/* Style for the disabled state */
+.square-checkbox-container input:disabled ~ .custom-square {
+  background-color: #fafafa;
+  border-color: #e0e0e0;
+  cursor: not-allowed;
+}
+
+.square-checkbox-container input:disabled:checked ~ .custom-square::before,
+.square-checkbox-container input:disabled:checked ~ .custom-square::after {
+  background-color: #aaa;
+}

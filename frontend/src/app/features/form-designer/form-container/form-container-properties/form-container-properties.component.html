@@ -90,7 +90,8 @@
           <label for="contentType">Content Type</label>
           <select id="contentType" [(ngModel)]="container.contentType" (ngModelChange)="onContentTypeChange()">
             <option value="text">Text</option>
-            <option value="formField">Dynamic Content</option>
+            <option value="formField">Form Field</option>
+            <option value="variable">Dynamic Content</option>
             <option value="image">Image</option>
           </select>
         </div>
@@ -105,18 +106,43 @@
             </div>
           </div>
         }
-        @case ('formField') {
+        @case ('variable') {
           <div class="input-row">
             <div class="input-field">
               <label for="formFieldContent">Field</label>
               <select id="formFieldContent" [(ngModel)]="container.content" [compareWith]="compareFields" (ngModelChange)="onPropertyChange()">
                 <option [ngValue]="null">-- Select Field --</option>
-                @for (field of availableFields; track field) {
-                  <option [ngValue]="field">{{ field.label }}</option>
+                @for (field of flattenedFields; track field.path) {
+                  <option [ngValue]="field.path">{{ field.label }}</option>
                 }
               </select>
             </div>
           </div>
+        }
+        @case ('formField') {
+          @if(isFormFieldContent(container.content)){
+            <div class="input-row">
+              <div class="input-field">
+                <label for="formFieldName">Field Name</label>
+                <select id="formFieldName" [(ngModel)]="container.content.name" (ngModelChange)="onPropertyChange()">
+                  <option value="">-- Select Field --</option>
+                  @for (field of flattenedFields; track field.path) {
+                    <option [value]="field.path">{{ field.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="input-field">
+                <label for="formFieldType">Field Type</label>
+                <select id="formFieldType" [(ngModel)]="container.content.type" (ngModelChange)="onPropertyChange()">
+                  @for(type of formFieldTypes; track type){
+                    <option [value]="type">{{ type | titlecase }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
         }
         @case ('image') {
           <div class="input-row">

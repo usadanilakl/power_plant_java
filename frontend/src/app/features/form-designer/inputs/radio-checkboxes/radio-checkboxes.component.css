@@ -1,0 +1,61 @@
+.square-radio-group {
+  display: flex;
+  gap: 8px;
+}
+
+.square-radio-group label {
+  position: relative;
+  cursor: pointer;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+}
+
+/* Hide the default radio button */
+.square-radio-group input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* The custom square box */
+.custom-square {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 24px;
+  width: 24px;
+  background-color: #eee;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.square-radio-group label:hover .custom-square {
+  background-color: #ddd;
+}
+
+/* Style the square when the radio button is checked */
+.square-radio-group input[type="radio"]:checked ~ .custom-square {
+  background-color: #e0e0e0;
+  border-color: #999;
+}
+
+/* Create the "X" using ::after */
+.custom-square::after {
+  content: "X";
+  position: absolute;
+  display: none;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Show the "X" when the radio button is checked */
+.square-radio-group input[type="radio"]:checked ~ .custom-square::after {
+  display: block;
+}

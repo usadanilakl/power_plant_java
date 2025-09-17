@@ -6,12 +6,16 @@
           @switch (asFormField(container.content).type) {
             @case ('text') {
               <!-- Text, Number, Email, Password, Date Inputs -->
-              <app-form-input 
+              <!-- <app-form-input 
                 [ngStyle]="getContentStyle(container)"
                 [type]="'text'"
                 [formControlName]="asFormField(container.content).name!"
                 [label]="asFormField(container.content).label">
-              </app-form-input>
+              </app-form-input> -->
+              <app-invisible-input-field 
+                [type]="'text'"
+                [formControl]="getFormControl(asFormField(container.content).name!)"
+              ></app-invisible-input-field>
             }
             @case ('number') {
               <app-form-input 
@@ -21,13 +25,17 @@
               </app-form-input>
             }
             @case ('date') {
-              <app-form-input 
+              <!-- <app-form-input 
                 [ngStyle]="getContentStyle(container)!"
                 [customStyle]="getContentStyle(container)!"
                 [type]="'date'"
                 [formControlName]="asFormField(container.content).name!"
                 [label]="asFormField(container.content).label">
-              </app-form-input>
+              </app-form-input> -->
+              <app-invisible-input-field
+                [formControl]="getFormControl(asFormField(container.content).name!)"
+                [type]="'date'">
+              </app-invisible-input-field>
             }
             @case ('textarea') {
               <!-- Textarea -->
@@ -38,12 +46,15 @@
             }
             @case ('checkbox') {
               <!-- Checkbox -->
-              <div class="form-field">
+              <!-- <div class="form-field">
                  <label>
                    <input type="checkbox" [formControlName]="asFormField(container.content).name!">
                    {{ asFormField(container.content).label }}
                  </label>
-              </div>
+              </div> -->
+              <app-chekcbox-x
+                [formControl]="getFormControl(asFormField(container.content).name!)">
+              </app-chekcbox-x>
             }
             @case ('checkbox-group') {
               <!-- Checkbox Group -->
@@ -53,21 +64,26 @@
                 [options]="asFormField(container.content).options || []">
               </app-checkbox-group>
             }
-            @case ('radio-group') {
+            @case ('radio') {
               <!-- Radio Group -->
-              <app-radio-group 
+              <!-- <app-radio-group 
                 [formControlName]="asFormField(container.content).name!"
                 [label]="asFormField(container.content).label"
                 [options]="asFormField(container.content).options || []">
-              </app-radio-group>
+              </app-radio-group> -->
+              <app-radio-checkboxes 
+                [formControl]="getFormControl(asFormField(container.content).name!)"
+                [options]="[true,false]">
+              </app-radio-checkboxes>
             }
             @case ('select') {
               <!-- Select/Dropdown -->
-              <app-searchable-dropdown
+              <!-- <app-searchable-dropdown
                 [formControlName]="asFormField(container.content).name!"
                 [label]="asFormField(container.content).label"
                 [options]="asFormField(container.content).options || []">
-              </app-searchable-dropdown>
+              </app-searchable-dropdown> -->
+              <app-invisible-searchable-select [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}]"></app-invisible-searchable-select>
             }
             @case ('multi-select') {
               <!-- Multi-Select Dropdown -->
@@ -79,10 +95,11 @@
             }
             @case ('file') {
               <!-- File Input -->
-              <app-file-input
+              <!-- <app-file-input
                 [formControlName]="asFormField(container.content).name!"
                 [label]="asFormField(container.content).label">
-              </app-file-input>
+              </app-file-input> -->
+              <app-invisible-input-field [type]="'file'"></app-invisible-input-field>
             }
             @case ('multi-input') {
               <!-- Multi-Input -->
@@ -92,9 +109,10 @@
               </app-multi-input>
             }
             @default {
-              <div>
+              <!-- <div>
                 Unsupported field type: {{ asFormField(container.content).type }}
-              </div>
+              </div> -->
+              <app-invisible-input-field [type]="'time'"></app-invisible-input-field>
             }
           }
         } @else {
