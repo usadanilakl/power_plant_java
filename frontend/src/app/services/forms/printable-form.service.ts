@@ -4,6 +4,7 @@ import { HttpClient } from "@angular/common/http";
 import { PrintableFormDto } from "../../models/forms/printable-form.model";
 import { Observable } from "rxjs";
 import { SpringApiResponse } from "../../models/api/spring-api-response.model";
+import { FormContainerDto } from "../../models/forms/form-container.model";
 
 @Injectable({
   providedIn: 'root'
@@ -25,5 +26,8 @@ export class PrintableFormService {
     }
     addContainerToForm(formId: number, containerId: number): Observable<SpringApiResponse<PrintableFormDto>> {
         return this.http.post<SpringApiResponse<PrintableFormDto>>(`${this.apiUrl}/add/${containerId}/to/${formId}`,{});
+    }
+    addAllContainers(id: number, containers: FormContainerDto[]): Observable<SpringApiResponse<PrintableFormDto>> {
+        return this.http.post<SpringApiResponse<PrintableFormDto>>(`${this.apiUrl}/add-all/${id}`, containers);
     }
 }

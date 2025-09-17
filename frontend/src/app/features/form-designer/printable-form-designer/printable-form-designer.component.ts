@@ -22,6 +22,7 @@ import { RadioCheckboxesComponent } from "../inputs/radio-checkboxes/radio-check
 import { InvisibleInputFieldComponent } from "../inputs/invisible-input-field/invisible-input-field.component";
 import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchable-select/invisible-searchable-select.component";
 import { ChekcboxXComponent } from '../inputs/chekcbox-x/chekcbox-x.component';
+import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
 
 
 @Component({
@@ -38,7 +39,8 @@ import { ChekcboxXComponent } from '../inputs/chekcbox-x/chekcbox-x.component';
     RadioCheckboxesComponent,
     InvisibleInputFieldComponent,
     InvisibleSearchableSelectComponent,
-    ChekcboxXComponent
+    ChekcboxXComponent,
+    InvisibleSearchableMultiSelectComponent
 ],
   templateUrl: './printable-form-designer.component.html',
   styleUrl: './printable-form-designer.component.css'

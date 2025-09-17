@@ -1,36 +1,6 @@
 
 <div class="printable-form-designer">
   <div class="top-menu">
-    <div class="control-group">
-      <button (click)="addContainer()" title="Add Container">Add</button>
-      <button (click)="deleteContainer()" title="Delete Selected">Delete</button>
-    </div>
-
-    <div class="control-group">
-      <button (click)="groupSelection()" title="Group Selected">Group</button>
-      <button (click)="ungroupSelection()" title="Ungroup Selection">Ungroup</button>
-    </div>
-
-    <div class="control-group alignment-controls">
-      <button (click)="alignContainers('left')" title="Align Left">L</button>
-      <button (click)="alignContainers('h-center')" title="Align Horizontal Center">HC</button>
-      <button (click)="alignContainers('right')" title="Align Right">R</button>
-      <button (click)="alignContainers('top')" title="Align Top">T</button>
-      <button (click)="alignContainers('v-center')" title="Align Vertical Center">VC</button>
-      <button (click)="alignContainers('bottom')" title="Align Bottom">B</button>
-      <br>
-      <br>
-      <button (click)="matchSize('width')" title="Match Width">W</button>
-      <button (click)="matchSize('height')" title="Match Height">H</button>
-      <button (click)="matchSize('width')" title="Match Width & Height">WH</button>
-      <br>
-      <button (click)="distributeContainers('horizontal')" title="Distribute horizontaly">DH</button>
-      <button (click)="distributeContainers('vertical')" title="Distribute vertically">DV</button>
-
-      <button (click)="arrangeSequentially('horizontal')" title="Arrange Sequentially horizontally">AH</button>
-      <button (click)="arrangeSequentially('vertical')" title="Arrange Sequentially vertically">AV</button>
-    </div>
-
     <div class="control-group sheet-size-controls">
       <label>Sheet Size:</label>
       <input type="number" [(ngModel)]="sheetSize().width" (change)="updateSheetSize(sheetSize().width, sheetSize().height)" title="Sheet Width">
@@ -41,12 +11,52 @@
 
   <div class="main-content">
     <div class="left-panel">
+      <div class="tools-menu">
+        <div class="control-group">
+          <button (click)="addContainer()" title="Add Container">Add</button>
+          <button (click)="currentPrintableFormService.copySelectedContainers()" title="Duplicate">Duplicate</button>
+          <button (click)="deleteContainer()" title="Delete Selected">Delete</button>
+        </div>
+    
+        <div class="control-group">
+          <button (click)="groupSelection()" title="Group Selected">Group</button>
+          <button (click)="ungroupSelection()" title="Ungroup Selection">Ungroup</button>
+        </div>
+    
+        <div class="control-group alignment-controls">
+          <h4 class="group-title">Align</h4>
+          <div class="button-row">
+            <button (click)="alignContainers('left')" title="Align Left">Left</button>
+            <button (click)="alignContainers('h-center')" title="Align Horizontal Center">Center</button>
+            <button (click)="alignContainers('right')" title="Align Right">Right</button>
+          </div>
+          <div class="button-row">
+            <button (click)="alignContainers('top')" title="Align Top">Top</button>
+            <button (click)="alignContainers('v-center')" title="Align Vertical Center">Middle</button>
+            <button (click)="alignContainers('bottom')" title="Align Bottom">Bottom</button>
+          </div>
 
-      <!-- <div *ngFor="let field of availableFields()" class="field-item">
-        <h4>{{ field.label }}</h4>
-        <button (click)="addFieldToCell(field)">Add to Form</button>
+          <h4 class="group-title">Match Size</h4>
+          <div class="button-row">
+            <button (click)="matchSize('width')" title="Match Width">Width</button>
+            <button (click)="matchSize('height')" title="Match Height">Height</button>
+            <button (click)="matchSize('both')" title="Match Width & Height">Both</button>
+          </div>
+
+          <h4 class="group-title">Distribute</h4>
+          <div class="button-row">
+            <button (click)="distributeContainers('horizontal')" title="Distribute Horizontally">Horizontal</button>
+            <button (click)="distributeContainers('vertical')" title="Distribute Vertically">Vertical</button>
+          </div>
+
+          <h4 class="group-title">Arrange</h4>
+          <div class="button-row">
+            <button (click)="arrangeSequentially('horizontal')" title="Arrange Sequentially Horizontally">Horizontal</button>
+            <button (click)="arrangeSequentially('vertical')" title="Arrange Sequentially Vertically">Vertical</button>
+          </div>
+        </div>
       </div>
-    </div> -->
+    </div>
 
   <div class="center-panel" #centerPanel>
     <div 
@@ -54,7 +64,7 @@
       #designArea 
       [ngStyle]="getFormContainerStyle()">
       
-      <!-- Selection Box -->
+      
       @if(selectionBox(); as box){
         <div class="selection-box" [style.left.px]="box.x" [style.top.px]="box.y" [style.width.px]="box.width" [style.height.px]="box.height"></div>
       }
@@ -64,15 +74,6 @@
         #formContent
         (mousedown)="onFormSheetMouseDown($event)">
         @for(container of containers(); track $index; let i = $index){
-          <!-- <div class="draggable-container"
-             cdkDrag
-             [cdkDragBoundary]="designArea"
-             (cdkDragEnded)="onDragEnd($event, container)"
-             (click)="selectContainer(container, $event)"
-             [class.selected]="selectedContainers().includes(container)"
-             [ngStyle]="getContainerStyles(container)">
-            <div class="resize-handle bottom-right" (mousedown)="startResize($event, i, 'bottom-right')"></div>
-        </div> -->
         <div
           class="draggable-container"
           [ngStyle]="getContainerStyles(container)"
@@ -86,7 +87,7 @@
                 <div class="text-content">{{ container.content }}</div>
               }
               @case ('formField') {
-                <!-- <div class="text-content">{{ container | containerContent }}</div> -->
+                
                  @switch (getFormFieldType(container)) {
                   @case('text') {<app-invisible-input-field [type]="'text'"></app-invisible-input-field>}
                   @case('date') {<app-invisible-input-field [type]="'date'"></app-invisible-input-field>}
@@ -95,6 +96,7 @@
                   @case('checkbox') {<app-chekcbox-x></app-chekcbox-x>}
                   @case('radio') {<app-radio-checkboxes [options]="[true, false]"></app-radio-checkboxes>}
                   @case('select') {<app-invisible-searchable-select [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}]"></app-invisible-searchable-select>}
+                  @case('multi-select') {<app-invisible-searchable-multi-select [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}, {value:4,label:'four'}, {value:5,label:'five'}]"></app-invisible-searchable-multi-select>}
                   @case('radio-checkboxes') {<app-radio-checkboxes [options]="[true, false]"></app-radio-checkboxes>}
                   @case('select') {}
                   @default {
@@ -141,3 +143,134 @@
     ></app-form-container-properties>
   </app-floating-menu>
   
+
+<!-- 
+<div class="printable-form-designer">
+  <div class="top-menu">
+    <div class="control-group">
+      <button (click)="addContainer()" title="Add Container">Add</button>
+      <button (click)="currentPrintableFormService.copySelectedContainers()" title="Duplicate">Duplicate</button>
+      <button (click)="deleteContainer()" title="Delete Selected">Delete</button>
+    </div>
+
+    <div class="control-group">
+      <button (click)="groupSelection()" title="Group Selected">Group</button>
+      <button (click)="ungroupSelection()" title="Ungroup Selection">Ungroup</button>
+    </div>
+
+    <div class="control-group alignment-controls">
+      <button (click)="alignContainers('left')" title="Align Left">L</button>
+      <button (click)="alignContainers('h-center')" title="Align Horizontal Center">HC</button>
+      <button (click)="alignContainers('right')" title="Align Right">R</button>
+      <button (click)="alignContainers('top')" title="Align Top">T</button>
+      <button (click)="alignContainers('v-center')" title="Align Vertical Center">VC</button>
+      <button (click)="alignContainers('bottom')" title="Align Bottom">B</button>
+      <br>
+      <br>
+      <button (click)="matchSize('width')" title="Match Width">W</button>
+      <button (click)="matchSize('height')" title="Match Height">H</button>
+      <button (click)="matchSize('width')" title="Match Width & Height">WH</button>
+      <br>
+      <button (click)="distributeContainers('horizontal')" title="Distribute horizontaly">DH</button>
+      <button (click)="distributeContainers('vertical')" title="Distribute vertically">DV</button>
+
+      <button (click)="arrangeSequentially('horizontal')" title="Arrange Sequentially horizontally">AH</button>
+      <button (click)="arrangeSequentially('vertical')" title="Arrange Sequentially vertically">AV</button>
+    </div>
+
+    <div class="control-group sheet-size-controls">
+      <label>Sheet Size:</label>
+      <input type="number" [(ngModel)]="sheetSize().width" (change)="updateSheetSize(sheetSize().width, sheetSize().height)" title="Sheet Width">
+      <span>x</span>
+      <input type="number" [(ngModel)]="sheetSize().height" (change)="updateSheetSize(sheetSize().width, sheetSize().height)" title="Sheet Height">
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="left-panel">
+
+  <div class="center-panel" #centerPanel>
+    <div 
+      class="form-container" 
+      #designArea 
+      [ngStyle]="getFormContainerStyle()">
+      
+      
+      @if(selectionBox(); as box){
+        <div class="selection-box" [style.left.px]="box.x" [style.top.px]="box.y" [style.width.px]="box.width" [style.height.px]="box.height"></div>
+      }
+
+      <div 
+        class="form-content"
+        #formContent
+        (mousedown)="onFormSheetMouseDown($event)">
+        @for(container of containers(); track $index; let i = $index){
+        <div
+          class="draggable-container"
+          [ngStyle]="getContainerStyles(container)"
+          [class.selected]="isContainerSelected(container)"
+          [class.hovered]="currentPrintableFormService.isContainerHovered(container)"
+          (mousedown)="onDragStart($event, container)"
+          (click)="selectContainer(container,$event)"
+          (contextmenu)="veiwPropertiesOfContainer(container,$event)">
+            @switch (container.contentType) {
+              @case ('text') {
+                <div class="text-content">{{ container.content }}</div>
+              }
+              @case ('formField') {
+                
+                 @switch (getFormFieldType(container)) {
+                  @case('text') {<app-invisible-input-field [type]="'text'"></app-invisible-input-field>}
+                  @case('date') {<app-invisible-input-field [type]="'date'"></app-invisible-input-field>}
+                  @case('time') {<app-invisible-input-field [type]="'time'"></app-invisible-input-field>}
+                  @case('file') {<app-invisible-input-field [type]="'file'"></app-invisible-input-field>}
+                  @case('checkbox') {<app-chekcbox-x></app-chekcbox-x>}
+                  @case('radio') {<app-radio-checkboxes [options]="[true, false]"></app-radio-checkboxes>}
+                  @case('select') {<app-invisible-searchable-select [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}]"></app-invisible-searchable-select>}
+                  @case('multi-select') {<app-invisible-searchable-multi-select [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}, {value:4,label:'four'}, {value:5,label:'five'}]"></app-invisible-searchable-multi-select>}
+                  @case('radio-checkboxes') {<app-radio-checkboxes [options]="[true, false]"></app-radio-checkboxes>}
+                  @case('select') {}
+                  @default {
+                    <div class="text-content">{{ container | containerContent }}</div>
+                  }
+                 }
+              }
+              @case ('image') {
+                <img [src]="container | containerContent" alt="Image content" style="width: 100%; height: 100%; object-fit: contain;">
+              }
+              @default {
+                <div class="text-content">{{ container | containerContent }}</div>
+              }
+            }
+
+          <div class="resize-handle bottom-right" (mousedown)="startResize($event, i, 'bottom-right')"></div>
+
+        </div>
+
+        }
+      </div>
+    </div>
+  </div>
+
+
+    <div class="right-panel">
+          <app-form-container-list
+            (rightClickEvent)="veiwPropertiesOfContainer($event.container, $event.event)"
+          ></app-form-container-list>
+      
+    </div>
+  </div>
+</div>
+
+  <app-floating-menu
+    [title]="'Container Properties'"
+    [position]="menuPosition.Center"
+    [open]="isPropertiesPopupOpen()"
+    (close)="closePropertiesPopup()"
+  >
+    <app-form-container-properties
+      [container]="currentPrintableFormService.propertiesOfContainer()"
+      [availableFields]="availableFields()"
+    ></app-form-container-properties>
+  </app-floating-menu>
+   -->

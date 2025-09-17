@@ -1,5 +1,207 @@
-
 .printable-form-designer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  font-family: Arial, sans-serif;
+  color: #333;
+  background-color: #f0f0f0;
+  overflow: hidden;
+}
+
+.top-menu {
+  width: 100%;
+  padding: 10px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.top-menu button{
+  padding: 8px 12px;
+  background-color: #ecf0f1;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.top-menu button:hover {
+  background-color: #d2d7d9;
+  border-color: #a1a7ab;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.alignment-controls {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+}
+
+.alignment-controls .button-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.alignment-controls .button-row button {
+  flex: 1;
+}
+
+.group-title {
+  margin: 10px 0 5px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 4px;
+}
+
+.sheet-size-controls {
+  gap: 8px;
+}
+
+.sheet-size-controls label {
+  font-weight: bold;
+  margin-right: 4px;
+}
+
+.sheet-size-controls input {
+  width: 60px;
+  padding: 8px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+}
+
+.sheet-size-controls span {
+  color: #7f8c8d;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.left-panel, .right-panel {
+  flex: 1;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.left-panel {
+  border-right: 1px solid #e0e0e0;
+}
+
+.right-panel {
+  border-left: 1px solid #e0e0e0;
+}
+
+.center-panel {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+  overflow: auto;
+  background-color: #e0e0e0;
+}
+
+.form-container {
+  background-color: #ffffff;
+  box-shadow: 0 0 20px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.1);
+  position: relative;
+  overflow: hidden;
+  transform-origin: top left;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.form-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.selection-box {
+    position: absolute;
+    border: 1px dashed #007bff;
+    background-color: rgba(0, 123, 255, 0.2);
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.draggable-container {
+  position: absolute;
+  display: flex;
+  cursor: move;
+  border: 1px solid #ccc;
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+.draggable-container.selected {
+  border: 2px solid #007bff;
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+  z-index: 10;
+}
+
+.draggable-container.hovered {
+  border: 2px solid #db3f34;
+  box-shadow: 0 0 10px rgba(219, 52, 52, 0.5);
+}
+
+.resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: #007bff;
+  border: 1px solid white;
+  border-radius: 50%;
+}
+
+.resize-handle.top-left { top: -5px; left: -5px; cursor: nwse-resize; }
+.resize-handle.top-right { top: -5px; right: -5px; cursor: nesw-resize; }
+.resize-handle.bottom-left { bottom: -5px; left: -5px; cursor: nesw-resize; }
+.resize-handle.bottom-right { bottom: -5px; right: -5px; cursor: nwse-resize; }
+
+@media (max-width: 1200px) {
+  .main-content {
+    flex-direction: column;
+  }
+
+  .left-panel, .right-panel {
+    width: 100%;
+    max-height: 30vh;
+    border: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .center-panel {
+    flex: 1;
+  }
+}
+
+
+/* .printable-form-designer {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -46,7 +248,7 @@
 }
 
 .alignment-controls button {
-  width: 36px; /* Fixed width for alignment buttons */
+  width: 36px;
   font-weight: bold;
 }
 
@@ -150,7 +352,7 @@
     position: absolute;
     border: 1px dashed #007bff;
     background-color: rgba(0, 123, 255, 0.2);
-    pointer-events: none; /* Allows events to pass through to elements underneath */
+    pointer-events: none;
     z-index: 9999;
 }
 
@@ -227,4 +429,4 @@
   .center-panel {
     flex: 1;
   }
-}
+} */

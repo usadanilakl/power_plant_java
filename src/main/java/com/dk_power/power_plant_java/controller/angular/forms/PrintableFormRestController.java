@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/ng/forms")
 @RequiredArgsConstructor
@@ -70,6 +72,26 @@ public class PrintableFormRestController {
             return ResponseEntity.ok(new NgApiResponse<>(updatedForm, "Container added to form successfully."));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error adding container to form: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/add-all/{id}")
+    public ResponseEntity<NgApiResponse<PrintableForm>> addAllContainersToForm(@PathVariable Long id, @RequestBody List<FormContainer> containers) {
+        try {
+            PrintableForm form = printableFormRepo.findById(id)
+                    .orElse(null);
+            if (form == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new NgApiResponse<>(null, "PrintableForm not found with id: " + id));
+            }
+
+            for (FormContainer container : containers) {
+                form.addFormContainer(container);
+            }
+            PrintableForm updatedForm = printableFormRepo.save(form);
+
+            return ResponseEntity.ok(new NgApiResponse<>(updatedForm, "Containers added to form successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error adding containers to form: " + e.getMessage()));
         }
     }
 

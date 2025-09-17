@@ -1,5 +1,5 @@
 
-import { Directive, HostListener, inject } from '@angular/core';
+import { Directive, HostListener, inject, Input } from '@angular/core';
 import { ClipboardService } from '../services/util/clipboard.service';
 
 @Directive({
@@ -8,6 +8,7 @@ import { ClipboardService } from '../services/util/clipboard.service';
 })
 export class CopyPasteDirective {
   private clipboardService = inject(ClipboardService);
+  @Input() valueToCopy: string | null = null;
 
   // @HostListener('click', ['$event'])
   // onClick(event: MouseEvent): void {
@@ -33,6 +34,12 @@ export class CopyPasteDirective {
   }
 
   private copyToClipboard(event: MouseEvent): void {
+    if (this.valueToCopy !== null) {
+      this.clipboardService.setClipboardData(this.valueToCopy);
+      event.stopPropagation(); // Prevent other click handlers if needed
+      return;
+    }
+
     const target = event.target as HTMLInputElement;
     if (target && target.value) {
       this.clipboardService.setClipboardData(target.value);

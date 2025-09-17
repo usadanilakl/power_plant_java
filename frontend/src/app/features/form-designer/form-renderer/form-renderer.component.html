@@ -99,14 +99,13 @@
                 [formControl]="getFormControl(asFormField(container.content).name!)"
               ></app-invisible-searchable-select>
             }
-            @case ('multi-select') {
-              <!-- Multi-Select Dropdown -->
-              <app-multi-select-searchable-dropdown
-                [formControlName]="asFormField(container.content).name!"
-                [label]="asFormField(container.content).label"
-                [options]="asFormField(container.content).options || []">
-              </app-multi-select-searchable-dropdown>
+            @case('multi-select') {
+              <app-invisible-searchable-multi-select 
+                [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}, {value:4,label:'four'}, {value:5,label:'five'}]"
+                [formControl]="getFormControl(asFormField(container.content).name!)">
+              </app-invisible-searchable-multi-select>
             }
+                  
             @case ('file') {
               <!-- File Input -->
               <!-- <app-file-input

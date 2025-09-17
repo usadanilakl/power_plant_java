@@ -17,11 +17,12 @@ import { RadioCheckboxesComponent } from "../inputs/radio-checkboxes/radio-check
 import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchable-select/invisible-searchable-select.component";
 import { ChekcboxXComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
 
 @Component({
   selector: 'app-form-renderer',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ContainerContentPipe, SearchableDropdownComponent, CheckboxGroupComponent, RadioGroupComponent, MultiSelectSearchableDropdownComponent, FileInputComponent, MultiInputComponent, FormInputComponent, InvisibleInputFieldComponent, RadioCheckboxesComponent, InvisibleSearchableSelectComponent, ChekcboxXComponent],
+  imports: [CommonModule, ReactiveFormsModule, ContainerContentPipe, SearchableDropdownComponent, CheckboxGroupComponent, RadioGroupComponent, MultiSelectSearchableDropdownComponent, FileInputComponent, MultiInputComponent, FormInputComponent, InvisibleInputFieldComponent, RadioCheckboxesComponent, InvisibleSearchableSelectComponent, ChekcboxXComponent, InvisibleSearchableMultiSelectComponent],
   templateUrl: './form-renderer.component.html',
   styleUrl: './form-renderer.component.css'
 })

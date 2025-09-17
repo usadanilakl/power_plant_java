@@ -5,6 +5,7 @@ import { BehaviorSubject, forkJoin, map, Observable, switchMap, tap } from "rxjs
 import { PrintableFormDto } from "../../models/forms/printable-form.model";
 import { PrintableFormService } from "./printable-form.service";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { Form } from "@angular/forms";
 
 @Injectable({
   providedIn: 'root'
@@ -99,6 +100,12 @@ export class CurrentPrintableFormService {
         );
     }
 
+    addFormContainers(formId: number, containers: FormContainerDto[]): Observable<PrintableFormDto> {
+        return this.formService.addAllContainers(formId, containers).pipe(
+            map(response => new PrintableFormDto(response.responseData))
+        );
+    }
+
     createNewContainer(container: FormContainerDto) {
         this.formContainerService.save(container).pipe(
             takeUntilDestroyed(this.destroyRef),
@@ -117,7 +124,54 @@ export class CurrentPrintableFormService {
             }
         });
     }
+
+    createNewContainers(containers: FormContainerDto[]): void {
+        const formId = this.formSubject.value.id;
+        this.formContainerService.saveAll(containers).pipe(
+            takeUntilDestroyed(this.destroyRef),
+            map(response => response.responseData),
+            switchMap((createdContainers: FormContainerDto[]) => {
+                return this.addFormContainers(formId, createdContainers);
+            })
+        ).subscribe({
+            next: (updatedForm: PrintableFormDto) => {
+                this.formSubject.next(updatedForm);
+                this.formContainersSubject.next(updatedForm.formContainers);
+            },
+            error: (err) => {
+                console.error('Error creating new containers and adding to form:', err);
+                // Here you could implement user-facing error messages
+            }
+        });
+    }
     
+    copySelectedContainers(){
+        const selectedContainers = this.selectedContainers();
+        if (selectedContainers.length === 0) {
+            console.error("No containers selected to copy.");
+            return;
+        }
+
+        const groupMapping = new Map<string, string>();
+
+        const copiedContainers: FormContainerDto[] = selectedContainers.map(container => {
+            let newGroupId: string | null = null;
+            if (container.groupId) {
+                if (!groupMapping.has(container.groupId)) {
+                    groupMapping.set(container.groupId, `group-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
+                }
+                newGroupId = groupMapping.get(container.groupId)!;
+            }
+
+            return new FormContainerDto({
+                ...container,
+                id: undefined,
+                groupId: newGroupId
+            });
+        });
+
+        this.createNewContainers(copiedContainers);
+    }
       updateContainer(container: FormContainerDto) {
         if (!container?.id) {
           console.error("Update failed: container or container ID is missing.");
@@ -149,6 +203,13 @@ export class CurrentPrintableFormService {
             const newContainers = [...currentContainers, container];
             this.formContainersSubject.next(newContainers);
         }
+
+        // Also update the selected container if it is in the selection
+        this.selectedContainers.update(currentSelection => 
+            currentSelection.map(selectedContainer => 
+                selectedContainer.id === container.id ? container : selectedContainer
+            )
+        );
       }
 
     updateContainers(containers: FormContainerDto[]) {
@@ -181,6 +242,13 @@ export class CurrentPrintableFormService {
         );
     
         this.formContainersSubject.next(updatedContainers);
+
+        // Also update the selected containers if they are in the updated list
+        this.selectedContainers.update(currentSelection => 
+            currentSelection.map(selectedContainer => 
+                containerMap.get(selectedContainer.id) || selectedContainer
+            )
+        );
       }
     
       removeContainer(containerId: number) {
