@@ -29,7 +29,6 @@ export class SwHazards {
   heatColdStress: boolean = true;
   elevatedSurface: boolean = true;
   environmental: boolean = true;
-  test: string = '';
 
   constructor(data: Partial<SwHazards> = {}) {
     Object.assign(this, data);

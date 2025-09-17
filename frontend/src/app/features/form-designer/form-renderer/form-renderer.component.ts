@@ -120,52 +120,24 @@ export class FormRendererComponent implements OnChanges {
     });
   }
 
-  // createForm() {
-  //   const group: { [key: string]: any } = {};
-  //   const formFields = this.getAllFormFields();
-
-  //   formFields.forEach(field => {
-  //     if (field && field.name) {
-  //       let value = this.getNestedValue(this.formData(), field.name);
-
-  //       if (field.type === 'file') {
-  //         value = null;
-  //       } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
-  //         value = value || [];
-  //       } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
-  //         // Assuming the object has an 'id' property to be used as the form value
-  //         value = value.id;
-  //       }
-
-  //       // Use the new helper to create nested structure
-  //       this.setNestedControl(group, field.name, new FormControl(value, []));
-  //     }
-  //   });
-
-  //   this.form = this.fb.group(group);
-  //   console.log('Form created:', this.form.value);
-
-  //   this.form.valueChanges.pipe(
-  //     takeUntilDestroyed(this.destroyRef)
-  //   ).subscribe(currentValue => {
-  //     console.log('Form value changed: ', currentValue);
-  //   });
-  // }
-
   private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl) {
     const pathParts = path.split('.');
-    let currentGroup = group;
+    let currentGroup: any = group;
 
     for (let i = 0; i < pathParts.length - 1; i++) {
       const part = pathParts[i];
       if (!currentGroup[part]) {
         currentGroup[part] = this.fb.group({});
       }
-      // We need to access the controls of the FormGroup to go deeper
-      currentGroup = currentGroup[part].controls || currentGroup[part];
+      currentGroup = currentGroup[part];
     }
 
-    currentGroup[pathParts[pathParts.length - 1]] = control;
+    const lastPart = pathParts[pathParts.length - 1];
+    if (currentGroup instanceof FormGroup) {
+      currentGroup.addControl(lastPart, control);
+    } else {
+      currentGroup[lastPart] = control;
+    }
   }
 
   getFormControl(path: string): FormControl {
