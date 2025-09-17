@@ -23,6 +23,7 @@ export class CurrentPrintableFormService {
 
     private formContainersSubject = new BehaviorSubject<FormContainerDto[]>([]);
     formContainers$: Observable<FormContainerDto[]> = this.formContainersSubject.asObservable();
+
   
 
     constructor() {
@@ -94,6 +95,9 @@ export class CurrentPrintableFormService {
         }
     }
 
+
+    
+
     addFormContainer(formId: number, containerId: number): Observable<PrintableFormDto> {
         return this.formService.addContainerToForm(formId, containerId).pipe(
             map(response => new PrintableFormDto(response.responseData))
@@ -106,8 +110,55 @@ export class CurrentPrintableFormService {
         );
     }
 
+  updateZIndexes(reorderedContainers: FormContainerDto[]): void {
+    const currentForm = this.formSubject.value;
+    if (!currentForm) return;
+
+    const maxZIndex = reorderedContainers.length;
+    const updatedContainers = reorderedContainers.map((container, index) => {
+      const newZIndex = maxZIndex - index;
+      // Create a new object to ensure change detection is triggered
+      return {
+        ...container,
+        style: {
+          ...container.style,
+          zIndex: newZIndex+''
+        }
+      };
+    });
+
+    // Create a map of updated containers for efficient lookup
+    const updatedContainerMap = new Map(updatedContainers.map(c => [c.id, c]));
+
+    // Create a new form object with the updated containers
+    const updatedForm: PrintableFormDto = new PrintableFormDto({
+      ...currentForm,
+      formContainers: currentForm.formContainers.map(c => updatedContainerMap.get(c.id) || c)
+    });
+
+    const updatedArray = this.formContainersSubject.value.map(c => new FormContainerDto(updatedContainerMap.get(c.id) || c));
+    this.formContainersSubject.next(updatedArray);
+
+  }
+
+
+
     createNewContainer(container: FormContainerDto) {
-        this.formContainerService.save(container).pipe(
+        const currentContainers = this.formContainersSubject.value;
+        const maxZIndex = currentContainers.reduce((max, c) => {
+            const zIndex = Number(c.style?.zIndex ?? 0);
+            return zIndex > max ? zIndex : max;
+        }, 0);
+
+        const containerWithZIndex = new FormContainerDto({
+            ...container,
+            style: {
+                ...container.style,
+                zIndex: maxZIndex + 1+''
+            }
+        });
+
+        this.formContainerService.save(containerWithZIndex).pipe(
             takeUntilDestroyed(this.destroyRef),
             map(response => response.responseData),
             switchMap((newContainer: FormContainerDto) => {
@@ -116,6 +167,7 @@ export class CurrentPrintableFormService {
             })
         ).subscribe({
             next: (updatedForm: PrintableFormDto) => {
+                this.formSubject.next(updatedForm);
                 this.formContainersSubject.next(updatedForm.formContainers);
             },
             error: (err) => {
@@ -124,6 +176,27 @@ export class CurrentPrintableFormService {
             }
         });
     }
+
+
+
+    // createNewContainer(container: FormContainerDto) {
+    //     this.formContainerService.save(container).pipe(
+    //         takeUntilDestroyed(this.destroyRef),
+    //         map(response => response.responseData),
+    //         switchMap((newContainer: FormContainerDto) => {
+    //             const formId = this.formSubject.value.id;
+    //             return this.addFormContainer(formId, newContainer.id);
+    //         })
+    //     ).subscribe({
+    //         next: (updatedForm: PrintableFormDto) => {
+    //             this.formContainersSubject.next(updatedForm.formContainers);
+    //         },
+    //         error: (err) => {
+    //             console.error('Error creating new container and adding to form:', err);
+    //             // Here you could implement user-facing error messages
+    //         }
+    //     });
+    // }
 
     createNewContainers(containers: FormContainerDto[]): void {
         const formId = this.formSubject.value.id;
