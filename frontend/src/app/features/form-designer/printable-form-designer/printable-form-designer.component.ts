@@ -23,6 +23,7 @@ import { InvisibleInputFieldComponent } from "../inputs/invisible-input-field/in
 import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchable-select/invisible-searchable-select.component";
 import { ChekcboxXComponent } from '../inputs/chekcbox-x/chekcbox-x.component';
 import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
+import { FormZoomControlsComponent } from "../form-zoom-controls/form-zoom-controls.component";
 
 
 @Component({
@@ -40,7 +41,8 @@ import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-sea
     InvisibleInputFieldComponent,
     InvisibleSearchableSelectComponent,
     ChekcboxXComponent,
-    InvisibleSearchableMultiSelectComponent
+    InvisibleSearchableMultiSelectComponent,
+    FormZoomControlsComponent
 ],
   templateUrl: './printable-form-designer.component.html',
   styleUrl: './printable-form-designer.component.css'
@@ -99,9 +101,43 @@ export class PrintableFormDesignerComponent implements OnInit {
    * Form functions
    ****************************************************************************/
 
+  // @HostListener('window:resize')
+  // onWindowResize() {
+  //   this.adjustFormScale();
+  // }
+
   @HostListener('window:resize')
   onWindowResize() {
-    this.adjustFormScale();
+    this.fitToPanel();
+  }
+
+  @HostListener('wheel', ['$event'])
+  onMouseWheel(event: WheelEvent) {
+    if (event.ctrlKey) {
+      event.preventDefault();
+      const zoomIntensity = 0.02;
+      const direction = event.deltaY > 0 ? -1 : 1;
+      const scaleAmount = 1 + direction * zoomIntensity;
+      this.formScale *= scaleAmount;
+    }
+  }
+
+  zoomIn() {
+    this.formScale += 0.1;
+  }
+
+  zoomOut() {
+    this.formScale = Math.max(0.1, this.formScale - 0.1);
+  }
+
+  fitToPanel() {
+    if (this.centerPanel) {
+      const containerWidth = this.centerPanel.nativeElement.offsetWidth;
+      const containerHeight = this.centerPanel.nativeElement.offsetHeight;
+      const scaleX = (containerWidth - 40) / this.formSize.width; // 40px for padding
+      const scaleY = (containerHeight - 40) / this.formSize.height;
+      this.formScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+    }
   }
 
   updateSheetSize(width: number, height: number) {
@@ -280,30 +316,55 @@ export class PrintableFormDesignerComponent implements OnInit {
     this.currentPrintableFormService.propertiesOfContainer.set(null);
   }
 
+    /*****************************************************************************
+   * Keyboard interactions
+   ****************************************************************************/
+
+  @HostListener('window:keydown', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent) {
+    const selectedContainers = this.currentPrintableFormService.selectedContainers();
+    if (selectedContainers.length === 0) {
+      return;
+    }
+
+    const moveAmount = event.shiftKey ? 10 : 1; // Move by 10px with Shift key, 1px otherwise
+    let dx = 0;
+    let dy = 0;
+
+    switch (event.key) {
+      case 'ArrowUp':
+        dy = -moveAmount;
+        break;
+      case 'ArrowDown':
+        dy = moveAmount;
+        break;
+      case 'ArrowLeft':
+        dx = -moveAmount;
+        break;
+      case 'ArrowRight':
+        dx = moveAmount;
+        break;
+      default:
+        return; // Exit if it's not an arrow key
+    }
+
+    event.preventDefault(); // Prevent default browser action (like scrolling)
+
+    const updatedContainers = selectedContainers.map(container => {
+      const newPosition = {
+        x: (container.position?.x ?? 0) + dx,
+        y: (container.position?.y ?? 0) + dy
+      };
+      return new FormContainerDto({ ...container, position: newPosition });
+    });
+
+    this.currentPrintableFormService.updateContainers(updatedContainers);
+  }
+
 
   /*****************************************************************************
    * Drag and resize functions
    ****************************************************************************/
-
-  //Old function with use of CdkDrag
-  // onDragEnd(event: CdkDragEnd, index: number) {
-  //   const draggedDistance = event.source.getFreeDragPosition();
-  //   const currentField = this.containers()[index];
-    
-  //   const newPosition = {
-  //     x: Math.max(0, (currentField.position?.x || 0) + draggedDistance.x),
-  //     y: Math.max(0, (currentField.position?.y || 0) + draggedDistance.y)
-  //   };
-    
-  //   const updatedContainer = new FormContainerDto({ ...currentField, position: newPosition });
-  //   this.currentPrintableFormService.updateContainer(updatedContainer);
-  
-  //   // Reset the drag
-  //   event.source.reset();
-  // }
-
-
-
 
   onDragStart(event: MouseEvent, container: FormContainerDto) {
     event.preventDefault();

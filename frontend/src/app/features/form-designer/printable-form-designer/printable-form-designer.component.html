@@ -7,6 +7,14 @@
       <span>x</span>
       <input type="number" [(ngModel)]="sheetSize().height" (change)="updateSheetSize(sheetSize().width, sheetSize().height)" title="Sheet Height">
     </div>
+
+      <app-form-zoom-controls
+        class="zoom-controls-container"
+        [scale]="formScale"
+        (zoomIn)="zoomIn()"
+        (zoomOut)="zoomOut()"
+        (fitToPanel)="fitToPanel()"
+      ></app-form-zoom-controls>
   </div>
 
   <div class="main-content">
