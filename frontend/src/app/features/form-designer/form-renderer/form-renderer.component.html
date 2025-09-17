@@ -52,9 +52,14 @@
                    {{ asFormField(container.content).label }}
                  </label>
               </div> -->
+
               <app-chekcbox-x
+                [id]="asFormField(container.content).name!"
                 [formControl]="getFormControl(asFormField(container.content).name!)">
               </app-chekcbox-x>
+              <!-- <app-chekcbox-x
+                [formControlName]="asFormField(container.content).name!">
+              </app-chekcbox-x> -->
             }
             @case ('checkbox-group') {
               <!-- Checkbox Group -->
@@ -71,10 +76,16 @@
                 [label]="asFormField(container.content).label"
                 [options]="asFormField(container.content).options || []">
               </app-radio-group> -->
+
               <app-radio-checkboxes 
                 [formControl]="getFormControl(asFormField(container.content).name!)"
                 [options]="[true,false]">
               </app-radio-checkboxes>
+
+              <!-- <app-radio-checkboxes 
+                [formControlName]="asFormField(container.content).name!"
+                [options]="[true,false]">
+              </app-radio-checkboxes> -->
             }
             @case ('select') {
               <!-- Select/Dropdown -->
@@ -83,7 +94,10 @@
                 [label]="asFormField(container.content).label"
                 [options]="asFormField(container.content).options || []">
               </app-searchable-dropdown> -->
-              <app-invisible-searchable-select [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}]"></app-invisible-searchable-select>
+              <app-invisible-searchable-select 
+                [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}]"
+                [formControl]="getFormControl(asFormField(container.content).name!)"
+              ></app-invisible-searchable-select>
             }
             @case ('multi-select') {
               <!-- Multi-Select Dropdown -->

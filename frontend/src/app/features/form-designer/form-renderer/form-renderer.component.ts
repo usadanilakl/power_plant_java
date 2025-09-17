@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, OnChanges, output, SimpleChanges } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, OnChanges, output, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { FormField } from '../../../models/ui/form-field.model';
 import { FormContainerDto } from '../../../models/forms/form-container.model';
@@ -14,13 +14,14 @@ import { MultiInputComponent } from '../../../shared/multi-input/multi-input.com
 import { FormInputComponent } from '../../../shared/form-input/form-input.component';
 import { InvisibleInputFieldComponent } from "../inputs/invisible-input-field/invisible-input-field.component";
 import { RadioCheckboxesComponent } from "../inputs/radio-checkboxes/radio-checkboxes.component";
-import { SquareCheckboxComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
 import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchable-select/invisible-searchable-select.component";
+import { ChekcboxXComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-form-renderer',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ContainerContentPipe, SearchableDropdownComponent, CheckboxGroupComponent, RadioGroupComponent, MultiSelectSearchableDropdownComponent, FileInputComponent, MultiInputComponent, FormInputComponent, InvisibleInputFieldComponent, RadioCheckboxesComponent, SquareCheckboxComponent, InvisibleSearchableSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, ContainerContentPipe, SearchableDropdownComponent, CheckboxGroupComponent, RadioGroupComponent, MultiSelectSearchableDropdownComponent, FileInputComponent, MultiInputComponent, FormInputComponent, InvisibleInputFieldComponent, RadioCheckboxesComponent, InvisibleSearchableSelectComponent, ChekcboxXComponent],
   templateUrl: './form-renderer.component.html',
   styleUrl: './form-renderer.component.css'
 })
@@ -31,6 +32,7 @@ export class FormRendererComponent implements OnChanges {
 
   form: FormGroup;
   private fb = inject(FormBuilder);
+  private destroyRef = inject(DestroyRef);
 
   // Use computed signals for easier template binding
   // containers = computed(() => this.formDefinition()?.formContainers ?? []);
@@ -109,8 +111,46 @@ export class FormRendererComponent implements OnChanges {
     });
 
     this.form = this.fb.group(group);
-    console.log('Form created:', this.form);
+    console.log('Form created:', this.form);    
+    
+    this.form.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(currentValue => {
+      console.log('Form value changed: ', currentValue);
+    });
   }
+
+  // createForm() {
+  //   const group: { [key: string]: any } = {};
+  //   const formFields = this.getAllFormFields();
+
+  //   formFields.forEach(field => {
+  //     if (field && field.name) {
+  //       let value = this.getNestedValue(this.formData(), field.name);
+
+  //       if (field.type === 'file') {
+  //         value = null;
+  //       } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+  //         value = value || [];
+  //       } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+  //         // Assuming the object has an 'id' property to be used as the form value
+  //         value = value.id;
+  //       }
+
+  //       // Use the new helper to create nested structure
+  //       this.setNestedControl(group, field.name, new FormControl(value, []));
+  //     }
+  //   });
+
+  //   this.form = this.fb.group(group);
+  //   console.log('Form created:', this.form.value);
+
+  //   this.form.valueChanges.pipe(
+  //     takeUntilDestroyed(this.destroyRef)
+  //   ).subscribe(currentValue => {
+  //     console.log('Form value changed: ', currentValue);
+  //   });
+  // }
 
   private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl) {
     const pathParts = path.split('.');
@@ -193,6 +233,10 @@ export class FormRendererComponent implements OnChanges {
       const originalData = this.formData() || {};
       const formValue = this.form.value;
       const mergedData = this.deepMerge(originalData, formValue);
+
+      console.log('Original Data:', originalData);
+
+      console.log('Form Value:', formValue);
       
       console.log('Form Submitted', mergedData);
       this.formSubmit.emit(mergedData);

@@ -1,22 +1,24 @@
-import { Component, forwardRef } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { Component, forwardRef, Input } from '@angular/core';
+import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-chekcbox-x',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule,FormsModule, ReactiveFormsModule],
   templateUrl: './chekcbox-x.component.html',
   styleUrl: './chekcbox-x.component.css',
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SquareCheckboxComponent),
+      useExisting: forwardRef(() => ChekcboxXComponent),
       multi: true
     }
   ]
 })
-export class SquareCheckboxComponent implements ControlValueAccessor {
+export class ChekcboxXComponent implements ControlValueAccessor {
+  @Input() label: string = '';
+  @Input() id: string = '';
   value: boolean = false;
   disabled: boolean = false;
 
@@ -39,9 +41,10 @@ export class SquareCheckboxComponent implements ControlValueAccessor {
     this.disabled = isDisabled;
   }
 
-  toggle(): void {
+  toggle(event: Event): void {
     if (!this.disabled) {
-      this.value = !this.value;
+      const input = event.target as HTMLInputElement;
+      this.value = input.checked;
       this.onChange(this.value);
       this.onTouched();
     }

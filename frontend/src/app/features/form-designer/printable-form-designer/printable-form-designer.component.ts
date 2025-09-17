@@ -20,8 +20,8 @@ import { FloatingMenuComponent, MenuPosition } from "../../../shared/menu/floati
 import { ContainerContentPipe } from '../../../pipes/container-content.pipe';
 import { RadioCheckboxesComponent } from "../inputs/radio-checkboxes/radio-checkboxes.component";
 import { InvisibleInputFieldComponent } from "../inputs/invisible-input-field/invisible-input-field.component";
-import { SquareCheckboxComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
 import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchable-select/invisible-searchable-select.component";
+import { ChekcboxXComponent } from '../inputs/chekcbox-x/chekcbox-x.component';
 
 
 @Component({
@@ -37,8 +37,8 @@ import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchab
     ContainerContentPipe,
     RadioCheckboxesComponent,
     InvisibleInputFieldComponent,
-    SquareCheckboxComponent,
-    InvisibleSearchableSelectComponent
+    InvisibleSearchableSelectComponent,
+    ChekcboxXComponent
 ],
   templateUrl: './printable-form-designer.component.html',
   styleUrl: './printable-form-designer.component.css'
