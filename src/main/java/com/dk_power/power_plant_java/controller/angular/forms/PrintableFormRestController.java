@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.forms.FormContainer;
 import com.dk_power.power_plant_java.entities.forms.PrintableForm;
 import com.dk_power.power_plant_java.repository.forms.FormContainerRepo;
 import com.dk_power.power_plant_java.repository.forms.PrintableFormRepo;
+import com.dk_power.power_plant_java.sevice.forms.FormContainerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 public class PrintableFormRestController {
     private final PrintableFormRepo printableFormRepo;
     private final FormContainerRepo formContainerRepo;
+    private final FormContainerService formContainerService;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<Iterable<PrintableForm>>> getAllForms() {
@@ -107,10 +109,7 @@ public class PrintableFormRestController {
 
             PrintableForm newForm = new PrintableForm();
             newForm.setName(originalForm.getName() + " (Copy)");
-            newForm.setFormContainers(originalForm.getFormContainers().stream().map(c -> {
-                c.setId(null);
-                return c;
-            }).collect(Collectors.toSet()));
+            newForm.setFormContainers(originalForm.getFormContainers().stream().map(formContainerService::copy).collect(Collectors.toSet()));
             newForm.setSize(originalForm.getSize());
             newForm.setFormType(originalForm.getFormType());
 

@@ -58,7 +58,7 @@ export class PrintableFormDto extends BaseDto implements PrintableFormModel {
 
   static toFormFields(
     dto: PrintableFormDto,
-    fields: PrintableFormFieldName[] = ['name', 'formType']
+    fields: PrintableFormFieldName[] = ['name', 'formType', 'isPrimary']
   ): FormField[] {
     const allFields: { [key in PrintableFormFieldName]: FormField } = {
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },

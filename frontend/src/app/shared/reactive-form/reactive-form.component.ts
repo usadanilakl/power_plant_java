@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { AddValueFormComponent } from "../../features/values/add-value-form/add-value-form.component";
 import { SearchableDropdownComponent } from "../searchable-dropdown/searchable-dropdown.component";
@@ -9,6 +9,7 @@ import { FileInputComponent } from "../file-input/file-input.component";
 import { MultiInputComponent } from "../multi-input/multi-input.component";
 import { FormInputComponent } from "../form-input/form-input.component";
 import { ValueFormComponent } from "../../features/values/value-form/value-form.component";
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-reactive-form',
@@ -26,6 +27,8 @@ export class ReactiveFormComponent {
   formSubmit = output<any>();
   formDelete = output<void>();
   addNewSelectOption = output<string>();
+
+  destroyRef = inject(DestroyRef);
 
   isValueEditMenuOpen = signal<boolean>(false);
   isAddValueMenuOpen = signal<boolean>(false);
@@ -58,12 +61,24 @@ export class ReactiveFormComponent {
       if (field.type === 'select' && typeof value === 'object' && value !== null) {
         value = value.id;
       }
+
+      // if (field.type === 'checkbox') {
+      //   value = value === 'true';
+      // }
   
       group[field.name] = [value, validators];
     });
     const form = this.fb.group(group);
     form.valueChanges.subscribe(() => this.onValueChanged(form));
     this.form.set(form);
+    
+    console.log('Form created:', this.form());    
+    
+    this.form()?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(currentValue => {
+      console.log('Form value changed: ', currentValue);
+    });
   }
   
   private getValidators(validators: (string | ValidatorFn)[] = []): ValidatorFn[] {

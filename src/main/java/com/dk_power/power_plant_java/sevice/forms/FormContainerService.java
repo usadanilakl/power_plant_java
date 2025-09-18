@@ -56,5 +56,17 @@ public class FormContainerService implements NgCrudService<FormContainer, FormCo
         return FormContainer.class;
     }
 
+    public FormContainer copy(FormContainer formContainer) {
+        FormContainer copy = new FormContainer();
+        copy.setContentJson(formContainer.getContentJson());
+        copy.setPositionJson(formContainer.getPositionJson());
+        copy.setSizeJson(formContainer.getSizeJson());
+        copy.setStyleJson(formContainer.getStyleJson());
+        copy.setContentType(formContainer.getContentType());
+        copy.setPageNumber(formContainer.getPageNumber());
+        copy.setGroupId(formContainer.getGroupId());
+        return copy;
+    }
+
 
 }

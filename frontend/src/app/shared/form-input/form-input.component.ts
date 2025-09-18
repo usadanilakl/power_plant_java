@@ -47,7 +47,23 @@ export class FormInputComponent implements ControlValueAccessor {
   }
 
   onInputChange(event: any) {
-    this.value = event.target.value;
+    const target = event.target;
+    let value: any;
+
+    switch (this.type) {
+      case 'checkbox':
+        value = target.checked;
+        break;
+      case 'number':
+        // Use valueAsNumber for a direct numeric value, or null if empty/invalid.
+        value = target.value === '' ? null : target.valueAsNumber;
+        break;
+      default: // 'text', 'date', 'time', 'radio', etc.
+        value = target.value;
+        break;
+    }
+
+    this.value = value;
     this.onChange(this.value);
     this.onTouched();
     this.valueChange.emit(this.value);
