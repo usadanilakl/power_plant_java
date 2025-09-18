@@ -28,6 +28,7 @@ public class PrintableForm extends BaseAuditEntity {
     @Column(columnDefinition = "TEXT")
     private String size;
     private String formType;
+    private Boolean isPrimary = false;
 
     @Transient
     private static final ObjectMapper objectMapper = new ObjectMapper();

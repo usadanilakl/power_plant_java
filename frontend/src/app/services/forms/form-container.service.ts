@@ -29,4 +29,7 @@ export class FormContainerService {
   delete(id: number): Observable<SpringApiResponse<void>> {
       return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
+  deleteAll(arg0: number[]): Observable<SpringApiResponse<void>> {
+      return this.http.post<SpringApiResponse<void>>(this.apiUrl+"/delete-all", arg0);
+  }
 }

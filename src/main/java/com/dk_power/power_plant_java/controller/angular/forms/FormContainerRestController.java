@@ -72,6 +72,18 @@ public class FormContainerRestController {
         }
     }
 
+    @PostMapping("/delete-all")
+    public ResponseEntity<NgApiResponse<Void>> deleteAllFormContainers(@RequestBody List<Long> ids) {
+        try {
+            formContainerRepo.deleteAllById(ids);
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Form containers deleted successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error deleting form containers: " + e.getMessage()));
+        }
+    }
+
+
+
 
 
 

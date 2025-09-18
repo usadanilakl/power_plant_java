@@ -8,6 +8,9 @@
       <input type="number" [(ngModel)]="sheetSize().height" (change)="updateSheetSize(sheetSize().width, sheetSize().height)" title="Sheet Height">
     </div>
 
+    <button (click)="currentPrintableFormService.copyPage()">Copy Page</button>
+    <button (click)="currentPrintableFormService.deletePage()">Delete Page</button>
+
       <app-form-zoom-controls
         class="zoom-controls-container"
         [scale]="formScale"

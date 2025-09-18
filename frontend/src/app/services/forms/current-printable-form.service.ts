@@ -117,7 +117,33 @@ export class CurrentPrintableFormService {
         if(page > this.totalPages()) this.createNewContainer(new FormContainerDto());
     }
 
+    copyPage(){
+        console.log('Copying page',this.totalPages());
+        const newItems = this.currentPageContainers().map(container => (new FormContainerDto({...container, id:undefined})));
+        console.log('New items:', newItems);
+        this.createNewContainers(newItems,this.totalPages()+1);
+    }
     
+    deletePage(){
+        const containers = this.currentPageContainers();
+        if(!containers || containers.length === 0) return;
+        this.deleteContainers(containers);
+    }
+
+    copyForm(formId: number) {
+        this.formService.copyForm(formId).pipe(
+            takeUntilDestroyed(this.destroyRef),
+            map(response => new PrintableFormDto(response.responseData))
+        ).subscribe({
+            next: (form: PrintableFormDto) => {
+                this.updateFormInArray(form);
+            },
+            error: (err) => {
+                console.error('Error copying form:', err);
+                // Here you could implement user-facing error messages
+            }
+        });
+    }
 
 
     
@@ -204,7 +230,7 @@ export class CurrentPrintableFormService {
         });
     }
 
-    createNewContainers(containers: FormContainerDto[]): void {
+    createNewContainers(containers: FormContainerDto[],pageNumber: number = this.currentPage()): void {
         const formId = this.formSubject.value.id;
 
         const currentContainers = this.formContainersSubject.value;
@@ -221,7 +247,7 @@ export class CurrentPrintableFormService {
                     ...container.style,
                     zIndex: maxZIndex + ''
                 },
-                pageNumber: this.currentPage()
+                pageNumber: pageNumber?? this.currentPage()
             });
         });
 
@@ -242,27 +268,6 @@ export class CurrentPrintableFormService {
             }
         });
     }
-
-
-    // createNewContainers(containers: FormContainerDto[]): void {
-    //     const formId = this.formSubject.value.id;
-    //     this.formContainerService.saveAll(containers).pipe(
-    //         takeUntilDestroyed(this.destroyRef),
-    //         map(response => response.responseData),
-    //         switchMap((createdContainers: FormContainerDto[]) => {
-    //             return this.addFormContainers(formId, createdContainers);
-    //         })
-    //     ).subscribe({
-    //         next: (updatedForm: PrintableFormDto) => {
-    //             this.formSubject.next(updatedForm);
-    //             this.formContainersSubject.next(updatedForm.formContainers);
-    //         },
-    //         error: (err) => {
-    //             console.error('Error creating new containers and adding to form:', err);
-    //             // Here you could implement user-facing error messages
-    //         }
-    //     });
-    // }
     
     copySelectedContainers(){
         const selectedContainers = this.selectedContainers();
@@ -391,11 +396,35 @@ export class CurrentPrintableFormService {
   
     }
 
+    deleteContainers(containers: FormContainerDto[]) {
+        if (!containers || containers.length === 0) {
+            console.error("Delete failed: containers array is empty or null.");
+            return;
+        }
+        this.formContainerService.deleteAll(containers.map(c => c.id)).pipe(
+            takeUntilDestroyed(this.destroyRef),
+            tap(() => {
+                this.removeContainersFromArray(containers.map(c => c.id));
+            })
+        ).subscribe({
+            error: (err) => {
+                console.error('Error deleting containers:', err);
+                // Here you could implement user-facing error messages
+            }
+        });
+    }
+
     removeContainerFromArray(id: number): void {
         const currentContainers = this.formContainersSubject.value;
         const updatedContainers = currentContainers.filter(c => c.id!== id);
         this.formContainersSubject.next(updatedContainers);
-      }
+    }
+
+    removeContainersFromArray(ids: number[]): void {
+        const currentContainers = this.formContainersSubject.value;
+        const updatedContainers = currentContainers.filter(c =>!ids.includes(c.id));
+        this.formContainersSubject.next(updatedContainers);
+    }
     
       getFormContainers(): FormContainerDto[] {
         return this.formContainersSubject.value;

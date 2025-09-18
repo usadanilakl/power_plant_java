@@ -10,18 +10,21 @@ export interface PrintableFormModel extends BaseModel {
   formContainers: FormContainerModel[];
   size: { width: number; height: number };
   formType: string;
+  isPrimary: boolean;
 }
 
 export class PrintableFormDto extends BaseDto implements PrintableFormModel {
   formContainers: FormContainerDto[];
   size: { width: number; height: number };
   formType: string;
+  isPrimary: boolean;
 
   constructor(data: Partial<PrintableFormModel> = {}) {
     super(data);
     this.formContainers = data.formContainers?.map(fc => new FormContainerDto(fc)) ?? [];
     this.size = data.size?? { width: 8.5, height: 11 };
     this.formType = data.formType || "";
+    this.isPrimary = data.isPrimary?? false;
   }
 
   override toJson(): any {
@@ -29,7 +32,8 @@ export class PrintableFormDto extends BaseDto implements PrintableFormModel {
       ...super.toJson(),
       formContainers: this.formContainers.map(fc => fc.toJson()),
       size: this.size ?? { width: 8.5, height: 11 },
-      formType: this.formType || ""
+      formType: this.formType || "",
+      isPrimary: this.isPrimary?? false
     };
   }
 
@@ -40,7 +44,8 @@ export class PrintableFormDto extends BaseDto implements PrintableFormModel {
         ? json.formContainers.map((fc: any) => FormContainerDto.fromJson(fc))
         : [],
         size: json.size?? { width: 8.5, height: 11 },
-        formType: json.formType || ""
+        formType: json.formType || "",
+        isPrimary: json.isPrimary?? false
     });
   }
 
@@ -91,6 +96,7 @@ export class PrintableFormDto extends BaseDto implements PrintableFormModel {
       objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
       formContainers: { name: 'formContainers', label: 'Form Containers', type: 'text' },
       size: { name: 'size', label: 'Size', type: 'text' },
+      isPrimary: { name: 'isPrimary', label: 'Primary', type: 'checkbox', initialValue: dto.isPrimary?? false }
     };
 
     return fields.map(fieldName => allFields[fieldName]);
@@ -112,6 +118,7 @@ export class PrintableFormDto extends BaseDto implements PrintableFormModel {
       objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType' },
       formContainers: { id: 'formContainers', header: 'Form Containers', accessorKey: 'formContainers' },
       size: { id: 'size', header: 'Size', accessorKey: 'size' },
+      isPrimary: { id: 'isPrimary', header: 'Primary', accessorKey: 'isPrimary' }
     };
 
     return fields.map(fieldName => allColumns[fieldName]);

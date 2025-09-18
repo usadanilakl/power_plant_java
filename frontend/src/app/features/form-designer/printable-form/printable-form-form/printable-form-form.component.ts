@@ -12,7 +12,7 @@ import { ReactiveFormComponent } from "../../../../shared/reactive-form/reactive
   styleUrl: './printable-form-form.component.css'
 })
 export class PrintableFormFormComponent {
-  private currentPrintableFormService = inject(CurrentPrintableFormService);
+  currentPrintableFormService = inject(CurrentPrintableFormService);
 
   private currentForm = toSignal(this.currentPrintableFormService.form$, { initialValue: new PrintableFormDto() });
   formInput = input<PrintableFormDto | null>(null);

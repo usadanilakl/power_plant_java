@@ -30,4 +30,7 @@ export class PrintableFormService {
     addAllContainers(id: number, containers: FormContainerDto[]): Observable<SpringApiResponse<PrintableFormDto>> {
         return this.http.post<SpringApiResponse<PrintableFormDto>>(`${this.apiUrl}/add-all/${id}`, containers);
     }
+    copyForm(formId: number): Observable<SpringApiResponse<PrintableFormDto>> {
+        return this.http.post<SpringApiResponse<PrintableFormDto>>(`${this.apiUrl}/copy/${formId}`, {});
+    }
 }

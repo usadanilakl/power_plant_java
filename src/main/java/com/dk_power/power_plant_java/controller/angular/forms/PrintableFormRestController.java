@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/ng/forms")
@@ -94,6 +95,33 @@ public class PrintableFormRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error adding containers to form: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/copy/{formId}")
+    public ResponseEntity<NgApiResponse<PrintableForm>> copyForm(@PathVariable Long formId) {
+        try {
+            PrintableForm originalForm = printableFormRepo.findById(formId)
+                    .orElse(null);
+            if (originalForm == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new NgApiResponse<>(null, "PrintableForm not found with id: " + formId));
+            }
+
+            PrintableForm newForm = new PrintableForm();
+            newForm.setName(originalForm.getName() + " (Copy)");
+            newForm.setFormContainers(originalForm.getFormContainers().stream().map(c -> {
+                c.setId(null);
+                return c;
+            }).collect(Collectors.toSet()));
+            newForm.setSize(originalForm.getSize());
+            newForm.setFormType(originalForm.getFormType());
+
+            PrintableForm savedForm = printableFormRepo.save(newForm);
+            return ResponseEntity.ok(new NgApiResponse<>(savedForm, "Form copied successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error copying form: " + e.getMessage()));
+        }
+    }
+
+
 
 
 
