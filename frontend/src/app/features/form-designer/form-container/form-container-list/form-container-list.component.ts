@@ -14,12 +14,11 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 })
 export class FormContainerListComponent {
   currentPrintableFormService = inject(CurrentPrintableFormService);
-  containersFromService = toSignal(this.currentPrintableFormService.formContainers$,{ initialValue: []  });
   containersInput = input<FormContainerDto[] | null>(null);
   // containers = computed<FormContainerDto[]>(() => this.containersInput()?? this.containersFromService());
   
   containers = computed<FormContainerDto[]>(() => {
-    const sourceContainers = this.containersInput() ?? this.containersFromService();
+    const sourceContainers = this.containersInput() ?? this.currentPrintableFormService.currentPageContainers();
     return [...sourceContainers].sort((a, b) => {
       const zIndexA = parseInt(String(a.style?.zIndex ?? 0), 10) || 0;
       const zIndexB = parseInt(String(b.style?.zIndex ?? 0), 10) || 0;

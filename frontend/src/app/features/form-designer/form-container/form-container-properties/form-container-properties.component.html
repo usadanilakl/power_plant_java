@@ -1,6 +1,24 @@
 @if (container) {
   <div class="properties-panel">
     <h3>{{getContainerName()}}</h3>
+
+    <div class="property-group">
+      <label>Container</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="containerName">Name</label>
+          <input id="containerName" type="text" [(ngModel)]="container.name" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="pageNumber">Page</label>
+          <select id="pageNumber" [ngModel]="container.pageNumber" (ngModelChange)="setPageNumber(+$event)">
+            @for(page of pages(); track page){
+              <option [value]="page">{{page}}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
     <div class="property-group">
       <label>Position</label>
       <div class="input-row">

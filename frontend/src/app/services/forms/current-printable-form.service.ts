@@ -1,10 +1,10 @@
-import { DestroyRef, inject, Injectable, signal } from "@angular/core";
+import { computed, DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { FormContainerService } from "./form-container.service";
 import { FormContainerDto } from "../../models/forms/form-container.model";
 import { BehaviorSubject, forkJoin, map, Observable, switchMap, tap } from "rxjs";
 import { PrintableFormDto } from "../../models/forms/printable-form.model";
 import { PrintableFormService } from "./printable-form.service";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { Form } from "@angular/forms";
 
 @Injectable({
@@ -23,6 +23,23 @@ export class CurrentPrintableFormService {
 
     private formContainersSubject = new BehaviorSubject<FormContainerDto[]>([]);
     formContainers$: Observable<FormContainerDto[]> = this.formContainersSubject.asObservable();
+    allContainers = toSignal(this.formContainers$, { initialValue: [] });
+
+    currentPage = signal<number>(1);
+    currentPageContainers = computed<FormContainerDto[]>(() => {
+        const page = this.currentPage();
+        return this.allContainers().filter(container => (container.pageNumber ?? 1) === page);
+    });
+    totalPages = computed(() => {
+        const containers = this.allContainers();
+        if (!containers || containers.length === 0) {
+            return 1;
+        }
+        return containers.reduce((maxPage, container) => {
+            const pageNum = container.pageNumber ?? 1;
+            return pageNum > maxPage ? pageNum : maxPage;
+        }, 1);
+    });
 
   
 
@@ -95,6 +112,13 @@ export class CurrentPrintableFormService {
         }
     }
 
+    goToPage(page: number): void {
+        this.currentPage.set(page);
+        if(page > this.totalPages()) this.createNewContainer(new FormContainerDto());
+    }
+
+    
+
 
     
 
@@ -155,8 +179,11 @@ export class CurrentPrintableFormService {
             style: {
                 ...container.style,
                 zIndex: maxZIndex + 1+''
-            }
+            },
+            pageNumber: this.currentPage()
         });
+
+        console.log('Creating new container with zIndex:', containerWithZIndex);
 
         this.formContainerService.save(containerWithZIndex).pipe(
             takeUntilDestroyed(this.destroyRef),
@@ -177,30 +204,28 @@ export class CurrentPrintableFormService {
         });
     }
 
-
-
-    // createNewContainer(container: FormContainerDto) {
-    //     this.formContainerService.save(container).pipe(
-    //         takeUntilDestroyed(this.destroyRef),
-    //         map(response => response.responseData),
-    //         switchMap((newContainer: FormContainerDto) => {
-    //             const formId = this.formSubject.value.id;
-    //             return this.addFormContainer(formId, newContainer.id);
-    //         })
-    //     ).subscribe({
-    //         next: (updatedForm: PrintableFormDto) => {
-    //             this.formContainersSubject.next(updatedForm.formContainers);
-    //         },
-    //         error: (err) => {
-    //             console.error('Error creating new container and adding to form:', err);
-    //             // Here you could implement user-facing error messages
-    //         }
-    //     });
-    // }
-
     createNewContainers(containers: FormContainerDto[]): void {
         const formId = this.formSubject.value.id;
-        this.formContainerService.saveAll(containers).pipe(
+
+        const currentContainers = this.formContainersSubject.value;
+        let maxZIndex = currentContainers.reduce((max, c) => {
+            const zIndex = Number(c.style?.zIndex ?? 0);
+            return zIndex > max ? zIndex : max;
+        }, 0);
+
+        const containersWithZIndexAndPage = containers.map(container => {
+            maxZIndex++;
+            return new FormContainerDto({
+                ...container,
+                style: {
+                    ...container.style,
+                    zIndex: maxZIndex + ''
+                },
+                pageNumber: this.currentPage()
+            });
+        });
+
+        this.formContainerService.saveAll(containersWithZIndexAndPage).pipe(
             takeUntilDestroyed(this.destroyRef),
             map(response => response.responseData),
             switchMap((createdContainers: FormContainerDto[]) => {
@@ -217,6 +242,27 @@ export class CurrentPrintableFormService {
             }
         });
     }
+
+
+    // createNewContainers(containers: FormContainerDto[]): void {
+    //     const formId = this.formSubject.value.id;
+    //     this.formContainerService.saveAll(containers).pipe(
+    //         takeUntilDestroyed(this.destroyRef),
+    //         map(response => response.responseData),
+    //         switchMap((createdContainers: FormContainerDto[]) => {
+    //             return this.addFormContainers(formId, createdContainers);
+    //         })
+    //     ).subscribe({
+    //         next: (updatedForm: PrintableFormDto) => {
+    //             this.formSubject.next(updatedForm);
+    //             this.formContainersSubject.next(updatedForm.formContainers);
+    //         },
+    //         error: (err) => {
+    //             console.error('Error creating new containers and adding to form:', err);
+    //             // Here you could implement user-facing error messages
+    //         }
+    //     });
+    // }
     
     copySelectedContainers(){
         const selectedContainers = this.selectedContainers();

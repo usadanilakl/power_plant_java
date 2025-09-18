@@ -37,6 +37,9 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
     'number', 'radio-group'
   ];
 
+  totalPages = this.currentPrintableFormService.totalPages;
+  pages = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
+
   ngOnInit(): void {
     this.propertyChange$
       .pipe(
@@ -185,6 +188,13 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
 
   isFormFieldContent(content: any): content is FormField {
     return content && typeof content === 'object' && 'type' in content;
+  }
+
+  setPageNumber(pageNumber: number) {
+    if (this.container) {
+      this.container.pageNumber = pageNumber;
+      this.onPropertyChange();
+    }
   }
 
 }

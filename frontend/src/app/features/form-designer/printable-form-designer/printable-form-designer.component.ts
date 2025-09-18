@@ -24,6 +24,7 @@ import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchab
 import { ChekcboxXComponent } from '../inputs/chekcbox-x/chekcbox-x.component';
 import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
 import { FormZoomControlsComponent } from "../form-zoom-controls/form-zoom-controls.component";
+import { PageNavigatorComponent } from "../page-navigator/page-navigator.component";
 
 
 @Component({
@@ -42,7 +43,8 @@ import { FormZoomControlsComponent } from "../form-zoom-controls/form-zoom-contr
     InvisibleSearchableSelectComponent,
     ChekcboxXComponent,
     InvisibleSearchableMultiSelectComponent,
-    FormZoomControlsComponent
+    FormZoomControlsComponent,
+    PageNavigatorComponent
 ],
   templateUrl: './printable-form-designer.component.html',
   styleUrl: './printable-form-designer.component.css'
@@ -66,7 +68,8 @@ export class PrintableFormDesignerComponent implements OnInit {
       return this.loadEntityDto(type);
   });
   // containers = computed<FormContainerDto[]>(() => this.currentForm().formContainers?? []);
-  containers = toSignal(this.currentPrintableFormService.formContainers$, { initialValue: [] });
+  // containers = toSignal(this.currentPrintableFormService.formContainers$, { initialValue: [] });
+  containers = this.currentPrintableFormService.currentPageContainers;
   isPropertiesPopupOpen = signal(false);
 
 

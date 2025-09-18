@@ -10,6 +10,7 @@ export interface FormContainerModel extends BaseModel {
   size: { width: number; height: number };
   style: Partial<CSSStyleDeclaration>;
   groupId?: string | null;
+  pageNumber?: number;
 }
 
 export class FormContainerDto extends BaseDto implements FormContainerModel {
@@ -19,6 +20,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
   size: { width: number; height: number };
   style: Partial<CSSStyleDeclaration>;
   groupId?: string | null;
+  pageNumber?: number;
 
   constructor(data: Partial<FormContainerModel> = {}) {
     super(data);
@@ -27,6 +29,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
     this.position = data.position ?? { x: 0, y: 0 };
     this.size = data.size ?? { width: 100, height: 100 };
     this.groupId = data.groupId?? null;
+    this.pageNumber = data.pageNumber?? 1;
 
     const defaultStyles = {
       position: 'absolute',
@@ -57,6 +60,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
       style: JSON.stringify(this.style),
       groupId: this.groupId,
       contentType: this.contentType,
+      pageNumber: this.pageNumber,
 
     };
   }
@@ -70,6 +74,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
       style: json.styleJson ? JSON.parse(json.styleJson) : {},
       groupId: json.groupId,
       contentType: json.contentType ?? 'text',
+      pageNumber: json.pageNumber?? 1,
     });
   }
 }

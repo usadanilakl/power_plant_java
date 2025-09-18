@@ -40,6 +40,7 @@ public class FormContainer extends BaseAuditEntity {
     private String styleJson;
     private String groupId;
     private String contentType;
+    private Integer pageNumber;
 
     @Transient
     private static final ObjectMapper objectMapper = new ObjectMapper();

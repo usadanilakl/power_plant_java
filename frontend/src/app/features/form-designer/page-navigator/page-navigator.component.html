@@ -1,0 +1,17 @@
+<div class="page-navigation-container">
+  <button (click)="prevPage()" [disabled]="currentPage() <= 1" class="nav-button">
+    &laquo; Previous
+  </button>
+  <span class="page-info">
+    Page {{ currentPage() }} of {{ totalPages() }}
+  </span>
+  @if (currentPage() < totalPages()) {
+    <button (click)="nextPage()" class="nav-button">
+      Next &raquo;
+    </button>
+  } @else {
+    <button (click)="addPage()" class="nav-button">
+      Add New
+    </button>
+  }
+</div>
