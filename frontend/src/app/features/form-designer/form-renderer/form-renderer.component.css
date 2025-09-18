@@ -1,4 +1,97 @@
-.printable-sheet {
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: #f0f0f0; /* A background to see the sheets */
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.form-sheet {
+  background-color: white;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  margin: 0 auto 20px auto; /* Center sheet and add margin at the bottom */
+  position: relative;
+  overflow: hidden;
+}
+
+.form-container {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.content-display {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.form-actions {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.form-actions button {
+  margin: 0 10px;
+  padding: 10px 20px;
+}
+
+/* Print-specific styles */
+@media print {
+  /* Force colors and backgrounds to be printed */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide everything on the page by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Make this component and everything inside it visible */
+  :host, :host * {
+    visibility: visible;
+  }
+
+  /* Position the component to take up the whole print page */
+  :host {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+  }
+
+  .form-sheet {
+    /* Let the inline style from the component dictate the size */
+    /* DO NOT override width and height here. */
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+    page-break-after: always; /* Ensure each sheet is on a new page */
+    overflow: hidden; /* This is important to clip any minor overflow */
+  }
+
+  .form-container {
+    page-break-inside: avoid; /* Try to keep containers from splitting across pages */
+  }
+
+  /* Hide the action buttons when printing */
+  .form-actions {
+    display: none;
+  }
+}
+
+
+
+/* .printable-sheet {
   position: relative;
   border: 1px solid #ccc;
   background-color: white;
@@ -55,23 +148,19 @@
 
 
 @media print {
-  /* Force printing of background colors and images */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide everything on the page except for the printable area */
   body * {
     visibility: hidden;
   }
 
-  /* Make the printable area and everything inside it visible */
   .printable-sheet, .printable-sheet * {
     visibility: visible;
   }
 
-  /* Position the printable area to take up the whole page */
   .printable-sheet {
     position: absolute;
     left: 0;
@@ -85,20 +174,17 @@
     overflow: visible !important;
   }
 
-  /* Hide the form actions buttons */
   .form-actions {
     display: none !important;
   }
 
-  /* Ensure form containers retain their absolute positioning and dimensions */
   .form-container {
     transform: none !important;
     page-break-inside: avoid;
-    /* Do NOT override position, width, or height here. Let inline styles control them. */
   }
 
   body, html {
     margin: 0;
     padding: 0;
   }
-}
+} */

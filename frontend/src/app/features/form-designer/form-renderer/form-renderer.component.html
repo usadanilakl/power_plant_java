@@ -1,17 +1,82 @@
-<div class="printable-sheet" [style.width.px]="sheetSize().width * pixelsPerInch" [style.height.px]="sheetSize().height * pixelsPerInch">
+@if (formDefinition()) {
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+  <div class="form-actions">
+    <button type="button" (click)="onSubmit()">Submit</button>
+    <button type="button" (click)="print()">Print</button>
+  </div> 
+    @for (page of pages(); track page.pageNumber) {
+      <div class="form-sheet" [style.width.px]="sheetSize().width * pixelsPerInch" [style.height.px]="sheetSize().height * pixelsPerInch">
+        @for (container of page.containers; track container.id) {
+          <div class="form-container" [ngStyle]="getContainerStyles(container)">
+            @if (isFormField(container.content)) {
+              @switch (asFormField(container.content).type) {
+                @case ('text') {
+                  <app-invisible-input-field
+                    [formControl]="getFormControl(asFormField(container.content).name!)"
+                    [style]="asFormField(container.content).style">
+                  </app-invisible-input-field>
+                }
+                @case ('number') {
+                  <app-invisible-input-field
+                    type="number"
+                    [formControl]="getFormControl(asFormField(container.content).name!)"
+                    [style]="asFormField(container.content).style">
+                  </app-invisible-input-field>
+                }
+                @case ('date') {
+                  <app-invisible-input-field
+                    type="date"
+                    [formControl]="getFormControl(asFormField(container.content).name!)"
+                    [style]="asFormField(container.content).style">
+                  </app-invisible-input-field>
+                }
+                @case ('select') {
+                  <app-invisible-searchable-select
+                    [formControl]="getFormControl(asFormField(container.content).name!)"
+                    [options]="asFormField(container.content).options || []"
+                    [style]="asFormField(container.content).style">
+                  </app-invisible-searchable-select>
+                }
+                @case ('multi-select') {
+                  <app-invisible-searchable-multi-select
+                    [formControl]="getFormControl(asFormField(container.content).name!)"
+                    [options]="asFormField(container.content).options || []"
+                    [style]="asFormField(container.content).style">
+                  </app-invisible-searchable-multi-select>
+                }
+                @case ('checkbox') {
+                  <app-chekcbox-x
+                    [formControl]="getFormControl(asFormField(container.content).name!)"
+                    [style]="asFormField(container.content).style">
+                  </app-chekcbox-x>
+                }
+                @case ('radio') {
+                  <app-radio-checkboxes
+                    [formControl]="getFormControl(asFormField(container.content).name!)"
+                    [options]="asFormField(container.content).options || []"
+                    [style]="asFormField(container.content).style">
+                  </app-radio-checkboxes>
+                }
+              }
+            } @else {
+              <div class="content-display" [ngStyle]="getContentStyle(container)">
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </form>
+}
+
+<!-- <div class="printable-sheet" [style.width.px]="sheetSize().width * pixelsPerInch" [style.height.px]="sheetSize().height * pixelsPerInch">
   <form [formGroup]="form" (ngSubmit)="onSubmit()">
     @for (container of containers(); track container.id) {
       <div class="form-container" [ngStyle]="getContainerStyles(container)">
         @if (isFormField(container.content)) {
           @switch (asFormField(container.content).type) {
             @case ('text') {
-              <!-- Text, Number, Email, Password, Date Inputs -->
-              <!-- <app-form-input 
-                [ngStyle]="getContentStyle(container)"
-                [type]="'text'"
-                [formControlName]="asFormField(container.content).name!"
-                [label]="asFormField(container.content).label">
-              </app-form-input> -->
               <app-invisible-input-field 
                 [type]="'text'"
                 [formControl]="getFormControl(asFormField(container.content).name!)"
@@ -25,44 +90,24 @@
               </app-form-input>
             }
             @case ('date') {
-              <!-- <app-form-input 
-                [ngStyle]="getContentStyle(container)!"
-                [customStyle]="getContentStyle(container)!"
-                [type]="'date'"
-                [formControlName]="asFormField(container.content).name!"
-                [label]="asFormField(container.content).label">
-              </app-form-input> -->
               <app-invisible-input-field
                 [formControl]="getFormControl(asFormField(container.content).name!)"
                 [type]="'date'">
               </app-invisible-input-field>
             }
             @case ('textarea') {
-              <!-- Textarea -->
               <div class="form-field">
                 <label>{{ asFormField(container.content).label }}</label>
                 <textarea [formControlName]="asFormField(container.content).name!"></textarea>
               </div>
             }
             @case ('checkbox') {
-              <!-- Checkbox -->
-              <!-- <div class="form-field">
-                 <label>
-                   <input type="checkbox" [formControlName]="asFormField(container.content).name!">
-                   {{ asFormField(container.content).label }}
-                 </label>
-              </div> -->
-
               <app-chekcbox-x
                 [id]="asFormField(container.content).name!"
                 [formControl]="getFormControl(asFormField(container.content).name!)">
               </app-chekcbox-x>
-              <!-- <app-chekcbox-x
-                [formControlName]="asFormField(container.content).name!">
-              </app-chekcbox-x> -->
             }
             @case ('checkbox-group') {
-              <!-- Checkbox Group -->
               <app-checkbox-group 
                 [formControlName]="asFormField(container.content).name!"
                 [label]="asFormField(container.content).label"
@@ -70,30 +115,12 @@
               </app-checkbox-group>
             }
             @case ('radio') {
-              <!-- Radio Group -->
-              <!-- <app-radio-group 
-                [formControlName]="asFormField(container.content).name!"
-                [label]="asFormField(container.content).label"
-                [options]="asFormField(container.content).options || []">
-              </app-radio-group> -->
-
               <app-radio-checkboxes 
                 [formControl]="getFormControl(asFormField(container.content).name!)"
                 [options]="[true,false]">
               </app-radio-checkboxes>
-
-              <!-- <app-radio-checkboxes 
-                [formControlName]="asFormField(container.content).name!"
-                [options]="[true,false]">
-              </app-radio-checkboxes> -->
             }
             @case ('select') {
-              <!-- Select/Dropdown -->
-              <!-- <app-searchable-dropdown
-                [formControlName]="asFormField(container.content).name!"
-                [label]="asFormField(container.content).label"
-                [options]="asFormField(container.content).options || []">
-              </app-searchable-dropdown> -->
               <app-invisible-searchable-select 
                 [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}]"
                 [formControl]="getFormControl(asFormField(container.content).name!)"
@@ -107,24 +134,15 @@
             }
                   
             @case ('file') {
-              <!-- File Input -->
-              <!-- <app-file-input
-                [formControlName]="asFormField(container.content).name!"
-                [label]="asFormField(container.content).label">
-              </app-file-input> -->
               <app-invisible-input-field [type]="'file'"></app-invisible-input-field>
             }
             @case ('multi-input') {
-              <!-- Multi-Input -->
               <app-multi-input
                 [formControlName]="asFormField(container.content).name!"
                 [label]="asFormField(container.content).label">
               </app-multi-input>
             }
             @default {
-              <!-- <div>
-                Unsupported field type: {{ asFormField(container.content).type }}
-              </div> -->
               <app-invisible-input-field [type]="'time'"></app-invisible-input-field>
             }
           }
@@ -139,4 +157,4 @@
 <div class="form-actions">
   <button type="button" (click)="onSubmit()">Submit</button>
   <button type="button" (click)="print()">Print</button>
-</div>
+</div> -->

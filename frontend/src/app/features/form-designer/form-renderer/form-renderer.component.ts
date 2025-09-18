@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, input, OnChanges, output, SimpleChanges } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, OnChanges, output, Renderer2, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { FormField } from '../../../models/ui/form-field.model';
 import { FormContainerDto } from '../../../models/forms/form-container.model';
@@ -34,6 +34,7 @@ export class FormRendererComponent implements OnChanges {
   form: FormGroup;
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
+  private renderer = inject(Renderer2);
 
   // Use computed signals for easier template binding
   // containers = computed(() => this.formDefinition()?.formContainers ?? []);
@@ -53,6 +54,27 @@ export class FormRendererComponent implements OnChanges {
       return container;
     });
   });
+
+  pages = computed(() => {
+    const allContainers = this.formDefinition()?.formContainers ?? [];
+    if (allContainers.length === 0) {
+      return [{ pageNumber: 1, containers: [] }];
+    }
+
+    const pagesMap = new Map<number, FormContainerDto[]>();
+    allContainers.forEach(container => {
+      const pageNum = container.pageNumber ?? 1;
+      if (!pagesMap.has(pageNum)) {
+        pagesMap.set(pageNum, []);
+      }
+      pagesMap.get(pageNum)!.push(container);
+    });
+
+    return Array.from(pagesMap.entries())
+      .map(([pageNumber, containers]) => ({ pageNumber, containers }))
+      .sort((a, b) => a.pageNumber - b.pageNumber);
+  });
+
   sheetSize = computed(() => this.formDefinition()?.size ?? { width: 8.5, height: 11 });
   pixelsPerInch = 96;
 
@@ -65,29 +87,6 @@ export class FormRendererComponent implements OnChanges {
       this.createForm();
     }
   }
-
-  // createForm() {
-  //   const group: { [key: string]: any } = {};
-  //   const formFields = this.getAllFormFields();
-
-  //   formFields.forEach(field => {
-  //     if (field && field.name) {
-  //       let value = this.getNestedValue(this.formData(), field.name);
-
-  //       if (field.type === 'file') {
-  //         value = null;
-  //       } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
-  //         value = value || [];
-  //       } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
-  //         value = value.id;
-  //       }
-
-  //       group[field.name] = [value, []]; // Add validators if needed
-  //     }
-  //   });
-
-  //   this.form = this.fb.group(group);
-  // }
 
   createForm() {
     const group: { [key: string]: any } = {};
@@ -243,7 +242,9 @@ export class FormRendererComponent implements OnChanges {
     return (item && typeof item === 'object' && !Array.isArray(item));
   }
 
-  print() {
+  print(): void {
+    this.renderer.addClass(document.body, 'printing');
     window.print();
+    this.renderer.removeClass(document.body, 'printing');
   }
 }

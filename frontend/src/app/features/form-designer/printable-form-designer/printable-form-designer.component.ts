@@ -60,7 +60,7 @@ export class PrintableFormDesignerComponent implements OnInit {
   formScale = 1;
   sheetSize = computed(() => {return this.currentForm().size ?? {width:8.5,height:11}});
   pixelsPerInch = 96; // Standard DPI
-  formSize = { width: 8.5 * 96, height: 11 * 96 };
+  formSize = { width: 8.5 * this.pixelsPerInch, height: 11 * this.pixelsPerInch };
   
   availableFields = computed<any>(() => {
       const type = this.currentForm().formType ?? 'SafeWork';
