@@ -1,7 +1,7 @@
 <ul>
     @for (pkg of allPackages(); track pkg.id) {
         <li (click)="packageSelected(pkg)">
-            {{ pkg.name }}
+            {{ pkg.name + pkg.id }}
         </li>
     }
 </ul>

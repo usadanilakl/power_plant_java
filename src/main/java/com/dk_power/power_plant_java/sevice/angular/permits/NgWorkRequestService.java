@@ -126,4 +126,7 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         return workRequestMapper.toNgWorkRequestDto(workRequestDto);
     }
 
+    public List<WorkRequest> saveAllFromDto(List<NgWorkRequestDto> workRequests) {
+        return workRequests.stream().map(workRequestMapper::convertNgDtoToEntity).map(this::save).collect(Collectors.toList());
+    }
 }

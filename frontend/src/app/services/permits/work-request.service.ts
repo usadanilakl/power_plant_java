@@ -17,7 +17,10 @@ export class WorkRequestService {
   getWorkRequestsByStatus(status: string): Observable<SpringApiResponse<WorkRequestDto[]>> {
     return this.http.get<SpringApiResponse<WorkRequestDto[]>>(`${this.apiUrl}/get-all-by-status/${status}`);
   }
-    getWorkRequestById(id: string): Observable<SpringApiResponse<WorkRequestDto>> {
-        return this.http.get<SpringApiResponse<WorkRequestDto>>(`${this.apiUrl}/get-by-id/${id}`);
-    }
+  getWorkRequestById(id: string): Observable<SpringApiResponse<WorkRequestDto>> {
+      return this.http.get<SpringApiResponse<WorkRequestDto>>(`${this.apiUrl}/get-by-id/${id}`);
+  }
+  save(workRequests: WorkRequestDto[]): Observable<SpringApiResponse<WorkRequestDto[]>> {
+      return this.http.post<SpringApiResponse<WorkRequestDto[]>>(this.apiUrl, workRequests);
+  }
 }

@@ -1,0 +1,101 @@
+:host {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+}
+
+.permit-package-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto; /* Enable vertical scrolling for the main container */
+  padding: 16px;
+  box-sizing: border-box;
+  gap: 16px; /* Adds space between all direct children */
+}
+
+.package-submission-section {
+  border: 1px solid #ccc;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.form-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.form-group {
+  flex-grow: 1;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.permits-section {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  flex-wrap: wrap; /* Allows items to wrap to the next line on smaller screens */
+}
+
+.permits-section > app-item-carousel {
+  flex: 1; /* Allows carousels to grow and share space */
+  min-width: 400px; /* Ensures a minimum width before wrapping */
+}
+
+
+
+
+
+.toggle-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.toggle-buttons button {
+  flex: 1 1 calc(50% - 4px);
+  padding: 8px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.toggle-buttons button:hover:not(:disabled) {
+  background-color: #e2e6ea;
+}
+
+.toggle-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

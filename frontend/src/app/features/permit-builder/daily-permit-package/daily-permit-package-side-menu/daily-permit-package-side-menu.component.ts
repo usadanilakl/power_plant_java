@@ -16,10 +16,9 @@ export class DailyPermitPackageSideMenuComponent {
   private destroyRef = inject(DestroyRef)
   constructor() { 
 
-    effect(() => {console.log('all packages: ',this.allPackages())});
   }
 
-  allPackages = toSignal(this.currendDailyPermitPackageService.allActiveDailyPermitPackages$);
+  allPackages = this.currendDailyPermitPackageService.allPackages
 
   packageSelected = (packageItem: DailyPermitPackageDto) => {
     this.currendDailyPermitPackageService.setSelectedPackage(packageItem);

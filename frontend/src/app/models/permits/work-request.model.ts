@@ -111,7 +111,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
   }
   static toFormFields(
     dto: WorkRequestDto,
-    companyOptions: Option[],
+    // companyOptions: Option[],
     locationOptions: Option[],
     fields: WorkRequestFieldName[] = [
       'dateOfWorkToBePerformed', 'timeOfWorkToBePerformed', 'requestedBy',
@@ -145,8 +145,8 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       company: {
         name: 'company',
         label: 'Company',
-        type: 'select',
-        options: companyOptions,
+        type: 'text',
+        // options: companyOptions,
         validators: [Validators.required],
         initialValue: dto.company
       },

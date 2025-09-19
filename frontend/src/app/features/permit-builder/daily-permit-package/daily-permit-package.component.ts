@@ -8,11 +8,12 @@ import { WorkRequestDto } from '../../../models/permits/work-request.model';
 import { HotWorkDto } from '../../../models/permits/hot-work.model';
 import { ConfinedSpaceDto } from '../../../models/permits/confined-space.model';
 import { DailyPermitPackageService } from '../../../services/permits/daily-permit-package.service';
+import { DailyPermitPackageBuilderComponent } from "./daily-permit-package-builder/daily-permit-package-builder.component";
 
 @Component({
   selector: 'app-daily-permit-package',
   standalone: true,
-  imports: [DailyPermitPackageFormComponent],
+  imports: [DailyPermitPackageFormComponent, DailyPermitPackageBuilderComponent],
   templateUrl: './daily-permit-package.component.html',
   styleUrl: './daily-permit-package.component.css'
 })

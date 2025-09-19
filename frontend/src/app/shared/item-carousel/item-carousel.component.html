@@ -1,0 +1,20 @@
+@if (items().length > 0) {
+  <div class="carousel-container">
+    <div class="carousel-header">
+      @if(title()){
+        <h3 class="carousel-title">{{ title() }}</h3>
+      }
+      <div class="carousel-controls">
+        <button (click)="previous()" [disabled]="items().length <= 1">Previous</button>
+        <span class="carousel-counter">{{ currentIndex() + 1 }} / {{ items().length }}</span>
+        <button (click)="next()" [disabled]="items().length <= 1">Next</button>
+      </div>
+    </div>
+    <div class="carousel-content">
+      @if (currentItem() && itemTemplate) {
+        <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: currentItem }"></ng-container>
+      }
+    </div>
+  </div>
+}
+  <button (click)="addItem()">+</button>

@@ -39,4 +39,5 @@ public class DailyPermitPackage extends BaseAuditEntity {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "daily_permit_package_id")
     private Set<Loto> lotos = new HashSet<>();
+
 }

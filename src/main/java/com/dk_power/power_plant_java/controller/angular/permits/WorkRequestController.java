@@ -9,10 +9,7 @@ import com.dk_power.power_plant_java.mappers.permits.WorkRequestMapper;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgWorkRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -71,4 +68,21 @@ public class WorkRequestController {
             );
         }
     }
+
+    @PostMapping
+    public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> save(@RequestBody List<NgWorkRequestDto> workRequests) {
+        try {
+            List<WorkRequest> savedRequests = workRequestService.saveAllFromDto(workRequests);
+            List<NgWorkRequestDto> savedDtos = savedRequests.stream().map(workRequestMapper::convertToNgDto).toList();
+            return ResponseEntity.ok(
+                    new NgApiResponse<>(savedDtos, "Successfully saved work requests.")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to save work requests: " + e.getMessage())
+            );
+        }
+    }
+
+
 }

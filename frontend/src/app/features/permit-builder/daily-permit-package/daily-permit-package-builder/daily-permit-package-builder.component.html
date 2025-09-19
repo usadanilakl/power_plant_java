@@ -1,0 +1,101 @@
+<div class="permit-package-container">
+
+  <div class="package-submission-section">
+    <div class="form-controls">
+      <div class="form-group">
+        <label for="packageName">Package Name:</label>
+        <input 
+          type="text" 
+          id="packageName" 
+          name="packageName" 
+          [(ngModel)]="packageName" 
+          placeholder="Enter a name for this permit package"
+        >
+      </div>
+      <button (click)="onSubmitPackage()" [disabled]="!packageName">Submit Permit Package</button>
+    </div>
+  </div>
+    
+    <div class="toggle-buttons">
+      <button (click)="toggleSafeWorkVisibility()" [disabled]="safeWorkCount()===0">
+        {{ isSafeWorkVisible ? 'Hide' : 'Show' }} Safe Work
+      </button>
+
+      <button (click)="toggleConfinedSpaceVisibility()" [disabled]="confinedSpaceCount()===0">
+        {{ isConfinedSpaceVisible ? 'Hide' : 'Show' }} Confined Space
+      </button>
+
+      <button (click)="toggleHotWorkVisibility()" [disabled]="hotWorkCount()===0">
+        {{ isHotWorkVisible ? 'Hide' : 'Show' }} Hot Work
+      </button>
+
+      <button (click)="toggleWorkRequestVisibility()">
+        {{ isWorkRequestVisible ? 'Hide' : 'Show' }} Work Request
+      </button>
+    </div>
+
+  @if(isWorkRequestVisible){
+    <app-item-carousel [items]="requests()" title="Work Requests" (addItemEvent)="attachNew('Work Request')">
+      <ng-template let-wr>
+        <app-work-request-display [workRequest]="wr"></app-work-request-display>
+      </ng-template>
+    </app-item-carousel>
+  }
+
+  <div class="permits-section">
+    @if(isSafeWorkVisible){
+      <app-item-carousel [items]="safeWorks()" title="Safe Works" (addItemEvent)="attachNew('Safe Work')">
+        <ng-template let-sw>
+          <app-safe-work-form [values]="sw"></app-safe-work-form>
+        </ng-template>
+      </app-item-carousel>
+    }
+    @if(isHotWorkVisible){
+      <app-item-carousel [items]="hotWorks()" title="Hot Works" (addItemEvent)="attachNew('Hot Work')">
+        <ng-template let-hw>
+          <app-hot-work-form [values]="hw"></app-hot-work-form>
+        </ng-template>
+      </app-item-carousel>
+    }
+    @if(isConfinedSpaceVisible){
+      <app-item-carousel [items]="confinedSpaces()" title="Confined Spaces" (addItemEvent)="attachNew('Confined Space')">
+        <ng-template let-cs>
+          <app-confined-space-form [values]="cs"></app-confined-space-form>
+        </ng-template>
+      </app-item-carousel>
+    }
+  </div>
+
+</div>
+
+<app-popup-projection
+  [title]="'Attach '+popupTitle"
+  [isOpen]="isPopupVisible"
+  (close)="closePopup()">
+
+  @switch (popupTitle) {
+    @case ('Work Request') {
+      @if(isPopupStepOne){
+        <button (click)="handlePopupStepOne(false)">Attach New</button>
+        <button (click)="handlePopupStepOne(true)">Attach Existing</button>
+      }@else{
+        @if(isAttachingExisting){
+          <app-work-request-table
+            (rowLeftClickEvent)="attachExisting($event, 'workRequests')"
+          ></app-work-request-table>
+        }@else {
+          <app-work-request-form
+            (formSubmit)="addWorkRequest($event)"
+          ></app-work-request-form>
+        }
+      }
+      
+    }
+    @case ('Permit') {
+
+    }
+    @default {
+      <!-- Handle other popup types as needed -->
+    }
+  }
+</app-popup-projection>
