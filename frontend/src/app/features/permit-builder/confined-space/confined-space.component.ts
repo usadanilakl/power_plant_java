@@ -4,10 +4,11 @@ import { CurrentConfinedSpaceService } from '../../../services/current-items-ser
 import { FormField } from '../../../models/ui/form-field.model';
 import { ConfinedSpaceDto } from '../../../models/permits/confined-space.model';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { ConfinedSpacePaperFormComponent } from "./confined-space-paper-form/confined-space-paper-form.component";
 
 @Component({
   selector: 'app-confined-space',
-  imports: [ConfinedSpaceFormComponent],
+  imports: [ConfinedSpaceFormComponent, ConfinedSpacePaperFormComponent],
   templateUrl: './confined-space.component.html',
   styleUrl: './confined-space.component.css'
 })

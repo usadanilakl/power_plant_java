@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, input, OnChanges, output, Renderer2, SimpleChanges } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, Input, input, OnChanges, output, Renderer2, signal, Signal, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { FormField } from '../../../models/ui/form-field.model';
 import { FormContainerDto } from '../../../models/forms/form-container.model';
@@ -26,9 +26,10 @@ import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-sea
   templateUrl: './form-renderer.component.html',
   styleUrl: './form-renderer.component.css'
 })
-export class FormRendererComponent implements OnChanges {
+export class FormRendererComponent {
   formDefinition = input<PrintableFormDto | null>(null);
-  formData = input<any | null>(null);
+  @Input() formData: Signal<any> = signal<any | null>(null);
+  // formData = input<any | null>(null);
   formSubmit = output<any>();
 
   form: FormGroup;
@@ -78,15 +79,30 @@ export class FormRendererComponent implements OnChanges {
   sheetSize = computed(() => this.formDefinition()?.size ?? { width: 8.5, height: 11 });
   pixelsPerInch = 96;
 
+  // constructor() {
+  //   this.form = this.fb.group({});
+  // }
+
   constructor() {
     this.form = this.fb.group({});
+    effect(() => {
+      this.formDefinition(); // re-run when form definition changes
+      this.createForm();
+    });
+
+    effect(() => {
+      const data = this.formData(); // re-run when form data changes
+      if (data && this.form) {
+        this.form.patchValue(data, { emitEvent: false });
+      }
+    });
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['formDefinition'] || changes['formData']) {
-      this.createForm();
-    }
-  }
+  // ngOnChanges(changes: SimpleChanges): void {
+  //   if (changes['formDefinition'] || changes['formData']) {
+  //     this.createForm();
+  //   }
+  // }
 
   createForm() {
     const group: { [key: string]: any } = {};

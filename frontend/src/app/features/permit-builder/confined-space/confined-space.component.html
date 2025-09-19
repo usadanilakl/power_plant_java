@@ -1,3 +1,7 @@
-<app-confined-space-form
-    [values]="currentSpaceSignal"
-></app-confined-space-form>
+@if(currentConfinedSpaceService.isPaperViewActive()){
+    <app-confined-space-paper-form></app-confined-space-paper-form>
+}@else {
+    <app-confined-space-form
+        [values]="currentSpaceSignal"
+    ></app-confined-space-form>
+}

@@ -14,5 +14,8 @@ export class SafeWorkSideMenuComponent {
 onSafeWorkRowLeftClick($event: SafeWorkDto) {
   this.currentSafeWorkService.setCurrentSafeWork($event.id);
 }
+switchFormView() {
+  this.currentSafeWorkService.isPaperViewActive.set(!this.currentSafeWorkService.isPaperViewActive());
+}
 
 }

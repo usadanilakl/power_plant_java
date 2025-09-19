@@ -33,4 +33,7 @@ export class PrintableFormService {
     copyForm(formId: number): Observable<SpringApiResponse<PrintableFormDto>> {
         return this.http.post<SpringApiResponse<PrintableFormDto>>(`${this.apiUrl}/copy/${formId}`, {});
     }
+    getPrimaryFormByType(permitType: 'SafeWork' | 'HotWork' | 'ConfinedSpace' | 'Loto'): Observable<SpringApiResponse<PrintableFormDto>> {
+        return this.http.get<SpringApiResponse<PrintableFormDto>>(`${this.apiUrl}/get-primary-form-by-type/${permitType}`);
+    }
 }

@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -120,8 +121,20 @@ public class PrintableFormRestController {
         }
     }
 
-
-
-
+    @GetMapping("/get-primary-form-by-type/{permitType}")
+    public ResponseEntity<NgApiResponse<PrintableForm>> getPrimaryFormByType(@PathVariable String permitType) {
+        try {
+            Optional<PrintableForm> form = printableFormRepo.findByFormTypeAndIsPrimary(permitType, true);
+            return form.map(printableForm -> ResponseEntity.ok(new NgApiResponse<>(printableForm, "Primary form found.")))
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(new NgApiResponse<>(null, "Primary form not found for type: " + permitType)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new NgApiResponse<>(null, "Invalid permit type: " + permitType));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new NgApiResponse<>(null, "Error retrieving primary form: " + e.getMessage()));
+        }
+    }
 
 }

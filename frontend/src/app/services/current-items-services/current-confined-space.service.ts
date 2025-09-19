@@ -1,15 +1,18 @@
 
-import { DestroyRef, inject, Injectable } from "@angular/core";
-import { BehaviorSubject, tap } from "rxjs";
+import { DestroyRef, inject, Injectable, signal } from "@angular/core";
+import { BehaviorSubject, catchError, of, tap } from "rxjs";
 import { ConfinedSpaceDto } from "../../models/permits/confined-space.model";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { ConfinedSpaceService } from "../permits/confined-space.service";
+import { PrintableFormService } from "../forms/printable-form.service";
+import { PrintableFormDto } from "../../models/forms/printable-form.model";
 
 @Injectable({
   providedIn: 'root'
 })
 export class CurrentConfinedSpaceService {
     private confinedSpaceService = inject(ConfinedSpaceService);
+    private printableFormService = inject(PrintableFormService);
     private destroyRef = inject(DestroyRef);
 
     private allActiveConfinedSpacesSubject = new BehaviorSubject<ConfinedSpaceDto[]>([]);
@@ -18,8 +21,14 @@ export class CurrentConfinedSpaceService {
     private selectedConfinedSpaceSubject = new BehaviorSubject<ConfinedSpaceDto>(new ConfinedSpaceDto());
     selectedConfinedSpace$ = this.selectedConfinedSpaceSubject.asObservable();
 
+    private paperFormSubject = new BehaviorSubject<PrintableFormDto>(new PrintableFormDto());
+    paperForm$ = this.paperFormSubject.asObservable();
+  
+    isPaperViewActive = signal<boolean>(false);
+
     constructor() {
         this.loadConfinedSpaces();
+        this.loadPaperForm();
     }
 
     private loadConfinedSpaces() {
@@ -29,6 +38,24 @@ export class CurrentConfinedSpaceService {
             this.allActiveConfinedSpacesSubject.next(response.responseData);
             console.log('Confined spaces loaded:', response.responseData);
         });
+    }
+    private loadPaperForm() {
+        this.printableFormService.getPrimaryFormByType('ConfinedSpace').pipe(
+            takeUntilDestroyed(this.destroyRef),
+            catchError(err => {
+                console.error('Error loading paper form:', err);
+                return of(null);
+            })
+        ).subscribe(response => {
+            if (response && response.responseData) {
+                this.paperFormSubject.next(response.responseData);
+                // console.log('Paper form loaded:', response.responseData);
+            }
+        });
+    }
+
+    switchFormView() {
+        this.isPaperViewActive.set(!this.isPaperViewActive());
     }
 
     setCurrentConfinedSpace(id: number) {

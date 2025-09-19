@@ -1,4 +1,4 @@
-import { DestroyRef, inject, Injectable } from "@angular/core";
+import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { LotoService } from "../loto/loto.service";
 import { BehaviorSubject, catchError, map, Observable, of, tap } from "rxjs";
 import { LotoDto } from "../../models/loto/loto.model";
@@ -8,6 +8,8 @@ import { SpringPaginatedResponse } from "../../models/api/spring-pagenated.respo
 import { LotoPointDto } from "../../models/loto/loto-point.model";
 import { FileDto } from "../../models/file/file.model";
 import { LotoPointService } from "../loto/loto-point.service";
+import { PrintableFormService } from "../forms/printable-form.service";
+import { PrintableFormDto } from "../../models/forms/printable-form.model";
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +17,7 @@ import { LotoPointService } from "../loto/loto-point.service";
 export class CurrentLotoService{
     private lotoService = inject(LotoService);
     private lotoPointService = inject(LotoPointService);
+    private printableFormService = inject(PrintableFormService);
     private destroyRef = inject(DestroyRef);
 
     private allLotosSubject = new BehaviorSubject<LotoDto[]>([]);
@@ -32,8 +35,14 @@ export class CurrentLotoService{
     private currentLotoFilesSubject = new BehaviorSubject<FileDto[]>([]);
     currentLotoFiles$ = this.currentLotoFilesSubject.asObservable();
 
+    private paperFormSubject = new BehaviorSubject<PrintableFormDto>(new PrintableFormDto());
+    paperForm$ = this.paperFormSubject.asObservable();
+  
+    isPaperViewActive = signal<boolean>(false);
+
     constructor() {
         this.loadLotosFromServer();
+        this.loadPaperForm();
     }
 
     private loadLotosFromServer() {
@@ -43,6 +52,24 @@ export class CurrentLotoService{
         ).subscribe((lotos: LotoDto[]) => {
             this.allLotosSubject.next(lotos);
         });
+    }
+    private loadPaperForm() {
+        this.printableFormService.getPrimaryFormByType('Loto').pipe(
+            takeUntilDestroyed(this.destroyRef),
+            catchError(err => {
+                console.error('Error loading paper form:', err);
+                return of(null);
+            })
+        ).subscribe(response => {
+            if (response && response.responseData) {
+                this.paperFormSubject.next(response.responseData);
+                // console.log('Paper form loaded:', response.responseData);
+            }
+        });
+    }
+
+    switchFormView() {
+        this.isPaperViewActive.set(!this.isPaperViewActive());
     }
 
     setCurrentLoto(loto: LotoDto | null) {

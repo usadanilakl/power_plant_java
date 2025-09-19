@@ -1,15 +1,18 @@
 
-import { DestroyRef, inject, Injectable } from "@angular/core";
+import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { SafeWorkService } from "../permits/safe-work.service";
-import { BehaviorSubject, tap } from "rxjs";
+import { BehaviorSubject, catchError, of, tap } from "rxjs";
 import { SafeWorkDto } from "../../models/permits/safe-work.model";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { PrintableFormDto } from "../../models/forms/printable-form.model";
+import { PrintableFormService } from "../forms/printable-form.service";
 
 @Injectable({
   providedIn: 'root'
 })
 export class CurrentSafeWorkService {
     private safeWorkService = inject(SafeWorkService);
+    private printableFormService = inject(PrintableFormService);
     private destroyRef = inject(DestroyRef);
 
     private allActiveSafeWorksSubject = new BehaviorSubject<SafeWorkDto[]>([]);
@@ -18,8 +21,14 @@ export class CurrentSafeWorkService {
     private selectedSafeWorkSubject = new BehaviorSubject<SafeWorkDto>(new SafeWorkDto());
     selectedSafeWork$ = this.selectedSafeWorkSubject.asObservable();
 
+    private paperFormSubject = new BehaviorSubject<PrintableFormDto>(new PrintableFormDto());
+    paperForm$ = this.paperFormSubject.asObservable();
+  
+    isPaperViewActive = signal<boolean>(false);
+
     constructor() {
         this.loadSafeWorks();
+        this.loadPaperForm();
     }
 
     private loadSafeWorks() {
@@ -28,6 +37,20 @@ export class CurrentSafeWorkService {
         ).subscribe(response => {
             this.allActiveSafeWorksSubject.next(response.responseData);
             console.log('Safe works loaded:', response.responseData);
+        });
+    }
+    private loadPaperForm() {
+        this.printableFormService.getPrimaryFormByType('SafeWork').pipe(
+            takeUntilDestroyed(this.destroyRef),
+            catchError(err => {
+                console.error('Error loading paper form:', err);
+                return of(null);
+            })
+        ).subscribe(response => {
+            if (response && response.responseData) {
+                this.paperFormSubject.next(response.responseData);
+                // console.log('Paper form loaded:', response.responseData);
+            }
         });
     }
 

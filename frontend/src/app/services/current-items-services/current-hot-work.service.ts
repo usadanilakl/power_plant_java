@@ -1,15 +1,18 @@
 
-import { DestroyRef, inject, Injectable } from "@angular/core";
-import { BehaviorSubject, tap } from "rxjs";
+import { DestroyRef, inject, Injectable, signal } from "@angular/core";
+import { BehaviorSubject, catchError, of, tap } from "rxjs";
 import { HotWorkDto } from "../../models/permits/hot-work.model";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { HotWorkService } from "../permits/hot-work.service";
+import { PrintableFormDto } from "../../models/forms/printable-form.model";
+import { PrintableFormService } from "../forms/printable-form.service";
 
 @Injectable({
   providedIn: 'root'
 })
 export class CurrentHotWorkService {
     private hotWorkService = inject(HotWorkService);
+    private printableFormService = inject(PrintableFormService);
     private destroyRef = inject(DestroyRef);
 
     private allActiveHotWorksSubject = new BehaviorSubject<HotWorkDto[]>([]);
@@ -18,8 +21,14 @@ export class CurrentHotWorkService {
     private selectedHotWorkSubject = new BehaviorSubject<HotWorkDto>(new HotWorkDto());
     selectedHotWork$ = this.selectedHotWorkSubject.asObservable();
 
+    private paperFormSubject = new BehaviorSubject<PrintableFormDto>(new PrintableFormDto());
+    paperForm$ = this.paperFormSubject.asObservable();
+  
+    isPaperViewActive = signal<boolean>(false);
+
     constructor() {
         this.loadHotWorks();
+        this.loadPaperForm();
     }
 
     private loadHotWorks() {
@@ -29,6 +38,24 @@ export class CurrentHotWorkService {
             this.allActiveHotWorksSubject.next(response.responseData);
             console.log('Hot works loaded:', response.responseData);
         });
+    }
+    private loadPaperForm() {
+        this.printableFormService.getPrimaryFormByType('HotWork').pipe(
+            takeUntilDestroyed(this.destroyRef),
+            catchError(err => {
+                console.error('Error loading paper form:', err);
+                return of(null);
+            })
+        ).subscribe(response => {
+            if (response && response.responseData) {
+                this.paperFormSubject.next(response.responseData);
+                // console.log('Paper form loaded:', response.responseData);
+            }
+        });
+    }
+
+    switchFormView() {
+        this.isPaperViewActive.set(!this.isPaperViewActive());
     }
 
     setCurrentHotWork(id: number) {

@@ -1,3 +1,7 @@
-<app-hot-work-form
-    [values]="currentHotWorkSignal"
-></app-hot-work-form>
+@if(currentHotWorkService.isPaperViewActive()){
+    <app-hot-work-paper-form></app-hot-work-paper-form>
+}@else {
+    <app-hot-work-form
+        [values]="currentHotWorkSignal"
+    ></app-hot-work-form>
+}
