@@ -33,4 +33,7 @@ export class HotWorkService {
   deleteHotWorkRequest(id: string): Observable<SpringApiResponse<void>> {
     return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
+  save(requests: HotWorkDto[]): Observable<SpringApiResponse<HotWorkDto[]>> {
+    return this.http.post<SpringApiResponse<HotWorkDto[]>>(this.apiUrl + "/save-all", requests);
+  }
 }

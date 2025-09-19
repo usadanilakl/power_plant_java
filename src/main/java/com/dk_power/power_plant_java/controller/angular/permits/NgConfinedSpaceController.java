@@ -80,4 +80,18 @@ public class NgConfinedSpaceController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error deleting confined space request: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/save-all")
+    public ResponseEntity<NgApiResponse<List<ConfinedSpaceDto>>> saveAll(@RequestBody List<ConfinedSpaceDto> requests) {
+        try {
+            List<ConfinedSpaceDto> savedRequests = ngConfinedSpaceService.saveAll(requests);
+            NgApiResponse<List<ConfinedSpaceDto>> response = new NgApiResponse<>(savedRequests, "Confined space requests saved successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error saving confined space requests: " + e.getMessage()));
+        }
+    }
+
+
 }

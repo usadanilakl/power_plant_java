@@ -9,6 +9,7 @@
           id="packageName" 
           name="packageName" 
           [(ngModel)]="packageName" 
+          (ngModelChange)="onSubmitPackage()" 
           placeholder="Enter a name for this permit package"
         >
       </div>
@@ -107,6 +108,38 @@
         }
       }
 
+    }
+    @case ('Hot Work') {
+      @if(isPopupStepOne){
+        <button (click)="handlePopupStepOne(false)">Attach New</button>
+        <button (click)="handlePopupStepOne(true)">Attach Existing</button>
+      }@else{
+        @if(isAttachingExisting){
+          <app-hot-work-table
+            (rowLeftClickEvent)="attachExisting($event, 'hotWorks')"
+          ></app-hot-work-table>
+        }@else {
+          <app-hot-work-form
+            (formSubmit)="addHotWork($event)"
+          ></app-hot-work-form>
+        }
+      }
+    }
+    @case ('Confined Space') {
+      @if(isPopupStepOne){
+        <button (click)="handlePopupStepOne(false)">Attach New</button>
+        <button (click)="handlePopupStepOne(true)">Attach Existing</button>
+      }@else{
+        @if(isAttachingExisting){
+          <app-confined-space-table
+            (rowLeftClickEvent)="attachExisting($event, 'confinedSpaces')"
+          ></app-confined-space-table>
+        }@else {
+          <app-confined-space-form
+            (formSubmit)="addConfinedSpace($event)"
+          ></app-confined-space-form>
+        }
+      }
     }
     @default {
       <!-- Handle other popup types as needed -->

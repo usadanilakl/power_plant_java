@@ -81,4 +81,18 @@ public class NgHotWorkController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error deleting hot work request: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/save-all")
+    public ResponseEntity<NgApiResponse<List<HotWorkDto>>> saveAll(@RequestBody List<HotWorkDto> requests) {
+        try {
+            List<HotWorkDto> savedRequests = ngHotWorkService.saveAll(requests);
+            NgApiResponse<List<HotWorkDto>> response = new NgApiResponse<>(savedRequests, "Hot work requests saved successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error saving hot work requests: " + e.getMessage()));
+        }
+    }
+
+
 }

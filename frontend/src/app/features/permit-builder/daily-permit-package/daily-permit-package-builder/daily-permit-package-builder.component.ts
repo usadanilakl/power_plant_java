@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject } from '@angular/core';
 import { CurrentDailyPermitPackageService } from '../../../../services/current-items-services/current-daily-permit-package.service';
 import { SafeWorkDto } from '../../../../models/permits/safe-work.model';
 import { HotWorkDto } from '../../../../models/permits/hot-work.model';
@@ -14,30 +14,35 @@ import { SafeWorkFormComponent } from "../../safe-work/safe-work-form/safe-work-
 import { HotWorkFormComponent } from "../../hot-work/hot-work-form/hot-work-form.component";
 import { ConfinedSpaceFormComponent } from "../../confined-space/confined-space-form/confined-space-form.component";
 import { SafeWorkTableComponent } from "../../safe-work/safe-work-table/safe-work-table.component";
+import { HotWorkTableComponent } from "../../hot-work/hot-work-table/hot-work-table.component";
+import { ConfinedSpaceTableComponent } from "../../confined-space/confined-space-table/confined-space-table.component";
+import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent],
+  imports: [CommonModule,FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent],
   templateUrl: './daily-permit-package-builder.component.html',
   styleUrl: './daily-permit-package-builder.component.css'
 })
 export class DailyPermitPackageBuilderComponent {
   currentDailyPermitPackageService = inject(CurrentDailyPermitPackageService);
+  destroyRef = inject(DestroyRef);
 
   currentPackage = this.currentDailyPermitPackageService.currentDailyPacksge;
 
   requests = computed<WorkRequestDto[]>(() => this.currentPackage().workRequests);
-  requestCount = computed(() => this.requests.length);
+  requestCount = computed(() => this.requests().length);
 
   safeWorks = computed<SafeWorkDto[]>(() => this.currentPackage().safeWorks);
-  safeWorkCount = computed(() => this.safeWorks.length);
+  safeWorkCount = computed(() => this.safeWorks().length);
 
   hotWorks = computed<HotWorkDto[]>(() => this.currentPackage().hotWorks);
-  hotWorkCount = computed(() => this.hotWorks.length);
+  hotWorkCount = computed(() => this.hotWorks().length);
 
   confinedSpaces = computed<ConfinedSpaceDto[]>(() => this.currentPackage().confinedSpaces);
-  confinedSpaceCount = computed(() => this.confinedSpaces.length);
+  confinedSpaceCount = computed(() => this.confinedSpaces().length);
 
   popupTitle: string = '';
   isPopupVisible = false;
@@ -52,24 +57,42 @@ export class DailyPermitPackageBuilderComponent {
   packageName: string = '';
 
 
+  constructor() {
+    effect(() => {this.packageName = this.currentPackage().name;});
+  }
 
 
   onSubmitPackage() {
-    
+    this.currentPackage().name = this.packageName;
+    this.currentDailyPermitPackageService.createDailyPermitPackage(this.currentPackage()).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(response => {
+      this.currentDailyPermitPackageService.setSelectedPackage(response.responseData);
+    });
   }
 
   build(){
     
   }  
   attachNew(permitType: string) {
-    if (permitType === 'Safe Work') {}
-    if (permitType === 'Confined Space') {}
-    if (permitType === 'Hot Work') {}
+    if (permitType === 'Safe Work') {
+      this.popupTitle = 'Safe Work';
+      this.isPopupVisible = true;
+    }
+    if (permitType === 'Confined Space') {
+      this.popupTitle = 'Confined Space';
+      this.isPopupVisible = true;
+    }
+    if (permitType === 'Hot Work') {
+      this.popupTitle = 'Hot Work';
+      this.isPopupVisible = true;
+    }
     if (permitType === 'Work Request') {
       this.popupTitle = 'Work Request';
       this.isPopupVisible = true;
     }
   }
+
   handlePopupStepOne(existing: boolean) {
     this.isAttachingExisting = existing;
     this.isPopupStepOne = false;
@@ -97,6 +120,12 @@ export class DailyPermitPackageBuilderComponent {
   }
   addSafeWork($event: SafeWorkDto) {
     this.currentDailyPermitPackageService.createAndAttachSafeWorksToPackage([$event]);
+  }
+  addHotWork($event: HotWorkDto) {
+    this.currentDailyPermitPackageService.createAndAttachHotWorksToPackage([$event]);
+  }
+  addConfinedSpace($event: ConfinedSpaceDto) {
+    this.currentDailyPermitPackageService.createAndAttachConfinedSpacesToPackage([$event]);
   }
 
 

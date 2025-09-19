@@ -20,8 +20,15 @@ export class DailyPermitPackageSideMenuComponent {
 
   allPackages = this.currendDailyPermitPackageService.allPackages
 
+
   packageSelected = (packageItem: DailyPermitPackageDto) => {
     this.currendDailyPermitPackageService.setSelectedPackage(packageItem);
   }
+
+  createNewPackage(){
+    this.currendDailyPermitPackageService.setCurrentDailyPermitPackage();
+  }
+
+
 
 }

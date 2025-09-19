@@ -9,6 +9,8 @@ import { SafeWorkDto } from "../../models/permits/safe-work.model";
 import { ConfinedSpaceService } from "../permits/confined-space.service";
 import { HotWorkService } from "../permits/hot-work.service";
 import { SafeWorkService } from "../permits/safe-work.service";
+import { HotWorkDto } from "../../models/permits/hot-work.model";
+import { ConfinedSpaceDto } from "../../models/permits/confined-space.model";
 
 @Injectable({
   providedIn: 'root'
@@ -43,18 +45,27 @@ export class CurrentDailyPermitPackageService {
         });
     }
 
-    setCurrentDailyPermitPackage(id: number) {
-        this.dailyPermitPackageService.getDailyPermitPackageById(id).pipe(
-            takeUntilDestroyed(this.destroyRef)
-        ).subscribe(response => {
-            this.selectedDailyPermitPackageSubject.next(response.responseData);
-        });
+    setCurrentDailyPermitPackage(id: number = 0) {
+        if (id === 0) {
+            this.dailyPermitPackageService.createDailyPermitPackage(new DailyPermitPackageDto).pipe(
+                takeUntilDestroyed(this.destroyRef)
+            ).subscribe(response => {
+                this.selectedDailyPermitPackageSubject.next(response.responseData);
+                this.addDailyPermitPackageToList(response.responseData);
+            });
+        }else{
+          this.dailyPermitPackageService.getDailyPermitPackageById(id).pipe(
+              takeUntilDestroyed(this.destroyRef)
+          ).subscribe(response => {
+              this.selectedDailyPermitPackageSubject.next(response.responseData);
+          });
+        }
     }
 
     updateDailyPermitPackageInList(permitPackage: DailyPermitPackageDto) {
         const currentPackages = this.allActiveDailyPermitPackagesSubject.value;
         const updatedPackages = currentPackages.map(pkg => pkg.id === permitPackage.id ? permitPackage : pkg);
-        this.allActiveDailyPermitPackagesSubject.next(updatedPackages);
+        this.allActiveDailyPermitPackagesSubject.next([...updatedPackages]);
     }
 
     addDailyPermitPackageToList(permitPackage: DailyPermitPackageDto) {
@@ -96,13 +107,13 @@ export class CurrentDailyPermitPackageService {
                 currentPackage.workRequestIds = [...currentPackage.workRequests.map(r=>r.id), ...ids];
                 break;
             case'safeWorks':
-                currentPackage.safeWorkIds = [...currentPackage.safeWorkIds, ...ids];
+                currentPackage.safeWorkIds = [...currentPackage.safeWorks.map(r=>r.id), ...ids];
                 break;
             case 'hotWorks':
-                currentPackage.hotWorkIds = [...currentPackage.hotWorkIds, ...ids];
+                currentPackage.hotWorkIds = [...currentPackage.hotWorks.map(r=>r.id), ...ids];
                 break;
             case 'confinedSpaces':
-                currentPackage.confinedSpaceIds = [...currentPackage.confinedSpaceIds, ...ids];
+                currentPackage.confinedSpaceIds = [...currentPackage.confinedSpaces.map(r=>r.id), ...ids];
                 break;
             case 'lotos':
                 currentPackage.lotoIds = [...currentPackage.lotoIds, ...ids];

@@ -33,4 +33,7 @@ export class ConfinedSpaceService {
   deleteConfinedSpaceRequest(id: string): Observable<SpringApiResponse<void>> {
     return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
+  save(requests: ConfinedSpaceDto[]) {
+    return this.http.post<SpringApiResponse<ConfinedSpaceDto[]>>(`${this.apiUrl}/save-all`, requests);
+  }
 }

@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -64,5 +66,9 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
         ConfinedSpace confinedSpace1 = confinedSpaceMapper.convertToEntity(confinedSpaceDto);
         confinedSpace1.setId(Long.parseLong(id));
         return confinedSpaceMapper.convertToDto(save(confinedSpace1));
+    }
+
+    public List<ConfinedSpaceDto> saveAll(List<ConfinedSpaceDto> permits) {
+        return permits.stream().map(confinedSpaceMapper::convertToEntity).map(confinedSpaceRepo::save).map(confinedSpaceMapper::convertToDto).toList();
     }
 }

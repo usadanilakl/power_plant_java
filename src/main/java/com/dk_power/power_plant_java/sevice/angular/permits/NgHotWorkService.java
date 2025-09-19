@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -64,5 +66,9 @@ public class NgHotWorkService implements NgCrudService<HotWork, HotWorkDto, HotW
         HotWork entity = getEntityById(id);
         entity.setMeasures(hotWorkDto.getMeasures());
         return toDto(save(entity));
+    }
+
+    public List<HotWorkDto> saveAll(List<HotWorkDto> permits) {
+        return permits.stream().map(hotWorkMapper::convertToEntity).map(hotWorkRepo::save).map(hotWorkMapper::convertToDto).toList();
     }
 }
