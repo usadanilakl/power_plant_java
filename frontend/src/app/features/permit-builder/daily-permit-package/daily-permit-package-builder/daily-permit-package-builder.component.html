@@ -91,7 +91,21 @@
       }
       
     }
-    @case ('Permit') {
+    @case ('Safe Work') {
+      @if(isPopupStepOne){
+        <button (click)="handlePopupStepOne(false)">Attach New</button>
+        <button (click)="handlePopupStepOne(true)">Attach Existing</button>
+      }@else{
+        @if(isAttachingExisting){
+          <app-safe-work-table
+            (rowLeftClickEvent)="attachExisting($event,'safeWorks')"
+          ></app-safe-work-table>
+        }@else {
+          <app-safe-work-form
+            (formSubmit)="addSafeWork($event)"
+          ></app-safe-work-form>
+        }
+      }
 
     }
     @default {

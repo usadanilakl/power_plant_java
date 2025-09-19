@@ -13,11 +13,12 @@ import { WorkRequestFormComponent } from "../../work-request/work-request-form/w
 import { SafeWorkFormComponent } from "../../safe-work/safe-work-form/safe-work-form.component";
 import { HotWorkFormComponent } from "../../hot-work/hot-work-form/hot-work-form.component";
 import { ConfinedSpaceFormComponent } from "../../confined-space/confined-space-form/confined-space-form.component";
+import { SafeWorkTableComponent } from "../../safe-work/safe-work-table/safe-work-table.component";
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent],
+  imports: [FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent],
   templateUrl: './daily-permit-package-builder.component.html',
   styleUrl: './daily-permit-package-builder.component.css'
 })
@@ -88,11 +89,14 @@ export class DailyPermitPackageBuilderComponent {
 
 
   /***************************************************************************
-   * Work Request Functions
+   * Permit Functions
    **************************************************************************/
 
   addWorkRequest(request: WorkRequestDto) {
     this.currentDailyPermitPackageService.createAndAttachWorkRequestsToPackage([request]);
+  }
+  addSafeWork($event: SafeWorkDto) {
+    this.currentDailyPermitPackageService.createAndAttachSafeWorksToPackage([$event]);
   }
 
 

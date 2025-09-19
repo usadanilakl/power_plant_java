@@ -5,6 +5,10 @@ import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { DailyPermitPackageService } from "../permits/daily-permit-package.service";
 import { WorkRequestDto } from "../../models/permits/work-request.model";
 import { WorkRequestService } from "../permits/work-request.service";
+import { SafeWorkDto } from "../../models/permits/safe-work.model";
+import { ConfinedSpaceService } from "../permits/confined-space.service";
+import { HotWorkService } from "../permits/hot-work.service";
+import { SafeWorkService } from "../permits/safe-work.service";
 
 @Injectable({
   providedIn: 'root'
@@ -12,6 +16,9 @@ import { WorkRequestService } from "../permits/work-request.service";
 export class CurrentDailyPermitPackageService {
     private dailyPermitPackageService = inject(DailyPermitPackageService);
     private workRequestService = inject(WorkRequestService);
+    private safeWorkService = inject(SafeWorkService);
+    private hotWorkService = inject(HotWorkService);
+    private confinedSpaceService = inject(ConfinedSpaceService);
     private destroyRef = inject(DestroyRef);
 
     private allActiveDailyPermitPackagesSubject = new BehaviorSubject<DailyPermitPackageDto[]>([]);
@@ -86,7 +93,7 @@ export class CurrentDailyPermitPackageService {
 
         switch (permitType) {
             case 'workRequests':
-                currentPackage.workRequestIds = [...currentPackage.workRequestIds, ...ids];
+                currentPackage.workRequestIds = [...currentPackage.workRequests.map(r=>r.id), ...ids];
                 break;
             case'safeWorks':
                 currentPackage.safeWorkIds = [...currentPackage.safeWorkIds, ...ids];
@@ -149,4 +156,99 @@ export class CurrentDailyPermitPackageService {
         takeUntilDestroyed(this.destroyRef)
       );
     }
+
+    createAndAttachSafeWorksToPackage(requests: SafeWorkDto[]) {
+      const currentPackage = this.selectedDailyPermitPackageSubject.value;
+      if (!currentPackage || !currentPackage.id) {
+        console.error('No package selected or package has no ID.');
+        return;
+      }
+      if (!requests || requests.length === 0) {
+        console.error('No safe work permits provided to attach.');
+        return;
+      }
+    
+      return this.safeWorkService.save(requests).pipe(
+        switchMap(response => {
+          const newPermits = response.responseData;
+          const newPermitIds = newPermits.map(req => req.id);
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          updatedPackage.safeWorkIds = [...updatedPackage.safeWorkIds, ...newPermitIds];
+    
+          return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
+        }),
+        tap(response => {
+          if (response && response.responseData) {
+            const updatedPackage = new DailyPermitPackageDto(response.responseData);
+            this.updateDailyPermitPackageInList(updatedPackage);
+            this.setSelectedPackage(updatedPackage);
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      );
+    }
+    
+    createAndAttachHotWorksToPackage(requests: HotWorkDto[]) {
+      const currentPackage = this.selectedDailyPermitPackageSubject.value;
+      if (!currentPackage || !currentPackage.id) {
+        console.error('No package selected or package has no ID.');
+        return;
+      }
+      if (!requests || requests.length === 0) {
+        console.error('No hot work permits provided to attach.');
+        return;
+      }
+    
+      return this.hotWorkService.save(requests).pipe(
+        switchMap(response => {
+          const newPermits = response.responseData;
+          const newPermitIds = newPermits.map(req => req.id);
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          updatedPackage.hotWorkIds = [...updatedPackage.hotWorkIds, ...newPermitIds];
+    
+          return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
+        }),
+        tap(response => {
+          if (response && response.responseData) {
+            const updatedPackage = new DailyPermitPackageDto(response.responseData);
+            this.updateDailyPermitPackageInList(updatedPackage);
+            this.setSelectedPackage(updatedPackage);
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      );
+    }
+    
+    createAndAttachConfinedSpacesToPackage(requests: ConfinedSpaceDto[]) {
+      const currentPackage = this.selectedDailyPermitPackageSubject.value;
+      if (!currentPackage || !currentPackage.id) {
+        console.error('No package selected or package has no ID.');
+        return;
+      }
+      if (!requests || requests.length === 0) {
+        console.error('No confined space permits provided to attach.');
+        return;
+      }
+    
+      return this.confinedSpaceService.save(requests).pipe(
+        switchMap(response => {
+          const newPermits = response.responseData;
+          const newPermitIds = newPermits.map(req => req.id);
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          updatedPackage.confinedSpaceIds = [...updatedPackage.confinedSpaceIds, ...newPermitIds];
+    
+          return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
+        }),
+        tap(response => {
+          if (response && response.responseData) {
+            const updatedPackage = new DailyPermitPackageDto(response.responseData);
+            this.updateDailyPermitPackageInList(updatedPackage);
+            this.setSelectedPackage(updatedPackage);
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      );
+    }
+
+
 }

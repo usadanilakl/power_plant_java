@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -58,5 +60,9 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
     public SafeWorkDto createSafeWork(SafeWorkDto safeWorkDto) {
         SafeWork safeWork = safeWorkMapper.convertToEntity(safeWorkDto);
         return safeWorkMapper.convertToDto(safeWorkRepo.save(safeWork));
+    }
+
+    public List<SafeWorkDto> saveAll(List<SafeWorkDto> permits) {
+        return permits.stream().map(safeWorkMapper::convertToEntity).map(safeWorkRepo::save).map(safeWorkMapper::convertToDto).toList();
     }
 }

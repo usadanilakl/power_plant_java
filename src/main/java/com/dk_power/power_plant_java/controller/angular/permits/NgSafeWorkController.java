@@ -56,4 +56,18 @@ public class NgSafeWorkController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error creating safe work request: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/save-all")
+    public ResponseEntity<NgApiResponse<List<SafeWorkDto>>> saveAll(@RequestBody List<SafeWorkDto> requests) {
+        try {
+            List<SafeWorkDto> savedRequests = ngSafeWorkService.saveAll(requests);
+            NgApiResponse<List<SafeWorkDto>> response = new NgApiResponse<>(savedRequests, "Safe work requests saved successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error saving safe work requests: " + e.getMessage()));
+        }
+    }
+
+
 }

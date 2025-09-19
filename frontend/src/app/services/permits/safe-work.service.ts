@@ -24,4 +24,7 @@ export class SafeWorkService {
   createSafeWork(safeWork: SafeWorkDto): Observable<SpringApiResponse<SafeWorkDto>> {
     return this.http.post<SpringApiResponse<SafeWorkDto>>(this.apiUrl, safeWork);
   }
+  save(requests: SafeWorkDto[]): Observable<SpringApiResponse<SafeWorkDto[]>> {
+    return this.http.post<SpringApiResponse<SafeWorkDto[]>>(this.apiUrl + "/save-all", requests);
+  }
 }
