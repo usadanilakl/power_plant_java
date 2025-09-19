@@ -132,6 +132,34 @@
   transition: all 0.3s ease;
 }
 
+.grid-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Define grid properties using CSS variables for easy customization */
+  --grid-minor-color: #e9e9e9;
+  --grid-major-color: #dcdcdc;
+  --grid-minor-size: 10px;
+  --grid-major-size: 50px;
+
+  background-image:
+    linear-gradient(to right, var(--grid-minor-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-minor-color) 1px, transparent 1px),
+    linear-gradient(to right, var(--grid-major-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-major-color) 1px, transparent 1px);
+
+  background-size:
+    var(--grid-minor-size) var(--grid-minor-size),
+    var(--grid-minor-size) var(--grid-minor-size),
+    var(--grid-major-size) var(--grid-major-size),
+    var(--grid-major-size) var(--grid-major-size);
+  
+  /* Ensure grid is behind all other content */
+  z-index: -1;
+}
+
 .form-content {
   position: absolute;
   top: 0;
@@ -156,6 +184,11 @@
   cursor: move;
   border: 1px solid #ccc;
   background-color: rgba(0, 123, 255, 0.1);
+}
+
+.draggable-container.locked {
+  cursor: not-allowed;
+  border-style: dashed;
 }
 
 .draggable-container.selected {

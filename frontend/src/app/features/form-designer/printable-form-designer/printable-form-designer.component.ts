@@ -104,11 +104,6 @@ export class PrintableFormDesignerComponent implements OnInit {
    * Form functions
    ****************************************************************************/
 
-  // @HostListener('window:resize')
-  // onWindowResize() {
-  //   this.adjustFormScale();
-  // }
-
   @HostListener('window:resize')
   onWindowResize() {
     this.fitToPanel();
@@ -261,27 +256,6 @@ export class PrintableFormDesignerComponent implements OnInit {
     };
   }
 
-  // getContainerStyles(field: FormContainerDto): any {
-  //   return {
-  //     ...field.style,
-  //     position: 'absolute',
-  //     left: `${field.position?.x}px`,
-  //     top: `${field.position?.y}px`,
-  //     width: `${field.size?.width}px`,
-  //     height: `${field.size?.height}px`,
-  //     border: '2px solid black',
-  //     padding: '5px',
-  //     boxSizing: 'border-box',
-  //     flexDirection: 'column',
-  //     alignItems: 'flex-start',
-  //     justifyContent: 'center',
-  //     overflow: 'hidden',
-  //     display: 'block !important',
-  //     visibility: 'visible !important',
-  //     opacity: '1 !important',
-  //   };
-  // }
-
   getContainerStyles(field: FormContainerDto): any {
     return {
       ...field.style,
@@ -370,6 +344,9 @@ export class PrintableFormDesignerComponent implements OnInit {
    ****************************************************************************/
 
   onDragStart(event: MouseEvent, container: FormContainerDto) {
+    if (container.locked) {
+      return; // Do not start drag if container is locked
+    }
     event.preventDefault();
     event.stopPropagation();
 

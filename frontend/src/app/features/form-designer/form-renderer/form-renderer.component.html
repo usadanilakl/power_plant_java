@@ -59,8 +59,13 @@
                   </app-radio-checkboxes>
                 }
               }
-            } @else {
+            } @else if(container.contentType==='text') {
               <div class="content-display" [ngStyle]="getContentStyle(container)">
+                {{ container.content }}
+              </div>
+            }@else if(container.contentType==='variable') {
+              <div class="content-display" [ngStyle]="getContentStyle(container)">
+                {{ getFormControlValue(container.content) | async }}
               </div>
             }
           </div>

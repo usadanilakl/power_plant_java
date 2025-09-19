@@ -102,6 +102,13 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
     return width !== '0px' && !!width;
   }
 
+  toggleLocked(): void {
+    if (this.container) {
+      this.container.locked = !this.container.locked;
+      this.onPropertyChange();
+    }
+  }
+
 
 
 

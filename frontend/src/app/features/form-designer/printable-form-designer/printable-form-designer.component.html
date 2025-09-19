@@ -76,6 +76,9 @@
       class="form-container" 
       #designArea 
       [ngStyle]="getFormContainerStyle()">
+
+
+    <div class="grid-background"></div>
       
       
       @if(selectionBox(); as box){
@@ -91,6 +94,7 @@
           class="draggable-container"
           [ngStyle]="getContainerStyles(container)"
           [class.selected]="isContainerSelected(container)"
+          [class.locked]="container.locked"
           [class.hovered]="currentPrintableFormService.isContainerHovered(container)"
           (mousedown)="onDragStart($event, container)"
           (click)="selectContainer(container,$event)"

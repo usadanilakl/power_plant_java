@@ -446,6 +446,7 @@ export class CurrentPrintableFormService {
     }
 
     selectContainer(container: FormContainerDto, event: MouseEvent) {
+        if(container.locked) return;
         const allContainers = this.formContainersSubject.value;
         const groupToSelect = container.groupId 
         ? allContainers.filter(c => c.groupId === container.groupId) 

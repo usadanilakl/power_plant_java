@@ -41,6 +41,7 @@ public class FormContainer extends BaseAuditEntity {
     private String groupId;
     private String contentType;
     private Integer pageNumber;
+    private Boolean locked;
 
     @Transient
     private static final ObjectMapper objectMapper = new ObjectMapper();

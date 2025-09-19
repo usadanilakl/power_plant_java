@@ -18,6 +18,7 @@ import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchab
 import { ChekcboxXComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
+import { Observable, of, startWith } from 'rxjs';
 
 @Component({
   selector: 'app-form-renderer',
@@ -165,6 +166,19 @@ export class FormRendererComponent {
     return control as FormControl;
   }
 
+  getFormControlValue(name: string | null): Observable<any> {
+    if (!name) {
+      return of(''); // Return an observable of an empty string if name is null
+    }
+    const control = this.form.get(name);
+    if (!control) {
+      return of(''); // Return an observable of an empty string if control not found
+    }
+    // This is the key: return the valueChanges observable
+    // startWith ensures the initial value is displayed immediately
+    return control.valueChanges.pipe(startWith(control.value));
+  }
+
   private getAllFormFields(): FormField[] {
     return this.containers()
       .filter(container => container.contentType === 'formField' && this.isFormField(container.content))
@@ -205,6 +219,15 @@ export class FormRendererComponent {
 
   isFormField(content: any): content is FormField {
     return content && typeof content === 'object' && 'name' in content && 'type' in content;
+  }
+  
+  isTextContainer(content: any): boolean{
+    return content && content.type && content.type === 'text';
+  }
+
+  isVariableContainer(content: any): boolean{
+    console.log('isVariableContainer:', content);
+    return content && content.type && content.type === 'variable';
   }
 
   asFormField(content: any): FormField {

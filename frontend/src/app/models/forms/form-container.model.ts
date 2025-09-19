@@ -11,6 +11,7 @@ export interface FormContainerModel extends BaseModel {
   style: Partial<CSSStyleDeclaration>;
   groupId?: string | null;
   pageNumber?: number;
+  locked?: boolean;
 }
 
 export class FormContainerDto extends BaseDto implements FormContainerModel {
@@ -21,6 +22,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
   style: Partial<CSSStyleDeclaration>;
   groupId?: string | null;
   pageNumber?: number;
+  locked?: boolean;
 
   constructor(data: Partial<FormContainerModel> = {}) {
     super(data);
@@ -30,6 +32,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
     this.size = data.size ?? { width: 100, height: 100 };
     this.groupId = data.groupId?? null;
     this.pageNumber = data.pageNumber?? 1;
+    this.locked = data.locked?? false;
 
     const defaultStyles = {
       position: 'absolute',
@@ -61,6 +64,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
       groupId: this.groupId,
       contentType: this.contentType,
       pageNumber: this.pageNumber,
+      locked: this.locked,
 
     };
   }
@@ -75,6 +79,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
       groupId: json.groupId,
       contentType: json.contentType ?? 'text',
       pageNumber: json.pageNumber?? 1,
+      locked: json.locked?? false,
     });
   }
 }

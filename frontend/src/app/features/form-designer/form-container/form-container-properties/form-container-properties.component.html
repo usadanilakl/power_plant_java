@@ -18,6 +18,10 @@
           </select>
         </div>
       </div>
+      <div class="property-row">
+        <label>Locked:</label>
+        <input type="checkbox" [checked]="container.locked" (change)="toggleLocked()">
+      </div>
     </div>
     <div class="property-group">
       <label>Position</label>
