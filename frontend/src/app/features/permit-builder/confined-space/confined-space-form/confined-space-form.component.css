@@ -1,0 +1,14 @@
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* The host element itself should not scroll */
+}
+
+.form-container {
+  height: 100%;
+  width: 100%;
+  overflow-y: auto; /* This is the element that will scroll */
+  padding: 1rem; /* Optional: for better spacing */
+  box-sizing: border-box; /* Ensures padding is included in the height/width */
+}

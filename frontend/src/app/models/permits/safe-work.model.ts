@@ -172,14 +172,14 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         label: 'Date', 
         type: 'date', 
         validators: [Validators.required], 
-        initialValue: dto.date ? dto.date : null
+        initialValue: dto.date ?? new Date().toISOString().split('T')[0]
       },
       time: { 
         name: 'time', 
         label: 'Time', 
         type: 'time', 
         validators: [Validators.required], 
-        initialValue: dto.time 
+        initialValue: dto.time  ?? new Date().toTimeString().slice(0, 5)
       },
       companyPerson: { 
         name: 'companyPerson', 

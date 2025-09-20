@@ -117,7 +117,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         label: 'Date', 
         type: 'date', 
         validators: [Validators.required], 
-        initialValue: dto.date
+        initialValue: dto.date ?? new Date().toISOString().split('T')[0]
       },
       location: {
         name: 'location',

@@ -1,5 +1,5 @@
-import { DestroyRef, inject, Injectable, signal } from "@angular/core";
-import { BehaviorSubject, switchMap, tap } from "rxjs";
+import { computed, DestroyRef, inject, Injectable, signal } from "@angular/core";
+import { BehaviorSubject, switchMap, tap, throwError } from "rxjs";
 import { DailyPermitPackageDto } from "../../models/permits/dailt-permit-package.model";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { DailyPermitPackageService } from "../permits/daily-permit-package.service";
@@ -31,10 +31,26 @@ export class CurrentDailyPermitPackageService {
 
     currentDailyPacksge = toSignal(this.selectedDailyPermitPackage$, { initialValue: new DailyPermitPackageDto()  });
     allPackages = toSignal(this.allActiveDailyPermitPackages$, { initialValue: [] });
+
+    requests = computed<WorkRequestDto[]>(() => this.currentDailyPacksge().workRequests);
+    requestCount = computed(() => this.requests().length);
     currentWorkRequest = signal<WorkRequestDto | null>(null);
+
+    safeWorks = computed<SafeWorkDto[]>(() => this.currentDailyPacksge().safeWorks);
+    safeWorkCount = computed(() => this.safeWorks().length);
+    emptySafeWorksExists = computed(() => this.safeWorks().some(sw => !sw.location && !sw.companyPerson && !sw.requestedBy &&!sw.workScope));
     currentSafeWork = signal<SafeWorkDto | null>(null);
+
+    hotWorks = computed<HotWorkDto[]>(() => this.currentDailyPacksge().hotWorks);
+    hotWorkCount = computed(() => this.hotWorks().length);
+    emptyHotWorksExists = computed(() => this.hotWorks().some(hw =>!hw.location &&!hw.workScope &&!hw.foreman &&!hw.fireWatch));
     currentHotWork = signal<HotWorkDto | null>(null);
+
+    confinedSpaces = computed<ConfinedSpaceDto[]>(() => this.currentDailyPacksge().confinedSpaces);
+    confinedSpaceCount = computed(() => this.confinedSpaces().length);
+    emptyConfinedSpacesExists = computed(() => this.confinedSpaces().some(cs =>!cs.space &&!cs.workScope &&!cs.issuedTo));
     currentConfinedSpace = signal<ConfinedSpaceDto | null>(null);
+
 
     constructor() {
         this.loadDailyPermitPackages();
@@ -313,24 +329,16 @@ export class CurrentDailyPermitPackageService {
     }
 
 
+
+
     generateSafeWorkFromCurrentRequest(){
       const currentRequest = this.currentWorkRequest();
       if (!currentRequest ||!currentRequest.id) {
         console.error('No work request selected or request has no ID.');
         return;
       }
-      console.log('Generating safe work permit from current work request:', SafeWorkDto.generatePermitFromRequest(currentRequest));
-      // return this.safeWorkService.generateSafeWorkFromWorkRequest(currentRequest.id).pipe(
-      //   tap(response => {
-      //     if (response && response.responseData) {
-      //       const newPermit = new SafeWorkDto(response.responseData);
-      //       this.currentSafeWorkSubject.next(newPermit);
-      //     }
-      //   }),
-      //   takeUntilDestroyed(this.destroyRef)
-      // ).subscribe({
-      //   error: err => console.error('Failed to generate safe work permit:', err)
-      // });
+      const newPermit = SafeWorkDto.generatePermitFromRequest(currentRequest);
+      this.createAndAttachSafeWorksToPackage([newPermit]);
     }
 
     generateHotWorkFromCurrentRequest(){
@@ -339,18 +347,8 @@ export class CurrentDailyPermitPackageService {
         console.error('No work request selected or request has no ID.');
         return;
       }
-      console.log('Generating hot work permit from current work request:', HotWorkDto.generatePermitFromRequest(currentRequest));
-      // return this.hotWorkService.generateHotWorkFromWorkRequest(currentRequest.id).pipe(
-      //   tap(response => {
-      //     if (response && response.responseData) {
-      //       const newPermit = new HotWorkDto(response.responseData);
-      //       this.currentHotWorkSubject.next(newPermit);
-      //     }
-      //   }),
-      //   takeuntilDestroyed(this.destroyRef)
-      // ).subscribe({
-      //   error: err => console.error('Failed to generate hot work permit:', err)
-      // });
+      const newPermit = HotWorkDto.generatePermitFromRequest(currentRequest);
+      this.createAndAttachHotWorksToPackage([newPermit]);
     }
 
     generateConfinedSpaceFromCurrentRequest(){
@@ -359,18 +357,8 @@ export class CurrentDailyPermitPackageService {
         console.error('No work request selected or request has no ID.');
         return;
       }
-      console.log('Generating confined space permit from current work request:', ConfinedSpaceDto.generatePermitFromRequest(currentRequest));
-      // return this.confinedSpaceService.generateConfinedSpaceFromWorkRequest(currentRequest.id).pipe(
-      //   tap(response => {
-      //     if (response && response.responseData) {
-      //       const newPermit = new ConfinedSpaceDto(response.responseData);
-      //       this.currentConfinedSpaceSubject.next(newPermit);
-      //     }
-      //   }),
-      //   takeuntilDestroyed(this.destroyRef)
-      // ).subscribe({
-      //   error: err => console.error('Failed to generate confined space permit:', err)
-      // });
+      const newPermit = ConfinedSpaceDto.generatePermitFromRequest(currentRequest);
+      this.createAndAttachConfinedSpacesToPackage([newPermit]);
     }
 
     generateAllPermitsFromCurrentRequest(){
@@ -378,6 +366,134 @@ export class CurrentDailyPermitPackageService {
       this.generateHotWorkFromCurrentRequest();
       this.generateConfinedSpaceFromCurrentRequest();
     }
+
+    
+
+
+    
+  submitSafeWork($event: SafeWorkDto) {
+    console.log('Submitting safe work permit:', $event);
+    this.safeWorkService.save([$event]).pipe(
+      tap(response => {
+        if (!response?.responseData?.[0]) {
+          console.error('Invalid response from save safe work');
+          return; // Stop execution if the response is invalid
+        }
+
+        const savedPermit = new SafeWorkDto(response.responseData[0]);
+        const currentPackage = this.selectedDailyPermitPackageSubject.value;
+
+        if (!currentPackage) {
+          console.error('No daily permit package selected, cannot update local state.');
+          return;
+        }
+
+        // Create a new package instance for immutability
+        const updatedPackage = new DailyPermitPackageDto(currentPackage);
+        
+        const permitIndex = updatedPackage.safeWorks.findIndex(sw => sw.id === savedPermit.id);
+
+        if (permitIndex > -1) {
+          // Update existing permit in the array
+          updatedPackage.safeWorks[permitIndex] = savedPermit;
+          // Ensure the array reference changes for change detection
+          updatedPackage.safeWorks = [...updatedPackage.safeWorks];
+        } else {
+          // Add new permit if it's not in the array
+          updatedPackage.safeWorks = [...updatedPackage.safeWorks, savedPermit];
+        }
+        
+        // Sync the IDs array with the updated safeWorks array
+        updatedPackage.safeWorkIds = updatedPackage.safeWorks.map(sw => sw.id);
+
+        // Emit the updated package to notify all subscribers
+        this.selectedDailyPermitPackageSubject.next(updatedPackage);
+        this.updateDailyPermitPackageInList(updatedPackage);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => console.log('Safe work permit saved and local package state updated.'),
+      error: err => console.error('Failed to save safe work permit:', err)
+    });
+  }
+
+  submitHotWork($event: HotWorkDto) {
+    console.log('Submitting hot work permit:', $event);
+    this.hotWorkService.save([$event]).pipe(
+      tap(response => {
+        if (!response?.responseData?.[0]) {
+          console.error('Invalid response from save hot work');
+          return;
+        }
+
+        const savedPermit = new HotWorkDto(response.responseData[0]);
+        const currentPackage = this.selectedDailyPermitPackageSubject.value;
+
+        if (!currentPackage) {
+          console.error('No daily permit package selected, cannot update local state.');
+          return;
+        }
+
+        const updatedPackage = new DailyPermitPackageDto(currentPackage);
+        const permitIndex = updatedPackage.hotWorks.findIndex(hw => hw.id === savedPermit.id);
+
+        if (permitIndex > -1) {
+          updatedPackage.hotWorks[permitIndex] = savedPermit;
+          updatedPackage.hotWorks = [...updatedPackage.hotWorks];
+        } else {
+          updatedPackage.hotWorks = [...updatedPackage.hotWorks, savedPermit];
+        }
+
+        updatedPackage.hotWorkIds = updatedPackage.hotWorks.map(hw => hw.id);
+
+        this.selectedDailyPermitPackageSubject.next(updatedPackage);
+        this.updateDailyPermitPackageInList(updatedPackage);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => console.log('Hot work permit saved and local package state updated.'),
+      error: err => console.error('Failed to save hot work permit:', err)
+    });
+  }
+
+  submitConfinedSpace($event: ConfinedSpaceDto) {
+    console.log('Submitting confined space permit:', $event);
+    this.confinedSpaceService.save([$event]).pipe(
+      tap(response => {
+        if (!response?.responseData?.[0]) {
+          console.error('Invalid response from save confined space');
+          return;
+        }
+
+        const savedPermit = new ConfinedSpaceDto(response.responseData[0]);
+        const currentPackage = this.selectedDailyPermitPackageSubject.value;
+
+        if (!currentPackage) {
+          console.error('No daily permit package selected, cannot update local state.');
+          return;
+        }
+
+        const updatedPackage = new DailyPermitPackageDto(currentPackage);
+        const permitIndex = updatedPackage.confinedSpaces.findIndex(cs => cs.id === savedPermit.id);
+
+        if (permitIndex > -1) {
+          updatedPackage.confinedSpaces[permitIndex] = savedPermit;
+          updatedPackage.confinedSpaces = [...updatedPackage.confinedSpaces];
+        } else {
+          updatedPackage.confinedSpaces = [...updatedPackage.confinedSpaces, savedPermit];
+        }
+
+        updatedPackage.confinedSpaceIds = updatedPackage.confinedSpaces.map(cs => cs.id);
+
+        this.selectedDailyPermitPackageSubject.next(updatedPackage);
+        this.updateDailyPermitPackageInList(updatedPackage);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => console.log('Confined space permit saved and local package state updated.'),
+      error: err => console.error('Failed to save confined space permit:', err)
+    });
+  }
 
 
 }

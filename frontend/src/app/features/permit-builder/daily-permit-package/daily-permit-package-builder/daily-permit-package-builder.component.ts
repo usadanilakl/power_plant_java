@@ -33,17 +33,20 @@ export class DailyPermitPackageBuilderComponent {
 
   currentPackage = this.currentDailyPermitPackageService.currentDailyPacksge;
 
-  requests = computed<WorkRequestDto[]>(() => this.currentPackage().workRequests);
-  requestCount = computed(() => this.requests().length);
+  requests = this.currentDailyPermitPackageService.requests;
+  requestCount = this.currentDailyPermitPackageService.requestCount;
 
-  safeWorks = computed<SafeWorkDto[]>(() => this.currentPackage().safeWorks);
-  safeWorkCount = computed(() => this.safeWorks().length);
+  safeWorks = this.currentDailyPermitPackageService.safeWorks;
+  safeWorkCount = this.currentDailyPermitPackageService.safeWorkCount;
+  emptySafeWorksExists = this.currentDailyPermitPackageService.emptySafeWorksExists;
 
-  hotWorks = computed<HotWorkDto[]>(() => this.currentPackage().hotWorks);
-  hotWorkCount = computed(() => this.hotWorks().length);
+  hotWorks = this.currentDailyPermitPackageService.hotWorks;
+  hotWorkCount = this.currentDailyPermitPackageService.hotWorkCount;
+  emptyHotWorksExists = this.currentDailyPermitPackageService.emptyConfinedSpacesExists;
 
-  confinedSpaces = computed<ConfinedSpaceDto[]>(() => this.currentPackage().confinedSpaces);
-  confinedSpaceCount = computed(() => this.confinedSpaces().length);
+  confinedSpaces = this.currentDailyPermitPackageService.confinedSpaces;
+  confinedSpaceCount = this.currentDailyPermitPackageService.confinedSpaceCount;
+  emptyConfinedSpacesExists = this.currentDailyPermitPackageService.emptyConfinedSpacesExists;
 
   popupTitle: string = '';
   isPopupVisible = false;
@@ -134,16 +137,16 @@ export class DailyPermitPackageBuilderComponent {
    * Permit Functions
    **************************************************************************/
 
-  addWorkRequest(request: WorkRequestDto) {
+  addWorkRequest(request: WorkRequestDto = new WorkRequestDto()  ) {
     this.currentDailyPermitPackageService.createAndAttachWorkRequestsToPackage([request]);
   }
-  addSafeWork($event: SafeWorkDto) {
+  addSafeWork($event: SafeWorkDto  = new SafeWorkDto()  ) {
     this.currentDailyPermitPackageService.createAndAttachSafeWorksToPackage([$event]);
   }
-  addHotWork($event: HotWorkDto) {
+  addHotWork($event: HotWorkDto = new HotWorkDto()) {
     this.currentDailyPermitPackageService.createAndAttachHotWorksToPackage([$event]);
   }
-  addConfinedSpace($event: ConfinedSpaceDto) {
+  addConfinedSpace($event: ConfinedSpaceDto = new ConfinedSpaceDto()) {
     this.currentDailyPermitPackageService.createAndAttachConfinedSpacesToPackage([$event]);
   }
 

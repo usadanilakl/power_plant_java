@@ -126,14 +126,14 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
         label: 'Date of Work', 
         type: 'date', 
         validators: [Validators.required], 
-        initialValue: dto.dateOfWorkToBePerformed 
+        initialValue: dto.dateOfWorkToBePerformed ?? new Date().toISOString().split('T')[0]
       },
       timeOfWorkToBePerformed: { 
         name: 'timeOfWorkToBePerformed', 
         label: 'Time of Work', 
         type: 'time', 
         validators: [Validators.required], 
-        initialValue: dto.timeOfWorkToBePerformed 
+        initialValue: dto.timeOfWorkToBePerformed ?? new Date().toTimeString().slice(0, 5)
       },
       requestedBy: { 
         name: 'requestedBy', 

@@ -1,13 +1,15 @@
-@if(isFormReady()){
-    <app-reactive-form
-        [fields]="fields()"
-        [values]="values()"
-        [layout]="'column'"
-        [title]="'Hot Work'"
-        (formSubmit)="onFormSubmit($event)"
-        (formDelete)="onFormDelete()"
-    ></app-reactive-form>
+<div class="form-container">
+    @if(isFormReady()){
+        <app-reactive-form
+            [fields]="fields()"
+            [values]="values()"
+            [layout]="'column'"
+            [title]="'Hot Work'"
+            (formSubmit)="onFormSubmit($event)"
+            (formDelete)="onFormDelete()"
+        ></app-reactive-form>
 
-}@else {
-    <p>Loading form...</p>
-}
+    }@else {
+        <p>Loading form...</p>
+    }
+</div>

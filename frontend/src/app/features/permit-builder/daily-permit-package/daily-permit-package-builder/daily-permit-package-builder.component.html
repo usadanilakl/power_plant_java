@@ -57,9 +57,13 @@
         (itemChangedEvent)="currentDailyPermitPackageService.currentSafeWork.set($event)"
         (addItemEvent)="attachNew('Safe Work')">
         <ng-template let-sw>
-          <app-safe-work-form [values]="sw"></app-safe-work-form>
+          <app-safe-work-form 
+            [values]="sw" 
+            (valuesChange)="currentDailyPermitPackageService.submitSafeWork($event)">
+          </app-safe-work-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate</button>
+        <button [disabled]="emptySafeWorksExists()" (click)="addSafeWork()">Add Empty</button>
       </app-item-carousel>
     }
     @if(isHotWorkVisible){
@@ -72,6 +76,7 @@
           <app-hot-work-form [values]="hw"></app-hot-work-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate</button>
+        <button [disabled]="emptyHotWorksExists()" (click)="addHotWork()">Add Empty</button>
       </app-item-carousel>
     }
     @if(isConfinedSpaceVisible){
@@ -84,6 +89,7 @@
           <app-confined-space-form [values]="cs"></app-confined-space-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>
+        <button [disabled]="emptyConfinedSpacesExists()" (click)="addConfinedSpace()">Add Empty</button>
       </app-item-carousel>
     }
   </div>

@@ -167,14 +167,14 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         label: 'Date', 
         type: 'date', 
         validators: [Validators.required], 
-        initialValue: dto.date
+        initialValue: dto.date ?? new Date().toISOString().split('T')[0]
       },
       time: { 
         name: 'time', 
         label: 'Time', 
         type: 'time', 
         validators: [Validators.required], 
-        initialValue: dto.time 
+        initialValue: dto.time ?? new Date().toTimeString().slice(0, 5)
       },
       space: {
         name: 'space',

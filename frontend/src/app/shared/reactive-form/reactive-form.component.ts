@@ -10,6 +10,7 @@ import { MultiInputComponent } from "../multi-input/multi-input.component";
 import { FormInputComponent } from "../form-input/form-input.component";
 import { ValueFormComponent } from "../../features/values/value-form/value-form.component";
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 @Component({
   selector: 'app-reactive-form',
@@ -27,6 +28,7 @@ export class ReactiveFormComponent {
   formSubmit = output<any>();
   formDelete = output<void>();
   addNewSelectOption = output<string>();
+  formValueChange = output<any>();
 
   destroyRef = inject(DestroyRef);
 
@@ -62,9 +64,13 @@ export class ReactiveFormComponent {
         value = value.id;
       }
 
-      // if (field.type === 'checkbox') {
-      //   value = value === 'true';
-      // }
+      if (field.type === 'date' && !value) {
+        value = new Date().toISOString().split('T')[0];
+      }
+
+      if (field.type === 'time' && !value) {
+        value = new Date().toTimeString().slice(0, 5)
+      }
   
       group[field.name] = [value, validators];
     });
@@ -75,9 +81,13 @@ export class ReactiveFormComponent {
     console.log('Form created:', this.form());    
     
     this.form()?.valueChanges.pipe(
+      debounceTime(1000), // Wait for 500ms of silence
+      distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(currentValue => {
-      console.log('Form value changed: ', currentValue);
+      // console.log('Form value changed: ', currentValue);
+      const fullObject = this._buildFullObject(currentValue);
+      this.formValueChange.emit(fullObject);
     });
   }
   
@@ -253,6 +263,33 @@ export class ReactiveFormComponent {
       });
       form.updateValueAndValidity();
     }
+  }
+
+  private _buildFullObject(formValue: any): any {
+    const result = JSON.parse(JSON.stringify(this.values())); // Deep copy
+
+    this.fields().forEach((field) => {
+      const parts = field.name.split('.');
+      let current: any = result;
+
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!current[parts[i]]) {
+          current[parts[i]] = {};
+        }
+        current = current[parts[i]];
+      }
+
+      const lastPart = parts[parts.length - 1];
+
+      if (field.type === 'select' && typeof current[lastPart] === 'object' && current[lastPart] !== null) {
+        current[lastPart] = current[lastPart] || {};
+        current[lastPart].id = formValue[field.name];
+      } else {
+        current[lastPart] = formValue[field.name];
+      }
+    });
+
+    return result;
   }
 
 
