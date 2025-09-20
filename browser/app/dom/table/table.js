@@ -181,42 +181,6 @@ const tableBuilder = {
         return dropdown.getElement();
     },
 
-
-    // filterData: function() {
-    //     const container = document.getElementById(this.containerId);
-    //     const globalSearch = container.querySelector('.global-search');
-    //     const columnSearches = Array.from(container.querySelectorAll('.column-search, .dropdown-input'));
-    
-    //     const allInputsEmpty = globalSearch.value === '' && 
-    //         columnSearches.every(input => input.value === '');
-    
-    //     if (allInputsEmpty) {
-    //         this.data = [...this.originalData];
-    //     } else {
-    //         this.data = this.originalData.filter(item => {
-    //             const globalMatch = globalSearch.value === '' || 
-    //                 this.columns.some(column => 
-    //                     String(item[column.name]).toLowerCase().includes(globalSearch.value.toLowerCase())
-    //                 );
-        
-    //             const columnMatch = this.columns.every(column => {
-    //                 const dropdown = this.dropdowns[column.name];
-    //                 const value = dropdown ? dropdown.getValue() : '';
-    //                 return value === '' || 
-    //                     String(item[column.name]).toLowerCase().includes(value.toLowerCase());
-    //             });
-        
-    //             return globalMatch && columnMatch;
-    //         });
-    //     }
-    
-    //     const tbody = container.querySelector('tbody');
-    //     tbody.innerHTML = '';
-    
-    //     this.initInfiniteScroll();
-    // },
-
-
     filterData: function() {
         const container = document.getElementById(this.containerId);
         const globalSearch = container.querySelector('.global-search');
