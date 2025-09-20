@@ -108,8 +108,19 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
       this.onPropertyChange();
     }
   }
-
-
+  
+  toggleTransparentBackground() {
+    if (this.container) {
+      if (this.container.style.backgroundColor === 'transparent') {
+        // If it's already transparent, revert to a default color (e.g., white)
+        this.container.style.backgroundColor = '#ffffff';
+      } else {
+        // Otherwise, make it transparent
+        this.container.style.backgroundColor = 'transparent';
+      }
+      this.onPropertyChange();
+    }
+  }
 
 
 

@@ -48,18 +48,47 @@ input[type="text"] {
   box-sizing: border-box;
 }
 
-button {
-  padding: 8px 16px;
-  border-radius: 4px;
+.submit-button,
+.delete-button {
+  padding: 10px 20px;
   border: none;
-  background-color: #007bff;
+  border-radius: 5px;
   color: white;
+  font-size: 1rem;
+  font-weight: bold;
   cursor: pointer;
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+  margin-left: 10px;
 }
 
-button:disabled {
-  background-color: #ccc;
+.submit-button:hover:not(:disabled),
+.delete-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.submit-button:disabled,
+.delete-button:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Green for primary/submit action */
+.submit-button {
+  background-color: #28a745;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+/* Red for destructive/delete action */
+.delete-button {
+  background-color: #dc3545;
+}
+
+.delete-button:hover:not(:disabled) {
+  background-color: #c82333;
 }
 
 .permits-section {

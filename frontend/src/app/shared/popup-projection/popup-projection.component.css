@@ -37,12 +37,8 @@
   overflow: hidden; /* Hide overflow at this level */
   display: flex;
   flex-direction: column;
+  min-height: 0
 }
-
-/* .popup-scroll-content {
-  flex: 1;
-  overflow: auto;
-} */
 
 .popup-scroll-content {
   flex: 1;

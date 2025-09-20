@@ -153,7 +153,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       location: {
         name: 'location',
         label: 'Location',
-        type: 'select',
+        type: 'text',
         options: locationOptions,
         validators: [Validators.required],
         initialValue: dto.location
@@ -175,7 +175,7 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       isHotWorkRequired: { 
         name: 'isHotWorkRequired', 
         label: 'Is Hot Work Required', 
-        type: 'checkbox-group', 
+        type: 'checkbox', 
         initialValue: dto.isHotWorkRequired 
       },
       foreman: { 
@@ -193,13 +193,13 @@ export class WorkRequestDto extends BaseDto implements WorkRequestModel {
       isLotoRequired: { 
         name: 'isLotoRequired', 
         label: 'Is LOTO Required', 
-        type: 'checkbox-group', 
+        type: 'checkbox', 
         initialValue: dto.isLotoRequired 
       },
       isConfinedSpaceEntryRequired: { 
         name: 'isConfinedSpaceEntryRequired', 
         label: 'Is Confined Space Entry Required', 
-        type: 'checkbox-group', 
+        type: 'checkbox', 
         initialValue: dto.isConfinedSpaceEntryRequired 
       },
       space: { 

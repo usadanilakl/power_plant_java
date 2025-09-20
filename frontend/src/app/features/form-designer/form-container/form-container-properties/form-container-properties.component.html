@@ -58,6 +58,10 @@
           <label for="backgroundColor">Background</label>
           <input id="backgroundColor" type="color" [(ngModel)]="container.style.backgroundColor" (ngModelChange)="onPropertyChange()">
         </div>
+        <div class="input-field-addon">
+          <label for="transparentBg">Transparent</label>
+          <input id="transparentBg" type="checkbox" [checked]="container.style.backgroundColor === 'transparent'" (change)="toggleTransparentBackground()">
+        </div>
         <div class="input-field">
           <label for="borderColor">Border Color</label>
           <input id="borderColor" type="color" [(ngModel)]="container.style.borderColor" (ngModelChange)="onPropertyChange()">
@@ -125,6 +129,32 @@
             <div class="input-field">
               <label for="textContent">Text</label>
               <textarea id="textContent" [(ngModel)]="container.content" (ngModelChange)="onPropertyChange()"></textarea>
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="fontSize">Font Size (px)</label>
+              <input id="fontSize" type="number" [(ngModel)]="container.style.fontSize" (ngModelChange)="onPropertyChange()">
+            </div>
+            <div class="input-field">
+              <label for="textColor">Text Color</label>
+              <input id="textColor" type="color" [(ngModel)]="container.style.color" (ngModelChange)="onPropertyChange()">
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="fontWeight">Font Weight</label>
+              <select id="fontWeight" [(ngModel)]="container.style.fontWeight" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+              </select>
+            </div>
+            <div class="input-field">
+              <label for="fontStyle">Font Style</label>
+              <select id="fontStyle" [(ngModel)]="container.style.fontStyle" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="italic">Italic</option>
+              </select>
             </div>
           </div>
         }

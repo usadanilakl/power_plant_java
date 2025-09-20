@@ -9,11 +9,12 @@
           id="packageName" 
           name="packageName" 
           [(ngModel)]="packageName" 
-          (ngModelChange)="onSubmitPackage()" 
+          (ngModelChange)="onPackageNameChange()" 
           placeholder="Enter a name for this permit package"
         >
       </div>
-      <button (click)="onSubmitPackage()" [disabled]="!packageName">Submit Permit Package</button>
+      <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!packageName">Submit Permit Package</button>
+      <button class="delete-button" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Permit Package</button>
     </div>
   </div>
     
@@ -36,33 +37,53 @@
     </div>
 
   @if(isWorkRequestVisible){
-    <app-item-carousel [items]="requests()" title="Work Requests" (addItemEvent)="attachNew('Work Request')">
+    <app-item-carousel 
+      [items]="requests()" 
+      title="Work Requests" 
+      (itemChangedEvent)="currentDailyPermitPackageService.currentWorkRequest.set($event)"
+      (addItemEvent)="attachNew('Work Request')">
       <ng-template let-wr>
         <app-work-request-display [workRequest]="wr"></app-work-request-display>
       </ng-template>
+        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateAllPermitsFromCurrentRequest()">Generate</button>
     </app-item-carousel>
   }
 
   <div class="permits-section">
     @if(isSafeWorkVisible){
-      <app-item-carousel [items]="safeWorks()" title="Safe Works" (addItemEvent)="attachNew('Safe Work')">
+      <app-item-carousel 
+        [items]="safeWorks()" 
+        title="Safe Works" 
+        (itemChangedEvent)="currentDailyPermitPackageService.currentSafeWork.set($event)"
+        (addItemEvent)="attachNew('Safe Work')">
         <ng-template let-sw>
           <app-safe-work-form [values]="sw"></app-safe-work-form>
         </ng-template>
+        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate</button>
       </app-item-carousel>
     }
     @if(isHotWorkVisible){
-      <app-item-carousel [items]="hotWorks()" title="Hot Works" (addItemEvent)="attachNew('Hot Work')">
+      <app-item-carousel 
+        [items]="hotWorks()" 
+        title="Hot Works" 
+      (itemChangedEvent)="currentDailyPermitPackageService.currentHotWork.set($event)"
+        (addItemEvent)="attachNew('Hot Work')">
         <ng-template let-hw>
           <app-hot-work-form [values]="hw"></app-hot-work-form>
         </ng-template>
+        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate</button>
       </app-item-carousel>
     }
     @if(isConfinedSpaceVisible){
-      <app-item-carousel [items]="confinedSpaces()" title="Confined Spaces" (addItemEvent)="attachNew('Confined Space')">
+      <app-item-carousel 
+        [items]="confinedSpaces()" 
+        title="Confined Spaces" 
+        (itemChangedEvent)="currentDailyPermitPackageService.currentConfinedSpace.set($event)"
+        (addItemEvent)="attachNew('Confined Space')">
         <ng-template let-cs>
           <app-confined-space-form [values]="cs"></app-confined-space-form>
         </ng-template>
+        <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>
       </app-item-carousel>
     }
   </div>

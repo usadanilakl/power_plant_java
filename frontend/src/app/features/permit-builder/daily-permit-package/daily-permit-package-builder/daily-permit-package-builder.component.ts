@@ -18,6 +18,7 @@ import { HotWorkTableComponent } from "../../hot-work/hot-work-table/hot-work-ta
 import { ConfinedSpaceTableComponent } from "../../confined-space/confined-space-table/confined-space-table.component";
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, Subject, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
@@ -55,20 +56,38 @@ export class DailyPermitPackageBuilderComponent {
   isWorkRequestVisible = true;
 
   packageName: string = '';
+  
+  private packageNameUpdate = new Subject<string>();
+  private packageNameSubscription: Subscription;
 
 
   constructor() {
     effect(() => {this.packageName = this.currentPackage().name;});
+    this.packageNameSubscription = this.packageNameUpdate.pipe(
+      takeUntilDestroyed(this.destroyRef), // Cancel the subscription when the component is destroyed
+      debounceTime(500), // Wait for 500ms pause in events
+      distinctUntilChanged() // Only emit if value has changed
+    ).subscribe(() => {
+      this.onSubmitPackage();
+    });
+  }
+
+  // This method will be called on every keystroke
+  onPackageNameChange(): void {
+    this.packageNameUpdate.next(this.packageName);
   }
 
 
   onSubmitPackage() {
-    this.currentPackage().name = this.packageName;
-    this.currentDailyPermitPackageService.createDailyPermitPackage(this.currentPackage()).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(response => {
-      this.currentDailyPermitPackageService.setSelectedPackage(response.responseData);
-    });
+    if (!this.packageName) {
+      return;
+    }
+    const current = this.currentPackage()
+    current.name = this.packageName;
+    this.currentDailyPermitPackageService.updateCurrentDailyPacksge(current);
+  }
+  onDeletePackage() {
+    this.currentDailyPermitPackageService.deleteCurrentDailyPacksge();
   }
 
   build(){

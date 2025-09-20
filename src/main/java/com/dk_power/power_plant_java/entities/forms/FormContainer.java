@@ -38,6 +38,10 @@ public class FormContainer extends BaseAuditEntity {
     @Column(columnDefinition = "TEXT")
     @JsonProperty("style")
     private String styleJson;
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    @JsonProperty("contentStyle")
+    private String contentStyleJson;
     private String groupId;
     private String contentType;
     private Integer pageNumber;
@@ -70,24 +74,6 @@ public class FormContainer extends BaseAuditEntity {
         }
     }
 
-//    public Map<String, Object> getContentJson() {
-//        try {
-//            if (contentJson == null || contentJson.isEmpty()) {
-//                return null;
-//            }
-//            return objectMapper.readValue(contentJson, new TypeReference<Map<String, Object>>() {});
-//        } catch (JsonProcessingException e) {
-//            throw new RuntimeException("Error parsing content JSON", e);
-//        }
-//    }
-//
-//    public void setContentJson(Map<String, Object> content) {
-//        try {
-//            this.contentJson = objectMapper.writeValueAsString(content);
-//        } catch (JsonProcessingException e) {
-//            throw new RuntimeException("Error serializing content to JSON", e);
-//        }
-//    }
 
     public Map<String, Object> getPositionJson() {
         try {
@@ -143,6 +129,25 @@ public class FormContainer extends BaseAuditEntity {
             this.styleJson = objectMapper.writeValueAsString(style);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error serializing style to JSON", e);
+        }
+    }
+
+    public Map<String, Object> getContentStyleJson() {
+        try {
+            if (contentStyleJson == null || contentStyleJson.isEmpty()) {
+                return null;
+            }
+            return objectMapper.readValue(contentStyleJson, new TypeReference<Map<String, Object>>() {});
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error parsing contentStyle JSON", e);
+        }
+    }
+
+    public void setContentStyleJson(Map<String, Object> contentStyle) {
+        try {
+            this.contentStyleJson = objectMapper.writeValueAsString(contentStyle);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error serializing contentStyle to JSON", e);
         }
     }
 }

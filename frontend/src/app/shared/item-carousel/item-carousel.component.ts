@@ -1,4 +1,4 @@
-import { Component, computed, ContentChild, input, output, signal, TemplateRef } from '@angular/core';
+import { Component, computed, ContentChild, effect, input, output, signal, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -13,6 +13,7 @@ export class ItemCarouselComponent<T> {
   title = input<string>('');
 
   addItemEvent = output<void>();
+  itemChangedEvent = output<T>();
 
   currentIndex = signal(0);
 
@@ -24,6 +25,16 @@ export class ItemCarouselComponent<T> {
     }
     return items[index];
   });
+
+  constructor() {
+    effect(() => {
+      const current = this.currentItem();
+      // We only want to emit after the component is initialized and the item is not null.
+      if (current) {
+        this.itemChangedEvent.emit(current);
+      }
+    });
+  }
 
   @ContentChild(TemplateRef) itemTemplate: TemplateRef<any> | undefined;
 

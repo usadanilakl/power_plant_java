@@ -1,4 +1,4 @@
-import { DestroyRef, inject, Injectable } from "@angular/core";
+import { DestroyRef, inject, Injectable, signal } from "@angular/core";
 import { BehaviorSubject, switchMap, tap } from "rxjs";
 import { DailyPermitPackageDto } from "../../models/permits/dailt-permit-package.model";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
@@ -31,6 +31,10 @@ export class CurrentDailyPermitPackageService {
 
     currentDailyPacksge = toSignal(this.selectedDailyPermitPackage$, { initialValue: new DailyPermitPackageDto()  });
     allPackages = toSignal(this.allActiveDailyPermitPackages$, { initialValue: [] });
+    currentWorkRequest = signal<WorkRequestDto | null>(null);
+    currentSafeWork = signal<SafeWorkDto | null>(null);
+    currentHotWork = signal<HotWorkDto | null>(null);
+    currentConfinedSpace = signal<ConfinedSpaceDto | null>(null);
 
     constructor() {
         this.loadDailyPermitPackages();
@@ -47,12 +51,13 @@ export class CurrentDailyPermitPackageService {
 
     setCurrentDailyPermitPackage(id: number = 0) {
         if (id === 0) {
-            this.dailyPermitPackageService.createDailyPermitPackage(new DailyPermitPackageDto).pipe(
-                takeUntilDestroyed(this.destroyRef)
-            ).subscribe(response => {
-                this.selectedDailyPermitPackageSubject.next(response.responseData);
-                this.addDailyPermitPackageToList(response.responseData);
-            });
+            // this.dailyPermitPackageService.createDailyPermitPackage(new DailyPermitPackageDto).pipe(
+            //     takeUntilDestroyed(this.destroyRef)
+            // ).subscribe(response => {
+            //     this.selectedDailyPermitPackageSubject.next(response.responseData);
+            //     this.addDailyPermitPackageToList(response.responseData);
+            // });
+            this.selectedDailyPermitPackageSubject.next(new DailyPermitPackageDto());
         }else{
           this.dailyPermitPackageService.getDailyPermitPackageById(id).pipe(
               takeUntilDestroyed(this.destroyRef)
@@ -61,11 +66,34 @@ export class CurrentDailyPermitPackageService {
           });
         }
     }
+    
+    updateCurrentDailyPacksge(current: DailyPermitPackageDto) {
+      this.dailyPermitPackageService.createDailyPermitPackage(current).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(
+        (response) => {
+          this.updateDailyPermitPackageInList(response.responseData);
+          this.selectedDailyPermitPackageSubject.next(response.responseData);
+        },
+        (error) => {
+          console.error('Error updating daily permit package:', error);
+        }
+      );
+    }
 
     updateDailyPermitPackageInList(permitPackage: DailyPermitPackageDto) {
         const currentPackages = this.allActiveDailyPermitPackagesSubject.value;
-        const updatedPackages = currentPackages.map(pkg => pkg.id === permitPackage.id ? permitPackage : pkg);
-        this.allActiveDailyPermitPackagesSubject.next([...updatedPackages]);
+        const itemIndex = currentPackages.findIndex(pkg => pkg.id === permitPackage.id);
+
+        if (itemIndex !== -1) {
+            // Item exists, update it
+            const updatedPackages = [...currentPackages];
+            updatedPackages[itemIndex] = permitPackage;
+            this.allActiveDailyPermitPackagesSubject.next(updatedPackages);
+        } else {
+            // Item is new, add it
+            this.allActiveDailyPermitPackagesSubject.next([permitPackage, ...currentPackages]);
+        }
     }
 
     addDailyPermitPackageToList(permitPackage: DailyPermitPackageDto) {
@@ -90,6 +118,15 @@ export class CurrentDailyPermitPackageService {
                 }
             })
         );
+    }
+    
+    deleteCurrentDailyPacksge() {
+      this.dailyPermitPackageService.deleteDailyPermitPackage(this.selectedDailyPermitPackageSubject.value.id).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe((response) => {
+        this.removeDailyPermitPackageFromList(this.selectedDailyPermitPackageSubject.value.id);
+        this.selectedDailyPermitPackageSubject.next(new DailyPermitPackageDto());
+      })
     }
     
     setSelectedPackage(packageItem: DailyPermitPackageDto) {
@@ -136,6 +173,12 @@ export class CurrentDailyPermitPackageService {
         }
       });
     }
+
+
+
+    /*******************************************************************************************
+     * Permit functions
+     *******************************************************************************************/
     createAndAttachWorkRequestsToPackage(requests: WorkRequestDto[]) {
       const currentPackage = this.selectedDailyPermitPackageSubject.value;
       if (!currentPackage || !currentPackage.id) {
@@ -152,7 +195,7 @@ export class CurrentDailyPermitPackageService {
           const newWorkRequests = response.responseData;
           const newWorkRequestIds = newWorkRequests.map(req => req.id);
           const updatedPackage = new DailyPermitPackageDto(currentPackage);
-          updatedPackage.workRequestIds = [...updatedPackage.workRequestIds, ...newWorkRequestIds];
+          updatedPackage.workRequestIds = [...updatedPackage.workRequests.map(w=>w.id), ...newWorkRequestIds];
 
           // Using createDailyPermitPackage to update the package
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
@@ -165,7 +208,9 @@ export class CurrentDailyPermitPackageService {
           }
         }),
         takeUntilDestroyed(this.destroyRef)
-      );
+      ).subscribe({
+        error: err => console.error('Failed to create and attach work requests:', err)
+      });
     }
 
     createAndAttachSafeWorksToPackage(requests: SafeWorkDto[]) {
@@ -196,7 +241,9 @@ export class CurrentDailyPermitPackageService {
           }
         }),
         takeUntilDestroyed(this.destroyRef)
-      );
+      ).subscribe({
+        error: err => console.error('Failed to create and attach work requests:', err)
+      });
     }
     
     createAndAttachHotWorksToPackage(requests: HotWorkDto[]) {
@@ -227,7 +274,9 @@ export class CurrentDailyPermitPackageService {
           }
         }),
         takeUntilDestroyed(this.destroyRef)
-      );
+      ).subscribe({
+        error: err => console.error('Failed to create and attach work requests:', err)
+      });
     }
     
     createAndAttachConfinedSpacesToPackage(requests: ConfinedSpaceDto[]) {
@@ -258,7 +307,76 @@ export class CurrentDailyPermitPackageService {
           }
         }),
         takeUntilDestroyed(this.destroyRef)
-      );
+      ).subscribe({
+        error: err => console.error('Failed to create and attach work requests:', err)
+      });
+    }
+
+
+    generateSafeWorkFromCurrentRequest(){
+      const currentRequest = this.currentWorkRequest();
+      if (!currentRequest ||!currentRequest.id) {
+        console.error('No work request selected or request has no ID.');
+        return;
+      }
+      console.log('Generating safe work permit from current work request:', SafeWorkDto.generatePermitFromRequest(currentRequest));
+      // return this.safeWorkService.generateSafeWorkFromWorkRequest(currentRequest.id).pipe(
+      //   tap(response => {
+      //     if (response && response.responseData) {
+      //       const newPermit = new SafeWorkDto(response.responseData);
+      //       this.currentSafeWorkSubject.next(newPermit);
+      //     }
+      //   }),
+      //   takeUntilDestroyed(this.destroyRef)
+      // ).subscribe({
+      //   error: err => console.error('Failed to generate safe work permit:', err)
+      // });
+    }
+
+    generateHotWorkFromCurrentRequest(){
+      const currentRequest = this.currentWorkRequest();
+      if (!currentRequest ||!currentRequest.id) {
+        console.error('No work request selected or request has no ID.');
+        return;
+      }
+      console.log('Generating hot work permit from current work request:', HotWorkDto.generatePermitFromRequest(currentRequest));
+      // return this.hotWorkService.generateHotWorkFromWorkRequest(currentRequest.id).pipe(
+      //   tap(response => {
+      //     if (response && response.responseData) {
+      //       const newPermit = new HotWorkDto(response.responseData);
+      //       this.currentHotWorkSubject.next(newPermit);
+      //     }
+      //   }),
+      //   takeuntilDestroyed(this.destroyRef)
+      // ).subscribe({
+      //   error: err => console.error('Failed to generate hot work permit:', err)
+      // });
+    }
+
+    generateConfinedSpaceFromCurrentRequest(){
+      const currentRequest = this.currentWorkRequest();
+      if (!currentRequest ||!currentRequest.id) {
+        console.error('No work request selected or request has no ID.');
+        return;
+      }
+      console.log('Generating confined space permit from current work request:', ConfinedSpaceDto.generatePermitFromRequest(currentRequest));
+      // return this.confinedSpaceService.generateConfinedSpaceFromWorkRequest(currentRequest.id).pipe(
+      //   tap(response => {
+      //     if (response && response.responseData) {
+      //       const newPermit = new ConfinedSpaceDto(response.responseData);
+      //       this.currentConfinedSpaceSubject.next(newPermit);
+      //     }
+      //   }),
+      //   takeuntilDestroyed(this.destroyRef)
+      // ).subscribe({
+      //   error: err => console.error('Failed to generate confined space permit:', err)
+      // });
+    }
+
+    generateAllPermitsFromCurrentRequest(){
+      this.generateSafeWorkFromCurrentRequest();
+      this.generateHotWorkFromCurrentRequest();
+      this.generateConfinedSpaceFromCurrentRequest();
     }
 
 

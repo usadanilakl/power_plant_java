@@ -9,6 +9,7 @@ export interface FormContainerModel extends BaseModel {
   position: { x: number; y: number };
   size: { width: number; height: number };
   style: Partial<CSSStyleDeclaration>;
+  contentStyle: Partial<CSSStyleDeclaration>;
   groupId?: string | null;
   pageNumber?: number;
   locked?: boolean;
@@ -20,6 +21,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
   position: { x: number; y: number };
   size: { width: number; height: number };
   style: Partial<CSSStyleDeclaration>;
+  contentStyle: Partial<CSSStyleDeclaration>;
   groupId?: string | null;
   pageNumber?: number;
   locked?: boolean;
@@ -52,6 +54,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
     };
 
     this.style = { ...defaultStyles, ...data.style };
+    this.contentStyle = data.contentStyle?? {};
   }
 
   override toJson(): any {
@@ -65,6 +68,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
       contentType: this.contentType,
       pageNumber: this.pageNumber,
       locked: this.locked,
+      contentStyle: JSON.stringify(this.contentStyle),
 
     };
   }
@@ -80,6 +84,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
       contentType: json.contentType ?? 'text',
       pageNumber: json.pageNumber?? 1,
       locked: json.locked?? false,
+      contentStyle: json.contentStyleJson? JSON.parse(json.contentStyleJson) : {},
     });
   }
 }

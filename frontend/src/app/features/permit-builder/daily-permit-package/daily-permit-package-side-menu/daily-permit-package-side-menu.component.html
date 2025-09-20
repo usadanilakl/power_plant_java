@@ -1,9 +1,9 @@
-<ul>
+<ul class="package-menu">
     @for (pkg of allPackages(); track pkg.id) {
-        <li (click)="packageSelected(pkg)">
-            {{ pkg.name + pkg.id }}
+        <li class="menu-item" (click)="packageSelected(pkg)">
+            {{ pkg.name }}
         </li>
     }
-    <li (click)="createNewPackage()">Add New</li>
+    <li class="menu-item add-new-item" (click)="createNewPackage()">+ Add New Package</li>
 </ul>
 

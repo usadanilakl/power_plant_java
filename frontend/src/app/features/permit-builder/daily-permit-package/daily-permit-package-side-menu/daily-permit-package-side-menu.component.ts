@@ -29,6 +29,8 @@ export class DailyPermitPackageSideMenuComponent {
     this.currendDailyPermitPackageService.setCurrentDailyPermitPackage();
   }
 
+  
+
 
 
 }

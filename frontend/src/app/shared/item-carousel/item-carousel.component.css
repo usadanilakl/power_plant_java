@@ -1,4 +1,4 @@
-:host {
+/* :host {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -75,50 +75,133 @@
 }
 
 
-/* .carousel-container {
-  border: 1px solid #ccc;
+.carousel-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 1rem;
+}
+
+.carousel-actions > ::ng-deep button,
+.carousel-actions > button {
+  padding: 8px 16px;
+  font-size: 14px;
+  color: white;
+  background-color: #007bff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.carousel-actions > ::ng-deep button:hover,
+.carousel-actions > button:hover {
+  background-color: #0056b3;
+} */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  width: 100%;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 16px;
-  margin: 16px 0;
-  background-color: #f9f9f9;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  overflow: hidden;
+  padding: 1rem; /* Add some padding to the host */
+}
+
+.carousel-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.carousel-container {
+  width: 100%;
+  display: flex; /* Make this a flex container */
+  flex-direction: column; /* Stack children vertically */
+  flex: 1; /* Allow it to take up available space */
+  min-height: 0; /* Flexbox fix for scrolling */
 }
 
 .carousel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 1rem;
 }
 
 .carousel-title {
   margin: 0;
-  font-size: 1.2em;
+  font-size: 1.2rem;
 }
 
 .carousel-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .carousel-controls button {
-  padding: 8px 12px;
+  padding: 0.5rem 1rem;
+  background-color: #f0f0f0;
   border: 1px solid #ccc;
-  background-color: #fff;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .carousel-controls button:disabled {
-  cursor: not-allowed;
   opacity: 0.5;
-}
-
-.carousel-counter {
-  font-weight: bold;
+  cursor: not-allowed;
 }
 
 .carousel-content {
-  padding: 16px;
-  border-top: 1px solid #eee;
-} */
+  border: 1px solid #eee;
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-y: auto; /* Allow vertical scrolling */
+  flex: 1; /* Allow content to grow and fill space */
+  min-height: 150px; /* Ensure a minimum height */
+}
+
+/* Default styles for when there are NO items */
+.carousel-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 1rem;
+  justify-content: flex-start; /* Align to the left */
+}
+
+/* Styles for when there ARE items */
+.carousel-wrapper.has-items .carousel-actions {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 10; /* Ensure buttons are on top of content */
+  margin-top: 0; /* Reset margin when absolutely positioned */
+}
+
+/* 
+  Apply a consistent style to the 'Add' button and any buttons 
+  projected into the component via ng-content.
+*/
+.carousel-actions > ::ng-deep button,
+.carousel-actions > button {
+  padding: 8px 16px;
+  font-size: 14px;
+  color: white;
+  background-color: #007bff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Add shadow for better visibility */
+}
+
+.carousel-actions > ::ng-deep button:hover,
+.carousel-actions > button:hover {
+  background-color: #0056b3;
+}
