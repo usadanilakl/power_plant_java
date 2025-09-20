@@ -12,11 +12,15 @@ import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-fo
 import { CurrentValueService } from '../../../services/current-value.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { LotoPointIdDto } from '../../../models/loto/loto-point-id.model';
+import { CurrentFileService } from '../../../services/current-file.service';
+import { FileTableComponent } from "../../files/file-table/file-table.component";
+import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
+import { FileEditorComponent } from "../../files/file-editor/file-editor.component";
 
 @Component({
   selector: 'app-loto-point-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, ReactiveFormComponent],
+  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, ReactiveFormComponent, FileTableComponent, PopupProjectionComponent, FileEditorComponent],
   templateUrl: './loto-point-detail-form.component.html',
   styleUrl: './loto-point-detail-form.component.css'
 })
@@ -29,7 +33,7 @@ export class LotoPointDetailFormComponent implements OnInit {
   formSubmit = output<any>();
   formDelete = output<void>();
   valuesChange = output<LotoPointDto>();
-  @Input() imageUrls$: Observable<string[]> = new Observable<string[]>();
+  @Input() imageUrls$: Observable<string[]> | null = null;
   private _selectedItem: LotoPointDto | null = null;
   
   @Input() set selectedItem(value: LotoPointDto | null) {
@@ -69,6 +73,7 @@ export class LotoPointDetailFormComponent implements OnInit {
   constructor(
       private currentValueService: CurrentValueService,
       private currentEquipmentService: CurrentEquipmentService,
+      private currentFileService: CurrentFileService,
     private destroyRef: DestroyRef
   ) {}
   
@@ -146,5 +151,11 @@ export class LotoPointDetailFormComponent implements OnInit {
         // Now use these values to set as preset data
         this.currentEquipmentService.setCurrentPresetLpData(dto);
       }
+    }
+
+
+    isEditorPopupOpen: boolean = false;
+    toggleEditorPopup() {
+      this.isEditorPopupOpen =!this.isEditorPopupOpen;
     }
 }

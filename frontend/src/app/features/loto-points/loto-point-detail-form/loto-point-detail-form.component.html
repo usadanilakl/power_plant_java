@@ -15,13 +15,28 @@
         [equipmentFilter]="equipmentFilter$ | async | nonNullable">
       </app-image-carousel>
     } @else {
-      <p>No images found.</p>
+      <!-- <p>No images found.</p> -->
+    <div class="table-container">
+      <app-file-table
+      ></app-file-table>
+    </div>
     }
   } @else {
-    <p>Loading images...</p>
+    <div class="table-container">
+      <app-file-table
+      ></app-file-table>
+    </div>
+       
   }
 
-  <!-- <button type="button" (click)="onOpenImage()">Open Image</button> -->
 } @else {
   <p>Loading form...</p>
 }
+
+<!-- <app-popup-projection
+  [isOpen]="isEditorPopupOpen"
+  (close)="toggleEditorPopup()"
+>
+  <app-file-editor></app-file-editor>
+</app-popup-projection> -->
+

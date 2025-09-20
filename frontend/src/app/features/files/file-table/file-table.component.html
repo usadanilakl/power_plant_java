@@ -43,7 +43,20 @@
 
 </app-popup-projection>
 
-<app-popup
+<app-popup-projection
+  [isOpen]="isImagePopupOpen"
+  [title]="'Image View'"
+  (close)="closeImagePopup()"
+>
+  <app-image-zoom-interactive
+    [elements]="elements$"
+    [imageName] = "selectedItem?.name"
+    [imageUrl]="selectedImagePath"
+    [isEditEnabled]="true"
+  ></app-image-zoom-interactive>
+</app-popup-projection>
+
+<!-- <app-popup
   [isOpen]="isImagePopupOpen"
   [title]="'Image View'"
   [contentComponent]="ImageZoomInteractiveComponent"
@@ -53,5 +66,5 @@
     elements: elements$
   }"
   (close)="closeImagePopup()"
-></app-popup>
+></app-popup> -->
 

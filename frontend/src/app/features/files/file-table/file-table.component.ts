@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, EventEmitter, inject, OnInit, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
@@ -32,6 +32,8 @@ export class FileTableComponent implements OnInit {
   //   { id: 'fileNumber', header: 'File Number', accessorFn: (item: FileDto) => Array.isArray(item.fileNumber) ? item.fileNumber.join(', ') : item.fileNumber },
   //   { id: 'relatedSystems', header: 'Systems', accessorKey: 'relatedSystems' },
   // ];
+
+  @Output() tableRowLeftClickEvent = new EventEmitter<FileDto>();
 
   columns: Column[] = [
     {
@@ -188,12 +190,15 @@ export class FileTableComponent implements OnInit {
         this.selectedItems.push(item);
       }
     } else {
-      // Normal click (no Ctrl)
-      this.selectedItems = [item]; // Select only this item
-      this.selectedItem = item;
-      this.selectedImagePath = item.fileLink;
-      this.isPopupOpen = true;
-      this.fetchElements(item.id);
+      if(this.tableRowLeftClickEvent.observers.length > 0){
+        this.tableRowLeftClickEvent.emit(item);
+      }else{// Normal click (no Ctrl)
+        this.selectedItems = [item]; // Select only this item
+        this.selectedItem = item;
+        this.selectedImagePath = item.fileLink;
+        this.isPopupOpen = true;
+        this.fetchElements(item.id);
+      }
     }
   }
   

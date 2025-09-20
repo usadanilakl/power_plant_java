@@ -52,7 +52,7 @@ export class TagNumberTableComponent implements OnInit {
 
 
   onItemClick = (item: any) => {
-    this.selectedItem = item;
+    this.selectedItem.set(item);
     this.isPopupOpen = true;
   }
 
