@@ -267,6 +267,17 @@ export class PrintableFormDesignerComponent implements OnInit {
     };
   }
 
+  getContentStyles(container: FormContainerDto): any {
+    if (!container.contentStyle) {
+      return {};
+    }
+    const styles = { ...container.contentStyle };
+    if (styles.fontSize && typeof styles.fontSize === 'number') {
+      styles.fontSize = `${styles.fontSize}px`;
+    }
+    return styles;
+  }
+
   isContainerSelected(container: FormContainerDto): boolean {
     return this.currentPrintableFormService.isContainerSelected(container);
   }
@@ -538,16 +549,18 @@ export class PrintableFormDesignerComponent implements OnInit {
    * Mouse Selection functions
    ****************************************************************************/
   onFormSheetMouseDown(event: MouseEvent) {
-    // Only start selection if clicking on the sheet itself, not a child element like a container
-    if (event.target !== this.formContentElement.nativeElement) {
+    const target = event.target as HTMLElement;
+
+    if (event.target !== this.formContentElement.nativeElement && !target.classList.contains('locked')) {
       console.log('Mouse down on a child element, ignoring');
       return;
     }
+
     if(this.isDragging) return;
     event.preventDefault();
 
     this.isSelecting.set(true);
-    this.selectionStart = { x: event.offsetX, y: event.offsetY };
+    this.selectionStart = this.getScaledCoordinates(event);
     this.selectionBox.set({ ...this.selectionStart, width: 0, height: 0 });
 
     console.log('Mouse down on form sheet');
@@ -565,9 +578,7 @@ export class PrintableFormDesignerComponent implements OnInit {
   private onDocumentMouseMove = (event: MouseEvent) => {
     if (!this.isSelecting()) return;
 
-    const rect = this.formContentElement.nativeElement.getBoundingClientRect();
-    const currentX = event.clientX - rect.left;
-    const currentY = event.clientY - rect.top;
+    const { x: currentX, y: currentY } = this.getScaledCoordinates(event);
 
     const x = Math.min(this.selectionStart.x, currentX);
     const y = Math.min(this.selectionStart.y, currentY);
@@ -611,7 +622,17 @@ export class PrintableFormDesignerComponent implements OnInit {
       );
     });
 
-    this.currentPrintableFormService.selectedContainers.set(selected);
+    this.currentPrintableFormService.selectedContainers.set(selected.filter(c => !c.locked));
+  }
+
+  private getScaledCoordinates(event: MouseEvent): { x: number, y: number } {
+    const rect = this.formContentElement.nativeElement.getBoundingClientRect();
+    const scale = this.formScale;
+    
+    const x = (event.clientX - rect.left) / scale;
+    const y = (event.clientY - rect.top) / scale;
+
+    return { x, y };
   }
 
     /*****************************************************************************
@@ -797,6 +818,25 @@ export class PrintableFormDesignerComponent implements OnInit {
       }
 
       this.currentPrintableFormService.updateContainers(updatedContainers);
+    }
+
+    swapContainers() {
+      const selectedContainers = this.currentPrintableFormService.selectedContainers();
+      if (selectedContainers.length !== 2) return;
+
+      const [containerA, containerB] = selectedContainers;
+
+      const updatedContainerA = new FormContainerDto({
+        ...containerA,
+        position: containerB.position
+      });
+
+      const updatedContainerB = new FormContainerDto({
+        ...containerB,
+        position: containerA.position
+      });
+
+      this.currentPrintableFormService.updateContainers([updatedContainerA, updatedContainerB]);
     }
 
 

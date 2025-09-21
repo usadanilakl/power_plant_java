@@ -42,6 +42,7 @@
             <button (click)="alignContainers('left')" title="Align Left">Left</button>
             <button (click)="alignContainers('h-center')" title="Align Horizontal Center">Center</button>
             <button (click)="alignContainers('right')" title="Align Right">Right</button>
+            <button (click)="swapContainers()" title="Swap Places">Swap</button>
           </div>
           <div class="button-row">
             <button (click)="alignContainers('top')" title="Align Top">Top</button>
@@ -101,7 +102,7 @@
           (contextmenu)="veiwPropertiesOfContainer(container,$event)">
             @switch (container.contentType) {
               @case ('text') {
-                <div class="text-content" [ngStyle]="container.contentStyle">{{ container.content }}</div>
+                <div class="text-content" [ngStyle]="getContentStyles(container)">{{ container.content }}</div>
               }
               @case ('formField') {
                 

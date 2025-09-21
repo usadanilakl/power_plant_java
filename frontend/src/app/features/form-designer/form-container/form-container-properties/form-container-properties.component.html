@@ -134,11 +134,11 @@
           <div class="input-row">
             <div class="input-field">
               <label for="fontSize">Font Size (px)</label>
-              <input id="fontSize" type="number" [(ngModel)]="container.style.fontSize" (ngModelChange)="onPropertyChange()">
+              <input id="fontSize" type="number" [(ngModel)]="container.contentStyle.fontSize" (ngModelChange)="onPropertyChange()">
             </div>
             <div class="input-field">
               <label for="textColor">Text Color</label>
-              <input id="textColor" type="color" [(ngModel)]="container.style.color" (ngModelChange)="onPropertyChange()">
+              <input id="textColor" type="color" [(ngModel)]="container.contentStyle.color" (ngModelChange)="onPropertyChange()">
             </div>
           </div>
           <div class="input-row">

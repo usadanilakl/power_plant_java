@@ -60,11 +60,11 @@
                 }
               }
             } @else if(container.contentType==='text') {
-              <div class="content-display" [ngStyle]="getContentStyle(container)">
+              <div class="content-display" [ngStyle]="getContentStyles(container)">
                 {{ container.content }}
               </div>
             }@else if(container.contentType==='variable') {
-              <div class="content-display" [ngStyle]="getContentStyle(container)">
+              <div class="content-display" [ngStyle]="container.contentStyle">
                 {{ getFormControlValue(container.content) | async }}
               </div>
             }

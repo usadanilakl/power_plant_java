@@ -209,6 +209,17 @@ export class FormRendererComponent {
     return styles;
   }
 
+  getContentStyles(container: FormContainerDto): any {
+    if (!container.contentStyle) {
+      return {};
+    }
+    const styles = { ...container.contentStyle };
+    if (styles.fontSize && typeof styles.fontSize === 'number') {
+      styles.fontSize = `${styles.fontSize}px`;
+    }
+    return styles;
+  }
+
   getContentStyle(container: FormContainerDto): { [klass: string]: any; }|null|undefined {
     return {
       'display': 'flex',
