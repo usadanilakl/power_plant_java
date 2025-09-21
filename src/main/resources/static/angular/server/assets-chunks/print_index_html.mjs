@@ -10,6 +10,6 @@ export default `<!DOCTYPE html><html lang="en" data-beasties-container><head><li
 </style><link rel="stylesheet" href="styles-WVLSSJOW.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="styles-WVLSSJOW.css"></noscript><style ng-app-id="ng">.print-container[_ngcontent-ng-c4068922724]{display:flex;flex-direction:column;gap:10px;padding:20px}</style></head>
 <body class="mat-typography"><!--nghm-->
   <app-root ng-version="19.2.5" ngh="1" ng-server-context="ssg"><router-outlet></router-outlet><app-print _nghost-ng-c4068922724 ngh="0"><p _ngcontent-ng-c4068922724>print works!</p></app-print><!----></app-root>
-<script src="polyfills-FFHMD2TL.js" type="module"></script><script src="main-53TGDHHT.js" type="module"></script>
+<script src="polyfills-FFHMD2TL.js" type="module"></script><script src="main-W5CQZHHB.js" type="module"></script>
 
 <script id="ng-state" type="application/json">{"__nghData__":[{},{"c":{"0":[{"i":"c4068922724","r":1}]}}]}</script></body></html>`;
