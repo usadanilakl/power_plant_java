@@ -1,5 +1,5 @@
-import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef, output, input, inject, DestroyRef, HostListener, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef, output, input, inject, DestroyRef, HostListener, effect, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
 import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable, Subject, Subscription } from 'rxjs';
@@ -18,6 +18,7 @@ import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrollin
 export class TableComponent implements OnInit {
 
   private destroyRef = inject(DestroyRef);
+  private platformId = inject(PLATFORM_ID);
 
   @Input() columns: Column[] = [];
   @Input() clickCallback!: (item: any, event: MouseEvent) => void;
@@ -89,34 +90,71 @@ export class TableComponent implements OnInit {
   }
 
   
+  // ngAfterViewInit() {
+  //   setTimeout(() => {
+  //     if (this.tableBody && this.tableBody.nativeElement) {
+  //       const sampleRow = this.tableBody.nativeElement.querySelector('tr');
+  //       if (sampleRow) {
+  //         this.rowHeight = sampleRow.offsetHeight;
+  //         if (this.viewport) {
+  //           this.viewport.checkViewportSize();
+  //         }
+  //         this.cdr.detectChanges();
+  //       }
+  //     }
+  
+  //     this.resizeObserver = new ResizeObserver(() => {
+  //       this.viewport.checkViewportSize();
+  //     });
+  //     this.resizeObserver.observe(this.viewport.elementRef.nativeElement);
+  
+  //     // Use destroyRef for cleanup
+  //     this.destroyRef.onDestroy(() => {
+  //       if (this.resizeObserver) {
+  //         this.resizeObserver.disconnect();
+  //       }
+  //     });
+  //   });
+
+  //   console.log('isDragAndDropEnabled:', this.isDragAndDropEnabled());
+  // }
+
+  
   ngAfterViewInit() {
-    setTimeout(() => {
-      if (this.tableBody && this.tableBody.nativeElement) {
-        const sampleRow = this.tableBody.nativeElement.querySelector('tr');
-        if (sampleRow) {
-          this.rowHeight = sampleRow.offsetHeight;
+    if (isPlatformBrowser(this.platformId)) {
+      setTimeout(() => {
+        if (this.tableBody && this.tableBody.nativeElement) {
+          const sampleRow = this.tableBody.nativeElement.querySelector('tr');
+          if (sampleRow) {
+            this.rowHeight = sampleRow.offsetHeight;
+            if (this.viewport) {
+              this.viewport.checkViewportSize();
+            }
+            this.cdr.detectChanges();
+          }
+        }
+
+        this.resizeObserver = new ResizeObserver(() => {
           if (this.viewport) {
             this.viewport.checkViewportSize();
           }
-          this.cdr.detectChanges();
-        }
-      }
-  
-      this.resizeObserver = new ResizeObserver(() => {
-        this.viewport.checkViewportSize();
+        });
+        this.resizeObserver.observe(this.viewport.elementRef.nativeElement);
+
+        // Use destroyRef for cleanup
+        this.destroyRef.onDestroy(() => {
+          if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+          }
+        });
       });
-      this.resizeObserver.observe(this.viewport.elementRef.nativeElement);
-  
-      // Use destroyRef for cleanup
-      this.destroyRef.onDestroy(() => {
-        if (this.resizeObserver) {
-          this.resizeObserver.disconnect();
-        }
-      });
-    });
+    }
 
     console.log('isDragAndDropEnabled:', this.isDragAndDropEnabled());
   }
+
+
+
 
 ngOnInit() {
   // console.log('TableComponent initialized');

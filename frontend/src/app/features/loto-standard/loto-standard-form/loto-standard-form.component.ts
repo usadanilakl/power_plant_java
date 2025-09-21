@@ -1,12 +1,13 @@
-import { Component, computed, DestroyRef, inject, input, output, Signal, signal } from '@angular/core';
-import { LotoStandardDto } from '../../../models/loto/loto-standard.model';
-import { LotoPointDto } from '../../../models/loto/loto-point.model';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { CommonModule } from "@angular/common";
+import { Component, computed, DestroyRef, inject, input, output, Signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
-import { BehaviorSubject } from 'rxjs';
-import { RedTagService } from '../../../services/loto/red-tag.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RedTagService } from "../../../services/loto/red-tag.service";
+import { LotoStandardDto } from "../../../models/loto/loto-standard.model";
+import { LotoPointDto } from "../../../models/loto/loto-point.model";
+import { BehaviorSubject } from "rxjs";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+
 
 @Component({
   selector: 'app-loto-standard-form',

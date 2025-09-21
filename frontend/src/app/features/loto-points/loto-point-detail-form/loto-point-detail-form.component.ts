@@ -1,5 +1,4 @@
 import { Component, Input, OnInit, DestroyRef, input, output, computed, signal, ViewChild} from '@angular/core';
-import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Observable} from 'rxjs';
 import { Option } from '../../../models/option.model';
@@ -11,16 +10,13 @@ import { NonNullablePipe } from "../../../pipes/nonNullable.pipe";
 import { ReactiveFormComponent } from "../../../shared/reactive-form/reactive-form.component";
 import { CurrentValueService } from '../../../services/current-value.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
-import { LotoPointIdDto } from '../../../models/loto/loto-point-id.model';
 import { CurrentFileService } from '../../../services/current-file.service';
 import { FileTableComponent } from "../../files/file-table/file-table.component";
-import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
-import { FileEditorComponent } from "../../files/file-editor/file-editor.component";
 
 @Component({
   selector: 'app-loto-point-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, ReactiveFormComponent, FileTableComponent, PopupProjectionComponent, FileEditorComponent],
+  imports: [ ImageCarouselComponent, CommonModule, NonNullablePipe, ReactiveFormComponent, FileTableComponent],
   templateUrl: './loto-point-detail-form.component.html',
   styleUrl: './loto-point-detail-form.component.css'
 })

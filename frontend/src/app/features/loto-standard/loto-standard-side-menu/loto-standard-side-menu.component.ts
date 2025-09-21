@@ -1,12 +1,11 @@
-import { AfterViewInit, ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, inject, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
-import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
-import { LotoStandardFormComponent } from "../loto-standard-form/loto-standard-form.component";
-import { LotoPointDto } from '../../../models/loto/loto-point.model';
-import { LotoStandardDto } from '../../../models/loto/loto-standard.model';
-import { CurrentLotoStandardService } from '../../../services/current-items-services/current-loto-standard.service';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { LotoStandardTableComponent } from "../loto-standard-table/loto-standard-table.component";
-import { LotoStandardIdDto } from '../../../models/loto/loto-standard-id.model';
+import { LotoStandardFormComponent } from "../loto-standard-form/loto-standard-form.component";
+import { AfterViewInit, Component, computed, effect, ElementRef, inject, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
+import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { CurrentLotoStandardService } from "../../../services/current-items-services/current-loto-standard.service";
+import { LotoStandardDto } from "../../../models/loto/loto-standard.model";
+import { LotoPointDto } from "../../../models/loto/loto-point.model";
 
 @Component({
   selector: 'app-loto-standard-side-menu',
@@ -33,7 +32,7 @@ export class LotoStandardSideMenuComponent implements AfterViewInit {
     effect(() => {
       const isDisplayed = this.isStandardListDisplayed();
       if (!isDisplayed) {
-        this.setupResizeHandlersIfVisible();
+        // this.setupResizeHandlersIfVisible();
       }
     });
   }

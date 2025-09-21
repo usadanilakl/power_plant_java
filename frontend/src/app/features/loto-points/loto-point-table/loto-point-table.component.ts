@@ -1,11 +1,10 @@
-import { ChangeDetectorRef, Component, Input, inject, OnInit, DestroyRef, signal, output, input, effect } from '@angular/core';
+import { Component, Input, inject, OnInit, DestroyRef, signal, output, input, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
 import { LotoPointDetailFormComponent } from "../loto-point-detail-form/loto-point-detail-form.component";
-import { PopupComponent } from "../../../shared/popup/popup.component";
 import { LotoPointService } from '../../../services/loto/loto-point.service';
-import { BehaviorSubject, catchError, map, Observable, of, Subject, take, takeUntil, tap } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, take, tap } from 'rxjs';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
@@ -13,11 +12,12 @@ import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { ExcelService } from '../../../services/excel.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
+import { PopupComponent } from "../../../shared/popup/popup.component";
 
 @Component({
   selector: 'app-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, LotoPointDetailFormComponent, PopupComponent, PopupProjectionComponent],
+  imports: [CommonModule, TableComponent, PopupProjectionComponent, PopupComponent],
   templateUrl: './loto-point-table.component.html',
 })
 export class LotoPointTableComponent implements OnInit {
