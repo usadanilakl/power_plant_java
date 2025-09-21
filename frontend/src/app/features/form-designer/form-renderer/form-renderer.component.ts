@@ -171,8 +171,9 @@ export class FormRendererComponent {
       return of(''); // Return an observable of an empty string if name is null
     }
     const control = this.form.get(name);
+    const value = this.getNestedValue(this.formData(), name);
     if (!control) {
-      return of(''); // Return an observable of an empty string if control not found
+      return of(value); // Return an observable of an empty string if control not found
     }
     // This is the key: return the valueChanges observable
     // startWith ensures the initial value is displayed immediately

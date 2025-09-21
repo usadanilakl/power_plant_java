@@ -1,8 +1,8 @@
 <div class="square-radio-group">
-  <label *ngFor="let option of options; let i = index">
+  <label *ngFor="let option of options(); let i = index">
     <input
       type="radio"
-      [name]="name"
+      [name]="name()"
       [value]="option"
       [checked]="value === option"
       (change)="selectOption(option)"

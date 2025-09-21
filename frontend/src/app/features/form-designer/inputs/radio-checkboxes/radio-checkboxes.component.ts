@@ -1,5 +1,5 @@
 import { NgFor } from '@angular/common';
-import { Component, EventEmitter, Input, Output, forwardRef } from '@angular/core';
+import { Component, EventEmitter, Input, Output, effect, forwardRef, input } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
@@ -17,11 +17,19 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
   ]
 })
 export class RadioCheckboxesComponent implements ControlValueAccessor {
-  @Input() options: any[] = [];
-  @Input() name: string = 'square-radio-group'; // Unique name for the radio group
+  // @Input() options: any[] = [true, false];
+  // @Input() name: string = 'square-radio-group'; // Unique name for the radio group
+  options = input<any[]>([true,false])
+  name = input<string>('square-radio-group')
   
   value: any;
   disabled = false;
+
+  constructor() {
+    // effect(() =>{
+    //   console.log('Options: ', this.options())
+    // })
+   }
 
   // CVA functions
   private onChange = (value: any) => {};

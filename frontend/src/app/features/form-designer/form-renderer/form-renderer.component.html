@@ -53,10 +53,11 @@
                 }
                 @case ('radio') {
                   <app-radio-checkboxes
-                    [formControl]="getFormControl(asFormField(container.content).name!)"
-                    [options]="asFormField(container.content).options || []"
-                    [style]="asFormField(container.content).style">
+                    [formControl]="getFormControl(asFormField(container.content).name!)" 
+                    [name]="asFormField(container.content).name!"
+                    [options]="[true, false]">
                   </app-radio-checkboxes>
+
                 }
               }
             } @else if(container.contentType==='text') {
