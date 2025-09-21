@@ -196,6 +196,10 @@ public class ReferenceObjectService {
         }
     }
 
+    public void deleteAll(){
+        this.referenceObjectRepo.deleteAll();
+    }
+
     public void importBopPipeList() throws Exception {
         Path excelPath = Paths.get(fileRootPath + "/pdf/Lists/Piping List.xlsx");
         List<Map<String, String>> data = excelReaderService.readExcelFile(excelPath.toString(), "Kiewit Line List");
