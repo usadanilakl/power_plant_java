@@ -64,7 +64,7 @@
                 {{ container.content }}
               </div>
             }@else if(container.contentType==='variable') {
-              <div class="content-display" [ngStyle]="container.contentStyle">
+              <div class="content-display" [ngStyle]="getContentStyles(container)">
                 {{ getFormControlValue(container.content) | async }}
               </div>
             }

@@ -170,6 +170,32 @@
               </select>
             </div>
           </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="fontSize">Font Size (px)</label>
+              <input id="fontSize" type="number" [(ngModel)]="container.contentStyle.fontSize" (ngModelChange)="onPropertyChange()">
+            </div>
+            <div class="input-field">
+              <label for="textColor">Text Color</label>
+              <input id="textColor" type="color" [(ngModel)]="container.contentStyle.color" (ngModelChange)="onPropertyChange()">
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="fontWeight">Font Weight</label>
+              <select id="fontWeight" [(ngModel)]="container.style.fontWeight" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+              </select>
+            </div>
+            <div class="input-field">
+              <label for="fontStyle">Font Style</label>
+              <select id="fontStyle" [(ngModel)]="container.style.fontStyle" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="italic">Italic</option>
+              </select>
+            </div>
+          </div>
         }
         @case ('formField') {
           @if(isFormFieldContent(container.content)){

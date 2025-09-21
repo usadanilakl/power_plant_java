@@ -104,6 +104,9 @@
               @case ('text') {
                 <div class="text-content" [ngStyle]="getContentStyles(container)">{{ container.content }}</div>
               }
+              @case ('variable') {
+                <div class="text-content" [ngStyle]="getContentStyles(container)">{{ container | containerContent }}</div>
+              }
               @case ('formField') {
                 
                  @switch (getFormFieldType(container)) {
