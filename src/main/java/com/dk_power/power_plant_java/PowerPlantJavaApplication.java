@@ -87,6 +87,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //
 //        referenceObjectService.importHrsgValveList();
 //        referenceObjectService.importBopValveList();
+//        referenceObjectService.deleteAll();
 //        referenceObjectService.importHrsgPipeList();
 //        referenceObjectService.importBopPipeList();
 
