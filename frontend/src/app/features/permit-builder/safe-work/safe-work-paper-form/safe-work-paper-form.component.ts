@@ -44,7 +44,8 @@ export class SafeWorkPaperFormComponent implements OnInit  {
           const newContainer = new FormContainerDto(container);
           newContainer.content = {
             ...(container.content as FormField),
-            ...fieldWithOptions
+            ...fieldWithOptions,
+            type: (container.content as FormField).type,
           };
           return newContainer;
         }

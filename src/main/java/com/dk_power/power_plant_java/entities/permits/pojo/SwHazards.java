@@ -26,4 +26,8 @@ public class SwHazards {
     private boolean heatColdStress;
     private boolean elevatedSurface;
     private boolean environmental;
+    private boolean weatherHazards;
+    private String weatherHazardDescription;
+    private boolean other;
+    private String otherDescription;
 }
