@@ -19,11 +19,12 @@ import { ConfinedSpaceTableComponent } from "../../confined-space/confined-space
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, Subject, Subscription } from 'rxjs';
+import { SafeWorkPaperFormComponent } from '../../safe-work/safe-work-paper-form/safe-work-paper-form.component';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [CommonModule,FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent],
+  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent],
   templateUrl: './daily-permit-package-builder.component.html',
   styleUrl: './daily-permit-package-builder.component.css'
 })

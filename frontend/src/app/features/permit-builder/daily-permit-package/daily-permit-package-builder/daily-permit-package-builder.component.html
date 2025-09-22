@@ -129,9 +129,13 @@
             (rowLeftClickEvent)="attachExisting($event,'safeWorks')"
           ></app-safe-work-table>
         }@else {
-          <app-safe-work-form
+          <!-- <app-safe-work-form
             (formSubmit)="addSafeWork($event)"
-          ></app-safe-work-form>
+          ></app-safe-work-form> -->
+
+          <app-safe-work-paper-form
+            (submitEvent)="addSafeWork($event)"
+          ></app-safe-work-paper-form>
         }
       }
 

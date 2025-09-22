@@ -43,7 +43,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
       borderWidth: '1px',
       borderColor: 'black',
       borderRadius: '0px',
-      padding: '5px',
+      // padding: '5px',
       boxSizing: 'border-box',
       backgroundColor: '#f9f9f9',
       // Individual border widths for toggling

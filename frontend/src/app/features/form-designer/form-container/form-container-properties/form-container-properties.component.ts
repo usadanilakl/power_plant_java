@@ -65,6 +65,26 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
     this.propertyChange$.next();
   }
 
+  useContainerNameAsContent() {
+    if (this.container) {
+      this.container.content = this.container.name;
+      this.onPropertyChange();
+    }
+  }
+
+  setAllPaddings(event: Event) {
+    if (this.container) {
+      const input = event.target as HTMLInputElement;
+      const value = input.value;
+      const padding = value ? `${value}px` : '';
+      this.container.style.paddingTop = padding;
+      this.container.style.paddingRight = padding;
+      this.container.style.paddingBottom = padding;
+      this.container.style.paddingLeft = padding;
+      this.onPropertyChange();
+    }
+  }
+
   onDelete(): void {
     this.deleteContainer.emit(this.container?.id?? 0);
   }
