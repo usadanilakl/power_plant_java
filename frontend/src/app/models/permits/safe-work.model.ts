@@ -191,7 +191,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
       location: {
         name: 'location',
         label: 'Location',
-        type: 'text',
+        type: 'multi-select',
         options: locationOptions,
         validators: [Validators.required],
         initialValue: dto.location

@@ -43,10 +43,12 @@ export class ChekcboxXComponent implements ControlValueAccessor {
 
   toggle(event: Event): void {
     if (!this.disabled) {
+      console.log('Toggled checkbox:', this.value);
       const input = event.target as HTMLInputElement;
       this.value = input.checked;
       this.onChange(this.value);
       this.onTouched();
     }
+    console.log('Toggled checkbox event:', event);
   }
 }

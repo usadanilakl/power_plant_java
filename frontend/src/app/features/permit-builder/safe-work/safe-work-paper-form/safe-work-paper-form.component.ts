@@ -1,9 +1,13 @@
-import { Component, EventEmitter, inject, Output } from '@angular/core';
+import { Component, computed, DestroyRef, EventEmitter, inject, OnInit, Output, signal } from '@angular/core';
 import { CurrentSafeWorkService } from '../../../../services/current-items-services/current-safe-work.service';
 import { FormRendererComponent } from "../../../form-designer/form-renderer/form-renderer.component";
 import { SafeWorkDto } from '../../../../models/permits/safe-work.model';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
+import { CurrentValueService } from '../../../../services/current-value.service';
+import { Option } from '../../../../models/option.model';
+import { FormField } from '../../../../models/ui/form-field.model';
+import { FormContainerDto } from '../../../../models/forms/form-container.model';
 
 @Component({
   selector: 'app-safe-work-paper-form',
@@ -11,20 +15,73 @@ import { PrintableFormDto } from '../../../../models/forms/printable-form.model'
   templateUrl: './safe-work-paper-form.component.html',
   styleUrl: './safe-work-paper-form.component.css'
 })
-export class SafeWorkPaperFormComponent {
-  currentSafeWorkService = inject(CurrentSafeWorkService);
+export class SafeWorkPaperFormComponent implements OnInit  {
 
-  form = toSignal(this.currentSafeWorkService.paperForm$, { initialValue: new PrintableFormDto() });
+  currentSafeWorkService = inject(CurrentSafeWorkService);
+  currentValueService = inject(CurrentValueService);
+  private destroyRef = inject(DestroyRef);
+
+  paperForm = toSignal(this.currentSafeWorkService.paperForm$, { initialValue: new PrintableFormDto() });
   data = toSignal(this.currentSafeWorkService.selectedSafeWork$, { initialValue: new SafeWorkDto() });
+  locations = signal<Option[]>([]);
+  fieldsWithOptions = computed(() => {
+    return SafeWorkDto.toFormFields(this.data(), this.locations());
+  });
+
+  form = computed(() => {
+    const form = this.paperForm();
+    const fields = this.fieldsWithOptions();
+    if (!form.id || fields.length === 0) {
+      return form;
+    }
+
+    const fieldsMap = new Map(fields.map(f => [f.name, f]));
+
+    const updatedContainers = form.formContainers.map(container => {
+      if (container.contentType === 'formField' && container.content) {
+        const fieldWithOptions = fieldsMap.get((container.content as FormField).name);
+        if (fieldWithOptions) {
+          const newContainer = new FormContainerDto(container);
+          newContainer.content = {
+            ...(container.content as FormField),
+            ...fieldWithOptions
+          };
+          return newContainer;
+        }
+      }
+      return container;
+    });
+
+    return new PrintableFormDto({
+      ...form,
+      formContainers: updatedContainers
+    });
+  });
+
+
 
   @Output() submitEvent = new EventEmitter<SafeWorkDto>();
-
+  ngOnInit() {
+    this.loadOptions('location', this.locations);
+  }
   onSubmit(form: SafeWorkDto): void {
     if(this.submitEvent.observers.length > 0){
       this.submitEvent.emit(form);
       return;
     }
     this.currentSafeWorkService.createSafeWork(form);
+  }
+  
+  private loadOptions(category: string, optionsSignal: ReturnType<typeof signal<Option[]>>) {
+    this.currentValueService.getOptionsByCategory(category).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(options => {
+      optionsSignal.set(options);
+      this.checkFormReady();
+    });
+  }
+  checkFormReady() {
+    throw new Error('Method not implemented.');
   }
 
 

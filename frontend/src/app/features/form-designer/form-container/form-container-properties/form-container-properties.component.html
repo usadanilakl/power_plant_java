@@ -3,6 +3,27 @@
     <h3>{{getContainerName()}}</h3>
 
     <div class="property-group">
+      <label>Bulk Edit Mode</label>
+      <div class="property-row">
+        <input type="checkbox" [checked]="isBulkEditMode()" (change)="toggleBulkEditMode()">
+      </div>
+
+      @if(isBulkEditMode()){
+        <div class="input-row">
+          <div class="input-field">
+            <label for="bulkEditTarget">Apply To</label>
+            <select id="bulkEditTarget" [ngModel]="bulkEditTarget()" (ngModelChange)="setBulkEditTarget($event)">
+              <option value="selected">All Selected</option>
+              <option value="page">All on Page</option>
+              <option value="type">All of Same Type</option>
+            </select>
+          </div>
+        </div>
+        <button (click)="applyBulkUpdate()">Apply</button>
+      }
+    </div>
+
+    <div class="property-group">
       <label>Container</label>
       <div class="input-row">
         <div class="input-field">
