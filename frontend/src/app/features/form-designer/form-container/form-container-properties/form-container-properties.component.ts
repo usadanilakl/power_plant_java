@@ -2,7 +2,7 @@ import { Component, EventEmitter, inject, Input, OnInit, Output, DestroyRef, sig
 import { FormContainerDto } from '../../../../models/forms/form-container.model';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { debounceTime, single } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrentPrintableFormService } from '../../../../services/forms/current-printable-form.service';
 import { FormField } from '../../../../models/ui/form-field.model';
@@ -25,6 +25,11 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
   @Input() availableFields: any = {};
   @Output() updateContainer = new EventEmitter<FormContainerDto>();
   @Output() deleteContainer = new EventEmitter<number>();
+  @Output() bulkUpdate = new EventEmitter<{
+    properties: Partial<FormContainerDto>;
+    target: 'selected' | 'page' | 'type';
+    containerType?: string;
+  }>();
 
   private propertyChange$ = new Subject<void>();
   private currentPrintableFormService = inject(CurrentPrintableFormService);
@@ -39,6 +44,10 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
 
   totalPages = this.currentPrintableFormService.totalPages;
   pages = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
+
+  isBulkEditMode = signal<boolean>(false);
+  bulkEditTarget = signal<'selected' | 'page' | 'type'>('selected');
+
 
   ngOnInit(): void {
     this.propertyChange$
@@ -62,7 +71,31 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
   }
 
   onPropertyChange(): void {
-    this.propertyChange$.next();
+    if (this.isBulkEditMode()) {
+      // this.applyBulkUpdate();
+    } else {
+      this.propertyChange$.next();
+    }
+  }
+
+  useContainerNameAsContent() {
+    if (this.container) {
+      this.container.content = this.container.name;
+      this.onPropertyChange();
+    }
+  }
+
+  setAllPaddings(event: Event) {
+    if (this.container) {
+      const input = event.target as HTMLInputElement;
+      const value = input.value;
+      const padding = value ? `${value}px` : '';
+      this.container.style.paddingTop = padding;
+      this.container.style.paddingRight = padding;
+      this.container.style.paddingBottom = padding;
+      this.container.style.paddingLeft = padding;
+      this.onPropertyChange();
+    }
   }
 
   onDelete(): void {
@@ -120,6 +153,45 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
       }
       this.onPropertyChange();
     }
+  }
+
+
+  //bulk edit methods
+
+  toggleBulkEditMode(): void {
+    this.isBulkEditMode.update(value => !value);
+  }
+
+  setBulkEditTarget(target: 'selected' | 'page' | 'type'): void {
+    this.bulkEditTarget.set(target);
+  }
+
+  applyBulkUpdate(): void {
+    if (!this.container) return;
+
+    const propertiesToUpdate: Partial<FormContainerDto> = {
+      size: this.container.size,
+      style: this.container.style,
+      contentStyle: this.container.contentStyle,
+      pageNumber: this.container.pageNumber
+    };
+
+    const target = this.bulkEditTarget();
+    let containerType: string | undefined;
+    if (target === 'type' && this.container.contentType === 'formField' && typeof this.container.content === 'object' && this.container.content) {
+      containerType = (this.container.content as any).type;
+    }
+
+
+    if(this.bulkUpdate.observers.length > 0) {
+      this.bulkUpdate.emit({
+        properties: propertiesToUpdate,
+        target: target,
+        containerType: containerType
+      });
+      return;
+    }
+    this.currentPrintableFormService.bulkUpdateContainers(target, containerType, propertiesToUpdate);
   }
 
 

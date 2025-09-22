@@ -11,9 +11,10 @@
     <input
       type="checkbox"
       [id]="id"
-      [checked]="value"
+      [ngModel]="value"
+      (ngModelChange)="toggle($event)"
       [disabled]="disabled"
-      (change)="toggle($event)"
+      (blur)="onTouched()"
     />
     <span class="custom-square"></span>
     {{ label }}

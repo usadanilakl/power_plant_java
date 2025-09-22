@@ -69,10 +69,20 @@ export class CurrentConfinedSpaceService {
         this.selectedConfinedSpaceSubject.next(dto);
     }
 
-    updateConfinedSpaceInList(confinedSpace: ConfinedSpaceDto) {
+    updateOrAddConfinedSpaceToList(confinedSpace: ConfinedSpaceDto) {
         const currentConfinedSpaces = this.allActiveConfinedSpacesSubject.value;
-        const updatedConfinedSpaces = currentConfinedSpaces.map(cs => cs.id === confinedSpace.id ? confinedSpace : cs);
-        this.allActiveConfinedSpacesSubject.next(updatedConfinedSpaces);
+        const index = currentConfinedSpaces.findIndex(cs => cs.id === confinedSpace.id);
+
+        if (index !== -1) {
+            // Update existing item
+            const updatedConfinedSpaces = [...currentConfinedSpaces];
+            updatedConfinedSpaces[index] = confinedSpace;
+            this.allActiveConfinedSpacesSubject.next(updatedConfinedSpaces);
+        } else {
+            // Add new item
+            const updatedConfinedSpaces = [...currentConfinedSpaces, confinedSpace];
+            this.allActiveConfinedSpacesSubject.next(updatedConfinedSpaces);
+        }
     }
 
     addConfinedSpaceToList(confinedSpace: ConfinedSpaceDto) {
@@ -92,10 +102,13 @@ export class CurrentConfinedSpaceService {
             tap(response => {
                 if (response && response.responseData) {
                     const newConfinedSpace = response.responseData;
-                    this.addConfinedSpaceToList(newConfinedSpace);
+                    this.updateOrAddConfinedSpaceToList(newConfinedSpace);
                     this.setCurrentConfinedSpaceWithDto(new ConfinedSpaceDto(newConfinedSpace));
                 }
             })
         );
+    }
+    save(form: ConfinedSpaceDto) {
+      this.createConfinedSpace(form).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
     }
 }

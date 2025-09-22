@@ -68,8 +68,17 @@ export class CurrentSafeWorkService {
 
     updateSafeWorkInList(safeWork: SafeWorkDto) {
         const currentSafeWorks = this.allActiveSafeWorksSubject.value;
-        const updatedSafeWorks = currentSafeWorks.map(sw => sw.id === safeWork.id ? safeWork : sw);
-        this.allActiveSafeWorksSubject.next(updatedSafeWorks);
+        const itemIndex = currentSafeWorks.findIndex(sw => sw.id === safeWork.id);
+
+        if (itemIndex !== -1) {
+            // Item exists, so update it
+            const updatedSafeWorks = [...currentSafeWorks];
+            updatedSafeWorks[itemIndex] = safeWork;
+            this.allActiveSafeWorksSubject.next(updatedSafeWorks);
+        } else {
+            // Item does not exist, so add it
+            this.allActiveSafeWorksSubject.next([...currentSafeWorks, safeWork]);
+        }
     }
 
     addSafeWorkToList(safeWork: SafeWorkDto) {
@@ -89,10 +98,19 @@ export class CurrentSafeWorkService {
             tap(response => {
                 if (response && response.responseData) {
                     const newSafeWork = response.responseData;
-                    this.addSafeWorkToList(newSafeWork);
+                    this.updateSafeWorkInList(newSafeWork);
                     this.setCurrentSafeWorkWithDto(new SafeWorkDto(newSafeWork));
                 }
             })
+        );
+    }
+
+    saveSafeWork(safeWorkDto: SafeWorkDto) {
+        this.createSafeWork(safeWorkDto).pipe(
+            takeUntilDestroyed(this.destroyRef)
+        ).subscribe(
+            () => {},
+            err => console.error('Error saving safe work:', err)
         );
     }
 

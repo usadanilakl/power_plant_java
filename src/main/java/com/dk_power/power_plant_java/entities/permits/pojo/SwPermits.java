@@ -12,4 +12,5 @@ public class SwPermits {
     private boolean gasTesting;
     private boolean excavationPermit;
     private boolean energizedPermit;
+    private boolean other;
 }

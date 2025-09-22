@@ -7,28 +7,32 @@ import { WorkRequestDto } from './work-request.model';
 
 
 export class SwHazards {
-  highTemp: boolean = true;
-  highPressure: boolean = true;
-  energized: boolean = true;
-  storedEnergy: boolean = true;
-  eyeHazard: boolean = true;
-  egressAccess: boolean = true;
-  ergonomicHazard: boolean = true;
-  fallingObject: boolean = true;
-  highNoise: boolean = true;
-  dustParticulate: boolean = true;
-  combustibleDust: boolean = true;
-  fireHazard: boolean = true;
-  hotSurface: boolean = true;
-  slippery: boolean = true;
-  ventilationRequired: boolean = true;
-  lightingRestrictions: boolean = true;
-  chemicalExposure: boolean = true;
-  liftingHazard: boolean = true;
-  handTraps: boolean = true;
-  heatColdStress: boolean = true;
-  elevatedSurface: boolean = true;
-  environmental: boolean = true;
+  highTemp: boolean = false;
+  highPressure: boolean = false;
+  energized: boolean = false;
+  storedEnergy: boolean = false;
+  eyeHazard: boolean = false;
+  egressAccess: boolean = false;
+  ergonomicHazard: boolean = false;
+  fallingObject: boolean = false;
+  highNoise: boolean = false;
+  dustParticulate: boolean = false;
+  combustibleDust: boolean = false;
+  fireHazard: boolean = false;
+  hotSurface: boolean = false;
+  slippery: boolean = false;
+  ventilationRequired: boolean = false;
+  lightingRestrictions: boolean = false;
+  chemicalExposure: boolean = false;
+  liftingHazard: boolean = false;
+  handTraps: boolean = false;
+  heatColdStress: boolean = false;
+  elevatedSurface: boolean = false;
+  environmental: boolean = false;
+  weatherHazards: boolean = false;
+  weatherHazardDescription: string = '';
+  other: boolean = false;
+  otherDescription: string = '';
 
   constructor(data: Partial<SwHazards> = {}) {
     Object.assign(this, data);
@@ -36,14 +40,15 @@ export class SwHazards {
 }
 
 export class SwPermits {
-  lotoRequired: boolean = true;
-  confinedSpace: boolean = true;
-  hotWork: boolean = true;
-  ventingPurging: boolean = true;
-  jha: boolean = true;
-  gasTesting: boolean = true;
-  excavationPermit: boolean = true;
-  energizedPermit: boolean = true;
+  lotoRequired: boolean = false;
+  confinedSpace: boolean = false;
+  hotWork: boolean = false;
+  ventingPurging: boolean = false;
+  jha: boolean = false;
+  gasTesting: boolean = false;
+  excavationPermit: boolean = false;
+  energizedPermit: boolean = false;
+  other: boolean = false;
 
   constructor(data: Partial<SwPermits> = {}) {
     Object.assign(this, data);
@@ -51,25 +56,27 @@ export class SwPermits {
 }
 
 export class SwPpe {
-  hardhat: boolean = true;
-  safetyGlasses: boolean = true;
-  hearingProtection: boolean = true;
-  boots: boolean = true;
-  fallProtection: boolean = true;
-  gfi: boolean = true;
-  respirator: boolean = true;
-  dustMask: boolean = true;
-  gloves: boolean = true;
-  iceCleats: boolean = true;
-  acidSuit: boolean = true;
-  barricade: boolean = true;
-  faceShield: boolean = true;
-  gasMonitor: boolean = true;
-  arcFlashPpe: boolean = true;
-  weldingJacket: boolean = true;
-  weldingShield: boolean = true;
-  weldingGloves: boolean = true;
-  purgingVentilation: boolean = true;
+  hardhat: boolean = false;
+  safetyGlasses: boolean = false;
+  hearingProtection: boolean = false;
+  boots: boolean = false;
+  fallProtection: boolean = false;
+  gfi: boolean = false;
+  respirator: boolean = false;
+  dustMask: boolean = false;
+  gloves: boolean = false;
+  iceCleats: boolean = false;
+  acidSuit: boolean = false;
+  barricade: boolean = false;
+  faceShield: boolean = false;
+  gasMonitor: boolean = false;
+  arcFlashPpe: boolean = false;
+  weldingJacket: boolean = false;
+  weldingShield: boolean = false;
+  weldingGloves: boolean = false;
+  purgingVentilation: boolean = false;
+  other: boolean = false;
+  dummyCheckbox: string = '';
 
   constructor(data: Partial<SwPpe> = {}) {
     Object.assign(this, data);
@@ -192,6 +199,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         name: 'location',
         label: 'Location',
         type: 'text',
+        // type: 'multi-select',
         options: locationOptions,
         validators: [Validators.required],
         initialValue: dto.location

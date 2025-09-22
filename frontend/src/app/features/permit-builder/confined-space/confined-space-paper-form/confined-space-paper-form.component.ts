@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, EventEmitter, inject, Output } from '@angular/core';
 import { FormRendererComponent } from "../../../form-designer/form-renderer/form-renderer.component";
 import { CurrentConfinedSpaceService } from '../../../../services/current-items-services/current-confined-space.service';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
@@ -14,11 +14,17 @@ import { ConfinedSpaceDto } from '../../../../models/permits/confined-space.mode
 export class ConfinedSpacePaperFormComponent {
   currentConfinedSpaceService = inject(CurrentConfinedSpaceService);
 
+  @Output() formSubmit = new EventEmitter<ConfinedSpaceDto>();
+
   form = toSignal(this.currentConfinedSpaceService.paperForm$, { initialValue: new PrintableFormDto() });
   data = toSignal(this.currentConfinedSpaceService.selectedConfinedSpace$, { initialValue: new ConfinedSpaceDto() });
 
   onSubmit(form: ConfinedSpaceDto): void {
-    this.currentConfinedSpaceService.createConfinedSpace(form);
+    if(this.formSubmit.observers.length > 0){
+      this.formSubmit.emit(form);
+      return;
+    }
+    this.currentConfinedSpaceService.save(form);
   }
 
 }

@@ -11,6 +11,7 @@ import { Form } from "@angular/forms";
   providedIn: 'root'
 })
 export class CurrentPrintableFormService {
+
     private formContainerService = inject(FormContainerService);
     private formService = inject(PrintableFormService);
     private destroyRef = inject(DestroyRef);
@@ -187,7 +188,8 @@ export class CurrentPrintableFormService {
     });
 
     const updatedArray = this.formContainersSubject.value.map(c => new FormContainerDto(updatedContainerMap.get(c.id) || c));
-    this.formContainersSubject.next(updatedArray);
+    // this.formContainersSubject.next(updatedArray);
+    this.updateContainers(updatedArray);
 
   }
 
@@ -491,4 +493,61 @@ export class CurrentPrintableFormService {
     isContainerHovered(container: FormContainerDto): boolean {
         return this.hoveredContainer()?.id === container.id;
     }
+
+
+    //bulk edit
+  bulkUpdateContainers(target: string, containerType: string | undefined, propertiesToUpdate: Partial<FormContainerDto>) {
+    const allContainers = this.allContainers();
+    const currentPage = this.currentPage();
+
+    const targetContainers = allContainers.filter(container => {
+        switch (target) {
+            case 'selected':
+                return this.isContainerSelected(container);
+            case 'page':
+                return (container.pageNumber ?? 1) === currentPage;
+            case 'type':
+                return container.contentType === 'formField' &&
+                    typeof container.content === 'object' &&
+                    container.content !== null &&
+                    (container.content as any).type === containerType;
+            default:
+                return false;
+        }
+    });
+
+    if (targetContainers.length === 0) return;
+
+    const updatedContainers = targetContainers.map(container => {
+        return new FormContainerDto({
+            ...container,
+            ...propertiesToUpdate,
+            style: { ...container.style, ...propertiesToUpdate.style },
+            contentStyle: { ...container.contentStyle, ...propertiesToUpdate.contentStyle }
+        });
+    });
+
+    this.formContainerService.saveAll(updatedContainers).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map(response => response.responseData.map(c => new FormContainerDto(c)))
+    ).subscribe({
+        next: (results: FormContainerDto[]) => {
+            const resultsMap = new Map(results.map(c => [c.id, c]));
+            const newAllContainers = allContainers.map(c => resultsMap.get(c.id) || c);
+            this.formContainersSubject.next(newAllContainers);
+
+            const currentForm = this.formSubject.value;
+            if (currentForm) {
+                const updatedForm = new PrintableFormDto({
+                    ...currentForm,
+                    formContainers: newAllContainers
+                });
+                this.formSubject.next(updatedForm);
+            }
+        },
+        error: (err) => console.error('Error during bulk container update:', err)
+    });
+  }
+
+  
 }

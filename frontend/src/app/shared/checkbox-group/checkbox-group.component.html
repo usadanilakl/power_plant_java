@@ -18,7 +18,7 @@
                #checkbox>
         <label [for]="option.label">{{ option.label }}</label>
       </div>
-    } @else {
+    } @else if(mode === 'array') {
       <div>
         <input type="checkbox"
                [id]="option.label"

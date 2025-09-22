@@ -25,7 +25,7 @@ export class CheckboxGroupComponent implements ControlValueAccessor {
   showPopup = false;
 
   value: any = {};
-  private mode: 'object' | 'array' = 'object';
+  mode: 'object' | 'array' = 'object';
 
   onChange: any = () => {};
   onTouched: any = () => {};

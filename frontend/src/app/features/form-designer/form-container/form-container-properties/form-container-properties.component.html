@@ -3,6 +3,27 @@
     <h3>{{getContainerName()}}</h3>
 
     <div class="property-group">
+      <label>Bulk Edit Mode</label>
+      <div class="property-row">
+        <input type="checkbox" [checked]="isBulkEditMode()" (change)="toggleBulkEditMode()">
+      </div>
+
+      @if(isBulkEditMode()){
+        <div class="input-row">
+          <div class="input-field">
+            <label for="bulkEditTarget">Apply To</label>
+            <select id="bulkEditTarget" [ngModel]="bulkEditTarget()" (ngModelChange)="setBulkEditTarget($event)">
+              <option value="selected">All Selected</option>
+              <option value="page">All on Page</option>
+              <option value="type">All of Same Type</option>
+            </select>
+          </div>
+        </div>
+        <button (click)="applyBulkUpdate()">Apply</button>
+      }
+    </div>
+
+    <div class="property-group">
       <label>Container</label>
       <div class="input-row">
         <div class="input-field">
@@ -127,7 +148,10 @@
         @case ('text') {
           <div class="input-row">
             <div class="input-field">
-              <label for="textContent">Text</label>
+              <div class="label-with-button">
+                <label for="textContent">Text</label>
+                <button (click)="useContainerNameAsContent()" class="btn-link">Use Name</button>
+              </div>
               <textarea id="textContent" [(ngModel)]="container.content" (ngModelChange)="onPropertyChange()"></textarea>
             </div>
           </div>
@@ -154,6 +178,17 @@
               <select id="fontStyle" [(ngModel)]="container.style.fontStyle" (ngModelChange)="onPropertyChange()">
                 <option value="normal">Normal</option>
                 <option value="italic">Italic</option>
+              </select>
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label for="whiteSpace">White Space</label>
+              <select id="whiteSpace" [(ngModel)]="container.contentStyle.whiteSpace" (ngModelChange)="onPropertyChange()">
+                <option value="normal">Normal</option>
+                <option value="pre-wrap">Preserve Spaces & Wrap</option>
+                <option value="pre">Preserve Spaces</option>
+                <option value="nowrap">No Wrap</option>
               </select>
             </div>
           </div>
@@ -257,6 +292,38 @@
         </div>
       </div>
     </div>
+
+    <div class="property-group">
+      <label>Padding</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="paddingAll">All</label>
+          <input id="paddingAll" type="number" (change)="setAllPaddings($event)">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="paddingTop">Top</label>
+          <input id="paddingTop" type="text" placeholder="e.g., 10px" [(ngModel)]="container.style.paddingTop" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="paddingRight">Right</label>
+          <input id="paddingRight" type="text" placeholder="e.g., 10px" [(ngModel)]="container.style.paddingRight" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="paddingBottom">Bottom</label>
+          <input id="paddingBottom" type="text" placeholder="e.g., 10px" [(ngModel)]="container.style.paddingBottom" (ngModelChange)="onPropertyChange()">
+        </div>
+        <div class="input-field">
+          <label for="paddingLeft">Left</label>
+          <input id="paddingLeft" type="text" placeholder="e.g., 10px" [(ngModel)]="container.style.paddingLeft" (ngModelChange)="onPropertyChange()">
+        </div>
+      </div>
+    </div>
+
+
 
     <div class="actions">
       <button class="delete-button" (click)="onDelete()">Delete Container</button>

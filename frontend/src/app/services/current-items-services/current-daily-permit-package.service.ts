@@ -245,7 +245,7 @@ export class CurrentDailyPermitPackageService {
           const newPermits = response.responseData;
           const newPermitIds = newPermits.map(req => req.id);
           const updatedPackage = new DailyPermitPackageDto(currentPackage);
-          updatedPackage.safeWorkIds = [...updatedPackage.safeWorkIds, ...newPermitIds];
+          updatedPackage.safeWorkIds = [...updatedPackage.safeWorks.map(sw=>sw.id), ...newPermitIds];
     
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
         }),

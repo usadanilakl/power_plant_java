@@ -23,4 +23,5 @@ public class SwPpe {
     private boolean weldingShield;
     private boolean weldingGloves;
     private boolean purgingVentilation;
+    private boolean other;
 }
