@@ -7,12 +7,14 @@
     (change)="toggle($event)"
   />
   <span class="custom-square"></span> -->
-  <label class="square-checkbox-container" [for]="id" (click)="toggle($event)">
+  <label class="square-checkbox-container" [for]="id">
     <input
       type="checkbox"
       [id]="id"
-      [checked]="value"
+      [ngModel]="value"
+      (ngModelChange)="toggle($event)"
       [disabled]="disabled"
+      (blur)="onTouched()"
     />
     <span class="custom-square"></span>
     {{ label }}

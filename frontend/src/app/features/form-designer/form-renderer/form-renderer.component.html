@@ -48,6 +48,7 @@
                 @case ('checkbox') {
                   <app-chekcbox-x
                     [formControl]="getFormControl(asFormField(container.content).name!)"
+                    [id]="asFormField(container.content).name!"
                     [style]="asFormField(container.content).style">
                   </app-chekcbox-x>
                 }

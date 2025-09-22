@@ -69,7 +69,7 @@ export class SafeWorkPaperFormComponent implements OnInit  {
       this.submitEvent.emit(form);
       return;
     }
-    this.currentSafeWorkService.createSafeWork(form);
+    this.currentSafeWorkService.saveSafeWork(form);
   }
   
   private loadOptions(category: string, optionsSignal: ReturnType<typeof signal<Option[]>>) {
@@ -81,7 +81,7 @@ export class SafeWorkPaperFormComponent implements OnInit  {
     });
   }
   checkFormReady() {
-    throw new Error('Method not implemented.');
+    // throw new Error('Method not implemented.');
   }
 
 

@@ -188,7 +188,8 @@ export class CurrentPrintableFormService {
     });
 
     const updatedArray = this.formContainersSubject.value.map(c => new FormContainerDto(updatedContainerMap.get(c.id) || c));
-    this.formContainersSubject.next(updatedArray);
+    // this.formContainersSubject.next(updatedArray);
+    this.updateContainers(updatedArray);
 
   }
 
