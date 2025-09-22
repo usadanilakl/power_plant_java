@@ -30,7 +30,7 @@ export class SwHazards {
   elevatedSurface: boolean = false;
   environmental: boolean = false;
   weatherHazards: boolean = false;
-  weatherHazardsDescription: string = '';
+  weatherHazardDescription: string = '';
   other: boolean = false;
   otherDescription: string = '';
 
@@ -198,7 +198,8 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
       location: {
         name: 'location',
         label: 'Location',
-        type: 'multi-select',
+        type: 'text',
+        // type: 'multi-select',
         options: locationOptions,
         validators: [Validators.required],
         initialValue: dto.location
