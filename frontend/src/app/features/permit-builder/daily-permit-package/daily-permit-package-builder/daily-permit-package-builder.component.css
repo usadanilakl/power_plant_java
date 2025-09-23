@@ -133,3 +133,20 @@ input[type="text"] {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+
+.paper-forms-container {
+  display: flex;
+  flex-direction: column; /* Changed from row to column */
+  gap: 16px; /* Adds some space between the forms */
+  overflow-y: auto; /* Changed from overflow-x to overflow-y */
+  flex: 1; /* Allows this container to fill available space */
+  min-height: 0; /* Crucial for enabling scrolling within a flex item */
+}
+
+/* Add this to override child form scrolling behavior */
+.paper-forms-container > * {
+  height: auto !important;
+  overflow: visible !important;
+}

@@ -34,6 +34,10 @@
       <button (click)="toggleWorkRequestVisibility()">
         {{ isWorkRequestVisible ? 'Hide' : 'Show' }} Work Request
       </button>
+      <!-- <button (click)="toggleLotoVisibility()">
+        {{ isLotoVisible ? 'Hide' : 'Show' }} LOTO
+      </button> -->
+      <button (click)="openPaperFormPopup()">Open Paper Forms</button>
     </div>
 
   @if(isWorkRequestVisible){
@@ -176,4 +180,30 @@
       <!-- Handle other popup types as needed -->
     }
   }
+</app-popup-projection>
+
+
+<app-popup-projection
+  [title]="'Paper Forms'"
+  [isOpen]="isPaperFormPopupOpen"
+  (close)="closePaperFormPopup()">
+    
+    <div class="toggle-buttons">
+      <button (click)="toggleSafeWorkVisibility()" [disabled]="safeWorkCount()===0">
+        {{ isSafeWorkVisible ? 'Hide' : 'Show' }} Safe Work
+      </button>
+
+      <button (click)="toggleConfinedSpaceVisibility()" [disabled]="confinedSpaceCount()===0">
+        {{ isConfinedSpaceVisible ? 'Hide' : 'Show' }} Confined Space
+      </button>
+
+      <button (click)="toggleHotWorkVisibility()" [disabled]="hotWorkCount()===0">
+        {{ isHotWorkVisible ? 'Hide' : 'Show' }} Hot Work
+      </button>
+    </div>
+  <div class="paper-forms-container">
+    @if(isSafeWorkVisible){<app-safe-work-paper-form></app-safe-work-paper-form>}
+    @if(isHotWorkVisible){<app-hot-work-paper-form></app-hot-work-paper-form>}
+    @if(isConfinedSpaceVisible){<app-confined-space-paper-form></app-confined-space-paper-form>}
+  </div>
 </app-popup-projection>

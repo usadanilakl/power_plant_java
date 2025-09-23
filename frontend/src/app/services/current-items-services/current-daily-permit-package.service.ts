@@ -11,6 +11,7 @@ import { HotWorkService } from "../permits/hot-work.service";
 import { SafeWorkService } from "../permits/safe-work.service";
 import { HotWorkDto } from "../../models/permits/hot-work.model";
 import { ConfinedSpaceDto } from "../../models/permits/confined-space.model";
+import { FormBinding } from "../../features/form-designer/printable-form/form-binder/form-binder.component";
 
 @Injectable({
   providedIn: 'root'
@@ -494,6 +495,15 @@ export class CurrentDailyPermitPackageService {
       error: err => console.error('Failed to save confined space permit:', err)
     });
   }
+
+
+
+
+
+  /***************************************************************************************************************************************
+   * Paper Form Functions
+   ****************************************************************************************************************************************/
+
 
 
 }

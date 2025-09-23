@@ -20,11 +20,13 @@ import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, Subject, Subscription } from 'rxjs';
 import { SafeWorkPaperFormComponent } from '../../safe-work/safe-work-paper-form/safe-work-paper-form.component';
+import { HotWorkPaperFormComponent } from "../../hot-work/hot-work-paper-form/hot-work-paper-form.component";
+import { ConfinedSpacePaperFormComponent } from "../../confined-space/confined-space-paper-form/confined-space-paper-form.component";
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent],
+  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent],
   templateUrl: './daily-permit-package-builder.component.html',
   styleUrl: './daily-permit-package-builder.component.css'
 })
@@ -171,5 +173,17 @@ export class DailyPermitPackageBuilderComponent {
 
   toggleWorkRequestVisibility(): void {
     this.isWorkRequestVisible = !this.isWorkRequestVisible;
+  }
+
+  /***************************************************************************
+   * Paper Form Functions
+   **************************************************************************/
+
+  isPaperFormPopupOpen = false;
+  openPaperFormPopup(){
+    this.isPaperFormPopupOpen = true;
+  }
+  closePaperFormPopup(){
+    this.isPaperFormPopupOpen = false;
   }
 }
