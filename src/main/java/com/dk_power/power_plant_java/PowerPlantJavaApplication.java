@@ -85,9 +85,9 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\Isometric Large Bore Piping stressed\\Kiewit","Isometric Large Bore Piping stressed","pdf","Kiewit","");
 //        fileService.createObjectsFromDirectoryUsingMetaDataExcel("uploads\\pdf\\Isometric Small Bore Piping stressed\\Kiewit","Isometric Small Bore Piping stressed","pdf","Kiewit","");
 //
+//        referenceObjectService.deleteAll();
 //        referenceObjectService.importHrsgValveList();
 //        referenceObjectService.importBopValveList();
-//        referenceObjectService.deleteAll();
 //        referenceObjectService.importHrsgPipeList();
 //        referenceObjectService.importBopPipeList();
 
