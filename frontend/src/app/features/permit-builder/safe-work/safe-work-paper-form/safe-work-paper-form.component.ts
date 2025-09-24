@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, EventEmitter, inject, OnInit, Output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, EventEmitter, inject, Input, isSignal, OnInit, Output, Signal, signal } from '@angular/core';
 import { CurrentSafeWorkService } from '../../../../services/current-items-services/current-safe-work.service';
 import { FormRendererComponent } from "../../../form-designer/form-renderer/form-renderer.component";
 import { SafeWorkDto } from '../../../../models/permits/safe-work.model';
@@ -21,9 +21,25 @@ export class SafeWorkPaperFormComponent implements OnInit  {
   currentValueService = inject(CurrentValueService);
   private destroyRef = inject(DestroyRef);
 
+  @Input() dataInput: Signal<SafeWorkDto> | SafeWorkDto | null = null;
+
+  @Output() submitEvent = new EventEmitter<SafeWorkDto>();
+  @Output() changeEvent = new EventEmitter<SafeWorkDto>();
+  @Output() deleteEvent = new EventEmitter<number>();
+
+
   paperForm = toSignal(this.currentSafeWorkService.paperForm$, { initialValue: new PrintableFormDto() });
-  data = toSignal(this.currentSafeWorkService.selectedSafeWork$, { initialValue: new SafeWorkDto() });
+  dataFromService = toSignal(this.currentSafeWorkService.selectedSafeWork$, { initialValue: new SafeWorkDto() });
   locations = signal<Option[]>([]);
+
+  data = computed(() => {
+    if(this.dataInput){
+      if(isSignal(this.dataInput))return this.dataInput();
+      else return this.dataInput;
+    } 
+    return this.dataFromService();
+  });
+
   fieldsWithOptions = computed(() => {
     return SafeWorkDto.toFormFields(this.data(), this.locations());
   });
@@ -60,14 +76,20 @@ export class SafeWorkPaperFormComponent implements OnInit  {
   });
 
 
-
-  @Output() submitEvent = new EventEmitter<SafeWorkDto>();
   ngOnInit() {
     this.loadOptions('location', this.locations);
   }
   onSubmit(form: SafeWorkDto): void {
     if(this.submitEvent.observers.length > 0){
       this.submitEvent.emit(form);
+      return;
+    }
+    this.currentSafeWorkService.saveSafeWork(form);
+  }
+
+  onChange(form: SafeWorkDto): void {
+    if(this.changeEvent.observers.length > 0){
+      this.changeEvent.emit(form);
       return;
     }
     this.currentSafeWorkService.saveSafeWork(form);

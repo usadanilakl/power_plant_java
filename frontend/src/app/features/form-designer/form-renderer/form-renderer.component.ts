@@ -18,7 +18,7 @@ import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchab
 import { ChekcboxXComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
-import { Observable, of, startWith } from 'rxjs';
+import { debounceTime, distinctUntilChanged, Observable, of, startWith } from 'rxjs';
 
 @Component({
   selector: 'app-form-renderer',
@@ -32,6 +32,8 @@ export class FormRendererComponent {
   @Input() formData: Signal<any> = signal<any | null>(null);
   // formData = input<any | null>(null);
   formSubmit = output<any>();
+  formChange = output<any>();
+  formDelete = output<number>();
 
   form: FormGroup;
   private fb = inject(FormBuilder);
@@ -131,9 +133,15 @@ export class FormRendererComponent {
     console.log('Form created:', this.form);    
     
     this.form.valueChanges.pipe(
+      debounceTime(1000), // Wait for 300ms of inactivity before emitting
+      distinctUntilChanged(), // Only emit if the value has changed
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(currentValue => {
-      console.log('Form value changed: ', currentValue);
+      // console.log('Form value changed: ', currentValue);
+      const originalData = this.formData() || {};
+      const formValue = this.form.value;
+      const mergedData = this.deepMerge(originalData, formValue);
+      this.formChange.emit(mergedData);
     });
   }
 
@@ -257,11 +265,6 @@ export class FormRendererComponent {
       const formValue = this.form.value;
       const mergedData = this.deepMerge(originalData, formValue);
 
-      console.log('Original Data:', originalData);
-
-      console.log('Form Value:', formValue);
-      
-      console.log('Form Submitted', mergedData);
       this.formSubmit.emit(mergedData);
     } else {
       console.error('Form is invalid');

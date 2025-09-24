@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.entities.forms.PrintableForm;
 import com.dk_power.power_plant_java.repository.forms.FormContainerRepo;
 import com.dk_power.power_plant_java.repository.forms.PrintableFormRepo;
 import com.dk_power.power_plant_java.sevice.forms.FormContainerService;
+import com.dk_power.power_plant_java.sevice.forms.PrintableFormService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ public class PrintableFormRestController {
     private final PrintableFormRepo printableFormRepo;
     private final FormContainerRepo formContainerRepo;
     private final FormContainerService formContainerService;
+    private final PrintableFormService printableFormService;
 
     @GetMapping("/get-all")
     public ResponseEntity<NgApiResponse<Iterable<PrintableForm>>> getAllForms() {
@@ -48,7 +50,7 @@ public class PrintableFormRestController {
     @PostMapping("/save")
     public ResponseEntity<NgApiResponse<PrintableForm>> saveForm(@RequestBody PrintableForm form) {
         try {
-            PrintableForm savedForm = printableFormRepo.save(form);
+            PrintableForm savedForm = printableFormService.save(form);
             return ResponseEntity.ok(new NgApiResponse<>(savedForm, "Form saved successfully."));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new NgApiResponse<>(null, "Error saving form: " + e.getMessage()));

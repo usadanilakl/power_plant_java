@@ -76,6 +76,7 @@ export class SwPpe {
   weldingGloves: boolean = false;
   purgingVentilation: boolean = false;
   other: boolean = false;
+  otherDescription: string = '';
   dummyCheckbox: string = '';
 
   constructor(data: Partial<SwPpe> = {}) {

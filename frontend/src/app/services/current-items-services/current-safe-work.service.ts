@@ -49,7 +49,7 @@ export class CurrentSafeWorkService {
         ).subscribe(response => {
             if (response && response.responseData) {
                 this.paperFormSubject.next(response.responseData);
-                // console.log('Paper form loaded:', response.responseData);
+                console.log('Paper form loaded:', response.responseData);
             }
         });
     }
@@ -108,10 +108,10 @@ export class CurrentSafeWorkService {
     saveSafeWork(safeWorkDto: SafeWorkDto) {
         this.createSafeWork(safeWorkDto).pipe(
             takeUntilDestroyed(this.destroyRef)
-        ).subscribe(
-            () => {},
-            err => console.error('Error saving safe work:', err)
-        );
+        ).subscribe({
+            next: () => {},
+            error: err => console.error('Error saving safe work:', err)
+        });
     }
 
 }
