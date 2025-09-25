@@ -5,6 +5,7 @@
             [layout]="'column'"
             [values]="values()"
             [title]="'Confined Space'"
+            (formValueChange)="valuesChange.emit($event)"
             (formSubmit)="onFormSubmit($event)"
             (formDelete)="onFormDelete()"
         ></app-reactive-form>

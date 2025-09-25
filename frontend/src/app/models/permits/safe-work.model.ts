@@ -41,14 +41,19 @@ export class SwHazards {
 
 export class SwPermits {
   lotoRequired: boolean = false;
+  lotoDescription: string = '';
   confinedSpace: boolean = false;
+  confinedSpaceDescription: string = '';
   hotWork: boolean = false;
+  hotWorkDescription: string = '';
   ventingPurging: boolean = false;
+  ventingPurgingDescription: string = '';
   jha: boolean = false;
   gasTesting: boolean = false;
   excavationPermit: boolean = false;
   energizedPermit: boolean = false;
   other: boolean = false;
+  otherDescription: string = '';
 
   constructor(data: Partial<SwPermits> = {}) {
     Object.assign(this, data);

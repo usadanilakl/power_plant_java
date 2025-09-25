@@ -78,14 +78,12 @@ export class ReactiveFormComponent {
     form.valueChanges.subscribe(() => this.onValueChanged(form));
     this.form.set(form);
     
-    console.log('Form created:', this.form());    
-    
     this.form()?.valueChanges.pipe(
       debounceTime(1000), // Wait for 500ms of silence
       distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(currentValue => {
-      // console.log('Form value changed: ', currentValue);
+      console.log('Form value changed: ', currentValue);
       const fullObject = this._buildFullObject(currentValue);
       this.formValueChange.emit(fullObject);
     });
@@ -203,7 +201,6 @@ export class ReactiveFormComponent {
         }
       });
 
-      console.log('Form submitted:', result);
   
       this.formSubmit.emit(result);
     }else if(form){

@@ -99,4 +99,10 @@ export class CurrentHotWorkService {
             })
         );
     }
+    saveHotWork(form: HotWorkDto) {
+      this.createHotWork(form).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: () => {},
+        error: err => console.error('Error saving hot work:', err)
+      });
+    }
 }

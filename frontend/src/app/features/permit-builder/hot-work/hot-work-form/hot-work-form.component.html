@@ -5,6 +5,7 @@
             [values]="values()"
             [layout]="'column'"
             [title]="'Hot Work'"
+            (formValueChange)="valuesChange.emit($event)"
             (formSubmit)="onFormSubmit($event)"
             (formDelete)="onFormDelete()"
         ></app-reactive-form>

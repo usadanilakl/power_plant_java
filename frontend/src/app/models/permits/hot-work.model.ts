@@ -38,6 +38,10 @@ export interface HotWorkModel extends BaseModel {
   meterNum: string | null;
   specialInstructions: string | null;
   measures: HotWorkMeasures | null;
+  isAirMonitoringRegisteredOnConfinedSpace: boolean;
+  isFireWatchRequired: boolean;
+  timeOfInitialTest: string;
+  initialTestResult: string;
 }
 
 export class HotWorkDto extends BaseDto implements HotWorkModel {
@@ -50,6 +54,10 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
   meterNum: string | null;
   specialInstructions: string | null;
   measures: HotWorkMeasures | null;
+  isAirMonitoringRegisteredOnConfinedSpace: boolean;
+  timeOfInitialTest: string;
+  isFireWatchRequired: boolean;
+  initialTestResult: string;
 
   constructor(data: Partial<HotWorkModel> = {}) {
     super(data);
@@ -62,6 +70,10 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     this.meterNum = data.meterNum ?? null;
     this.specialInstructions = data.specialInstructions ?? null;
     this.measures = data.measures ?? new HotWorkMeasures();
+    this.isAirMonitoringRegisteredOnConfinedSpace = data.isAirMonitoringRegisteredOnConfinedSpace ?? false;
+    this.timeOfInitialTest = data.timeOfInitialTest ?? '';
+    this.isFireWatchRequired = data.isFireWatchRequired ?? false;
+    this. initialTestResult = data.initialTestResult ?? '';
   }
 
   override toJson(): any {
@@ -178,7 +190,39 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         initialValue: dto.isVerified?.toString() 
       },
       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
-      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType }
+      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
+      isAirMonitoringRegisteredOnConfinedSpace: { 
+        name: 'isAirMonitoringRegisteredOnConfinedSpace', 
+        label: 'Air Monitoring Registered on Confined Space', 
+        type: 'select', 
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' }
+        ], 
+        initialValue: dto.isAirMonitoringRegisteredOnConfinedSpace?.toString() 
+      },
+      isFireWatchRequired: { 
+        name: 'isFireWatchRequired', 
+        label: 'Fire Watch Required', 
+        type: 'select', 
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' }
+        ], 
+        initialValue: dto.isFireWatchRequired?.toString() 
+      },
+      timeOfInitialTest: { 
+        name: 'timeOfInitialTest', 
+        label: 'Time of Initial Test', 
+        type: 'time', 
+        initialValue: dto.timeOfInitialTest 
+      },
+      initialTestResult: { 
+        name: 'initialTestResult', 
+        label: 'Initial Test Result', 
+        type: 'text', 
+        initialValue: dto.initialTestResult 
+      }
     };
   
     return fields.map(fieldName => allFields[fieldName]);
@@ -209,6 +253,26 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         conditionalStyling: (item: any, column: Column) => 
             item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
       },
+      isAirMonitoringRegisteredOnConfinedSpace: {
+        id: 'isAirMonitoringRegisteredOnConfinedSpace',
+        header: 'Air Mon. on CS',
+        accessorFn: (item: HotWorkDto) => item.isAirMonitoringRegisteredOnConfinedSpace ? 'Yes' : 'No'
+      },
+      isFireWatchRequired: {
+        id: 'isFireWatchRequired',
+        header: 'Fire Watch Req.',
+        accessorFn: (item: HotWorkDto) => item.isFireWatchRequired ? 'Yes' : 'No'
+      },
+      timeOfInitialTest: {
+        id: 'timeOfInitialTest',
+        header: 'Initial Test Time',
+        accessorKey: 'timeOfInitialTest'
+      },
+      initialTestResult: {
+        id: 'initialTestResult',
+        header: 'Initial Test Result',
+        accessorKey: 'initialTestResult'
+      }
     };
 
     return fields.map(fieldName => allColumns[fieldName]);

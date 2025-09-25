@@ -74,10 +74,13 @@
       <app-item-carousel 
         [items]="hotWorks()" 
         title="Hot Works" 
-      (itemChangedEvent)="currentDailyPermitPackageService.currentHotWork.set($event)"
+        (itemChangedEvent)="currentDailyPermitPackageService.currentHotWork.set($event)"
         (addItemEvent)="attachNew('Hot Work')">
         <ng-template let-hw>
-          <app-hot-work-form [values]="hw"></app-hot-work-form>
+          <app-hot-work-form 
+            [values]="hw"
+            (valuesChange)="currentDailyPermitPackageService.submitHotWork($event)"
+          ></app-hot-work-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate</button>
         <button [disabled]="emptyHotWorksExists()" (click)="addHotWork()">Add Empty</button>
@@ -90,7 +93,10 @@
         (itemChangedEvent)="currentDailyPermitPackageService.currentConfinedSpace.set($event)"
         (addItemEvent)="attachNew('Confined Space')">
         <ng-template let-cs>
-          <app-confined-space-form [values]="cs"></app-confined-space-form>
+          <app-confined-space-form 
+            [values]="cs"
+            (valuesChange)="currentDailyPermitPackageService.submitConfinedSpace($event)"
+          ></app-confined-space-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>
         <button [disabled]="emptyConfinedSpacesExists()" (click)="addConfinedSpace()">Add Empty</button>
@@ -133,10 +139,6 @@
             (rowLeftClickEvent)="attachExisting($event,'safeWorks')"
           ></app-safe-work-table>
         }@else {
-          <!-- <app-safe-work-form
-            (formSubmit)="addSafeWork($event)"
-          ></app-safe-work-form> -->
-
           <app-safe-work-paper-form
             (submitEvent)="addSafeWork($event)"
           ></app-safe-work-paper-form>
@@ -154,9 +156,9 @@
             (rowLeftClickEvent)="attachExisting($event, 'hotWorks')"
           ></app-hot-work-table>
         }@else {
-          <app-hot-work-form
-            (formSubmit)="addHotWork($event)"
-          ></app-hot-work-form>
+          <app-hot-work-paper-form
+            (submitEvent)="addHotWork($event)"
+          ></app-hot-work-paper-form>
         }
       }
     }
@@ -170,9 +172,9 @@
             (rowLeftClickEvent)="attachExisting($event, 'confinedSpaces')"
           ></app-confined-space-table>
         }@else {
-          <app-confined-space-form
+          <app-confined-space-paper-form
             (formSubmit)="addConfinedSpace($event)"
-          ></app-confined-space-form>
+          ></app-confined-space-paper-form>
         }
       }
     }
@@ -209,7 +211,20 @@
           (changeEvent)="currentDailyPermitPackageService.submitSafeWork($event)"
         ></app-safe-work-paper-form>}
     }
-    @if(isHotWorkVisible){<app-hot-work-paper-form></app-hot-work-paper-form>}
-    @if(isConfinedSpaceVisible){<app-confined-space-paper-form></app-confined-space-paper-form>}
+    @if(isHotWorkVisible){
+      @for(hw of hotWorks(); track hw.id){
+        <app-hot-work-paper-form
+          [dataInput]="hw"
+          (changeEvent)="currentDailyPermitPackageService.submitHotWork($event)"
+        ></app-hot-work-paper-form>}
+    }
+
+    @if(isConfinedSpaceVisible){
+      @for(cs of confinedSpaces(); track cs.id){
+        <app-confined-space-paper-form
+          [dataInput]="cs"
+          (changeEvent)="currentDailyPermitPackageService.submitConfinedSpace($event)"
+        ></app-confined-space-paper-form>}
+    }
   </div>
 </app-popup-projection>

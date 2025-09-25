@@ -24,6 +24,7 @@ public class HotWorkMapper implements BaseMapper {
         dto.setMeterNum(entity.getMeterNum());
         dto.setSpecialInstructions(entity.getSpecialInstructions());
         dto.setLocation(entity.getLocation());
+        dto.setWorkScope(entity.getWorkScope());
 
         try {
             dto.setMeasures(entity.getMeasures());
@@ -45,6 +46,7 @@ public class HotWorkMapper implements BaseMapper {
         entity.setMeterNum(dto.getMeterNum());
         entity.setSpecialInstructions(dto.getSpecialInstructions());
         entity.setLocation(dto.getLocation());
+        entity.setWorkScope(dto.getWorkScope());
 
         try {
             entity.setMeasures(dto.getMeasures());

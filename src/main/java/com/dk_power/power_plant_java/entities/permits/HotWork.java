@@ -25,6 +25,10 @@ public class HotWork extends BasePermitEntity {
     private String meterNum;
     private String specialInstructions;
     private String location;
+    private Boolean isAirMonitoringRegisteredOnConfinedSpace;
+    private Boolean isFireWatchRequired;
+    private String timeOfInitialTest;
+    private String initialTestResult;
 
     @Column(columnDefinition = "TEXT")
     private String measuresJson;

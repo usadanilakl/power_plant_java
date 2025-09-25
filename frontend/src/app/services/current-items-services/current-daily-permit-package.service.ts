@@ -42,7 +42,7 @@ export class CurrentDailyPermitPackageService {
     emptySafeWorksExists = computed(() => this.safeWorks().some(sw => !sw.location && !sw.companyPerson && !sw.requestedBy &&!sw.workScope));
     currentSafeWork = signal<SafeWorkDto | null>(null);
 
-    hotWorks = computed<HotWorkDto[]>(() => this.currentDailyPacksge().hotWorks);
+    hotWorks = computed<HotWorkDto[]>(() => {console.log('updating hotworks'); return this.currentDailyPacksge().hotWorks});
     hotWorkCount = computed(() => this.hotWorks().length);
     emptyHotWorksExists = computed(() => this.hotWorks().some(hw =>!hw.location &&!hw.workScope &&!hw.foreman &&!hw.fireWatch));
     currentHotWork = signal<HotWorkDto | null>(null);
@@ -279,7 +279,7 @@ export class CurrentDailyPermitPackageService {
           const newPermits = response.responseData;
           const newPermitIds = newPermits.map(req => req.id);
           const updatedPackage = new DailyPermitPackageDto(currentPackage);
-          updatedPackage.hotWorkIds = [...updatedPackage.hotWorkIds, ...newPermitIds];
+          updatedPackage.hotWorkIds = [...updatedPackage.hotWorks.map(hw=>hw.id), ...newPermitIds];
     
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
         }),
@@ -312,7 +312,7 @@ export class CurrentDailyPermitPackageService {
           const newPermits = response.responseData;
           const newPermitIds = newPermits.map(req => req.id);
           const updatedPackage = new DailyPermitPackageDto(currentPackage);
-          updatedPackage.confinedSpaceIds = [...updatedPackage.confinedSpaceIds, ...newPermitIds];
+          updatedPackage.confinedSpaceIds = [...updatedPackage.confinedSpaces.map(c=>c.id), ...newPermitIds];
     
           return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
         }),
