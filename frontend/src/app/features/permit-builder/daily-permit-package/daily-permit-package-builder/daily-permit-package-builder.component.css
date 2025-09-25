@@ -116,7 +116,7 @@ input[type="text"] {
 }
 
 .toggle-buttons button {
-  flex: 1 1 calc(50% - 4px);
+  flex: 1 1 150px; /* Grow and shrink from a 150px basis */
   padding: 8px;
   background-color: #f8f9fa;
   border: 1px solid #dee2e6;

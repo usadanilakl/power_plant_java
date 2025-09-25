@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, effect, inject, Input, input, OnChanges, output, Renderer2, signal, Signal, SimpleChanges } from '@angular/core';
+import { Component, computed, DestroyRef, effect, ElementRef, inject, Input, input, OnChanges, output, Renderer2, signal, Signal, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { FormField } from '../../../models/ui/form-field.model';
 import { FormContainerDto } from '../../../models/forms/form-container.model';
@@ -19,6 +19,7 @@ import { ChekcboxXComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
 import { debounceTime, distinctUntilChanged, Observable, of, startWith } from 'rxjs';
+import { PrintService } from '../../../services/ui/print.service';
 
 @Component({
   selector: 'app-form-renderer',
@@ -30,6 +31,7 @@ import { debounceTime, distinctUntilChanged, Observable, of, startWith } from 'r
 export class FormRendererComponent {
   formDefinition = input<PrintableFormDto | null>(null);
   @Input() formData: Signal<any> = signal<any | null>(null);
+  readOnly = input<boolean>(false);
   // formData = input<any | null>(null);
   formSubmit = output<any>();
   formChange = output<any>();
@@ -39,6 +41,8 @@ export class FormRendererComponent {
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
   private renderer = inject(Renderer2);
+  private el = inject(ElementRef);
+  private printService = inject(PrintService);
 
   // Use computed signals for easier template binding
   // containers = computed(() => this.formDefinition()?.formContainers ?? []);
@@ -295,10 +299,22 @@ export class FormRendererComponent {
   private isObject(item: any): boolean {
     return (item && typeof item === 'object' && !Array.isArray(item));
   }
-
+  /**
+   * Hands off the form definition and current data to the PrintService
+   * to be rendered in the dedicated print layout component.
+   */
   print(): void {
-    this.renderer.addClass(document.body, 'printing');
-    window.print();
-    this.renderer.removeClass(document.body, 'printing');
+    if (this.formDefinition()) {
+      const originalData = this.formData() || {};
+      const formValue = this.form.value;
+      const mergedData = this.deepMerge(originalData, formValue);
+      this.printService.printForm(this.formDefinition()!, mergedData);
+    }
   }
+
+  // print(): void {
+  //   this.renderer.addClass(document.body, 'printing');
+  //   window.print();
+  //   this.renderer.removeClass(document.body, 'printing');
+  // }
 }

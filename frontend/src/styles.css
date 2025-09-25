@@ -46,3 +46,44 @@ body.dragging {
   -moz-user-select: none;
   -ms-user-select: none;
 }
+
+@media print {
+  /* Force colors and backgrounds to be printed */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide everything on the page by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Make ONLY the print layout and its children visible */
+  app-print-layout, app-print-layout * {
+    visibility: visible;
+  }
+
+  /* Position the print layout to fill the page */
+  app-print-layout {
+    display: block !important; /* Override the component's host style */
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Ensure form sheets break pages correctly */
+  .form-sheet {
+    page-break-after: always;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+
+  /* Hide action buttons inside the rendered form */
+  .form-actions {
+    display: none !important;
+  }
+}
+
+

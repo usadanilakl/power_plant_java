@@ -1,10 +1,12 @@
 @if (formDefinition()) {
   <form [formGroup]="form" (ngSubmit)="onSubmit()">
 
-  <div class="form-actions">
-    <button type="button" (click)="onSubmit()">Submit</button>
-    <button type="button" (click)="print()">Print</button>
-  </div> 
+  @if (!readOnly()) {
+    <div class="form-actions">
+      <button type="button" (click)="onSubmit()">Submit</button>
+      <button type="button" (click)="print()">Print</button>
+    </div>
+  }
     @for (page of pages(); track page.pageNumber) {
       <div class="form-sheet" [style.width.px]="sheetSize().width * pixelsPerInch" [style.height.px]="sheetSize().height * pixelsPerInch">
         @for (container of page.containers; track container.id) {
@@ -48,7 +50,7 @@
                 @case ('checkbox') {
                   <app-chekcbox-x
                     [formControl]="getFormControl(asFormField(container.content).name!)"
-                    [id]="asFormField(container.content).name!"
+                    [id]="asFormField(container.content).name!+formData().id"
                     [style]="asFormField(container.content).style">
                   </app-chekcbox-x>
                 }

@@ -1,0 +1,7 @@
+@if (printableForm(); as form) {
+  <app-form-renderer 
+    [formDefinition]="form.definition" 
+    [formData]="form.data"
+    [readOnly]="true">
+  </app-form-renderer>
+}

@@ -31,58 +31,6 @@
   padding: 10px 20px;
 }
 
-/* Print-specific styles */
-@media print {
-  /* Force colors and backgrounds to be printed */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Hide everything on the page by default */
-  body * {
-    visibility: hidden;
-  }
-
-  /* Make this component and everything inside it visible */
-  :host, :host * {
-    visibility: visible;
-  }
-
-  /* Position the component to take up the whole print page */
-  :host {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: auto;
-    overflow: visible;
-    background-color: transparent;
-    padding: 0;
-    margin: 0;
-  }
-
-  .form-sheet {
-    /* Let the inline style from the component dictate the size */
-    /* DO NOT override width and height here. */
-    margin: 0;
-    padding: 0;
-    box-shadow: none;
-    border: none;
-    page-break-after: always; /* Ensure each sheet is on a new page */
-    overflow: hidden; /* This is important to clip any minor overflow */
-  }
-
-  .form-container {
-    page-break-inside: avoid; /* Try to keep containers from splitting across pages */
-  }
-
-  /* Hide the action buttons when printing */
-  .form-actions {
-    display: none;
-  }
-}
-
 
 
 /* .printable-sheet {
