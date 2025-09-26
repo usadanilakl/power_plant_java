@@ -24,16 +24,14 @@ public class ConfinedSpaceMapper implements BaseMapper {
         dto.setWorkScope(entity.getWorkScope());
         dto.setIssuedTo(entity.getIssuedTo());
         dto.setDuration(entity.getDuration());
-        dto.setLotoNum(entity.getLotoNum());
-        dto.setHotWorkNum(entity.getHotWorkNum());
-        dto.setVentilation(entity.isVentilation());
-        dto.setBlankFlanged(entity.isBlankFlanged());
         dto.setMeterModel(entity.getMeterModel());
         dto.setMeterNum(entity.getMeterNum());
         dto.setCalibrated(entity.isCalibrated());
 
         try {
             dto.setHazards(entity.getHazards());
+            dto.setPpe(entity.getPpe());
+            dto.setPrecautions(entity.getPrecautions());
         } catch (Exception e) {
             // handle or log
         }
@@ -52,16 +50,14 @@ public class ConfinedSpaceMapper implements BaseMapper {
         entity.setWorkScope(dto.getWorkScope());
         entity.setIssuedTo(dto.getIssuedTo());
         entity.setDuration(dto.getDuration());
-        entity.setLotoNum(dto.getLotoNum());
-        entity.setHotWorkNum(dto.getHotWorkNum());
-        entity.setVentilation(dto.isVentilation());
-        entity.setBlankFlanged(dto.isBlankFlanged());
         entity.setMeterModel(dto.getMeterModel());
         entity.setMeterNum(dto.getMeterNum());
         entity.setCalibrated(dto.isCalibrated());
 
         try {
             entity.setHazards(dto.getHazards());
+            entity.setPpe(dto.getPpe());
+            entity.setPrecautions(dto.getPrecautions());
         } catch (Exception e) {
             // handle or log
         }
