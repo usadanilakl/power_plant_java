@@ -34,7 +34,7 @@ public class ConfinedSpace extends BasePermitEntity {
     private String oxygen;
     private String lel;
     private String hydrogenSulfide;
-    private boolean carbonMonoxide;
+    private String carbonMonoxide;
     private String ammonia;
     private String timeOfSample;
     private String testerInitials;

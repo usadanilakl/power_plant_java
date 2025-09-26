@@ -79,6 +79,13 @@ export interface ConfinedSpaceModel extends BaseModel {
   meterModel: string | null;
   meterNum: string | null;
   calibrated: boolean;
+  oxygen: string | null;
+  lel: string | null;
+  hydrogenSulfide: string | null;
+  carbonMonoxide: string | null;
+  ammonia: string | null;
+  timeOfSample: string | null;
+  testerInitials: string | null;
   hazards: ConfinedSpaceHazards | null;
   ppe: ConfinedSpacePpe | null;
   precautions: ConfinedSpacePrecautions | null;
@@ -98,6 +105,13 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
   meterModel: string | null;
   meterNum: string | null;
   calibrated: boolean;
+  oxygen: string | null;
+  lel: string | null;
+  hydrogenSulfide: string | null;
+  carbonMonoxide: string | null;
+  ammonia: string | null;
+  timeOfSample: string | null;
+  testerInitials: string | null;
   hazards: ConfinedSpaceHazards | null;
   ppe: ConfinedSpacePpe | null;
   precautions: ConfinedSpacePrecautions | null;
@@ -117,6 +131,13 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     this.meterModel = data.meterModel ?? "RKI GX-3R PRO";
     this.meterNum = data.meterNum ?? null;
     this.calibrated = data.calibrated ?? false;
+    this.oxygen = data?.oxygen ?? null;
+    this.lel = data?.lel ?? null;
+    this.hydrogenSulfide = data?.hydrogenSulfide ?? null;
+    this.carbonMonoxide = data?.carbonMonoxide ?? null;
+    this.ammonia = data?.ammonia ?? null;
+    this.timeOfSample = data?.timeOfSample ?? null;
+    this.testerInitials = data?.testerInitials ?? null;
     this.hazards = data.hazards ?? new ConfinedSpaceHazards();
     this.ppe = data.ppe?? new ConfinedSpacePpe();
     this.precautions = data.precautions?? new ConfinedSpacePrecautions();
@@ -138,6 +159,11 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       meterModel: this.meterModel,
       meterNum: this.meterNum,
       calibrated: this.calibrated,
+      oxygen: this.oxygen,
+      lel: this.lel,
+      hydrogenSulfide: this.hydrogenSulfide,
+      carbonMonoxide: this.carbonMonoxide,
+      ammonia: this.ammonia,
       hazards: this.hazards,
       ppe: this.ppe,
       precautions: this.precautions,
@@ -160,6 +186,11 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       meterModel: json.meterModel || "RKI GX-3R PRO",
       meterNum: json.meterNum || null,
       calibrated: json.calibrated || false,
+      oxygen: json.oxygen || null,
+      lel: json.lel || null,
+      hydrogenSulfide: json.hydrogenSulfide || null,
+      carbonMonoxide: json.carbonMonoxide || null,
+      ammonia: json.ammonia || null,
       hazards: json.hazards || new ConfinedSpaceHazards(),
       ppe: json.ppe || new ConfinedSpacePpe(),
       precautions: json.precautions || new ConfinedSpacePrecautions(),
@@ -270,6 +301,14 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         type: 'checkbox', 
         initialValue: dto.calibrated 
       },
+      oxygen: { name: 'oxygen', label: 'Oxygen', type: 'text', initialValue: dto.oxygen },
+      lel: { name: 'lel', label: 'LEL', type: 'text', initialValue: dto.lel },
+      hydrogenSulfide: { name: 'hydrogenSulfide', label: 'H2S', type: 'text', initialValue: dto.hydrogenSulfide },
+      carbonMonoxide: { name: 'carbonMonoxide', label: 'CO', type: 'text', initialValue: dto.carbonMonoxide },
+      ammonia: { name: 'ammonia', label: 'Ammonia', type: 'text', initialValue: dto.ammonia },
+      timeOfSample: { name: 'timeOfSample', label: 'Time of Sample', type: 'time', initialValue: dto.timeOfSample },
+      testerInitials: { name: 'testerInitials', label: 'Tester Initials', type: 'text', initialValue: dto.testerInitials },
+      
       hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox-group', initialValue: dto.hazards, options: ConfinedSpaceDto.getHazardOptions(dto.hazards) },
       ppe: { name: 'ppe', label: 'PPE', type: 'checkbox-group', initialValue: dto.ppe, options: ConfinedSpaceDto.getPpeOptions(dto.ppe) },
       precautions: { name: 'precautions', label: 'Precautions', type: 'checkbox-group', initialValue: dto.precautions, options: ConfinedSpaceDto.getPrecautionOptions(dto.precautions) },
@@ -318,6 +357,16 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         header: 'Calibrated', 
         accessorFn: (item: ConfinedSpaceDto) => item.calibrated ? 'Yes' : 'No'
       },
+      oxygen: { id: 'oxygen', header: 'Oxygen', accessorKey: 'oxygen' },
+      lel: { id: 'lel', header: 'LEL', accessorKey: 'lel' },
+      hydrogenSulfide: { id: 'hydrogenSulfide', header: 'H2S', accessorKey: 'hydrogenSulfide' },
+      carbonMonoxide: { id: 'carbonMonoxide', header: 'CO', accessorKey: 'carbonMonoxide' },
+      ammonia: { id: 'ammonia', header: 'Ammonia', accessorKey: 'ammonia' },
+      timeOfSample: { id: 'timeOfSample', header: 'Time of Sample', accessorKey: 'timeOfSample' },
+      testerInitials: { id: 'testerInitials', header: 'Tester Initials', accessorKey: 'testerInitials' },
+      
+        
+      
         hazards: { 
             id: 'hazards',
             header: 'Hazards',
