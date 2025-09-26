@@ -13,4 +13,7 @@ public class LotoIdDto extends BasePermitIdDto {
     private List<Long> locks;
 
     private Long lotoBox;
+    private String equipmentSystem;
+    private String lotoRequestor;
+    private String date;
 }

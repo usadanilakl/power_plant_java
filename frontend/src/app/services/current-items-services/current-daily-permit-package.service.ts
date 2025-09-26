@@ -152,6 +152,19 @@ export class CurrentDailyPermitPackageService {
         this.selectedDailyPermitPackageSubject.next(new DailyPermitPackageDto());
       })
     }
+
+  build(){
+    this.dailyPermitPackageService.buildPermitsById(this.currentDailyPacksge().id+'').pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (permits) => {
+        console.log('Permits built successfully', permits.responseData);
+      },
+      error: (err) => {
+        console.error('Error building permits', err);
+      }
+    })
+  }
     
     setSelectedPackage(packageItem: DailyPermitPackageDto) {
       this.selectedDailyPermitPackageSubject.next(packageItem);

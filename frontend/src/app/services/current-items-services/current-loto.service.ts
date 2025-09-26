@@ -126,6 +126,15 @@ export class CurrentLotoService{
         this.allLotosSubject.next(updatedLotos);
     }
 
+    updateLotosInList(lotos: LotoDto[]) {
+      const currentLotos = this.allLotosSubject.value;
+      const updatedLotos = currentLotos.map(l => {
+        const foundLoto = lotos.find(loto => loto.id === l.id);
+        return foundLoto ? foundLoto : l;
+      });
+      this.allLotosSubject.next(updatedLotos);
+    }
+
     processLotoChanges(lotoDto: LotoDto) {
       if(!lotoDto) return;
       const lotoIdDto = new LotoDto(lotoDto).toIdModel();
@@ -250,8 +259,23 @@ export class CurrentLotoService{
     }
 
     
-    save(form: LotoDto) {
-      throw new Error('Method not implemented.');
+    save(form: LotoDto[]) {
+      if (!form.length) {
+        console.error('No LOTOs provided');
+        return;
+      }
+      this.lotoService.save(form).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((response) => {
+          if(response && response.responseData){
+            this.updateLotosInList(response.responseData);
+          }
+        }),
+        catchError((error) => {
+          console.error('Error saving LOTOs:', error);
+          return of(null);
+        })
+      ).subscribe();
     }
 
 

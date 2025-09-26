@@ -190,7 +190,7 @@ export class PrintableFormDesignerComponent implements OnInit {
         return ConfinedSpaceDto.toFormFields(new ConfinedSpaceDto(), []);
         break;
       case 'Loto':
-        return LotoDto.toFormFields(new LotoDto(), []);
+        return LotoDto.toFormFields(new LotoDto());
         break;
       case 'WorkRequest':
       default:

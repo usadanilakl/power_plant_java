@@ -73,7 +73,12 @@ public LotoDto convertToDto(Loto loto){
     if(loto.getPermitStatus()!=null) dto.setPermitStatus(valueService.valueToDto(loto.getPermitStatus()));
     if(loto.getTemp()!=null) dto.setTemp(loto.getTemp());
     if(loto.getLotoPoints()!=null) dto.setLotoPoints(new ArrayList(loto.getLotoPoints()));
-    
+    if(loto.getSystem()!=null) dto.setEquipmentSystem(loto.getSystem().getName());
+    if(loto.getRequestor()!=null) dto.setLotoRequestor(loto.getRequestor().getName());
+    if(loto.getDateCreated()!=null) dto.setDate(loto.getDateCreated().toString());
+
+
+
     return dto;
 }
 public Loto convertToEntity(LotoDto lotoDto) {
@@ -98,6 +103,10 @@ public Loto convertToEntity(LotoDto lotoDto) {
     if (lotoDto.getDocNum() != null) loto.setDocNum(lotoDto.getDocNum());
     if (lotoDto.getPermitStatus() != null) loto.setPermitStatus(valueService.valueToEntity(lotoDto.getPermitStatus()));
     if (lotoDto.getTemp() != null) loto.setTemp(lotoDto.getTemp());
+    if (lotoDto.getEquipmentSystem()!= null) loto.setEquipmentSystem(lotoDto.getEquipmentSystem());
+    if (lotoDto.getLotoRequestor()!= null) loto.setLotoRequestor(lotoDto.getLotoRequestor());
+    if(lotoDto.getDate()!=null) loto.setDate(lotoDto.getDate() );
+
     
     return loto;
 }
@@ -149,6 +158,11 @@ public void updateEntityFromDto(LotoDto dto, Loto entity) {
                 .collect(Collectors.toSet());
         entity.setEquipment(updatedEquipment);
     }
+
+    if (dto.getEquipmentSystem()!= null) entity.setEquipmentSystem(dto.getEquipmentSystem());
+    if (dto.getLotoRequestor()!= null) entity.setLotoRequestor(dto.getLotoRequestor());
+    if(dto.getDate()!=null) entity.setDate(dto.getDate() );
+
 
     // Don't update relationships here (LotoBox, Locks, LotoPoints)
     // These are handled separately in the service layer

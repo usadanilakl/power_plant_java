@@ -7,11 +7,12 @@ import { Option } from '../../../models/option.model';
 import { FormContainerDto } from '../../../models/forms/form-container.model';
 import { FormField } from '../../../models/ui/form-field.model';
 import { PrintableFormDto } from '../../../models/forms/printable-form.model';
+import { FormRendererComponent } from "../../form-designer/form-renderer/form-renderer.component";
 
 @Component({
   selector: 'app-loto-paper-form',
   standalone: true,
-  imports: [],
+  imports: [FormRendererComponent],
   templateUrl: './loto-paper-form.component.html',
   styleUrl: './loto-paper-form.component.css'
 })
@@ -38,7 +39,7 @@ export class LotoPaperFormComponent {
   });
 
   fieldsWithOptions = computed(() => {
-    return LotoDto.toFormFields(this.data()!, []);
+    return LotoDto.toFormFields(this.data()!);
   });
 
   form = computed(() => {
@@ -77,14 +78,14 @@ export class LotoPaperFormComponent {
       this.formSubmit.emit(form);
       return;
     }
-    this.currentLotoService.save(form);
+    this.currentLotoService.save([form]);
   }
   onChange(form: LotoDto): void {
     if(this.changeEvent.observers.length > 0){
       this.changeEvent.emit(form);
       return;
     }
-    this.currentLotoService.save(form);
+    this.currentLotoService.save([form]);
   }
 
 }

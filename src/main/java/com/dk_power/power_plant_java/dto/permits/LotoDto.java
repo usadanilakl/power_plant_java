@@ -27,4 +27,7 @@ public class LotoDto extends BasePermitDto {
     private LotoBoxDto lotoBox;
 
     private List<LotoSnapshotDto> snapshots;
+    private String equipmentSystem;
+    private String lotoRequestor;
+    private String date;
 }

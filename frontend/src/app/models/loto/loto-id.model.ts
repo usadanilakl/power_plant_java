@@ -4,12 +4,18 @@ export class LotoIdDto extends BasePermitIdDto {
   lotoPoints: number[];
   locks: number[];
   lotoBox: number | null;
+  equipmentSystem: string;
+  lotoRequestor: string;
+  date: string;
 
   constructor(data: Partial<LotoIdDto> = {}) {
     super(data);
     this.lotoPoints = data.lotoPoints || [];
     this.locks = data.locks || [];
     this.lotoBox = data.lotoBox || null;
+    this.equipmentSystem = data.equipmentSystem || '';
+    this.lotoRequestor = data.lotoRequestor || '';
+    this.date = data.date || '';
   }
 
   override toJson(): any {
@@ -17,7 +23,10 @@ export class LotoIdDto extends BasePermitIdDto {
       ...super.toJson(),
       lotoPoints: this.lotoPoints,
       locks: this.locks,
-      lotoBox: this.lotoBox
+      lotoBox: this.lotoBox,
+      equipmentSystem: this.equipmentSystem,
+      lotoRequestor: this.lotoRequestor,
+      date: this.date
     };
   }
 
@@ -31,7 +40,10 @@ export class LotoIdDto extends BasePermitIdDto {
       ...super.fromJson(json),
       lotoPoints: json.lotoPoints || [],
       locks: json.locks || [],
-      lotoBox: json.lotoBox || null
+      lotoBox: json.lotoBox || null,
+      equipmentSystem: json.equipmentSystem || '',
+      lotoRequestor: json.lotoRequestor || '',
+      date: json.date || ''
     });
   }
 }

@@ -15,6 +15,7 @@
       </div>
       <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!packageName">Submit Permit Package</button>
       <button class="delete-button" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Permit Package</button>
+      <button class="delete-button" (click)="currentDailyPermitPackageService.build()" [disabled]="currentPackage().id===0">Build Package</button>
     </div>
   </div>
     

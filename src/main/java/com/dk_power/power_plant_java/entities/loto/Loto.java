@@ -32,6 +32,11 @@ public class Loto extends BasePermitEntity {
     @OneToMany(mappedBy = "loto")
     private Set<LotoSnapshot> snapshots = new HashSet<>();
 
+    private String equipmentSystem;
+    private String lotoRequestor;
+    private String date;
+
+
     /*********************************************************************************************************************
      * TRANSIENT FIELDS
      ******************************************************************************************************************/

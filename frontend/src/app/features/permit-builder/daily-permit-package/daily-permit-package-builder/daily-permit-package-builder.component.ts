@@ -104,10 +104,7 @@ export class DailyPermitPackageBuilderComponent {
   onDeletePackage() {
     this.currentDailyPermitPackageService.deleteCurrentDailyPacksge();
   }
-
-  build(){
-    
-  }  
+  
   attachNew(permitType: string) {
     if (permitType === 'Safe Work') {
       this.popupTitle = 'Safe Work';
