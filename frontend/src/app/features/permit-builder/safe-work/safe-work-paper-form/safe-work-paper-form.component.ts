@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, EventEmitter, inject, Input, isSignal, OnInit, Output, Signal, signal } from '@angular/core';
+import { Component, computed, DestroyRef, EventEmitter, inject, input, Input, isSignal, OnInit, Output, Signal, signal } from '@angular/core';
 import { CurrentSafeWorkService } from '../../../../services/current-items-services/current-safe-work.service';
 import { FormRendererComponent } from "../../../form-designer/form-renderer/form-renderer.component";
 import { SafeWorkDto } from '../../../../models/permits/safe-work.model';
@@ -20,8 +20,8 @@ export class SafeWorkPaperFormComponent implements OnInit  {
   currentSafeWorkService = inject(CurrentSafeWorkService);
   currentValueService = inject(CurrentValueService);
   private destroyRef = inject(DestroyRef);
-
-  @Input() dataInput: Signal<SafeWorkDto> | SafeWorkDto | null = null;
+  
+  dataInput = input<SafeWorkDto | null>(null);
 
   @Output() submitEvent = new EventEmitter<SafeWorkDto>();
   @Output() changeEvent = new EventEmitter<SafeWorkDto>();
@@ -33,15 +33,14 @@ export class SafeWorkPaperFormComponent implements OnInit  {
   locations = signal<Option[]>([]);
 
   data = computed(() => {
-    if(this.dataInput){
-      if(isSignal(this.dataInput))return this.dataInput();
-      else return this.dataInput;
+    if(this.dataInput && this.dataInput()){
+      return this.dataInput();
     } 
     return this.dataFromService();
   });
 
   fieldsWithOptions = computed(() => {
-    return SafeWorkDto.toFormFields(this.data(), this.locations());
+    return SafeWorkDto.toFormFields(this.data()!, this.locations());
   });
 
   form = computed(() => {

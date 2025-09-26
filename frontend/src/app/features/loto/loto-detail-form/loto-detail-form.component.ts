@@ -29,6 +29,7 @@ export class LotoDetailFormComponent implements OnInit {
   @Input() formSubmit!: (data: any) => void;
   @Input() formDelete!: () => void;
   @Input() openImage!: () => void;
+  withLotoPointDataBase = input<boolean>(true);
   imageUrls = input<Signal<string[]>>(signal<string[]>([]));
   private _selectedItem: LotoDto | null = null;
   
@@ -149,6 +150,10 @@ export class LotoDetailFormComponent implements OnInit {
       this.formSubmit(updatedFormData);
     }
     this.formSubmitEvent.emit(updatedFormData);
+  }
+
+  onFormChange(formData: any) {
+    this.onFormSubmit(formData);
   }
 
   onFormDelete() {

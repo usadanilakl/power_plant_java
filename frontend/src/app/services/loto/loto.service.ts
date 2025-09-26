@@ -46,6 +46,11 @@ export class LotoService {
     return this.http.put<SpringApiResponse<LotoDto>>(`${this.apiUrl}`, loto);
   }
 
+  save(lotos: LotoDto[]): Observable<SpringApiResponse<LotoDto[]>> {
+    const lotoIdDtos = lotos.map(loto => new LotoDto(loto).toIdModel())
+    return this.http.post<SpringApiResponse<LotoDto[]>>(this.apiUrl+"/save-all", lotoIdDtos);
+  }
+
   deleteLoto(id: string): Observable<SpringApiResponse<void>> {
     return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
   }

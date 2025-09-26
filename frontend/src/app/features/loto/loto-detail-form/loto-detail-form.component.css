@@ -16,6 +16,8 @@
 
 app-details-form{
   width: 100%;
+  flex-shrink: 0;
+  overflow: visible;
 }
 
 .tables-container {
@@ -23,7 +25,8 @@ app-details-form{
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: visible;
+  overflow: visible; 
+  margin-top: 20px;
 }
 
 .table-container {

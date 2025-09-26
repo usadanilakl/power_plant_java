@@ -3,6 +3,7 @@ import { LotoPointDto } from './loto-point.model';
 import { LockDto } from './lock.model';
 import { LotoBoxDto } from './loto-box.model';
 import { LotoIdDto } from './loto-id.model';
+import { FormField } from '../ui/form-field.model';
 
 export interface LotoModel extends BasePermitModel {
   lotoPoints: LotoPointDto[];
@@ -11,6 +12,9 @@ export interface LotoModel extends BasePermitModel {
 }
 
 export class LotoDto extends BasePermitDto implements LotoModel {
+  static toFormFields(arg0: LotoDto, arg1: never[]): FormField[] {
+    return []
+  }
   lotoPoints: LotoPointDto[];
   locks: LockDto[];
   lotoBox: LotoBoxDto | null;

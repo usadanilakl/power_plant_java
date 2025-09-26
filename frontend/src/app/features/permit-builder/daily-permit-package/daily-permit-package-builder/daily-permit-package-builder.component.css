@@ -98,6 +98,7 @@ input[type="text"] {
   flex-wrap: wrap; /* Allows items to wrap to the next line on smaller screens */
   flex: 1; /* Allow this section to grow and fill available space */
   min-height: 0; /* Important for nested flex containers */
+  overflow: auto;
 }
 
 .permits-section > app-item-carousel {

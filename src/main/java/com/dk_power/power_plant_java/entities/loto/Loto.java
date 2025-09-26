@@ -38,9 +38,9 @@ public class Loto extends BasePermitEntity {
     @Transient
     private Set<LotoPointIdDto> lotoPoints = new HashSet<>();
     @Transient
-    private boolean isMutable = false;
+    private boolean isMutable = true;
     @Transient
-    private boolean isArchived = true;
+    private boolean isArchived = false;
 
     /*********************************************************************************************************************
      * LOTO POINT ORDERING

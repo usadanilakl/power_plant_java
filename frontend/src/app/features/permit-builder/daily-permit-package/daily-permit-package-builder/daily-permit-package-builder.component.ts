@@ -22,11 +22,15 @@ import { debounceTime, distinctUntilChanged, Subject, Subscription } from 'rxjs'
 import { SafeWorkPaperFormComponent } from '../../safe-work/safe-work-paper-form/safe-work-paper-form.component';
 import { HotWorkPaperFormComponent } from "../../hot-work/hot-work-paper-form/hot-work-paper-form.component";
 import { ConfinedSpacePaperFormComponent } from "../../confined-space/confined-space-paper-form/confined-space-paper-form.component";
+import { LotoDetailFormComponent } from "../../../loto/loto-detail-form/loto-detail-form.component";
+import { LotoDto } from '../../../../models/loto/loto.model';
+import { LotoTableComponent } from "../../../loto/loto-table/loto-table.component";
+import { LotoPaperFormComponent } from "../../../loto/loto-paper-form/loto-paper-form.component";
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent],
+  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent],
   templateUrl: './daily-permit-package-builder.component.html',
   styleUrl: './daily-permit-package-builder.component.css'
 })
@@ -51,6 +55,10 @@ export class DailyPermitPackageBuilderComponent {
   confinedSpaceCount = this.currentDailyPermitPackageService.confinedSpaceCount;
   emptyConfinedSpacesExists = this.currentDailyPermitPackageService.emptyConfinedSpacesExists;
 
+  lotos = this.currentDailyPermitPackageService.lotos;
+  lotoCount = this.currentDailyPermitPackageService.lotoCount;
+
+
   popupTitle: string = '';
   isPopupVisible = false;
   isPopupStepOne = true;
@@ -59,7 +67,8 @@ export class DailyPermitPackageBuilderComponent {
   isSafeWorkVisible = true;
   isConfinedSpaceVisible = true;
   isHotWorkVisible = true;
-  isWorkRequestVisible = true;
+  isWorkRequestVisible = false;
+  isLotoVisible = true;
 
   packageName: string = '';
   
@@ -116,6 +125,10 @@ export class DailyPermitPackageBuilderComponent {
       this.popupTitle = 'Work Request';
       this.isPopupVisible = true;
     }
+    if (permitType === 'LOTO') {
+      this.popupTitle = 'LOTO';
+      this.isPopupVisible = true;
+    }
   }
 
   handlePopupStepOne(existing: boolean) {
@@ -153,6 +166,10 @@ export class DailyPermitPackageBuilderComponent {
     this.currentDailyPermitPackageService.createAndAttachConfinedSpacesToPackage([$event]);
   }
 
+  addLoto($event: LotoDto = new LotoDto()) {
+    this.currentDailyPermitPackageService.createAndAttachLotosToPackage([$event]);
+  }
+
 
   /***************************************************************************
    * View Control Functions
@@ -173,6 +190,10 @@ export class DailyPermitPackageBuilderComponent {
 
   toggleWorkRequestVisibility(): void {
     this.isWorkRequestVisible = !this.isWorkRequestVisible;
+  }
+
+  toggleLotoVisibility(): void {
+    this.isLotoVisible =!this.isLotoVisible;
   }
 
   /***************************************************************************

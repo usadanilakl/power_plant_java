@@ -12,6 +12,8 @@ import { SafeWorkService } from "../permits/safe-work.service";
 import { HotWorkDto } from "../../models/permits/hot-work.model";
 import { ConfinedSpaceDto } from "../../models/permits/confined-space.model";
 import { FormBinding } from "../../features/form-designer/printable-form/form-binder/form-binder.component";
+import { LotoDto } from "../../models/loto/loto.model";
+import { LotoService } from "../loto/loto.service";
 
 @Injectable({
   providedIn: 'root'
@@ -22,6 +24,7 @@ export class CurrentDailyPermitPackageService {
     private safeWorkService = inject(SafeWorkService);
     private hotWorkService = inject(HotWorkService);
     private confinedSpaceService = inject(ConfinedSpaceService);
+    private lotoService = inject(LotoService);
     private destroyRef = inject(DestroyRef);
 
     private allActiveDailyPermitPackagesSubject = new BehaviorSubject<DailyPermitPackageDto[]>([]);
@@ -51,6 +54,10 @@ export class CurrentDailyPermitPackageService {
     confinedSpaceCount = computed(() => this.confinedSpaces().length);
     emptyConfinedSpacesExists = computed(() => this.confinedSpaces().some(cs =>!cs.space &&!cs.workScope &&!cs.issuedTo));
     currentConfinedSpace = signal<ConfinedSpaceDto | null>(null);
+
+    lotos = computed<LotoDto[]>(() => this.currentDailyPacksge().lotos);
+    lotoCount = computed(() => this.lotos().length);
+    currentLoto = signal<LotoDto>(this.lotos()[0]);
 
 
     constructor() {
@@ -170,7 +177,7 @@ export class CurrentDailyPermitPackageService {
                 currentPackage.confinedSpaceIds = [...currentPackage.confinedSpaces.map(r=>r.id), ...ids];
                 break;
             case 'lotos':
-                currentPackage.lotoIds = [...currentPackage.lotoIds, ...ids];
+                currentPackage.lotoIds = [...currentPackage.lotos.map(l=>l.id), ...ids];
                 break;
             default:
                 console.error('Invalid permit type:', permitType);
@@ -326,6 +333,38 @@ export class CurrentDailyPermitPackageService {
         takeUntilDestroyed(this.destroyRef)
       ).subscribe({
         error: err => console.error('Failed to create and attach work requests:', err)
+      });
+    }
+
+    createAndAttachLotosToPackage(lotos: LotoDto[]) {
+      const currentPackage = this.selectedDailyPermitPackageSubject.value;
+      if (!currentPackage ||!currentPackage.id) {
+        console.error('No package selected or package has no ID.');
+        return;
+      }
+      if (!lotos || lotos.length === 0) {
+        console.error('No LOTO permits provided to attach.');
+        return;
+      }
+
+      return this.lotoService.save(lotos).pipe(
+        switchMap(response => {
+          const newPermits = response.responseData;
+          const newPermitIds = newPermits.map(req => req.id);
+          const updatedPackage = new DailyPermitPackageDto(currentPackage);
+          updatedPackage.lotoIds = [...updatedPackage.lotos.map(l=>l.id),...newPermitIds];
+          return this.dailyPermitPackageService.createDailyPermitPackage(updatedPackage);
+        }),
+        tap(response => {
+          if (response && response.responseData) {
+            const updatedPackage = new DailyPermitPackageDto(response.responseData);
+            this.updateDailyPermitPackageInList(updatedPackage);
+            this.setSelectedPackage(updatedPackage);
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+        ).subscribe({
+        error: err => console.error('Failed to create and attach LOTO permits:', err)
       });
     }
 

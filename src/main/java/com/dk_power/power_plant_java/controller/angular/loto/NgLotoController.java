@@ -47,6 +47,17 @@ public class NgLotoController {
         }
     }
 
+    @PostMapping("/save-all")
+    public ResponseEntity<NgApiResponse<List<LotoDto>>> saveAll(@RequestBody List<LotoIdDto> lotos) {
+        try {
+            List<LotoDto> savedLotos = ngLotoService.saveAll(lotos);
+            return ResponseEntity.ok(new NgApiResponse<>(savedLotos, "Lotos saved successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error saving lotos: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<NgApiResponse<LotoDto>> getFileById(@PathVariable Long id) {
         try {

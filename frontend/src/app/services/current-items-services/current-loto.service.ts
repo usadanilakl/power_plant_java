@@ -249,5 +249,10 @@ export class CurrentLotoService{
       ).subscribe();
     }
 
+    
+    save(form: LotoDto) {
+      throw new Error('Method not implemented.');
+    }
+
 
 }

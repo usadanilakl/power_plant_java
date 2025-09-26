@@ -25,6 +25,7 @@ import { ChekcboxXComponent } from '../inputs/chekcbox-x/chekcbox-x.component';
 import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
 import { FormZoomControlsComponent } from "../form-zoom-controls/form-zoom-controls.component";
 import { PageNavigatorComponent } from "../page-navigator/page-navigator.component";
+import { LotoDto } from '../../../models/loto/loto.model';
 
 
 @Component({
@@ -188,6 +189,10 @@ export class PrintableFormDesignerComponent implements OnInit {
       case 'ConfinedSpace':
         return ConfinedSpaceDto.toFormFields(new ConfinedSpaceDto(), []);
         break;
+      case 'Loto':
+        return LotoDto.toFormFields(new LotoDto(), []);
+        break;
+      case 'WorkRequest':
       default:
         return [];
     }
@@ -201,6 +206,8 @@ export class PrintableFormDesignerComponent implements OnInit {
         return new HotWorkDto();
       case 'ConfinedSpace':
         return new ConfinedSpaceDto();
+      case 'Loto':
+        return new LotoDto();
       default:
         return null;
     }

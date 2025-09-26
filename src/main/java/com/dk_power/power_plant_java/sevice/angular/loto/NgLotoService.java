@@ -218,6 +218,18 @@ public class NgLotoService implements NgCrudService<Loto, LotoDto, LotoRepo, Lot
         return toDto(save(loto));
     }
 
+    public List<LotoDto> saveAll(List<LotoIdDto> lotos) {
+        return lotos.stream()
+               .map(this::idDtoToEntity)
+                .map(this::save)
+               .map(this::toDto)
+               .collect(Collectors.toList());
+    }
+
+    private Loto idDtoToEntity(LotoIdDto lotoIdDto) {
+        return this.mapper.convertIdDtoToEntity(lotoIdDto);
+    }
+
 //    public LotoStandardDto reorderLotoPoints(Long currentStandardId, List<Long> lotoPoints) {
 //        Loto loto = getEntityById(currentStandardId);
 //        if (loto == null) {

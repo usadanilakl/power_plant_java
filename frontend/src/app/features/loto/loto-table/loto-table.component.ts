@@ -17,6 +17,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   standalone: true,
   imports: [CommonModule, TableComponent, LotoDetailFormComponent, PopupComponent],
   templateUrl: './loto-table.component.html',
+  styleUrls: ['./loto-table.component.css']
 })
 export class LotoTableComponent implements OnInit {
   columns: Column[] = [
@@ -30,6 +31,7 @@ export class LotoTableComponent implements OnInit {
 
   @ViewChild(TableComponent) tableComponent!: TableComponent;
   private destroyRef = inject(DestroyRef);
+  
 
   itemsInput = input<LotoDto[]>([]);
 
@@ -54,13 +56,13 @@ export class LotoTableComponent implements OnInit {
   relatedImages$ = this.relatedImagesSubject.asObservable();
 
   constructor() {
+    // effect is a better choice for reacting to input changes than ngOnInit
     effect(() => {
       const inputItems = this.itemsInput();
-      if (inputItems) {
-        // console.log('Received new items:', inputItems);
+      if (inputItems && inputItems.length > 0) {
         this.itemsSubject.next(inputItems);
       } else {
-        // this.loadItems().subscribe(items => this.itemsSubject.next(items));
+        this.loadAndSetItems();
       }
     });
   }
@@ -68,12 +70,14 @@ export class LotoTableComponent implements OnInit {
   private lotoService = inject(LotoService);
 
   ngOnInit() {
-    // this.items$ = this.loadItems()
+    // if(this.itemsInput().length!=0) this.itemsSubject.next(this.itemsInput() as LotoDto[]);
+    // else this.items$ = this.loadItems();
   }
 
-  loadItems(): Observable<LotoDto[]> {
-    return of([])
-    return this.lotoService.getLotos(1, this.pageSize).pipe(
+
+
+  private loadAndSetItems(): void {
+    this.lotoService.getLotos(1, this.pageSize).pipe(
       takeUntilDestroyed(this.destroyRef),
       map((response: SpringPaginatedResponse<LotoDto>) => 
         response.responseData.content.map(item => LotoDto.fromJson(item))
@@ -82,11 +86,14 @@ export class LotoTableComponent implements OnInit {
         console.error('Error loading items:', error);
         return of([]);
       })
-    );
+    ).subscribe(items => {
+      this.itemsSubject.next(items);
+    });
   }
 
-  private performSearch(criteria: SearchCriteria): Observable<LotoDto[]> {
-    return this.lotoService.searchLotos(criteria, this.pageSize).pipe(
+  private performSearch(criteria: SearchCriteria): void {
+    this.lotoService.searchLotos(criteria, this.pageSize).pipe(
+      takeUntilDestroyed(this.destroyRef),
       map((response: SpringPaginatedResponse<LotoDto[]>) => 
         response.responseData.content.map(item => LotoDto.fromJson(item))
       ),
@@ -94,7 +101,9 @@ export class LotoTableComponent implements OnInit {
         console.error('Error performing search:', error);
         return of([]);
       })
-    );
+    ).subscribe(items => {
+      this.itemsSubject.next(items);
+    });
   }
 
   onFormSubmit(formData: Partial<LotoDto>) {
@@ -106,39 +115,56 @@ export class LotoTableComponent implements OnInit {
     const updatedItem = new LotoDto({ ...this.selectedItem, ...formData });
 
     this.lotoService.updateLoto(updatedItem.toIdModel()).pipe(
-      switchMap(() => this.items$),
-      map(items => items.map(item => item.id === updatedItem.id ? updatedItem : item)),
-      tap(updatedItems => {
-        this.items$ = of(updatedItems);
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        const currentItems = this.itemsSubject.getValue();
+        const updatedItems = currentItems.map(item => item.id === updatedItem.id ? updatedItem : item);
+        this.itemsSubject.next(updatedItems);
         this.isPopupOpen = false;
         this.selectedItem = null;
-      }),
-      catchError(error => {
+      },
+      error: (error) => {
         console.error('Error updating LOTO:', error);
-        return of(null);
-      })
-    ).subscribe();
+      }
+    });
   }
 
   onSearch(criteria: SearchCriteria) {
     this.currentPage = 1;
-    this.items$ = this.performSearch(criteria);
+    this.performSearch(criteria);
   }
 
   loadMoreItems(criteria: SearchCriteria | void) {
     if (criteria && 'page' in criteria) {
-      this.items$ = this.items$.pipe(
-        switchMap(currentItems => this.performSearch(criteria).pipe(
-          map(newItems => [...currentItems, ...newItems])
-        ))
-      );
+      this.lotoService.searchLotos(criteria, this.pageSize).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map((response: SpringPaginatedResponse<LotoDto[]>) => 
+          response.responseData.content.map(item => LotoDto.fromJson(item))
+        ),
+        catchError(error => {
+          console.error('Error loading more items with search:', error);
+          return of([]);
+        })
+      ).subscribe(newItems => {
+        const currentItems = this.itemsSubject.getValue();
+        this.itemsSubject.next([...currentItems, ...newItems]);
+      });
     } else {
       this.currentPage++;
-      this.items$ = this.items$.pipe(
-        switchMap(currentItems => this.loadItems().pipe(
-          map(newItems => [...currentItems, ...newItems])
-        ))
-      );
+      this.lotoService.getLotos(this.currentPage, this.pageSize).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map((response: SpringPaginatedResponse<LotoDto>) => 
+          response.responseData.content.map(item => LotoDto.fromJson(item))
+        ),
+        catchError(error => {
+          console.error('Error loading more items:', error);
+          return of([]);
+        })
+      ).subscribe(newItems => {
+        const currentItems = this.itemsSubject.getValue();
+        this.itemsSubject.next([...currentItems, ...newItems]);
+      });
     }
   }
 
@@ -197,19 +223,22 @@ export class LotoTableComponent implements OnInit {
 
   onFormDelete() {
     if (this.selectedItem) {
-      this.lotoService.deleteLoto(this.selectedItem.id.toString()).pipe(
-        switchMap(() => this.items$),
-        map(items => items.filter(item => item.id !== this.selectedItem?.id)),
-        tap(updatedItems => {
-          this.items$ = of(updatedItems);
+      const deletedItemId = this.selectedItem.id;
+      this.lotoService.deleteLoto(deletedItemId.toString()).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: () => {
+          const currentItems = this.itemsSubject.getValue();
+          const updatedItems = currentItems.filter(item => item.id !== deletedItemId);
+          this.itemsSubject.next(updatedItems);
+          
           this.selectedItem = null;
           this.isPopupOpen = false;
-        }),
-        catchError(error => {
+        },
+        error: (error) => {
           console.error('Error deleting LOTO:', error);
-          return of(null);
-        })
-      ).subscribe();
+        }
+      });
     }
   }
 

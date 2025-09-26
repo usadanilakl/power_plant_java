@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, EventEmitter, inject, Input, isSignal, Output, signal, Signal } from '@angular/core';
+import { Component, computed, DestroyRef, EventEmitter, inject, input, Input, isSignal, Output, signal, Signal } from '@angular/core';
 import { CurrentHotWorkService } from '../../../../services/current-items-services/current-hot-work.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
@@ -20,7 +20,7 @@ export class HotWorkPaperFormComponent {
   currentValueService = inject(CurrentValueService);
   private destroyRef = inject(DestroyRef);
 
-  @Input() dataInput: Signal<HotWorkDto> | HotWorkDto | null = null;
+  dataInput = input<HotWorkDto | null>(null);
 
   @Output() submitEvent = new EventEmitter<HotWorkDto>();
   @Output() changeEvent = new EventEmitter<HotWorkDto>();
@@ -33,15 +33,14 @@ export class HotWorkPaperFormComponent {
 
 
   data = computed(() => {
-    if(this.dataInput){
-      if(isSignal(this.dataInput))return this.dataInput();
-      else return this.dataInput;
+    if(this.dataInput()){
+      return this.dataInput();
     } 
     return this.dataFromService();
   });
 
   fieldsWithOptions = computed(() => {
-    return HotWorkDto.toFormFields(this.data(), this.locations());
+    return HotWorkDto.toFormFields(this.data()!, this.locations());
   });
   
   form = computed(() => {

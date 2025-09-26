@@ -34,9 +34,9 @@
       <button (click)="toggleWorkRequestVisibility()">
         {{ isWorkRequestVisible ? 'Hide' : 'Show' }} Work Request
       </button>
-      <!-- <button (click)="toggleLotoVisibility()">
+      <button (click)="toggleLotoVisibility()">
         {{ isLotoVisible ? 'Hide' : 'Show' }} LOTO
-      </button> -->
+      </button>
       <button (click)="openPaperFormPopup()">Open Paper Forms</button>
     </div>
 
@@ -100,6 +100,22 @@
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>
         <button [disabled]="emptyConfinedSpacesExists()" (click)="addConfinedSpace()">Add Empty</button>
+      </app-item-carousel>
+    }
+    @if(isLotoVisible){
+      <app-item-carousel 
+        [items]="lotos()" 
+        title="LOTO" 
+        (itemChangedEvent)="currentDailyPermitPackageService.currentLoto.set($event)"
+        (addItemEvent)="attachNew('LOTO')">
+        <ng-template let-loto>
+          <app-loto-detail-form
+            [values]="loto"
+            [withLotoPointDataBase]="false"
+          ></app-loto-detail-form>
+        </ng-template>
+        <!-- <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateLotoFromCurrentRequest()">Generate</button>
+        <button [disabled]="emptyLotsExists()" (click)="addLoto()">Add Empty</button> -->
       </app-item-carousel>
     }
   </div>
@@ -178,6 +194,22 @@
         }
       }
     }
+    @case ('LOTO') {
+      @if(isPopupStepOne){
+        <button (click)="handlePopupStepOne(false)">Attach New</button>
+        <button (click)="handlePopupStepOne(true)">Attach Existing</button>
+      }@else{
+        @if(isAttachingExisting){
+          <app-loto-table
+            (onTableRowLeftClickEvent)="attachExisting($event, 'lotos')"
+          ></app-loto-table>
+        }@else {
+          <app-loto-detail-form
+            (formSubmitEvent)="addLoto($event)"
+          ></app-loto-detail-form>
+        }
+      }
+    }
     @default {
       <!-- Handle other popup types as needed -->
     }
@@ -225,6 +257,12 @@
           [dataInput]="cs"
           (changeEvent)="currentDailyPermitPackageService.submitConfinedSpace($event)"
         ></app-confined-space-paper-form>}
+    }
+    @if(isLotoVisible){
+      @for(loto of lotos(); track loto.id){
+        <app-loto-paper-form
+          [dataInput]="loto"
+        ></app-loto-paper-form>}
     }
   </div>
 </app-popup-projection>

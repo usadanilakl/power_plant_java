@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, EventEmitter, inject, Input, isSignal, Output, signal, Signal } from '@angular/core';
+import { Component, computed, DestroyRef, EventEmitter, inject, input, Input, isSignal, Output, signal, Signal } from '@angular/core';
 import { FormRendererComponent } from "../../../form-designer/form-renderer/form-renderer.component";
 import { CurrentConfinedSpaceService } from '../../../../services/current-items-services/current-confined-space.service';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
@@ -20,7 +20,7 @@ export class ConfinedSpacePaperFormComponent {
   currentValueService = inject(CurrentValueService);
   private destroyRef = inject(DestroyRef);
 
-  @Input() dataInput: Signal<ConfinedSpaceDto> | ConfinedSpaceDto | null = null;
+  dataInput= input<ConfinedSpaceDto | null>(null);
 
   @Output() formSubmit = new EventEmitter<ConfinedSpaceDto>();
   @Output() changeEvent = new EventEmitter<ConfinedSpaceDto>();
@@ -31,15 +31,14 @@ export class ConfinedSpacePaperFormComponent {
   locations = signal<Option[]>([]);
 
   data = computed(() => {
-    if(this.dataInput){
-      if(isSignal(this.dataInput))return this.dataInput();
-      else return this.dataInput;
+    if(this.dataInput()){
+      return this.dataInput();
     } 
     return this.dataFromService();
   });
 
   fieldsWithOptions = computed(() => {
-    return ConfinedSpaceDto.toFormFields(this.data(), this.locations());
+    return ConfinedSpaceDto.toFormFields(this.data()!, this.locations());
   });
 
   form = computed(() => {
