@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java.dto.permits;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BasePermitDto;
 import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpaceHazards;
+import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpacePpe;
+import com.dk_power.power_plant_java.entities.permits.pojo.ConfinedSpacePrecautions;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
@@ -32,6 +34,8 @@ public class ConfinedSpaceDto extends BasePermitDto {
     private String meterNum;
     private boolean calibrated;
     private ConfinedSpaceHazards hazards;
+    private ConfinedSpacePpe ppe;
+    private ConfinedSpacePrecautions precautions;
 
     public static ConfinedSpaceDto createTestInstance() {
         ConfinedSpaceDto dto = new ConfinedSpaceDto();
@@ -61,16 +65,6 @@ public class ConfinedSpaceDto extends BasePermitDto {
         hazards.setEntrapment(true);
         hazards.setEngulfment(false);
         hazards.setHeatStress(true);
-        hazards.setFaceShield(false);
-        hazards.setGfcI(true);
-        hazards.setLowVoltageTools(false);
-        hazards.setExplosionProofTools(true);
-        hazards.setNonSparkingTools(false);
-        hazards.setFallProtection(true);
-        hazards.setRetrievalSystem(true);
-        hazards.setLifeLine(false);
-        hazards.setAtmMeter(true);
-        hazards.setTripod(true);
 
         dto.setHazards(hazards);
 

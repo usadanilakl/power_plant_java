@@ -866,16 +866,17 @@ public class RedTagAutomationService {
         if (cs.getHazards().isEntrapment()) clickLeftSideOfElement(CS_ENTRAPMENT, 5);
         if (cs.getHazards().isEngulfment()) clickLeftSideOfElement(CS_ENGULFMENT, 5);
         if (cs.getHazards().isHeatStress()) clickLeftSideOfElement(CS_HEAT_STRESS, 5);
-        if (cs.getHazards().isFaceShield()) clickLeftSideOfElement(CS_FACE_SHIELD, 5);
-        if (cs.getHazards().isGfcI()) clickLeftSideOfElement(CS_GFCI, 5);
-        if (cs.getHazards().isLowVoltageTools()) clickLeftSideOfElement(CS_LOW_VOLTAGE_TOOLS, 5);
-        if (cs.getHazards().isExplosionProofTools()) clickLeftSideOfElement(CS_EXPLOSIONPROOF_TOOLS, 5);
-        if (cs.getHazards().isNonSparkingTools()) clickLeftSideOfElement(CS_NONSPARKING_TOOLS, 5);
-        if (cs.getHazards().isFallProtection()) clickLeftSideOfElement(CS_FALL_PROTECTION, 5);
-        if (cs.getHazards().isRetrievalSystem()) clickLeftSideOfElement(CS_RETRIVAL_SYSTEM, 5);
-        if (cs.getHazards().isLifeLine()) clickLeftSideOfElement(CS_LIFE_LINE, 5);
-        if (cs.getHazards().isAtmMeter()) clickLeftSideOfElement(CS_ATM_METER, 5);
-        if (cs.getHazards().isTripod()) clickLeftSideOfElement(CS_TRIPOD, 5);
+
+        if (cs.getPpe().isFaceShield()) clickLeftSideOfElement(CS_FACE_SHIELD, 5);
+        if (cs.getPpe().isFcfi()) clickLeftSideOfElement(CS_GFCI, 5);
+        if (cs.getPpe().isLovVoltageTools()) clickLeftSideOfElement(CS_LOW_VOLTAGE_TOOLS, 5);
+        if (cs.getPpe().isExplosionProofTools()) clickLeftSideOfElement(CS_EXPLOSIONPROOF_TOOLS, 5);
+        if (cs.getPpe().isNonSparkingTools()) clickLeftSideOfElement(CS_NONSPARKING_TOOLS, 5);
+        if (cs.getPpe().isFallProtection()) clickLeftSideOfElement(CS_FALL_PROTECTION, 5);
+        if (cs.getPpe().isRetrievalSystem()) clickLeftSideOfElement(CS_RETRIVAL_SYSTEM, 5);
+        if (cs.getPpe().isLifeline()) clickLeftSideOfElement(CS_LIFE_LINE, 5);
+        if (cs.getPpe().isPersonalAtmosphericMeter()) clickLeftSideOfElement(CS_ATM_METER, 5);
+        if (cs.getPpe().isTripod()) clickLeftSideOfElement(CS_TRIPOD, 5);
 
 
         if(cs.getLotoNum()!=null && !cs.getLotoNum().isEmpty()) {
