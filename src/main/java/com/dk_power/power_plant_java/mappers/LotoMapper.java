@@ -221,6 +221,10 @@ public Loto convertIdDtoToEntity(LotoIdDto lotoDto) {
     }
     if (lotoDto.getLotoBox() != null) loto.setLotoBox(lotoBoxService.findById(lotoDto.getLotoBox()).orElse(null));
 
+    if (lotoDto.getEquipmentSystem()!= null) loto.setEquipmentSystem(lotoDto.getEquipmentSystem());
+    if (lotoDto.getLotoRequestor()!= null) loto.setLotoRequestor(lotoDto.getLotoRequestor());
+    if(lotoDto.getDate()!=null) loto.setDate(lotoDto.getDate() );
+
     return loto;
 }
 
@@ -270,6 +274,10 @@ public void updateLotoFromDto(LotoIdDto dto, Loto loto) {
     if (dto.getLotoBox() != null) {
         loto.setLotoBox(lotoBoxService.findById(dto.getLotoBox()).orElse(null));
     }
+
+    if (dto.getEquipmentSystem()!= null) loto.setEquipmentSystem(dto.getEquipmentSystem());
+    if (dto.getLotoRequestor()!= null) loto.setLotoRequestor(dto.getLotoRequestor());
+    if(dto.getDate()!=null) loto.setDate(dto.getDate() );
 
 
     // Don't update lotoPoints here, as it's handled separately in the service

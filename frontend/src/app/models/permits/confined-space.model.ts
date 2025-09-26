@@ -7,48 +7,61 @@ import { Column } from '../column.model';
 import { WorkRequestDto } from './work-request.model';
 
 export class ConfinedSpaceHazards {
-  oxygenDeficiency: boolean;
-  flammableGas: boolean;
-  combustibleDust: boolean;
-  toxicGas: boolean;
-  rotatingEquipment: boolean;
-  electricalShock: boolean;
-  entrapment: boolean;
-  engulfment: boolean;
-  heatStress: boolean;
-  faceShield: boolean;
-  gfcI: boolean;
-  lowVoltageTools: boolean;
-  explosionProofTools: boolean;
-  nonSparkingTools: boolean;
-  fallProtection: boolean;
-  retrievalSystem: boolean;
-  lifeLine: boolean;
-  atmMeter: boolean;
-  tripod: boolean;
+  oxygenDeficiency: boolean = false;
+  flammableGas: boolean = false;
+  combustibleDust: boolean = false;
+  toxicGas: boolean = false;
+  rotatingEquipment: boolean = false;
+  electricalShock: boolean = false;
+  entrapment: boolean = false;
+  engulfment: boolean = false;
+  heatStress: boolean = false;
+  other: boolean = false;
+  otherDescription: string = '';
 
   constructor(data: Partial<ConfinedSpaceHazards> = {}) {
-    this.oxygenDeficiency = data.oxygenDeficiency ?? true;
-    this.flammableGas = data.flammableGas ?? true;
-    this.combustibleDust = data.combustibleDust ?? true;
-    this.toxicGas = data.toxicGas ?? true;
-    this.rotatingEquipment = data.rotatingEquipment ?? true;
-    this.electricalShock = data.electricalShock ?? true;
-    this.entrapment = data.entrapment ?? true;
-    this.engulfment = data.engulfment ?? true;
-    this.heatStress = data.heatStress ?? true;
-    this.faceShield = data.faceShield ?? true;
-    this.gfcI = data.gfcI ?? true;
-    this.lowVoltageTools = data.lowVoltageTools ?? true;
-    this.explosionProofTools = data.explosionProofTools ?? true;
-    this.nonSparkingTools = data.nonSparkingTools ?? true;
-    this.fallProtection = data.fallProtection ?? true;
-    this.retrievalSystem = data.retrievalSystem ?? true;
-    this.lifeLine = data.lifeLine ?? true;
-    this.atmMeter = data.atmMeter ?? true;
-    this.tripod = data.tripod ?? true;
+    Object.assign(this, data);
   }
 }
+
+
+export class ConfinedSpacePpe {
+  faceShield: boolean = false;
+  fcfi: boolean = false;
+  lovVoltageTools: boolean = false;
+  explosionProofTools: boolean = false;
+  nonSparkingTools: boolean = false;
+  fallProtection: boolean = false;
+  retrievalSystem: boolean = false;
+  lifeline: boolean = false;
+  personalAtmosphericMeter: boolean = false;
+  tripod: boolean = false;
+  other: boolean = false;
+  otherDescription: string = '';
+
+  constructor(data: Partial<ConfinedSpacePpe> = {}) {
+    Object.assign(this, data);
+  }
+}
+
+export class ConfinedSpacePrecautions {
+  ventilation: boolean = false;
+  blankFlanged: boolean = false;
+  doubleBlockAndBleed: boolean = false;
+  barriers: boolean = false;
+  other: boolean = false;
+  otherDescription: string = '';
+  lockOutTagOut: string = '';
+  hotWorkPermit: string = '';
+
+  constructor(data: Partial<ConfinedSpacePrecautions> = {}) {
+    Object.assign(this, data);
+  }
+}
+
+
+
+
 
 export type ConfinedSpaceFieldName = keyof ConfinedSpaceModel;
 
@@ -67,6 +80,8 @@ export interface ConfinedSpaceModel extends BaseModel {
   meterNum: string | null;
   calibrated: boolean;
   hazards: ConfinedSpaceHazards | null;
+  ppe: ConfinedSpacePpe | null;
+  precautions: ConfinedSpacePrecautions | null;
 }
 
 export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
@@ -84,6 +99,8 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
   meterNum: string | null;
   calibrated: boolean;
   hazards: ConfinedSpaceHazards | null;
+  ppe: ConfinedSpacePpe | null;
+  precautions: ConfinedSpacePrecautions | null;
 
   constructor(data: Partial<ConfinedSpaceModel> = {}) {
     super(data);
@@ -101,6 +118,8 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     this.meterNum = data.meterNum ?? null;
     this.calibrated = data.calibrated ?? false;
     this.hazards = data.hazards ?? new ConfinedSpaceHazards();
+    this.ppe = data.ppe?? new ConfinedSpacePpe();
+    this.precautions = data.precautions?? new ConfinedSpacePrecautions();
   }
 
   override toJson(): any {
@@ -120,6 +139,8 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       meterNum: this.meterNum,
       calibrated: this.calibrated,
       hazards: this.hazards,
+      ppe: this.ppe,
+      precautions: this.precautions,
     };
   }
 
@@ -140,6 +161,8 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       meterNum: json.meterNum || null,
       calibrated: json.calibrated || false,
       hazards: json.hazards || new ConfinedSpaceHazards(),
+      ppe: json.ppe || new ConfinedSpacePpe(),
+      precautions: json.precautions || new ConfinedSpacePrecautions(),
     });
   }
 
@@ -147,7 +170,7 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     return [
       'id', 'date', 'time', 'space', 'workScope', 'issuedTo', 'duration',
       'lotoNum', 'hotWorkNum', 'ventilation', 'blankFlanged', 'meterModel',
-      'meterNum', 'calibrated', 'hazards', 'isVerified', 'name', 'objectType'
+      'meterNum', 'calibrated', 'hazards', 'isVerified', 'name', 'objectType', 'ppe', 'precautions'
     ].includes(key);
   }
 
@@ -248,6 +271,8 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         initialValue: dto.calibrated 
       },
       hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox-group', initialValue: dto.hazards, options: ConfinedSpaceDto.getHazardOptions(dto.hazards) },
+      ppe: { name: 'ppe', label: 'PPE', type: 'checkbox-group', initialValue: dto.ppe, options: ConfinedSpaceDto.getPpeOptions(dto.ppe) },
+      precautions: { name: 'precautions', label: 'Precautions', type: 'checkbox-group', initialValue: dto.precautions, options: ConfinedSpaceDto.getPrecautionOptions(dto.precautions) },
       isVerified: { 
         name: 'isVerified', 
         label: 'Is Verified', 
@@ -304,6 +329,29 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
             return activeHazards.length > 0 ? activeHazards.join(', ') : 'None';
             }
         },
+      ppe: {
+        id: 'ppe',
+        header: 'PPE',
+        accessorFn: (item: ConfinedSpaceDto) => {
+          if (!item.ppe) return 'None';
+          const activePpe = Object.entries(item.ppe)
+            .filter(([_, value]) => value)
+            .map(([key, _]) => ConfinedSpaceDto.formatLabel(key));
+          return activePpe.length > 0 ? activePpe.join(', ') : 'None';
+        }
+      },
+      precautions: {
+        id: 'precautions',
+        header: 'Precautions',
+        accessorFn: (item: ConfinedSpaceDto) => {
+          if (!item.precautions) return 'None';
+          const activePrecautions = Object.entries(item.precautions)
+            .filter(([_, value]) => value)
+            .map(([key, _]) => ConfinedSpaceDto.formatLabel(key));
+          return activePrecautions.length > 0 ? activePrecautions.join(', ') : 'None';
+        }
+      },
+        
         isVerified: { 
             id: 'isVerified', 
             header: 'Verified', 
@@ -341,6 +389,36 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
           label: this.formatLabel(key), // 'highTemp' -> 'High Temp'
           key:key,
           value: hazards[key]    // The boolean value (true/false)
+        };
+      });
+    }
+
+    static getPpeOptions(ppe: ConfinedSpacePpe | null): Option[] {
+      if(!ppe) return [];
+      // Get all keys from the ppe object in a type-safe way
+      const ppeKeys = Object.keys(ppe) as (keyof ConfinedSpacePpe)[];
+  
+      // Map over the keys to create the desired FormOption structure
+      return ppeKeys.map(key => {
+        return {
+          label: this.formatLabel(key), // 'safetyGlasses' -> 'Safety Glasses'
+          key: key,
+          value: ppe[key]    // The boolean value (true/false)
+        };
+      });
+    }
+
+    static getPrecautionOptions(precautions: ConfinedSpacePrecautions | null): Option[] {
+      if(!precautions) return [];
+      // Get all keys from the precautions object in a type-safe way
+      const precautionKeys = Object.keys(precautions) as (keyof ConfinedSpacePrecautions)[];
+  
+      // Map over the keys to create the desired FormOption structure
+      return precautionKeys.map(key => {
+        return {
+          label: this.formatLabel(key),
+          key: key,
+          value: precautions[key]
         };
       });
     }

@@ -13,15 +13,9 @@ public class ConfinedSpaceHazards {
     private boolean entrapment;
     private boolean engulfment;
     private boolean heatStress;
-    private boolean faceShield;
-    private boolean gfcI;
-    private boolean lowVoltageTools;
-    private boolean explosionProofTools;
-    private boolean nonSparkingTools;
-    private boolean fallProtection;
-    private boolean retrievalSystem;
-    private boolean lifeLine;
-    private boolean atmMeter;
-    private boolean tripod;
+
+    private boolean other;
+    private String otherDescription;
+
 
 }
