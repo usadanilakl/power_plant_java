@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jackson Work Request Table</title>
+
+  <!-- <link rel="stylesheet" href="../../../../app/dom/table/table-style.css"> -->
+    <script>
+        (function() {
+            var isSpringBoot = window.location.hostname !== "" && window.location.hostname === "localhost";
+            document.write(
+                isSpringBoot?'<link rel="stylesheet" href="browser/style.css" id="mainStyle">':
+                '<link rel="stylesheet" href="../../../../style.css" id="mainStyle">'
+            );
+            document.write(
+                isSpringBoot?'<link rel="stylesheet" href="browser/app/dom/table/table-style.css" id="tableStyle">':
+                '<link rel="stylesheet" href="../../../../app/dom/table/table-style.css" id="tableStyle">'
+            );
+        })();
+    </script>
+    <style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 20px;
+    background: #fafafa;
+    color: #333;
+  }
+
+  h1 {
+    font-size: 2em;
+    color: #2c3e50;
+    margin-bottom: 20px;
+  }
+
+  #sendRequest {
+    background-color: #2980b9;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    font-size: 1em;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+  }
+
+  #sendRequest:hover {
+    background-color: #1f598a;
+  }
+
+  label {
+    font-weight: 600;
+    margin-right: 8px;
+  }
+
+  #updateInterval {
+    padding: 6px 10px;
+    font-size: 1em;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background: white;
+    margin-bottom: 20px;
+    cursor: pointer;
+  }
+
+  #responseOutput {
+    background: #f4f4f4;
+    border: 1px solid #ccc;
+    padding: 16px;
+    border-radius: 6px;
+    height: fit-content;
+    max-height: 180px;
+    overflow: auto;
+    font-family: Consolas, monospace;
+    font-size: 0.95em;
+    white-space: pre-wrap;
+    margin-bottom: 20px;
+  }
+
+
+    /* Style for small image */
+  #thumbnail {
+    position: absolute;
+    top:0;
+    right: 0;
+    width: 150px;
+    height: auto;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: box-shadow 0.3s ease;
+  }
+  #thumbnail:hover {
+    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+  }
+
+  /* The overlay to show enlarged image */
+  #overlay {
+    position: fixed;
+    display: none;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.8);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+
+  /* Enlarged image style */
+  #enlargedImage {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 0 15px black;
+    cursor: zoom-out;
+  }
+
+</style>
+
+</head>
+<body>
+  <h1>Jackson Work Request Table</h1>
+  <button id="sendRequest">Get Updates</button>
+  <label for="updateInterval">Auto Update Interval</label>
+  <select id="updateInterval">
+    <option value="1">1 min</option>
+    <option value="5">5 min</option>
+    <option value="15">15 min</option>
+    <option value="30">30 min</option>
+    <option value="60" selected>1 hour</option>
+    <option value="180">3 hours</option>
+    <option value="360">6 hours</option>
+  </select>
+
+    <!-- Small visible image -->
+    <img id="thumbnail" src="" alt="Thumbnail Image"/>
+    <a onclick="openLinkInBrowser('https://forms.office.com/Pages/ResponsePage.aspx?id=wCPVqrpemU-nE0OgYJV4ywveWFAX7FlDgwvWMycP9wpUQTg2SkxIQjlNRDRIU1k4VENKM0Q4VjdLQi4u')">https://forms.office.com/Pages/ResponsePage.aspx?id=wCPVqrpemU-nE0OgYJV4ywveWFAX7FlDgwvWMycP9wpUQTg2SkxIQjlNRDRIU1k4VENKM0Q4VjdLQi4u</a>
+
+    <!-- Overlay container with enlarged image -->
+    <div id="overlay" onclick="hideImage()">
+        <img id="enlargedImage" src="" alt="Enlarged Image"/>
+    </div>
+  
+  <pre id="responseOutput"></pre>
+  
+  <div id="tableContainer"></div>
+
+    <script>
+        (function() {
+            var isSpringBoot = window.location.hostname !== "" && window.location.hostname === "localhost";
+
+            const imageSrc = isSpringBoot ? '/browser/automation/permits/work-request/work-request-table/qr.png' :"./qr.png"
+            document.getElementById("thumbnail").setAttribute('src',imageSrc)
+            document.getElementById("enlargedImage").setAttribute('src',imageSrc)
+
+            var scripts = [
+                isSpringBoot ? '/browser/automation/permits/work-request/work-request-table/work-request-service.js' : "./work-request-service.js",
+                isSpringBoot ? '/browser/app/dom/table/table.js' : "../../../../app/dom/table/table.js",
+                isSpringBoot ? '/browser/automation/permits/work-request/work-request-table/work-request-table.js' : "./work-request-table.js",
+            ];
+
+            function loadScriptSequentially(scripts, index = 0, callback) {
+                if (index >= scripts.length) {
+                    callback();
+                    return;
+                }
+                var script = document.createElement('script');
+                script.src = scripts[index];
+                script.async = false;
+                script.onload = function() {
+                    // Script loaded, load next
+                    loadScriptSequentially(scripts, index + 1, callback);
+                };
+                script.onerror = function() {
+                    console.error('Error loading script:', scripts[index]);
+                    loadScriptSequentially(scripts, index + 1, callback); // Continue despite errors
+                };
+                document.body.appendChild(script);
+            }
+
+            loadScriptSequentially(scripts, 0, function() {
+                console.log('All scripts loaded; now run the rest of your code.');
+                  document.getElementById('sendRequest').addEventListener('click', () => loadAndDisplay());
+                  startIntervalLoop(loadAndDisplay)
+
+
+                const thumbnail = document.getElementById('thumbnail');
+                const overlay = document.getElementById('overlay');
+                const enlargedImage = document.getElementById('enlargedImage');
+
+                thumbnail.addEventListener('click', () => {
+                    overlay.style.display = 'flex';
+                });
+
+                  
+            });
+        })();
+
+        
+
+        function hideImage() {
+            overlay.style.display = 'none';
+        }
+        function openLinkInBrowser(link){
+            if (window.javaScriptBridge) {
+                try {
+                    window.javaScriptBridge.openInBrowser(link);
+                    console.log('openApplication called successfully');
+                } catch (error) {
+                    console.error('Error calling openApplication:', error);
+                }
+            } else {
+                console.error('JavaFX bridge not available');
+            }
+        }
+    </script>
+
+<script>
+
+let currentRequests = [];
+
+let intervalId = null;
+
+function formatDate(dateString) {
+    if (!dateString) return "";
+    // Format as YYYY-MM-DD
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+}
+
+function formatTime(timeString) {
+  try{
+      if (!timeString) return "";
+      // Try extracting HH:mm or HH:mm:ss using regex (covers most formats)
+      const match = timeString.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      if (match) {
+        // Always output in HH:mm (leading zero if needed)
+        let h = match[21].padStart(2, '0');
+        let m = match[22].padStart(2, '0');
+        return `${h}:${m}`;
+      }
+      // Fallback: Try native Date parsing
+      const date = new Date(timeString);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().substring(11, 16);
+      }
+      // If both regex and date parsing fail, return the original string
+      return timeString;
+  }catch{
+    return timeString;
+  }
+}
+
+async function loadAndDisplay() {
+    workRequestTable.buildTable([]);
+    const data = await workRequestService.getAllRequests();
+    if (data && data.responseData) {
+        console.log('got data: ',data)
+        workRequestTable.buildTable(data.responseData);
+    }
+}
+
+function startIntervalLoop(callback) {
+    const select = document.getElementById('updateInterval');
+
+    function setupInterval() {
+        // Clear any existing interval
+        if (intervalId) {
+        clearInterval(intervalId);
+        }
+
+        // Get selected interval in minutes and convert to milliseconds
+        const minutes = parseInt(select.value, 10);
+        const intervalMs = minutes * 60 * 1000;
+
+        // Run callback immediately once
+        callback();
+
+        // Set callback to repeat on the selected interval
+        intervalId = setInterval(callback, intervalMs);
+    }
+
+    // Listen for changes in the select element
+    select.addEventListener('change', () => {
+        setupInterval();
+    });
+
+    // Initial setup
+    setupInterval();
+}
+
+
+</script>
+
+</body>
+</html>

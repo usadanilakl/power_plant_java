@@ -23,6 +23,21 @@ public class WorkRequestController {
     private final WorkRequestMapper workRequestMapper;
 
 
+    @GetMapping("/get-all")
+    public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> getAll() {
+        try {
+            List<WorkRequest> allRequests = workRequestService.getAll();
+            List<NgWorkRequestDto> allDtos = allRequests.stream().map(workRequestMapper::convertToNgDto).toList();
+            return ResponseEntity.ok(
+                    new NgApiResponse<>(allDtos, "Successfully got all requests from local DB")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to get all requests with error: " + e.getMessage())
+            );
+        }
+    }
+
     @GetMapping("/get-all-by-status/{status}")
     public ResponseEntity<NgApiResponse<List<NgWorkRequestDto>>> getAllByStatus(@PathVariable String status) {
         try {
