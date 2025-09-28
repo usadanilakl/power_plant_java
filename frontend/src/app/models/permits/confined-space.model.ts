@@ -209,12 +209,19 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     dto: ConfinedSpaceDto,
     spaceOptions: Option[],
     fields: ConfinedSpaceFieldName[] = [
-      'date', 'time', 'space', 'workScope', 'issuedTo', 'duration',
-      'lotoNum', 'hotWorkNum', 'ventilation', 'blankFlanged', 'meterModel',
-      'meterNum', 'calibrated', 'hazards'
+      'date', 'time', 'space', 'workScope', 'issuedTo', 'duration', 'meterModel',
+      'meterNum', 'calibrated', 
+      ...Object.keys(ConfinedSpaceDto.getHazardFields(null)) as ConfinedSpaceFieldName[],
+      ...Object.keys(ConfinedSpaceDto.getPpeFields(null)) as ConfinedSpaceFieldName[],
+      ...Object.keys(ConfinedSpaceDto.getPrecautionFields(null)) as ConfinedSpaceFieldName[]
     ]
   ): FormField[] {
-    const allFields: { [key in ConfinedSpaceFieldName]: FormField } = {
+
+    const hazardFields = ConfinedSpaceDto.getHazardFields(dto.hazards);
+    const ppeFields = ConfinedSpaceDto.getPpeFields(dto.ppe);
+    const precautionFields = ConfinedSpaceDto.getPrecautionFields(dto.precautions);
+    const allFields: { [key: string]: FormField } = {
+      
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
       date: { 
         name: 'date', 
@@ -259,30 +266,6 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         validators: [Validators.required], 
         initialValue: dto.duration 
       },
-      lotoNum: { 
-        name: 'lotoNum', 
-        label: 'LOTO Number', 
-        type: 'text', 
-        initialValue: dto.lotoNum 
-      },
-      hotWorkNum: { 
-        name: 'hotWorkNum', 
-        label: 'Hot Work Number', 
-        type: 'text', 
-        initialValue: dto.hotWorkNum 
-      },
-      ventilation: { 
-        name: 'ventilation', 
-        label: 'Ventilation', 
-        type: 'checkbox', 
-        initialValue: dto.ventilation 
-      },
-      blankFlanged: { 
-        name: 'blankFlanged', 
-        label: 'Blank Flanged', 
-        type: 'checkbox', 
-        initialValue: dto.blankFlanged 
-      },
       meterModel: { 
         name: 'meterModel', 
         label: 'Meter Model', 
@@ -309,21 +292,9 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
       timeOfSample: { name: 'timeOfSample', label: 'Time of Sample', type: 'time', initialValue: dto.timeOfSample },
       testerInitials: { name: 'testerInitials', label: 'Tester Initials', type: 'text', initialValue: dto.testerInitials },
       
-      hazards: { name: 'hazards', label: 'Hazards', type: 'checkbox-group', initialValue: dto.hazards, options: ConfinedSpaceDto.getHazardOptions(dto.hazards) },
-      ppe: { name: 'ppe', label: 'PPE', type: 'checkbox-group', initialValue: dto.ppe, options: ConfinedSpaceDto.getPpeOptions(dto.ppe) },
-      precautions: { name: 'precautions', label: 'Precautions', type: 'checkbox-group', initialValue: dto.precautions, options: ConfinedSpaceDto.getPrecautionOptions(dto.precautions) },
-      isVerified: { 
-        name: 'isVerified', 
-        label: 'Is Verified', 
-        type: 'select', 
-        options: [
-          { value: 'true', label: 'Yes' },
-          { value: 'false', label: 'No' }
-        ], 
-        initialValue: dto.isVerified?.toString() 
-      },
-      name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
-      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType }
+      ...hazardFields,
+      ...ppeFields,
+      ...precautionFields,
     };
   
     return fields.map(fieldName => allFields[fieldName]);
@@ -471,4 +442,55 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
         };
       });
     }
+
+
+    static getHazardFields(hazardsDto: ConfinedSpaceHazards | null): { [key: string]: FormField } {
+      const hazards = hazardsDto || new ConfinedSpaceHazards();
+      return {
+        'hazards.oxygenDeficiency': { name: 'hazards.oxygenDeficiency', label: 'Oxygen Deficiency', type: 'checkbox', initialValue: hazards.oxygenDeficiency },
+        'hazards.flammableGas': { name: 'hazards.flammableGas', label: 'Flammable Gas', type: 'checkbox', initialValue: hazards.flammableGas },
+        'hazards.combustibleDust': { name: 'hazards.combustibleDust', label: 'Combustible Dust', type: 'checkbox', initialValue: hazards.combustibleDust },
+        'hazards.toxicGas': { name: 'hazards.toxicGas', label: 'Toxic Gas', type: 'checkbox', initialValue: hazards.toxicGas },
+        'hazards.rotatingEquipment': { name: 'hazards.rotatingEquipment', label: 'Rotating Equipment', type: 'checkbox', initialValue: hazards.rotatingEquipment },
+        'hazards.electricalShock': { name: 'hazards.electricalShock', label: 'Electrical Shock', type: 'checkbox', initialValue: hazards.electricalShock },
+        'hazards.entrapment': { name: 'hazards.entrapment', label: 'Entrapment', type: 'checkbox', initialValue: hazards.entrapment },
+        'hazards.engulfment': { name: 'hazards.engulfment', label: 'Engulfment', type: 'checkbox', initialValue: hazards.engulfment },
+        'hazards.heatStress': { name: 'hazards.heatStress', label: 'Heat Stress', type: 'checkbox', initialValue: hazards.heatStress },
+        'hazards.other': { name: 'hazards.other', label: 'Other', type: 'checkbox', initialValue: hazards.other },
+        'hazards.otherDescription': { name: 'hazards.otherDescription', label: 'Other Description', type: 'text', initialValue: hazards.otherDescription },
+      };
+    }
+
+    static getPpeFields(ppeDto: ConfinedSpacePpe | null): { [key: string]: FormField } {
+      const ppe = ppeDto || new ConfinedSpacePpe();
+      return {
+        'ppe.faceShield': { name: 'ppe.faceShield', label: 'Face Shield', type: 'checkbox', initialValue: ppe.faceShield },
+        'ppe.fcfi': { name: 'ppe.fcfi', label: 'FCFI', type: 'checkbox', initialValue: ppe.fcfi },
+        'ppe.lovVoltageTools': { name: 'ppe.lovVoltageTools', label: 'Low Voltage Tools', type: 'checkbox', initialValue: ppe.lovVoltageTools },
+        'ppe.explosionProofTools': { name: 'ppe.explosionProofTools', label: 'Explosion Proof Tools', type: 'checkbox', initialValue: ppe.explosionProofTools },
+        'ppe.nonSparkingTools': { name: 'ppe.nonSparkingTools', label: 'Non-Sparking Tools', type: 'checkbox', initialValue: ppe.nonSparkingTools },
+        'ppe.fallProtection': { name: 'ppe.fallProtection', label: 'Fall Protection', type: 'checkbox', initialValue: ppe.fallProtection },
+        'ppe.retrievalSystem': { name: 'ppe.retrievalSystem', label: 'Retrieval System', type: 'checkbox', initialValue: ppe.retrievalSystem },
+        'ppe.lifeline': { name: 'ppe.lifeline', label: 'Lifeline', type: 'checkbox', initialValue: ppe.lifeline },
+        'ppe.personalAtmosphericMeter': { name: 'ppe.personalAtmosphericMeter', label: 'Personal Atmospheric Meter', type: 'checkbox', initialValue: ppe.personalAtmosphericMeter },
+        'ppe.tripod': { name: 'ppe.tripod', label: 'Tripod', type: 'checkbox', initialValue: ppe.tripod },
+        'ppe.other': { name: 'ppe.other', label: 'Other', type: 'checkbox', initialValue: ppe.other },
+        'ppe.otherDescription': { name: 'ppe.otherDescription', label: 'Other Description', type: 'text', initialValue: ppe.otherDescription },
+      };
+    }
+
+    static getPrecautionFields(precautionsDto: ConfinedSpacePrecautions | null): { [key: string]: FormField } {
+      const precautions = precautionsDto || new ConfinedSpacePrecautions();
+      return {
+        'precautions.ventilation': { name: 'precautions.ventilation', label: 'Ventilation', type: 'checkbox', initialValue: precautions.ventilation },
+        'precautions.blankFlanged': { name: 'precautions.blankFlanged', label: 'Blank/Flanged', type: 'checkbox', initialValue: precautions.blankFlanged },
+        'precautions.doubleBlockAndBleed': { name: 'precautions.doubleBlockAndBleed', label: 'Double Block and Bleed', type: 'checkbox', initialValue: precautions.doubleBlockAndBleed },
+        'precautions.barriers': { name: 'precautions.barriers', label: 'Barriers', type: 'checkbox', initialValue: precautions.barriers },
+        'precautions.other': { name: 'precautions.other', label: 'Other', type: 'checkbox', initialValue: precautions.other },
+        'precautions.otherDescription': { name: 'precautions.otherDescription', label: 'Other Description', type: 'text', initialValue: precautions.otherDescription },
+        'precautions.lockOutTagOut': { name: 'precautions.lockOutTagOut', label: 'Lock Out/Tag Out', type: 'text', initialValue: precautions.lockOutTagOut },
+        'precautions.hotWorkPermit': { name: 'precautions.hotWorkPermit', label: 'Hot Work Permit', type: 'text', initialValue: precautions.hotWorkPermit },
+      };
+    }
+
 }

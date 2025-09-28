@@ -105,11 +105,6 @@ export class FormRendererComponent {
     });
   }
 
-  // ngOnChanges(changes: SimpleChanges): void {
-  //   if (changes['formDefinition'] || changes['formData']) {
-  //     this.createForm();
-  //   }
-  // }
 
   createForm() {
     const group: { [key: string]: any } = {};

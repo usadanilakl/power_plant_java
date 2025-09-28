@@ -4,10 +4,11 @@ import { CurrentValueService } from '../../../../services/current-value.service'
 import { ConfinedSpaceDto } from '../../../../models/permits/confined-space.model';
 import { Option } from '../../../../models/option.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SmartFormComponent } from "../../../../shared/reactive-form/smart-form/smart-form.component";
 
 @Component({
   selector: 'app-confined-space-form',
-  imports: [ReactiveFormComponent],
+  imports: [ReactiveFormComponent, SmartFormComponent],
   templateUrl: './confined-space-form.component.html',
   styleUrl: './confined-space-form.component.css'
 })
@@ -23,7 +24,7 @@ export class ConfinedSpaceFormComponent implements OnInit  {
   valuesChange = output<ConfinedSpaceDto>();
 
   private spaces = signal<Option[]>([]);
-  fields = computed(() => ConfinedSpaceDto.toFormFields(this.values(), this.spaces()));
+  fields = computed(() => ConfinedSpaceDto.toFormFields(this.values(), []));
   isFormReady = signal<boolean>(false);
   
   ngOnInit() {
