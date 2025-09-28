@@ -22,7 +22,8 @@ export class DailyPermitPackageService {
   }
 
   createDailyPermitPackage(permitPackage: DailyPermitPackageDto): Observable<SpringApiResponse<DailyPermitPackageDto>> {
-    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(this.apiUrl, permitPackage);
+    const idModel = DailyPermitPackageDto.toIdModel(permitPackage);
+    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(this.apiUrl, idModel);
   }
 
   updateDailyPermitPackage(id: number, permitPackage: DailyPermitPackageDto): Observable<SpringApiResponse<DailyPermitPackageDto>> {

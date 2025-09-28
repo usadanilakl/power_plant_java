@@ -6,7 +6,6 @@ import { HotWorkDto } from './hot-work.model';
 import { ConfinedSpaceDto } from './confined-space.model';
 import { LotoDto } from '../loto/loto.model';
 import { Column } from '../column.model';
-import { FormField } from '../ui/form-field.model';
 
 export interface DailyPermitPackageModel extends BaseModel {
   workRequests: WorkRequestDto[];
@@ -78,6 +77,32 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       confinedSpaceIds: json.confinedSpaceIds,
     });
   }
+  static toIdModel(permitPackage: DailyPermitPackageDto) {
+    return new DailyPermitPackageDto({
+      ...permitPackage, 
+      lotoIds: this.combineIdArrays(permitPackage.lotos, permitPackage.lotoIds), 
+      lotos:[],
+      workRequestIds: this.combineIdArrays(permitPackage.workRequests, permitPackage.workRequestIds), 
+      workRequests: [],
+      hotWorkIds: this.combineIdArrays(permitPackage.hotWorks, permitPackage.hotWorkIds), 
+      hotWorks: [],
+      confinedSpaceIds: this.combineIdArrays(permitPackage.confinedSpaces, permitPackage.confinedSpaceIds), 
+      confinedSpaces: [],
+    })
+  }
+
+  private static combineIdArrays(entities: any[], ids: number[]): number[] {
+    const uniqueIds = new Set<number>();
+    entities.forEach(entity => {
+      if (entity.id) {
+        uniqueIds.add(entity.id);
+      }
+    });
+    ids.forEach(id => {
+      uniqueIds.add(id);
+    });
+    return Array.from(uniqueIds);
+  }
 
   static isValidKey(key: string): key is keyof DailyPermitPackageModel {
     return [
@@ -85,57 +110,6 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       'isVerified', 'name', 'objectType'
     ].includes(key);
   }
-
-//   static toFormFields(
-//     dto: DailyPermitPackageDto,
-//     fields: (keyof DailyPermitPackageModel)[] = ['workRequests', 'safeWorks', 'hotWorks', 'confinedSpaces', 'lotos']
-//   ): FormField[] {
-//     const allFields: { [key in keyof DailyPermitPackageModel]: FormField } = {
-//       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
-//       workRequests: { 
-//         name: 'workRequests', 
-//         label: 'Work Requests', 
-//         type: 'array', 
-//         initialValue: dto.workRequests,
-//         validators: [Validators.required, Validators.minLength(1)]
-//       },
-//       safeWorks: { 
-//         name: 'safeWorks', 
-//         label: 'Safe Works', 
-//         type: 'array', 
-//         initialValue: dto.safeWorks,
-//         validators: [Validators.required, Validators.minLength(1)]
-//       },
-//       hotWorks: { 
-//         name: 'hotWorks', 
-//         label: 'Hot Works', 
-//         type: 'array', 
-//         initialValue: dto.hotWorks 
-//       },
-//       confinedSpaces: { 
-//         name: 'confinedSpaces', 
-//         label: 'Confined Spaces', 
-//         type: 'array', 
-//         initialValue: dto.confinedSpaces 
-//       },
-//       lotos: { 
-//         name: 'lotos', 
-//         label: 'LOTOs', 
-//         type: 'array', 
-//         initialValue: dto.lotos 
-//       },
-//       isVerified: { 
-//         name: 'isVerified', 
-//         label: 'Is Verified', 
-//         type: 'checkbox', 
-//         initialValue: dto.isVerified 
-//       },
-//       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
-//       objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType }
-//     };
-
-//     return fields.map(fieldName => allFields[fieldName]);
-//   }
 
   static toTableColumns(
     fields: (keyof DailyPermitPackageModel)[] = ['id', 'name', 'workRequests', 'safeWorks', 'hotWorks', 'confinedSpaces', 'lotos']
