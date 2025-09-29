@@ -38,4 +38,10 @@ export interface FormField {
     bottom?: boolean;
     left?: boolean;
   };
+  group?: FormFieldGroup;
+}
+
+export interface FormFieldGroup {
+  label?: string;
+  orientation?: 'horizontal' | 'vertical';
 }

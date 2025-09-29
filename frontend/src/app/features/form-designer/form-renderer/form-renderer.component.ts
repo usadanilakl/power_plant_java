@@ -110,6 +110,8 @@ export class FormRendererComponent {
     const group: { [key: string]: any } = {};
     const formFields = this.getAllFormFields();
 
+    console.log('Form fields:', formFields);
+
     formFields.forEach(field => {
       if (field && field.name) {
         let value = this.getNestedValue(this.formData(), field.name);

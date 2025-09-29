@@ -4,6 +4,107 @@
     <h2 class="form-header">{{ title() }}</h2>
   }
   <form [formGroup]="form" (ngSubmit)="onSubmit()" [class]="'form-layout-' + layout()" (contextmenu)="onContextMenu($event)">
+    @for (groupLabel of Object.keys(groupedFields()); track groupLabel) {
+      <fieldset class="form-group">
+        @if (groupLabel !== 'Ungrouped') {
+          <legend class="group-title">{{ groupLabel }}</legend>
+        }
+        @for (field of groupedFields()[groupLabel]; track field.name) {
+          <div [class]="'form-field-layout-' + layout()">
+            @switch (field.type) {
+              @case ('select') {
+                <app-searchable-dropdown
+                  [label]="field.label"
+                  [options]="field.options ?? []"
+                  [formControl]="getFormControl(field.name)"
+                  [categoryName]="field.name"
+                  (editOption)="onEditSelectOption($event)"
+                  (addNewOption)="onAddNewSelectOption($event)">
+                </app-searchable-dropdown>
+              }
+              @case ('checkbox-group') {
+                <app-checkbox-group
+                  [label]="field.label"
+                  [options]="field.options ?? []"
+                  [formControl]="getFormControl(field.name)">
+                </app-checkbox-group>
+              }
+              @case ('checkbox') {
+                <app-checkbox-only-label
+                  [label]="field.label"
+                  [id]="field.name"
+                  [formControl]="getFormControl(field.name)">
+                </app-checkbox-only-label>
+              }
+              @case ('radio-group') {
+                <app-radio-group
+                  [label]="field.label"
+                  [options]="field.options ?? []"
+                  [formControl]="getFormControl(field.name)">
+                </app-radio-group>
+              }
+              @case('multi-select'){
+                <app-multi-select-searchable-dropdown
+                  [options]="field.options ?? []"
+                  [label]="field.label"
+                  [formControl]="getFormControl(field.name)"
+                  [categoryName]="field.name"
+                  (editOption)="onEditSelectOption($event)"
+                  (addNewOption)="onAddNewSelectOption($event)"
+                ></app-multi-select-searchable-dropdown>
+              }
+              @case('file'){
+                <app-file-input 
+                  formControlName="file" 
+                  label="Upload File" 
+                  accept=".pdf,.doc,.docx,.img,.jpg,.jpeg">
+                </app-file-input>
+              }
+              @case('multi-input'){
+                <app-multi-input
+                  type="text"
+                  [label]="field.label"
+                  [formControl]="getFormControl(field.name)"
+                ></app-multi-input>
+              }
+              @default {
+                <app-form-input
+                  [label]="field.label"
+                  [type]="field.type"
+                  [formControl]="getFormControl(field.name)">
+                </app-form-input>
+              }
+            }
+            @if (formErrors()[field.name]) {
+              <div class="error-message">{{ formErrors()[field.name] }}</div>
+            }
+          </div>
+        }
+      </fieldset>
+    }
+    
+    <div [class]="'form-field-layout-' + layout()">
+      <button type="submit">Submit</button>
+      <button type="button" (click)="onDelete()">Delete</button>
+    </div>
+  </form>
+} @else if(isValueEditMenuOpen()){
+  <app-value-form 
+    [categoryAlias]="selectedCategoryName()"
+    (closeEvent)="closeEditMenu()"
+    ></app-value-form>
+    <button (click)="closeEditMenu()">Cancel</button>
+} @else {
+  <app-add-value-form [categoryName]="selectedCategoryName()" (submitEvent)="closeAddValueMenu()"></app-add-value-form>
+    <button (click)="closeAddValueMenu()">Cancel</button>
+}
+<!-- 
+@if(!isValueEditMenuOpen() && !isAddValueMenuOpen()){
+
+  @if (title()!== '') {
+    <h2 class="form-header">{{ title() }}</h2>
+  }
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" [class]="'form-layout-' + layout()" (contextmenu)="onContextMenu($event)">
   @for (field of fields(); track field.name) {
     <div [class]="'form-field-layout-' + layout()">
       @switch (field.type) {
@@ -11,7 +112,7 @@
           <app-searchable-dropdown
             [label]="field.label"
             [options]="field.options"
-            [formControlName]="field.name"
+            [formControl]="getFormControl(field.name)"
             [categoryName]="field.name"
             [question]="field.question"
             (editOption)="onEditSelectOption($event)"
@@ -22,21 +123,21 @@
           <app-checkbox-group
             [label]="field.label"
             [options]="field.options"
-            [formControlName]="field.name">
+            [formControl]="getFormControl(field.name)">
           </app-checkbox-group>
         }
         @case ('radio-group') {
           <app-radio-group
             [label]="field.label"
             [options]="field.options"
-            [formControlName]="field.name">
+            [formControl]="getFormControl(field.name)">
           </app-radio-group>
         }
         @case('multi-select'){
           <app-multi-select-searchable-dropdown
             [options]="field.options"
             [label]="field.label"
-            [formControlName]="field.name"
+            [formControl]="getFormControl(field.name)"
             [categoryName]="field.name"
             [question]="field.question"
             (editOption)="onEditSelectOption($event)"
@@ -54,14 +155,14 @@
           <app-multi-input
             type="text"
             [label]="field.label"
-            [formControlName]="field.name"
+            [formControl]="getFormControl(field.name)"
           ></app-multi-input>
         }
         @default {
           <app-form-input
             [label]="field.label"
             [type]="field.type"
-            [formControlName]="field.name">
+            [formControl]="getFormControl(field.name)">
           </app-form-input>
         }
       }
@@ -85,4 +186,4 @@
 } @else {
   <app-add-value-form [categoryName]="selectedCategoryName()" (submitEvent)="closeAddValueMenu()"></app-add-value-form>
     <button (click)="closeAddValueMenu()">Cancel</button>
-}
+} -->

@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, Input, input, output, Signal, signal } from '@angular/core';
 import { AddValueFormComponent } from '../../../features/values/add-value-form/add-value-form.component';
 import { SearchableDropdownComponent } from '../../searchable-dropdown/searchable-dropdown.component';
 import { CheckboxGroupComponent } from '../../checkbox-group/checkbox-group.component';
@@ -11,27 +11,32 @@ import { FormInputComponent } from '../../form-input/form-input.component';
 import { ValueFormComponent } from '../../../features/values/value-form/value-form.component';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormField, FormFieldGroup } from '../../../models/ui/form-field.model';
+import { CheckboxOnlyLabelComponent } from "../../checkbox-only-label/checkbox-only-label.component";
 
 @Component({
   selector: 'app-smart-form',
   standalone: true,
   imports: [
-    AddValueFormComponent, 
-    SearchableDropdownComponent, 
-    CheckboxGroupComponent, 
-    RadioGroupComponent, 
-    MultiSelectSearchableDropdownComponent, 
-    FileInputComponent, 
-    MultiInputComponent, 
+    AddValueFormComponent,
+    SearchableDropdownComponent,
+    CheckboxGroupComponent,
+    RadioGroupComponent,
+    MultiSelectSearchableDropdownComponent,
+    FileInputComponent,
+    MultiInputComponent,
     FormInputComponent,
-    ReactiveFormsModule, 
-    ValueFormComponent],
+    ReactiveFormsModule,
+    ValueFormComponent,
+    CheckboxOnlyLabelComponent
+],
   templateUrl: './smart-form.component.html',
   styleUrl: './smart-form.component.css'
 })
 export class SmartFormComponent {
   fields = input<any[]>([]);
-  values = input<any>({});
+  // values = input<any>({});
+  @Input() values: Signal<any> = signal({});
   layout = input<'row' | 'column' | 'reactive'>('reactive');
   title = input<string>('');
   formSubmit = output<any>();
@@ -46,8 +51,25 @@ export class SmartFormComponent {
   selectedCategoryName = signal<string>('');
   formErrors = signal<{ [key: string]: string }>({});
 
-  form: FormGroup;;
 
+  Object = Object;
+  groupedFields = computed(() => {
+    const allFields = this.fields();
+    const groupsMap: { [key: string]: FormField[] } = {};
+
+    allFields.forEach(field => {
+      const groupLabel = field.group?.label || 'Ungrouped';
+      if (!groupsMap[groupLabel]) {
+        groupsMap[groupLabel] = [];
+      }
+      groupsMap[groupLabel].push(field);
+    });
+
+    return groupsMap;
+  });
+
+
+  form: FormGroup;
 
   constructor(private fb: FormBuilder) {
     this.form = this.fb.group({});
@@ -120,11 +142,24 @@ export class SmartFormComponent {
       if (!currentGroup[part]) {
         currentGroup[part] = this.fb.group({});
       }
-      currentGroup = currentGroup[part].controls; // Move to the controls of the inner FormGroup
+      currentGroup = currentGroup[part];
     }
 
     const lastPart = pathParts[pathParts.length - 1];
-    currentGroup[lastPart] = control;
+    if (currentGroup instanceof FormGroup) {
+      currentGroup.addControl(lastPart, control);
+    } else {
+      currentGroup[lastPart] = control;
+    }
+  }
+
+  getFormControl(path: string): FormControl {
+    const control = this.form.get(path);
+    if (!control) {
+      // Return a dummy control to avoid template errors if the control doesn't exist yet
+      return new FormControl();
+    }
+    return control as FormControl;
   }
 
   private deepMerge(target: any, source: any): any {
@@ -151,72 +186,72 @@ export class SmartFormComponent {
     return (item && typeof item === 'object' && !Array.isArray(item));
   }
   
-  private getValidators(validators: (string | ValidatorFn)[] = []): ValidatorFn[] {
-    return validators.map(validator => {
-      if (typeof validator === 'function') {
-        return validator as ValidatorFn;
-      }
-      switch (validator) {
-        case 'required':
-          return Validators.required;
-        case 'email':
-          return Validators.email;
-        // Add more cases for other validators as needed
-        default:
-          console.warn(`Unknown validator: ${validator}`);
-          return null;
-      }
-    }).filter(Boolean) as ValidatorFn[];
-  }
+  // private getValidators(validators: (string | ValidatorFn)[] = []): ValidatorFn[] {
+  //   return validators.map(validator => {
+  //     if (typeof validator === 'function') {
+  //       return validator as ValidatorFn;
+  //     }
+  //     switch (validator) {
+  //       case 'required':
+  //         return Validators.required;
+  //       case 'email':
+  //         return Validators.email;
+  //       // Add more cases for other validators as needed
+  //       default:
+  //         console.warn(`Unknown validator: ${validator}`);
+  //         return null;
+  //     }
+  //   }).filter(Boolean) as ValidatorFn[];
+  // }
 
-  onValueChanged(form: FormGroup) {
-    if (!form) return;
+  // onValueChanged(form: FormGroup) {
+  //   if (!form) return;
   
-    const errors: { [key: string]: string } = {};
-    for (const field of this.fields()) {
-      const control = form.get(field.name);
-      if (control && (control.dirty || control.touched) && !control.valid) {
-        errors[field.name] = '';
-        for (const key in control.errors) {
-          if (control.errors.hasOwnProperty(key)) {
-            errors[field.name] += this.getValidatorErrorMessage(key, control.errors[key]) + ' ';
-          }
-        }
-      }
-    }
-    this.formErrors.set(errors);
-  }
+  //   const errors: { [key: string]: string } = {};
+  //   for (const field of this.fields()) {
+  //     const control = form.get(field.name);
+  //     if (control && (control.dirty || control.touched) && !control.valid) {
+  //       errors[field.name] = '';
+  //       for (const key in control.errors) {
+  //         if (control.errors.hasOwnProperty(key)) {
+  //           errors[field.name] += this.getValidatorErrorMessage(key, control.errors[key]) + ' ';
+  //         }
+  //       }
+  //     }
+  //   }
+  //   this.formErrors.set(errors);
+  // }
 
-  getValidatorErrorMessage(validatorName: string, validatorValue?: any) {
-    const messages: { [key: string]: string } = {
-      'required': 'This field is required.',
-      'email': 'Invalid email address.',
-      // Add more error messages for other validators
-    };
-    return messages[validatorName] || `Unknown error: ${validatorName}`;
-  }
+  // getValidatorErrorMessage(validatorName: string, validatorValue?: any) {
+  //   const messages: { [key: string]: string } = {
+  //     'required': 'This field is required.',
+  //     'email': 'Invalid email address.',
+  //     // Add more error messages for other validators
+  //   };
+  //   return messages[validatorName] || `Unknown error: ${validatorName}`;
+  // }
 
 
 
-  updateForm = computed(() => {
-    const form = this.form;
-    if (form) {
-      this.fields().forEach((field) => {
-        const control = form.get(field.name.split('.'));
-        if (control) {
-          let value = this.getNestedValue(this.values(), field.name);
+  // updateForm = computed(() => {
+  //   const form = this.form;
+  //   if (form) {
+  //     this.fields().forEach((field) => {
+  //       const control = form.get(field.name.split('.'));
+  //       if (control) {
+  //         let value = this.getNestedValue(this.values(), field.name);
           
-          if (field.type !== 'file') {
-            if (field.type === 'select' && typeof value === 'object' && value !== null) {
-              value = value.id;
-            }
-            control.setValue(value || null);
-          }
-        }
-      });
-    }
-    return form;
-  });
+  //         if (field.type !== 'file') {
+  //           if (field.type === 'select' && typeof value === 'object' && value !== null) {
+  //             value = value.id;
+  //           }
+  //           control.setValue(value || null);
+  //         }
+  //       }
+  //     });
+  //   }
+  //   return form;
+  // });
 
   private getNestedValue(obj: any, path: string): any {
     if (!obj || !path) {
@@ -274,51 +309,25 @@ export class SmartFormComponent {
     }
     return null;
   }
-  updateFormValues(newValues: any) {
-    const form = this.form;
-    if (form) {
-      this.fields().forEach((field) => {
-        const control = form.get(field.name.split('.'));
-        if (control) {
-          let value = this.getNestedValue(newValues, field.name);
+  // updateFormValues(newValues: any) {
+  //   const form = this.form;
+  //   if (form) {
+  //     this.fields().forEach((field) => {
+  //       const control = form.get(field.name.split('.'));
+  //       if (control) {
+  //         let value = this.getNestedValue(newValues, field.name);
           
-          if (field.type !== 'file') {
-            if (field.type === 'select' && typeof value === 'object' && value !== null) {
-              value = value.id;
-            }
-            control.setValue(value || null);
-          }
-        }
-      });
-      form.updateValueAndValidity();
-    }
-  }
+  //         if (field.type !== 'file') {
+  //           if (field.type === 'select' && typeof value === 'object' && value !== null) {
+  //             value = value.id;
+  //           }
+  //           control.setValue(value || null);
+  //         }
+  //       }
+  //     });
+  //     form.updateValueAndValidity();
+  //   }
+  // }
 
-  private _buildFullObject(formValue: any): any {
-    const result = JSON.parse(JSON.stringify(this.values())); // Deep copy
-
-    this.fields().forEach((field) => {
-      const parts = field.name.split('.');
-      let current: any = result;
-
-      for (let i = 0; i < parts.length - 1; i++) {
-        if (!current[parts[i]]) {
-          current[parts[i]] = {};
-        }
-        current = current[parts[i]];
-      }
-
-      const lastPart = parts[parts.length - 1];
-
-      if (field.type === 'select' && typeof current[lastPart] === 'object' && current[lastPart] !== null) {
-        current[lastPart] = current[lastPart] || {};
-        current[lastPart].id = formValue[field.name];
-      } else {
-        current[lastPart] = formValue[field.name];
-      }
-    });
-
-    return result;
-  }
 
 }

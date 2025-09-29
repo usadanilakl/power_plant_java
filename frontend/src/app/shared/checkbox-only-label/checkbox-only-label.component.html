@@ -1,0 +1,17 @@
+<div class="styled-checkbox-container">
+  <input
+    type="checkbox"
+    [id]="id"
+    [checked]="value"
+    [disabled]="disabled"
+    (change)="toggleValue()"
+    class="hidden-checkbox"
+  />
+  <label
+    [for]="id"
+    [class.checked]="value"
+    [class.disabled]="disabled"
+  >
+    {{ label }}
+  </label>
+</div>

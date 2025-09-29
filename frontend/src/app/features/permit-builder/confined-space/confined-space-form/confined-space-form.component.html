@@ -19,7 +19,7 @@
         <app-smart-form
             [fields]="fields()"
             [layout]="'column'"
-            [values]="values()"
+            [values]="values"
             [title]="'Confined Space'"
             (formValueChange)="valuesChange.emit($event)"
             (formSubmit)="onFormSubmit($event)"
