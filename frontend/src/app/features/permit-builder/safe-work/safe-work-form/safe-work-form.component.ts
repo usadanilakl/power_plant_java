@@ -4,10 +4,11 @@ import { ReactiveFormComponent } from "../../../../shared/reactive-form/reactive
 import { Option } from '../../../../models/option.model';
 import { CurrentValueService } from '../../../../services/current-value.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SmartFormComponent } from "../../../../shared/reactive-form/smart-form/smart-form.component";
 
 @Component({
   selector: 'app-safe-work-form',
-  imports: [ReactiveFormComponent],
+  imports: [ReactiveFormComponent, SmartFormComponent],
   templateUrl: './safe-work-form.component.html',
   styleUrl: './safe-work-form.component.css'
 })

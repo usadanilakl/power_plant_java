@@ -1,4 +1,4 @@
-<div class="form-container">
+<!-- <div class="form-container">
     @if(isFormReady()){
         <app-reactive-form
             [fields]="fields()"
@@ -9,6 +9,22 @@
             (formSubmit)="onFormSubmit($event)"
             (formDelete)="onFormDelete()"
         ></app-reactive-form>
+
+    }@else {
+        <p>Loading form...</p>
+    }
+</div> -->
+<div class="form-container">
+    @if(isFormReady()){
+        <app-smart-form
+            [fields]="fields()"
+            [layout]="'column'"
+            [values]="values"
+            [title]="'Safe Work'"
+            (formValueChange)="valuesChange.emit($event)"
+            (formSubmit)="onFormSubmit($event)"
+            (formDelete)="onFormDelete()"
+        ></app-smart-form>
 
     }@else {
         <p>Loading form...</p>

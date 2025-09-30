@@ -166,7 +166,10 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     return [
       'id', 'date', 'time', 'companyPerson', 'location', 'workScope',
       'specialInstructions', 'requestedBy', 'hazards', 'permits', 'ppe',
-      'isVerified', 'name', 'objectType'
+      'isVerified', 'name', 'objectType',
+      ...Object.keys(SafeWorkDto.getHazardFields(null)), 
+      ...Object.keys(SafeWorkDto.getPermitFields(null)),
+      ...Object.keys(SafeWorkDto.getPpeFields(null))
     ].includes(key);
   }
 
@@ -175,10 +178,16 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     locationOptions: Option[],
     fields: SafeWorkFieldName[] = [
       'date', 'time', 'companyPerson', 'location', 'workScope',
-      'specialInstructions', 'requestedBy', 'hazards', 'permits', 'ppe'
+      'specialInstructions', 'requestedBy', 'hazards', 'permits', 'ppe',
+      ...Object.keys(SafeWorkDto.getHazardFields(null)) as SafeWorkFieldName[], 
+      ...Object.keys(SafeWorkDto.getPermitFields(null)) as SafeWorkFieldName[],
+      ...Object.keys(SafeWorkDto.getPpeFields(null)) as SafeWorkFieldName[]
     ]
   ): FormField[] {
-    const allFields: { [key in SafeWorkFieldName]: FormField } = {
+    const ppeFields = SafeWorkDto.getPpeFields(dto.ppe);
+    const permitFields = SafeWorkDto.getPermitFields(dto.permits);
+    const hazardFields = SafeWorkDto.getHazardFields(dto.hazards);
+    const allFields: { [key: string]: FormField } = {
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
       date: { 
         name: 'date', 
@@ -229,16 +238,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         type: 'text', 
         validators: [Validators.required], 
         initialValue: dto.requestedBy 
-      },
-      hazards: { 
-        name: 'hazards', 
-        label: 'Hazards', 
-        type: 'checkbox-group', 
-        options: SafeWorkDto.getHazardOptions(dto.hazards) || [],
-      },
-      permits: { name: 'permits', label: 'Permits', type: 'checkbox-group', initialValue: dto.permits, options: SafeWorkDto.getPermitOptions(dto.permits) || [] },
-      ppe: { name: 'ppe', label: 'PPE', type: 'checkbox-group', initialValue: dto.ppe, options: SafeWorkDto.getPpeOptions(dto.ppe) || [] },
-      isVerified: { 
+      },isVerified: { 
         name: 'isVerified', 
         label: 'Is Verified', 
         type: 'select', 
@@ -249,7 +249,10 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
         initialValue: dto.isVerified?.toString() 
       },
       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
-      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType }
+      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
+      ...ppeFields,
+      ...permitFields,
+      ...hazardFields
     };
   
     return fields.map(fieldName => allFields[fieldName]);
@@ -355,4 +358,86 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
       };
     });
   }
+
+  static getHazardFields(hazardsDto: SwHazards | null): { [key: string]: FormField } {
+    const hazards = hazardsDto || new SwHazards();
+    const group = { label: 'Hazards', orientation: 'horizontal' } as const;
+    return {
+      'hazards.highTemp': { name: 'hazards.highTemp', label: 'High Temp', type: 'checkbox', initialValue: hazards.highTemp, group: group },
+      'hazards.highPressure': { name: 'hazards.highPressure', label: 'High Pressure', type: 'checkbox', initialValue: hazards.highPressure, group: group },
+      'hazards.energized': { name: 'hazards.energized', label: 'Energized', type: 'checkbox', initialValue: hazards.energized, group: group },
+      'hazards.storedEnergy': { name: 'hazards.storedEnergy', label: 'Stored Energy', type: 'checkbox', initialValue: hazards.storedEnergy, group: group },
+      'hazards.eyeHazard': { name: 'hazards.eyeHazard', label: 'Eye Hazard', type: 'checkbox', initialValue: hazards.eyeHazard, group: group },
+      'hazards.egressAccess': { name: 'hazards.egressAccess', label: 'Egress/Access', type: 'checkbox', initialValue: hazards.egressAccess, group: group },
+      'hazards.ergonomicHazard': { name: 'hazards.ergonomicHazard', label: 'Ergonomic Hazard', type: 'checkbox', initialValue: hazards.ergonomicHazard, group: group },
+      'hazards.fallingObject': { name: 'hazards.fallingObject', label: 'Falling Object', type: 'checkbox', initialValue: hazards.fallingObject, group: group },
+      'hazards.highNoise': { name: 'hazards.highNoise', label: 'High Noise', type: 'checkbox', initialValue: hazards.highNoise, group: group },
+      'hazards.dustParticulate': { name: 'hazards.dustParticulate', label: 'Dust/Particulate', type: 'checkbox', initialValue: hazards.dustParticulate, group: group },
+      'hazards.combustibleDust': { name: 'hazards.combustibleDust', label: 'Combustible Dust', type: 'checkbox', initialValue: hazards.combustibleDust, group: group },
+      'hazards.fireHazard': { name: 'hazards.fireHazard', label: 'Fire Hazard', type: 'checkbox', initialValue: hazards.fireHazard, group: group },
+      'hazards.hotSurface': { name: 'hazards.hotSurface', label: 'Hot Surface', type: 'checkbox', initialValue: hazards.hotSurface, group: group },
+      'hazards.slippery': { name: 'hazards.slippery', label: 'Slippery', type: 'checkbox', initialValue: hazards.slippery, group: group },
+      'hazards.ventilationRequired': { name: 'hazards.ventilationRequired', label: 'Ventilation Required', type: 'checkbox', initialValue: hazards.ventilationRequired, group: group },
+      'hazards.lightingRestrictions': { name: 'hazards.lightingRestrictions', label: 'Lighting Restrictions', type: 'checkbox', initialValue: hazards.lightingRestrictions, group: group },
+      'hazards.chemicalExposure': { name: 'hazards.chemicalExposure', label: 'Chemical Exposure', type: 'checkbox', initialValue: hazards.chemicalExposure, group: group },
+      'hazards.liftingHazard': { name: 'hazards.liftingHazard', label: 'Lifting Hazard', type: 'checkbox', initialValue: hazards.liftingHazard, group: group },
+      'hazards.handTraps': { name: 'hazards.handTraps', label: 'Hand Traps', type: 'checkbox', initialValue: hazards.handTraps, group: group },
+      'hazards.heatColdStress': { name: 'hazards.heatColdStress', label: 'Heat/Cold Stress', type: 'checkbox', initialValue: hazards.heatColdStress, group: group },
+      'hazards.elevatedSurface': { name: 'hazards.elevatedSurface', label: 'Elevated Surface', type: 'checkbox', initialValue: hazards.elevatedSurface, group: group },
+      'hazards.environmental': { name: 'hazards.environmental', label: 'Environmental', type: 'checkbox', initialValue: hazards.environmental, group: group },
+      'hazards.other': { name: 'hazards.other', label: 'Other', type: 'checkbox', initialValue: hazards.other, group: group },
+      'hazards.otherDescription': { name: 'hazards.otherDescription', label: 'Other Description', type: 'text', initialValue: hazards.otherDescription, group: group },
+    };
+  }
+
+
+  static getPermitFields(permitsDto: SwPermits | null): { [key: string]: FormField } {
+    const permits = permitsDto || new SwPermits();
+    const group = { label: 'Permits', orientation: 'horizontal' } as const;
+    return {
+      'permits.lotoRequired': { name: 'permits.lotoRequired', label: 'LOTO Required', type: 'checkbox', initialValue: permits.lotoRequired, group: group },
+      'permits.lotoDescription': { name: 'permits.lotoDescription', label: 'LOTO Description', type: 'text', initialValue: permits.lotoDescription, group: group },
+      'permits.confinedSpace': { name: 'permits.confinedSpace', label: 'Confined Space', type: 'checkbox', initialValue: permits.confinedSpace, group: group },
+      'permits.confinedSpaceDescription': { name: 'permits.confinedSpaceDescription', label: 'Confined Space Description', type: 'text', initialValue: permits.confinedSpaceDescription, group: group },
+      'permits.hotWork': { name: 'permits.hotWork', label: 'Hot Work', type: 'checkbox', initialValue: permits.hotWork, group: group },
+      'permits.hotWorkDescription': { name: 'permits.hotWorkDescription', label: 'Hot Work Description', type: 'text', initialValue: permits.hotWorkDescription, group: group },
+      'permits.ventingPurging': { name: 'permits.ventingPurging', label: 'Venting/Purging', type: 'checkbox', initialValue: permits.ventingPurging, group: group },
+      'permits.ventingPurgingDescription': { name: 'permits.ventingPurgingDescription', label: 'Venting/Purging Description', type: 'text', initialValue: permits.ventingPurgingDescription, group: group },
+      'permits.jha': { name: 'permits.jha', label: 'JHA', type: 'checkbox', initialValue: permits.jha, group: group },
+      'permits.gasTesting': { name: 'permits.gasTesting', label: 'Gas Testing', type: 'checkbox', initialValue: permits.gasTesting, group: group },
+      'permits.excavationPermit': { name: 'permits.excavationPermit', label: 'Excavation Permit', type: 'checkbox', initialValue: permits.excavationPermit, group: group },
+      'permits.energizedPermit': { name: 'permits.energizedPermit', label: 'Energized Permit', type: 'checkbox', initialValue: permits.energizedPermit, group: group },
+      'permits.other': { name: 'permits.other', label: 'Other', type: 'checkbox', initialValue: permits.other, group: group },
+      'permits.otherDescription': { name: 'permits.otherDescription', label: 'Other Description', type: 'text', initialValue: permits.otherDescription, group: group },
+    };
+  }
+  
+  static getPpeFields(ppeDto: SwPpe | null): { [key: string]: FormField } {
+    const ppe = ppeDto || new SwPpe();
+    const group = { label: 'PPE', orientation: 'horizontal' } as const;
+    return {
+      'ppe.hardhat': { name: 'ppe.hardhat', label: 'Hardhat', type: 'checkbox', initialValue: ppe.hardhat, group: group },
+      'ppe.safetyGlasses': { name: 'ppe.safetyGlasses', label: 'Safety Glasses', type: 'checkbox', initialValue: ppe.safetyGlasses, group: group },
+      'ppe.hearingProtection': { name: 'ppe.hearingProtection', label: 'Hearing Protection', type: 'checkbox', initialValue: ppe.hearingProtection, group: group },
+      'ppe.boots': { name: 'ppe.boots', label: 'Boots', type: 'checkbox', initialValue: ppe.boots, group: group },
+      'ppe.fallProtection': { name: 'ppe.fallProtection', label: 'Fall Protection', type: 'checkbox', initialValue: ppe.fallProtection, group: group },
+      'ppe.gfi': { name: 'ppe.gfi', label: 'GFI', type: 'checkbox', initialValue: ppe.gfi, group: group },
+      'ppe.respirator': { name: 'ppe.respirator', label: 'Respirator', type: 'checkbox', initialValue: ppe.respirator, group: group },
+      'ppe.dustMask': { name: 'ppe.dustMask', label: 'Dust Mask', type: 'checkbox', initialValue: ppe.dustMask, group: group },
+      'ppe.gloves': { name: 'ppe.gloves', label: 'Gloves', type: 'checkbox', initialValue: ppe.gloves, group: group },
+      'ppe.iceCleats': { name: 'ppe.iceCleats', label: 'Ice Cleats', type: 'checkbox', initialValue: ppe.iceCleats, group: group },
+      'ppe.acidSuit': { name: 'ppe.acidSuit', label: 'Acid Suit', type: 'checkbox', initialValue: ppe.acidSuit, group: group },
+      'ppe.barricade': { name: 'ppe.barricade', label: 'Barricade', type: 'checkbox', initialValue: ppe.barricade, group: group },
+      'ppe.faceShield': { name: 'ppe.faceShield', label: 'Face Shield', type: 'checkbox', initialValue: ppe.faceShield, group: group },
+      'ppe.gasMonitor': { name: 'ppe.gasMonitor', label: 'Gas Monitor', type: 'checkbox', initialValue: ppe.gasMonitor, group: group },
+      'ppe.arcFlashPpe': { name: 'ppe.arcFlashPpe', label: 'Arc Flash PPE', type: 'checkbox', initialValue: ppe.arcFlashPpe, group: group },
+      'ppe.weldingJacket': { name: 'ppe.weldingJacket', label: 'Welding Jacket', type: 'checkbox', initialValue: ppe.weldingJacket, group: group },
+      'ppe.weldingShield': { name: 'ppe.weldingShield', label: 'Welding Shield', type: 'checkbox', initialValue: ppe.weldingShield, group: group },
+      'ppe.weldingGloves': { name: 'ppe.weldingGloves', label: 'Welding Gloves', type: 'checkbox', initialValue: ppe.weldingGloves, group: group },
+      'ppe.purgingVentilation': { name: 'ppe.purgingVentilation', label: 'Purging Ventilation', type: 'checkbox', initialValue: ppe.purgingVentilation, group: group },
+      'ppe.other': { name: 'ppe.other', label: 'Other', type: 'checkbox', initialValue: ppe.other, group: group },
+      'ppe.otherDescription': { name: 'ppe.otherDescription', label: 'Other Description', type: 'text', initialValue: ppe.otherDescription, group: group },
+    };
+  }
+
 }

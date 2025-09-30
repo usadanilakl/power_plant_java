@@ -119,10 +119,12 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     locationOptions: Option[],
     fields: HotWorkFieldName[] = [
       'date', 'location', 'workScope', 'foreman', 'fireWatch',
-      'meterModel', 'meterNum', 'specialInstructions', 'measures'
+      'meterModel', 'meterNum', 'specialInstructions', 'measures',
+      ...Object.keys(HotWorkDto.getMeasureFields(null)) as HotWorkFieldName[],
     ]
   ): FormField[] {
-    const allFields: { [key in HotWorkFieldName]: FormField } = {
+    const measureFields = HotWorkDto.getMeasureFields(dto.measures);
+    const allFields: { [key: string]: FormField } = {
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
       date: { 
         name: 'date', 
@@ -178,17 +180,6 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         type: 'textarea', 
         initialValue: dto.specialInstructions 
       },
-      measures: { name: 'measures', label: 'Safety Measures', type: 'checkbox-group', initialValue: dto.measures, options: HotWorkDto.getHwMeasuresOptions(dto.measures) },
-      isVerified: { 
-        name: 'isVerified', 
-        label: 'Is Verified', 
-        type: 'select', 
-        options: [
-          { value: 'true', label: 'Yes' },
-          { value: 'false', label: 'No' }
-        ], 
-        initialValue: dto.isVerified?.toString() 
-      },
       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
       objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
       isAirMonitoringRegisteredOnConfinedSpace: { 
@@ -222,7 +213,8 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         label: 'Initial Test Result', 
         type: 'text', 
         initialValue: dto.initialTestResult 
-      }
+      },
+      ...measureFields,
     };
   
     return fields.map(fieldName => allFields[fieldName]);
@@ -307,4 +299,23 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
         };
       });
     }
+
+  static getMeasureFields(measuresDto: HotWorkMeasures | null): { [key: string]: FormField } {
+    const measures = measuresDto || new HotWorkMeasures();
+    const group = { label: 'Safety Measures', orientation: 'vertical' } as const;
+    return {
+      'measures.areaIsClean': { name: 'measures.areaIsClean', label: 'Area is Clean', type: 'checkbox', initialValue: measures.areaIsClean, group: group },
+      'measures.flammablesAreSecured': { name: 'measures.flammablesAreSecured', label: 'Flammables are Secured', type: 'checkbox', initialValue: measures.flammablesAreSecured, group: group },
+      'measures.noCombustibleDustOrDebrisPresent': { name: 'measures.noCombustibleDustOrDebrisPresent', label: 'No Combustible Dust/Debris', type: 'checkbox', initialValue: measures.noCombustibleDustOrDebrisPresent, group: group },
+      'measures.radiativeHeatPreventiveMeasuresAreTaken': { name: 'measures.radiativeHeatPreventiveMeasuresAreTaken', label: 'Radiative Heat Prevention Taken', type: 'checkbox', initialValue: measures.radiativeHeatPreventiveMeasuresAreTaken, group: group },
+      'measures.vesselsArePurged': { name: 'measures.vesselsArePurged', label: 'Vessels are Purged', type: 'checkbox', initialValue: measures.vesselsArePurged, group: group },
+      'measures.openingsAreCovered': { name: 'measures.openingsAreCovered', label: 'Openings are Covered', type: 'checkbox', initialValue: measures.openingsAreCovered, group: group },
+      'measures.ductVentilationIsSecured': { name: 'measures.ductVentilationIsSecured', label: 'Duct Ventilation Secured', type: 'checkbox', initialValue: measures.ductVentilationIsSecured, group: group },
+      'measures.lockOutIsCompleted': { name: 'measures.lockOutIsCompleted', label: 'Lock-Out Completed', type: 'checkbox', initialValue: measures.lockOutIsCompleted, group: group },
+      'measures.communicationIsEstablished': { name: 'measures.communicationIsEstablished', label: 'Communication Established', type: 'checkbox', initialValue: measures.communicationIsEstablished, group: group },
+      'measures.fireWatchIsAwareOfDuties': { name: 'measures.fireWatchIsAwareOfDuties', label: 'Fire Watch Aware of Duties', type: 'checkbox', initialValue: measures.fireWatchIsAwareOfDuties, group: group },
+      'measures.fireExtinguisherPresent': { name: 'measures.fireExtinguisherPresent', label: 'Fire Extinguisher Present', type: 'checkbox', initialValue: measures.fireExtinguisherPresent, group: group },
+      'measures.fireProtectionIsInService': { name: 'measures.fireProtectionIsInService', label: 'Fire Protection in Service', type: 'checkbox', initialValue: measures.fireProtectionIsInService, group: group },
+    };
+  }
 }
