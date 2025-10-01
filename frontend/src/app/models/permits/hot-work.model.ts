@@ -119,7 +119,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     locationOptions: Option[],
     fields: HotWorkFieldName[] = [
       'date', 'location', 'workScope', 'foreman', 'fireWatch',
-      'meterModel', 'meterNum', 'specialInstructions', 'measures',
+      'meterModel', 'meterNum', 'specialInstructions',
       ...Object.keys(HotWorkDto.getMeasureFields(null)) as HotWorkFieldName[],
     ]
   ): FormField[] {

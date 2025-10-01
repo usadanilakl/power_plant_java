@@ -143,6 +143,12 @@ export class CurrentDailyPermitPackageService {
             })
         );
     }
+
+    createAndAddDailyPackage(permitPackageDto: DailyPermitPackageDto) {
+      this.createDailyPermitPackage(permitPackageDto).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe();
+    }
     
     deleteCurrentDailyPacksge() {
       this.dailyPermitPackageService.deleteDailyPermitPackage(this.selectedDailyPermitPackageSubject.value.id).pipe(

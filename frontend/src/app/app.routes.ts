@@ -73,6 +73,10 @@ export const routes: Routes = [
         { path: 'jobs', component: JobLogComponent },
         { path: 'work-requests', component: WorkRequestComponent },
         { path: 'daily-packages', component: DailyPermitPackageComponent },
+        {
+          path: 'daily-packages/:workRequestId',
+          component: DailyPermitPackageComponent
+        },
         { path: 'safe-works', component: SafeWorkComponent },
         { path: 'hot-works', component: HotWorkComponent },
         { path: 'confined-spaces', component: ConfinedSpaceComponent },

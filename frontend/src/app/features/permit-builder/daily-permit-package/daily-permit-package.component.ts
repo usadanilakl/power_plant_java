@@ -9,6 +9,7 @@ import { HotWorkDto } from '../../../models/permits/hot-work.model';
 import { ConfinedSpaceDto } from '../../../models/permits/confined-space.model';
 import { DailyPermitPackageService } from '../../../services/permits/daily-permit-package.service';
 import { DailyPermitPackageBuilderComponent } from "./daily-permit-package-builder/daily-permit-package-builder.component";
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-daily-permit-package',
@@ -21,8 +22,16 @@ export class DailyPermitPackageComponent {
 
   private currendDailyPermitPackageService = inject(CurrentDailyPermitPackageService);
   private dailyPermitPackageService = inject(DailyPermitPackageService);
+  private route = inject(ActivatedRoute);
   private destroyRef = inject(DestroyRef)
-  constructor() { }
+  constructor() {
+    const workRequestId = this.route.snapshot.paramMap.get('workRequestId');
+    if (workRequestId) {
+      const dailyPackage = new DailyPermitPackageDto();
+      dailyPackage.workRequestIds.push(+workRequestId);
+      this.currendDailyPermitPackageService.createAndAddDailyPackage(dailyPackage);
+    }
+  }
 
   currentDailyPackage = toSignal(this.currendDailyPermitPackageService.selectedDailyPermitPackage$, { initialValue: new DailyPermitPackageDto() });
 

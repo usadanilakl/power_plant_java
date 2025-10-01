@@ -5,10 +5,12 @@ import { DailyPermitPackageFormComponent } from "../daily-permit-package/daily-p
 import { WorkRequestDto } from '../../../models/permits/work-request.model';
 import { CurrentWorkRequestService } from '../../../services/current-items-services/current-work-requests.service';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 
 
 @Component({
   selector: 'app-work-request',
+  standalone: true,
   imports: [WorkRequestTableComponent, PopupProjectionComponent, DailyPermitPackageFormComponent],
   templateUrl: './work-request.component.html',
   styleUrl: './work-request.component.css'
@@ -16,6 +18,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 export class WorkRequestComponent implements OnInit {
 
   private currentWorkRequestService = inject(CurrentWorkRequestService);
+  private router = inject(Router);
 
   isDailyPermitPackageFormOpen = false;
   currentWorkRequest = toSignal(this.currentWorkRequestService.selectedWorkRequest$, { initialValue: new WorkRequestDto() });
@@ -32,6 +35,10 @@ export class WorkRequestComponent implements OnInit {
   }
 
   onWorkRequestTableRowLeftClick(workRequest: WorkRequestDto){
-    this.isDailyPermitPackageFormOpen = true;
+    // this.isDailyPermitPackageFormOpen = true;
+    if (workRequest && workRequest.id) {
+      this.router.navigate(['/permit-builder/daily-packages', workRequest.id]);
+    }
+
   }
 }

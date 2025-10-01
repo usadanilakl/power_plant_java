@@ -165,7 +165,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
   static isValidKey(key: string): key is keyof SafeWorkModel {
     return [
       'id', 'date', 'time', 'companyPerson', 'location', 'workScope',
-      'specialInstructions', 'requestedBy', 'hazards', 'permits', 'ppe',
+      'specialInstructions', 'requestedBy',
       'isVerified', 'name', 'objectType',
       ...Object.keys(SafeWorkDto.getHazardFields(null)), 
       ...Object.keys(SafeWorkDto.getPermitFields(null)),
@@ -178,7 +178,7 @@ export class SafeWorkDto extends BaseDto implements SafeWorkModel {
     locationOptions: Option[],
     fields: SafeWorkFieldName[] = [
       'date', 'time', 'companyPerson', 'location', 'workScope',
-      'specialInstructions', 'requestedBy', 'hazards', 'permits', 'ppe',
+      'specialInstructions', 'requestedBy',
       ...Object.keys(SafeWorkDto.getHazardFields(null)) as SafeWorkFieldName[], 
       ...Object.keys(SafeWorkDto.getPermitFields(null)) as SafeWorkFieldName[],
       ...Object.keys(SafeWorkDto.getPpeFields(null)) as SafeWorkFieldName[]

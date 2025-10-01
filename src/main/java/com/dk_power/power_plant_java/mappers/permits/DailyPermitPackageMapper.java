@@ -158,6 +158,15 @@ public class DailyPermitPackageMapper implements BaseMapper {
             );
         }
 
+        if(entity.getName() == null || entity.getName().isEmpty()) {
+            String name = "No Work Scope Specified";
+            if(entity.getWorkRequests() != null &&!entity.getWorkRequests().isEmpty()){
+                String workScope = entity.getWorkRequests().iterator().next().getWorkScope();
+                if(workScope!=null && !workScope.isEmpty()) name = workScope;
+            }
+            entity.setName(name);
+        }
+
         return entity;
     }
 
