@@ -45,10 +45,11 @@ async getAllRequests() {
   }
 },
 
-openBuilder(){ 
+openBuilder(id){ 
         if (window.javaScriptBridge) {
             try {
-                window.javaScriptBridge.openInBrowser('http://localhost:8082/app/permit-builder/daily-packages');
+                if(id)window.javaScriptBridge.openInBrowser('http://localhost:8082/app/permit-builder/daily-packages/'+id);
+                else window.javaScriptBridge.openInBrowser('http://localhost:8082/app/permit-builder/daily-packages');
                 console.log('openApplication called successfully');
             } catch (error) {
                 console.error('Error calling openApplication:', error);

@@ -35,9 +35,8 @@ const workRequestTable = {
 
         // Create new event listener
         this.rowClickHandler = (event) => {
-            console.log("extracted id: ", id)
-            if(id)workRequestService.openBuilder(id);
-            else workRequestService.openBuilder();
+            const id = event.detail.id;
+            workRequestService.openBuilder(id);
         };
 
         // Add the new event listener
