@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.permits.NgWorkRequestDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
 import com.dk_power.power_plant_java.entities.permits.WorkRequest;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.repository.permits.WorkRequestRepo;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class WorkRequestMapper implements BaseMapper {
     private final ModelMapper modelMapper;
+    private final WorkRequestRepo workRequestRepo;
 
     public WorkRequestDto convertToDto(WorkRequest entity) {
         if (entity == null) return null;
@@ -137,6 +139,7 @@ public class WorkRequestMapper implements BaseMapper {
         if (dto == null) return null;
 
         WorkRequest entity = new WorkRequest();
+        if(dto.getId()!=null && dto.getId()!=0) entity = workRequestRepo.findById(dto.getId()).orElse(new WorkRequest());
 
         entity.setId(dto.getId());
         entity.setName(dto.getName());
