@@ -117,6 +117,11 @@ const tableBuilder = {
                 this.columns.forEach(column => {
                     const td = document.createElement('td');
                     td.textContent = this.data[i][column.name] || '';
+    
+                // If the source object has an 'id' property, set it as the row's ID
+                if (this.data[i].id !== undefined) {
+                    row.id = this.data[i].id;
+                }
                     row.appendChild(td);
                 });
                 fragment.appendChild(row);
