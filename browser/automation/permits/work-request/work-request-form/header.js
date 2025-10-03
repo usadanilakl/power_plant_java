@@ -75,10 +75,10 @@ function createFixedHeaderWithNav(titleText, navItems) {
 
 // Example usage:
 createFixedHeaderWithNav('Jackson Generation', [
-  { label: 'Home', url: './index.html' },
-  { label: 'Login', url: './login.html' },
-  { label: 'Register', url: './register.html' },
-  { label: 'Signature', url: './signature.html' },
-  { label: 'Log Out', onClick: ()=>logOut()}
+  // { label: 'Home', url: './index.html' },
+  // { label: 'Login', url: './login.html' },
+  // { label: 'Register', url: './register.html' },
+  // { label: 'Signature', url: './signature.html' },
+  // { label: 'Log Out', onClick: ()=>logOut()}
 ]);
 

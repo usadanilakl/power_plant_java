@@ -3,7 +3,7 @@ const workRequestTable = {
     rowClickHandler: null,
     container: 'tableContainer',
 
-    buildTable: function(items) {
+    buildTable: function(items,callback = null) {
 
         if(!items || !items.length || items.length === 0){
             document.getElementById(this.container).textContent = 'loading...';
@@ -36,7 +36,8 @@ const workRequestTable = {
         // Create new event listener
         this.rowClickHandler = (event) => {
             const id = event.detail.id;
-            workRequestService.openBuilder(id);
+            if(!callback)workRequestService.openBuilder(id);
+            else callback(event.detail);
         };
 
         // Add the new event listener

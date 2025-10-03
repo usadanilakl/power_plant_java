@@ -115,13 +115,37 @@
             margin-top: 1rem;
             display: none;
         }
+        
+        @media (max-width: 400px) {
+            body {
+                padding: 1rem;
+            }
+            form {
+                padding: 1rem;
+                margin: 1rem;
+            }
+            form label {
+                font-size: 1rem;
+            }
+            form input, form textarea, form select, button {
+                font-size: 1rem;
+                padding: 0.8rem;
+            }
+            button {
+                font-size: 1.2rem;
+            }
+            .radio-button {
+                padding: 10px 20px;
+            }
+        }
+
     </style>
 </head>
 <body>
-    <button onclick="getRequests()">Resubmit previously submitted form</button>
+    <button onclick="getSavedAndShow()">Resubmit previously submitted form</button>
 <form>
     <label>Date of work to be performed:<br />
-        <input type="date" name="dateOfWork" required />
+        <input type="date" id="dateOfWork" name="dateOfWork" required  />
     </label><br /><br />
 
     <label>Time of work to be performed:<br />
@@ -208,12 +232,21 @@
 
 <script src="./user.service.js"></script>
 <script src="./header.js"></script>
+<script src="./local-db-service.js"></script>
 
 <script>
 
     const companyInput = document.querySelector('input[name="company"]')
     const nameInput = document.querySelector('input[name="workRequestedBy"]')
     const dateInput = document.querySelector('input[name="dateOfWork"]')
+
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const yyyy = tomorrow.getFullYear();
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    document.getElementById('dateOfWork').value = `${yyyy}-${mm}-${dd}`;
 
     function getRadioValue(name) {
         const radios = document.getElementsByName(name);
