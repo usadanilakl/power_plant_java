@@ -42,6 +42,10 @@ form.addEventListener('submit', (event) => {
 });
 
 
+/*************************************************************************************************************************************************************************************************************
+ * INDEXED DB OPERATIONS
+ ************************************************************************************************************************************************************************************************************/
+
 function saveFormToIndexedDB(form) {
   const data = {};
   Array.from(form.elements).forEach(el => {
@@ -122,8 +126,157 @@ function getAllFormsFromIndexedDB(callback) {
   };
 }
 
+function getFormByIdFromIndexedDB(id, callback) {
+  const request = indexedDB.open('FormDatabase', 1);
+
+  request.onupgradeneeded = event => {
+    const db = event.target.result;
+    if (!db.objectStoreNames.contains('forms')) {
+      db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+    }
+  };
+
+  request.onsuccess = event => {
+    const db = event.target.result;
+    const transaction = db.transaction(['forms'], 'readonly');
+    const store = transaction.objectStore('forms');
+    const getRequest = store.get(id);
+
+    getRequest.onsuccess = () => {
+      callback(getRequest.result || null);
+      db.close();
+    };
+
+    getRequest.onerror = () => {
+      console.error('Error fetching form by id:', getRequest.error);
+      callback(null);
+      db.close();
+    };
+  };
+
+  request.onerror = event => {
+    console.error('IndexedDB open error:', event.target.error);
+    callback(null);
+  };
+}
+
+function deleteFormFromIndexedDB(id, callback) {
+  const request = indexedDB.open('FormDatabase', 1);
+
+  request.onupgradeneeded = event => {
+    const db = event.target.result;
+    if (!db.objectStoreNames.contains('forms')) {
+      db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+    }
+  };
+
+  request.onsuccess = event => {
+    const db = event.target.result;
+    const transaction = db.transaction(['forms'], 'readwrite');
+    const store = transaction.objectStore('forms');
+    const deleteRequest = store.delete(id);
+
+    deleteRequest.onsuccess = () => {
+      console.log(`Form with id ${id} deleted successfully`);
+      callback(true);
+      db.close();
+    };
+
+    deleteRequest.onerror = () => {
+      console.error('Error deleting form:', deleteRequest.error);
+      callback(false);
+      db.close();
+    };
+  };
+
+  request.onerror = event => {
+    console.error('IndexedDB open error:', event.target.error);
+    callback(false);
+  };
+}
+
+function queryByColumn(storeName, indexName, queryValue, callback) {
+  const request = indexedDB.open('FormDatabase', 1);
+
+  request.onupgradeneeded = event => {
+    const db = event.target.result;
+    if (!db.objectStoreNames.contains(storeName)) {
+      const objectStore = db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+      objectStore.createIndex(indexName, indexName, { unique: false });
+    }
+  };
+
+  request.onsuccess = event => {
+    const db = event.target.result;
+    const transaction = db.transaction(storeName, 'readonly');
+    const store = transaction.objectStore(storeName);
+    const index = store.index(indexName);
+    const keyRange = IDBKeyRange.only(queryValue);
+    const results = [];
+    const cursorRequest = index.openCursor(keyRange);
+
+    cursorRequest.onsuccess = e => {
+      const cursor = e.target.result;
+      if (cursor) {
+        results.push(cursor.value);
+        cursor.continue();
+      } else {
+        callback(results);
+        db.close();
+      }
+    };
+
+    cursorRequest.onerror = e => {
+      console.error('Cursor error:', e.target.error);
+      callback(null);
+      db.close();
+    };
+  };
+
+  request.onerror = event => {
+    console.error('IndexedDB open error:', event.target.error);
+    callback(null);
+  };
+}
+
+function areObjectsEqualIgnoreCase(obj1, obj2) {
+  const keys1 = Object.keys(obj1).filter(key => key !== 'id');
+  const keys2 = Object.keys(obj2).filter(key => key !== 'id');
+
+  if (keys1.length !== keys2.length) return false;
+
+  for (const key of keys1) {
+    if (!keys2.includes(key)) return false;
+
+    const val1 = obj1[key];
+    const val2 = obj2[key];
+
+    if (typeof val1 === 'string' && typeof val2 === 'string') {
+      // Case-insensitive comparison of strings
+      if (val1.toLowerCase() !== val2.toLowerCase()) return false;
+    } else {
+      // Strict equality for non-string fields
+      if (val1 !== val2) return false;
+    }
+  }
+  return true;
+}
+
+function checkForDuplicate(current, callback) {
+  queryByColumn('forms', 'dateOfWork', current.dateOfWork, results => {
+    // Check if any matching form equals current ignoring case (excluding id)
+    const isDuplicate = results.some(e => areObjectsEqualIgnoreCase(current, e));
+    callback(isDuplicate);
+  });
+}
+
+
+
+
+/*************************************************************************************************************************************************************************************************************
+ * DISPLAY AND SUBMIT OPERATIONS
+ ************************************************************************************************************************************************************************************************************/
 function showFormDataPopup(data) {
-  console.log("processing data ", data);
 
   // Create overlay
   const overlay = document.createElement('div');
@@ -148,6 +301,18 @@ function showFormDataPopup(data) {
   closeButton.onclick = () => document.body.removeChild(overlay);
   popup.appendChild(closeButton);
 
+  const message = "Table below displays ONLY previously submitted requests from CURRENT DEVICE and CURRENT BROWSER"
+
+  // Add message element
+  const messageElement = document.createElement('h2');
+  messageElement.textContent = message;
+  Object.assign(messageElement.style, {
+    marginBottom: '15px',
+    fontStyle: 'italic',
+    color: '#a83d3dff'
+  });
+  popup.appendChild(messageElement);
+
   // Create table
   const table = document.createElement('table');
   Object.assign(table.style, {
@@ -171,6 +336,10 @@ function showFormDataPopup(data) {
     });
     headerRow.appendChild(th);
   });
+    
+    const th = document.createElement('th');
+    th.textContent = "Delete";
+    headerRow.appendChild(th);
   
   thead.appendChild(headerRow);
   table.appendChild(thead);
@@ -193,6 +362,24 @@ function showFormDataPopup(data) {
       Object.assign(td.style, { border: '1px solid #ccc', padding: '8px' });
       row.appendChild(td);
     });
+    const td = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.textContent = "Delete";
+    btn.style.backgroundColor = 'red';
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation(); // Prevent row click event
+      deleteFormFromIndexedDB(formData.id, success => {
+        if (success) {
+          console.log('Form deleted.');
+          row.remove(); // Remove the row from the table
+        } else {
+          console.log('Failed to delete form.');
+        }
+      });
+    });
+
+    td.appendChild(btn);
+    row.appendChild(td);
     tbody.appendChild(row);
   });
 
@@ -234,7 +421,8 @@ async function submitFormToPowerAutomate(data) {
 
     const result = await response.json();
     console.log('Successfully submitted:', result);
-    showMessage("Successfully submitted", 2000)
+    const message = result.message ?? "Failed to submit request, try again. If form is empty, it should be accessable in previously submitted froms list.";
+    showMessage(message, 2000)
     return result;
 
   } catch (error) {
