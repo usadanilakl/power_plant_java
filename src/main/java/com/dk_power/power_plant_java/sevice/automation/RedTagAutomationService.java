@@ -1,5 +1,9 @@
 package com.dk_power.power_plant_java.sevice.automation;
 
+import com.dk_power.power_plant_java.dto.automation.CsBuilderProgress;
+import com.dk_power.power_plant_java.dto.automation.HwBuilderProgress;
+import com.dk_power.power_plant_java.dto.automation.PermitBuildingProgress;
+import com.dk_power.power_plant_java.dto.automation.SwBuilderProgress;
 import com.dk_power.power_plant_java.dto.permits.*;
 import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
 import com.sun.jna.platform.win32.User32;
@@ -20,6 +24,12 @@ import java.util.List;
 public class RedTagAutomationService {
 
     private static final String BASE_PATH = "J:/Jackson Generation P&IDs/Manager App/managed_apps/RedTagIntegration/images/";
+
+
+    private static final Pattern BLUE_EXCLAMATION = new Pattern(BASE_PATH + "BLUE_EXCLAMATION.png");
+    private static final Pattern YELLOW_EXCLAMATION = new Pattern(BASE_PATH + "YELLOW_EXCLAMATION.png");
+
+
     private static final Pattern POINT_MENU = new Pattern(BASE_PATH + "pointMenu.png");
     private static final Pattern ADD_DEVICE_MANUALLY_BTN = new Pattern(BASE_PATH + "addDeviceManuallyBtn.png");
     private static final Pattern NEW_POINT_WINDOW = new Pattern(BASE_PATH + "newPointWindow.png");
@@ -194,11 +204,7 @@ public class RedTagAutomationService {
     private Screen screen;
     private Region appWindow;
 
-    private String safeWorkNumber = "";
-    private String hotWorkNumber = "";
-    private String confinedSpaceNumber = "";
-    private String lotoNumber1 = "24087";
-    private String lotoNumber2 = "24299";
+    private PermitBuildingProgress permitBuildingProgress;
 
 
     public RedTagAutomationService() {
@@ -208,90 +214,94 @@ public class RedTagAutomationService {
         Settings.MoveMouseDelay = 0;
     }
 
-    public void openApp() throws IOException, InterruptedException, FindFailed {
+    public String openApp() {
         String appName = "Redtag.exe";
         String appPath = "J://RedTag/Redtag.exe";
+        try {
+            if (!isProcessRunning(appName)) {
+                System.out.println("Starting " + appName + "...");
+                Runtime.getRuntime().exec(appPath);
 
+                if (isLoggedIn())
+                    return "Application started and user is already logged in.";
 
-        if (!isProcessRunning(appName)) {
-            System.out.println("Starting " + appName + "...");
-            Runtime.getRuntime().exec(appPath);
-
-            if(isLoggedIn()) return;
-
-            screen.wait(LOG_IN_BUTTON,60);
-        } else {
-            System.out.println("Application is already running.");
-            maximizeWindowWindows("Redtag Enterprise");
+                screen.wait(LOG_IN_BUTTON, 60);
+                return "Application started. Waiting for login.";
+            } else {
+                System.out.println("Application is already running.");
+                maximizeWindowWindows("Redtag Enterprise");
+                return "Application is already running. Window maximized.";
+            }
+        } catch (Exception e) {
+            return "Failed starting or handling application: " + e.getMessage();
         }
     }
 
-    public String login() throws FindFailed {
+    private void pause(int millisec) {
+        try {
+            Thread.sleep(millisec);
+        }catch (InterruptedException e) {
 
-        if(isLoggedIn()) return "Alredy Logged In";
+        }
+    }
 
-        this.findAndClickElement(LOG_IN_BUTTON);
-        Region loginMenu = screen.wait(LOGIN_MENU,5);
-        loginMenu = new Region(loginMenu.x,loginMenu.y,loginMenu.w,loginMenu.h);
+    public String login() {
+        try {
+            if(isLoggedIn()) return "Already Logged In";
 
-//        try{
-//            Thread.sleep(1000);
-//        }catch (Exception e){
-//
-//        }
+            this.findAndClickElement(LOG_IN_BUTTON);
+            Region loginMenu = screen.wait(LOGIN_MENU, 5);
+            loginMenu = new Region(loginMenu.x, loginMenu.y, loginMenu.w, loginMenu.h);
 
-        Region inp1 = loginMenu.find(LOG_IN_INPUT_FIELD);
-        inp1.offset(inp1.w/2, inp1.h/2).click();
-        App.setClipboard(System.getProperty("user.name"));
-        screen.type("v", KeyModifier.CTRL);
-
-//        try{
-//            Thread.sleep(1000);
-//        }catch (Exception e){
-//
-//        }
-
-        Region inp2 = loginMenu.find(PASSWORD_INPUT_FIELD);
-        inp2.offset(inp2.w/2-20, inp2.h/2-10).click();
-        App.setClipboard("redtag");
-        screen.type("v", KeyModifier.CTRL);
-
-//        try{
-//            Thread.sleep(1000);
-//        }catch (Exception e){
-//
-//        }
-
-        Region btn = loginMenu.find(LOGIN_BUTTON_IN_LOGIN_MENU);
-        btn.offset(btn.w/2-20, btn.h/2-20).click();
-//        screen.type(Key.ENTER);
-
-        if(screen.exists(FAILED_LOGIN_POPUP,1)!=null){
-            Region popup = screen.find(FAILED_LOGIN_POPUP);
-            popup = new Region(popup.x,popup.y,popup.w,popup.h);
-            popup.find(FAILED_LOGIN_POPUP_YES_BUTTON).click();
-
-            Region loginMenu2 = screen.wait(LOGIN_MENU,5);
-            loginMenu2 = new Region(loginMenu.x,loginMenu.y,loginMenu.w,loginMenu.h);
-
-            Region inp11 = loginMenu2.find(LOG_IN_INPUT_FIELD);
-            inp1.offset(inp11.w/2, inp11.h/2).click();
-            App.setClipboard("automation");
+            Region inp1 = loginMenu.find(LOG_IN_INPUT_FIELD);
+            inp1.offset(inp1.w / 2, inp1.h / 2).click();
+            App.setClipboard(System.getProperty("user.name"));
             screen.type("v", KeyModifier.CTRL);
 
-            Region inp22 = loginMenu2.find(PASSWORD_INPUT_FIELD);
-            inp2.offset(inp22.w/2-20, inp22.h/2-10).click();
+            Region inp2 = loginMenu.find(PASSWORD_INPUT_FIELD);
+            inp2.offset(inp2.w / 2 - 20, inp2.h / 2 - 10).click();
             App.setClipboard("redtag");
             screen.type("v", KeyModifier.CTRL);
-            screen.type(Key.ENTER);
-            screen.type(Key.ENTER);
-            if(screen.exists(MAIN_MENU)!=null){
-                return "Success";
-            }
-        }
 
-        return "Fail";
+            Region btn = loginMenu.find(LOGIN_BUTTON_IN_LOGIN_MENU);
+            btn.offset(btn.w / 2 - 20, btn.h / 2 - 20).click();
+
+            if(screen.exists(FAILED_LOGIN_POPUP, 1) != null) {
+                Region popup = screen.find(FAILED_LOGIN_POPUP);
+                popup = new Region(popup.x, popup.y, popup.w, popup.h);
+                popup.find(FAILED_LOGIN_POPUP_YES_BUTTON).click();
+
+                Region loginMenu2 = screen.wait(LOGIN_MENU, 5);
+                loginMenu2 = new Region(loginMenu.x, loginMenu.y, loginMenu.w, loginMenu.h);
+
+                Region inp11 = loginMenu2.find(LOG_IN_INPUT_FIELD);
+                inp11.offset(inp11.w / 2, inp11.h / 2).click();
+                App.setClipboard("automation");
+                screen.type("v", KeyModifier.CTRL);
+
+                Region inp22 = loginMenu2.find(PASSWORD_INPUT_FIELD);
+                inp22.offset(inp22.w / 2 - 20, inp22.h / 2 - 10).click();
+                App.setClipboard("redtag");
+                screen.type("v", KeyModifier.CTRL);
+                screen.type(Key.ENTER);
+                pause(200);
+                screen.type(Key.ENTER);
+
+                if(screen.exists(MAIN_MENU) != null) {
+                    return "Login successful on second attempt.";
+                } else {
+                    return "Second login attempt failed.";
+                }
+            }
+            if(screen.exists(MAIN_MENU) != null) {
+                return "Login successful.";
+            }
+            return "Login failed.";
+        } catch (Exception e) {
+            return "Failed during login: " + e.getMessage();
+        }
     }
+
 
 
 
@@ -328,37 +338,95 @@ public class RedTagAutomationService {
 
         return "success";
     }
-    public String buildDailyPermitPackage(DailyPermitPackageDto packageDto) throws FindFailed, IOException, InterruptedException {
-        openApp();
-        login();
+
+    public String buildDailyPermitPackage(DailyPermitPackageDto packageDto) {
+        permitBuildingProgress = new PermitBuildingProgress();
+        permitBuildingProgress.setPackageUnderConstruction(packageDto);
+        permitBuildingProgress.setOpenAppMessage(openApp());
+        pause(200);
+        permitBuildingProgress.setLoginMessage(login());
+        pause(200);
 
         for(HotWorkDto hw : packageDto.getHotWorks()){
-            openNewHwBuilder();
-            fillOutHwForm(hw);
+            HwBuilderProgress progress = new HwBuilderProgress();
+            progress.setHotWorkDto(hw);
+
+            progress.setOpenBuilderMessage(openNewHwBuilder());
+            progress.setFillOutForm(fillOutHwForm(hw));
             String permitNum = saveHwForm();
             hw.setRedTagNum(permitNum);
+            progress.setSaveForm(permitNum);
             System.out.println(permitNum + " HW saved");
+            pause(200);
+
+            permitBuildingProgress.getHwMessages().add(progress);
         }
 
         for(ConfinedSpaceDto cs : packageDto.getConfinedSpaces()){
-            openNewConfinedSpaceBuilder();
-            fillOutCSForm(cs);
+            CsBuilderProgress progress = new CsBuilderProgress();
+            progress.setConfinedSpaceDto(cs);
+
+            progress.setOpenBuilderMessage(openNewConfinedSpaceBuilder());
+            progress.setFillOutForm(fillOutCSForm(cs));
             String permitNum = saveCsForm();
             cs.setRedTagNum(permitNum);
+            progress.setSaveForm(permitNum);
             System.out.println(permitNum + " CS saved");
+            pause(200);
+
+            permitBuildingProgress.getCsMessages().add(progress);
         }
 
         for (SafeWorkDto safeWork : packageDto.getSafeWorks()) {
-            openNewSafeWorkBuilder();
-            fillOutSafeWorkForm(safeWork);
+            SwBuilderProgress progress = new SwBuilderProgress();
+            progress.setSafeWorkDto(safeWork);
+
+            progress.setOpenBuilderMessage(openNewSafeWorkBuilder());
+            progress.setFillOutForm(fillOutSafeWorkForm(safeWork));
             String permitNum = saveSafeWork();
             safeWork.setRedTagNum(permitNum);
+            progress.setSaveForm(permitNum);
             System.out.println(permitNum + " SW saved");
             associatePermits(packageDto);
+            pause(200);
+
+            permitBuildingProgress.getSwMessages().add(progress);
         }
 
         return "success";
     }
+
+    public String continueInterruptedProcess() {
+        String failedStep = permitBuildingProgress.getFailedStep();
+        if (failedStep == null) {
+            return "No failed step detected";
+        }
+        switch (failedStep) {
+            case "get-package":
+                // handle package retrieval failure
+                return "Handling get-package failure";
+            case "open-app":
+                // handle app opening failure
+                return "Handling open-app failure";
+            case "login":
+                if(screen.exists(BLUE_EXCLAMATION, 1) != null) screen.type(Key.ENTER);
+                if(screen.exists(YELLOW_EXCLAMATION, 1) != null) screen.type(Key.ENTER);
+                login();
+                return "Handling login failure";
+            case "hw-step":
+                // example for hot work step failure
+                return "Handling hot work failure";
+            case "cs-step":
+                // example for confined space step failure
+                return "Handling confined space failure";
+            case "sw-step":
+                // example for safe work step failure
+                return "Handling safe work failure";
+            default:
+                return "Unknown failure step: " + failedStep;
+        }
+    }
+
 
     public DailyPermitPackageDto initData(){
         DailyPermitPackageDto packageDto = new DailyPermitPackageDto();
@@ -462,166 +530,175 @@ public class RedTagAutomationService {
 
 
 
-    public String openNewSafeWorkBuilder() throws FindFailed {
-        screen.find(SAFEWORK_TAB).click();
-        screen.wait(NEW_PERMIT_BUTTON,1).click();
-        screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON,3).click();
-        Region shrink = screen.wait(SHRINK_BUTTON,10);
-        shrink.click();
-        shrink.click();
-        shrink.click();
-        return "Success";
+    public String openNewSafeWorkBuilder(){
+        try{
+            screen.find(SAFEWORK_TAB).click();
+            screen.wait(NEW_PERMIT_BUTTON, 1).click();
+            screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON, 3).click();
+            Region shrink = screen.wait(SHRINK_BUTTON, 10);
+            shrink.click();
+            shrink.click();
+            shrink.click();
+            return "Success";
+        }catch (Exception e){
+            return "Failed to open safe work form builder";
+        }
     }
 
-    public String fillOutSafeWorkFormTest() throws FindFailed {
-        Region dateIssued = screen.wait(SW_DATE_ISSUED,1);
-        dateIssued.offset(0,15).click();
-        pasteText("09/07/2025");
-        screen.type(Key.TAB);
-        pasteText("0700");
-        screen.type(Key.TAB);
-        pasteText("Kiewit/Mike Miles");
+    public String fillOutSafeWorkFormTest() {
+        try{
+            Region dateIssued = screen.wait(SW_DATE_ISSUED, 1);
+            dateIssued.offset(0, 15).click();
+            pasteText("09/07/2025");
+            screen.type(Key.TAB);
+            pasteText("0700");
+            screen.type(Key.TAB);
+            pasteText("Kiewit/Mike Miles");
 
-        Region location = screen.find(SW_LOCATION);
-        location.offset(250,0).click();
-        pasteText("HRSG U2");
+            Region location = screen.find(SW_LOCATION);
+            location.offset(250, 0).click();
+            pasteText("HRSG U2");
 
-        location.offset(250,20).click();
-        pasteText("Repairs");
+            location.offset(250, 20).click();
+            pasteText("Repairs");
 
-        clickLeftSideOfElement(SW_HIGH_TEMP,2);
+            clickLeftSideOfElement(SW_HIGH_TEMP, 2);
 
-        Region hiPressure = screen.find(SW_HIGH_PRESSURE);
-        hiPressure.offset(-hiPressure.w/2-15,0).click();
-
-        clickLeftSideOfElement(SW_ENERGIZED,2);
-        clickLeftSideOfElement(SW_STORED_ENERGY,2);
-        clickLeftSideOfElement(SW_EYE_HAZARD,2);
-        clickLeftSideOfElement(SW_EGRESS_ACCESS,2);
-        clickLeftSideOfElement(SW_ERGONOMIC_HAZARD,2);
-        clickLeftSideOfElement(SW_FALLING_OBJECT,2);
-        clickLeftSideOfElement(SW_HIGH_NOISE,2);
-        clickLeftSideOfElement(SW_DUST_PARTICULATE,2);
-        clickLeftSideOfElement(SW_COMBUSTABLE_DUST,2);
-        clickLeftSideOfElement(SW_FIRE_HAZARD,2);
-        clickLeftSideOfElement(SW_HOT_SURFACE,2);
-        clickLeftSideOfElement(SW_SLIPPERY,2);
-        clickLeftSideOfElement(SW_VENTILATION_REQUIRED,2);
-        clickLeftSideOfElement(SW_LIGHTING_RESTRICTIONS,2);
-        clickLeftSideOfElement(SW_CHEMICAL_EXPOSURE,2);
-        clickLeftSideOfElement(SW_LIFTING_HAZARD,2);
-        clickLeftSideOfElement(SW_HAND_TRAPS,2);
-        clickLeftSideOfElement(SW_HEAT_COLD_STRESS,2);
-        clickLeftSideOfElement(SW_ELEVATED_SURFACE,2);
-        clickLeftSideOfElement(SW_ENVIRONMENTAL,2);
-
-        clickYesNo(SW_LOTO_REQUIRED,true);
-        clickYesNo(SW_CONFINED_SPACE,true);
-        clickYesNo(SW_HOT_WORK,true);
-        clickYesNo(SW_VENTING_PURGING,true);
-        clickYesNo(SW_JHA,true);
-        clickYesNo(SW_GAS_TESTING,true);
-        clickYesNo(SW_EXCAVATION_PERMIT,true);
-        clickYesNo(SW_ENERGIZED_PERMIT,true);
-        clickYesNo(SW_HARDHAT,true);
-        clickYesNo(SW_SAFETY_GLASSES,true);
-        clickYesNo(SW_HEARING_PROTECTION,true);
-        clickYesNo(SW_BOOTS,true);
-        clickYesNo(SW_FALL_PROTECTION,true);
-        clickYesNo(SW_GFI,true);
-        clickYesNo(SW_RESPIRATOR,true);
-        clickYesNo(SW_DUST_MASK,true);
-        clickYesNo(SW_GLOVES,true);
-        clickYesNo(SW_ICE_CLEATS,true);
-        clickYesNo(SW_ACID_SUIT,true);
-        clickYesNo(SW_BARRICADE,true);
-        clickYesNo(SW_FACE_SHIELD,true);
-        clickYesNo(SW_GAS_MONITOR,true);
-        clickYesNo(SW_ARC_FLASH_PPE,true);
-        clickYesNo(SW_WELDING_JACKET,true);
-        clickYesNo(SW_WELDING_SHIELD,true);
-        clickYesNo(SW_WELDING_GLOVES,true);
-        clickYesNo(SW_PURGIN_VENTILATION,true);
-
-        clickYesNo(SW_LOTO_REQUIRED,false);
-        clickYesNo(SW_CONFINED_SPACE,false);
-        clickYesNo(SW_HOT_WORK,false);
-        clickYesNo(SW_VENTING_PURGING,false);
-        clickYesNo(SW_JHA,false);
-        clickYesNo(SW_GAS_TESTING,false);
-        clickYesNo(SW_EXCAVATION_PERMIT,false);
-        clickYesNo(SW_ENERGIZED_PERMIT,false);
-        clickYesNo(SW_HARDHAT,false);
-        clickYesNo(SW_SAFETY_GLASSES,false);
-        clickYesNo(SW_HEARING_PROTECTION,false);
-        clickYesNo(SW_BOOTS,false);
-        clickYesNo(SW_FALL_PROTECTION,false);
-        clickYesNo(SW_GFI,false);
-        clickYesNo(SW_RESPIRATOR,false);
-        clickYesNo(SW_DUST_MASK,false);
-        clickYesNo(SW_GLOVES,false);
-        clickYesNo(SW_ICE_CLEATS,false);
-        clickYesNo(SW_ACID_SUIT,false);
-        clickYesNo(SW_BARRICADE,false);
-        clickYesNo(SW_FACE_SHIELD,false);
-        clickYesNo(SW_GAS_MONITOR,false);
-        clickYesNo(SW_ARC_FLASH_PPE,false);
-        clickYesNo(SW_WELDING_JACKET,false);
-        clickYesNo(SW_WELDING_SHIELD,false);
-        clickYesNo(SW_WELDING_GLOVES,false);
-        clickYesNo(SW_PURGIN_VENTILATION,false);
-
-        screen.find(SW_SPECIAL_INSTRUCTIONS).offset(0,15).click();
-        pasteText("Special instructions are here");
-        screen.find(SW_REQUESTOR).offset(0,15).click();
-        pasteText("Adam Bunker");
-
-        return "success";
-    }
-
-    public String fillOutSafeWorkForm(SafeWorkDto sw) throws FindFailed {
-        Region dateIssued = screen.wait(SW_DATE_ISSUED,1);
-        dateIssued.offset(0,15).click();
-        pasteText(sw.getDate());
-        screen.type(Key.TAB);
-        pasteText(sw.getTime());
-        screen.type(Key.TAB);
-        pasteText(sw.getCompanyPerson());
-
-        Region location = screen.find(SW_LOCATION);
-        location.offset(250,0).click();
-        pasteText(sw.getLocation());
-
-        location.offset(250,20).click();
-        pasteText(sw.getWorkScope());
-
-        clickLeftSideOfElement(SW_HIGH_TEMP,2);
-
-        if(sw.getHazards().isHighPressure()){
             Region hiPressure = screen.find(SW_HIGH_PRESSURE);
             hiPressure.offset(-hiPressure.w / 2 - 15, 0).click();
-        }
 
-        if(sw.getHazards().isEnergized())clickLeftSideOfElement(SW_ENERGIZED,2);
-        if(sw.getHazards().isStoredEnergy())clickLeftSideOfElement(SW_STORED_ENERGY,2);
-        if(sw.getHazards().isEyeHazard())clickLeftSideOfElement(SW_EYE_HAZARD,2);
-        if(sw.getHazards().isEgressAccess())clickLeftSideOfElement(SW_EGRESS_ACCESS,2);
-        if(sw.getHazards().isErgonomicHazard())clickLeftSideOfElement(SW_ERGONOMIC_HAZARD,2);
-        if(sw.getHazards().isFallingObject())clickLeftSideOfElement(SW_FALLING_OBJECT,2);
-        if(sw.getHazards().isHighNoise())clickLeftSideOfElement(SW_HIGH_NOISE,2);
-        if(sw.getHazards().isDustParticulate())clickLeftSideOfElement(SW_DUST_PARTICULATE,2);
-        if(sw.getHazards().isCombustibleDust())clickLeftSideOfElement(SW_COMBUSTABLE_DUST,2);
-        if(sw.getHazards().isFireHazard())clickLeftSideOfElement(SW_FIRE_HAZARD,2);
-        if(sw.getHazards().isHotSurface())clickLeftSideOfElement(SW_HOT_SURFACE,2);
-        if(sw.getHazards().isSlippery())clickLeftSideOfElement(SW_SLIPPERY,2);
-        if(sw.getHazards().isVentilationRequired())clickLeftSideOfElement(SW_VENTILATION_REQUIRED,2);
-        if(sw.getHazards().isLightingRestrictions())clickLeftSideOfElement(SW_LIGHTING_RESTRICTIONS,2);
-        if(sw.getHazards().isChemicalExposure())clickLeftSideOfElement(SW_CHEMICAL_EXPOSURE,2);
-        if(sw.getHazards().isLiftingHazard())clickLeftSideOfElement(SW_LIFTING_HAZARD,2);
-        if(sw.getHazards().isHandTraps())clickLeftSideOfElement(SW_HAND_TRAPS,2);
-        if(sw.getHazards().isHeatColdStress())clickLeftSideOfElement(SW_HEAT_COLD_STRESS,2);
-        if(sw.getHazards().isElevatedSurface())clickLeftSideOfElement(SW_ELEVATED_SURFACE,2);
-        if(sw.getHazards().isEnvironmental())clickLeftSideOfElement(SW_ENVIRONMENTAL,2);
+            clickLeftSideOfElement(SW_ENERGIZED, 2);
+            clickLeftSideOfElement(SW_STORED_ENERGY, 2);
+            clickLeftSideOfElement(SW_EYE_HAZARD, 2);
+            clickLeftSideOfElement(SW_EGRESS_ACCESS, 2);
+            clickLeftSideOfElement(SW_ERGONOMIC_HAZARD, 2);
+            clickLeftSideOfElement(SW_FALLING_OBJECT, 2);
+            clickLeftSideOfElement(SW_HIGH_NOISE, 2);
+            clickLeftSideOfElement(SW_DUST_PARTICULATE, 2);
+            clickLeftSideOfElement(SW_COMBUSTABLE_DUST, 2);
+            clickLeftSideOfElement(SW_FIRE_HAZARD, 2);
+            clickLeftSideOfElement(SW_HOT_SURFACE, 2);
+            clickLeftSideOfElement(SW_SLIPPERY, 2);
+            clickLeftSideOfElement(SW_VENTILATION_REQUIRED, 2);
+            clickLeftSideOfElement(SW_LIGHTING_RESTRICTIONS, 2);
+            clickLeftSideOfElement(SW_CHEMICAL_EXPOSURE, 2);
+            clickLeftSideOfElement(SW_LIFTING_HAZARD, 2);
+            clickLeftSideOfElement(SW_HAND_TRAPS, 2);
+            clickLeftSideOfElement(SW_HEAT_COLD_STRESS, 2);
+            clickLeftSideOfElement(SW_ELEVATED_SURFACE, 2);
+            clickLeftSideOfElement(SW_ENVIRONMENTAL, 2);
+
+            clickYesNo(SW_LOTO_REQUIRED, true);
+            clickYesNo(SW_CONFINED_SPACE, true);
+            clickYesNo(SW_HOT_WORK, true);
+            clickYesNo(SW_VENTING_PURGING, true);
+            clickYesNo(SW_JHA, true);
+            clickYesNo(SW_GAS_TESTING, true);
+            clickYesNo(SW_EXCAVATION_PERMIT, true);
+            clickYesNo(SW_ENERGIZED_PERMIT, true);
+            clickYesNo(SW_HARDHAT, true);
+            clickYesNo(SW_SAFETY_GLASSES, true);
+            clickYesNo(SW_HEARING_PROTECTION, true);
+            clickYesNo(SW_BOOTS, true);
+            clickYesNo(SW_FALL_PROTECTION, true);
+            clickYesNo(SW_GFI, true);
+            clickYesNo(SW_RESPIRATOR, true);
+            clickYesNo(SW_DUST_MASK, true);
+            clickYesNo(SW_GLOVES, true);
+            clickYesNo(SW_ICE_CLEATS, true);
+            clickYesNo(SW_ACID_SUIT, true);
+            clickYesNo(SW_BARRICADE, true);
+            clickYesNo(SW_FACE_SHIELD, true);
+            clickYesNo(SW_GAS_MONITOR, true);
+            clickYesNo(SW_ARC_FLASH_PPE, true);
+            clickYesNo(SW_WELDING_JACKET, true);
+            clickYesNo(SW_WELDING_SHIELD, true);
+            clickYesNo(SW_WELDING_GLOVES, true);
+            clickYesNo(SW_PURGIN_VENTILATION, true);
+
+            clickYesNo(SW_LOTO_REQUIRED, false);
+            clickYesNo(SW_CONFINED_SPACE, false);
+            clickYesNo(SW_HOT_WORK, false);
+            clickYesNo(SW_VENTING_PURGING, false);
+            clickYesNo(SW_JHA, false);
+            clickYesNo(SW_GAS_TESTING, false);
+            clickYesNo(SW_EXCAVATION_PERMIT, false);
+            clickYesNo(SW_ENERGIZED_PERMIT, false);
+            clickYesNo(SW_HARDHAT, false);
+            clickYesNo(SW_SAFETY_GLASSES, false);
+            clickYesNo(SW_HEARING_PROTECTION, false);
+            clickYesNo(SW_BOOTS, false);
+            clickYesNo(SW_FALL_PROTECTION, false);
+            clickYesNo(SW_GFI, false);
+            clickYesNo(SW_RESPIRATOR, false);
+            clickYesNo(SW_DUST_MASK, false);
+            clickYesNo(SW_GLOVES, false);
+            clickYesNo(SW_ICE_CLEATS, false);
+            clickYesNo(SW_ACID_SUIT, false);
+            clickYesNo(SW_BARRICADE, false);
+            clickYesNo(SW_FACE_SHIELD, false);
+            clickYesNo(SW_GAS_MONITOR, false);
+            clickYesNo(SW_ARC_FLASH_PPE, false);
+            clickYesNo(SW_WELDING_JACKET, false);
+            clickYesNo(SW_WELDING_SHIELD, false);
+            clickYesNo(SW_WELDING_GLOVES, false);
+            clickYesNo(SW_PURGIN_VENTILATION, false);
+
+            screen.find(SW_SPECIAL_INSTRUCTIONS).offset(0, 15).click();
+            pasteText("Special instructions are here");
+            screen.find(SW_REQUESTOR).offset(0, 15).click();
+            pasteText("Adam Bunker");
+
+            return "success";
+        }catch (Exception e){
+            return "Failed to fill out safe work form";
+        }
+    }
+
+    public String fillOutSafeWorkForm(SafeWorkDto sw) {
+        try{
+            Region dateIssued = screen.wait(SW_DATE_ISSUED, 1);
+            dateIssued.offset(0, 15).click();
+            pasteText(sw.getDate());
+            screen.type(Key.TAB);
+            pasteText(sw.getTime());
+            screen.type(Key.TAB);
+            pasteText(sw.getCompanyPerson());
+
+            Region location = screen.find(SW_LOCATION);
+            location.offset(250, 0).click();
+            pasteText(sw.getLocation());
+
+            location.offset(250, 20).click();
+            pasteText(sw.getWorkScope());
+
+            clickLeftSideOfElement(SW_HIGH_TEMP, 2);
+
+            if (sw.getHazards().isHighPressure()) {
+                Region hiPressure = screen.find(SW_HIGH_PRESSURE);
+                hiPressure.offset(-hiPressure.w / 2 - 15, 0).click();
+            }
+
+            if (sw.getHazards().isEnergized()) clickLeftSideOfElement(SW_ENERGIZED, 2);
+            if (sw.getHazards().isStoredEnergy()) clickLeftSideOfElement(SW_STORED_ENERGY, 2);
+            if (sw.getHazards().isEyeHazard()) clickLeftSideOfElement(SW_EYE_HAZARD, 2);
+            if (sw.getHazards().isEgressAccess()) clickLeftSideOfElement(SW_EGRESS_ACCESS, 2);
+            if (sw.getHazards().isErgonomicHazard()) clickLeftSideOfElement(SW_ERGONOMIC_HAZARD, 2);
+            if (sw.getHazards().isFallingObject()) clickLeftSideOfElement(SW_FALLING_OBJECT, 2);
+            if (sw.getHazards().isHighNoise()) clickLeftSideOfElement(SW_HIGH_NOISE, 2);
+            if (sw.getHazards().isDustParticulate()) clickLeftSideOfElement(SW_DUST_PARTICULATE, 2);
+            if (sw.getHazards().isCombustibleDust()) clickLeftSideOfElement(SW_COMBUSTABLE_DUST, 2);
+            if (sw.getHazards().isFireHazard()) clickLeftSideOfElement(SW_FIRE_HAZARD, 2);
+            if (sw.getHazards().isHotSurface()) clickLeftSideOfElement(SW_HOT_SURFACE, 2);
+            if (sw.getHazards().isSlippery()) clickLeftSideOfElement(SW_SLIPPERY, 2);
+            if (sw.getHazards().isVentilationRequired()) clickLeftSideOfElement(SW_VENTILATION_REQUIRED, 2);
+            if (sw.getHazards().isLightingRestrictions()) clickLeftSideOfElement(SW_LIGHTING_RESTRICTIONS, 2);
+            if (sw.getHazards().isChemicalExposure()) clickLeftSideOfElement(SW_CHEMICAL_EXPOSURE, 2);
+            if (sw.getHazards().isLiftingHazard()) clickLeftSideOfElement(SW_LIFTING_HAZARD, 2);
+            if (sw.getHazards().isHandTraps()) clickLeftSideOfElement(SW_HAND_TRAPS, 2);
+            if (sw.getHazards().isHeatColdStress()) clickLeftSideOfElement(SW_HEAT_COLD_STRESS, 2);
+            if (sw.getHazards().isElevatedSurface()) clickLeftSideOfElement(SW_ELEVATED_SURFACE, 2);
+            if (sw.getHazards().isEnvironmental()) clickLeftSideOfElement(SW_ENVIRONMENTAL, 2);
 
 //        clickYesNo(SW_LOTO_REQUIRED,sw.getPermits().isLotoRequired());
 //        clickYesNo(SW_CONFINED_SPACE,sw.getPermits().isConfinedSpace());
@@ -651,103 +728,117 @@ public class RedTagAutomationService {
 //        clickYesNo(SW_WELDING_GLOVES,sw.getPermits().isLotoRequired());
 //        clickYesNo(SW_PURGIN_VENTILATION,sw.getPermits().isLotoRequired());
 
-        clickYesNo(SW_LOTO_REQUIRED, sw.getPermits().isLotoRequired());
-        clickYesNo(SW_CONFINED_SPACE, sw.getPermits().isConfinedSpace());
-        clickYesNo(SW_HOT_WORK, sw.getPermits().isHotWork());
-        clickYesNo(SW_VENTING_PURGING, sw.getPermits().isVentingPurging());
-        clickYesNo(SW_JHA, sw.getPermits().isJha());
-        clickYesNo(SW_GAS_TESTING, sw.getPermits().isGasTesting());
-        clickYesNo(SW_EXCAVATION_PERMIT, sw.getPermits().isExcavationPermit());
-        clickYesNo(SW_ENERGIZED_PERMIT, sw.getPermits().isEnergizedPermit());
+            clickYesNo(SW_LOTO_REQUIRED, sw.getPermits().isLotoRequired());
+            clickYesNo(SW_CONFINED_SPACE, sw.getPermits().isConfinedSpace());
+            clickYesNo(SW_HOT_WORK, sw.getPermits().isHotWork());
+            clickYesNo(SW_VENTING_PURGING, sw.getPermits().isVentingPurging());
+            clickYesNo(SW_JHA, sw.getPermits().isJha());
+            clickYesNo(SW_GAS_TESTING, sw.getPermits().isGasTesting());
+            clickYesNo(SW_EXCAVATION_PERMIT, sw.getPermits().isExcavationPermit());
+            clickYesNo(SW_ENERGIZED_PERMIT, sw.getPermits().isEnergizedPermit());
 
-        clickYesNo(SW_HARDHAT, sw.getPpe().isHardhat());
-        clickYesNo(SW_SAFETY_GLASSES, sw.getPpe().isSafetyGlasses());
-        clickYesNo(SW_HEARING_PROTECTION, sw.getPpe().isHearingProtection());
-        clickYesNo(SW_BOOTS, sw.getPpe().isBoots());
-        clickYesNo(SW_FALL_PROTECTION, sw.getPpe().isFallProtection());
-        clickYesNo(SW_GFI, sw.getPpe().isGfi());
-        clickYesNo(SW_RESPIRATOR, sw.getPpe().isRespirator());
-        clickYesNo(SW_DUST_MASK, sw.getPpe().isDustMask());
-        clickYesNo(SW_GLOVES, sw.getPpe().isGloves());
-        clickYesNo(SW_ICE_CLEATS, sw.getPpe().isIceCleats());
-        clickYesNo(SW_ACID_SUIT, sw.getPpe().isAcidSuit());
-        clickYesNo(SW_BARRICADE, sw.getPpe().isBarricade());
-        clickYesNo(SW_FACE_SHIELD, sw.getPpe().isFaceShield());
-        clickYesNo(SW_GAS_MONITOR, sw.getPpe().isGasMonitor());
-        clickYesNo(SW_ARC_FLASH_PPE, sw.getPpe().isArcFlashPpe());
-        clickYesNo(SW_WELDING_JACKET, sw.getPpe().isWeldingJacket());
-        clickYesNo(SW_WELDING_SHIELD, sw.getPpe().isWeldingShield());
-        clickYesNo(SW_WELDING_GLOVES, sw.getPpe().isWeldingGloves());
-        clickYesNo(SW_PURGIN_VENTILATION, sw.getPpe().isPurgingVentilation());
+            clickYesNo(SW_HARDHAT, sw.getPpe().isHardhat());
+            clickYesNo(SW_SAFETY_GLASSES, sw.getPpe().isSafetyGlasses());
+            clickYesNo(SW_HEARING_PROTECTION, sw.getPpe().isHearingProtection());
+            clickYesNo(SW_BOOTS, sw.getPpe().isBoots());
+            clickYesNo(SW_FALL_PROTECTION, sw.getPpe().isFallProtection());
+            clickYesNo(SW_GFI, sw.getPpe().isGfi());
+            clickYesNo(SW_RESPIRATOR, sw.getPpe().isRespirator());
+            clickYesNo(SW_DUST_MASK, sw.getPpe().isDustMask());
+            clickYesNo(SW_GLOVES, sw.getPpe().isGloves());
+            clickYesNo(SW_ICE_CLEATS, sw.getPpe().isIceCleats());
+            clickYesNo(SW_ACID_SUIT, sw.getPpe().isAcidSuit());
+            clickYesNo(SW_BARRICADE, sw.getPpe().isBarricade());
+            clickYesNo(SW_FACE_SHIELD, sw.getPpe().isFaceShield());
+            clickYesNo(SW_GAS_MONITOR, sw.getPpe().isGasMonitor());
+            clickYesNo(SW_ARC_FLASH_PPE, sw.getPpe().isArcFlashPpe());
+            clickYesNo(SW_WELDING_JACKET, sw.getPpe().isWeldingJacket());
+            clickYesNo(SW_WELDING_SHIELD, sw.getPpe().isWeldingShield());
+            clickYesNo(SW_WELDING_GLOVES, sw.getPpe().isWeldingGloves());
+            clickYesNo(SW_PURGIN_VENTILATION, sw.getPpe().isPurgingVentilation());
 
-        screen.find(SW_SPECIAL_INSTRUCTIONS).offset(0,15).click();
-        pasteText("Special instructions are here");
-        screen.find(SW_REQUESTOR).offset(0,15).click();
-        pasteText("Adam Bunker");
+            screen.find(SW_SPECIAL_INSTRUCTIONS).offset(0, 15).click();
+            pasteText(sw.getSpecialInstructions());
+            screen.find(SW_REQUESTOR).offset(0, 15).click();
+            pasteText(sw.getRequestedBy());
 
-        return "success";
-    }
-
-    public String saveSafeWork() throws FindFailed {
-        screen.find(SW_SAVE_BUTTON).click();
-        String num = getPermitNumber();
-        safeWorkNumber = num;
-        return num;
-    }
-
-    public String associatePermits(DailyPermitPackageDto packageDto) throws FindFailed {
-
-        List<String> one = new ArrayList<>(packageDto.getConfinedSpaces().stream().map(ConfinedSpaceDto::getWorkScope).toList());
-        one.addAll(packageDto.getHotWorks().stream().map(HotWorkDto::getLocation).toList());
-        List<String> two = new ArrayList<>(packageDto.getLotos().stream().map(LotoDto::getWorkScope).toList());
-
-        screen.find(SAFEWORK_TAB).click();
-        screen.wait(SW_MODIFY_BUTTON,1).click();
-        screen.wait(SW_ASSOCIATE_BUTTON,5).click();
-        Region topBar = screen.wait(SW_ASSOCIATE_PERMITS_TOP_BAR);
-        topBar.find(SW_ASSOCIATE_WINDOW_CONTROLS).click();
-        Region permitTabs = screen.wait(SW_ASSOCIATE_PERMIT_TABS,3);
-        permitTabs.find(SW_ISSUED_PERMITS).click();
-        Region issuedPermitsSide = screen.wait(SW_ASSOCIATE_ISSUED_SIDE,2);
-        issuedPermitsSide = new Region(issuedPermitsSide.x, issuedPermitsSide.y, issuedPermitsSide.w,issuedPermitsSide.h*15);
-
-
-        for (String s : one) {
-            Region searchBtn = issuedPermitsSide.find(SW_SEARCH_BUTTON);
-            searchBtn.offset(0,+20).click();
-            searchBtn.offset(-50,0).click();
-            pasteText(s);
-            searchBtn.click();
-            Region column = issuedPermitsSide.wait(SW_ASSOCIATE_PERMIT_NUMBER_COLUMN);
-            column.offset(0,12).click();
-            column.offset(0,12).click();
+            return "success";
+        }catch (Exception e){
+            return "Failed to fill out safe work from";
         }
-        permitTabs.find(SW_ASSOCIATE_ISSUED_LOTOS).click();
+    }
 
-        for (String s : two) {
-            Region searchBtn = issuedPermitsSide.wait(SW_SEARCH_BUTTON,1);
-            searchBtn.offset(0,+20).click();
-            searchBtn.offset(-50,0).click();
-            pasteText(s);
-            searchBtn.click();
-            Region column = issuedPermitsSide.wait(SW_ASSOCIATED_LOTO_NUM_COLUMN);
-            column.offset(0,12).click();
-            column.offset(0,12).click();
+    public String saveSafeWork() {
+        try{
+            screen.find(SW_SAVE_BUTTON).click();
+            String num = getPermitNumber();
+            return num;
+        }catch (Exception e){
+            return "Failed to save safe work form";
         }
-        return "success";
+    }
+
+    public String associatePermits(DailyPermitPackageDto packageDto) {
+
+        try{
+            List<String> one = new ArrayList<>(packageDto.getConfinedSpaces().stream().map(ConfinedSpaceDto::getWorkScope).toList());
+            one.addAll(packageDto.getHotWorks().stream().map(HotWorkDto::getLocation).toList());
+            List<String> two = new ArrayList<>(packageDto.getLotos().stream().map(LotoDto::getWorkScope).toList());
+
+            screen.find(SAFEWORK_TAB).click();
+            screen.wait(SW_MODIFY_BUTTON, 1).click();
+            screen.wait(SW_ASSOCIATE_BUTTON, 5).click();
+            Region topBar = screen.wait(SW_ASSOCIATE_PERMITS_TOP_BAR);
+            topBar.find(SW_ASSOCIATE_WINDOW_CONTROLS).click();
+            Region permitTabs = screen.wait(SW_ASSOCIATE_PERMIT_TABS, 3);
+            permitTabs.find(SW_ISSUED_PERMITS).click();
+            Region issuedPermitsSide = screen.wait(SW_ASSOCIATE_ISSUED_SIDE, 2);
+            issuedPermitsSide = new Region(issuedPermitsSide.x, issuedPermitsSide.y, issuedPermitsSide.w, issuedPermitsSide.h * 15);
+
+
+            for (String s : one) {
+                Region searchBtn = issuedPermitsSide.find(SW_SEARCH_BUTTON);
+                searchBtn.offset(0, +20).click();
+                searchBtn.offset(-50, 0).click();
+                pasteText(s);
+                searchBtn.click();
+                Region column = issuedPermitsSide.wait(SW_ASSOCIATE_PERMIT_NUMBER_COLUMN);
+                column.offset(0, 12).click();
+                column.offset(0, 12).click();
+            }
+            permitTabs.find(SW_ASSOCIATE_ISSUED_LOTOS).click();
+
+            for (String s : two) {
+                Region searchBtn = issuedPermitsSide.wait(SW_SEARCH_BUTTON, 1);
+                searchBtn.offset(0, +20).click();
+                searchBtn.offset(-50, 0).click();
+                pasteText(s);
+                searchBtn.click();
+                Region column = issuedPermitsSide.wait(SW_ASSOCIATED_LOTO_NUM_COLUMN);
+                column.offset(0, 12).click();
+                column.offset(0, 12).click();
+            }
+            return "success";
+        }catch (Exception e){
+            return  "Failed to associate permits";
+        }
     }
 
 
 
-    public String openNewConfinedSpaceBuilder() throws FindFailed{
-        screen.find(CS_TAB).click();
-        screen.wait(NEW_PERMIT_BUTTON,1).click();
-        screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON,3).click();
-        Region shrink = screen.wait(SHRINK_BUTTON,10);
-        shrink.click();
-        shrink.click();
-        shrink.click();
-        return "Success";
+    public String openNewConfinedSpaceBuilder() {
+        try {
+            screen.find(CS_TAB).click();
+            screen.wait(NEW_PERMIT_BUTTON, 1).click();
+            screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON, 3).click();
+            Region shrink = screen.wait(SHRINK_BUTTON, 10);
+            shrink.click();
+            shrink.click();
+            shrink.click();
+            return "Success";
+        } catch (Exception e) {
+            return "Failed opening New Confined Space Builder: " + e.getMessage();
+        }
     }
 
     public String fillOutCSFormTest() throws FindFailed{
@@ -822,122 +913,105 @@ public class RedTagAutomationService {
         return "success";
     }
 
-    public String fillOutCSForm(ConfinedSpaceDto cs) throws FindFailed{
-        screen.wait(CS_SPACE,1);
-        clickRightSideOfElement(CS_SPACE,20);
-        pasteText(cs.getSpace());
-        clickRightSideOfElement(CS_PURPOSE,20);
-        pasteText(cs.getWorkScope());
-        clickRightSideOfElement(CS_ISSUED_TO,20);
-        pasteText(cs.getIssuedTo());
-        clickRightSideOfElement(CS_ENTRY_DATE,20);
-        pasteText(cs.getDate());
-        clickRightSideOfElement(CS_START_TIME,20);
-        pasteText(cs.getTime());
-        clickRightSideOfElement(CS_DURATION,20);
-        pasteText(cs.getDuration());
+    public String fillOutCSForm(ConfinedSpaceDto cs){
+        try {
+            screen.wait(CS_SPACE, 1);
+            clickRightSideOfElement(CS_SPACE, 20);
+            pasteText(cs.getSpace());
+            clickRightSideOfElement(CS_PURPOSE, 20);
+            pasteText(cs.getWorkScope());
+            clickRightSideOfElement(CS_ISSUED_TO, 20);
+            pasteText(cs.getIssuedTo());
+            clickRightSideOfElement(CS_ENTRY_DATE, 20);
+            pasteText(cs.getDate());
+            clickRightSideOfElement(CS_START_TIME, 20);
+            pasteText(cs.getTime());
+            clickRightSideOfElement(CS_DURATION, 20);
+            pasteText(cs.getDuration());
 
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_OXIGEN_DEFF,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_FLAMEBLE_GAS,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_COMBUSTIBLE_DUST,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_TOXIC_GAS,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ROTATING_EQ,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ELECTRICAL_SHOCK,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ENTRAPMENT,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ENGULFMENT,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_HEAT_STRESS,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_FACE_SHIELD,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_GFCI,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_LOW_VOLTAGE_TOOLS,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_EXPLOSIONPROOF_TOOLS,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_NONSPARKING_TOOLS,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_FALL_PROTECTION,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_RETRIVAL_SYSTEM,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_LIFE_LINE,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_ATM_METER,5);
-//        if(cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_TRIPOD,5);
+            if (cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_OXIGEN_DEFF, 5);
+            if (cs.getHazards().isFlammableGas()) clickLeftSideOfElement(CS_FLAMEBLE_GAS, 5);
+            if (cs.getHazards().isCombustibleDust()) clickLeftSideOfElement(CS_COMBUSTIBLE_DUST, 5);
+            if (cs.getHazards().isToxicGas()) clickLeftSideOfElement(CS_TOXIC_GAS, 5);
+            if (cs.getHazards().isRotatingEquipment()) clickLeftSideOfElement(CS_ROTATING_EQ, 5);
+            if (cs.getHazards().isElectricalShock()) clickLeftSideOfElement(CS_ELECTRICAL_SHOCK, 5);
+            if (cs.getHazards().isEntrapment()) clickLeftSideOfElement(CS_ENTRAPMENT, 5);
+            if (cs.getHazards().isEngulfment()) clickLeftSideOfElement(CS_ENGULFMENT, 5);
+            if (cs.getHazards().isHeatStress()) clickLeftSideOfElement(CS_HEAT_STRESS, 5);
 
-        if (cs.getHazards().isOxygenDeficiency()) clickLeftSideOfElement(CS_OXIGEN_DEFF, 5);
-        if (cs.getHazards().isFlammableGas()) clickLeftSideOfElement(CS_FLAMEBLE_GAS, 5);
-        if (cs.getHazards().isCombustibleDust()) clickLeftSideOfElement(CS_COMBUSTIBLE_DUST, 5);
-        if (cs.getHazards().isToxicGas()) clickLeftSideOfElement(CS_TOXIC_GAS, 5);
-        if (cs.getHazards().isRotatingEquipment()) clickLeftSideOfElement(CS_ROTATING_EQ, 5);
-        if (cs.getHazards().isElectricalShock()) clickLeftSideOfElement(CS_ELECTRICAL_SHOCK, 5);
-        if (cs.getHazards().isEntrapment()) clickLeftSideOfElement(CS_ENTRAPMENT, 5);
-        if (cs.getHazards().isEngulfment()) clickLeftSideOfElement(CS_ENGULFMENT, 5);
-        if (cs.getHazards().isHeatStress()) clickLeftSideOfElement(CS_HEAT_STRESS, 5);
-
-        if (cs.getPpe().isFaceShield()) clickLeftSideOfElement(CS_FACE_SHIELD, 5);
-        if (cs.getPpe().isFcfi()) clickLeftSideOfElement(CS_GFCI, 5);
-        if (cs.getPpe().isLovVoltageTools()) clickLeftSideOfElement(CS_LOW_VOLTAGE_TOOLS, 5);
-        if (cs.getPpe().isExplosionProofTools()) clickLeftSideOfElement(CS_EXPLOSIONPROOF_TOOLS, 5);
-        if (cs.getPpe().isNonSparkingTools()) clickLeftSideOfElement(CS_NONSPARKING_TOOLS, 5);
-        if (cs.getPpe().isFallProtection()) clickLeftSideOfElement(CS_FALL_PROTECTION, 5);
-        if (cs.getPpe().isRetrievalSystem()) clickLeftSideOfElement(CS_RETRIVAL_SYSTEM, 5);
-        if (cs.getPpe().isLifeline()) clickLeftSideOfElement(CS_LIFE_LINE, 5);
-        if (cs.getPpe().isPersonalAtmosphericMeter()) clickLeftSideOfElement(CS_ATM_METER, 5);
-        if (cs.getPpe().isTripod()) clickLeftSideOfElement(CS_TRIPOD, 5);
+            if (cs.getPpe().isFaceShield()) clickLeftSideOfElement(CS_FACE_SHIELD, 5);
+            if (cs.getPpe().isFcfi()) clickLeftSideOfElement(CS_GFCI, 5);
+            if (cs.getPpe().isLovVoltageTools()) clickLeftSideOfElement(CS_LOW_VOLTAGE_TOOLS, 5);
+            if (cs.getPpe().isExplosionProofTools()) clickLeftSideOfElement(CS_EXPLOSIONPROOF_TOOLS, 5);
+            if (cs.getPpe().isNonSparkingTools()) clickLeftSideOfElement(CS_NONSPARKING_TOOLS, 5);
+            if (cs.getPpe().isFallProtection()) clickLeftSideOfElement(CS_FALL_PROTECTION, 5);
+            if (cs.getPpe().isRetrievalSystem()) clickLeftSideOfElement(CS_RETRIVAL_SYSTEM, 5);
+            if (cs.getPpe().isLifeline()) clickLeftSideOfElement(CS_LIFE_LINE, 5);
+            if (cs.getPpe().isPersonalAtmosphericMeter()) clickLeftSideOfElement(CS_ATM_METER, 5);
+            if (cs.getPpe().isTripod()) clickLeftSideOfElement(CS_TRIPOD, 5);
 
 
-        if(cs.getLotoNum()!=null && !cs.getLotoNum().isEmpty()) {
-            clickRightSideOfElement(CS_LOTO, 20);
-            pasteText(cs.getLotoNum());
+            if (cs.getLotoNum() != null && !cs.getLotoNum().isEmpty()) {
+                clickRightSideOfElement(CS_LOTO, 20);
+                pasteText(cs.getLotoNum());
+            }
+            if (cs.getHotWorkNum() != null && !cs.getHotWorkNum().isEmpty()) {
+                clickRightSideOfElement(CS_HOT_WORK, 20);
+                pasteText(cs.getHotWorkNum());
+            }
+            if (cs.isVentilation()) clickLeftSideOfElement(CS_VENTILATION, 5);
+            if (cs.isBlankFlanged()) clickLeftSideOfElement(CS_BLANK_FLANGED, 5);
+            if (cs.isBlankFlanged()) clickLeftSideOfElement(CS_W_BLOCK, 5);
+
+            Region meterData = screen.find(CS_METER_DATA);
+            int width = meterData.w / 2 - 5;
+            int height = meterData.h / 2;
+            meterData.offset(width, 30 - height).click();
+            pasteText(cs.getDate());
+
+            meterData.offset(width, 60 - height).click();
+            pasteText(cs.getMeterModel());
+
+            meterData.offset(width, 90 - height).click();
+            pasteText(cs.getMeterNum());
+
+            meterData.offset(width, 120 - height).click();
+            pasteText(cs.getDate());
+
+            meterData.offset(width, 140 - height).click();
+            pasteText("Y");
+
+            return "success";
+        }catch (Exception e){
+            return "Failed to fill out confined space form";
         }
-        if(cs.getHotWorkNum()!=null && !cs.getHotWorkNum().isEmpty()) {
-            clickRightSideOfElement(CS_HOT_WORK, 20);
-            pasteText(cs.getHotWorkNum());
-        }
-        if(cs.isVentilation()) clickLeftSideOfElement(CS_VENTILATION,5);
-        if(cs.isBlankFlanged()) clickLeftSideOfElement(CS_BLANK_FLANGED,5);
-        if(cs.isBlankFlanged()) clickLeftSideOfElement(CS_W_BLOCK,5);
-
-        Region meterData = screen.find(CS_METER_DATA);
-        int width = meterData.w / 2-5;
-        int height = meterData.h/2;
-        meterData.offset(width,30-height).click();
-        pasteText(cs.getDate());
-
-//        try{Thread.sleep(1000);}catch (Exception e){}
-
-        meterData.offset(width,60-height).click();
-        pasteText(cs.getMeterModel());
-
-//        try{Thread.sleep(1000);}catch (Exception e){}
-
-        meterData.offset(width,90-height).click();
-        pasteText(cs.getMeterNum());
-
-//        try{Thread.sleep(1000);}catch (Exception e){}
-
-        meterData.offset(width,120-height).click();
-        pasteText(cs.getDate());
-
-//        try{Thread.sleep(1000);}catch (Exception e){}
-
-        meterData.offset(width,140-height).click();
-        pasteText("Y");
-
-        return "success";
     }
 
-    public String saveCsForm() throws FindFailed{
-        screen.find(SW_SAVE_BUTTON).click();
-        String num = getPermitNumber();
-        confinedSpaceNumber = num;
-        return num;
+    public String saveCsForm(){
+        try{
+            screen.find(SW_SAVE_BUTTON).click();
+            String num = getPermitNumber();
+            return num;
+        }catch (Exception e){
+            return "Failed to save confined space";
+        }
     }
 
 
 
-    public String openNewHwBuilder() throws FindFailed{
-        screen.find(HW_TAB).click();
-        screen.wait(NEW_PERMIT_BUTTON,1).click();
-        screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON,3).click();
-        Region shrink = screen.wait(SHRINK_BUTTON,10);
-        shrink.click();
-        shrink.click();
-        shrink.click();
-        return "Success";
+    public String openNewHwBuilder() {
+        try {
+            screen.find(HW_TAB).click();
+            screen.wait(NEW_PERMIT_BUTTON, 1).click();
+            screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON, 3).click();
+            Region shrink = screen.wait(SHRINK_BUTTON, 10);
+            shrink.click();
+            shrink.click();
+            shrink.click();
+            return "Successfully opened hot work form builder";
+        } catch (Exception e) {
+            return "Failed opening New Hw Builder: " + e.getMessage();
+        }
     }
 
     public String fillOutHwFormTest() throws FindFailed{
@@ -1007,78 +1081,85 @@ public class RedTagAutomationService {
         return "success";
     }
 
-    public String fillOutHwForm(HotWorkDto hw) throws FindFailed{
-        Region location = screen.wait(HW_LOCATION,2);
-        location.offset(location.w/2-5,0).click();
-        pasteText(hw.getLocation());
-        screen.type(Key.TAB);
-        pasteText(hw.getDate());
-        screen.type(Key.TAB);
-        pasteText(hw.getForeman());
-        screen.type(Key.TAB);
-        pasteText(hw.getFireWatch());
+    public String fillOutHwForm(HotWorkDto hw){
+        try{
+            Region location = screen.wait(HW_LOCATION, 2);
+            location.offset(location.w / 2 - 5, 0).click();
+            pasteText(hw.getLocation());
+            screen.type(Key.TAB);
+            pasteText(hw.getDate());
+            screen.type(Key.TAB);
+            pasteText(hw.getForeman());
+            screen.type(Key.TAB);
+            pasteText(hw.getFireWatch());
 
-        Region model = screen.wait(HW_METER_MODEL,2);
-        model.offset(model.w/2-5,0).click();
-        pasteText(hw.getMeterModel());
-        screen.type(Key.TAB);
-        pasteText(hw.getMeterNum());
-        screen.type(Key.TAB);
-        pasteText(hw.getDate());
+            Region model = screen.wait(HW_METER_MODEL, 2);
+            model.offset(model.w / 2 - 5, 0).click();
+            pasteText(hw.getMeterModel());
+            screen.type(Key.TAB);
+            pasteText(hw.getMeterNum());
+            screen.type(Key.TAB);
+            pasteText(hw.getDate());
 
-        clickRightSideOfElement(HW_FIRE_WATCH_REQUIRED,-2);
+            clickRightSideOfElement(HW_FIRE_WATCH_REQUIRED, -2);
 //
-        Region check = screen.wait(HW_MEASURES_TAKEN_CKECKBOXES,2);
-        int wY = 5-check.w/2;
-        int wN = check.w/2-12;
-        int h = 7-check.h/2;
+            Region check = screen.wait(HW_MEASURES_TAKEN_CKECKBOXES, 2);
+            int wY = 5 - check.w / 2;
+            int wN = check.w / 2 - 12;
+            int h = 7 - check.h / 2;
 
-        if(hw.getMeasures().isAreaIsClean()) check.offset(wY,h).click();
-        else check.offset(wN,h).click();
-        if(hw.getMeasures().isFlammablesAreSecured()) check.offset(wY,h+25).click();
-        else check.offset(wN,h+25).click();
-        if(hw.getMeasures().isNoCombustibleDustOrDebrisPresent()) check.offset(wY,h+50).click();
-        else check.offset(wN,h+50).click();
-        if(hw.getMeasures().isRadiativeHeatPreventiveMeasuresAreTaken()) check.offset(wY,h+75).click();
-        else check.offset(wN,h+75).click();
-        if(hw.getMeasures().isVesslsArePurged()) check.offset(wY,h+100).click();
-        else check.offset(wN,h+100).click();
+            if (hw.getMeasures().isAreaIsClean()) check.offset(wY, h).click();
+            else check.offset(wN, h).click();
+            if (hw.getMeasures().isFlammablesAreSecured()) check.offset(wY, h + 25).click();
+            else check.offset(wN, h + 25).click();
+            if (hw.getMeasures().isNoCombustibleDustOrDebrisPresent()) check.offset(wY, h + 50).click();
+            else check.offset(wN, h + 50).click();
+            if (hw.getMeasures().isRadiativeHeatPreventiveMeasuresAreTaken()) check.offset(wY, h + 75).click();
+            else check.offset(wN, h + 75).click();
+            if (hw.getMeasures().isVesslsArePurged()) check.offset(wY, h + 100).click();
+            else check.offset(wN, h + 100).click();
 
-        int correction = 7;
+            int correction = 7;
 
-        if(hw.getMeasures().isOpeningsAreCovered()) check.offset(wY,h+150-correction).click();
-        else check.offset(wN,h+150-correction).click();
+            if (hw.getMeasures().isOpeningsAreCovered()) check.offset(wY, h + 150 - correction).click();
+            else check.offset(wN, h + 150 - correction).click();
 //        try{Thread.sleep(1000);}catch (Exception e){}
-        if(hw.getMeasures().isDuctVentilationIsSecured()) check.offset(wY,h+175-correction).click();
-        else check.offset(wN,h+175-correction).click();
+            if (hw.getMeasures().isDuctVentilationIsSecured()) check.offset(wY, h + 175 - correction).click();
+            else check.offset(wN, h + 175 - correction).click();
 //        try{Thread.sleep(1000);}catch (Exception e){}
-        correction = 25;
-        if(hw.getMeasures().isLockOutIsCompleted()) check.offset(wY,h+200-correction+3).click();
-        else check.offset(wN,h+200-correction+3).click();
+            correction = 25;
+            if (hw.getMeasures().isLockOutIsCompleted()) check.offset(wY, h + 200 - correction + 3).click();
+            else check.offset(wN, h + 200 - correction + 3).click();
 //        try{Thread.sleep(1000);}catch (Exception e){}
-        if(hw.getMeasures().isCommunicationIsEstablished()) check.offset(wY,h+225-correction).click();
-        else check.offset(wN,h+225-correction).click();
+            if (hw.getMeasures().isCommunicationIsEstablished()) check.offset(wY, h + 225 - correction).click();
+            else check.offset(wN, h + 225 - correction).click();
 //        try{Thread.sleep(1000);}catch (Exception e){}
-        if(hw.getMeasures().isFireWatchIsAwareOfDuties()) check.offset(wY,h+250-correction).click();
-        else check.offset(wN,h+250-correction).click();
+            if (hw.getMeasures().isFireWatchIsAwareOfDuties()) check.offset(wY, h + 250 - correction).click();
+            else check.offset(wN, h + 250 - correction).click();
 //        try{Thread.sleep(1000);}catch (Exception e){}
-        if(hw.getMeasures().isFireExtinguisherPresent()) check.offset(wY,h+275-correction).click();
-        else check.offset(wN,h+275-correction).click();
+            if (hw.getMeasures().isFireExtinguisherPresent()) check.offset(wY, h + 275 - correction).click();
+            else check.offset(wN, h + 275 - correction).click();
 //        try{Thread.sleep(1000);}catch (Exception e){}
-        if(hw.getMeasures().isFireProtectionIsInService()) check.offset(wY,h+300-correction-7).click();
-        else check.offset(wN,h+300-correction-7).click();
+            if (hw.getMeasures().isFireProtectionIsInService()) check.offset(wY, h + 300 - correction - 7).click();
+            else check.offset(wN, h + 300 - correction - 7).click();
 
-        clickRightSideOfElement(HW_SPECIAL_INSTRUCTIONS,0);
-        pasteText(hw.getSpecialInstructions());
+            clickRightSideOfElement(HW_SPECIAL_INSTRUCTIONS, 0);
+            pasteText(hw.getSpecialInstructions());
 
-        return "success";
+            return "Hot work form is successfully filled out";
+        }catch (Exception e){
+            return "Failed to fill out hot work form";
+        }
     }
 
-    public String saveHwForm() throws FindFailed{
-        screen.find(SW_SAVE_BUTTON).click();
-        String num = getPermitNumber();
-        hotWorkNumber = num;
-        return num;
+    public String saveHwForm(){
+        try{
+            screen.find(SW_SAVE_BUTTON).click();
+            String num = getPermitNumber();
+            return num;
+        }catch (Exception e){
+            return "Failed saving hot work permit: " + e.getMessage();
+        }
     }
 
 

@@ -34,7 +34,7 @@ public class RedTagAutomationController {
         try {
             redTagAutomationService.openApp();
             model.addAttribute("message", "Application opened successfully");
-        } catch (IOException | InterruptedException | FindFailed e) {
+        } catch (Exception e) {
             model.addAttribute("error", "Error opening application: " + e.getMessage());
         }
         return "loto/red-tag-automation";

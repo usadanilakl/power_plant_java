@@ -72,7 +72,7 @@ public class RedTagControlsRestController {
         try {
             redTagAutomationService.openApp();
             return ResponseEntity.ok(new NgApiResponse<>(null, "App opened successfully"));
-        } catch (IOException | InterruptedException | FindFailed e) {
+        } catch (Exception e) {
            return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open: " + e.getMessage()));
         }
     }
@@ -82,7 +82,7 @@ public class RedTagControlsRestController {
         try {
             String login = redTagAutomationService.login();
             return ResponseEntity.ok(new NgApiResponse<>(null, "Login "+login));
-        } catch (FindFailed e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open: " + e.getMessage()));
         }
     }
@@ -142,7 +142,7 @@ public class RedTagControlsRestController {
         try {
             String login = redTagAutomationService.openNewSafeWorkBuilder();
             return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Builder open operation is "+login));
-        } catch (FindFailed e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));
         }
     }
@@ -185,7 +185,7 @@ public class RedTagControlsRestController {
         try {
             String login = redTagAutomationService.openNewConfinedSpaceBuilder();
             return ResponseEntity.ok(new NgApiResponse<>(null, "CS Builder open operation is "+login));
-        } catch (FindFailed e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));
         }
     }
@@ -221,7 +221,7 @@ public class RedTagControlsRestController {
         try {
             String login = redTagAutomationService.openNewHwBuilder();
             return ResponseEntity.ok(new NgApiResponse<>(null, "HW Builder open operation is "+login));
-        } catch (FindFailed e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to open builder: " + e.getMessage()));
         }
     }
