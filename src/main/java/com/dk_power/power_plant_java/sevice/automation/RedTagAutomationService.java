@@ -532,7 +532,7 @@ public class RedTagAutomationService {
 
     public String openNewSafeWorkBuilder(){
         try{
-            screen.find(SAFEWORK_TAB).click();
+            screen.wait(SAFEWORK_TAB,5).click();
             screen.wait(NEW_PERMIT_BUTTON, 1).click();
             screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON, 3).click();
             Region shrink = screen.wait(SHRINK_BUTTON, 10);
@@ -547,7 +547,7 @@ public class RedTagAutomationService {
 
     public String fillOutSafeWorkFormTest() {
         try{
-            Region dateIssued = screen.wait(SW_DATE_ISSUED, 1);
+            Region dateIssued = screen.wait(SW_DATE_ISSUED, 5);
             dateIssued.offset(0, 15).click();
             pasteText("09/07/2025");
             screen.type(Key.TAB);
@@ -657,7 +657,7 @@ public class RedTagAutomationService {
 
     public String fillOutSafeWorkForm(SafeWorkDto sw) {
         try{
-            Region dateIssued = screen.wait(SW_DATE_ISSUED, 1);
+            Region dateIssued = screen.wait(SW_DATE_ISSUED, 5);
             dateIssued.offset(0, 15).click();
             pasteText(sw.getDate());
             screen.type(Key.TAB);
@@ -770,7 +770,7 @@ public class RedTagAutomationService {
 
     public String saveSafeWork() {
         try{
-            screen.find(SW_SAVE_BUTTON).click();
+            screen.wait(SW_SAVE_BUTTON,5).click();
             String num = getPermitNumber();
             return num;
         }catch (Exception e){
@@ -785,8 +785,8 @@ public class RedTagAutomationService {
             one.addAll(packageDto.getHotWorks().stream().map(HotWorkDto::getLocation).toList());
             List<String> two = new ArrayList<>(packageDto.getLotos().stream().map(LotoDto::getWorkScope).toList());
 
-            screen.find(SAFEWORK_TAB).click();
-            screen.wait(SW_MODIFY_BUTTON, 1).click();
+            screen.wait(SAFEWORK_TAB,5).click();
+            screen.wait(SW_MODIFY_BUTTON, 5).click();
             screen.wait(SW_ASSOCIATE_BUTTON, 5).click();
             Region topBar = screen.wait(SW_ASSOCIATE_PERMITS_TOP_BAR);
             topBar.find(SW_ASSOCIATE_WINDOW_CONTROLS).click();
@@ -797,24 +797,24 @@ public class RedTagAutomationService {
 
 
             for (String s : one) {
-                Region searchBtn = issuedPermitsSide.find(SW_SEARCH_BUTTON);
+                Region searchBtn = issuedPermitsSide.wait(SW_SEARCH_BUTTON,5);
                 searchBtn.offset(0, +20).click();
                 searchBtn.offset(-50, 0).click();
                 pasteText(s);
                 searchBtn.click();
-                Region column = issuedPermitsSide.wait(SW_ASSOCIATE_PERMIT_NUMBER_COLUMN);
+                Region column = issuedPermitsSide.wait(SW_ASSOCIATE_PERMIT_NUMBER_COLUMN,5);
                 column.offset(0, 12).click();
                 column.offset(0, 12).click();
             }
             permitTabs.find(SW_ASSOCIATE_ISSUED_LOTOS).click();
 
             for (String s : two) {
-                Region searchBtn = issuedPermitsSide.wait(SW_SEARCH_BUTTON, 1);
+                Region searchBtn = issuedPermitsSide.wait(SW_SEARCH_BUTTON, 5);
                 searchBtn.offset(0, +20).click();
                 searchBtn.offset(-50, 0).click();
                 pasteText(s);
                 searchBtn.click();
-                Region column = issuedPermitsSide.wait(SW_ASSOCIATED_LOTO_NUM_COLUMN);
+                Region column = issuedPermitsSide.wait(SW_ASSOCIATED_LOTO_NUM_COLUMN,5);
                 column.offset(0, 12).click();
                 column.offset(0, 12).click();
             }
@@ -828,7 +828,7 @@ public class RedTagAutomationService {
 
     public String openNewConfinedSpaceBuilder() {
         try {
-            screen.find(CS_TAB).click();
+            screen.wait(CS_TAB,5).click();
             screen.wait(NEW_PERMIT_BUTTON, 1).click();
             screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON, 3).click();
             Region shrink = screen.wait(SHRINK_BUTTON, 10);
@@ -915,7 +915,7 @@ public class RedTagAutomationService {
 
     public String fillOutCSForm(ConfinedSpaceDto cs){
         try {
-            screen.wait(CS_SPACE, 1);
+            screen.wait(CS_SPACE, 5);
             clickRightSideOfElement(CS_SPACE, 20);
             pasteText(cs.getSpace());
             clickRightSideOfElement(CS_PURPOSE, 20);
@@ -989,7 +989,7 @@ public class RedTagAutomationService {
 
     public String saveCsForm(){
         try{
-            screen.find(SW_SAVE_BUTTON).click();
+            screen.wait(SW_SAVE_BUTTON,5).click();
             String num = getPermitNumber();
             return num;
         }catch (Exception e){
@@ -1001,7 +1001,7 @@ public class RedTagAutomationService {
 
     public String openNewHwBuilder() {
         try {
-            screen.find(HW_TAB).click();
+            screen.wait(HW_TAB,5).click();
             screen.wait(NEW_PERMIT_BUTTON, 1).click();
             screen.wait(ISSUE_WITH_NO_TEMPLATE_BUTTON, 3).click();
             Region shrink = screen.wait(SHRINK_BUTTON, 10);
@@ -1154,7 +1154,7 @@ public class RedTagAutomationService {
 
     public String saveHwForm(){
         try{
-            screen.find(SW_SAVE_BUTTON).click();
+            screen.wait(SW_SAVE_BUTTON,5).click();
             String num = getPermitNumber();
             return num;
         }catch (Exception e){
@@ -1324,5 +1324,44 @@ public class RedTagAutomationService {
 
     public void testData(DailyPermitPackageDto dto) {
         System.out.println(dto.getSafeWorks().size() + " safe-works");
+    }
+
+    /********************************************************************************************************************
+    RETRY METHODS
+     *********************************************************************************************************************/
+    private boolean retryClickAndReturnBoolean(Pattern pattern, int attempts) {
+        for (int i = 0; i < attempts; i++) {
+            try {
+                screen.find(pattern).click();
+                return true;
+            } catch (FindFailed e) {
+                pause(500);
+            }
+        }
+        return false;
+    }
+
+    private void retryClickAndThrowException(Pattern pattern, int attempts) throws FindFailed {
+        for (int i = 0; i < attempts; i++) {
+            try {
+                screen.find(pattern).click();
+                return;
+            } catch (FindFailed e) {
+                pause(500);
+            }
+        }
+        screen.find(pattern).click();
+    }
+
+    private void retryClickAndThrowException(Region region, Pattern pattern, int attempts) throws FindFailed {
+        for (int i = 0; i < attempts; i++) {
+            try {
+                region.find(pattern).click();
+                return;
+            } catch (FindFailed e) {
+                pause(500);
+            }
+        }
+        region.find(pattern).click();
     }
 }
