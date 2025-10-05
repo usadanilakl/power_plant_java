@@ -97,6 +97,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        lotoService.modifyLotoSchema();
 //        lotoService.modifyLotoSnapshotSchema();
 //        lotoService.deleteLotoSnapshotTable();
+
+        fileService.cleanUpFileTypeValueDuplicates();
         System.err.println("=====================================================");
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 

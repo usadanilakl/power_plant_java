@@ -1,12 +1,15 @@
 package com.dk_power.power_plant_java.sevice.angular.file;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.files.FileIdDto;
 import com.dk_power.power_plant_java.entities.categories.Category;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.mappers.FileMapper;
+import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
+import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.NgValueService;
@@ -49,6 +52,9 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     private final MeterRegistry meterRegistry;
     private final ExcelReaderService excelReaderService;
     private final NgValueService valueService;
+    
+    private final CategoryRepo categoryRepo;
+    private final ValueRepo valueRepo;
 
     @Value("${files.root.path}")
     String filesRootPath;
@@ -364,6 +370,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return fileRepo.findByFileType_Name(fileType).stream().map(this::toDto).toList();
     }
 
+    public List<FileDto> getByFileType(com.dk_power.power_plant_java.entities.categories.Value fileType) {
+        return fileRepo.findByFileType(fileType).stream().map(this::toDto).toList();
+    }
+
     public List<FileDto> getByFileType(String fileType, List<String> fields) {
         return findAllWithProjection(fields).stream()
                 .filter(file -> file.getFileType() != null && file.getFileType().getName().toLowerCase().contains(fileType.toLowerCase()))
@@ -478,7 +488,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 f.setBaseLink("uploads");
                 f.setExtension(extension);
                 f.addExtension(extension);
-                f.setFileType(valueService.createValue("FileType",type));
+                f.setFileType(valueService.createValue("File Type",type));
                 f.setVendor(valueService.createValue("Vendor",vendor));
                 f.setFileNumber(fileNumber);
                 System.out.println(f.getFileNumber());
@@ -540,4 +550,53 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         if (entityByFileLink == null) return null;
         return toDto(entityByFileLink);
     }
+
+
+    @Transactional
+    public void cleanUpFileTypeValueDuplicates() {
+        System.out.println("valueService.getValuesByCategory(\"File Type\").size() = " + valueService.getValuesByCategory("File Type").size());
+        Map<String, com.dk_power.power_plant_java.entities.categories.Value> cache = new HashMap<>();
+        // Preload existing 'File Type' values
+        valueService.getValuesByCategory("File Type")
+                .forEach(v -> cache.put(v.getName(), v));
+
+//        for (FileObject f : getAll()) {
+//            String name = f.getFileType().getName();
+//
+//            com.dk_power.power_plant_java.entities.categories.Value val = cache.get(name);
+//            if (val == null) {
+//                val = valueService.createValue("File Type", name); // within same transaction
+//                cache.put(name, val);
+//            }
+//            f.setFileType(val);
+//            save(f);
+//        }
+
+
+
+//        deleteUnusedValues();
+
+    }
+
+    @Transactional
+    public void deleteUnusedValues() {
+        List<Category> fileType = categoryRepo.findByName("FileType");
+        if (!fileType.isEmpty()) {
+            Category category = fileType.get(0);
+            category.getValues().forEach(v -> {
+                List<FileDto> byFileType = getByFileType(v);
+                if (byFileType.isEmpty()) {
+                    // no references found in code, safe to delete Value
+                    valueRepo.delete(v);
+                } else {
+                    // references exist, maybe log or handle
+                }
+            });
+            // Optional: if all values deleted, delete category
+            if (category.getValues().isEmpty()) {
+                categoryRepo.delete(category);
+            }
+        }
+    }
+
 }
