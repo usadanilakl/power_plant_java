@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JHA Form</title>
+    <style>
+        body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f8fa;
+        margin: 0;
+        padding: 1.5rem;
+        color: #2c3e50;
+        }
+
+        form {
+        max-width: 600px;
+        margin: 2rem auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgb(0 0 0 / 0.1);
+        box-sizing: border-box;
+        }
+
+        form label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.4rem;
+        margin-top: 1rem;
+        }
+
+        form input[type="text"],
+        form input[type="date"],
+        form input[type="time"],
+        form textarea,
+        form select {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        font-size: 1rem;
+        border: 1.5px solid #ccc;
+        border-radius: 5px;
+        transition: border-color 0.3s ease;
+        box-sizing: border-box;
+        }
+
+        form input[type="text"]:focus,
+        form input[type="date"]:focus,
+        form input[type="time"]:focus,
+        form textarea:focus,
+        form select:focus {
+        outline: none;
+        border-color: #0078d4;
+        box-shadow: 0 0 4px #0078d4a0;
+        }
+
+        form textarea {
+        resize: vertical;
+        min-height: 80px;
+        }
+
+        button[type="submit"],
+        button {
+        margin-top: 2rem;
+        background-color: #0078d4;
+        color: white;
+        border: none;
+        padding: 0.8rem 1.2rem;
+        font-size: 1.15rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.25s ease;
+        width: 100%;
+        box-sizing: border-box;
+        }
+
+        button[type="submit"]:hover,
+        button:hover {
+        background-color: #005ea6;
+        }
+
+        .radio-button {
+            display: inline-block;
+            cursor: pointer;
+            border: 2px solid #0078d4;
+            border-radius: 5px;
+            padding: 6px 15px;
+            margin-right: 10px;
+            user-select: none;
+            font-weight: 600;
+            color: #0078d4;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .radio-button input {
+            display: none;
+        }
+
+        .radio-button input:checked + span {
+            background-color: #0078d4;
+            color: white;
+            border-radius: 5px;
+        }
+
+        .radio-button:hover {
+            background-color: #e0f0ff;
+        }
+
+        .radio-button input:focus + span {
+            outline: 2px solid #005ea6;
+            outline-offset: 2px;
+        }
+
+        .conditional {
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        @media (max-width: 400px) {
+            body {
+                padding: 1rem;
+            }
+            form {
+                padding: 1rem;
+                margin: 1rem;
+            }
+            form label {
+                font-size: 1rem;
+            }
+            form input, form textarea, form select, button {
+                font-size: 1rem;
+                padding: 0.8rem;
+            }
+            button {
+                font-size: 1.2rem;
+            }
+            .radio-button {
+                padding: 10px 20px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <button onclick="getSavedAndShow()">Resubmit previously submitted form</button>
+<form>
+  <label>Job Name:<br />
+    <input type="text" id="jobName" name="jobName" required />
+  </label><br /><br />
+
+<label>Applicability:<br /></label>
+<label><input type="radio" name="applicability" value="Operations" required /> Operations</label><br />
+<label><input type="radio" name="applicability" value="Maintenance" /> Maintenance</label><br />
+<label><input type="radio" name="applicability" value="Other" /> Other</label><br /><br />
+
+
+  <label>Status:<br /></label>
+  <label><input type="radio" name="status" value="New" required /> New</label>
+  <label><input type="radio" name="status" value="Revised" /> Revised</label><br /><br />
+
+  <label>Analysis By:<br />
+    <input type="text" name="analysisBy" required />
+  </label><br /><br />
+
+  <label>Reviewed By:<br />
+    <input type="text" name="reviewedBy" required />
+  </label><br /><br />
+
+  <label>Approved By:<br />
+    <input type="text" name="approvedBy" required />
+  </label><br /><br />
+
+  <label>Date:<br />
+    <input type="date" name="date" required />
+  </label><br /><br />
+
+  <label>PPE:<br />
+    <input type="text" name="ppe" required />
+  </label><br /><br />
+
+  <label>LOTO:<br />
+    <input type="text" name="loto" required />
+  </label><br /><br />
+
+  <label>Hazard Communication:<br />
+    <input type="text" name="hazCom" required />
+  </label><br /><br />
+
+  <label>Hand and Power Tools:<br />
+    <input type="text" name="handAndPowerTools" required />
+  </label><br /><br />
+
+  <label>Special Tools:<br />
+    <input type="text" name="specialTools" />
+  </label><br /><br />
+
+  <fieldset id="jobStepsFieldset">
+    <legend>Job Steps</legend>
+    <div class="jobStep">
+      <label>Description:<br />
+        <textarea name="jobSteps[0].description" rows="2" required></textarea>
+      </label><br /><br />
+
+      <label>Hazard:<br />
+        <textarea name="jobSteps[0].hazard" rows="2" required></textarea>
+      </label><br /><br />
+
+      <label>Safety Measures:<br />
+        <textarea name="jobSteps[0].safetyMeasures" rows="2" required></textarea>
+      </label><br /><br />
+    </div>
+  </fieldset>
+
+  <button type="button" onclick="addJobStep()">Add Another Job Step</button><br /><br />
+
+  <button type="submit">Submit</button>
+</form>
+
+<script src="./local-db-service.js"></script>
+
+<script>
+  let stepIndex = 1;
+  function addJobStep() {
+    const fs = document.getElementById("jobStepsFieldset");
+    const div = document.createElement("div");
+    div.classList.add("jobStep");
+    div.innerHTML = `
+        <h2> Step ${stepIndex+1}
+      <label>Description:<br />
+        <textarea name="jobSteps[${stepIndex}].description" rows="2" required></textarea>
+      </label><br /><br />
+      <label>Hazard:<br />
+        <textarea name="jobSteps[${stepIndex}].hazard" rows="2" required></textarea>
+      </label><br /><br />
+      <label>Safety Measures:<br />
+        <textarea name="jobSteps[${stepIndex}].safetyMeasures" rows="2" required></textarea>
+      </label><br /><br />
+    `;
+    fs.appendChild(div);
+    stepIndex++;
+  }
+  addJobStep();
+</script>
+</body>
+</html>
