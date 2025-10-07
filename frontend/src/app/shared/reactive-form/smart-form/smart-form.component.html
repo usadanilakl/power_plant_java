@@ -5,12 +5,12 @@
   }
   <form [formGroup]="form" (ngSubmit)="onSubmit()" [class]="'form-layout-' + layout()" (contextmenu)="onContextMenu($event)">
     @for (groupLabel of Object.keys(groupedFields()); track groupLabel) {
-      <fieldset class="form-group">
+      <fieldset class="form-group" [class]="'form-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())">
         @if (groupLabel !== 'Ungrouped') {
           <legend class="group-title">{{ groupLabel }}</legend>
         }
         @for (field of groupedFields()[groupLabel]; track field.name) {
-          <div [class]="'form-field-layout-' + layout()">
+          <div [class]="'form-field-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())">
             @switch (field.type) {
               @case ('select') {
                 <app-searchable-dropdown

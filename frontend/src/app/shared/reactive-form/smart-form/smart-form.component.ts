@@ -37,7 +37,8 @@ export class SmartFormComponent {
   fields = input<any[]>([]);
   // values = input<any>({});
   @Input() values: Signal<any> = signal({});
-  layout = input<'row' | 'column' | 'reactive'>('reactive');
+  layout = input<'row' | 'column' | 'reactive'>('column');
+  groupLayout = input<'row' | 'column' | 'reactive' | 'grid'>('grid');
   title = input<string>('');
   formSubmit = output<any>();
   formDelete = output<void>();
