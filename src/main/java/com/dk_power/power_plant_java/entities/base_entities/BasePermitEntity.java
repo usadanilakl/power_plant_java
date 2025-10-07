@@ -21,9 +21,10 @@ import java.util.Set;
 //@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
 public class BasePermitEntity extends BaseAuditEntity {
     private String workScope;
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn(name="system_id")
     private Value system;
+
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
         name = "permit_equipment",
@@ -31,17 +32,20 @@ public class BasePermitEntity extends BaseAuditEntity {
         inverseJoinColumns = @JoinColumn(name = "equipment_id")
     )
     private Set<Equipment> equipment = new HashSet<>();
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name="requestor_id")
     private User requestor;
-    @ManyToOne(cascade = CascadeType.ALL)
+
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name="control_authority_id")
     private User controlAuthority;
-    @ManyToOne(cascade = CascadeType.ALL)
+
+    @ManyToOne
     @JoinColumn(name="permit_type_id")
     private Value permitType;
     private Long docNum;
-    @ManyToOne(cascade = CascadeType.ALL)
+
+    @ManyToOne
     @JoinColumn(name="permit_status_id")
     private Value permitStatus;
     private Boolean temp;

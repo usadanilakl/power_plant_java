@@ -60,6 +60,13 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         return DailyPermitPackage.class;
     }
 
+//    @Override
+//    public DailyPermitPackage hardDelete(Long id) {
+//        DailyPermitPackage entityById = getEntityById(id);
+//        entityManager.remove(entityById);
+//        return entityById;
+//    }
+
     public DailyPermitPackageDto createDailyPermitPackage(DailyPermitPackageDto permitPackageDto) {
         DailyPermitPackage dailyPermitPackage = dailyPermitPackageMapper.convertToEntity(permitPackageDto);
         DailyPermitPackage saved = dailyPermitPackageRepo.save(dailyPermitPackage);
