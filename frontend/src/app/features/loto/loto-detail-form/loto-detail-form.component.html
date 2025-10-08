@@ -1,14 +1,15 @@
 <div class="form-container">
 
     @if (isFormReady) {
-      <app-details-form
+      <app-smart-form
         [fields]="fields"
-        [values]="values()"
+        [values]="values"
         [layout]="layout()"
+        [deleteButtonText]="'Delete'"
         (formChange)="onFormChange($event)"
         (formSubmit)="onFormSubmit($event)"
         (formDelete)="onFormDelete()"
-      ></app-details-form>
+      ></app-smart-form>
 
       <!-- @if (imageUrls()() && imageUrls()().length > 0) {
           <app-image-carousel

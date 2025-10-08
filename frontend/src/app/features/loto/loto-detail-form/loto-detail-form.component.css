@@ -14,7 +14,7 @@
   max-height: calc(100% - 40px); /* Subtract the padding of .container */
 }
 
-app-details-form{
+app-smart-form{
   width: 100%;
   flex-shrink: 0;
   overflow: visible;

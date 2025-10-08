@@ -16,11 +16,12 @@ import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { Column } from '../../../models/column.model';
 import { FileService } from '../../../services/file.service';
 import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
+import { SmartFormComponent } from "../../../shared/reactive-form/smart-form/smart-form.component";
 
 @Component({
   selector: 'app-loto-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, PopupComponent, LotoPointTableComponent, LotoPointSimpleTableComponent],
+  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, PopupComponent, LotoPointTableComponent, LotoPointSimpleTableComponent, SmartFormComponent],
   templateUrl: './loto-detail-form.component.html',
   styleUrl: './loto-detail-form.component.css'
 })
@@ -160,7 +161,7 @@ export class LotoDetailFormComponent implements OnInit {
     if (this.formDelete) {
       this.formDelete();
     }
-    this.formDeleteEvent.emit(this._selectedItem?.id);
+    this.formDeleteEvent.emit(this.values().id);
   }
 
   onOpenImage() {

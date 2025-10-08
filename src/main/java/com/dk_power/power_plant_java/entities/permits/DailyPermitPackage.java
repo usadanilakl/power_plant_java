@@ -2,10 +2,7 @@ package com.dk_power.power_plant_java.entities.permits;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.loto.Loto;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.envers.Audited;
@@ -36,8 +33,12 @@ public class DailyPermitPackage extends BaseAuditEntity {
     @JoinColumn(name = "daily_permit_package_id")
     private Set<ConfinedSpace> confinedSpaces = new HashSet<>();
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "daily_permit_package_id")
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+            name = "daily_permit_package_lotos",
+            joinColumns = @JoinColumn(name = "daily_permit_package_id"),
+            inverseJoinColumns = @JoinColumn(name = "loto_id")
+    )
     private Set<Loto> lotos = new HashSet<>();
 
 }

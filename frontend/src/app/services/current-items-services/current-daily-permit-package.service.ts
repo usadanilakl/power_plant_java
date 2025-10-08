@@ -45,7 +45,7 @@ export class CurrentDailyPermitPackageService {
     emptySafeWorksExists = computed(() => this.safeWorks().some(sw => !sw.location && !sw.companyPerson && !sw.requestedBy &&!sw.workScope));
     currentSafeWork = signal<SafeWorkDto | null>(null);
 
-    hotWorks = computed<HotWorkDto[]>(() => {console.log('updating hotworks'); return this.currentDailyPacksge().hotWorks});
+    hotWorks = computed<HotWorkDto[]>(() => {return this.currentDailyPacksge().hotWorks});
     hotWorkCount = computed(() => this.hotWorks().length);
     emptyHotWorksExists = computed(() => this.hotWorks().some(hw =>!hw.location &&!hw.workScope &&!hw.foreman &&!hw.fireWatch));
     currentHotWork = signal<HotWorkDto | null>(null);
@@ -69,7 +69,6 @@ export class CurrentDailyPermitPackageService {
             takeUntilDestroyed(this.destroyRef)
         ).subscribe(response => {
             this.allActiveDailyPermitPackagesSubject.next(response.responseData);
-            console.log('Daily permit packages loaded:', response.responseData);
         });
     }
 
@@ -244,6 +243,7 @@ export class CurrentDailyPermitPackageService {
             case 'lotos':
                 currentPackage.lotos = currentPackage.lotos.filter(l => l.id !== id);
                 currentPackage.lotoIds = currentPackage.lotoIds.filter(i => i !== id);
+                console.log('Loto removed from package:', id);
                 break;
             default:
                 console.error('Invalid permit type:', permitType);

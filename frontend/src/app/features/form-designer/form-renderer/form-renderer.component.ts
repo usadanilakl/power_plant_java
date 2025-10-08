@@ -110,8 +110,6 @@ export class FormRendererComponent {
     const group: { [key: string]: any } = {};
     const formFields = this.getAllFormFields();
 
-    console.log('Form fields:', formFields);
-
     formFields.forEach(field => {
       if (field && field.name) {
         let value = this.getNestedValue(this.formData(), field.name);
@@ -131,7 +129,6 @@ export class FormRendererComponent {
     });
 
     this.form = this.fb.group(group);
-    console.log('Form created:', this.form);    
     
     this.form.valueChanges.pipe(
       debounceTime(1000), // Wait for 300ms of inactivity before emitting
@@ -247,7 +244,6 @@ export class FormRendererComponent {
   }
 
   isVariableContainer(content: any): boolean{
-    console.log('isVariableContainer:', content);
     return content && content.type && content.type === 'variable';
   }
 
@@ -268,7 +264,6 @@ export class FormRendererComponent {
 
       this.formSubmit.emit(mergedData);
     } else {
-      console.error('Form is invalid');
       this.form.markAllAsTouched();
     }
   }

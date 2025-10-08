@@ -93,8 +93,6 @@ export class SmartFormComponent {
     const group: { [key: string]: any } = {};
     const formFields = this.fields();
 
-    console.log('Fields: ', formFields);
-
     formFields.forEach(field => {
       if (field && field.name) {
         let value = this.getNestedValue(this.values(), field.name);
@@ -122,7 +120,6 @@ export class SmartFormComponent {
     });
 
     this.form = this.fb.group(group);
-    console.log('Form created:', this.form);    
     
     this.form.valueChanges.pipe(
       debounceTime(1000), // Wait for 300ms of inactivity before emitting
