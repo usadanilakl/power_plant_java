@@ -105,17 +105,9 @@ export class DailyPermitPackageBuilderComponent {
     this.currentDailyPermitPackageService.deleteCurrentDailyPacksge();
   }
 
-  buildInRedTag(permit: any){
-    if (permit instanceof SafeWorkDto) {
-      this.currentDailyPermitPackageService.build('safeWork', permit.id);
-    } else if (permit instanceof HotWorkDto) {
-      this.currentDailyPermitPackageService.build('hotWork', permit.id);
-    } else if (permit instanceof ConfinedSpaceDto) {
-      this.currentDailyPermitPackageService.build('confinedSpace', permit.id);
-    } else if (permit instanceof LotoDto) {
-      this.currentDailyPermitPackageService.build('loto', permit.id);
-    } else {
-      console.error('Unknown permit type for buildInRedTag:', permit);
+  buildInRedTag(permit: any, type: string) {
+    if(permit!== null && permit.id != null && type!=null){
+      this.currentDailyPermitPackageService.build(type, permit.id);
     }
   }
   

@@ -217,6 +217,53 @@ export class CurrentDailyPermitPackageService {
       });
     }
 
+    removeAttachment(id: number, permitType: string) {
+        const currentPackage = this.selectedDailyPermitPackageSubject.value;
+        if (!currentPackage) {
+            console.error('No package selected.');
+            return;
+        }
+
+        switch (permitType) {
+            case 'workRequests':
+                currentPackage.workRequests = currentPackage.workRequests.filter(r => r.id !== id);
+                currentPackage.workRequestIds = currentPackage.workRequestIds.filter(i => i !== id);
+                break;
+            case 'safeWorks':
+                currentPackage.safeWorks = currentPackage.safeWorks.filter(r => r.id !== id);
+                currentPackage.safeWorkIds = currentPackage.safeWorkIds.filter(i => i !== id);
+                break;
+            case 'hotWorks':
+                currentPackage.hotWorks = currentPackage.hotWorks.filter(r => r.id !== id);
+                currentPackage.hotWorkIds = currentPackage.hotWorkIds.filter(i => i !== id);
+                break;
+            case 'confinedSpaces':
+                currentPackage.confinedSpaces = currentPackage.confinedSpaces.filter(r => r.id !== id);
+                currentPackage.confinedSpaceIds = currentPackage.confinedSpaceIds.filter(i => i !== id);
+                break;
+            case 'lotos':
+                currentPackage.lotos = currentPackage.lotos.filter(l => l.id !== id);
+                currentPackage.lotoIds = currentPackage.lotoIds.filter(i => i !== id);
+                break;
+            default:
+                console.error('Invalid permit type:', permitType);
+                return;
+        }
+
+        this.dailyPermitPackageService.createDailyPermitPackage(currentPackage).pipe(
+            takeUntilDestroyed(this.destroyRef)
+        ).subscribe({
+            next: response => {
+                const updatedPackage = new DailyPermitPackageDto(response.responseData);
+                this.updateDailyPermitPackageInList(updatedPackage);
+                this.setSelectedPackage(updatedPackage);
+            },
+            error: err => {
+                console.error('Failed to remove attachment from package:', err);
+            }
+        });
+    }
+
 
 
     /*******************************************************************************************

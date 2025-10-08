@@ -54,7 +54,7 @@ export class LotoDetailFormComponent implements OnInit {
 
   @Output() openImageEvent = new EventEmitter<void>();
   @Output() formSubmitEvent = new EventEmitter<any>();
-  @Output() formDeleteEvent = new EventEmitter<void>();
+  @Output() formDeleteEvent = new EventEmitter<number>();
   @Output() lotoUpdated = new EventEmitter<LotoDto>();
   addPointToLotoEvent = output<LotoPointDto>();
   removePointFromLotoEvent = output<LotoPointDto>();
@@ -160,7 +160,7 @@ export class LotoDetailFormComponent implements OnInit {
     if (this.formDelete) {
       this.formDelete();
     }
-    this.formDeleteEvent.emit();
+    this.formDeleteEvent.emit(this._selectedItem?.id);
   }
 
   onOpenImage() {

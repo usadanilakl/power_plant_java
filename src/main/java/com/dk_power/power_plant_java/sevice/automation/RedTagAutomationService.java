@@ -410,8 +410,8 @@ public class RedTagAutomationService {
         LotoDto lotoDto = lotos.stream().filter(loto -> loto.getId() == lotoId).findFirst().orElseThrow();
 
         if(lotoDto == null) {return "Failed to find loto with id: " + lotoId;}
-        openApp();
-        login();
+//        openApp();
+//        login();
 
         openNewLotoBuilder();
         openLotoBuilderWithNoStandard();
@@ -424,8 +424,8 @@ public class RedTagAutomationService {
         if(id!=0)safeWorks.removeIf(sw -> !sw.getId().equals(id));
 
 
-        openApp();
-        login();
+//        openApp();
+//        login();
         for(SafeWorkDto safeWork : safeWorks){
             openNewSafeWorkBuilder();
             fillOutSafeWorkForm(safeWork);
@@ -440,8 +440,8 @@ public class RedTagAutomationService {
         List<HotWorkDto> hotWorks = packageDto.getHotWorks();
         if(id!=0)hotWorks.removeIf(hw ->!hw.getId().equals(id));
 
-        openApp();
-        login();
+//        openApp();
+//        login();
         for(HotWorkDto hotWork : hotWorks){
             openNewHwBuilder();
             fillOutHwForm(hotWork);
@@ -455,8 +455,8 @@ public class RedTagAutomationService {
         List<ConfinedSpaceDto> confinedSpaces = packageDto.getConfinedSpaces();
         if(id!=0)confinedSpaces.removeIf(cs ->!cs.getId().equals(id));
 
-        openApp();
-        login();
+//        openApp();
+//        login();
         for(ConfinedSpaceDto confinedSpace : confinedSpaces){
             openNewConfinedSpaceBuilder();
             fillOutCSForm(confinedSpace);

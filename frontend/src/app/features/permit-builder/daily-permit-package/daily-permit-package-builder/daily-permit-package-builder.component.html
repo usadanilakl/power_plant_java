@@ -64,8 +64,10 @@
         <ng-template let-sw>
           <app-safe-work-form 
             [values]="sw" 
+            [submitButtonText]="'Build In Red Tag'"
             (valuesChange)="currentDailyPermitPackageService.submitSafeWork($event)"
-            (formSubmit)="buildInRedTag($event)">
+            (formSubmit)="buildInRedTag($event, 'safeWork')"
+            (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'safeWorks')">
           </app-safe-work-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate</button>
@@ -81,8 +83,10 @@
         <ng-template let-hw>
           <app-hot-work-form 
             [values]="hw"
+            [submitButtonText]="'Build In Red Tag'"
             (valuesChange)="currentDailyPermitPackageService.submitHotWork($event)"
-            (formSubmit)="buildInRedTag($event)"
+            (formSubmit)="buildInRedTag($event, 'hotWork')"
+            (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'hotWorks')"
           ></app-hot-work-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate</button>
@@ -98,8 +102,10 @@
         <ng-template let-cs>
           <app-confined-space-form 
             [values]="cs"
+            [submitButtonText]="'Build In Red Tag'"
             (valuesChange)="currentDailyPermitPackageService.submitConfinedSpace($event)"
-            (formSubmit)="buildInRedTag($event)"
+            (formSubmit)="buildInRedTag($event, 'confinedSpace')"
+            (formDelete)="currentDailyPermitPackageService.removeAttachment($event, 'confinedSpaces')"
           ></app-confined-space-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>
@@ -116,6 +122,8 @@
           <app-loto-detail-form
             [values]="loto"
             [withLotoPointDataBase]="false"
+            (formSubmitEvent)="buildInRedTag($event, 'loto')"
+            (formDeleteEvent)="currentDailyPermitPackageService.removeAttachment($event, 'hotWorks')"
           ></app-loto-detail-form>
         </ng-template>
         <!-- <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateLotoFromCurrentRequest()">Generate</button>
