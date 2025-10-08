@@ -19,6 +19,9 @@ export class SafeWorkFormComponent implements OnInit  {
 
   // values = input<SafeWorkDto>(new SafeWorkDto());
   @Input() values: Signal<SafeWorkDto> = signal(new SafeWorkDto());
+  submitButtonText = input<string>('Submit');
+  deleteButtonText = input<string>('Delete');
+
   formChange = output<SafeWorkDto>();
   formSubmit = output<SafeWorkDto>();
   formDelete = output<number>();

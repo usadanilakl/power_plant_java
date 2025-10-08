@@ -19,6 +19,9 @@ export class ConfinedSpaceFormComponent implements OnInit  {
 
   // values = input<ConfinedSpaceDto>(new ConfinedSpaceDto());
   @Input() values: Signal<ConfinedSpaceDto> = signal(new ConfinedSpaceDto());
+  submitButtonText = input<string>('Submit');
+  deleteButtonText = input<string>('Delete');
+  
   formSubmit = output<ConfinedSpaceDto>();
   formDelete = output<number>();
   valuesChange = output<ConfinedSpaceDto>();

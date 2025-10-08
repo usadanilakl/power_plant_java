@@ -93,10 +93,10 @@ public class NgDailyPermitPackageController {
         }
     }
 
-    @GetMapping("/build-permits/{id}")
-    public ResponseEntity<NgApiResponse<String>> buildPermitsById(@PathVariable String id) {
+    @GetMapping("/build-permits/{id}/{whatToBuild}/{permitId}")
+    public ResponseEntity<NgApiResponse<String>> buildPermitsById(@PathVariable String id, @PathVariable String whatToBuild, @PathVariable String permitId) {
         try {
-            String result = ngDailyPermitPackageService.buildPermitsById(id);
+            String result = ngDailyPermitPackageService.buildPermitsById(id, whatToBuild, permitId);
             NgApiResponse<String> response = new NgApiResponse<>(result, "Permits built successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {

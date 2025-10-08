@@ -19,6 +19,9 @@ export class HotWorkFormComponent implements OnInit  {
 
   // values = input<HotWorkDto>(new HotWorkDto());
   @Input() values: Signal<HotWorkDto> = signal(new HotWorkDto());
+  submitButtonText = input<string>('Submit');
+  deleteButtonText = input<string>('Delete');
+  
   formChange = output<HotWorkDto>();
   formSubmit = output<HotWorkDto>();
   formDelete = output<number>();

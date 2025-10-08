@@ -159,8 +159,8 @@ export class CurrentDailyPermitPackageService {
       })
     }
 
-  build(){
-    this.dailyPermitPackageService.buildPermitsById(this.currentDailyPacksge().id+'').pipe(
+  build(whatToBuild: string = 'all', id: number = 0) {
+    this.dailyPermitPackageService.buildPermitsById(this.currentDailyPacksge().id+'',whatToBuild, id).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (permits) => {

@@ -16,6 +16,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -66,6 +67,46 @@ public class LotoPointMapper implements BaseMapper{
         if (entity.getStandard() != null) dto.setStandard(entity.getStandard());
         if (entity.getGeneralLocation() != null) dto.setGeneralLocation(entity.getGeneralLocation());
         if(entity.getEquipmentList()!=null) dto.setEquipmentIdList(entity.getEquipmentList().stream().map(BaseIdEntity::getId).toList());
+//        if (entity.getEquipment() != null) dto.setEquipment(entity.getEquipment());
+//        if (entity.getExtraInfo() != null) dto.setExtraInfo(entity.getExtraInfo());
+//        if (entity.getType() != null) dto.setType(entity.getType());
+//        if (entity.getSystem() != null) dto.setSystem(entity.getSystem());
+        if (entity.getNormalPosition() != null) dto.setNormalPosition(entity.getNormalPosition());
+        if (entity.getIsolatedPosition() != null) dto.setIsolatedPosition(entity.getIsolatedPosition());
+//        if (entity.getFluid() != null) dto.setFluid(entity.getFluid());
+//        if (entity.getSize() != null) dto.setSize(entity.getSize());
+//        if (entity.getElectricalCheckStatus() != null) dto.setElectricalCheckStatus(entity.getElectricalCheckStatus());
+//        if (entity.getRedTagId() != null) dto.setRedTagId(entity.getRedTagId());
+//        if (entity.getInUse() != null) dto.setInUse(entity.getInUse());
+        //if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentMapper::convertToDto).collect(Collectors.toSet()));
+//        if(entity.getLotos()!=null) dto.setLotos(entity.getLotos().stream().map(lotoMapper::convertToDto).toList());
+        if (entity.getOldId() != null) dto.setOldId(entity.getOldId());
+        if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());
+        if(entity.getFileIds()!=null) dto.setFileIds(entity.getFileIds());
+        if(entity.getConflictStatus()!=null) dto.setConflictStatus(entity.getConflictStatus());
+
+        if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
+        return dto;
+    }
+
+    public LotoPointDto convertToDto(LotoPointIdDto entity) {
+        if (entity == null) {
+            return null;
+        }
+        LotoPointDto dto = new LotoPointDto();
+        if(entity.getIsVerified()!= null) dto.setIsVerified(entity.getIsVerified());
+        if (entity.getUnit() != null) dto.setUnit(entity.getUnit());
+        if (entity.getId() != null) dto.setId(entity.getId());
+        if (entity.getIsUpdated() != null) dto.setIsUpdated(entity.getIsUpdated());
+        if (entity.getTagged() != null) dto.setTagged(entity.getTagged());
+        if (entity.getTagNumber() != null) dto.setTagNumber(entity.getTagNumber());
+        if (entity.getDescription() != null) dto.setDescription(entity.getDescription());
+        if (entity.getIsoPos() != null) dto.setIsoPos(valueService.convertToDto(valueService.getEntityById(entity.getIsoPos())));
+        if (entity.getNormPos() != null) dto.setNormPos(valueService.convertToDto(valueService.getEntityById(entity.getNormPos())));
+        if (entity.getSpecificLocation() != null) dto.setSpecificLocation(entity.getSpecificLocation());
+        if (entity.getStandard() != null) dto.setStandard(entity.getStandard());
+        if (entity.getGeneralLocation() != null) dto.setGeneralLocation(entity.getGeneralLocation());
+        if(entity.getEquipmentList()!=null) dto.setEquipmentIdList(new ArrayList<>(entity.getEquipmentList()));
 //        if (entity.getEquipment() != null) dto.setEquipment(entity.getEquipment());
 //        if (entity.getExtraInfo() != null) dto.setExtraInfo(entity.getExtraInfo());
 //        if (entity.getType() != null) dto.setType(entity.getType());
@@ -214,4 +255,5 @@ public class LotoPointMapper implements BaseMapper{
 
         return dto;
     }
+
 }

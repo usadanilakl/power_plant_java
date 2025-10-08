@@ -86,9 +86,28 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
         return "Permits built successfully!";
     }
 
-    public String buildPermitsById(String id) throws FindFailed, IOException, InterruptedException {
+    public String buildPermitsById(String id, String whatToBuild, String permitId) throws FindFailed, IOException, InterruptedException {
         DailyPermitPackage entity = getEntityById(id);
-        redTagAutomationService.buildDailyPermitPackage(toDto(entity));
+        DailyPermitPackageDto dto = toDto(entity);
+        switch (whatToBuild) {
+            case "all":
+                redTagAutomationService.buildDailyPermitPackage(dto);
+                break;
+            case "loto":
+                redTagAutomationService.buildLotos(dto, Long.parseLong(permitId));
+                break;
+            case "safeWork":
+                redTagAutomationService.buildSafeWorks(dto, Long.parseLong(permitId));
+                break;
+            case "hotWork":
+                redTagAutomationService.buildHotWorks(dto, Long.parseLong(permitId));
+                break;
+            case "confinedSpace":
+                redTagAutomationService.buildConfinedSpaces(dto, Long.parseLong(permitId));
+                break;
+            default:
+        }
+        redTagAutomationService.buildDailyPermitPackage(dto);
         return "Permits built successfully!";
     }
 }

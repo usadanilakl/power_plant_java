@@ -21,6 +21,8 @@
             [layout]="'column'"
             [values]="values"
             [title]="'Confined Space'"
+            [submitButtonText]="submitButtonText()"
+            [deleteButtonText]="deleteButtonText()"
             (formValueChange)="valuesChange.emit($event)"
             (formSubmit)="onFormSubmit($event)"
             (formDelete)="onFormDelete()"

@@ -21,6 +21,8 @@
             [values]="values"
             [layout]="'column'"
             [title]="'Hot Work'"
+            [submitButtonText]="submitButtonText()"
+            [deleteButtonText]="deleteButtonText()"
             (formValueChange)="valuesChange.emit($event)"
             (formSubmit)="onFormSubmit($event)"
             (formDelete)="onFormDelete()"

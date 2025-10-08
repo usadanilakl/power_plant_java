@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.sevice.loto;
 
 import com.dk_power.power_plant_java.dto.browser.BrLotoPoint;
 import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import lombok.RequiredArgsConstructor;
 import org.sikuli.basics.Settings;
@@ -9,6 +10,7 @@ import org.sikuli.script.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 
 //@Service
 //@RequiredArgsConstructor
@@ -64,6 +66,7 @@ public class LotoBuilderService {
             e.printStackTrace();
         }
     }
+
     public static void buildLotowWithNewPoints(List<LotoPointDto> list){
         try {
 
@@ -161,6 +164,10 @@ public class LotoBuilderService {
         }catch(FindFailed e){
             e.printStackTrace();
         }
+    }
+
+    public static void buildLotowWithNewPoints(Set<LotoPointIdDto> list){
+
     }
 
     public static void buildRedTagLoto(List<BrLotoPoint> list){

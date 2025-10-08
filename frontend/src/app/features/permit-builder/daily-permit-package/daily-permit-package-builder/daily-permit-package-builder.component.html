@@ -64,7 +64,8 @@
         <ng-template let-sw>
           <app-safe-work-form 
             [values]="sw" 
-            (valuesChange)="currentDailyPermitPackageService.submitSafeWork($event)">
+            (valuesChange)="currentDailyPermitPackageService.submitSafeWork($event)"
+            (formSubmit)="buildInRedTag($event)">
           </app-safe-work-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateSafeWorkFromCurrentRequest()">Generate</button>
@@ -81,6 +82,7 @@
           <app-hot-work-form 
             [values]="hw"
             (valuesChange)="currentDailyPermitPackageService.submitHotWork($event)"
+            (formSubmit)="buildInRedTag($event)"
           ></app-hot-work-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateHotWorkFromCurrentRequest()">Generate</button>
@@ -97,6 +99,7 @@
           <app-confined-space-form 
             [values]="cs"
             (valuesChange)="currentDailyPermitPackageService.submitConfinedSpace($event)"
+            (formSubmit)="buildInRedTag($event)"
           ></app-confined-space-form>
         </ng-template>
         <button [disabled]="requestCount()===0" (click)="currentDailyPermitPackageService.generateConfinedSpaceFromCurrentRequest()">Generate</button>

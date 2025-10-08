@@ -35,11 +35,14 @@ import { CheckboxOnlyLabelComponent } from "../../checkbox-only-label/checkbox-o
 })
 export class SmartFormComponent {
   fields = input<any[]>([]);
-  // values = input<any>({});
   @Input() values: Signal<any> = signal({});
   layout = input<'row' | 'column' | 'reactive'>('column');
   groupLayout = input<'row' | 'column' | 'reactive' | 'grid'>('grid');
   title = input<string>('');
+  submitButtonText = input<string>('Submit');
+  deleteButtonText = input<string>('');
+
+
   formSubmit = output<any>();
   formDelete = output<void>();
   addNewSelectOption = output<string>();

@@ -5,10 +5,15 @@ import com.dk_power.power_plant_java.dto.automation.HwBuilderProgress;
 import com.dk_power.power_plant_java.dto.automation.PermitBuildingProgress;
 import com.dk_power.power_plant_java.dto.automation.SwBuilderProgress;
 import com.dk_power.power_plant_java.dto.permits.*;
+import com.dk_power.power_plant_java.entities.loto.Loto;
+import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
+import com.dk_power.power_plant_java.sevice.loto.LotoService;
+import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.sikuli.basics.Settings;
 import org.sikuli.script.*;
 import org.springframework.stereotype.Service;
@@ -22,6 +27,8 @@ import java.util.List;
 @Service
 @Transactional
 public class RedTagAutomationService {
+    private final LotoPointService lotoPointService;
+    private final LotoPointMapper lotoPointMapper;
 
     private static final String BASE_PATH = "J:/Jackson Generation P&IDs/Manager App/managed_apps/RedTagIntegration/images/";
 
@@ -207,7 +214,9 @@ public class RedTagAutomationService {
     private PermitBuildingProgress permitBuildingProgress;
 
 
-    public RedTagAutomationService() {
+    public RedTagAutomationService(LotoPointService lotoPointService, LotoPointMapper lotoPointMapper) {
+        this.lotoPointService = lotoPointService;
+        this.lotoPointMapper = lotoPointMapper;
         screen = new Screen(0);
         screen.setAutoWaitTimeout(30);
         Settings.TypeDelay = 0;
@@ -396,6 +405,67 @@ public class RedTagAutomationService {
         return "success";
     }
 
+    public String buildLotos(DailyPermitPackageDto packageDto, long lotoId) throws FindFailed {
+        List<LotoDto> lotos = packageDto.getLotos();
+        LotoDto lotoDto = lotos.stream().filter(loto -> loto.getId() == lotoId).findFirst().orElseThrow();
+
+        if(lotoDto == null) {return "Failed to find loto with id: " + lotoId;}
+        openApp();
+        login();
+
+        openNewLotoBuilder();
+        openLotoBuilderWithNoStandard();
+        buildWithNewPoints(lotoDto.getLotoPoints().stream().map(lotoPointMapper::convertToDto).toList());
+        return "Success";
+    }
+
+    public String buildSafeWorks(DailyPermitPackageDto packageDto, long id) throws FindFailed {
+        List<SafeWorkDto> safeWorks = packageDto.getSafeWorks();
+        if(id!=0)safeWorks.removeIf(sw -> !sw.getId().equals(id));
+
+
+        openApp();
+        login();
+        for(SafeWorkDto safeWork : safeWorks){
+            openNewSafeWorkBuilder();
+            fillOutSafeWorkForm(safeWork);
+            String permitNum = saveSafeWork();
+            safeWork.setRedTagNum(permitNum);
+            associatePermits(packageDto);
+        }
+        return "Success";
+    }
+
+    public String buildHotWorks(DailyPermitPackageDto packageDto, long id) throws FindFailed {
+        List<HotWorkDto> hotWorks = packageDto.getHotWorks();
+        if(id!=0)hotWorks.removeIf(hw ->!hw.getId().equals(id));
+
+        openApp();
+        login();
+        for(HotWorkDto hotWork : hotWorks){
+            openNewHwBuilder();
+            fillOutHwForm(hotWork);
+            String permitNum = saveHwForm();
+            hotWork.setRedTagNum(permitNum);
+        }
+        return "Success";
+    }
+
+    public String buildConfinedSpaces(DailyPermitPackageDto packageDto, long id) throws FindFailed {
+        List<ConfinedSpaceDto> confinedSpaces = packageDto.getConfinedSpaces();
+        if(id!=0)confinedSpaces.removeIf(cs ->!cs.getId().equals(id));
+
+        openApp();
+        login();
+        for(ConfinedSpaceDto confinedSpace : confinedSpaces){
+            openNewConfinedSpaceBuilder();
+            fillOutCSForm(confinedSpace);
+            String permitNum = saveCsForm();
+            confinedSpace.setRedTagNum(permitNum);
+        }
+        return "Success";
+    }
+
     public String continueInterruptedProcess() {
         String failedStep = permitBuildingProgress.getFailedStep();
         if (failedStep == null) {
@@ -445,21 +515,21 @@ public class RedTagAutomationService {
 
 
     public String openNewLotoBuilder() throws FindFailed {
-        screen.find(LOTO_TAB).click();
+        screen.wait(LOTO_TAB,5).click();
         Region mainMenu = screen.wait(MAIN_MENU,2);
         mainMenu = new Region(mainMenu.x,mainMenu.y,mainMenu.w,mainMenu.h);
 
-        Region newLotoBtn = mainMenu.find(MAIN_MENU_NEW_ISO_BUTTON);
+        Region newLotoBtn = mainMenu.wait(MAIN_MENU_NEW_ISO_BUTTON,2);
         newLotoBtn.click();
         screen.wait(NEW_ISO_LOTO_TYPE_DROPDOWN,1).click();
 
-        if(screen.exists(ISSUE_LOTO_WITH_NO_STANDARD_BUTTON,5)!=null)return "Scucess";
+        if(screen.exists(ISSUE_LOTO_WITH_NO_STANDARD_BUTTON,7)!=null)return "Scucess";
         else return "Failed";
 
     }
 
     public String openLotoBuilderWithNoStandard() throws FindFailed {
-        screen.find(ISSUE_LOTO_WITH_NO_STANDARD_BUTTON).click();
+        screen.wait(ISSUE_LOTO_WITH_NO_STANDARD_BUTTON,5).click();
 
         Region dropdown = screen.wait(LOTO_BUILDER_LOTO_TYPE_DROPDOWN,5);
         App.setClipboard("WORK SCOPE");
@@ -467,23 +537,13 @@ public class RedTagAutomationService {
         dropdown.offset(100,0).click();
         App.setClipboard("LOTO");
         screen.type("v", KeyModifier.CTRL);
-//        try{
-//            Thread.sleep(1000);
-//        }catch (Exception e){
-//
-//        }
 
-        Region eqDescr = screen.find(LOTO_BUILDER_EQUIPMENT_DESCRIPTION);
+        Region eqDescr = screen.wait(LOTO_BUILDER_EQUIPMENT_DESCRIPTION,1);
         eqDescr.offset(100,0).click();
         App.setClipboard("SOME EQUIPMENT DESCRIPTION");
         screen.type("v", KeyModifier.CTRL);
-//        try{
-//            Thread.sleep(1000);
-//        }catch (Exception e){
-//
-//        }
 
-        Region eqTag = screen.find(LOTO_BUILDER_EQUIPMENT_TAG_NUMBER);
+        Region eqTag = screen.wait(LOTO_BUILDER_EQUIPMENT_TAG_NUMBER,1);
         eqTag.offset(100,0).click();
         App.setClipboard("SOME EQUIPMENT TAG");
         screen.type("v", KeyModifier.CTRL);
@@ -499,7 +559,7 @@ public class RedTagAutomationService {
     }
 
     public String completeLotoBuilding() throws FindFailed {
-        screen.find(LOTO_BUILDER_CONTINUE_BUTTON).click();
+        screen.wait(LOTO_BUILDER_CONTINUE_BUTTON,2).click();
         Region infoForm = screen.wait(LOTO_BUILDER_INFORMATION_FORM,2);
         infoForm = new Region(infoForm.x,infoForm.y,infoForm.w,infoForm.h);
 
