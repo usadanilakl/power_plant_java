@@ -1,3 +1,3 @@
 const propertiesData = [
-{"projectRoot":"C:\\Users\\dklokov\\IdeaProjects\\power_plant_java"}
+{"projectRoot":"/home/dk-power/Projects/power_plant_java"}
 ];

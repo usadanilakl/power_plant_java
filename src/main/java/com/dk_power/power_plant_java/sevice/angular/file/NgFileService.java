@@ -560,21 +560,21 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         valueService.getValuesByCategory("File Type")
                 .forEach(v -> cache.put(v.getName(), v));
 
-//        for (FileObject f : getAll()) {
-//            String name = f.getFileType().getName();
-//
-//            com.dk_power.power_plant_java.entities.categories.Value val = cache.get(name);
-//            if (val == null) {
-//                val = valueService.createValue("File Type", name); // within same transaction
-//                cache.put(name, val);
-//            }
-//            f.setFileType(val);
-//            save(f);
-//        }
+        for (FileObject f : getAll()) {
+            String name = f.getFileType().getName();
+
+            com.dk_power.power_plant_java.entities.categories.Value val = cache.get(name);
+            if (val == null) {
+                val = valueService.createValue("File Type", name); // within same transaction
+                cache.put(name, val);
+            }
+            f.setFileType(val);
+            save(f);
+        }
 
 
 
-//        deleteUnusedValues();
+        deleteUnusedValues();
 
     }
 
@@ -583,19 +583,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         List<Category> fileType = categoryRepo.findByName("FileType");
         if (!fileType.isEmpty()) {
             Category category = fileType.get(0);
-            category.getValues().forEach(v -> {
-                List<FileDto> byFileType = getByFileType(v);
-                if (byFileType.isEmpty()) {
-                    // no references found in code, safe to delete Value
-                    valueRepo.delete(v);
-                } else {
-                    // references exist, maybe log or handle
-                }
-            });
-            // Optional: if all values deleted, delete category
-            if (category.getValues().isEmpty()) {
-                categoryRepo.delete(category);
+            for (com.dk_power.power_plant_java.entities.categories.Value value : category.getValues()) {
+                if(!getByFileType(value).isEmpty()) throw new RuntimeException("Value '" + value.getName() + "' is still used by File Objects");
             }
+                categoryRepo.delete(category);
         }
     }
 

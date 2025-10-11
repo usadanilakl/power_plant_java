@@ -34,11 +34,34 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Optionally, clear localStorage on submit:
-form.addEventListener('submit', (event) => {
+form.addEventListener('submit', async (event) => {
   event.preventDefault(); 
-  const data = saveFormToIndexedDB(event.target);
-  submitFormToPowerAutomate(data);
-  localStorage.removeItem(STORAGE_KEY);
+  
+  // Show a "submitting" message
+  showMessage('Submitting form...', 10000);
+  const data = getDataFromForm(event.target);
+  
+  try {
+    const result = await submitFormToPowerAutomate(data);
+    
+    // Check if the submission was successful based on what submitFormToPowerAutomate returns
+    if (result && result.data && result.data.sharepointId) { // Adjust this condition based on your actual success response
+      saveDataToIndexedDb(result.data);
+      localStorage.removeItem(STORAGE_KEY);
+      showMessage('Submitted Successfully.', 5000, 'green');
+    } else {
+      saveDataToIndexedDb(data);
+      showMessage('Submission failed. Your data is saved locally.', 5000);
+    }
+  } catch (error) {
+    console.error('Submission failed:', error);
+    saveDataToIndexedDb(data);
+    showMessage('Submission failed. Your data is saved locally. Try Resubmitting', 5000, 'red');
+  }
+
+  // const data = saveFormToIndexedDB(event.target);
+  // submitFormToPowerAutomate(data);
+  // localStorage.removeItem(STORAGE_KEY);
 });
 
 
@@ -89,6 +112,56 @@ function saveFormToIndexedDB(form) {
   request.onerror = event => {
     console.error('IndexedDB error:', event.target.error);
   };
+  return data;
+}
+
+function saveDataToIndexedDb(data) {
+
+  // Open IndexedDB database
+  const request = indexedDB.open('FormDatabase', 1);
+
+  request.onupgradeneeded = event => {
+    const db = event.target.result;
+    if (!db.objectStoreNames.contains('forms')) {
+      db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+    }
+  };
+
+  request.onsuccess = event => {
+    const db = event.target.result;
+    const transaction = db.transaction(['forms'], 'readwrite');
+    const store = transaction.objectStore('forms');
+
+    // Add form data
+    store.put(data).onsuccess = () => {
+    console.log('Form data saved:', data);
+    };
+
+    transaction.oncomplete = () => {
+    form.reset();
+    db.close();
+    };
+
+  };
+
+  request.onerror = event => {
+    console.error('IndexedDB error:', event.target.error);
+  };
+  return data;
+}
+
+function getDataFromForm(form){
+  const data = {};
+  Array.from(form.elements).forEach(el => {
+    if (!el.name) return;
+    if (el.type === 'radio') {
+      if (el.checked) data[el.name] = el.value;
+    } else if (el.type === 'checkbox') {
+      data[el.name] = el.checked;
+    } else {
+      data[el.name] = el.value;
+    }
+  });
   return data;
 }
 
@@ -350,18 +423,23 @@ function showFormDataPopup(data) {
   // One table row per form data object in data array
   data.forEach(formData => {
     const row = document.createElement('tr');
-    row.addEventListener('click', (event) => {
-    console.log('Row clicked:', formData);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
-    location.reload();
 
+    row.addEventListener('click', (event) => {
+      console.log('Row clicked:', formData);
+      if (event.target.tagName !== 'BUTTON') {
+        showActionsPopup(formData, row);
+      }
     });
+
+    row.style.backgroundColor = formData.sharepointId? '#5c9575' : '#c75c5c';
+
     keys.forEach(key => {
       const td = document.createElement('td');
       td.textContent = formData[key] !== undefined ? formData[key] : '';
       Object.assign(td.style, { border: '1px solid #ccc', padding: '8px' });
       row.appendChild(td);
     });
+
     const td = document.createElement('td');
     const btn = document.createElement('button');
     btn.textContent = "Delete";
@@ -402,6 +480,9 @@ function getSavedAndShow(){    let data = [];
 async function submitFormToPowerAutomate(data) {
   const url = 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms';
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
+
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -411,28 +492,92 @@ async function submitFormToPowerAutomate(data) {
       body: JSON.stringify({
         actionType: 'save',
         workForm: data
-      })
+      }),
+      signal: controller.signal // Link the abort controller to the fetch request
     });
+
+    clearTimeout(timeoutId); // Clear the timeout if the request completes in time
 
     if (!response.ok) {
     //   throw new Error(`HTTP error! status: ${response.status}`);
       showMessage("Failed to submit request, try again. If form is empty, it should be accessable in previously submitted froms list.", 7000)
+      return; // Return early if response is not ok
     }
 
     const result = await response.json();
     console.log('Successfully submitted:', result);
     const message = result.message ?? "Failed to submit request, try again. If form is empty, it should be accessable in previously submitted froms list.";
     showMessage(message, 2000)
+    data.sharepointId = result.id;
+    result.data = data;
     return result;
 
   } catch (error) {
-    console.error('Error submitting form to Power Automate:', error);
-    showMessage("Failed to submit request, try again. If form is empty, it should be accessable in previously submitted froms list.", 7000)
+    clearTimeout(timeoutId); // Also clear timeout on error
+    if (error.name === 'AbortError') {
+      console.error('Fetch aborted due to timeout.');
+      showMessage("Submission is taking too long. Please check your connection and try again.", 7000);
+    } else {
+      console.error('Error submitting form to Power Automate:', error);
+      showMessage("Failed to submit request, try again. If form is empty, it should be accessable in previously submitted froms list.", 7000);
+    }
+    // throw error;
+  }
+}
+
+async function revokeRequestOnPowerAutomate(data) {
+  const url = 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms';
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        actionType: 'revoke',
+        id: data.sharepointId,
+      }),
+      signal: controller.signal // Link the abort controller to the fetch request
+    });
+
+    clearTimeout(timeoutId); // Clear the timeout if the request completes in time
+
+    if (!response.ok) {
+    //   throw new Error(`HTTP error! status: ${response.status}`);
+      showMessage("Failed to revoke request.", 7000)
+      return;
+    }
+
+    const result = await response.json();
+    console.log('Successfully revoked:', result);
+    const message = result.message ?? "Failed to revoke request.";
+    showMessage(message, 2000)
+    data.status = result.status;;
+    result.data = data;
+    return result;
+
+  } catch (error) {
+    clearTimeout(timeoutId); // Also clear timeout on error
+    if (error.name === 'AbortError') {
+      console.error('Fetch aborted due to timeout.');
+      showMessage("Submission is taking too long. Please check your connection and try again.", 7000);
+    } else {
+      console.error('Error submitting form to Power Automate:', error);
+      showMessage("Failed to submit request, try again. If form is empty, it should be accessable in previously submitted froms list.", 7000);
+    }
     // throw error;
   }
 }
 
 function showMessage(message, durationMs = 3000, color = 'white') {
+  const MESSAGE_ID = 'global-message-overlay';
+  let overlay = document.getElementById(MESSAGE_ID);
+  let box;
+
   // Define muted colors and text colors
   const colors = {
     red: { bg: '#c75c5c', text: '#fff5f5' },       // muted dark red background
@@ -443,51 +588,203 @@ function showMessage(message, durationMs = 3000, color = 'white') {
 
   const chosen = colors[color.toLowerCase()] || colors.white;
 
-  // Create overlay
-  const overlay = document.createElement('div');
-  Object.assign(overlay.style, {
-    position: 'fixed',
-    top: 0, left: 0, width: '100%', height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10000,
-  });
-
-  // Create message box
-  const box = document.createElement('div');
-  box.textContent = message;
-  Object.assign(box.style, {
-    backgroundColor: chosen.bg,
-    color: chosen.text,
-    padding: '15px 25px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-    fontSize: '1.1rem',
-    maxWidth: '80%',
-    textAlign: 'center',
-    cursor: 'pointer',
-    userSelect: 'none'
-  });
-
-  // Append box to overlay, and overlay to body
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-
   // Function to remove popup safely
   function removeMessage() {
-    if (overlay.parentNode) {
-      overlay.parentNode.removeChild(overlay);
-      clearTimeout(timeoutId);
+    const currentOverlay = document.getElementById(MESSAGE_ID);
+    if (currentOverlay) {
+      if (currentOverlay.timeoutId) {
+        clearTimeout(currentOverlay.timeoutId);
+      }
+      currentOverlay.parentNode.removeChild(currentOverlay);
     }
   }
 
-  // Remove on click
-  box.addEventListener('click', removeMessage);
+  if (overlay) {
+    // If message exists, update it
+    box = overlay.firstChild; // The box is the first child of the overlay
+    if (overlay.timeoutId) {
+      clearTimeout(overlay.timeoutId);
+    }
+  } else {
+    // Otherwise, create the elements from scratch
+    overlay = document.createElement('div');
+    overlay.id = MESSAGE_ID;
+    Object.assign(overlay.style, {
+      position: 'fixed',
+      top: 0, left: 0, width: '100%', height: '100%',
+      backgroundColor: 'rgba(0,0,0,0.3)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10000,
+    });
 
-  // Remove after timeout
-  const timeoutId = setTimeout(removeMessage, durationMs);
+    box = document.createElement('div');
+    Object.assign(box.style, {
+      padding: '15px 25px',
+      borderRadius: '8px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+      fontSize: '1.1rem',
+      maxWidth: '80%',
+      textAlign: 'center',
+      cursor: 'pointer',
+      userSelect: 'none'
+    });
+
+    // Append box to overlay, and overlay to body
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    // Remove on click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) { // only close if overlay itself is clicked
+        removeMessage();
+      }
+    });
+    box.addEventListener('click', removeMessage);
+
+    // Remove on click - add this listener only once
+    box.addEventListener('click', removeMessage);
+  }
+
+  // Update box content and style
+  box.textContent = message;
+  box.style.backgroundColor = chosen.bg;
+  box.style.color = chosen.text;
+
+  // Set/reset the timeout to remove the message
+  overlay.timeoutId = setTimeout(removeMessage, durationMs);
+}
+
+function showActionsPopup(workRequest, row){
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'actions-popup-overlay';
+  Object.assign(overlay.style, {
+    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+    justifyContent: 'center', alignItems: 'center', zIndex: 10001
+  });
+
+  // Create popup container
+  const popup = document.createElement('div');
+  Object.assign(popup.style, {
+    background: '#fff', padding: '20px', borderRadius: '8px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.2)', textAlign: 'center'
+  });
+  overlay.appendChild(popup);
+
+  // Title
+  const title = document.createElement('h3');
+  title.textContent = 'Choose an Action';
+  title.style.marginBottom = '20px';
+  popup.appendChild(title);
+
+  // Buttons container
+  const buttonContainer = document.createElement('div');
+  Object.assign(buttonContainer.style, {
+    display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'
+  });
+  popup.appendChild(buttonContainer);
+
+  // Helper to create buttons
+  const createButton = (text, onClick, enabled = true) => {
+    const btn = document.createElement('button');
+    btn.textContent = text;
+    btn.onclick = (e) => {
+      e.stopPropagation(); // Prevent overlay click from firing
+      onClick();
+      if (overlay.parentNode) {
+        document.body.removeChild(overlay);
+      }
+    };
+    btn.disabled = !enabled;
+    Object.assign(btn.style, {
+      padding: '10px 15px', borderRadius: '5px', border: 'none', cursor: 'pointer',
+      backgroundColor: enabled ? '#007bff' : '#ccc', color: 'white'
+    });
+    return btn;
+  };
+
+  // --- Define Button Actions ---
+
+  // Resubmit
+  const resubmitBtn = createButton('Resubmit', async () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(workRequest));
+      location.reload();
+  });
+  buttonContainer.appendChild(resubmitBtn);
+
+  // Revoke
+  const revokeBtn = createButton('Revoke', async () => {
+    showMessage('Revoking...', 2000, 'yellow');
+    const result = await submitFormToPowerAutomate(workRequest, 'revoke');
+    if (result && result.success) {
+      delete workRequest.sharepointId; // Remove SharePoint ID
+      saveFormToIndexedDB(workRequest); // Update local record
+      showMessage('Request revoked successfully!', 3000, 'green');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showMessage('Failed to revoke. It might have been already processed.', 5000, 'red');
+    }
+  }, !!workRequest.sharepointId); // Enabled only if sharepointId exists
+  buttonContainer.appendChild(revokeBtn);
+
+  // Fill out JHA
+  const jhaBtn = createButton('Fill out JHA', () => {
+    const jhaData = {
+      jobName: `${workRequest.locationOfWork} - ${workRequest.workScope.substring(0, 50)}`,
+      dateOfWork: workRequest.dateOfWork,
+      // You can pre-fill more JHA fields here if needed
+    };
+    localStorage.setItem('jhaFormData', JSON.stringify(jhaData));
+    window.location.href = '../jha-form/index.html';
+  });
+  buttonContainer.appendChild(jhaBtn);
+
+  // Delete
+  const deleteBtn = createButton('Delete', () => {
+    if (confirm('Are you sure you want to delete this request locally? This cannot be undone.')) {
+      deleteFormFromIndexedDB(workRequest.id, success => {
+        if (success) {
+          showMessage('Deleted successfully.', 2000, 'green');
+            if (row) row.remove();
+            closePopup();
+        } else {
+          showMessage('Failed to delete.', 3000, 'red');
+        }
+      });
+    }
+  });
+  deleteBtn.style.backgroundColor = '#dc3545';
+  buttonContainer.appendChild(deleteBtn);
+
+  // Close button
+  const closeButton = document.createElement('button');
+  closeButton.textContent = 'Close';
+  Object.assign(closeButton.style, {
+    marginTop: '20px',
+    padding: '10px 15px',
+    border: 'none',
+    borderRadius: '5px',
+    backgroundColor: '#6c757d',
+    color: 'white',
+    cursor: 'pointer'
+  });
+  closeButton.onclick = (e) => {
+    e.stopPropagation();
+    document.body.removeChild(overlay);
+  };
+  popup.appendChild(closeButton);
+
+  // Close popup if user clicks outside the popup content
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) {
+      document.body.removeChild(overlay);
+    }
+  });
+
+  document.body.appendChild(overlay);
 }
 
 
