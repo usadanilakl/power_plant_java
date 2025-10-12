@@ -230,15 +230,17 @@
     <button type="submit">Submit</button>
 </form>
 
+<script src="./form-validators.js"></script>
 <script src="./user.service.js"></script>
 <script src="./header.js"></script>
 <script src="./local-db-service.js"></script>
 
 <script>
 
-    const companyInput = document.querySelector('input[name="company"]')
-    const nameInput = document.querySelector('input[name="workRequestedBy"]')
-    const dateInput = document.querySelector('input[name="dateOfWork"]')
+    const companyInput = document.querySelector('input[name="company"]');
+    const nameInput = document.querySelector('input[name="workRequestedBy"]');
+    const dateInput = document.querySelector('input[name="dateOfWork"]');
+    const timeInput = document.querySelector('input[name="timeOfWork"]');
 
     const today = new Date();
     const tomorrow = new Date(today);

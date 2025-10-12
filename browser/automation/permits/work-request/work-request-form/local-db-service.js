@@ -36,39 +36,39 @@ window.addEventListener('DOMContentLoaded', () => {
 // Optionally, clear localStorage on submit:
 form.addEventListener('submit', async (event) => {
   event.preventDefault(); 
+
+  if(!validateForm()) return;
   
   // Show a "submitting" message
   showMessage('Submitting form...', 10000);
   const data = getDataFromForm(event.target);
+  data.status = 'Failed To Submit';
+  saveDataToIndexedDb(data);
   
-  try {
-    const result = await submitFormToPowerAutomate(data);
+  // try {
+  //   const result = await submitFormToPowerAutomate(data);
     
-    // Check if the submission was successful based on what submitFormToPowerAutomate returns
-    if (result && result.data && result.data.sharepointId) { // Adjust this condition based on your actual success response
-      saveDataToIndexedDb(result.data);
-      localStorage.removeItem(STORAGE_KEY);
-      showMessage('Submitted Successfully.', 5000, 'green');
-    } else {
-      saveDataToIndexedDb(data);
-      showMessage('Submission failed. Your data is saved locally.', 5000);
-    }
-  } catch (error) {
-    console.error('Submission failed:', error);
-    saveDataToIndexedDb(data);
-    showMessage('Submission failed. Your data is saved locally. Try Resubmitting', 5000, 'red');
-  }
-
-  // const data = saveFormToIndexedDB(event.target);
-  // submitFormToPowerAutomate(data);
-  // localStorage.removeItem(STORAGE_KEY);
+  //   // Check if the submission was successful based on what submitFormToPowerAutomate returns
+  //   if (result && result.data && result.data.sharepointId) { // Adjust this condition based on your actual success response
+  //     saveDataToIndexedDb(result.data);
+  //     localStorage.removeItem(STORAGE_KEY);
+  //     showMessage('Submitted Successfully.', 5000, 'green');
+  //   } else {
+  //     saveDataToIndexedDb(data);
+  //     showMessage('Submission failed. Your data is saved locally.', 5000);
+  //   }
+  // } catch (error) {
+  //   console.error('Submission failed:', error);
+  //   saveDataToIndexedDb(data);
+  //   showMessage('Submission failed. Your data is saved locally. Try Resubmitting', 5000, 'red');
+  // }
 });
 
 
 /*************************************************************************************************************************************************************************************************************
  * INDEXED DB OPERATIONS
  ************************************************************************************************************************************************************************************************************/
-
+const DB_VERSION = 3;
 function saveFormToIndexedDB(form) {
   const data = {};
   Array.from(form.elements).forEach(el => {
@@ -83,12 +83,42 @@ function saveFormToIndexedDB(form) {
   });
 
   // Open IndexedDB database
-  const request = indexedDB.open('FormDatabase', 1);
+  // const request = indexedDB.open('FormDatabase', 1);
+
+  // request.onupgradeneeded = event => {
+  //   const db = event.target.result;
+  //   if (!db.objectStoreNames.contains('forms')) {
+  //     db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+  //   }
+  // };
+  const request = indexedDB.open('FormDatabase', DB_VERSION);
 
   request.onupgradeneeded = event => {
     const db = event.target.result;
+    let store;
     if (!db.objectStoreNames.contains('forms')) {
-      db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+    } else {
+      store = event.target.transaction.objectStore('forms');
+    }
+
+    if (!store.indexNames.contains('status')) {
+      store.createIndex('status', 'status', { unique: false });
+      console.log('Status index created');
+    }
+  };
+
+  request.onupgradeneeded = event => {
+    const db = event.target.result;
+    let store;
+    if (!db.objectStoreNames.contains('forms')) {
+      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+    } else {
+      store = event.target.transaction.objectStore('forms');
+    }
+
+    if (!store.indexNames.contains('status')) {
+      store.createIndex('status', 'status', { unique: false });
     }
   };
 
@@ -117,13 +147,31 @@ function saveFormToIndexedDB(form) {
 
 function saveDataToIndexedDb(data) {
 
+  // console.log('Data saved to IndexedDB:', data);
+
   // Open IndexedDB database
-  const request = indexedDB.open('FormDatabase', 1);
+  // const request = indexedDB.open('FormDatabase', 1);
+
+  // request.onupgradeneeded = event => {
+  //   const db = event.target.result;
+  //   if (!db.objectStoreNames.contains('forms')) {
+  //     db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+  //   }
+  // };
+  const request = indexedDB.open('FormDatabase', DB_VERSION);
 
   request.onupgradeneeded = event => {
     const db = event.target.result;
+    let store;
     if (!db.objectStoreNames.contains('forms')) {
-      db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+    } else {
+      store = event.target.transaction.objectStore('forms');
+    }
+
+    if (!store.indexNames.contains('status')) {
+      store.createIndex('status', 'status', { unique: false });
+      console.log('Status index created');
     }
   };
 
@@ -166,12 +214,21 @@ function getDataFromForm(form){
 }
 
 function getAllFormsFromIndexedDB(callback) {
-  const request = indexedDB.open('FormDatabase', 1);
+
+  const request = indexedDB.open('FormDatabase', DB_VERSION);
 
   request.onupgradeneeded = event => {
     const db = event.target.result;
+    let store;
     if (!db.objectStoreNames.contains('forms')) {
-      db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+    } else {
+      store = event.target.transaction.objectStore('forms');
+    }
+
+    if (!store.indexNames.contains('status')) {
+      store.createIndex('status', 'status', { unique: false });
+      console.log('Status index created');
     }
   };
 
@@ -200,12 +257,21 @@ function getAllFormsFromIndexedDB(callback) {
 }
 
 function getFormByIdFromIndexedDB(id, callback) {
-  const request = indexedDB.open('FormDatabase', 1);
+
+  const request = indexedDB.open('FormDatabase', DB_VERSION);
 
   request.onupgradeneeded = event => {
     const db = event.target.result;
+    let store;
     if (!db.objectStoreNames.contains('forms')) {
-      db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+    } else {
+      store = event.target.transaction.objectStore('forms');
+    }
+
+    if (!store.indexNames.contains('status')) {
+      store.createIndex('status', 'status', { unique: false });
+      console.log('Status index created');
     }
   };
 
@@ -234,12 +300,21 @@ function getFormByIdFromIndexedDB(id, callback) {
 }
 
 function deleteFormFromIndexedDB(id, callback) {
-  const request = indexedDB.open('FormDatabase', 1);
+
+  const request = indexedDB.open('FormDatabase', DB_VERSION);
 
   request.onupgradeneeded = event => {
     const db = event.target.result;
+    let store;
     if (!db.objectStoreNames.contains('forms')) {
-      db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
+    } else {
+      store = event.target.transaction.objectStore('forms');
+    }
+
+    if (!store.indexNames.contains('status')) {
+      store.createIndex('status', 'status', { unique: false });
+      console.log('Status index created');
     }
   };
 
@@ -269,13 +344,24 @@ function deleteFormFromIndexedDB(id, callback) {
 }
 
 function queryByColumn(storeName, indexName, queryValue, callback) {
-  const request = indexedDB.open('FormDatabase', 1);
+  const request = indexedDB.open('FormDatabase', DB_VERSION);
 
   request.onupgradeneeded = event => {
     const db = event.target.result;
+    let store;
     if (!db.objectStoreNames.contains(storeName)) {
-      const objectStore = db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
-      objectStore.createIndex(indexName, indexName, { unique: false });
+      store = db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+    } else {
+      store = event.target.transaction.objectStore(storeName);
+    }
+
+    if (!store.indexNames.contains('status')) {
+      store.createIndex('status', 'status', { unique: false });
+    }
+    // This handles creating other indexes if needed in the future
+    if (indexName !== 'status' && !store.indexNames.contains(indexName)) {
+      store.createIndex(indexName, indexName, { unique: false });
+      console.log('Status index created');
     }
   };
 
@@ -431,7 +517,7 @@ function showFormDataPopup(data) {
       }
     });
 
-    row.style.backgroundColor = formData.sharepointId? '#5c9575' : '#c75c5c';
+    row.style.backgroundColor = formData.sharepointId? '#5c9575' : formData.status==='revoked'? '#d4c66d' : '#c75c5c';
 
     keys.forEach(key => {
       const td = document.createElement('td');
@@ -509,6 +595,7 @@ async function submitFormToPowerAutomate(data) {
     const message = result.message ?? "Failed to submit request, try again. If form is empty, it should be accessable in previously submitted froms list.";
     showMessage(message, 2000)
     data.sharepointId = result.id;
+    data.status = "received";
     result.data = data;
     return result;
 
@@ -717,13 +804,13 @@ function showActionsPopup(workRequest, row){
 
   // Revoke
   const revokeBtn = createButton('Revoke', async () => {
-    showMessage('Revoking...', 2000, 'yellow');
-    const result = await submitFormToPowerAutomate(workRequest, 'revoke');
+    showMessage('Revoking...', 10000, 'yellow');
+    const result = await revokeRequestOnPowerAutomate(workRequest);
     if (result && result.success) {
-      delete workRequest.sharepointId; // Remove SharePoint ID
-      saveFormToIndexedDB(workRequest); // Update local record
+      saveDataToIndexedDb(result.data); // Update local record
       showMessage('Request revoked successfully!', 3000, 'green');
-      setTimeout(() => location.reload(), 1000);
+      if(row) row.backgroundColor = '#d4c66d'
+      overlay.remove();
     } else {
       showMessage('Failed to revoke. It might have been already processed.', 5000, 'red');
     }
@@ -749,7 +836,7 @@ function showActionsPopup(workRequest, row){
         if (success) {
           showMessage('Deleted successfully.', 2000, 'green');
             if (row) row.remove();
-            closePopup();
+            overlay.remove();
         } else {
           showMessage('Failed to delete.', 3000, 'red');
         }
