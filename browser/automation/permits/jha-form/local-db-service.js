@@ -33,9 +33,6 @@ function saveFormData() {
   return obj;
 }
 
-
-
-
 // Populate a single jobStep block with provided data
 function populateJobStep(index, stepObj) {
   // Helper to safely set value if element exists; log a warning otherwise
@@ -76,9 +73,6 @@ function populateJobStep(index, stepObj) {
   setFieldValue(`jobSteps[${index}].hazard`, stepObj.hazard);
   setFieldValue(`jobSteps[${index}].safetyMeasures`, stepObj.safetyMeasures);
 }
-
-
-
 
 // Load and populate form from localStorage
 function loadFormData() {
@@ -134,9 +128,6 @@ function loadFormData() {
   }
 }
 
-
-
-
 // Event listeners
 form.addEventListener('input', saveFormData);
 
@@ -156,6 +147,116 @@ form.addEventListener('submit', (event) => {
 /*************************************************************************************************************************************************************************************************************
  * INDEXED DB OPERATIONS
  ************************************************************************************************************************************************************************************************************/
+const DB_NAME = 'JhaDatabase';
+const DB_VERSION = 1; // Incremented version to trigger upgrade
+const STORE_NAME = 'forms';
+
+function getDataFromForm(){
+  const data = {};
+
+  // Create a map to collect multiple checkbox values for the same name (applicability)
+  const checkboxValuesMap = {};
+
+  // Create a map to collect jobSteps fields grouped by index
+  const jobStepsMap = {};
+
+  Array.from(form.elements).forEach(el => {
+    if (!el.name) return;
+
+    // Group jobSteps fields by index and property
+    const match = el.name.match(/^jobSteps\[(\d+)\]\.(.+)$/);
+    if (match) {
+      const index = parseInt(match[1], 10);
+      const prop = match[2];
+      if (!jobStepsMap[index]) jobStepsMap[index] = {};
+      
+      // For textareas and inputs, just take the value
+      jobStepsMap[index][prop] = el.value;
+
+      return; // Skip further processing for jobSteps fields here
+    }
+
+    if (el.type === 'checkbox') {
+      // Collect checked checkboxes into arrays
+      if (el.checked) {
+        if (!checkboxValuesMap[el.name]) {
+          checkboxValuesMap[el.name] = [];
+        }
+        checkboxValuesMap[el.name].push(el.value);
+      }
+    } else if (el.type === 'radio') {
+      if (el.checked) {
+        data[el.name] = el.value;
+      }
+    } else {
+      data[el.name] = el.value;
+    }
+  });
+
+  // Assign collected checkbox arrays to data object
+  Object.entries(checkboxValuesMap).forEach(([key, values]) => {
+    data[key] = values;
+  });
+
+  // Convert jobStepsMap into a sorted array
+  const jobStepsArray = Object.keys(jobStepsMap)
+    .sort((a, b) => a - b)
+    .map(i => jobStepsMap[i]);
+
+  data.jobSteps = jobStepsArray;
+
+  return data;
+}
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = event => {
+      const db = event.target.result;
+      let store;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+      } else {
+        // Get existing store to add index
+        store = event.target.transaction.objectStore(STORE_NAME);
+      }
+
+      if (!store.indexNames.contains('status')) {
+        store.createIndex('status', 'status', { unique: false });
+        console.log('Status index created successfully.');
+      }
+      
+      // Data Migration: Add a default 'status' to old records
+      if (event.oldVersion < 5) {
+        console.log('Migrating data: adding default status to existing records.');
+        store.openCursor().onsuccess = e => {
+          const cursor = e.target.result;
+          if (cursor) {
+            const record = cursor.value;
+            // If 'status' field is missing, add it with a default value
+            if (record.status === undefined) {
+              record.status = 'unknown'; // Or another sensible default like 'unknown'
+              cursor.update(record);
+            }
+            cursor.continue();
+          } else {
+            console.log('Data migration complete.');
+          }
+        };
+      }
+    };
+
+    request.onsuccess = event => {
+      resolve(event.target.result);
+    };
+
+    request.onerror = event => {
+      console.error('IndexedDB error:', event.target.error);
+      reject(event.target.error);
+    };
+  });
+}
 
 function saveFormToIndexedDB(form) {
   const data = {};

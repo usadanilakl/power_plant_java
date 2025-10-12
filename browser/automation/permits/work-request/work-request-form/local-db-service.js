@@ -45,23 +45,23 @@ form.addEventListener('submit', async (event) => {
   data.status = 'Failed To Submit';
   saveDataToIndexedDb(data);
   
-  // try {
-  //   const result = await submitFormToPowerAutomate(data);
+  try {
+    const result = await submitFormToPowerAutomate(data);
     
-  //   // Check if the submission was successful based on what submitFormToPowerAutomate returns
-  //   if (result && result.data && result.data.sharepointId) { // Adjust this condition based on your actual success response
-  //     saveDataToIndexedDb(result.data);
-  //     localStorage.removeItem(STORAGE_KEY);
-  //     showMessage('Submitted Successfully.', 5000, 'green');
-  //   } else {
-  //     saveDataToIndexedDb(data);
-  //     showMessage('Submission failed. Your data is saved locally.', 5000);
-  //   }
-  // } catch (error) {
-  //   console.error('Submission failed:', error);
-  //   saveDataToIndexedDb(data);
-  //   showMessage('Submission failed. Your data is saved locally. Try Resubmitting', 5000, 'red');
-  // }
+    // Check if the submission was successful based on what submitFormToPowerAutomate returns
+    if (result && result.data && result.data.sharepointId) { // Adjust this condition based on your actual success response
+      saveDataToIndexedDb(result.data);
+      localStorage.removeItem(STORAGE_KEY);
+      showMessage('Submitted Successfully.', 5000, 'green');
+    } else {
+      saveDataToIndexedDb(data);
+      showMessage('Submission failed. Your data is saved locally.', 5000);
+    }
+  } catch (error) {
+    console.error('Submission failed:', error);
+    saveDataToIndexedDb(data);
+    showMessage('Submission failed. Your data is saved locally. Try Resubmitting', 5000, 'red');
+  }
 });
 
 
@@ -213,7 +213,6 @@ function saveFormToIndexedDB(form) {
   return data;
 }
 
-
 async function saveDataToIndexedDb(data) {
   try {
     const db = await openDatabase();
@@ -304,32 +303,19 @@ async function deleteFormFromIndexedDB(id, callback) {
   }
 }
 
-function queryByColumn(storeName, indexName, queryValue, callback) {
-  const request = indexedDB.open('FormDatabase', DB_VERSION);
-
-  request.onupgradeneeded = event => {
-    const db = event.target.result;
-    let store;
-    if (!db.objectStoreNames.contains(storeName)) {
-      store = db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
-    } else {
-      store = event.target.transaction.objectStore(storeName);
-    }
-
-    if (!store.indexNames.contains('status')) {
-      store.createIndex('status', 'status', { unique: false });
-    }
-    // This handles creating other indexes if needed in the future
-    if (indexName !== 'status' && !store.indexNames.contains(indexName)) {
-      store.createIndex(indexName, indexName, { unique: false });
-      console.log('Status index created');
-    }
-  };
-
-  request.onsuccess = event => {
-    const db = event.target.result;
+async function queryByColumn(storeName, indexName, queryValue, callback) {
+  try {
+    const db = await openDatabase();
     const transaction = db.transaction(storeName, 'readonly');
     const store = transaction.objectStore(storeName);
+
+    if (!store.indexNames.contains(indexName)) {
+      console.error(`Index '${indexName}' does not exist on store '${storeName}'.`);
+      callback(null);
+      db.close();
+      return;
+    }
+
     const index = store.index(indexName);
     const keyRange = IDBKeyRange.only(queryValue);
     const results = [];
@@ -351,12 +337,10 @@ function queryByColumn(storeName, indexName, queryValue, callback) {
       callback(null);
       db.close();
     };
-  };
-
-  request.onerror = event => {
-    console.error('IndexedDB open error:', event.target.error);
+  } catch (error) {
+    console.error('IndexedDB open error:', error);
     callback(null);
-  };
+  }
 }
 
 function areObjectsEqualIgnoreCase(obj1, obj2) {
@@ -388,10 +372,6 @@ function checkForDuplicate(current, callback) {
     const isDuplicate = results.some(e => areObjectsEqualIgnoreCase(current, e));
     callback(isDuplicate);
   });
-}
-
-function updateStatus(){
-
 }
 
 
