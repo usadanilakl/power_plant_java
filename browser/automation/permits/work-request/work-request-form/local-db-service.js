@@ -68,7 +68,75 @@ form.addEventListener('submit', async (event) => {
 /*************************************************************************************************************************************************************************************************************
  * INDEXED DB OPERATIONS
  ************************************************************************************************************************************************************************************************************/
-const DB_VERSION = 3;
+const DB_NAME = 'FormDatabase';
+const DB_VERSION = 5; // Incremented version to trigger upgrade
+const STORE_NAME = 'forms';
+
+function getDataFromForm(form){
+  const data = {};
+  Array.from(form.elements).forEach(el => {
+    if (!el.name) return;
+    if (el.type === 'radio') {
+      if (el.checked) data[el.name] = el.value;
+    } else if (el.type === 'checkbox') {
+      data[el.name] = el.checked;
+    } else {
+      data[el.name] = el.value;
+    }
+  });
+  return data;
+}
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = event => {
+      const db = event.target.result;
+      let store;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+      } else {
+        // Get existing store to add index
+        store = event.target.transaction.objectStore(STORE_NAME);
+      }
+
+      if (!store.indexNames.contains('status')) {
+        store.createIndex('status', 'status', { unique: false });
+        console.log('Status index created successfully.');
+      }
+      
+      // Data Migration: Add a default 'status' to old records
+      if (event.oldVersion < 5) {
+        console.log('Migrating data: adding default status to existing records.');
+        store.openCursor().onsuccess = e => {
+          const cursor = e.target.result;
+          if (cursor) {
+            const record = cursor.value;
+            // If 'status' field is missing, add it with a default value
+            if (record.status === undefined) {
+              record.status = 'unknown'; // Or another sensible default like 'unknown'
+              cursor.update(record);
+            }
+            cursor.continue();
+          } else {
+            console.log('Data migration complete.');
+          }
+        };
+      }
+    };
+
+    request.onsuccess = event => {
+      resolve(event.target.result);
+    };
+
+    request.onerror = event => {
+      console.error('IndexedDB error:', event.target.error);
+      reject(event.target.error);
+    };
+  });
+}
+
 function saveFormToIndexedDB(form) {
   const data = {};
   Array.from(form.elements).forEach(el => {
@@ -145,97 +213,32 @@ function saveFormToIndexedDB(form) {
   return data;
 }
 
-function saveDataToIndexedDb(data) {
 
-  // console.log('Data saved to IndexedDB:', data);
+async function saveDataToIndexedDb(data) {
+  try {
+    const db = await openDatabase();
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
 
-  // Open IndexedDB database
-  // const request = indexedDB.open('FormDatabase', 1);
-
-  // request.onupgradeneeded = event => {
-  //   const db = event.target.result;
-  //   if (!db.objectStoreNames.contains('forms')) {
-  //     db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
-  //   }
-  // };
-  const request = indexedDB.open('FormDatabase', DB_VERSION);
-
-  request.onupgradeneeded = event => {
-    const db = event.target.result;
-    let store;
-    if (!db.objectStoreNames.contains('forms')) {
-      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
-    } else {
-      store = event.target.transaction.objectStore('forms');
-    }
-
-    if (!store.indexNames.contains('status')) {
-      store.createIndex('status', 'status', { unique: false });
-      console.log('Status index created');
-    }
-  };
-
-  request.onsuccess = event => {
-    const db = event.target.result;
-    const transaction = db.transaction(['forms'], 'readwrite');
-    const store = transaction.objectStore('forms');
-
-    // Add form data
     store.put(data).onsuccess = () => {
-    console.log('Form data saved:', data);
+      console.log('Form data saved:', data);
     };
 
     transaction.oncomplete = () => {
-    form.reset();
-    db.close();
+      form.reset();
+      db.close();
     };
-
-  };
-
-  request.onerror = event => {
-    console.error('IndexedDB error:', event.target.error);
-  };
+  } catch (error) {
+    console.error('Failed to save data to IndexedDB:', error);
+  }
   return data;
 }
 
-function getDataFromForm(form){
-  const data = {};
-  Array.from(form.elements).forEach(el => {
-    if (!el.name) return;
-    if (el.type === 'radio') {
-      if (el.checked) data[el.name] = el.value;
-    } else if (el.type === 'checkbox') {
-      data[el.name] = el.checked;
-    } else {
-      data[el.name] = el.value;
-    }
-  });
-  return data;
-}
-
-function getAllFormsFromIndexedDB(callback) {
-
-  const request = indexedDB.open('FormDatabase', DB_VERSION);
-
-  request.onupgradeneeded = event => {
-    const db = event.target.result;
-    let store;
-    if (!db.objectStoreNames.contains('forms')) {
-      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
-    } else {
-      store = event.target.transaction.objectStore('forms');
-    }
-
-    if (!store.indexNames.contains('status')) {
-      store.createIndex('status', 'status', { unique: false });
-      console.log('Status index created');
-    }
-  };
-
-  request.onsuccess = event => {
-    const db = event.target.result;
-    const transaction = db.transaction('forms', 'readonly');
-    const store = transaction.objectStore('forms');
+async function getAllFormsFromIndexedDB(callback) {
+  try {
+    const db = await openDatabase();
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
     const getAllRequest = store.getAll();
 
     getAllRequest.onsuccess = () => {
@@ -248,37 +251,17 @@ function getAllFormsFromIndexedDB(callback) {
       callback(null);
       db.close();
     };
-  };
-
-  request.onerror = event => {
-    console.error('IndexedDB open error:', event.target.error);
+  } catch (error) {
+    console.error('IndexedDB open error:', error);
     callback(null);
-  };
+  }
 }
 
-function getFormByIdFromIndexedDB(id, callback) {
-
-  const request = indexedDB.open('FormDatabase', DB_VERSION);
-
-  request.onupgradeneeded = event => {
-    const db = event.target.result;
-    let store;
-    if (!db.objectStoreNames.contains('forms')) {
-      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
-    } else {
-      store = event.target.transaction.objectStore('forms');
-    }
-
-    if (!store.indexNames.contains('status')) {
-      store.createIndex('status', 'status', { unique: false });
-      console.log('Status index created');
-    }
-  };
-
-  request.onsuccess = event => {
-    const db = event.target.result;
-    const transaction = db.transaction(['forms'], 'readonly');
-    const store = transaction.objectStore('forms');
+async function getFormByIdFromIndexedDB(id, callback) {
+  try {
+    const db = await openDatabase();
+    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
     const getRequest = store.get(id);
 
     getRequest.onsuccess = () => {
@@ -291,37 +274,17 @@ function getFormByIdFromIndexedDB(id, callback) {
       callback(null);
       db.close();
     };
-  };
-
-  request.onerror = event => {
-    console.error('IndexedDB open error:', event.target.error);
+  } catch (error) {
+    console.error('IndexedDB open error:', error);
     callback(null);
-  };
+  }
 }
 
-function deleteFormFromIndexedDB(id, callback) {
-
-  const request = indexedDB.open('FormDatabase', DB_VERSION);
-
-  request.onupgradeneeded = event => {
-    const db = event.target.result;
-    let store;
-    if (!db.objectStoreNames.contains('forms')) {
-      store = db.createObjectStore('forms', { keyPath: 'id', autoIncrement: true });
-    } else {
-      store = event.target.transaction.objectStore('forms');
-    }
-
-    if (!store.indexNames.contains('status')) {
-      store.createIndex('status', 'status', { unique: false });
-      console.log('Status index created');
-    }
-  };
-
-  request.onsuccess = event => {
-    const db = event.target.result;
-    const transaction = db.transaction(['forms'], 'readwrite');
-    const store = transaction.objectStore('forms');
+async function deleteFormFromIndexedDB(id, callback) {
+  try {
+    const db = await openDatabase();
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
     const deleteRequest = store.delete(id);
 
     deleteRequest.onsuccess = () => {
@@ -335,12 +298,10 @@ function deleteFormFromIndexedDB(id, callback) {
       callback(false);
       db.close();
     };
-  };
-
-  request.onerror = event => {
-    console.error('IndexedDB open error:', event.target.error);
+  } catch (error) {
+    console.error('IndexedDB open error:', error);
     callback(false);
-  };
+  }
 }
 
 function queryByColumn(storeName, indexName, queryValue, callback) {
@@ -429,6 +390,10 @@ function checkForDuplicate(current, callback) {
   });
 }
 
+function updateStatus(){
+
+}
+
 
 
 
@@ -485,6 +450,7 @@ function showFormDataPopup(data) {
   // Use keys from first object for header cells
   const keys = Object.keys(data[0] || {});
   keys.forEach(key => {
+    console.log(key);
     const th = document.createElement('th');
     // Format header - capitalize and add spaces if needed
     const formattedKey = key.replace(/([A-Z])/g, ' $1')
@@ -517,7 +483,7 @@ function showFormDataPopup(data) {
       }
     });
 
-    row.style.backgroundColor = formData.sharepointId? '#5c9575' : formData.status==='revoked'? '#d4c66d' : '#c75c5c';
+    row.style.backgroundColor = formData.status==='revoked'? '#d4c66d' : formData.sharepointId? '#5c9575' : '#c75c5c';
 
     keys.forEach(key => {
       const td = document.createElement('td');
@@ -552,7 +518,8 @@ function showFormDataPopup(data) {
   document.body.appendChild(overlay);
 }
 
-function getSavedAndShow(){    let data = [];
+function getSavedAndShow(){    
+  let data = [];
     getAllFormsFromIndexedDB((forms) => {
         if (forms) {
             console.log('All saved forms:', forms);
