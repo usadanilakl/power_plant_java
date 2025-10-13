@@ -1,0 +1,43 @@
+.router-menu ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.router-menu.column ul {
+  display: flex;
+  flex-direction: column;
+}
+
+.router-menu.row ul {
+  display: flex;
+  flex-direction: row;
+}
+
+.router-menu.row li {
+  margin-right: 1rem;
+}
+
+.router-menu.column li {
+  margin-bottom: 0.5rem;
+}
+
+.router-menu a {
+  display: block;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: var(--menu-item-text-color);
+  border-radius: 6px;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  border-left: 3px solid transparent; /* For active indicator */
+}
+
+.router-menu a:hover {
+  background-color: var(--menu-item-hover-bg-color);
+}
+
+.router-menu a.active {
+  color: var(--menu-item-active-text-color);
+  border-left-color: var(--menu-item-active-indicator-color);
+  font-weight: 600;
+}

@@ -1,0 +1,13 @@
+<nav class="router-menu" [ngClass]="layout()">
+  @if (menuItems()) {
+    <ul>
+      @for (item of menuItems(); track item.route) {
+        <li>
+          <a [routerLink]="item.route">{{ item.label }}</a>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p>No menu items available.</p>
+  }
+</nav>

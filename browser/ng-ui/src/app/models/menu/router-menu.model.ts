@@ -6,18 +6,10 @@ export interface RouterMenuItem{
 export type RouterMenuItems = RouterMenuItem[];
 
 // Main menu items
-
 export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/', label: 'Home' },
-    { route: '/loto', label: 'LOTO' },
-    { route: '/loto-points', label: 'LOTO Points' },
-    { route: '/tag-number', label: 'Create New Tag' },
-    { route: '/file', label: 'View Files' },
-    { route: '/print', label: 'Print' },
-    { route: '/backup', label: 'Backup' },
-    { route: '/scheduler', label: 'Scheduler' },
-    { route: '/permit-builder', label: 'Permit Builder' },
-    { route: '/form-designer', label: 'Form Designer' }
+    { route: '/work-request', label: 'Work Request' },
+    { route: '/jha', label: 'JHA' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [

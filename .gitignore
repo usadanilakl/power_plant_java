@@ -149,3 +149,4 @@ token.properties
 /frontend/.angular/
 
 /points.xlsx
+/browser/ng-ui/docs/**
