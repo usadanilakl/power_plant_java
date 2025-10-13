@@ -1,0 +1,10 @@
+<div class="install-container">
+  <h1>Install Application</h1>
+  <p>For the best experience, please install this application to your device.</p>
+  <button *ngIf="showInstallButton" (click)="installPwa()" class="install-button">
+    Install App
+  </button>
+  <p *ngIf="!showInstallButton">
+    Installation is not available at the moment. You might have already installed it, or your browser may not support it.
+  </p>
+</div>

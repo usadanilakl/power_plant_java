@@ -1,0 +1,25 @@
+.install-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.install-button {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.install-button:hover {
+  background-color: var(--accent-color-hover);
+}
