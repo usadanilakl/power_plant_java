@@ -7,6 +7,7 @@ export const standaloneGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
 
   const isStandalone = pwaService.isStandalone();
+  const isStandaloneBypass = pwaService.standaloneBypass;
   const isInstallPage = state.url.includes('/install');
 
   if (isStandalone && isInstallPage) {
@@ -15,7 +16,7 @@ export const standaloneGuard: CanActivateFn = (route, state) => {
     return false;
   }
 
-  if (!isStandalone && !isInstallPage) {
+  if (!isStandalone && !isInstallPage && !isStandaloneBypass) {
     // If app is not installed and user is on any other page, redirect to /install
     router.navigate(['/install']);
     return false;

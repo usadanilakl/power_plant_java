@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { PwaService } from '../../services/pwa.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-install-app-page',
@@ -15,7 +16,7 @@ export class InstallAppPageComponent implements OnInit, OnDestroy {
   private promptSubscription: Subscription | null = null;
   showInstallButton = false;
 
-  constructor(private pwaService: PwaService) {}
+  constructor(private pwaService: PwaService, private router: Router) {}
 
   ngOnInit() {
     this.promptSubscription = this.pwaService.promptEvent$.subscribe(event => {
@@ -51,5 +52,11 @@ export class InstallAppPageComponent implements OnInit, OnDestroy {
       this.installPrompt = null;
       // The service will emit null after installation, hiding the button automatically.
     });
+  }
+
+  bypassStandaloneMode(): void {
+    this.pwaService.standaloneBypass = true;
+    console.log('Standalone mode bypass enabled');
+    this.router.navigateByUrl('/');
   }
 }

@@ -12,6 +12,8 @@ export class PwaService {
    */
   promptEvent$ = this.promptEventSource.asObservable();
 
+  standaloneBypass: boolean = false;
+
   constructor() {
     window.addEventListener('beforeinstallprompt', (event: any) => {
       // Prevent the default mini-infobar from appearing on mobile
