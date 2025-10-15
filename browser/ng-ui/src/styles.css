@@ -11,6 +11,7 @@
   --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   --header-background: #3f51b5;
   --header-text: #ffffff;
+  --accent-color-shadow: rgba(0, 123, 255, 0.25);
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);
@@ -32,6 +33,7 @@
   --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   --header-background: #2c3e50;
   --header-text: #e0e0e0;
+  --accent-color-shadow: rgba(77, 171, 247, 0.25);
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);

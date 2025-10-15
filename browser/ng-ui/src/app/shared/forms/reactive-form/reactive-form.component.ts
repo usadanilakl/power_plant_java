@@ -29,7 +29,7 @@ import { FormInputComponent } from "../../input-fields/form-input/form-input.com
 })
 export class ReactiveFormComponent {
   fields = input<any[]>([]);
-  @Input() values: Signal<any> = signal({});
+  entity = input<any>({});
   layout = input<'row' | 'column' | 'reactive'>('column');
   groupLayout = input<'row' | 'column' | 'reactive' | 'grid'>('grid');
   title = input<string>('');
@@ -44,8 +44,6 @@ export class ReactiveFormComponent {
 
   destroyRef = inject(DestroyRef);
 
-  isValueEditMenuOpen = signal<boolean>(false);
-  isAddValueMenuOpen = signal<boolean>(false);
   selectedCategoryName = signal<string>('');
   formErrors = signal<{ [key: string]: string }>({});
 
@@ -76,7 +74,7 @@ export class ReactiveFormComponent {
     });
 
     effect(() => {
-      const data = this.values(); // re-run when form data changes
+      const data = this.entity(); // re-run when form data changes
       if (data && this.form) {
         this.form.patchValue(data, { emitEvent: false });
       }
@@ -89,7 +87,7 @@ export class ReactiveFormComponent {
 
     formFields.forEach(field => {
       if (field && field.name) {
-        let value = this.getNestedValue(this.values(), field.name);
+        let value = this.getNestedValue(this.entity(), field.name);
 
         if (field.type === 'file') {
           value = null;
@@ -121,7 +119,7 @@ export class ReactiveFormComponent {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(currentValue => {
       // console.log('Form value changed: ', currentValue);
-      const originalData = this.values() || {};
+      const originalData = this.entity() || {};
       const formValue = this.form.value;
       const mergedData = this.deepMerge(originalData, formValue);
       this.formValueChange.emit(mergedData);
@@ -192,7 +190,7 @@ export class ReactiveFormComponent {
 
   onSubmit() {
     if (this.form.valid) {
-      const originalData = this.values() || {};
+      const originalData = this.entity() || {};
       const formValue = this.form.value;
       const mergedData = this.deepMerge(originalData, formValue);
 
@@ -205,24 +203,6 @@ export class ReactiveFormComponent {
 
   onDelete() {
     this.formDelete.emit();
-  }
-
-  onAddNewSelectOption(name: string) {
-    this.selectedCategoryName.set(name);
-    this.isAddValueMenuOpen.set(true);
-  }
-
-  onEditSelectOption(name: string) {
-    this.selectedCategoryName.set(name);
-    this.isValueEditMenuOpen.set(true);
-  }
-
-  closeAddValueMenu() {
-    this.isAddValueMenuOpen.set(false);
-  }
-
-  closeEditMenu(){
-    this.isValueEditMenuOpen.set(false);
   }
 
   onContextMenu(event: MouseEvent) {

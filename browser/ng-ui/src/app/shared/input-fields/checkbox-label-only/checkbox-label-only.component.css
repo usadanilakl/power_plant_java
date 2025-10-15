@@ -20,33 +20,33 @@
 label {
   display: inline-block;
   padding: 8px 16px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   cursor: pointer;
-  background-color: #f9f9f9;
-  color: #333;
+  background-color: var(--secondary-background);
+  color: var(--primary-text);
   transition: background-color 0.2s, color 0.2s, border-color 0.2s;
   user-select: none;
 }
 
 /* Add a focus style for keyboard users */
 .hidden-checkbox:focus + label {
-  outline: 2px solid #007bff;
+  outline: 2px solid var(--accent-color);
   outline-offset: 2px;
 }
 
 label:hover {
-  background-color: #e9e9e9;
+  background-color: var(--menu-item-hover-bg-color);
 }
 
 label.checked {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
+  background-color: var(--accent-color);
+  color: var(--header-text);
+  border-color: var(--accent-color);
 }
 
 label.disabled {
-  background-color: #e9ecef;
+  background-color: #e9ecef; /* Using a standard disabled color as no theme variable exists */
   color: #6c757d;
   cursor: not-allowed;
   border-color: #ced4da;
