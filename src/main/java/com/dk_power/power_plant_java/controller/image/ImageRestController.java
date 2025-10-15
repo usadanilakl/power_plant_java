@@ -21,6 +21,7 @@ public class ImageRestController {
     private final Logger logger = LoggerFactory.getLogger(ImageRestController.class);
 @PostMapping("/text")
 public ResponseEntity<String> getText(@RequestBody Map<String,String> data){
+    System.out.println("data = " + data);
     String imagePath = data.get("path");
     String coordinates = data.get("coordinates");
     
