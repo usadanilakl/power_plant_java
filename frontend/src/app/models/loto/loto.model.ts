@@ -10,6 +10,7 @@ export interface LotoModel extends BasePermitModel {
   lotoPoints: LotoPointDto[];
   locks: LockDto[];
   lotoBox: LotoBoxDto | null;
+  boxNumber: number | null;
   equipmentSystem: string;
   lotoRequestor: string;
   date: string;
@@ -19,6 +20,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
   lotoPoints: LotoPointDto[];
   locks: LockDto[];
   lotoBox: LotoBoxDto | null;
+  boxNumber: number | null;
   
   equipmentSystem: string;
   lotoRequestor: string;
@@ -29,6 +31,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
     this.lotoPoints = data.lotoPoints?.map(point => new LotoPointDto(point)) ?? [];
     this.locks = data.locks?.map(lock => new LockDto(lock)) ?? [];
     this.lotoBox = data.lotoBox ? new LotoBoxDto(data.lotoBox, true) : null;
+    this.boxNumber = data.boxNumber || null;
     this.equipmentSystem = data.equipmentSystem || '';
     this.lotoRequestor = data.lotoRequestor || '';
     this.date = data.date || '';
@@ -41,6 +44,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       lotoPoints: this.lotoPoints.map(point => point.toJson()),
       locks: this.locks.map(lock => lock.toJson()),
       lotoBox: this.lotoBox?.toJson(),
+      boxNumber : this.boxNumber,
       equipmentSystem: this.equipmentSystem,
       lotoRequestor: this.lotoRequestor,
       date: this.date
@@ -59,6 +63,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       lotoPoints: json.lotoPoints?.map((pointJson: any) => LotoPointDto.fromJson(pointJson)) || null,
       locks: (json.locks ?? []).map((lock: any) => LockDto.fromJson(lock)),
       lotoBox: json.lotoBox ? LotoBoxDto.fromJson(json.lotoBox, true) : null,
+      boxNumber: json.boxNumber,
       equipmentSystem: json.equipmentSystem,
       lotoRequestor: json.lotoRequestor,
       date: json.date
@@ -72,6 +77,7 @@ export class LotoDto extends BasePermitDto implements LotoModel {
       lotoPoints: this.lotoPoints.map(point => point.id),
       locks: this.locks.map(lock => lock.id),
       lotoBox: this.lotoBox ? this.lotoBox.id : null,
+      boxNumber: this.boxNumber,
       equipmentSystem: this.equipmentSystem,
       lotoRequestor: this.lotoRequestor,
       date: this.date
@@ -130,6 +136,12 @@ export class LotoDto extends BasePermitDto implements LotoModel {
           { value: 'true', label: 'Yes' },
           { value: 'false', label: 'No' }
         ]
+      }, 
+      {
+        name: 'boxNumber',
+        label: 'Box Number',
+        type: 'number',
+        initialValue: dto.boxNumber?.toString() || ''
       }
     ];
     return fields;

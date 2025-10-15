@@ -35,6 +35,7 @@ public class Loto extends BasePermitEntity {
     private String equipmentSystem;
     private String lotoRequestor;
     private String date;
+    private Integer boxNumber;
 
 
     /*********************************************************************************************************************

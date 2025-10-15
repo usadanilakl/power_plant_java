@@ -4,6 +4,7 @@ export class LotoIdDto extends BasePermitIdDto {
   lotoPoints: number[];
   locks: number[];
   lotoBox: number | null;
+  boxNumber: number | null;
   equipmentSystem: string;
   lotoRequestor: string;
   date: string;
@@ -13,6 +14,7 @@ export class LotoIdDto extends BasePermitIdDto {
     this.lotoPoints = data.lotoPoints || [];
     this.locks = data.locks || [];
     this.lotoBox = data.lotoBox || null;
+    this.boxNumber = data.boxNumber || null;
     this.equipmentSystem = data.equipmentSystem || '';
     this.lotoRequestor = data.lotoRequestor || '';
     this.date = data.date || '';
@@ -24,6 +26,7 @@ export class LotoIdDto extends BasePermitIdDto {
       lotoPoints: this.lotoPoints,
       locks: this.locks,
       lotoBox: this.lotoBox,
+      boxNumber: this.boxNumber,
       equipmentSystem: this.equipmentSystem,
       lotoRequestor: this.lotoRequestor,
       date: this.date
@@ -41,6 +44,7 @@ export class LotoIdDto extends BasePermitIdDto {
       lotoPoints: json.lotoPoints || [],
       locks: json.locks || [],
       lotoBox: json.lotoBox || null,
+      boxNumber: json.boxNumber || null,
       equipmentSystem: json.equipmentSystem || '',
       lotoRequestor: json.lotoRequestor || '',
       date: json.date || ''

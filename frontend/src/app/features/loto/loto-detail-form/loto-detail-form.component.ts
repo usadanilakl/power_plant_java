@@ -33,7 +33,7 @@ export class LotoDetailFormComponent implements OnInit {
   withLotoPointDataBase = input<boolean>(true);
   imageUrls = input<Signal<string[]>>(signal<string[]>([]));
   private _selectedItem: LotoDto | null = null;
-  
+
   @Input() set selectedItem(value: LotoDto | null) {
     console.log('selectedItem', value);
     this._selectedItem = value;
@@ -48,7 +48,7 @@ export class LotoDetailFormComponent implements OnInit {
   }
   layout = input<"row" | "column" | "reactive">('column');
   withPopup = input<boolean>(false);
-  
+
   get selectedItem(): LotoDto | null {
     return this._selectedItem;
   }
@@ -63,7 +63,7 @@ export class LotoDetailFormComponent implements OnInit {
   reorderedItemsEvent = output<LotoPointDto[]>();
 
   isReorderEnabled = signal<boolean>(true);
-  
+
   private lotoStatusOptions = new BehaviorSubject<Option[]>([]);
   lotoPointsFilter$ = new BehaviorSubject<{ key: string; filterFn: (value: any) => boolean }[]>([]);
 
@@ -85,7 +85,7 @@ export class LotoDetailFormComponent implements OnInit {
       // console.log('selectedLotoPointsSubject', this.selectedLotoPointsSubject.value);
     });
   }
-  
+
   ngOnInit() {
     forkJoin({
       lotoStatuses: this.loadOptions(this.sharedDataService.loadPermitStatuses()),
@@ -105,7 +105,7 @@ export class LotoDetailFormComponent implements OnInit {
       })
     ).subscribe();
   }
-  
+
   private loadOptions(source: Observable<ValueDto[]>): Observable<Option[]> {
     return source.pipe(
       map(items => items.map(item => new ValueDto(item).toOption())),
@@ -121,8 +121,9 @@ export class LotoDetailFormComponent implements OnInit {
       { name: 'docNum', label: 'LOTO Number', type: 'text', validators: [Validators.required] },
       { name: 'workScope', label: 'Scope of work', type: 'text', validators: [Validators.required] },
       { name: 'permitStatus.id', label: 'Status', type: 'select', options: this.lotoStatusOptions },
-      { name: 'requestor.name', label: 'Start Date', type: 'date' },
-      { name: 'controlAuthority.name', label: 'End Date', type: 'date' }
+      { name: 'boxNumber', label: 'Box Number', type: 'number', validators: [Validators.required] },
+      // { name: 'requestor.name', label: 'Start Date', type: 'date' },
+      // { name: 'controlAuthority.name', label: 'End Date', type: 'date' }
     ];
   }
 
@@ -146,7 +147,7 @@ export class LotoDetailFormComponent implements OnInit {
       ...formData,
       lotoPoints: this.selectedItem?.lotoPoints || []
     };
-  
+
     if (this.formSubmit) {
       this.formSubmit(updatedFormData);
     }
@@ -175,7 +176,7 @@ export class LotoDetailFormComponent implements OnInit {
     this.isAddPointsPopupOpen=true;
   }
 
-  
+
 
   onSelectPoint(point: LotoPointDto) {
     const currentPoints = this.selectedLotoPointsSubject.value;
@@ -184,28 +185,28 @@ export class LotoDetailFormComponent implements OnInit {
       this.selectedLotoPointsSubject.next(updatedPoints);
     }
   }
-  
+
   onRemovePoint(pointId: number) {
     const currentPoints = this.selectedLotoPointsSubject.value;
     const updatedPoints = currentPoints.filter(p => p.id !== pointId);
     this.selectedLotoPointsSubject.next(updatedPoints);
   }
 
-  
+
   onSaveSelectedPoints() {
     const selectedPoints = this.selectedLotoPointsSubject.value;
-  
+
     if (this.selectedItem) {
       // Update the selectedItem with the new LOTO points
       this.selectedItem.lotoPoints = selectedPoints;
-  
-  
+
+
       // Emit an event to notify the parent component of the update
       this.lotoUpdated.emit(this.selectedItem);
     } else {
       console.error('No LOTO item selected');
     }
-  
+
     this.isAddPointsPopupOpen = false;
   }
 
@@ -213,14 +214,14 @@ export class LotoDetailFormComponent implements OnInit {
     this.isAddPointsPopupOpen = false;
   }
 
-  
+
 
   addOnDoubleClick = (item: any) => {
     this.onSelectPoint(item);
   }
 
   addPointToLoto(point: LotoPointDto){
-    this.addPointToLotoEvent.emit(point); 
+    this.addPointToLotoEvent.emit(point);
   }
 
   onRowLeftClick(lotoPoint: LotoPointDto){
@@ -234,11 +235,11 @@ export class LotoDetailFormComponent implements OnInit {
   removePointFromLoto = (item: LotoPointDto) => {
     this.removePointFromLotoEvent.emit(item);
   }
-  
+
   onItemRightClick = (item: any, event: MouseEvent) => {
     // Implement your right-click logic here, e.g., opening a context menu
   }
-  
+
   onItemMiddleClick = (item: any, event: MouseEvent) => {
     console.log('Middle clicked item:', item);
     // Implement your middle-click logic here

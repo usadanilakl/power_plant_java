@@ -16,9 +16,14 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.sikuli.basics.Settings;
 import org.sikuli.script.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,7 +32,7 @@ import java.util.List;
 @Service
 @Transactional
 public class RedTagAutomationService {
-    private final LotoPointService lotoPointService;
+    private final Logger logger = LoggerFactory.getLogger(RedTagAutomationService.class);
     private final LotoPointMapper lotoPointMapper;
 
     private static final String BASE_PATH = "J:/Jackson Generation P&IDs/Manager App/managed_apps/RedTagIntegration/images/";
@@ -214,9 +219,30 @@ public class RedTagAutomationService {
     private PermitBuildingProgress permitBuildingProgress;
 
 
-    public RedTagAutomationService(LotoPointService lotoPointService, LotoPointMapper lotoPointMapper) {
-        this.lotoPointService = lotoPointService;
+    public RedTagAutomationService(LotoPointMapper lotoPointMapper) {
         this.lotoPointMapper = lotoPointMapper;
+
+        try {
+            // Get the path to the directory where the application is running from.
+            String basePath = new File(".").getCanonicalPath();
+            File tessdataDir = new File(basePath, "tessdata");
+
+            if (!tessdataDir.exists() || !tessdataDir.isDirectory()) {
+                // As a fallback, try to find it in a 'lib' subdirectory, common for packaged apps
+                tessdataDir = new File(basePath, "lib/tessdata");
+            }
+
+            if (tessdataDir.exists() && tessdataDir.isDirectory()) {
+                OCR.globalOptions().dataPath(tessdataDir.getAbsolutePath());
+                System.out.println("Tessdata path set to: " + tessdataDir.getAbsolutePath());
+            } else {
+                // If still not found, throw an error.
+                // This helps in diagnosing setup issues on different machines.
+                throw new IllegalStateException("tessdata directory not found in " + basePath + " or " + new File(basePath, "lib").getAbsolutePath());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to set Tesseract data path", e);
+        }
         screen = new Screen(0);
         screen.setAutoWaitTimeout(30);
         Settings.TypeDelay = 0;
@@ -316,36 +342,40 @@ public class RedTagAutomationService {
 
 
     public String buildDailyPermitPackageTest() throws FindFailed, IOException, InterruptedException {
-        openApp();
-        login();
-        DailyPermitPackageDto packageDto = initData();
 
-        for(HotWorkDto hw : packageDto.getHotWorks()){
-            openNewHwBuilder();
-            fillOutHwForm(hw);
-            String permitNum = saveHwForm();
-            hw.setRedTagNum(permitNum);
-            System.out.println(permitNum + " HW saved");
-        }
+        String num = getPermitNumber();
+        return "";
 
-        for(ConfinedSpaceDto cs : packageDto.getConfinedSpaces()){
-            openNewConfinedSpaceBuilder();
-            fillOutCSForm(cs);
-            String permitNum = saveCsForm();
-            cs.setRedTagNum(permitNum);
-            System.out.println(permitNum + " CS saved");
-        }
-
-        for (SafeWorkDto safeWork : packageDto.getSafeWorks()) {
-            openNewSafeWorkBuilder();
-            fillOutSafeWorkForm(safeWork);
-            String permitNum = saveSafeWork();
-            safeWork.setRedTagNum(permitNum);
-            System.out.println(permitNum + " SW saved");
-            associatePermits(packageDto);
-        }
-
-        return "success";
+//        openApp();
+//        login();
+//        DailyPermitPackageDto packageDto = initData();
+//
+//        for(HotWorkDto hw : packageDto.getHotWorks()){
+//            openNewHwBuilder();
+//            fillOutHwForm(hw);
+//            String permitNum = saveHwForm();
+//            hw.setRedTagNum(permitNum);
+//            System.out.println(permitNum + " HW saved");
+//        }
+//
+//        for(ConfinedSpaceDto cs : packageDto.getConfinedSpaces()){
+//            openNewConfinedSpaceBuilder();
+//            fillOutCSForm(cs);
+//            String permitNum = saveCsForm();
+//            cs.setRedTagNum(permitNum);
+//            System.out.println(permitNum + " CS saved");
+//        }
+//
+//        for (SafeWorkDto safeWork : packageDto.getSafeWorks()) {
+//            openNewSafeWorkBuilder();
+//            fillOutSafeWorkForm(safeWork);
+//            String permitNum = saveSafeWork();
+//            safeWork.setRedTagNum(permitNum);
+//            System.out.println(permitNum + " SW saved");
+//            associatePermits(packageDto);
+//        }
+//
+//        return "success";
     }
 
     public String buildDailyPermitPackage(DailyPermitPackageDto packageDto) {
@@ -355,6 +385,13 @@ public class RedTagAutomationService {
         pause(200);
         permitBuildingProgress.setLoginMessage(login());
         pause(200);
+
+        String lotoBoxes = "";
+        List<LotoDto> lotos = packageDto.getLotos();
+        if(lotos!=null && !lotos.isEmpty()){
+            List<Integer> list = lotos.stream().map(LotoDto::getBoxNumber).toList();
+            lotoBoxes = "LOTO Boxes: " + list.toString();
+        }
 
         for(HotWorkDto hw : packageDto.getHotWorks()){
             HwBuilderProgress progress = new HwBuilderProgress();
@@ -387,6 +424,15 @@ public class RedTagAutomationService {
         }
 
         for (SafeWorkDto safeWork : packageDto.getSafeWorks()) {
+
+            String specialInstructions = safeWork.getSpecialInstructions();
+            if(specialInstructions==null){
+                specialInstructions = lotoBoxes;
+            }else if(!specialInstructions.contains(lotoBoxes)) {
+                specialInstructions += ", " + lotoBoxes;
+            }
+            safeWork.setSpecialInstructions(specialInstructions);
+
             SwBuilderProgress progress = new SwBuilderProgress();
             progress.setSafeWorkDto(safeWork);
 
@@ -423,14 +469,31 @@ public class RedTagAutomationService {
         List<SafeWorkDto> safeWorks = packageDto.getSafeWorks();
         if(id!=0)safeWorks.removeIf(sw -> !sw.getId().equals(id));
 
+        String lotoBoxes = "";
+        List<LotoDto> lotos = packageDto.getLotos();
+        if(lotos!=null && !lotos.isEmpty()){
+            List<Integer> list = lotos.stream().map(LotoDto::getBoxNumber).toList();
+            lotoBoxes = "LOTO Boxes: " + list.toString();
+        }
 
-//        openApp();
-//        login();
+
+        openApp();
+        login();
         for(SafeWorkDto safeWork : safeWorks){
+
+            String specialInstructions = safeWork.getSpecialInstructions();
+            if(specialInstructions==null){
+                specialInstructions = lotoBoxes;
+            }else if(!specialInstructions.contains(lotoBoxes)) {
+                specialInstructions += ", " + lotoBoxes;
+            }
+            safeWork.setSpecialInstructions(specialInstructions);
+
             openNewSafeWorkBuilder();
             fillOutSafeWorkForm(safeWork);
             String permitNum = saveSafeWork();
             safeWork.setRedTagNum(permitNum);
+
             associatePermits(packageDto);
         }
         return "Success";
@@ -1218,6 +1281,8 @@ public class RedTagAutomationService {
             String num = getPermitNumber();
             return num;
         }catch (Exception e){
+            e.printStackTrace();
+            logger.info("Failed saving hot work permit: " + e.getMessage());
             return "Failed saving hot work permit: " + e.getMessage();
         }
     }
@@ -1226,10 +1291,14 @@ public class RedTagAutomationService {
 
     public String getPermitNumber() throws FindFailed {
         Region column = screen.wait(SW_PERMIT_NUMBER_COLUMN,5);
+//        column.click();
         Region firstRow = new Region(column.x-10,column.y+10,column.w+10,column.h+10);
-        firstRow.click();
-        String number = firstRow.text().replaceAll("[^0-9]", "");
-        System.out.println(firstRow.text());
+//        firstRow.click();
+        logger.info("First row has " + firstRow.h + " height");
+        String number = firstRow.text();
+        logger.info("Found permit number: " + number);
+        if(number!=null)number = number.replaceAll("[^0-9]", "");
+        logger.info("Processed number is: " + number);
         return number;
     }
 

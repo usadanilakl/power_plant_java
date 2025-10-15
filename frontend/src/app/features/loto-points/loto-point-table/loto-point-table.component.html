@@ -12,10 +12,11 @@
   (search)="onSearch($event)">
   <ng-container table-controls>
     <button (click)="exportToExcel()">Export To Excel</button>
+    <button (click)="onCreateNewPoint()">Create New Loto Point</button>
   </ng-container>
 </app-shared-table>
 
-<app-popup
+<!-- <app-popup
   [isOpen]="isPopupOpen"
   [title]="'LOTO Point Details'"
   [contentComponent]="LotoPointDetailFormComponent"
@@ -27,22 +28,22 @@
     selectedItem: selectedItem
   }"
   (close)="closePopup()"
-></app-popup>
+></app-popup> -->
 
-<!-- <app-popup-projection
+<app-popup-projection
   [isOpen]="isPopupOpen"
   [title]="'LOTO Point Details'"
   [size]="'medium'"
   (close)="closePopup()"
   >
-<app-loto-point-detail-form
-  [values]="selectedItem"
-  [imageUrls$]="relatedImages$"
-  [selectedItem]="selectedItem"
-  (formSubmit)="onFormSubmit($event)"
-  (formDelete)="onFormDelete()"
-></app-loto-point-detail-form>
-</app-popup-projection> -->
+  <app-loto-point-detail-form
+    [values]="selectedItem"
+    [imageUrls$]="relatedImages$"
+    [selectedItem]="selectedItem"
+    (formSubmit)="onFormSubmit($event)"
+    (formDelete)="onFormDelete()"
+  ></app-loto-point-detail-form>
+</app-popup-projection>
 
 @if(isExporting()){
   <app-popup-projection

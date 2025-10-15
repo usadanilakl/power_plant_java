@@ -17,7 +17,7 @@ import { PopupComponent } from "../../../shared/popup/popup.component";
 @Component({
   selector: 'app-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, PopupProjectionComponent, PopupComponent],
+  imports: [CommonModule, TableComponent, PopupProjectionComponent, PopupComponent, LotoPointDetailFormComponent],
   templateUrl: './loto-point-table.component.html',
 })
 export class LotoPointTableComponent implements OnInit {
@@ -33,7 +33,7 @@ export class LotoPointTableComponent implements OnInit {
 
   @Input() clientSideData$: Observable<LotoPointDto[]> | null = null;
   itemReordered = output<LotoPointDto[]>();
-  
+
 
   columns: Column[] = [
     { id: 'unit', header: 'Unit', accessorKey: 'unit' },
@@ -41,9 +41,9 @@ export class LotoPointTableComponent implements OnInit {
     { id: 'description', header: 'Description', accessorKey: 'description' },
     { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' },
     { id: 'tagged', header: 'Tagging Status', accessorKey: 'tagged' },
-    { 
-      id: 'lotos', 
-      header: 'LOTOs', 
+    {
+      id: 'lotos',
+      header: 'LOTOs',
       accessorFn: (item: any) => {
         if (Array.isArray(item.lotos)) {
           return item.lotos.map((loto: any) => {
@@ -137,7 +137,7 @@ export class LotoPointTableComponent implements OnInit {
       this.loadItems();
     }
   }
-  
+
   onSearch(criteria: SearchCriteria) {
     if(!criteria) return;
     this.currentPage = 1;
@@ -147,7 +147,7 @@ export class LotoPointTableComponent implements OnInit {
       this.performSearch(criteria);
     }
   }
-  
+
   loadMoreItems(criteria: SearchCriteria | void) {
     if (this.clientSideData$) {
       this.currentPage++;
@@ -169,10 +169,10 @@ export class LotoPointTableComponent implements OnInit {
     } else {
       if (this.isLoading) return;
       this.isLoading = true;
-  
+
       this.lotoPointService.getLotoPoints(this.currentPage, this.pageSize).pipe(
         takeUntilDestroyed(this.destroyRef),
-        map((response: SpringPaginatedResponse<LotoPointDto>) => 
+        map((response: SpringPaginatedResponse<LotoPointDto>) =>
           response.responseData.content.map(item => LotoPointDto.fromJson(item))
         ),
         tap(newItems => {
@@ -196,7 +196,7 @@ export class LotoPointTableComponent implements OnInit {
       this.updateClientSideData(criteria);
     } else {
       this.lotoPointService.searchLotoPoints(criteria, this.pageSize).pipe(
-        map((response: SpringPaginatedResponse<LotoPointDto>) => 
+        map((response: SpringPaginatedResponse<LotoPointDto>) =>
           response.responseData.content.map(item => LotoPointDto.fromJson(item))
         ),
         tap(results => {
@@ -217,18 +217,18 @@ export class LotoPointTableComponent implements OnInit {
 
   private updateClientSideData(criteria?: SearchCriteria) {
     if (!this.clientSideData$) return;
-  
+
     this.clientSideData$.pipe(
       take(1),
       map(data => {
         return criteria ? this.applySearchCriteria(data, criteria) : data;
       })
     ).subscribe(filteredData => {
-  
+
       const startIndex = (this.currentPage - 1) * this.pageSize;
       const endIndex = startIndex + this.pageSize;
       const paginatedData = filteredData.slice(startIndex, endIndex);
-  
+
       if (this.currentPage === 1) {
         this.initialItemsSubject.next(paginatedData);
       } else {
@@ -239,14 +239,14 @@ export class LotoPointTableComponent implements OnInit {
   }
 
   private applySearchCriteria(data: LotoPointDto[], criteria: SearchCriteria): LotoPointDto[] {
-  
+
     return data.filter(item => {
       return Object.entries(criteria).some(([key, value]) => {
         if (key === 'page' || !value) return true;
         if (typeof value !== 'string') return true;
-  
+
         const searchValue = value.toLowerCase();
-        
+
         return Object.entries(item).some(([itemKey, itemValue]) => {
           if (itemValue == null) return false;
           const stringValue = String(itemValue).toLowerCase();
@@ -261,7 +261,7 @@ export class LotoPointTableComponent implements OnInit {
       console.error('No item selected for update');
       return;
     }
-  
+
     if (this.submitCallback) {
       const itemToAdd = new LotoPointDto({ ...this.selectedItem, ...formData });
       // Use the provided callback
@@ -291,11 +291,11 @@ export class LotoPointTableComponent implements OnInit {
     }
 
   }
-  
+
   private updateLocalData(updatedItem: LotoPointDto) {
     const currentItems = this.initialItemsSubject.value;
     const itemIndex = currentItems.findIndex(item => item.id === updatedItem.id);
-  
+
     if (itemIndex !== -1) {
       // Update existing item
       const updatedItems = [...currentItems];
@@ -307,12 +307,12 @@ export class LotoPointTableComponent implements OnInit {
       this.initialItemsSubject.next(updatedItems);
     }
   }
-  
+
   private showSuccessMessage(message: string) {
     // Implement your success message display logic here
     // For example, you could use a snackbar or toast notification
   }
-  
+
   private showErrorMessage(message: string) {
     // Implement your error message display logic here
     // For example, you could use a snackbar or toast notification
@@ -322,20 +322,25 @@ export class LotoPointTableComponent implements OnInit {
   onItemClick = (item: LotoPointDto) => {
     this.selectedItem = item;
     this.isPopupOpen = true;
-    this.lotoPointService.getRelatedImages(this.selectedItem.id).subscribe(
-      (response: SpringApiResponse<string[]>) => {
-        if (response.responseData) {
-          const fullUrls = response.responseData.map(url => `http://localhost:8082/${url}`);
-          this.relatedImagesSubject.next(fullUrls);
-        } else {
-          this.relatedImagesSubject.next([]);
-        }
-      },
-      error => {
-        console.error('Error fetching related images:', error);
-        this.relatedImagesSubject.next([]);
-      }
-    );
+    // this.lotoPointService.getRelatedImages(this.selectedItem.id).subscribe(
+    //   (response: SpringApiResponse<string[]>) => {
+    //     if (response.responseData) {
+    //       const fullUrls = response.responseData.map(url => `http://localhost:8082/${url}`);
+    //       this.relatedImagesSubject.next(fullUrls);
+    //     } else {
+    //       this.relatedImagesSubject.next([]);
+    //     }
+    //   },
+    //   error => {
+    //     console.error('Error fetching related images:', error);
+    //     this.relatedImagesSubject.next([]);
+    //   }
+    // );
+  }
+
+  onCreateNewPoint(){
+    this.selectedItem = new LotoPointDto();
+    this.isPopupOpen = true;
   }
 
   onMiddleClick(item: any) {
@@ -343,7 +348,7 @@ export class LotoPointTableComponent implements OnInit {
       this.middleClickCallback(item);
     }
   }
-  
+
   onLeftClick(item: any) {
     if (typeof this.clickCallback === 'function') {
       this.clickCallback(item);
@@ -351,7 +356,7 @@ export class LotoPointTableComponent implements OnInit {
       this.onItemClick(item);
     }
   }
-  
+
   onDoubleClick(item: any) {
     if (typeof this.doubleClickCallback === 'function') {
       this.doubleClickCallback(item);
@@ -363,7 +368,7 @@ export class LotoPointTableComponent implements OnInit {
       this.onItemClick(item);
     }
   }
-  
+
   onRightClick(item: any) {
     if (typeof this.rightClickCallback === 'function') {
       this.rightClickCallback(item);
@@ -371,7 +376,7 @@ export class LotoPointTableComponent implements OnInit {
       this.onItemClick(item);
     }
   }
-  
+
   onColumnDoubleClick(item: any, column: Column) {
     if (typeof this.cellDoubleClickCallback === 'function') {
       this.cellDoubleClickCallback(item, column);
@@ -411,13 +416,13 @@ export class LotoPointTableComponent implements OnInit {
       }
     }
   }
-  
+
   private removeDeletedItemFromLocalData(deletedItemId: number) {
     const currentItems = this.initialItemsSubject.value;
     const updatedItems = currentItems.filter(item => item.id !== deletedItemId);
     this.initialItemsSubject.next(updatedItems);
   }
-  
+
   onOpenImage() {
     // Implement open image logic here
   }

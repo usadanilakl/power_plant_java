@@ -26,8 +26,8 @@
         >
       </app-image-zoom-interactive>
     } @else if(currentFileLink().endsWith('.pdf')){
-      <app-pdf-display-iframe 
-        #pdfDisplay 
+      <app-pdf-display-iframe
+        #pdfDisplay
         [pdfSrc]="currentFileLink()">
       </app-pdf-display-iframe>
     }
@@ -39,11 +39,11 @@
     </div>
   }
 
-  
+
   <!-- New control section added at the bottom of the image container -->
   <div class="control-section">
     <div class="button-row">
-        <button>Some Buttons...</button>
+        <!-- <button>Some Buttons...</button> -->
     </div>
   </div>
 </div>

@@ -4,6 +4,7 @@
   <app-reactive-form
     [fields]="fields()"
     [values]="values()"
+    [layout]="'column'"
     (formSubmit)="onFormSubmit($event)"
     (formDelete)="onFormDelete()">
   </app-reactive-form>
@@ -26,7 +27,7 @@
       <app-file-table
       ></app-file-table>
     </div>
-       
+
   }
 
 } @else {
