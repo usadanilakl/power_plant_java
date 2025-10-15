@@ -339,6 +339,19 @@ public class RedTagAutomationService {
 
 
 
+    public void textRecognitionTest(){
+        try {
+            Region text = screen.wait("C:\\Users\\usada\\OneDrive\\Desktop\\test-text.png",3);
+            String text1 = text.text();
+            text.click();
+            System.out.println(text1);
+        } catch (FindFailed e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
 
 
     public String buildDailyPermitPackageTest() throws FindFailed, IOException, InterruptedException {

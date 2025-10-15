@@ -99,6 +99,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        lotoService.deleteLotoSnapshotTable();
 
 //        fileService.cleanUpFileTypeValueDuplicates();
+
+        redTagAutomationService.textRecognitionTest();
         System.err.println("=====================================================");
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
