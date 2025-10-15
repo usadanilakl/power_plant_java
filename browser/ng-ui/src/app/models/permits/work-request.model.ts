@@ -1,9 +1,9 @@
 import { FormField } from "../inputs/form-field.model";
+import { BaseModel, IBaseModel } from "./base.model";
 
-export interface IWorkRequest {
+export interface IWorkRequest extends IBaseModel {
   id: number;
   sharepointId: string;
-  status: string;
   company: string;
   dateOfWork: string;
   timeOfWork: string;
@@ -19,10 +19,9 @@ export interface IWorkRequest {
   spaceToBeEntered: string;
 }
 
-export class WorkRequest implements IWorkRequest {
+export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest {
   id: number;
   sharepointId: string;
-  status: string;
   company: string;
   dateOfWork: string;
   timeOfWork: string;
@@ -38,9 +37,9 @@ export class WorkRequest implements IWorkRequest {
   spaceToBeEntered: string;
 
   constructor(data: Partial<IWorkRequest> = {}) {
+    super(data);
     this.id = data.id ?? 0;
     this.sharepointId = data.sharepointId ?? '';
-    this.status = data.status ?? 'new';
     this.company = data.company ?? '';
     this.dateOfWork = data.dateOfWork ?? '';
     this.timeOfWork = data.timeOfWork ?? '';
@@ -56,8 +55,8 @@ export class WorkRequest implements IWorkRequest {
     this.spaceToBeEntered = data.spaceToBeEntered ?? '';
   }
 
-  toFormFields(options?: { fields?: (keyof IWorkRequest)[] }): FormField[] {
-    const allFormFields: FormField[] = [
+  getFormFields(): FormField[] {
+    return [
       { name: 'company', label: 'Company', type: 'text', initialValue: this.company },
       { name: 'dateOfWork', label: 'Date of Work', type: 'date', initialValue: this.dateOfWork },
       { name: 'timeOfWork', label: 'Time of Work', type: 'time', initialValue: this.timeOfWork },
@@ -69,11 +68,5 @@ export class WorkRequest implements IWorkRequest {
       { name: 'isHotWorkRequired', label: 'Hot Work Required?', type: 'radio-group', initialValue: this.isHotWorkRequired, options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}] },
       { name: 'isConfinedSpaceEntryRequired', label: 'Confined Space Entry Required?', type: 'radio-group', initialValue: this.isConfinedSpaceEntryRequired, options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}] },
     ];
-
-    if (options?.fields) {
-      return allFormFields.filter(field => options.fields!.includes(field.name as keyof IWorkRequest));
-    }
-
-    return allFormFields;
   }
 }

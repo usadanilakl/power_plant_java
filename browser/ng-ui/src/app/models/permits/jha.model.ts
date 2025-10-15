@@ -1,4 +1,5 @@
 import { FormField } from "../inputs/form-field.model";
+import { BaseModel, IBaseModel } from "./base.model";
 
 export interface IJobStep {
   description: string;
@@ -18,10 +19,9 @@ export class JobStep implements IJobStep {
   }
 }
 
-export interface IJha {
+export interface IJha extends IBaseModel {
   jobName: string;
   applicability: string;
-  status: string;
   analysisBy: string;
   reviewedBy: string;
   approvedBy: string;
@@ -34,10 +34,9 @@ export interface IJha {
   jobSteps: IJobStep[];
 }
 
-export class Jha implements IJha {
+export class Jha extends BaseModel<IJha> implements IJha {
   jobName: string;
   applicability: string;
-  status: string;
   analysisBy: string;
   reviewedBy: string;
   approvedBy: string;
@@ -50,9 +49,9 @@ export class Jha implements IJha {
   jobSteps: JobStep[];
 
   constructor(data: Partial<IJha> = {}) {
+    super(data);
     this.jobName = data.jobName ?? '';
     this.applicability = data.applicability ?? '';
-    this.status = data.status ?? 'new';
     this.analysisBy = data.analysisBy ?? '';
     this.reviewedBy = data.reviewedBy ?? '';
     this.approvedBy = data.approvedBy ?? '';
@@ -65,8 +64,8 @@ export class Jha implements IJha {
     this.jobSteps = data.jobSteps?.map(step => new JobStep(step)) ?? [];
   }
 
-  toFormFields(options?: { fields?: (keyof IJha)[] }): FormField[] {
-    const allFormFields: FormField[] = [
+  getFormFields(): FormField[] {
+    return [
       { name: 'jobName', label: 'Job Name/Title', type: 'text', initialValue: this.jobName },
       { name: 'applicability', label: 'Applicability', type: 'text', initialValue: this.applicability },
       { name: 'analysisBy', label: 'Analysis By', type: 'text', initialValue: this.analysisBy },
@@ -80,11 +79,5 @@ export class Jha implements IJha {
       { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools },
       { name: 'jobSteps', label: 'Job Steps', type: 'multi-input', initialValue: this.jobSteps },
     ];
-
-    if (options?.fields) {
-      return allFormFields.filter(field => options.fields!.includes(field.name as keyof IJha));
-    }
-
-    return allFormFields;
   }
 }
