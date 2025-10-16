@@ -16,9 +16,17 @@ export class WorkRequestApiService {
   submitFormToSharepoint(workRequest: WorkRequest) {
     const request: PowerAutomateRequest<WorkRequestPa> = {
       url: '', // Use default URL from PowerAutomateService
-      data: new WorkRequest(workRequest).convertToPaModel(),
-      entityKey: 'workForm',
+      workForm: new WorkRequest(workRequest).convertToPaModel(),
       actionType: 'save'
+    };
+
+    return this.powerAutomateService.submitForm(request);
+  }
+
+  revokeRequestOnSharepoint(workRequest: WorkRequest) {
+    const request: PowerAutomateRequest<WorkRequestPa> = {
+      id: workRequest.sharepointId,
+      actionType: 'revoke'
     };
 
     return this.powerAutomateService.submitForm(request);

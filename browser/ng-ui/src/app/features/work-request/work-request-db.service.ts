@@ -27,8 +27,12 @@ export class WorkRequestDbService {
     return from(liveQuery(() => this.indexedDbService.workRequests.get(id)));
   }
 
-  updateWorkRequest(id: number, changes: Partial<WorkRequest>): Observable<number> {
-    return from(this.indexedDbService.workRequests.update(id, changes));
+  updateWorkRequest(workRequest: Partial<IWorkRequest> & { id: number }): Observable<number> {
+    const changes = {
+      ...workRequest,
+      updatedAt: new Date()
+    };
+    return from(this.indexedDbService.workRequests.update(workRequest.id, changes));
   }
 
   deleteWorkRequest(id: number): Observable<void> {

@@ -18,17 +18,9 @@ export class PowerAutomateService {
    * @returns An observable that emits the response from Power Automate.
    */
   submitForm<T>(request: PowerAutomateRequest<T>): Observable<any> {
-    const { data, entityKey, actionType } = request;
-    let { url } = request;
 
-    if(!url || url === '') {
-        url = this.permitsUrl;
-    }
-
-    const body = {
-      actionType,
-      [entityKey]: data
-    };
+    const url  = request.url ?? this.permitsUrl;
+    const { url: requestUrl, ...body } = request;
 
     // return throwError(() => of('Error submitting form to Power Automate'))
 

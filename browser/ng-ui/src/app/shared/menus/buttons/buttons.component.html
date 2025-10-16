@@ -1,0 +1,8 @@
+<div class="buttons-container" [class.layout-column]="layout() === 'column'">
+  <button *ngFor="let button of buttons()"
+          [ngClass]="['btn', button.color ? 'btn-' + button.color : 'btn-primary']"
+          (click)="onButtonClick(button)"
+          [disabled]="button.disabled">
+    {{ button.name }}
+  </button>
+</div>

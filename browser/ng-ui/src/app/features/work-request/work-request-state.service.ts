@@ -93,4 +93,30 @@ export class WorkRequestStateService {
     });
   }
 
+  resubmitSelected() {
+    this.workRequestLocalStorageService.saveDraft(this.getSelectedWorkRequest());
+  }
+
+  revokeSelected(){
+    this.globalMessageService.showMessage('Revoking request...', 'white', 20000);
+    this.workRequestApiService.revokeRequestOnSharepoint(this.getSelectedWorkRequest()).pipe(
+      switchMap(response => {
+        console.log('Revocation successful!', response);
+        const updatedWorkRequest = new WorkRequest({...this.getSelectedWorkRequest(), status: 'revoked' });
+        return this.workRequesDbService.updateWorkRequest(updatedWorkRequest).pipe(
+          tap(() => {
+            this.selectWorkRequest(updatedWorkRequest);
+            this.addWorkRequestsToList([updatedWorkRequest]);
+            this.globalMessageService.showMessage('Request revoked successfully.', 'green');
+          })
+        );
+      }),takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        error: (err) => {
+          console.error('Revocation failed!', err);
+          this.globalMessageService.showMessage('Failed to revoke request. Please try again or contact your supervisor.', 'red');
+        }
+      })
+  }
+
 }

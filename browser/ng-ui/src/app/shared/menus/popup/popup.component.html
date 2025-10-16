@@ -1,0 +1,15 @@
+@if (isOpen()) {
+  <div class="popup-overlay">
+    <div class="popup-content" [ngClass]="'popup-' + size()">
+      <div class="popup-header">
+        <h2>{{ title() }}</h2>
+        <button (click)="onClose()" class="close-button">&times;</button>
+      </div>
+      <div class="popup-body">
+        <div class="popup-scroll-content">
+          <ng-content></ng-content>
+        </div>
+      </div>
+    </div>
+  </div>
+}

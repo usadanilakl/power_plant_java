@@ -5,6 +5,8 @@
   min-height: 100%;
   width: 100%;
   overflow: hidden;
+  background-color: var(--primary-background);
+  color: var(--primary-text);
 }
 
 .table-wrapper {
@@ -14,6 +16,175 @@
   min-height: 0; /* This is important for Firefox */
   width: 100%;
   overflow: hidden; /* Changed from visible to hidden */
+}
+
+.table-controls {
+  flex: 0 0 auto;
+  padding: 10px;
+  background-color: var(--secondary-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.default-controls {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.button-row button {
+  margin-right: 10px;
+}
+
+.search-row {
+  width: 100%;
+}
+
+.search-input, .filter-input {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin-bottom: 10px;
+  background-color: var(--primary-background);
+  color: var(--primary-text);
+}
+
+cdk-virtual-scroll-viewport.table-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  height: 100%;
+}
+
+.cdk-virtual-scroll-content-wrapper {
+  width: 100%;
+  min-width: 100%;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--primary-text);
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--secondary-background);
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background-color: var(--secondary-background);
+  z-index: 1;
+  box-shadow: 0 1px 0 0 var(--border-color);
+  cursor: pointer;
+  color: var(--primary-text);
+}
+
+thead tr:nth-child(2) th {
+  top: 41px; /* Adjust based on the height of your first header row */
+}
+
+th, td {
+  border: 1px solid var(--border-color);
+  padding: 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+}
+
+tbody tr {
+  cursor: pointer;
+}
+
+tbody tr:hover {
+  background-color: var(--menu-item-hover-bg-color);
+}
+
+/* Scrollbar styles */
+.table-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background-color: rgba(0,0,0,.5);
+  -webkit-box-shadow: 0 0 1px rgba(255,255,255,.5);
+}
+
+.table-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,.5) transparent;
+}
+
+tr.selected {
+  background-color: var(--accent-color-shadow);
+  font-weight: bold;
+}
+
+tr.selected:hover {
+  background-color: var(--accent-color);
+}
+
+.highlighted {
+  background-color: var(--accent-color-shadow);
+  transition: background-color 0.5s ease;
+}
+
+.ghost-row {
+  opacity: 0.5;
+  background-color: var(--secondary-background);
+}
+
+.dragging {
+  opacity: 0.9;
+  background-color: var(--card-background);
+  box-shadow: var(--card-shadow);
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+  z-index: 1000;
+  pointer-events: none;
+  cursor: grabbing;
+}
+
+/* :host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.table-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .table-controls {
@@ -89,7 +260,7 @@ th {
 }
 
 thead tr:nth-child(2) th {
-  top: 41px; /* Adjust based on the height of your first header row */
+  top: 41px; 
 }
 
 th, td {
@@ -116,7 +287,9 @@ tbody tr:hover {
   background-color: #f5f5f5;
 }
 
-/* Scrollbar styles */
+
+
+
 .table-container::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -161,4 +334,4 @@ tr.selected:hover {
   z-index: 1000;
   pointer-events: none;
   cursor: grabbing;
-}
+} */

@@ -1,0 +1,60 @@
+.buttons-container {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.buttons-container.layout-column {
+  flex-direction: column;
+}
+
+.btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  color: var(--header-text);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Primary Button (Default) */
+.btn-primary {
+  background-color: var(--header-background);
+}
+
+.btn-primary:not(:disabled):hover {
+  background-color: var(--accent-color-hover);
+}
+
+/* Accent Button */
+.btn-accent {
+  background-color: var(--accent-color);
+}
+
+.btn-accent:not(:disabled):hover {
+  background-color: var(--accent-color-hover);
+}
+
+/* Warn Button */
+.btn-warn {
+  background-color: #f44336; /* A common 'warn' color */
+}
+
+.btn-warn:not(:disabled):hover {
+  background-color: #d32f2f;
+}
+
+.dark-theme .btn-warn {
+  background-color: #e57373;
+}
+
+.dark-theme .btn-warn:not(:disabled):hover {
+  background-color: #ef5350;
+}

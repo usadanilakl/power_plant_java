@@ -2,8 +2,8 @@ import { ChangeDetectorRef, Component, DestroyRef, ElementRef, inject, input, In
 import { Column } from '../../models/inputs/column.model';
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import { SearchCriteria, SearchCriteriaDto } from '../../models/api/search-criteria.model';
-import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable, Subject, Subscription } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -19,14 +19,20 @@ export class TableComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   @Input() columns: Column[] = [];
-  @Input() clickCallback!: (item: any, event: MouseEvent) => void;
-  @Input() doubleClickCallback?: (item: any) => void;
-  @Input() rightClickCallback?: (item: any) => void;
-  @Input() middleClickCallback?: (item: any) => void;
-  @Input() cellDoubleClickCallback?: (item: any, column: Column) => void;
+  // @Input() clickCallback!: (item: any, event: MouseEvent) => void;
+  // @Input() doubleClickCallback?: (item: any) => void;
+  // @Input() rightClickCallback?: (item: any) => void;
+  // @Input() middleClickCallback?: (item: any) => void;
+  // @Input() cellDoubleClickCallback?: (item: any, column: Column) => void;
   @Input() deleteItem?: (item: string) => void;
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
+
+  rowClicked = output<{item: any, event: MouseEvent}>();
+  rowDoubleClicked = output<any>();
+  rowRightClicked = output<any>();
+  rowMiddleClicked = output<any>();
+  cellDoubleClicked = output<{item: any, column: Column}>();
 
   @ViewChild('tableContainer') tableContainer!: ElementRef;
   @ViewChild('tableBody') tableBody!: ElementRef;
@@ -51,7 +57,11 @@ export class TableComponent implements OnInit {
   private startDragPosition: { x: number, y: number } = { x: 0, y: 0 };
   ghostRowIndex: number | null = null;
 
-  private _items = new BehaviorSubject<any[]>([]);
+  items = input.required<any[] | Observable<any[]>>({ alias: 'items' });
+  private items$ = toObservable(this.items).pipe(
+    switchMap(value => Array.isArray(value) ? of(value) : value)
+  );
+  private _items: any[] = [];
   filteredItems: any[] = [];
   globalSearchQuery: string = '';
   columnFilters: { [key: string]: string } = {};
@@ -67,25 +77,6 @@ export class TableComponent implements OnInit {
 
   }
 
-  private itemsSubscription: Subscription | null = null;
-
-
-  @Input() set items(value: any[] | Observable<any[]>) {
-    // console.log('Items input received:', value);
-    if (Array.isArray(value)) {
-      // console.log('Array received:', value);
-      this._items.next(value);
-    } else if (value instanceof Observable) {
-      // console.log('Observable received');
-      this.itemsSubscription?.unsubscribe();
-      this.itemsSubscription = value.pipe(
-        takeUntilDestroyed(this.destroyRef)
-      ).subscribe(items => {
-        // console.log('Items from Observable:', items);
-        this._items.next(items);
-      });
-    }
-  }
 
   
   ngAfterViewInit() {
@@ -123,12 +114,13 @@ export class TableComponent implements OnInit {
 
 ngOnInit() {
   // console.log('TableComponent initialized');
-  this._items.pipe(
+  this.items$.pipe(
     debounceTime(0),
     distinctUntilChanged(),
     takeUntilDestroyed(this.destroyRef)
   ).subscribe((items) => {
     // console.log('Items updated:', items);
+    this._items = items;
     this.updateFilteredItems();
     this.cdr.detectChanges();
   });
@@ -144,7 +136,7 @@ ngOnInit() {
 }
 
   updateItems(newItems: any[]) {
-    this._items.next(newItems);
+    this._items = newItems;
   }
 
   onGlobalSearchChange() {
@@ -176,7 +168,7 @@ ngOnInit() {
 
   private updateFilteredItems() {
     // console.log('Updating filtered items: ', this._items.value.length);
-    this.filteredItems = this._items.value.filter(item => {
+    this.filteredItems = this._items.filter(item => {
       if (this.globalSearchQuery) {
         return Object.values(item).some(value => 
           String(value).toLowerCase().includes(this.globalSearchQuery.toLowerCase())
@@ -196,7 +188,7 @@ ngOnInit() {
     }
 
       // Maintain the current order of items
-      const orderedItems = this._items.value.filter(item => 
+      const orderedItems = this._items.filter(item => 
         this.filteredItems.some(filteredItem => filteredItem.id === item.id)
       );
 
@@ -344,6 +336,162 @@ ngOnInit() {
     // console.log('Item indices updated', { filteredItems: this.filteredItems });
   }
   
+  // onRowClick(item: any, event: MouseEvent) {
+  //   if (event.button === 0) { // Left click
+  //     event.preventDefault(); // Prevent default click behavior
+  //     const currentTime = new Date().getTime();
+  //     const timeSinceLastClick = currentTime - this.lastClickTime;
+  
+  //     if (timeSinceLastClick < 300 && !this.isDoubleClickHandled) {
+  //       // Double click
+  //       this.onRowDoubleClick(item);
+  //       setTimeout(() => {
+  //         this.isDoubleClickHandled = false;
+  //       }, 300); // Reset the flag after a short delay
+  //     } else {
+  //       // Single click
+  //       this.lastClickTime = currentTime;
+  //       setTimeout(() => {
+  //         if (!this.isDoubleClickHandled && this.clickCallback) {
+  //           if (event.ctrlKey) {
+  //             this.onRowCtrlClick(item, event);
+  //           } else if (event.shiftKey) {
+  //             this.onRowShiftClick(item, event);
+  //           } else {
+  //             this.clearSelection();
+  //             this.clickCallback(item, event);
+  //           }
+  //         }
+  //       }, 300);
+  //     }
+  //   } else if (event.button === 1 && this.middleClickCallback) { // Middle click
+  //     this.middleClickCallback(item);
+  //   }
+  // }
+  
+  // onRowDoubleClick(item: any) {
+  //   if (this.isDoubleClickHandled) {
+  //     return; // Exit if we've already handled a double-click
+  //   }
+  //   this.isDoubleClickHandled = true;
+  
+  //   if (typeof this.doubleClickCallback === 'function') {
+  //     try {
+  //       this.doubleClickCallback(item);
+  //     } catch (error) {
+  //       console.error('Error executing doubleClickCallback:', error);
+  //     }
+  //   }
+  
+  //   if (typeof this.cellDoubleClickCallback === 'function') {
+  //     try {
+  //       if (this.lastClickedCell && this.lastClickedCell.column) {
+  //         this.cellDoubleClickCallback(item, this.lastClickedCell.column);
+  //       } else {
+  //         console.warn('lastClickedCell or its column is undefined');
+  //       }
+  //     } catch (error) {
+  //       console.error('Error executing cellDoubleClickCallback:', error);
+  //     }
+  //   }
+  // }
+  
+  // onRowRightClick(item: any, event: MouseEvent) {
+  //   if (typeof this.rightClickCallback === 'function') {
+  //     event.preventDefault(); // Prevent the default context menu
+  //     try {
+  //       this.rightClickCallback(item);
+  //     } catch (error) {
+  //       console.error('Error executing rightClickCallback:', error);
+  //     }
+  //   }
+  // }
+
+  // onRowCtrlClick(item: any, event: MouseEvent) {
+  //   const index = this.selectedItems.findIndex(i => i.id === item.id);
+  //   if (index > -1) {
+  //     this.selectedItems.splice(index, 1);
+  //   } else {
+  //     this.selectedItems.push(item);
+  //   }
+  //   this.lastClickedItem = item;
+  //   this.selectedItemsEvent.emit(this.selectedItems);
+  // }
+
+  // onRowShiftClick(item: any, event: MouseEvent) {
+  //   if (!this.lastClickedItem) {
+  //     this.lastClickedItem = item;
+  //     this.selectedItems = [item];
+  //     return;
+  //   }
+  
+  //   const allItems = this._items;
+  //   const lastIndex = allItems.findIndex(i => i.id === this.lastClickedItem.id);
+  //   const currentIndex = allItems.findIndex(i => i.id === item.id);
+  
+  //   if (lastIndex === -1 || currentIndex === -1) return;
+  
+  //   const start = Math.min(lastIndex, currentIndex);
+  //   const end = Math.max(lastIndex, currentIndex);
+  
+  //   const itemsToToggle = allItems.slice(start, end + 1);
+  
+  //   // Determine if we're selecting or unselecting based on the state of the current item
+  //   const isSelecting = !this.selectedItems.some(i => i.id === item.id);
+  
+  //   if (isSelecting) {
+  //     // Add items that are not already selected
+  //     this.selectedItems = [...new Set([...this.selectedItems, ...itemsToToggle])];
+  //   } else {
+  //     // Remove the toggled items from selection
+  //     this.selectedItems = this.selectedItems.filter(i => !itemsToToggle.some(ti => ti.id === i.id));
+  //   }
+  
+  //   this.lastClickedItem = item;
+  //   this.selectedItemsEvent.emit(this.selectedItems);
+  // }
+
+  // onRowHover(item: any) {
+  //   this.hoverSubject.next(item);
+  // }
+
+  clearSelection() {
+    this.selectedItems = [];
+    this.lastClickedItem = null;
+  }
+
+  registerLastClickedCell(item: any, column: Column, event: MouseEvent) {
+    this.lastClickedCell = { item, column };
+  }
+
+  onDeleteSelectedItems() {
+    if (this.deleteItem && this.selectedItems.length > 0) {
+      const deletedIds = new Set();
+  
+      // Delete items and collect their IDs
+      for (let item of this.selectedItems) {
+        this.deleteItem(item.id);
+        deletedIds.add(item.id);
+      }
+  
+      // Remove deleted items from _items
+      const updatedItems = this._items.filter(item => !deletedIds.has(item.id));
+      this._items = updatedItems;
+  
+      // Clear selected items
+      this.selectedItems = [];
+  
+      // Update filtered items
+      this.updateFilteredItems();
+  
+      // Trigger change detection
+      this.cdr.detectChanges();
+    }
+  }
+
+
+  //Click event handlers for the table
+  
   onRowClick(item: any, event: MouseEvent) {
     if (event.button === 0) { // Left click
       event.preventDefault(); // Prevent default click behavior
@@ -360,20 +508,20 @@ ngOnInit() {
         // Single click
         this.lastClickTime = currentTime;
         setTimeout(() => {
-          if (!this.isDoubleClickHandled && this.clickCallback) {
+          if (!this.isDoubleClickHandled) {
             if (event.ctrlKey) {
               this.onRowCtrlClick(item, event);
             } else if (event.shiftKey) {
               this.onRowShiftClick(item, event);
             } else {
               this.clearSelection();
-              this.clickCallback(item, event);
+              this.rowClicked.emit({item:item, event:event});
             }
           }
         }, 300);
       }
-    } else if (event.button === 1 && this.middleClickCallback) { // Middle click
-      this.middleClickCallback(item);
+    } else if (event.button === 1) { // Middle click
+      this.rowMiddleClicked.emit(item);
     }
   }
   
@@ -383,36 +531,13 @@ ngOnInit() {
     }
     this.isDoubleClickHandled = true;
   
-    if (typeof this.doubleClickCallback === 'function') {
-      try {
-        this.doubleClickCallback(item);
-      } catch (error) {
-        console.error('Error executing doubleClickCallback:', error);
-      }
-    }
-  
-    if (typeof this.cellDoubleClickCallback === 'function') {
-      try {
-        if (this.lastClickedCell && this.lastClickedCell.column) {
-          this.cellDoubleClickCallback(item, this.lastClickedCell.column);
-        } else {
-          console.warn('lastClickedCell or its column is undefined');
-        }
-      } catch (error) {
-        console.error('Error executing cellDoubleClickCallback:', error);
-      }
-    }
+    this.rowDoubleClicked.emit(item);
+    this.cellDoubleClicked.emit({item:item, column: this.lastClickedCell.column});
   }
   
   onRowRightClick(item: any, event: MouseEvent) {
-    if (typeof this.rightClickCallback === 'function') {
-      event.preventDefault(); // Prevent the default context menu
-      try {
-        this.rightClickCallback(item);
-      } catch (error) {
-        console.error('Error executing rightClickCallback:', error);
-      }
-    }
+    event.preventDefault(); // Prevent the default context menu
+    this.rowRightClicked.emit(item);
   }
 
   onRowCtrlClick(item: any, event: MouseEvent) {
@@ -433,7 +558,7 @@ ngOnInit() {
       return;
     }
   
-    const allItems = this._items.value;
+    const allItems = this._items;
     const lastIndex = allItems.findIndex(i => i.id === this.lastClickedItem.id);
     const currentIndex = allItems.findIndex(i => i.id === item.id);
   
@@ -463,37 +588,5 @@ ngOnInit() {
     this.hoverSubject.next(item);
   }
 
-  clearSelection() {
-    this.selectedItems = [];
-    this.lastClickedItem = null;
-  }
 
-  registerLastClickedCell(item: any, column: Column, event: MouseEvent) {
-    this.lastClickedCell = { item, column };
-  }
-
-  onDeleteSelectedItems() {
-    if (this.deleteItem && this.selectedItems.length > 0) {
-      const deletedIds = new Set();
-  
-      // Delete items and collect their IDs
-      for (let item of this.selectedItems) {
-        this.deleteItem(item.id);
-        deletedIds.add(item.id);
-      }
-  
-      // Remove deleted items from _items
-      const updatedItems = this._items.value.filter(item => !deletedIds.has(item.id));
-      this._items.next(updatedItems);
-  
-      // Clear selected items
-      this.selectedItems = [];
-  
-      // Update filtered items
-      this.updateFilteredItems();
-  
-      // Trigger change detection
-      this.cdr.detectChanges();
-    }
-  }
 }
