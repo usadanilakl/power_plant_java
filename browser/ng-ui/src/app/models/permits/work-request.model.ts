@@ -118,7 +118,12 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
         { id: 'workRequestedBy', header: 'Requested By', accessorKey: 'workRequestedBy' },
         { id: 'locationOfWork', header: 'Location', accessorKey: 'locationOfWork' },
         { id: 'affectedEquipment', header: 'Affected Equipment', accessorKey: 'affectedEquipment' },
-        { id: 'status', header: 'Status', accessorKey: 'status' },
+        {
+          id: 'status',
+          header: 'Status',
+          accessorKey: 'status',
+          conditionalStyling: (item: IWorkRequest) => this.getStyleByStatus(item.status)
+        },
         {
           id: 'dateOfWork',
           header: 'Date of Work',
@@ -137,6 +142,21 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
           accessorFn: (item: IWorkRequest) => new Date(item.updatedAt).toLocaleDateString()
         },
       ];
+    }
+
+    getStyleByStatus(status: string): { backgroundColor: string; color: string } {
+      switch (status) {
+        case 'new':
+          return { backgroundColor: '#f1f1f1', color: '#000' };
+        case 'pending':
+          return { backgroundColor: '#ffeb3b', color: '#000' };
+        case 'received':
+          return { backgroundColor: '#4caf50', color: '#fff' };
+        case 'revoked':
+          return { backgroundColor: '#f44336', color: '#fff' };
+        default:
+          return { backgroundColor: '#f1f1f1', color: '#000' };
+      }
     }
 
   convertToPaModel(): WorkRequestPa {

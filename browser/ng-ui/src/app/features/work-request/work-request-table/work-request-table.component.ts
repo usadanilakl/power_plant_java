@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, input, OnInit } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, OnInit, output } from '@angular/core';
 import { WorkRequestStateService } from '../work-request-state.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { WorkRequest } from '../../../models/permits/work-request.model';
@@ -21,6 +21,8 @@ export class WorkRequestTableComponent implements OnInit {
   itemsFromService = toSignal(this.workRequestStateService.allWorkRequests$, { initialValue: [] });
   items = computed(() => this.itemsInput()?? this.itemsFromService());
   selectedItem = toSignal(this.workRequestStateService.selectedWorkRequest$, { initialValue: new WorkRequest() });
+
+  actionPopupClosed = output<void>();
 
   columns = new WorkRequest().toTableColumns();
   actionButtons: ButtonConfig[] = [];
@@ -45,10 +47,12 @@ export class WorkRequestTableComponent implements OnInit {
 
   closeActionMenu() {
     this.isActionMenuOpen = false;
+    this.actionPopupClosed.emit();
   }
 
   resubmitSelected(): void {
-    console.log('Resubmitting:', this.selectedItem());
+    // console.log('Resubmitting:', this.selectedItem());
+    this.workRequestStateService.resubmitSelected();
     this.closeActionMenu();
   }
 

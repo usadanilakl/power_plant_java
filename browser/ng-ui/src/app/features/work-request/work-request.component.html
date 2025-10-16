@@ -1,1 +1,13 @@
+
+<button class="resubmit-button" (click)="openTablePopup()">Resubmit Previous Request</button>
 <app-work-request-form></app-work-request-form>
+<app-popup
+    [title]="'Table contains previously submitted requests from THIS divice and THIS browser'"
+    [size]="'large'"
+    [isOpen]="isTablePopupOpen"
+    (close)="closeTablePopup()"
+>
+    <app-work-request-table
+        (actionPopupClosed)="closeTablePopup()"
+    ></app-work-request-table>
+</app-popup>
