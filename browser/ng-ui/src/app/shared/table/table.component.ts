@@ -156,6 +156,7 @@ ngOnInit() {
   }
 
   private performSearch() {
+    console.log('Performing search with query:', this.globalSearchQuery);
     const filters = Object.entries(this.columnFilters)
       .filter(([_, value]) => value !== '')
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
@@ -169,6 +170,7 @@ ngOnInit() {
 
     this.columnFilters = {...filters}
 
+    this.updateFilteredItems();
     this.search.emit(searchCriteria);
   }
 
