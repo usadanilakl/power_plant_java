@@ -28,4 +28,12 @@ export class WorkRequestFormComponent {
 
   constructor() { }
 
+  onAnyValueChange(workRequest: WorkRequest) {
+    this.workRequestStateService.saveDraft(workRequest);
+  }
+
+  onSubmit(workReuest: WorkRequest) {
+    this.workRequestStateService.submitNewRequest(workReuest);
+  }
+
 }

@@ -1,4 +1,3 @@
-
 <div class="radio-group">
   <span class="group-label">{{ label }}</span>
   <div class="options-container">
@@ -6,13 +5,13 @@
       <div class="option">
         <input 
           type="radio" 
-          [id]="option.value" 
+          [id]="label + '-'+option.value" 
           [name]="name" 
           [value]="option.value" 
           [checked]="value === option.value"
           (change)="onRadioChange(option)"
         >
-        <label [for]="option.value">{{ option.label }}</label>
+        <label [for]="label + '-'+option.value">{{ option.label }}</label>
       </div>
     }
   </div>

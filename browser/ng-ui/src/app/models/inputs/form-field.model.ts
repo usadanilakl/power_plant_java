@@ -37,6 +37,10 @@ export interface FormField {
     left?: boolean;
   };
   group?: FormFieldGroup;
+  showWhen?: {
+    field: string;
+    value: any;
+  };
 }
 
 export interface FormFieldGroup {

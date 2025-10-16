@@ -2,4 +2,6 @@
   [entity]="entity()"
   [fields]="fields()"
   [title]="'Work Request'"
+  (formValueChange)="onAnyValueChange($event)"
+  (formSubmit)="onSubmit($event)"
 ></app-reactive-form>

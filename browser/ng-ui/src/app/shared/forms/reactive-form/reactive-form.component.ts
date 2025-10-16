@@ -126,6 +126,14 @@ export class ReactiveFormComponent {
     });
   }
 
+  shouldShowField(field: FormField): boolean {
+    if (!field.showWhen) {
+      return true; // Always show if no condition is set
+    }
+    const control = this.form.get(field.showWhen.field);
+    return control ? control.value === field.showWhen.value : false;
+  }
+
   private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl) {
     const pathParts = path.split('.');
     let currentGroup: any = group;
