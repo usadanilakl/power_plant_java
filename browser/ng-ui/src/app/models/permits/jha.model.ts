@@ -1,3 +1,4 @@
+import { Column } from "../inputs/column.model";
 import { FormField } from "../inputs/form-field.model";
 import { BaseModel, IBaseModel } from "./base.model";
 
@@ -80,4 +81,17 @@ export class Jha extends BaseModel<IJha> implements IJha {
       { name: 'jobSteps', label: 'Job Steps', type: 'multi-input', initialValue: this.jobSteps },
     ];
   }
+  
+    getTableColumns(): Column[] {
+      return [
+        { id: 'jobName', header: 'Job Name', accessorKey: 'jobName' },
+        { id: 'analysisBy', header: 'Analysis By', accessorKey: 'analysisBy' },
+        { id: 'status', header: 'Status', accessorKey: 'status' },
+        {
+          id: 'updatedAt',
+          header: 'Last Updated',
+          accessorFn: (item: IJha) => new Date(item.updatedAt).toLocaleDateString()
+        },
+      ];
+    }
 }

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { firstValueFrom, timeout, catchError, of, Observable, throwError } from 'rxjs';
+import { firstValueFrom, timeout, catchError, of, Observable, throwError, delay, timer, switchMap } from 'rxjs';
 import { PowerAutomateRequest } from '../models/api/power-automate-request.model';
 
 @Injectable({
@@ -29,6 +29,8 @@ export class PowerAutomateService {
       actionType,
       [entityKey]: data
     };
+
+    // return throwError(() => of('Error submitting form to Power Automate'))
 
     return this.http.post(url, body).pipe(
       timeout(15000), // 15-second timeout

@@ -102,6 +102,13 @@ button[type="button"]:hover {
   background-color: #d32f2f;
 }
 
+.error-message {
+  color: #f44336; /* A standard red for errors */
+  font-size: 0.8em;
+  margin-top: 5px;
+  padding-left: 2px;
+}
+
 @media (max-width: 600px) {
   .form-layout-row,
   .form-layout-reactive {
@@ -115,12 +122,6 @@ button[type="button"]:hover {
 
   .form-layout-grid {
     grid-template-columns: 1fr;
-  }
-
-  .error-message {
-    color: red;
-    font-size: 0.8em;
-    margin-top: 5px;
   }
   
 }

@@ -28,7 +28,7 @@ import { FormInputComponent } from "../../input-fields/form-input/form-input.com
   styleUrl: './reactive-form.component.css'
 })
 export class ReactiveFormComponent {
-  fields = input<any[]>([]);
+  fields = input<FormField[]>([]);
   entity = input<any>({});
   layout = input<'row' | 'column' | 'reactive'>('column');
   groupLayout = input<'row' | 'column' | 'reactive' | 'grid'>('grid');
@@ -107,11 +107,12 @@ export class ReactiveFormComponent {
         }
 
         // Use the new helper to create nested structure
-        this.setNestedControl(group, field.name, new FormControl(value, []));
+        this.setNestedControl(group, field.name, new FormControl(value, field.validators || []));
       }
     });
 
     this.form = this.fb.group(group);
+    this.setupConditionalValidators();
     
     this.form.valueChanges.pipe(
       debounceTime(1000), // Wait for 300ms of inactivity before emitting
@@ -132,6 +133,36 @@ export class ReactiveFormComponent {
     }
     const control = this.form.get(field.showWhen.field);
     return control ? control.value === field.showWhen.value : false;
+  }
+
+  private setupConditionalValidators(): void {
+    this.fields().forEach(field => {
+      if (field.showWhen) {
+        const controllingField = this.form.get(field.showWhen.field);
+        const dependentControl = this.form.get(field.name);
+
+        if (controllingField && dependentControl) {
+          // Function to update validators based on controlling field's value
+          const updateValidators = (value: any) => {
+            if (this.shouldShowField(field)) {
+              dependentControl.setValidators(field.validators ?? []);
+            } else {
+              dependentControl.clearValidators();
+              dependentControl.reset(undefined, { emitEvent: false }); // Reset value when hidden
+            }
+            dependentControl.updateValueAndValidity({ emitEvent: false });
+          };
+
+          // Subscribe to changes and automatically unsubscribe on component destruction
+          controllingField.valueChanges.pipe(
+            takeUntilDestroyed(this.destroyRef)
+          ).subscribe(updateValidators);
+
+          // Run the check once initially
+          updateValidators(controllingField.value);
+        }
+      }
+    });
   }
 
   private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl) {
@@ -206,6 +237,7 @@ export class ReactiveFormComponent {
     } else {
       console.error('Form is invalid');
       this.form.markAllAsTouched();
+      this.updateFormErrors();
     }
   }
 
@@ -224,6 +256,37 @@ export class ReactiveFormComponent {
       return currentForm.value;
     }
     return null;
+  }
+
+  private updateFormErrors() {
+    const errors: { [key: string]: string } = {};
+    this.fields().forEach(field => {
+      const control = this.form.get(field.name);
+      if (control && control.invalid && (control.dirty || control.touched)) {
+        if (control.errors) {
+          const errorKey = Object.keys(control.errors)[0];
+          errors[field.name] = this.getErrorMessage(field.label, errorKey, control.errors[errorKey]);
+        }
+      }
+    });
+    this.formErrors.set(errors);
+  }
+
+  private getErrorMessage(fieldName: string, errorKey: string, errorValue: any): string {
+    switch (errorKey) {
+      case 'required':
+        return `${fieldName} is required.`;
+      case 'minlength':
+        return `${fieldName} must be at least ${errorValue.requiredLength} characters long.`;
+      case 'maxlength':
+        return `${fieldName} cannot be more than ${errorValue.requiredLength} characters long.`;
+      case 'email':
+        return `Please enter a valid email address.`;
+      case 'pastDate':
+        return `Date for ${fieldName} cannot be in the past.`;
+      default:
+        return `Invalid input for ${fieldName}.`;
+    }
   }
 
 }

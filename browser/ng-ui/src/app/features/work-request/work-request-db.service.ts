@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { IndexedDbService } from '../../services/indexed-db.service';
 import { IWorkRequest, WorkRequest } from '../../models/permits/work-request.model';
+import { from, Observable } from 'rxjs';
+import { liveQuery } from 'dexie';
 
 @Injectable({
   providedIn: 'root'
@@ -9,25 +11,27 @@ export class WorkRequestDbService {
 
   constructor(private indexedDbService: IndexedDbService) { }
 
-  async addWorkRequest(workRequestData: Partial<IWorkRequest>): Promise<number> {
+  addWorkRequest(workRequestData: Partial<IWorkRequest>): Observable<number> {
     const newWorkRequest = new WorkRequest(workRequestData);
-    return this.indexedDbService.workRequests.add(newWorkRequest);
+    return from(this.indexedDbService.workRequests.add(newWorkRequest));
   }
 
-  async getAllWorkRequests(): Promise<WorkRequest[]> {
-    // Sort by creation date in descending order
-    return this.indexedDbService.workRequests.orderBy('createdAt').reverse().toArray();
+  getAllWorkRequests(): Observable<WorkRequest[]> {
+    // liveQuery makes this Observable automatically emit new values when the underlying data changes.
+    return from(liveQuery(() =>
+      this.indexedDbService.workRequests.orderBy('createdAt').reverse().toArray()
+    ));
   }
 
-  async getWorkRequestById(id: number): Promise<WorkRequest | undefined> {
-    return this.indexedDbService.workRequests.get(id);
+  getWorkRequestById(id: number): Observable<WorkRequest | undefined> {
+    return from(liveQuery(() => this.indexedDbService.workRequests.get(id)));
   }
 
-  async updateWorkRequest(id: number, changes: Partial<WorkRequest>): Promise<number> {
-    return this.indexedDbService.workRequests.update(id, changes);
+  updateWorkRequest(id: number, changes: Partial<WorkRequest>): Observable<number> {
+    return from(this.indexedDbService.workRequests.update(id, changes));
   }
 
-  async deleteWorkRequest(id: number): Promise<void> {
-    return this.indexedDbService.workRequests.delete(id);
+  deleteWorkRequest(id: number): Observable<void> {
+    return from(this.indexedDbService.workRequests.delete(id));
   }
 }

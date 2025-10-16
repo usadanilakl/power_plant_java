@@ -1,10 +1,11 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of } from 'rxjs';
+import { BehaviorSubject, Observable, of, switchMap, tap } from 'rxjs';
 import { WorkRequest } from '../../models/permits/work-request.model';
 import { WorkRequestApiService } from './wokr-request-api.service';
 import { WorkRequestLocalStorageService } from './work-request-local-storage.service';
 import { WorkRequestDbService } from './work-request-db.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { GlobalMessageService } from '../../services/global-message.service';
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +15,7 @@ export class WorkRequestStateService {
   workRequestApiService = inject(WorkRequestApiService);
   workRequestLocalStorageService = inject(WorkRequestLocalStorageService);
   workRequesDbService = inject(WorkRequestDbService);
+  globalMessageService = inject(GlobalMessageService);
   destroyRef = inject(DestroyRef)
 
   constructor() { 
@@ -28,7 +30,10 @@ export class WorkRequestStateService {
   selectedWorkRequest$ = this.selectedWorkRequestSubject.asObservable();
 
   loadWorkRequests() {
-    this.allWorkRequestsSubject.next([]); //to be implemented with actual API call
+    this.workRequesDbService.getAllWorkRequests().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (workRequests) => this.allWorkRequestsSubject.next(workRequests),
+      error: (error) => this.globalMessageService.showMessage('Error loading work requests from API', 'red', 20000)
+    });
   }
 
   addWorkRequestsToList(workRequests: WorkRequest[]): void {
@@ -59,21 +64,31 @@ export class WorkRequestStateService {
       this.selectWorkRequest(new WorkRequest(draft));
     }
   }
+
   submitNewRequest(workReuest: WorkRequest) {
+    this.globalMessageService.showMessage('Submitting request...', 'white', 20000);
     this.workRequestApiService.submitFormToSharepoint(workReuest).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (response) => {
+      switchMap(response => {
         console.log('Submission successful!', response);
         const updatedWorkRequest = new WorkRequest({...workReuest, sharepointId: response.id, status: 'received'  });
-        this.workRequesDbService.addWorkRequest(updatedWorkRequest);
-        this.selectWorkRequest(updatedWorkRequest);
-        this.workRequestLocalStorageService.clearDraft();
-        this.addWorkRequestsToList([updatedWorkRequest]);
+        // The addWorkRequest observable will be executed by switchMap
+        return this.workRequesDbService.addWorkRequest(updatedWorkRequest).pipe(
+          // tap allows side-effects without altering the stream
+          tap(() => {
+            this.selectWorkRequest(updatedWorkRequest);
+            this.workRequestLocalStorageService.clearDraft();
+            this.addWorkRequestsToList([updatedWorkRequest]);
+          })
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        this.globalMessageService.showMessage('Request submitted successfully.', 'green');
       },
       error: (err) => {
         console.error('Submission failed!', err);
-        // Handle error (e.g., show a notification to the user)
+        this.globalMessageService.showMessage('Failed to submit request. Please try again or submit by email.', 'red');
       }
     });
   }

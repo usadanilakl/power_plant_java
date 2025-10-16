@@ -1,7 +1,9 @@
+import { Column } from "../inputs/column.model";
 import { FormField } from "../inputs/form-field.model";
 
 
 export interface IBaseModel {
+  id: number;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -13,11 +15,13 @@ export interface IBaseModel {
  * @template T The interface representing the structure of the model.
  */
 export abstract class BaseModel<T extends IBaseModel> implements IBaseModel {
+  id: number;
   status: string;
   createdAt: Date;
   updatedAt: Date;
 
   constructor(data: Partial<T> = {}) {
+    this.id = data.id as number; 
     this.status = data.status ?? 'new';
     this.createdAt = data.createdAt ?? new Date();
     this.updatedAt = data.updatedAt ?? new Date();
@@ -28,6 +32,12 @@ export abstract class BaseModel<T extends IBaseModel> implements IBaseModel {
    * This method is responsible for mapping model properties to their form field representations.
    */
   abstract getFormFields(): FormField[];
+
+  /**
+   * When implemented in a derived class, returns the complete list of Column definitions for the model.
+   * This method is responsible for mapping model properties to their table column representations.
+   */
+  abstract getTableColumns(): Column[];
 
   /**
    * Returns a list of form fields for the model, with an option to filter for a specific subset of fields.
@@ -45,5 +55,23 @@ export abstract class BaseModel<T extends IBaseModel> implements IBaseModel {
 
     // Otherwise, return all form fields.
     return allFormFields;
+  }
+
+  /**
+   * Returns a list of table columns for the model, with an option to filter for a specific subset of columns.
+   * This method contains the reusable filtering logic.
+   * @param options An optional object that can contain an array of column IDs to include.
+   * @returns An array of Column objects.
+   */
+  toTableColumns(options?: { columns?: string[] }): Column[] {
+    const allTableColumns = this.getTableColumns();
+
+    if (options?.columns) {
+      // If a columns array is provided, filter the columns to include only those specified by id.
+      return allTableColumns.filter(column => options.columns!.includes(column.id));
+    }
+
+    // Otherwise, return all table columns.
+    return allTableColumns;
   }
 }
