@@ -27,6 +27,7 @@ public class ConfinedSpaceMapper implements BaseMapper {
         dto.setMeterModel(entity.getMeterModel());
         dto.setMeterNum(entity.getMeterNum());
         dto.setCalibrated(entity.isCalibrated());
+        dto.setRedTagNum(entity.getRedTagNum());
 
         try {
             dto.setHazards(entity.getHazards());
@@ -53,6 +54,7 @@ public class ConfinedSpaceMapper implements BaseMapper {
         entity.setMeterModel(dto.getMeterModel());
         entity.setMeterNum(dto.getMeterNum());
         entity.setCalibrated(dto.isCalibrated());
+        entity.setRedTagNum(dto.getRedTagNum());
 
         try {
             entity.setHazards(dto.getHazards());

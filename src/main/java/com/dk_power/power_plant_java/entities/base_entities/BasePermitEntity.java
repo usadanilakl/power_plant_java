@@ -49,6 +49,7 @@ public class BasePermitEntity extends BaseAuditEntity {
     @JoinColumn(name="permit_status_id")
     private Value permitStatus;
     private Boolean temp;
+    private String redTagNum;
 
 }
 

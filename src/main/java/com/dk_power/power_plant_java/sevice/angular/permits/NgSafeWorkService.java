@@ -56,6 +56,11 @@ public class NgSafeWorkService implements NgCrudService<SafeWork, SafeWorkDto, S
         return SafeWork.class;
     }
 
+    @Override
+    public SafeWork save(SafeWorkDto dto) {
+        SafeWork sw = safeWorkMapper.convertToEntity(dto);
+        return safeWorkRepo.save(sw);
+    }
 
     public SafeWorkDto createSafeWork(SafeWorkDto safeWorkDto) {
         SafeWork safeWork = safeWorkMapper.convertToEntity(safeWorkDto);
