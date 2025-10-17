@@ -177,4 +177,35 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
       spaceToBeEntered: this.spaceToBeEntered
     });
   }
+
+  getEmailBody(): string {
+    const paModel = this.convertToPaModel();
+    const fieldLabels: { [key: string]: string } = {
+      company: 'Company',
+      dateOfWork: 'Date of Work',
+      timeOfWork: 'Time of Work',
+      locationOfWork: 'Location of Work',
+      workRequestedBy: 'Work Requested By',
+      affectedEquipment: 'Affected Equipment',
+      workScope: 'Work Scope',
+      isLOTORequired: 'LOTO Required',
+      isHotWorkRequired: 'Hot Work Required',
+      isConfinedSpaceEntryRequired: 'Confined Space Entry Required',
+      foremanName: 'Foreman Name',
+      fireWatchName: 'Fire Watch Name',
+      spaceToBeEntered: 'Space to be Entered'
+    };
+
+    let body = '';
+    for (const key in paModel) {
+      if (Object.prototype.hasOwnProperty.call(paModel, key)) {
+        const label = fieldLabels[key] || key;
+        const value = (paModel as any)[key];
+        if (value) { // Only include fields that have a value
+          body += `${label}: ${value}\n`;
+        }
+      }
+    }
+    return body;
+  }
 }

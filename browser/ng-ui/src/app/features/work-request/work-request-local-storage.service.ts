@@ -8,7 +8,6 @@ import { LocalStorageService } from '../../services/local-storage.service';
 export class WorkRequestLocalStorageService {
   private readonly DRAFT_KEY = 'work-request-draft';
 
-  // You are already using IndexedDbService for final storage
   constructor(
     private localStorageService: LocalStorageService
   ) { }

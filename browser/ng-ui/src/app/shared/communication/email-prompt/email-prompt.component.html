@@ -1,3 +1,4 @@
-<div *ngIf="to" class="email-prompt-container">
-  <button class="email-button" (click)="sendEmail()">{{ buttonText() }}</button>
+<div *ngIf="to()" class="email-prompt-container">
+  <button type="button" class="email-button" (click)="sendWithDefault()">Send via Default App</button>
+  <button type="button" class="email-button" (click)="sendWithGmail()">Send via Gmail</button>
 </div>

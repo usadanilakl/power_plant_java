@@ -19,12 +19,27 @@ export class PowerAutomateService {
    */
   submitForm<T>(request: PowerAutomateRequest<T>): Observable<any> {
 
-    const url  = request.url ?? this.permitsUrl;
-    const { url: requestUrl, ...body } = request;
+    const paUrl  = request.url || this.permitsUrl;
+    const { url: requestUrl, ...requestBody } = request;
+
+    // Filter out null, undefined, and empty string values from the body
+    const body = Object.entries(requestBody).reduce((acc, [key, value]) => {
+      if (value !== null && value !== undefined && value !== '') {
+        (acc as any)[key] = value;
+      }
+      return acc;
+    }, {});
+
+
+    console.log('Submitting form data to Power Automate:', body);
+    console.log('Request URL:', paUrl);
+
+
+
 
     // return throwError(() => of('Error submitting form to Power Automate'))
 
-    return this.http.post(url, body).pipe(
+    return this.http.post(paUrl, body).pipe(
       timeout(15000), // 15-second timeout
       catchError((error: any) => {
         if (error.name === 'TimeoutError') {

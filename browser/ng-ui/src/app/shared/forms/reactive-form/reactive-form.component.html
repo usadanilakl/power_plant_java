@@ -84,6 +84,7 @@
     @if (deleteButtonText() !== '') {
       <button type="button" (click)="onDelete()">{{ deleteButtonText() }}</button>
     }
+    <ng-content select="[extra-buttons]"></ng-content>
   </div>
 </form>
 

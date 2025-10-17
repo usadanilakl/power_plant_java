@@ -14,11 +14,14 @@ export class WorkRequestApiService {
   constructor() { }
 
   submitFormToSharepoint(workRequest: WorkRequest) {
+
+    console.log('Submitting work request to Sharepoint:', workRequest);
     const request: PowerAutomateRequest<WorkRequestPa> = {
       url: '', // Use default URL from PowerAutomateService
       workForm: new WorkRequest(workRequest).convertToPaModel(),
       actionType: 'save'
     };
+    console.log('Request:', request);
 
     return this.powerAutomateService.submitForm(request);
   }

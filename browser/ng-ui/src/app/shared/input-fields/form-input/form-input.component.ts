@@ -28,7 +28,10 @@ export class FormInputComponent implements ControlValueAccessor {
   onTouched: any = () => {};
 
   writeValue(value: any): void {
-    if (value !== undefined) {
+    if (this.type === 'date' && value instanceof Date) {
+      // Format the date to 'YYYY-MM-DD' for the input[type="date"]
+      this.value = value.toISOString().split('T')[0];
+    } else if (value !== undefined) {
       this.value = value;
     }
   }

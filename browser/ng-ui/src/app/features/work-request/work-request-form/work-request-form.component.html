@@ -4,4 +4,12 @@
   [title]="'Work Request'"
   (formValueChange)="onAnyValueChange($event)"
   (formSubmit)="onSubmit($event)"
-></app-reactive-form>
+>
+  <ng-container extra-buttons>
+    <app-email-prompt
+      to="dklokov@jpowerusa.com"
+      subject="Failed to submit work request"
+      [body]="entity().getEmailBody()"
+    ></app-email-prompt>
+  </ng-container>
+</app-reactive-form>

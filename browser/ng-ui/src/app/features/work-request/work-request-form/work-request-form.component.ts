@@ -4,11 +4,12 @@ import { WorkRequest } from '../../../models/permits/work-request.model';
 import { FormField } from '../../../models/inputs/form-field.model';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormComponent } from "../../../shared/forms/reactive-form/reactive-form.component";
+import { EmailPromptComponent } from "../../../shared/communication/email-prompt/email-prompt.component";
 
 @Component({
   selector: 'app-work-request-form',
   standalone: true,
-  imports: [ReactiveFormComponent],
+  imports: [ReactiveFormComponent, EmailPromptComponent],
   templateUrl: './work-request-form.component.html',
   styleUrl: './work-request-form.component.css'
 })
@@ -35,5 +36,6 @@ export class WorkRequestFormComponent {
   onSubmit(workReuest: WorkRequest) {
     this.workRequestStateService.submitNewRequest(workReuest);
   }
+
 
 }

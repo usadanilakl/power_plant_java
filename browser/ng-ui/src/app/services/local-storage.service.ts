@@ -28,7 +28,18 @@ export class LocalStorageService {
   getItem<T>(key: string): T | null {
     try {
       const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : null;
+      if (!item) {
+        return null;
+      }
+      // Reviver function to convert ISO date strings back to Date objects
+      const dateReviver = (reviverKey: string, value: any) => {
+        const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+        if (typeof value === 'string' && isoDateRegex.test(value)) {
+          return new Date(value);
+        }
+        return value;
+      };
+      return JSON.parse(item, dateReviver);
     } catch (e) {
       console.error('Error getting data from localStorage', e);
       return null;
