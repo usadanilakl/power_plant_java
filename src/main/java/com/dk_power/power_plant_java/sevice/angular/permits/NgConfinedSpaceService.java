@@ -8,10 +8,13 @@ import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+
+import static org.apache.poi.xwpf.usermodel.XWPFRun.FontCharRange.cs;
 
 @Service
 @Transactional
@@ -55,6 +58,12 @@ public class NgConfinedSpaceService implements NgCrudService<ConfinedSpace, Conf
     @Override
     public Class<ConfinedSpace> getEntityClass() {
         return ConfinedSpace.class;
+    }
+
+    @Override
+    public ConfinedSpace save(ConfinedSpaceDto dto) {
+        ConfinedSpace cs = confinedSpaceMapper.convertToEntity(dto);
+        return confinedSpaceRepo.save(cs);
     }
 
     public ConfinedSpaceDto createConfinedSpaceRequest(ConfinedSpaceDto confinedSpaceDto) {
