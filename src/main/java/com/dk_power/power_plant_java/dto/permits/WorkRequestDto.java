@@ -45,6 +45,8 @@ public class WorkRequestDto {
     private String space;
     @JsonProperty("ID")
     private String sharepointId;
+    @JsonProperty("Status")
+    private String status;
 
     public void setIsHotWorkRequired(String isHotWorkRequired) {
         this.isHotWorkRequired = convertYesNoToBooleanString(isHotWorkRequired);

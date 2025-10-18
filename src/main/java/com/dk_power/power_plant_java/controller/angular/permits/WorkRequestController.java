@@ -53,10 +53,40 @@ public class WorkRequestController {
         }
     }
 
+    @GetMapping("/change-status/{id}/{status}")
+    public ResponseEntity<NgApiResponse<NgWorkRequestDto>> setStatus(@PathVariable String id, @PathVariable String status){
+        try {
+            WorkRequestDto workRequestDto = workRequestService.setStatus(id,status);
+            NgWorkRequestDto ngWorkRequestDto = workRequestMapper.toNgWorkRequestDto(workRequestDto);
+            return ResponseEntity.ok(
+                    new NgApiResponse<>(ngWorkRequestDto, "Successfully processed request")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to get all requests from SharePoint: " + e.getMessage())
+            );
+        }
+    }
+
     @GetMapping("/process/{sharepointId}")
     public ResponseEntity<NgApiResponse<NgWorkRequestDto>> processRequest(@PathVariable String sharepointId) {
         try {
             WorkRequestDto workRequestDto = workRequestService.completeWorkRequestBySharepointId(sharepointId);
+            NgWorkRequestDto ngWorkRequestDto = workRequestMapper.toNgWorkRequestDto(workRequestDto);
+            return ResponseEntity.ok(
+                    new NgApiResponse<>(ngWorkRequestDto, "Successfully processed request")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new NgApiResponse<>(null, "Failed to get all requests from SharePoint: " + e.getMessage())
+            );
+        }
+    }
+
+    @GetMapping("/process-by-id/{id}")
+    public ResponseEntity<NgApiResponse<NgWorkRequestDto>> processByIdRequest(@PathVariable String id) {
+        try {
+            WorkRequestDto workRequestDto = workRequestService.completeWorkRequest(Long.parseLong(id));
             NgWorkRequestDto ngWorkRequestDto = workRequestMapper.toNgWorkRequestDto(workRequestDto);
             return ResponseEntity.ok(
                     new NgApiResponse<>(ngWorkRequestDto, "Successfully processed request")

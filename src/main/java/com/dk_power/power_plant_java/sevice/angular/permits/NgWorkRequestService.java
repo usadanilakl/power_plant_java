@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Service;
 
+import java.sql.SQLOutput;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -80,23 +81,72 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
         return getAllDtosByStatus("Active");
     }
 
-    public List<WorkRequest> downloadAndSaveNewRequests(){
-        List<WorkRequestDto> allRequests = powerAutomateClient.getAllRequests();
+    public List<WorkRequest> downloadAndSaveNewRequests() {
         List<WorkRequest> saved = new ArrayList<>();
-        for (WorkRequestDto r : allRequests) {
-            if(!existsBySharepointId(r.getSharepointId())){
-                WorkRequest entity = toEntity(r);
-                entity.setPermitStatus(valueService.createValue("Permit Status","Active"));
-                saved.add(save(entity));
+        try {
+            List<WorkRequestDto> allRequests = powerAutomateClient.getAllRequests();
+            if (allRequests == null) {
+                // log warning about empty retrieval
+                return saved;
             }
+            for (WorkRequestDto r : allRequests) {
+                if (r == null || r.getSharepointId() == null) {
+                    // skip or log incomplete data
+                    continue;
+                }
+                WorkRequest existing = getEntityBySharepointId(r.getSharepointId());
+                String currentStatus = r.getStatus();
+                if (currentStatus == null || currentStatus.isEmpty()) {
+                    currentStatus = "Active";
+                }
+                if (existing == null) {
+                    WorkRequest entity = toEntity(r);
+                    entity.setPermitStatus(valueService.createValue("Permit Status", currentStatus));
+                    saved.add(save(entity));
+                } else {
+                    String existingStatus = existing.getPermitStatus() != null ? existing.getPermitStatus().getName() : "";
+                    if (!existingStatus.equalsIgnoreCase(currentStatus)) {
+                        existing.setPermitStatus(valueService.createValue("Permit Status", currentStatus));
+                        saved.add(save(existing));
+                    }
+                }
+
+                List<WorkRequest> allIncomplete = workRequestRepo.findByPermitStatus_NameIgnoreCase("Active");
+
+                List<WorkRequest> toClose = allIncomplete.stream()
+                        .filter(workRequest -> {
+                            String spId = workRequest.getSharepointId();
+                            if (spId == null) return false;  // skip null ids
+                            // Check if allRequests does NOT contain this spId (case-insensitive)
+                            return allRequests.stream()
+                                    .noneMatch(rec -> rec.getSharepointId() != null && rec.getSharepointId().equalsIgnoreCase(spId));
+                        })
+                        .toList();
+
+                // Now close all those requests
+                toClose.forEach(wr -> {
+                    wr.setPermitStatus(valueService.createValue("Permit Status", "Closed"));
+                    save(wr);
+                });
+
+            }
+        } catch (Exception e) {
+            // log error with context, e.g. logger.error("Failed downloading and saving work requests", e);
+            // Optionally rethrow or handle recovery
         }
         return saved;
     }
 
+
     public WorkRequestDto completeWorkRequest(Long id){
         WorkRequest entity = getEntityById(id);
         entity.setPermitStatus(valueService.createValue("Permit Status","Closed"));
-        powerAutomateClient.archiveWorkRequests(entity.getSharepointId());
+        try {
+            powerAutomateClient.archiveWorkRequests(entity.getSharepointId());
+        }catch (Exception e){
+            e.printStackTrace();
+            System.out.println(e.getMessage());
+        }
         return toDto(save(entity));
     }
 
@@ -128,5 +178,25 @@ public class NgWorkRequestService implements NgPermitService<WorkRequest, WorkRe
 
     public List<WorkRequest> saveAllFromDto(List<NgWorkRequestDto> workRequests) {
         return workRequests.stream().map(workRequestMapper::convertNgDtoToEntity).map(this::save).collect(Collectors.toList());
+    }
+
+    public WorkRequest archiveWorkRequest(String sharepointId){
+        WorkRequest entity = getEntityBySharepointId(sharepointId);
+        powerAutomateClient.archiveWorkRequests(sharepointId);
+        return save(entity);
+    }
+
+    public WorkRequestDto setStatus(String id, String status) {
+        WorkRequest entity = getEntityById(id);
+        entity.setPermitStatus(valueService.createValue("Permit Status",status));
+        try{
+            powerAutomateClient.changeWorkRequestStatus(entity.getSharepointId(),status);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+        WorkRequest saved = save(entity);
+        System.out.println("saved.getPermitStatus().getName() = " + saved.getPermitStatus().getName());
+
+        return toDto(saved);
     }
 }

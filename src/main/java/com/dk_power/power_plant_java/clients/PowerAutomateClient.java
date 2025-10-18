@@ -75,4 +75,8 @@ public class PowerAutomateClient {
 
         }
     }
+
+    public void changeWorkRequestStatus(String id, String status) throws IOException, InterruptedException {
+        postRequestToPermitsFlow(Map.of("actionType","setStatus","id",id, "status",status));
+    }
 }
