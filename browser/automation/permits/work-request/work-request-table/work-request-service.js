@@ -46,7 +46,6 @@ async getAllRequests() {
 },
 
 async openBuilder(id){ 
-  await this.setStatus(id,'processed');
         if (window.javaScriptBridge) {
             try {
                 if(id){
