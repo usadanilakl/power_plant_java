@@ -1,24 +1,8 @@
 import { Column } from "../inputs/column.model";
 import { FormField } from "../inputs/form-field.model";
 import { BaseModel, IBaseModel } from "./base.model";
-
-export interface IJobStep {
-  description: string;
-  hazard: string;
-  safetyMeasures: string;
-}
-
-export class JobStep implements IJobStep {
-  description: string;
-  hazard: string;
-  safetyMeasures: string;
-
-  constructor(data: Partial<IJobStep> = {}) {
-    this.description = data.description ?? '';
-    this.hazard = data.hazard ?? '';
-    this.safetyMeasures = data.safetyMeasures ?? '';
-  }
-}
+import { IJobStep, JobStep } from "./jha-job-step.model";
+import { JhaPa } from "./jha-pa.model";
 
 export interface IJha extends IBaseModel {
   jobName: string;
@@ -33,9 +17,11 @@ export interface IJha extends IBaseModel {
   handAndPowerTools: string;
   specialTools: string;
   jobSteps: IJobStep[];
+  sharepointId: string;
 }
 
 export class Jha extends BaseModel<IJha> implements IJha {
+  
   jobName: string;
   applicability: string;
   analysisBy: string;
@@ -48,6 +34,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
   handAndPowerTools: string;
   specialTools: string;
   jobSteps: JobStep[];
+  sharepointId: string;
 
   constructor(data: Partial<IJha> = {}) {
     super(data);
@@ -63,6 +50,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
     this.handAndPowerTools = data.handAndPowerTools ?? '';
     this.specialTools = data.specialTools ?? '';
     this.jobSteps = data.jobSteps?.map(step => new JobStep(step)) ?? [];
+    this.sharepointId = data.sharepointId?? '';
   }
 
   getFormFields(): FormField[] {
@@ -79,6 +67,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
       { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools },
       { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools },
       { name: 'jobSteps', label: 'Job Steps', type: 'multi-input', initialValue: this.jobSteps },
+      { name:'sharepointId', label: 'Sharepoint ID', type: 'text', initialValue: this.sharepointId },
     ];
   }
   
@@ -87,6 +76,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
         { id: 'jobName', header: 'Job Name', accessorKey: 'jobName' },
         { id: 'analysisBy', header: 'Analysis By', accessorKey: 'analysisBy' },
         { id: 'status', header: 'Status', accessorKey: 'status' },
+        { id: 'sharepointId', header: 'Sharepoint ID', accessorKey:'sharepointId' },
         {
           id: 'updatedAt',
           header: 'Last Updated',
@@ -94,4 +84,61 @@ export class Jha extends BaseModel<IJha> implements IJha {
         },
       ];
     }
+    
+    convertToPaModel(): JhaPa {
+      return new JhaPa({
+        jobName: this.jobName,
+        applicability: this.applicability,
+        analysisBy: this.analysisBy,
+        reviewedBy: this.reviewedBy,
+        approvedBy: this.approvedBy,
+        date: this.date,
+        ppe: this.ppe,
+        loto: this.loto,
+        hazCom: this.hazCom,
+        handAndPowerTools: this.handAndPowerTools,
+        specialTools: this.specialTools,
+        jobSteps: this.jobSteps,
+        sharepointId: this.sharepointId,
+      });
+    }
+  getEmailBody(): string {
+    const paModel = this.convertToPaModel();
+    const fieldLabels: { [key: string]: string } = {
+      jobName: 'Job Name/Title',
+      applicability: 'Applicability',
+      analysisBy: 'Analysis By',
+      reviewedBy: 'Reviewed By',
+      approvedBy: 'Approved By',
+      date: 'Date',
+      ppe: 'Personal Protective Equipment (PPE)',
+      loto: 'LOTO',
+      hazCom: 'HazCom',
+      handAndPowerTools: 'Hand and Power Tools',
+      specialTools: 'Special Tools',
+      jobSteps: 'Job Steps',
+      sharepointId: 'Sharepoint ID'
+    };
+
+    let body = '';
+    for (const key in paModel) {
+      if (Object.prototype.hasOwnProperty.call(paModel, key)) {
+        const label = fieldLabels[key] || key;
+        const value = (paModel as any)[key];
+
+        if (key === 'jobSteps' && Array.isArray(value) && value.length > 0) {
+          body += `${label}:\n`;
+          value.forEach((step, index) => {
+            body += `  Step ${index + 1}:\n`;
+            body += `    Description: ${step.description || ''}\n`;
+            body += `    Hazards: ${step.hazards || ''}\n`;
+            body += `    Controls: ${step.controls || ''}\n`;
+          });
+        } else if (value && typeof value !== 'object') { // Only include fields that have a value and are not objects
+          body += `${label}: ${value}\n`;
+        }
+      }
+    }
+    return body;
+  }
 }

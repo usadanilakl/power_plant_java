@@ -161,6 +161,8 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
 
   convertToPaModel(): WorkRequestPa {
 
+    // console.log('Converting to PA model:', this);
+
     return new WorkRequestPa({
       company: this.company,
       dateOfWork: this.dateOfWork.toISOString().split('T')[0],

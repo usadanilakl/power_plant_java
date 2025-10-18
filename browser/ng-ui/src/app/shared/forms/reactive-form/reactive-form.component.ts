@@ -194,29 +194,57 @@ export class ReactiveFormComponent {
     return control as FormControl;
   }
 
+  // private deepMerge(target: any, source: any): any {
+  //   const output = { ...target };
+  
+  //   if (this.isObject(target) && this.isObject(source)) {
+  //     Object.keys(source).forEach(key => {
+  //       if (this.isObject(source[key])) {
+  //         if (!(key in target)) {
+  //           Object.assign(output, { [key]: source[key] });
+  //         } else {
+  //           output[key] = this.deepMerge(target[key], source[key]);
+  //         }
+  //       } else {
+  //         Object.assign(output, { [key]: source[key] });
+  //       }
+  //     });
+  //   }
+  
+  //   return output;
+  // }
   private deepMerge(target: any, source: any): any {
     const output = { ...target };
-  
+
     if (this.isObject(target) && this.isObject(source)) {
       Object.keys(source).forEach(key => {
-        if (this.isObject(source[key])) {
-          if (!(key in target)) {
-            Object.assign(output, { [key]: source[key] });
-          } else {
-            output[key] = this.deepMerge(target[key], source[key]);
-          }
+        const sourceValue = source[key];
+        const targetValue = target[key];
+
+        if (this.isObject(sourceValue) && targetValue) {
+          output[key] = this.deepMerge(targetValue, sourceValue);
+        } else if (targetValue instanceof Date && typeof sourceValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sourceValue)) {
+          // If target is a Date and source is a date-string, convert it back to a Date object.
+          // This handles the case where a date picker returns a string.
+          const [year, month, day] = sourceValue.split('-').map(Number);
+          output[key] = new Date(year, month - 1, day);
         } else {
-          Object.assign(output, { [key]: source[key] });
+          output[key] = sourceValue;
         }
       });
     }
-  
+
     return output;
   }
 
+  // private isObject(item: any): boolean {
+  //   return (item && typeof item === 'object' && !Array.isArray(item));
+  // }
+
   private isObject(item: any): boolean {
-    return (item && typeof item === 'object' && !Array.isArray(item));
+    return (item && typeof item === 'object' && !Array.isArray(item) && !(item instanceof Date));
   }
+  
 
   private getNestedValue(obj: any, path: string): any {
     if (!obj || !path) {
@@ -232,6 +260,9 @@ export class ReactiveFormComponent {
       const originalData = this.entity() || {};
       const formValue = this.form.value;
       const mergedData = this.deepMerge(originalData, formValue);
+      console.log('Merged data:', mergedData.dateOfWork);
+      console.log('Original data:', originalData.dateOfWork);
+      console.log('Form value:', formValue.dateOfWork);
 
       this.formSubmit.emit(mergedData);
     } else {
