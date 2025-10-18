@@ -48,7 +48,7 @@ const tableBuilder = {
         columns.forEach((column, index) => {
             // Create header cell
             const th = document.createElement('th');
-            th.textContent = column.name;
+            th.textContent = column.label || column.name;
             th.addEventListener('click', () => this.sortTable(index));
             headerRow.appendChild(th);
 

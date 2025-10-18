@@ -45,11 +45,16 @@ async getAllRequests() {
   }
 },
 
-openBuilder(id){ 
+async openBuilder(id){ 
+  await this.setStatus(id,'processed');
         if (window.javaScriptBridge) {
             try {
-                if(id)window.javaScriptBridge.openInBrowser('http://localhost:8082/app/permit-builder/daily-packages/'+id);
-                else window.javaScriptBridge.openInBrowser('http://localhost:8082/app/permit-builder/daily-packages');
+                if(id){
+                  await this.setStatus(id,'processed');
+                  window.javaScriptBridge.openInBrowser('http://localhost:8082/app/permit-builder/daily-packages/'+id);
+                }else {
+                  window.javaScriptBridge.openInBrowser('http://localhost:8082/app/permit-builder/daily-packages');
+                }
                 console.log('openApplication called successfully');
             } catch (error) {
                 console.error('Error calling openApplication:', error);
@@ -57,6 +62,32 @@ openBuilder(id){
         } else {
             console.error('JavaFX bridge not available');
         }
+},
+
+async archive(id){
+  try {
+    const url = `${this.baseUrl}/process/${id}`;
+    const result = await this.sendRequest(url);
+    return result;
+  } catch (error) {
+    // Handle or display error for getAllRequests caller
+    console.error("Failed to archive: ", error.message);
+    document.getElementById('responseOutput').textContent = 'Error: ' + error.message;
+    // throw error;
+  }
+},
+
+async setStatus(id, status){
+  try {
+    const url = `${this.baseUrl}/change-status/${id}/${status}`;
+    const result = await this.sendRequest(url);
+    return result;
+  } catch (error) {
+    // Handle or display error for getAllRequests caller
+    console.error("Failed to archive: ", error.message);
+    document.getElementById('responseOutput').textContent = 'Error: ' + error.message;
+    // throw error;
+  }
 }
 
 }

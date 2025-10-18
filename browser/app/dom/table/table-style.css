@@ -113,7 +113,7 @@
 }
 
 #tableContainer::-webkit-scrollbar-thumb {
-    background: var(--resizer-bg);
+    background: var(--dark-bg-color);
     border-radius: 5px;
 }
 

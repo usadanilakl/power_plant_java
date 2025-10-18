@@ -19,6 +19,65 @@
         })();
     </script>
     <style>
+
+/* Ensure no double padding or default scrolls */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* no browser scroll */
+}
+
+/* main container fits everything in viewport height exactly */
+.main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;         /* fills body exactly */
+  overflow: hidden;     /* prevents extending beyond */
+  gap: 10px;            /* optional spacing between elements */
+}
+
+/* Make table wrapper the shrinking flexible child */
+#tableContainer {
+  flex: 1;              /* fills remaining vertical space */
+  min-height: 0;        /* required so it doesn't overflow */
+  min-width: 0;         /* allows horizontal scroll */
+  overflow-x: auto;     /* enable inner scrolling */
+  overflow-y: auto;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  background: #fff;
+  padding-bottom: 14px;         /* adds room for scrollbar track */
+  scrollbar-gutter: stable;    /* reserves space for scrollbars */
+}
+
+/* Table structure */
+#tableContainer table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: collapse;
+  white-space: nowrap;
+  padding-bottom: 14px;         /* adds room for scrollbar track */
+  scrollbar-gutter: stable;    /* reserves space for scrollbars */
+}
+
+/* Top content styling */
+#thumbnail,
+a,
+#responseOutput {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  flex-shrink: 0; /* these do not collapse when table grows */
+}
+
+
+
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 20px;
@@ -114,27 +173,53 @@
     cursor: zoom-out;
   }
 
+  a {
+    color: #007BFF;              /* Classic blue color for links */
+    text-decoration: underline;  /* Underline to indicate link */
+    cursor: pointer;             /* Pointer cursor on hover */
+    transition: color 0.2s ease; /* Smooth color change on hover */
+  }
+
+  a:hover,
+  a:focus {
+    color: #0056b3;              /* Darker blue on hover/focus */
+    text-decoration: none;       /* Optionally remove underline to highlight */
+    outline: none;               /* Remove default focus outline but add your own if needed */
+  }
+
+  a:active {
+    color: #004080;              /* Even darker when clicking */
+  }
+
+  /* Optional: accessible focus styles */
+  a:focus-visible {
+    outline: 2px solid #0056b3;  /* Visible outline for keyboard users */
+    outline-offset: 2px;          /* Slight offset for visibility */
+  }
+
+
 </style>
 
 </head>
 <body>
-  <h1>Jackson Work Request Table</h1>
-  <button id="sendRequest">Get Updates</button>
-  <label for="updateInterval">Auto Update Interval</label>
-  <select id="updateInterval">
-    <option value="1">1 min</option>
-    <option value="5">5 min</option>
-    <option value="15">15 min</option>
-    <option value="30">30 min</option>
-    <option value="60" selected>1 hour</option>
-    <option value="180">3 hours</option>
-    <option value="360">6 hours</option>
-  </select>
 
+  <div class="main">
+    <h1>Jackson Work Request Table</h1>
+    <button id="sendRequest">Get Updates</button>
+    <label for="updateInterval">Auto Update Interval</label>
+    <select id="updateInterval">
+      <option value="1">1 min</option>
+      <option value="5">5 min</option>
+      <option value="15">15 min</option>
+      <option value="30">30 min</option>
+      <option value="60" selected>1 hour</option>
+      <option value="180">3 hours</option>
+      <option value="360">6 hours</option>
+    </select>
     <!-- Small visible image -->
     <img id="thumbnail" src="" alt="Thumbnail Image"/>
-    <a onclick="openLinkInBrowser('https://jacksongeneration.github.io/work-request-form/')">https://jacksongeneration.github.io/work-request-form/</a>
-    <a onclick="openLinkInBrowser('https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7B3324DFBE-805C-45A3-8D2E-7AF0DF93FBDC%7D&file=Advanced%20Work%20Request%20Log.xlsx&action=default&mobileredirect=true')">Excel Table</a>
+    <a onclick="openLinkInBrowser('https://jacksongeneration.github.io/work-request-form/')">Link to Form: https://jacksongeneration.github.io/work-request-form/</a>
+    <a onclick="openLinkInBrowser('https://jpowerusa.sharepoint.com/:x:/r/sites/JG/_layouts/15/Doc.aspx?sourcedoc=%7B3324DFBE-805C-45A3-8D2E-7AF0DF93FBDC%7D&file=Advanced%20Work%20Request%20Log.xlsx&action=default&mobileredirect=true')">Open Excel Table</a>
     <!-- <a onclick="openLinkInBrowser('https://forms.office.com/Pages/ResponsePage.aspx?id=wCPVqrpemU-nE0OgYJV4ywveWFAX7FlDgwvWMycP9wpUQTg2SkxIQjlNRDRIU1k4VENKM0Q4VjdLQi4u')">https://forms.office.com/Pages/ResponsePage.aspx?id=wCPVqrpemU-nE0OgYJV4ywveWFAX7FlDgwvWMycP9wpUQTg2SkxIQjlNRDRIU1k4VENKM0Q4VjdLQi4u</a> -->
 
     <!-- Overlay container with enlarged image -->
@@ -142,9 +227,12 @@
         <img id="enlargedImage" src="" alt="Enlarged Image"/>
     </div>
   
-  <pre id="responseOutput"></pre>
-  
-  <div id="tableContainer"></div>
+    <pre id="responseOutput"></pre>
+    
+    <div id="tableContainer"></div>
+    <br>
+
+  </div>
 
     <script>
         (function() {
