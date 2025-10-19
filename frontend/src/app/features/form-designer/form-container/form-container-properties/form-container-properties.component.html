@@ -263,7 +263,7 @@
             <div class="input-row">
               <div class="input-field">
                 <label for="repeatingContent">Source Array</label>
-                <select id="repeatingContent" [(ngModel)]="container.content.name!" (ngModelChange)="onPropertyChange()">
+                <select id="repeatingContent" [(ngModel)]="container.content.name!" (ngModelChange)="onEntityFieldTypeChange()">
                   <option [ngValue]="null">-- Select Array Field --</option>
                   @for (field of arrayFields; track field.path) {
                     <option [ngValue]="field.path">{{ field.label }}</option>

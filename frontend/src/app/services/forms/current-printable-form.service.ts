@@ -6,6 +6,7 @@ import { PrintableFormDto } from "../../models/forms/printable-form.model";
 import { PrintableFormService } from "./printable-form.service";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { Form } from "@angular/forms";
+import { FormField } from "../../models/ui/form-field.model";
 
 @Injectable({
   providedIn: 'root'
@@ -17,6 +18,7 @@ export class CurrentPrintableFormService {
     private destroyRef = inject(DestroyRef);
 
     currentEntity: any;
+    currentEntityFields: FormField[] = [];
 
     private formsSubject = new BehaviorSubject<PrintableFormDto[]>([]);
     allForms$: Observable<PrintableFormDto[]> = this.formsSubject.asObservable();

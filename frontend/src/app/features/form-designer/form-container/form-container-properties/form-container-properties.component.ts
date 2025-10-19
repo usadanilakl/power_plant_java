@@ -234,6 +234,20 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
     }
   }
 
+  onEntityFieldTypeChange(): void {
+    if(this.container && this.container.contentType === 'repeatingSection' && this.isFormFieldContent(this.container.content)){
+      const fieldName = this.container.content?.name;
+      if(fieldName){
+        const field = this.currentPrintableFormService.currentEntityFields.find(field => field.name === fieldName);
+        if(field){
+          this.container.content.fields = field.fields;
+        }
+      }
+    }
+    this.onPropertyChange();
+  }
+
+
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0] && this.container) {

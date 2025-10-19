@@ -57,7 +57,7 @@ export class FormRendererComponent {
           ...container,
           content: {
             ...field,
-            label: '' // Set label to empty string to hide it
+            label: ''
           }
         });
       }

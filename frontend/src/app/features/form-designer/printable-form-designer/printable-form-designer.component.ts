@@ -207,18 +207,23 @@ export class PrintableFormDesignerComponent implements OnInit {
     switch (type) {
       case 'SafeWork':
         this.currentPrintableFormService.currentEntity = new SafeWorkDto();
+        this.currentPrintableFormService.currentEntityFields = SafeWorkDto.toFormFields(new SafeWorkDto(), []);
         return new SafeWorkDto();
       case 'HotWork':
         this.currentPrintableFormService.currentEntity = new HotWorkDto();
+        this.currentPrintableFormService.currentEntityFields = HotWorkDto.toFormFields(new HotWorkDto(), []);
         return new HotWorkDto();
       case 'ConfinedSpace':
         this.currentPrintableFormService.currentEntity = new ConfinedSpaceDto();
+        this.currentPrintableFormService.currentEntityFields = ConfinedSpaceDto.toFormFields(new ConfinedSpaceDto(), []);
         return new ConfinedSpaceDto();
       case 'Loto':
         this.currentPrintableFormService.currentEntity = new LotoDto();
+        this.currentPrintableFormService.currentEntityFields = LotoDto.toFormFields(new LotoDto());
         return new LotoDto();
       case 'Jha':
         this.currentPrintableFormService.currentEntity = new Jha();
+        this.currentPrintableFormService.currentEntityFields = new Jha().getFormFields();
         return new Jha();
       default:
         return null;
