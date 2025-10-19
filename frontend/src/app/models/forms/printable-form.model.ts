@@ -81,6 +81,7 @@ export class PrintableFormDto extends BaseDto implements PrintableFormModel {
           { value: 'ConfinedSpace', label: 'Confined Space' },
           { value: 'WorkRequest', label: 'Work Request' },
           { value: 'Loto', label: 'LOTO' },
+          { value: 'Jha', label: 'JHA' },
         ]
       },
       isVerified: { 

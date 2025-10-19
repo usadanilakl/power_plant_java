@@ -1,10 +1,28 @@
-import { Column } from "../inputs/column.model";
-import { FormField } from "../inputs/form-field.model";
-import { BaseModel, IBaseModel } from "./base.model";
-import { IJobStep, JobStep } from "./jha-job-step.model";
-import { JhaPa } from "./jha-pa.model";
+import { Column } from "../column.model";
+import { FormField } from "../ui/form-field.model";
 
-export interface IJha extends IBaseModel {
+export interface IJobStep {
+  sequence: number;
+  description: string;
+  hazard: string;
+  safetyMeasures: string;
+}
+
+export class JobStep implements IJobStep {
+  sequence: number;
+  description: string;
+  hazard: string;
+  safetyMeasures: string;
+
+  constructor(data: Partial<IJobStep> = {}) {
+    this.sequence = data.sequence?? 0;
+    this.description = data.description ?? '';
+    this.hazard = data.hazard ?? '';
+    this.safetyMeasures = data.safetyMeasures ?? '';
+  }
+}
+
+export interface IJha {
   jobName: string;
   applicability: string;
   analysisBy: string;
@@ -20,7 +38,7 @@ export interface IJha extends IBaseModel {
   sharepointId: string;
 }
 
-export class Jha extends BaseModel<IJha> implements IJha {
+export class Jha implements IJha {
   
   jobName: string;
   applicability: string;
@@ -37,7 +55,6 @@ export class Jha extends BaseModel<IJha> implements IJha {
   sharepointId: string;
 
   constructor(data: Partial<IJha> = {}) {
-    super(data);
     this.jobName = data.jobName ?? '';
     this.applicability = data.applicability ?? '';
     this.analysisBy = data.analysisBy ?? '';
@@ -87,106 +104,40 @@ export class Jha extends BaseModel<IJha> implements IJha {
         { id: 'analysisBy', header: 'Analysis By', accessorKey: 'analysisBy' },
         { id: 'status', header: 'Status', accessorKey: 'status' },
         { id: 'sharepointId', header: 'Sharepoint ID', accessorKey:'sharepointId' },
-        {
-          id: 'updatedAt',
-          header: 'Last Updated',
-          accessorFn: (item: IJha) => new Date(item.updatedAt).toLocaleDateString()
-        },
+
       ];
     }
-    
-    convertToPaModel(): JhaPa {
-      return new JhaPa({
-        jobName: this.jobName,
-        applicability: this.applicability,
-        analysisBy: this.analysisBy,
-        reviewedBy: this.reviewedBy,
-        approvedBy: this.approvedBy,
-        date: this.date,
-        ppe: this.ppe,
-        loto: this.loto,
-        hazCom: this.hazCom,
-        handAndPowerTools: this.handAndPowerTools,
-        specialTools: this.specialTools,
-        jobSteps: this.jobSteps,
-        sharepointId: this.sharepointId,
-      });
-    }
-  getEmailBody(): string {
-    const paModel = this.convertToPaModel();
-    const fieldLabels: { [key: string]: string } = {
-      jobName: 'Job Name/Title',
-      applicability: 'Applicability',
-      analysisBy: 'Analysis By',
-      reviewedBy: 'Reviewed By',
-      approvedBy: 'Approved By',
-      date: 'Date',
-      ppe: 'Personal Protective Equipment (PPE)',
-      loto: 'LOTO',
-      hazCom: 'HazCom',
-      handAndPowerTools: 'Hand and Power Tools',
-      specialTools: 'Special Tools',
-      jobSteps: 'Job Steps',
-      sharepointId: 'Sharepoint ID'
-    };
-
-    let body = '';
-    for (const key in paModel) {
-      if (Object.prototype.hasOwnProperty.call(paModel, key)) {
-        const label = fieldLabels[key] || key;
-        const value = (paModel as any)[key];
-
-        if (key === 'jobSteps' && Array.isArray(value) && value.length > 0) {
-          body += `${label}:\n`;
-          value.forEach((step, index) => {
-            body += `  Step ${index + 1}:\n`;
-            body += `    Description: ${step.description || ''}\n`;
-            body += `    Hazards: ${step.hazards || ''}\n`;
-            body += `    Controls: ${step.controls || ''}\n`;
-          });
-        } else if (value && typeof value !== 'object') { // Only include fields that have a value and are not objects
-          body += `${label}: ${value}\n`;
-        }
-      }
-    }
-    return body;
-  }
-
-  getJobStepFormFields(): FormField[] {
-    const jobSteps = this.jobSteps || [];
-    const group = { label: 'Job Steps' };
-    const result: FormField[] = [];
-
-    jobSteps.forEach((step, index) => {
-      result.push(
-        {
-          name: `jobSteps.${index}.description`,
-          label: `Step ${index + 1}: Description`,
-          type: 'textarea',
-          group: group,
-        },
-        {
-          name: `jobSteps.${index}.hazards`,
-          label: `Step ${index + 1}: Hazards`,
-          type: 'textarea',
-          group: group,
-        },
-        {
-          name: `jobSteps.${index}.controls`,
-          label: `Step ${index + 1}: Controls`,
-          type: 'textarea',
-          group: group,
-        }
-      );
-    });
-
-    return result;
-  }
 
     addJobStep(): Jha {
       const newJobSteps = [...(this.jobSteps || []), new JobStep()];
       return new Jha({ ...this, jobSteps: newJobSteps });
     }
+
+
+    static getTestJobSteps(): JobStep[] {
+      return [
+        new JobStep({ sequence: 1, description: 'Step 1', hazard: 'Hazard 1', safetyMeasures: 'Safety Measure 1' }),
+        new JobStep({ sequence: 2, description: 'Step 2', hazard: 'Hazard 2', safetyMeasures: 'Safety Measure 2' }),
+        new JobStep({ sequence: 3, description: 'Step 3', hazard: 'Hazard 3', safetyMeasures: 'Safety Measure 3' })
+      ];
+    }
+  static getData() {
+    const jobSteps = Jha.getTestJobSteps();
+    return new Jha({
+      jobName: 'Test Job',
+      applicability: 'Test Applicability',
+      analysisBy: 'Test Analysis By',
+      reviewedBy: 'Test Reviewed By',
+      approvedBy: 'Test Approved By',
+      date: '2022-01-01',
+      ppe: 'Test PPE',
+      loto: 'Test LOTO',
+      hazCom: 'Test HazCom',
+      handAndPowerTools: 'Test Hand and Power Tools',
+      specialTools: 'Test Special Tools',
+      jobSteps
+    })
+  }
   
 
 

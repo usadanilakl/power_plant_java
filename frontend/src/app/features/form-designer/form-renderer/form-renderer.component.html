@@ -62,6 +62,12 @@
                   </app-radio-checkboxes>
 
                 }
+                @case ('form-array') {
+                  <app-nested-form-input
+                    [formControl]="getFormControl(asFormField(container.content).name!)"
+                  ></app-nested-form-input>
+
+                }
               }
             } @else if(container.contentType==='text') {
               <div class="content-display" [ngStyle]="getContentStyles(container)">

@@ -140,6 +140,7 @@
             <option value="formField">Form Field</option>
             <option value="variable">Dynamic Content</option>
             <option value="image">Image</option>
+            <option value="repeatingSection">Repeating Section</option>
           </select>
         </div>
       </div>
@@ -255,6 +256,37 @@
                 </select>
               </div>
             </div>
+          }
+        }
+        @case ('repeatingSection') {
+          @if(isFormFieldContent(container.content)){
+            <div class="input-row">
+              <div class="input-field">
+                <label for="repeatingContent">Source Array</label>
+                <select id="repeatingContent" [(ngModel)]="container.content.name!" (ngModelChange)="onPropertyChange()">
+                  <option [ngValue]="null">-- Select Array Field --</option>
+                  @for (field of arrayFields; track field.path) {
+                    <option [ngValue]="field.path">{{ field.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <!-- <div class="property-group">
+              <label>Item Fields</label>
+              <div class="child-container-list">
+                @for(child of getChildContainers(container.id); track child.id) {
+                  <div class="child-container-item">
+                    <span>{{ child.name }}</span>
+                    <button class="btn-icon" (click)="selectChildContainer(child, $event)">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                  </div>
+                } @empty {
+                  <p class="empty-state">No fields added to this section yet.</p>
+                }
+              </div>
+              <button (click)="addChildContainer(container.id)">Add Field to Item</button>
+            </div> -->
           }
         }
         @case ('image') {

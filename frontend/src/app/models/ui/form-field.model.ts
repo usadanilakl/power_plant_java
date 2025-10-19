@@ -7,7 +7,7 @@ export interface FormField {
   label: string;
   type: 'text' | 'textarea' | 'select' | 'multi-select' | 'date' | 
   'time' | 'checkbox-group' | 'checkbox' | 'radio' | 'file' | 'multi-input' |
-  'number' | 'radio-group';
+  'number' | 'radio-group' | 'form-array';
   validators?: ValidatorFn[];
   options?: Option[];
   initialValue?: any;
@@ -39,6 +39,7 @@ export interface FormField {
     left?: boolean;
   };
   group?: FormFieldGroup;
+  fields?: FormField[]; 
 }
 
 export interface FormFieldGroup {

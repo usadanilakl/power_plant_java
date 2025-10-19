@@ -16,6 +16,8 @@ export class CurrentPrintableFormService {
     private formService = inject(PrintableFormService);
     private destroyRef = inject(DestroyRef);
 
+    currentEntity: any;
+
     private formsSubject = new BehaviorSubject<PrintableFormDto[]>([]);
     allForms$: Observable<PrintableFormDto[]> = this.formsSubject.asObservable();
 
@@ -548,6 +550,11 @@ export class CurrentPrintableFormService {
         error: (err) => console.error('Error during bulk container update:', err)
     });
   }
+
+
+  //nested containers
+
+
 
   
 }
