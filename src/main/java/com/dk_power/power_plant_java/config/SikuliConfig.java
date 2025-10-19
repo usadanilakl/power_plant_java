@@ -19,8 +19,7 @@ public class SikuliConfig {
     public void init() throws IOException {
         String appData = System.getenv("APPDATA");
         if (appData == null || appData.isEmpty()) {
-//            throw new IllegalStateException("APPDATA environment variable is not set. Cannot determine SikuliX data folder.");
-            return;
+            throw new IllegalStateException("APPDATA environment variable is not set. Cannot determine SikuliX data folder.");
         }
 
         Path sikuliTessdataPath = Paths.get(appData, "Sikulix", "SikulixTesseract", "tessdata");
