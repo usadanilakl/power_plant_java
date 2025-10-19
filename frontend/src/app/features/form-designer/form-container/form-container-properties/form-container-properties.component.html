@@ -271,22 +271,18 @@
                 </select>
               </div>
             </div>
-            <!-- <div class="property-group">
-              <label>Item Fields</label>
-              <div class="child-container-list">
-                @for(child of getChildContainers(container.id); track child.id) {
-                  <div class="child-container-item">
-                    <span>{{ child.name }}</span>
-                    <button class="btn-icon" (click)="selectChildContainer(child, $event)">
-                      <i class="fas fa-edit"></i>
-                    </button>
-                  </div>
-                } @empty {
-                  <p class="empty-state">No fields added to this section yet.</p>
-                }
+            <!-- <div class="input-row">
+              <div class="input-field">
+                <label for="repeatingForm">Form Template</label>
+                <select id="repeatingForm" [(ngModel)]="container.content.value" (ngModelChange)="onPropertyChange()">
+                  <option [ngValue]="null">-- Select Form --</option>
+                  @for (form of printableForms; track form.id) {
+                    <option [ngValue]="form.id">{{ form.name }}</option>
+                  }
+                </select>
               </div>
-              <button (click)="addChildContainer(container.id)">Add Field to Item</button>
             </div> -->
+
           }
         }
         @case ('image') {

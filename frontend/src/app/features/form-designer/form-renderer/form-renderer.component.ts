@@ -215,6 +215,7 @@ export class FormRendererComponent {
       // Return a dummy control to avoid template errors if the control doesn't exist yet
       return new FormControl();
     }
+    console.log('Found control:', control);
     return control as FormControl;
   }
 

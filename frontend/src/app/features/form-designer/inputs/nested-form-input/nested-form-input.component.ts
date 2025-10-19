@@ -1,5 +1,5 @@
 import { Component, Input, forwardRef, ViewEncapsulation } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormArray, FormControl, ReactiveFormsModule } from '@angular/forms';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormArray, FormControl, ReactiveFormsModule, FormGroup, AbstractControl } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { InvisibleInputFieldComponent } from "../invisible-input-field/invisible-input-field.component";
 
@@ -22,19 +22,24 @@ export class NestedFormInputComponent implements ControlValueAccessor {
   @Input() type: 'text' | 'date' | 'file' | 'number' | 'time' = 'text';
   @Input() customStyle: { [key: string]: any } = {};
 
-  formArray = new FormArray<FormControl<any>>([]);
+  formArray = new FormArray<FormGroup>([]);
+  objectKeys: string[] = [];
 
   onChange: (value: any[]) => void = () => {};
   onTouched: () => void = () => {};
 
   writeValue(values: any[]): void {
     this.formArray.clear();
-    if (Array.isArray(values)) {
+    if (Array.isArray(values) && values.length > 0) {
+      this.objectKeys = Object.keys(values[0]);
       values.forEach(value => {
-        this.formArray.push(new FormControl(value));
+        const group = new FormGroup({});
+        this.objectKeys.forEach(key => {
+          group.addControl(key, new FormControl(value[key] || ''));
+        });
+        this.formArray.push(group);
       });
     }
-    // Subscribe to changes to propagate them upwards
     this.formArray.valueChanges.subscribe(value => {
       this.onChange(value);
       this.onTouched();
@@ -54,10 +59,24 @@ export class NestedFormInputComponent implements ControlValueAccessor {
   }
 
   addItem(): void {
-    this.formArray.push(new FormControl(''));
+    const group = new FormGroup({});
+    this.objectKeys.forEach(key => {
+      group.addControl(key, new FormControl(''));
+    });
+    this.formArray.push(group);
   }
 
   removeItem(index: number): void {
     this.formArray.removeAt(index);
+  }
+
+  asFormGroup(control: AbstractControl): FormGroup {
+    return control as FormGroup;
+  }
+
+  getFormControl(group: AbstractControl, key: string): FormControl {
+    const formGroup = this.asFormGroup(group);
+    const control = formGroup.get(key);
+    return control as FormControl;
   }
 }

@@ -223,7 +223,7 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
             type: 'form-array',
             label: '',
             fields: [],
-            initialValue: null
+            initialValue: null,
           };
         }
 

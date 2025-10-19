@@ -1,10 +1,12 @@
 <div class="nested-input-container">
-  <div *ngFor="let control of formArray.controls; let i = index" class="nested-input-item">
-    <app-invisible-input-field 
-      [formControl]="control"
-      [type]="type"
-      [style]="customStyle">
-    </app-invisible-input-field>
+  <div *ngFor="let group of formArray.controls; let i = index" class="nested-input-item">
+    <div *ngFor="let key of objectKeys" class="nested-input-field-wrapper">
+      <app-invisible-input-field
+        [formControl]="getFormControl(group, key)"
+        [type]="type"
+        [style]="customStyle">
+      </app-invisible-input-field>
+    </div>
     <button type="button" (click)="removeItem(i)" class="remove-item-btn">-</button>
   </div>
   <button type="button" (click)="addItem()" class="add-item-btn">Add Item</button>

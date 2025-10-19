@@ -1,10 +1,11 @@
 import { BaseDto, BaseModel } from "../base/base.model";
 import { FormField } from "../ui/form-field.model";
+import { PrintableFormModel } from "./printable-form.model";
 
 export type ContentType = 'text' | 'formField' | 'image' | 'variable' | 'repeatingSection';
 
 export interface FormContainerModel extends BaseModel {
-  content: string | FormField | null;
+  content: string | FormField | PrintableFormModel | null;
   contentType: ContentType;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -16,7 +17,7 @@ export interface FormContainerModel extends BaseModel {
 }
 
 export class FormContainerDto extends BaseDto implements FormContainerModel {
-  content: string | FormField | null;
+  content: string | FormField | PrintableFormModel | null;
   contentType: ContentType;
   position: { x: number; y: number };
   size: { width: number; height: number };
