@@ -6,6 +6,7 @@ import { GlobalMessageService } from "../../services/global-message.service";
 import { DestroyRef, inject, Injectable } from "@angular/core";
 import { JhaLocalStorageService } from "./jha-local-storage.service";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { WorkRequestDbService } from "../work-request/work-request-db.service";
 @Injectable({
   providedIn: 'root'
 })
@@ -15,6 +16,7 @@ export class JhaStateService {
     jhaLocalStorageService = inject(JhaLocalStorageService);
     jhaDbService = inject(JhaDbService);
     globalMessageService = inject(GlobalMessageService);
+    workRequestDbService = inject(WorkRequestDbService);
     destroyRef = inject(DestroyRef);
 
     constructor() {

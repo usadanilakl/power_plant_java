@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { JhaFormComponent } from "./jha-form/jha-form.component";
 import { PopupComponent } from "../../shared/menus/popup/popup.component";
 import { JhaTableComponent } from "./jha-table/jha-table.component";
+import { JhaStateService } from './jha-state.service';
 
 @Component({
   selector: 'app-jha',
@@ -11,6 +12,8 @@ import { JhaTableComponent } from "./jha-table/jha-table.component";
   styleUrl: './jha.component.css'
 })
 export class JhaComponent {
+
+  jhaStateService = inject(JhaStateService);
 
   isTablePopupOpen = false;
   openTablePopup() {

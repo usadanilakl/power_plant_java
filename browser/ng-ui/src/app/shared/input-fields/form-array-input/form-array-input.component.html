@@ -1,0 +1,18 @@
+<div class="form-array-container">
+  <label class="form-array-label">{{ label() }}</label>
+  <div *ngFor="let control of itemControls; let i = index" class="form-array-item" [formGroup]="control">
+    <div class="item-fields">
+      <ng-container *ngFor="let field of fields()">
+        <div class="form-field">
+          <app-form-input
+            [label]="field.label"
+            [type]="field.type"
+            [formControlName]="field.name">
+          </app-form-input>
+        </div>
+      </ng-container>
+    </div>
+    <button type="button" (click)="onRemoveItem(i)" class="remove-item-btn">Remove</button>
+  </div>
+  <button type="button" (click)="onAddItem()" class="add-item-btn">Add Item</button>
+</div>

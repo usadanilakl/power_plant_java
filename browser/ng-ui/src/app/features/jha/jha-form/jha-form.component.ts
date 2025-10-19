@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, input } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { JhaStateService } from '../jha-state.service';
 import { FormField } from '../../../models/inputs/form-field.model';
@@ -21,13 +21,21 @@ export class JhaFormComponent {
   entityInput = input<Jha>();
   fieldsInput = input<FormField[]>();
 
+  
+  entity = signal<Jha>(new Jha());
   private entityFromState = toSignal(this.jhaStateService.selectedJha$, { initialValue: new Jha() });
-  entity = computed(() => this.entityInput() ?? this.entityFromState());
+  // entity = computed(() => this.entityInput() ?? this.entityFromState());
 
   private defaultFields = computed(() => this.entity()?.toFormFields() ?? []);
   fields = computed(() => this.fieldsInput() ?? this.defaultFields());
 
-  constructor() { }
+  constructor() {
+    // 3. Sync local signal from state service or input
+    effect(() => {
+      const entity = this.entityInput() ?? this.entityFromState();
+      this.entity.set(entity);
+    });
+  }
 
   onAnyValueChange(jha: Jha) {
     this.jhaStateService.saveDraft(jha);
@@ -35,6 +43,12 @@ export class JhaFormComponent {
 
   onSubmit(jha: Jha) {
     this.jhaStateService.submitNewRequest(jha);
+  }
+
+  addJobStep(){
+    const updatedJha = this.entity().addJobStep();
+    this.entity.set(updatedJha);
+    this.jhaStateService.saveDraft(updatedJha);
   }
 
 }

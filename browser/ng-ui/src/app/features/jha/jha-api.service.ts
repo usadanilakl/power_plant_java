@@ -18,8 +18,8 @@ export class JhaApiService {
     console.log('Submitting JHA to Sharepoint:', jha);
     const request: PowerAutomateRequest<JhaPa> = {
       url: '', // Use default URL from PowerAutomateService
-      workForm: new Jha(jha).convertToPaModel(),
-      actionType: 'save'
+      jhaForm: new Jha(jha).convertToPaModel(),
+      actionType: 'saveJha'
     };
     console.log('Request:', request);
 
@@ -29,7 +29,7 @@ export class JhaApiService {
   revokeRequestOnSharepoint(jha: Jha) {
     const request: PowerAutomateRequest<JhaPa> = {
       id: jha.sharepointId,
-      actionType: 'revoke'
+      actionType: 'revokeJha'
     };
 
     return this.powerAutomateService.submitForm(request);

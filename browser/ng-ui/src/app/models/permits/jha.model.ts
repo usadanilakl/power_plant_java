@@ -53,6 +53,24 @@ export class Jha extends BaseModel<IJha> implements IJha {
     this.sharepointId = data.sharepointId?? '';
   }
 
+  // getFormFields(): FormField[] {
+  //   return [
+  //     { name: 'jobName', label: 'Job Name/Title', type: 'text', initialValue: this.jobName },
+  //     { name: 'applicability', label: 'Applicability', type: 'text', initialValue: this.applicability },
+  //     { name: 'analysisBy', label: 'Analysis By', type: 'text', initialValue: this.analysisBy },
+  //     { name: 'reviewedBy', label: 'Reviewed By', type: 'text', initialValue: this.reviewedBy },
+  //     { name: 'approvedBy', label: 'Approved By', type: 'text', initialValue: this.approvedBy },
+  //     { name: 'date', label: 'Date', type: 'date', initialValue: this.date },
+  //     { name: 'ppe', label: 'Personal Protective Equipment (PPE)', type: 'textarea', initialValue: this.ppe },
+  //     { name: 'loto', label: 'LOTO', type: 'textarea', initialValue: this.loto },
+  //     { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom },
+  //     { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools },
+  //     { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools },
+  //     { name: 'jobSteps', label: 'Job Steps', type: 'multi-input', initialValue: this.jobSteps },
+  //     { name:'sharepointId', label: 'Sharepoint ID', type: 'text', initialValue: this.sharepointId },
+  //   ];
+  // }
+
   getFormFields(): FormField[] {
     return [
       { name: 'jobName', label: 'Job Name/Title', type: 'text', initialValue: this.jobName },
@@ -66,8 +84,18 @@ export class Jha extends BaseModel<IJha> implements IJha {
       { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom },
       { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools },
       { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools },
-      { name: 'jobSteps', label: 'Job Steps', type: 'multi-input', initialValue: this.jobSteps },
-      { name:'sharepointId', label: 'Sharepoint ID', type: 'text', initialValue: this.sharepointId },
+      { name: 'sharepointId', label: 'Sharepoint ID', type: 'text', initialValue: this.sharepointId },
+      {
+        name: 'jobSteps',
+        label: 'Job Steps',
+        type: 'form-array',
+        initialValue: this.jobSteps,
+        fields: [
+          { name: 'description', label: 'Description', type: 'textarea' },
+          { name: 'hazard', label: 'Hazard', type: 'textarea' },
+          { name: 'safetyMeasures', label: 'Safety Measure', type: 'textarea' }
+        ]
+      }
     ];
   }
   
@@ -141,4 +169,43 @@ export class Jha extends BaseModel<IJha> implements IJha {
     }
     return body;
   }
+
+  getJobStepFormFields(): FormField[] {
+    const jobSteps = this.jobSteps || [];
+    const group = { label: 'Job Steps' };
+    const result: FormField[] = [];
+
+    jobSteps.forEach((step, index) => {
+      result.push(
+        {
+          name: `jobSteps.${index}.description`,
+          label: `Step ${index + 1}: Description`,
+          type: 'textarea',
+          group: group,
+        },
+        {
+          name: `jobSteps.${index}.hazards`,
+          label: `Step ${index + 1}: Hazards`,
+          type: 'textarea',
+          group: group,
+        },
+        {
+          name: `jobSteps.${index}.controls`,
+          label: `Step ${index + 1}: Controls`,
+          type: 'textarea',
+          group: group,
+        }
+      );
+    });
+
+    return result;
+  }
+
+    addJobStep(): Jha {
+      const newJobSteps = [...(this.jobSteps || []), new JobStep()];
+      return new Jha({ ...this, jobSteps: newJobSteps });
+    }
+  
+
+
 }

@@ -21,6 +21,7 @@ export interface IWorkRequest extends IBaseModel {
   foremanName: string;
   fireWatchName: string;
   spaceToBeEntered: string;
+  jhaStatus?: string;
 }
 
 export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest {
@@ -38,6 +39,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
   foremanName: string;
   fireWatchName: string;
   spaceToBeEntered: string;
+  jhaStatus?: string;
 
   constructor(data: Partial<IWorkRequest> = {}) {
     super(data);
@@ -55,6 +57,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
     this.foremanName = data.foremanName ?? '';
     this.fireWatchName = data.fireWatchName ?? '';
     this.spaceToBeEntered = data.spaceToBeEntered ?? '';
+    this.jhaStatus = data.jhaStatus;
   }
 
   getFormFields(): FormField[] {
@@ -141,6 +144,7 @@ export class WorkRequest extends BaseModel<IWorkRequest> implements IWorkRequest
           header: 'Last Updated',
           accessorFn: (item: IWorkRequest) => new Date(item.updatedAt).toLocaleDateString()
         },
+        { id: 'jhaStatus', header: 'JHA Status', accessorKey: 'jhaStatus'  },
       ];
     }
 
