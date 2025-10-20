@@ -57,12 +57,6 @@
                           [options]="[true, false]">
                         </app-radio-checkboxes>
                       }
-                      @case ('form-array') {
-                        <app-nested-form-input
-                          [formTemplate]="asForm(container.content)"
-                          [formControl]="getFormControl(getFormGroup(i), asFormField(container.content).name!)">
-                        </app-nested-form-input>
-                      }
                     }
                   }
                 }
@@ -82,7 +76,7 @@
         }
       </div>
       @if (!readOnly) {
-        <button type="button" (click)="removeItem(i)" class="remove-item-btn">-</button>
+        <button type="button" (click)="removeItem(i)" class="remove-item-btn">Remove</button>
       }
     </div>
   }

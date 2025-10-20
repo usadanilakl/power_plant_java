@@ -1,6 +1,6 @@
-import { Component, Input, Output, EventEmitter, forwardRef, ViewEncapsulation, input } from '@angular/core';
+import { Component, Input, Output, EventEmitter, forwardRef, ViewEncapsulation, input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, FormControl, AbstractControl } from '@angular/forms';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 import { FormContainerDto } from '../../../../models/forms/form-container.model';
 import { FormField } from '../../../../models/ui/form-field.model';
@@ -21,7 +21,7 @@ import { RadioCheckboxesComponent } from '../radio-checkboxes/radio-checkboxes.c
     InvisibleSearchableMultiSelectComponent,
     ChekcboxXComponent,
     RadioCheckboxesComponent
-],
+  ],
   templateUrl: './nested-form-input.component.html',
   styleUrl: './nested-form-input.component.css',
   providers: [
@@ -32,9 +32,10 @@ import { RadioCheckboxesComponent } from '../radio-checkboxes/radio-checkboxes.c
     }
   ]
 })
-export class NestedFormInputComponent implements ControlValueAccessor {
+export class NestedFormInputComponent implements ControlValueAccessor, OnInit {
   @Input() formTemplate: PrintableFormDto | null = null;
   @Input() readOnly: boolean = false;
+  @Input() formControl!: FormControl;
   @Output() valueChange = new EventEmitter<any[]>();
 
   formArray: FormArray;
@@ -46,50 +47,68 @@ export class NestedFormInputComponent implements ControlValueAccessor {
     this.formArray = this.fb.array([]);
   }
 
+  ngOnInit() {
+    const value = this.formControl.value;
+    if (Array.isArray(value)) {
+      this.formArray = this.fb.array(
+        value.map(item => this.createFormGroup(this.formTemplate, item))
+      );
+    } else {
+      this.formArray = this.fb.array([this.createFormGroup(this.formTemplate)]);
+    }
+    this.formControl.setValidators(this.formArray.validator);
+    this.formControl.setValue(this.formArray.value);
+
+    this.formArray.valueChanges.subscribe(value => {
+      this.formControl.setValue(value);
+      this.onChange(value);
+      this.valueChange.emit(value);
+    });
+  }
+
   writeValue(value: any[]): void {
-    if (value) {
+    if (Array.isArray(value)) {
       this.formArray.clear();
       value.forEach(item => {
-        const formGroup = this.createFormGroup(this.formTemplate);
-        formGroup.patchValue(item);
-        this.formArray.push(formGroup);
+        this.formArray.push(this.createFormGroup(this.formTemplate, item));
       });
+    } else if (value === null || value === undefined) {
+      this.formArray.clear();
+      this.addItem();
     }
+    this.formControl.setValue(this.formArray.value);
   }
 
   registerOnChange(fn: any): void {
     this.onChange = fn;
-    this.formArray.valueChanges.subscribe(fn);
   }
 
   registerOnTouched(fn: any): void {
     this.onTouched = fn;
   }
 
-  createFormGroup(formTemplate: PrintableFormDto | null): FormGroup {
-    const group: { [key: string]: any } = {};
+  createFormGroup(formTemplate: PrintableFormDto | null, initialValue: any = {}): FormGroup {
+    const group: { [key: string]: FormControl } = {};
     if (formTemplate && formTemplate.formContainers) {
       formTemplate.formContainers.forEach(container => {
         if (container.contentType === 'formField' && this.isFormField(container.content)) {
           const field = container.content;
-          group[field.name] = [''];
+          console.log('Creating form control for field:', field);
+          group[field.name] = this.fb.control(initialValue[field.name] || field.initialValue || '');
         }
       });
     }
-    console.log('template', formTemplate);
-    console.log('createFormGroup', group);
     return this.fb.group(group);
   }
 
   addItem(): void {
-    const formGroup = this.createFormGroup(this.formTemplate);
-    this.formArray.push(formGroup);
-    this.onChange(this.formArray.value);
+    this.formArray.push(this.createFormGroup(this.formTemplate));
+    this.formControl.setValue(this.formArray.value);
   }
 
   removeItem(index: number): void {
     this.formArray.removeAt(index);
-    this.onChange(this.formArray.value);
+    this.formControl.setValue(this.formArray.value);
   }
 
   getFormGroup(index: number): FormGroup {
@@ -97,7 +116,13 @@ export class NestedFormInputComponent implements ControlValueAccessor {
   }
 
   getFormControl(formGroup: FormGroup, controlName: string): FormControl {
-    return formGroup.get(controlName) as FormControl;
+    let control = formGroup.get(controlName);
+    if (!control) {
+      console.warn(`Control ${controlName} not found in form group. Creating a new one.`);
+      control = new FormControl('');
+      formGroup.addControl(controlName, control);
+    }
+    return control as FormControl;
   }
 
   isFormField(content: any): content is FormField {
