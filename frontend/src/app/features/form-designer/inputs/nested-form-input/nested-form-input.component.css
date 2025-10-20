@@ -1,4 +1,41 @@
-.nested-input-container {
+.nested-form-array {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nested-form-item {
+  position: relative;
+  border: 1px solid #ccc;
+  padding: 5px;
+  box-sizing: border-box;
+}
+
+.nested-form-item-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.remove-item-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  cursor: pointer;
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  font-weight: bold;
+  z-index: 10;
+}
+
+
+/* .nested-input-container {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -25,4 +62,4 @@
 .remove-item-btn {
   background-color: #f8d7da;
   border-color: #f5c6cb;
-}
+} */

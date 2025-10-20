@@ -20,6 +20,13 @@ export class JobStep implements IJobStep {
     this.hazard = data.hazard ?? '';
     this.safetyMeasures = data.safetyMeasures ?? '';
   }
+  getFormFields(): FormField[] {
+    return [
+          { name: 'description', label: 'Description', type: 'textarea' },
+          { name: 'hazard', label: 'Hazard', type: 'textarea' },
+          { name: 'safetyMeasures', label: 'Safety Measure', type: 'textarea' }
+        ]
+  }
 }
 
 export interface IJha {

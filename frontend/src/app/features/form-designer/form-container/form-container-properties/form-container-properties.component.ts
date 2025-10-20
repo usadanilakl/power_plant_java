@@ -3,10 +3,11 @@ import { FormContainerDto } from '../../../../models/forms/form-container.model'
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, single } from 'rxjs/operators';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { CurrentPrintableFormService } from '../../../../services/forms/current-printable-form.service';
 import { FormField } from '../../../../models/ui/form-field.model';
 import { TitleCasePipe } from '@angular/common';
+import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 
 interface FieldOption {
   path: string;
@@ -21,6 +22,7 @@ interface FieldOption {
   styleUrl: './form-container-properties.component.css'
 })
 export class FormContainerPropertiesComponent implements OnInit, OnChanges {
+
   @Input() container: FormContainerDto | null = null;
   @Input() availableFields: any = {};
   @Output() updateContainer = new EventEmitter<FormContainerDto>();
@@ -48,6 +50,8 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
 
   isBulkEditMode = signal<boolean>(false);
   bulkEditTarget = signal<'selected' | 'page' | 'type'>('selected');
+
+  printableForms = toSignal(this.currentPrintableFormService.allForms$, { initialValue: [] });
 
 
   ngOnInit(): void {
@@ -222,7 +226,7 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
             name: '',
             type: 'form-array',
             label: '',
-            fields: [],
+            nestedForm: new PrintableFormDto(),
             initialValue: null,
           };
         }
@@ -234,14 +238,12 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
     }
   }
 
+  formId: number = 0;
   onEntityFieldTypeChange(): void {
     if(this.container && this.container.contentType === 'repeatingSection' && this.isFormFieldContent(this.container.content)){
-      const fieldName = this.container.content?.name;
-      if(fieldName){
-        const field = this.currentPrintableFormService.currentEntityFields.find(field => field.name === fieldName);
-        if(field){
-          this.container.content.fields = field.fields;
-        }
+      const selectedForm = this.printableForms().find(form => form.id === this.formId);
+      if(selectedForm){
+        this.container.content.nestedForm = selectedForm;
       }
     }
     this.onPropertyChange();

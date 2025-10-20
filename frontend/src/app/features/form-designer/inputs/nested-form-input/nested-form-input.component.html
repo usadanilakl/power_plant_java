@@ -1,4 +1,98 @@
-<div class="nested-input-container">
+<div class="nested-form-container">
+  @for (group of formArray.controls; track $index; let i = $index) {
+    <div class="nested-form-item">
+      <div class="nested-form-fields">
+        @if (formTemplate) {
+          @for (container of formTemplate.formContainers; track container.id) {
+            <div [ngStyle]="getContainerStyles(container)">
+              @switch (container.contentType) {
+                @case ('formField') {
+                  @if (isFormField(container.content)) {
+                    @switch (asFormField(container.content).type) {
+                      @case ('text') {
+                        <app-invisible-input-field
+                          [formControl]="getFormControl(getFormGroup(i), asFormField(container.content).name!)"
+                          [style]="asFormField(container.content).style">
+                        </app-invisible-input-field>
+                      }
+                      @case ('number') {
+                        <app-invisible-input-field
+                          type="number"
+                          [formControl]="getFormControl(getFormGroup(i), asFormField(container.content).name!)"
+                          [style]="asFormField(container.content).style">
+                        </app-invisible-input-field>
+                      }
+                      @case ('date') {
+                        <app-invisible-input-field
+                          type="date"
+                          [formControl]="getFormControl(getFormGroup(i), asFormField(container.content).name!)"
+                          [style]="asFormField(container.content).style">
+                        </app-invisible-input-field>
+                      }
+                      @case ('select') {
+                        <app-invisible-searchable-select
+                          [formControl]="getFormControl(getFormGroup(i), asFormField(container.content).name!)"
+                          [options]="asFormField(container.content).options || []"
+                          [style]="asFormField(container.content).style">
+                        </app-invisible-searchable-select>
+                      }
+                      @case ('multi-select') {
+                        <app-invisible-searchable-multi-select
+                          [formControl]="getFormControl(getFormGroup(i), asFormField(container.content).name!)"
+                          [options]="asFormField(container.content).options || []"
+                          [style]="asFormField(container.content).style">
+                        </app-invisible-searchable-multi-select>
+                      }
+                      @case ('checkbox') {
+                        <app-chekcbox-x
+                          [formControl]="getFormControl(getFormGroup(i), asFormField(container.content).name!)"
+                          [id]="asFormField(container.content).name! + i"
+                          [style]="asFormField(container.content).style">
+                        </app-chekcbox-x>
+                      }
+                      @case ('radio') {
+                        <app-radio-checkboxes
+                          [formControl]="getFormControl(getFormGroup(i), asFormField(container.content).name!)" 
+                          [name]="asFormField(container.content).name! + i"
+                          [options]="[true, false]">
+                        </app-radio-checkboxes>
+                      }
+                      @case ('form-array') {
+                        <app-nested-form-input
+                          [formTemplate]="asForm(container.content)"
+                          [formControl]="getFormControl(getFormGroup(i), asFormField(container.content).name!)">
+                        </app-nested-form-input>
+                      }
+                    }
+                  }
+                }
+                @case ('text') {
+                  <div class="content-display" [ngStyle]="getContentStyles(container)">
+                    {{ container.content }}
+                  </div>
+                }
+                @case ('variable') {
+                  <div class="content-display" [ngStyle]="getContentStyles(container)">
+                    {{ getNestedValue(getFormGroup(i).value, $any(container.content)) }}
+                  </div>
+                }
+              }
+            </div>
+          }
+        }
+      </div>
+      @if (!readOnly) {
+        <button type="button" (click)="removeItem(i)" class="remove-item-btn">-</button>
+      }
+    </div>
+  }
+  @if (!readOnly) {
+    <button type="button" (click)="addItem()" class="add-item-btn">Add Item</button>
+  }
+</div>
+
+
+<!-- <div class="nested-input-container">
   <div *ngFor="let group of formArray.controls; let i = index" class="nested-input-item">
     <div *ngFor="let key of objectKeys" class="nested-input-field-wrapper">
       <app-invisible-input-field
@@ -10,4 +104,19 @@
     <button type="button" (click)="removeItem(i)" class="remove-item-btn">-</button>
   </div>
   <button type="button" (click)="addItem()" class="add-item-btn">Add Item</button>
-</div>
+</div> -->
+
+
+<!-- <div class="nested-input-container">
+  <div *ngFor="let group of formArray.controls; let i = index" class="nested-input-item">
+    <div *ngFor="let key of objectKeys" class="nested-input-field-wrapper">
+      <app-invisible-input-field
+        [formControl]="getFormControl(group, key)"
+        [type]="type"
+        [style]="customStyle">
+      </app-invisible-input-field>
+    </div>
+    <button type="button" (click)="removeItem(i)" class="remove-item-btn">-</button>
+  </div>
+  <button type="button" (click)="addItem()" class="add-item-btn">Add Item</button>
+</div> -->

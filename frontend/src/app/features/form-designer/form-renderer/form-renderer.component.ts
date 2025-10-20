@@ -4,29 +4,15 @@ import { FormField } from '../../../models/ui/form-field.model';
 import { FormContainerDto } from '../../../models/forms/form-container.model';
 import { PrintableFormDto } from '../../../models/forms/printable-form.model';
 import { CommonModule } from '@angular/common';
-import { ContainerContentPipe } from '../../../pipes/container-content.pipe';
-import { SearchableDropdownComponent } from '../../../shared/searchable-dropdown/searchable-dropdown.component';
-import { CheckboxGroupComponent } from '../../../shared/checkbox-group/checkbox-group.component';
-import { RadioGroupComponent } from '../../../shared/radio-group/radio-group.component';
-import { MultiSelectSearchableDropdownComponent } from '../../../shared/multi-select-searchable-dropdown/multi-select-searchable-dropdown.component';
-import { FileInputComponent } from '../../../shared/file-input/file-input.component';
-import { MultiInputComponent } from '../../../shared/multi-input/multi-input.component';
-import { FormInputComponent } from '../../../shared/form-input/form-input.component';
-import { InvisibleInputFieldComponent } from "../inputs/invisible-input-field/invisible-input-field.component";
-import { RadioCheckboxesComponent } from "../inputs/radio-checkboxes/radio-checkboxes.component";
-import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchable-select/invisible-searchable-select.component";
-import { ChekcboxXComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
 import { debounceTime, distinctUntilChanged, Observable, of, startWith } from 'rxjs';
 import { PrintService } from '../../../services/ui/print.service';
-import { NestedFormInputComponent } from "../inputs/nested-form-input/nested-form-input.component";
-import { Jha } from '../../../models/permits/jha.model';
+import { FormContainerRendererComponent } from "./form-container-renderer/form-container-renderer.component";
 
 @Component({
   selector: 'app-form-renderer',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ContainerContentPipe, SearchableDropdownComponent, CheckboxGroupComponent, RadioGroupComponent, MultiSelectSearchableDropdownComponent, FileInputComponent, MultiInputComponent, FormInputComponent, InvisibleInputFieldComponent, RadioCheckboxesComponent, InvisibleSearchableSelectComponent, ChekcboxXComponent, InvisibleSearchableMultiSelectComponent, NestedFormInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormContainerRendererComponent],
   templateUrl: './form-renderer.component.html',
   styleUrl: './form-renderer.component.css'
 })

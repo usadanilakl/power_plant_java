@@ -27,7 +27,7 @@ import { FormZoomControlsComponent } from "../form-zoom-controls/form-zoom-contr
 import { PageNavigatorComponent } from "../page-navigator/page-navigator.component";
 import { LotoDto } from '../../../models/loto/loto.model';
 import { NestedFormInputComponent } from "../inputs/nested-form-input/nested-form-input.component";
-import { Jha } from '../../../models/permits/jha.model';
+import { Jha, JobStep } from '../../../models/permits/jha.model';
 
 
 @Component({
@@ -225,6 +225,11 @@ export class PrintableFormDesignerComponent implements OnInit {
         this.currentPrintableFormService.currentEntity = new Jha();
         this.currentPrintableFormService.currentEntityFields = new Jha().getFormFields();
         return new Jha();
+      case 'JobStep':
+        const js = new JobStep();
+        this.currentPrintableFormService.currentEntity = js;
+        this.currentPrintableFormService.currentEntityFields = js.getFormFields();
+        return js;
       default:
         return null;
     }

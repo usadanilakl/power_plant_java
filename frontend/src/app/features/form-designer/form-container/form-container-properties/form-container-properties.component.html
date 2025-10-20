@@ -263,7 +263,7 @@
             <div class="input-row">
               <div class="input-field">
                 <label for="repeatingContent">Source Array</label>
-                <select id="repeatingContent" [(ngModel)]="container.content.name!" (ngModelChange)="onEntityFieldTypeChange()">
+                <select id="repeatingContent" [(ngModel)]="container.content.name!" (ngModelChange)="onPropertyChange()">
                   <option [ngValue]="null">-- Select Array Field --</option>
                   @for (field of arrayFields; track field.path) {
                     <option [ngValue]="field.path">{{ field.label }}</option>
@@ -271,17 +271,17 @@
                 </select>
               </div>
             </div>
-            <!-- <div class="input-row">
+            <div class="input-row">
               <div class="input-field">
                 <label for="repeatingForm">Form Template</label>
-                <select id="repeatingForm" [(ngModel)]="container.content.value" (ngModelChange)="onPropertyChange()">
+                <select id="repeatingForm" [(ngModel)]="formId" (ngModelChange)="onEntityFieldTypeChange()">
                   <option [ngValue]="null">-- Select Form --</option>
-                  @for (form of printableForms; track form.id) {
+                  @for (form of printableForms(); track form.id) {
                     <option [ngValue]="form.id">{{ form.name }}</option>
                   }
                 </select>
               </div>
-            </div> -->
+            </div>
 
           }
         }
