@@ -50,10 +50,15 @@
         </app-radio-checkboxes>
       }
       @case ('form-array') {
-        <app-nested-form-input
+        <!-- <app-nested-form-input
           [formTemplate]="asForm(container().content)"
           [formControl]="getFormControl(asFormField(container().content).name!)"
           [readOnly]="readOnly">
+        </app-nested-form-input> -->
+        <app-nested-form-input
+          [formTemplate]="asForm(container().content)"
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          >
         </app-nested-form-input>
       }
     }
