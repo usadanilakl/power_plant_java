@@ -88,16 +88,29 @@ export class NestedFormInputComponent implements ControlValueAccessor, OnInit {
   }
 
   createFormGroup(formTemplate: PrintableFormDto | null, initialValue: any = {}): FormGroup {
-    const group: { [key: string]: FormControl } = {};
+    const group: { [key: string]: AbstractControl } = {};
     if (formTemplate && formTemplate.formContainers) {
       formTemplate.formContainers.forEach(container => {
         if (container.contentType === 'formField' && this.isFormField(container.content)) {
           const field = container.content;
-          console.log('Creating form control for field:', field);
-          group[field.name] = this.fb.control(initialValue[field.name] || field.initialValue || '');
+          if (field.type === 'form-array') {
+            // Handle nested form arrays
+            group[field.name] = this.fb.array([]);
+          } else {
+            // For all other field types, create a FormControl
+            group[field.name] = this.fb.control(initialValue[field.name] || field.initialValue || '');
+          }
         }
       });
     }
+    
+    // Add any missing fields from initialValue that aren't in the template
+    Object.keys(initialValue).forEach(key => {
+      if (!group[key]) {
+        group[key] = this.fb.control(initialValue[key]);
+      }
+    });
+  
     return this.fb.group(group);
   }
 
