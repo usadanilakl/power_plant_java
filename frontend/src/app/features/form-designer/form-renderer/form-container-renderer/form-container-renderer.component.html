@@ -49,16 +49,14 @@
           [options]="[true, false]">
         </app-radio-checkboxes>
       }
+      
       @case ('form-array') {
-        <!-- <app-nested-form-input
-          [formTemplate]="asForm(container().content)"
-          [formControl]="getFormControl(asFormField(container().content).name!)"
-          [readOnly]="readOnly">
-        </app-nested-form-input> -->
         <app-nested-form-input
           [formTemplate]="asForm(container().content)"
-          [formControl]="getFormControl(asFormField(container().content).name!)"
-          >
+          [formArray]="getFormArray(asFormField(container().content).name!)"
+          [fieldName]="asFormField(container().content).name!"
+          (itemAdded)="onAddArrayItem($event)"
+          (itemRemoved)="onRemoveArrayItem($event)">
         </app-nested-form-input>
       }
     }

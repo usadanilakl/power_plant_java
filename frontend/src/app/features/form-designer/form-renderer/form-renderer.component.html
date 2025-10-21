@@ -13,6 +13,8 @@
           <app-form-container-renderer
             [container]="container"
             [form]="form"
+            (arrayItemAdded)="onArrayItemAdded($event)"
+            (arrayItemRemoved)="onArrayItemRemoved($event)"
             [readOnly]="readOnly()"
             [formData]="formData()">
           </app-form-container-renderer>

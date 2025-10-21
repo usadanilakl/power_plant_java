@@ -1,6 +1,6 @@
-import { Component, computed, forwardRef, input, Input } from '@angular/core';
+import { Component, computed, forwardRef, inject, input, Input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormGroup, ReactiveFormsModule, FormControl, FormArray } from '@angular/forms';
+import { FormGroup, ReactiveFormsModule, FormControl, FormArray, FormBuilder } from '@angular/forms';
 import { ContainerContentPipe } from '../../../../pipes/container-content.pipe';
 import { InvisibleInputFieldComponent } from '../../inputs/invisible-input-field/invisible-input-field.component';
 import { RadioCheckboxesComponent } from '../../inputs/radio-checkboxes/radio-checkboxes.component';
@@ -34,6 +34,11 @@ export class FormContainerRendererComponent {
   @Input() form!: FormGroup;
   @Input() readOnly: boolean = false;
   @Input() formData: any = {};
+  arrayItemAdded = output<{ index: number, fieldName: string }>();
+  arrayItemRemoved = output<{ index: number, fieldName: string }>();
+  private fb = inject(FormBuilder);
+  
+  
 
   containerWithNoLabel = computed(() => {
     const c = this.container();
@@ -102,14 +107,39 @@ export class FormContainerRendererComponent {
     return control as FormControl;
   }
 
-  getFormArray(name: string): FormArray {
-    return this.form.get(name) as FormArray;
-  }
+  
 
+  getFormArray(path: string): FormArray {
+    const control = this.form.get(path);
+    if (!control) {
+      console.error(`FormArray not found at path: ${path}`);
+      return this.fb.array([]) as FormArray;
+    }
+    if (!(control instanceof FormArray)) {
+      console.error(`Control at path ${path} is not a FormArray`);
+      return this.fb.array([]) as FormArray;
+    }
+    return control as FormArray;
+  }
   getNestedValue(obj: any, path: string): any {
     if (!obj || !path) {
       return null;
     }
     return path.split('.').reduce((prev, curr) => (prev ? prev[curr] : null), obj);
+  }
+
+
+  /**
+   * Handles when a new item is added to the form array
+   */
+  onAddArrayItem(event: { index: number, fieldName: string }): void {
+    this.arrayItemAdded.emit(event);
+  }
+
+  /**
+   * Handles when an item is removed from the form array
+   */
+  onRemoveArrayItem(event: { index: number, fieldName: string }): void {
+    this.arrayItemRemoved.emit(event);
   }
 }

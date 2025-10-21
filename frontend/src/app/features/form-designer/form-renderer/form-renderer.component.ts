@@ -1,11 +1,12 @@
-import { Component, computed, DestroyRef, effect, ElementRef, inject, Input, input, OnChanges, output, Renderer2, signal, Signal, SimpleChanges } from '@angular/core';
-import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { FormField } from '../../../models/ui/form-field.model';
-import { FormContainerDto } from '../../../models/forms/form-container.model';
-import { PrintableFormDto } from '../../../models/forms/printable-form.model';
+
+import { Component, computed, DestroyRef, effect, inject, input, Input, output, signal, Signal } from '@angular/core';
+import { FormBuilder, FormGroup, FormControl, ReactiveFormsModule, FormArray } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { PrintableFormDto } from '../../../models/forms/printable-form.model';
+import { FormContainerDto } from '../../../models/forms/form-container.model';
+import { FormField } from '../../../models/ui/form-field.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged, Observable, of, startWith } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { PrintService } from '../../../services/ui/print.service';
 import { FormContainerRendererComponent } from "./form-container-renderer/form-container-renderer.component";
 
@@ -17,23 +18,22 @@ import { FormContainerRendererComponent } from "./form-container-renderer/form-c
   styleUrl: './form-renderer.component.css'
 })
 export class FormRendererComponent {
-  formDefinition = input<PrintableFormDto | null>(null);
+  formDefinitionInput = input<PrintableFormDto | null>(null);
   @Input() formData: Signal<any> = signal<any | null>(null);
   readOnly = input<boolean>(false);
-  // formData = input<any | null>(null);
+  
   formSubmit = output<any>();
   formChange = output<any>();
   formDelete = output<number>();
+  formDefinitionChange = output<PrintableFormDto>(); // New output for form definition changes
+
+  formDefinition = signal<PrintableFormDto | null>(this.formDefinitionInput());
 
   form: FormGroup;
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
-  private renderer = inject(Renderer2);
-  private el = inject(ElementRef);
   private printService = inject(PrintService);
 
-  // Use computed signals for easier template binding
-  // containers = computed(() => this.formDefinition()?.formContainers ?? []);
   containers = computed(() => {
     const originalContainers = this.formDefinition()?.formContainers ?? [];
     return originalContainers.map(container => {
@@ -74,25 +74,21 @@ export class FormRendererComponent {
   sheetSize = computed(() => this.formDefinition()?.size ?? { width: 8.5, height: 11 });
   pixelsPerInch = 96;
 
-  // constructor() {
-  //   this.form = this.fb.group({});
-  // }
-
   constructor() {
     this.form = this.fb.group({});
+    
     effect(() => {
-      this.formDefinition(); // re-run when form definition changes
+      this.formDefinition.set(this.formDefinitionInput());
       this.createForm();
     });
 
     effect(() => {
-      const data = this.formData(); // re-run when form data changes
+      const data = this.formData();
       if (data && this.form) {
         this.form.patchValue(data, { emitEvent: false });
       }
     });
   }
-
 
   createForm() {
     const group: { [key: string]: any } = {};
@@ -100,16 +96,13 @@ export class FormRendererComponent {
 
     formFields.forEach(field => {
       if (field && field.name) {
-          if (field.type === 'form-array') {
-            // Handle FormArray
-            console.log('Handling FormArray:', field);
-            const arrayData = this.getNestedValue(this.formData(), field.name) || [];
-            const formArray = this.fb.array(
-              arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
-            );
-            this.setNestedControl(group, field.name, formArray);
-
-          } else{
+        if (field.type === 'form-array') {
+          const arrayData = this.getNestedValue(this.formData(), field.name) || [];
+          const formArray = this.fb.array(
+            arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
+          );
+          this.setNestedControl(group, field.name, formArray);
+        } else {
           let value = this.getNestedValue(this.formData(), field.name);
 
           if (field.type === 'file') {
@@ -117,11 +110,9 @@ export class FormRendererComponent {
           } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
             value = value || [];
           } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
-            // Assuming the object has an 'id' property to be used as the form value
             value = value.id;
           }
 
-          // Use the new helper to create nested structure
           this.setNestedControl(group, field.name, new FormControl(value, []));
         }
       }
@@ -130,23 +121,226 @@ export class FormRendererComponent {
     this.form = this.fb.group(group);
     
     this.form.valueChanges.pipe(
-      debounceTime(1000), // Wait for 300ms of inactivity before emitting
-      distinctUntilChanged(), // Only emit if the value has changed
+      debounceTime(1000),
+      distinctUntilChanged(),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(currentValue => {
-      // console.log('Form value changed: ', currentValue);
       const originalData = this.formData() || {};
       const formValue = this.form.value;
       const mergedData = this.deepMerge(originalData, formValue);
       this.formChange.emit(mergedData);
     });
+  }
 
-    console.log('Form created: ', this.form);
+
+  
+
+/**
+ * Handles when a new item is added to a form array
+ */
+onArrayItemAdded(event: { index: number, fieldName: string }): void {
+  // The FormArray has already been updated by nested-form-input
+  // We just need to create the new page with containers
+  this.addPageForArrayItem(event.index, event.fieldName);
+}
+
+/**
+ * Handles when an item is removed from a form array
+ */
+onArrayItemRemoved(event: { index: number, fieldName: string }): void {
+  // The FormArray has already been updated by nested-form-input
+  // We just need to remove the associated page
+  this.removePageForArrayItem(event.index, event.fieldName);
+}
+
+  
+  
+  /**
+   * Adds a new page with containers for a form array item
+   * @param itemIndex The index of the form array item
+   * @param arrayFieldName The name of the form array field
+   */
+  addPageForArrayItem(itemIndex: number, arrayFieldName: string) {
+    console.log('Adding page for array item', { itemIndex, arrayFieldName });
+    const currentDefinition = this.formDefinition();
+    if (!currentDefinition) return;
+  
+    // Find the form array field definition
+    const arrayField = this.getAllFormFields().find(f => f.name === arrayFieldName && f.type === 'form-array');
+    if (!arrayField || !arrayField.fields) return;
+  
+    // Find the parent container (the repeating section container)
+    const parentContainer = currentDefinition.formContainers?.find(container => {
+      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
+        return false;
+      }
+      const field = container.content as FormField;
+      return field.name === arrayFieldName;
+    });
+  
+    if (!parentContainer) {
+      console.warn(`No parent container found for array field: ${arrayFieldName}`);
+      return;
+    }
+  
+    // Get the nested form definition from the parent container
+    const nestedForm = (parentContainer.content as FormField).nestedForm;
+    if (!nestedForm || !nestedForm.formContainers) {
+      console.warn(`No nested form found for array field: ${arrayFieldName}`);
+      return;
+    }
+  
+    // Calculate dimensions
+    const sheetSize = this.sheetSize();
+    const pixelsPerInch = this.pixelsPerInch;
+    const sheetHeightPx = sheetSize.height * pixelsPerInch;
+    const parentContainerHeight = parentContainer.size?.height ?? 0;
+    const parentContainerY = parentContainer.position?.y ?? 0;
+    
+    // Get the nested form height (height of one item)
+    const nestedFormHeight = (nestedForm.size?.height ?? 1.5) * pixelsPerInch;
+    
+    // Calculate how many items can fit in the parent container
+    const itemsPerContainer = Math.floor(parentContainerHeight / nestedFormHeight);
+    
+    if (itemsPerContainer === 0) {
+      console.warn('Parent container is too small to fit even one item');
+      return;
+    }
+  
+    // Get all existing array items count
+    const formArray = this.form.get(arrayFieldName) as FormArray;
+    const totalItems = formArray ? formArray.length : itemIndex + 1;
+  
+    // Calculate which container this item should go into
+    const containerIndex = Math.floor(itemIndex / itemsPerContainer);
+    const itemIndexInContainer = itemIndex % itemsPerContainer;
+  
+    console.log(`Item ${itemIndex} should go in container ${containerIndex}, position ${itemIndexInContainer}`);
+    console.log(`Items per container: ${itemsPerContainer}, Total items: ${totalItems}`);
+  
+    // Check if we need to create a new container for this item
+    const existingContainersForArray = currentDefinition.formContainers?.filter(container => {
+      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
+        return false;
+      }
+      const field = container.content as FormField;
+      return field.name === arrayFieldName;
+    }) ?? [];
+  
+    const needsNewContainer = existingContainersForArray.length <= containerIndex;
+  
+    let newContainers: FormContainerDto[] = [];
+  
+    if (needsNewContainer) {
+      // Calculate the new page number
+      const maxPageNumber = Math.max(...(currentDefinition.formContainers?.map(c => c.pageNumber ?? 1) ?? [1]));
+      const newPageNumber = maxPageNumber + 1;
+      
+      console.log(`Creating new container on page ${newPageNumber} for overflow items`);
+  
+      // Clone the parent container for the new page
+      const newParentContainer = new FormContainerDto({
+        ...parentContainer,
+        id: undefined, // Will be assigned by backend
+        pageNumber: newPageNumber,
+        position: {
+          x: parentContainer.position?.x ?? 0,
+          y: parentContainer.position?.y ?? 0
+        }
+      });
+  
+      newContainers.push(newParentContainer);
+    }
+  
+    // Create updated form definition with new containers
+    const updatedDefinition = new PrintableFormDto({
+      ...currentDefinition,
+      formContainers: [
+        ...(currentDefinition.formContainers ?? []),
+        ...newContainers
+      ]
+    });
+  
+    this.formDefinition.set(updatedDefinition);
+  
+    // Emit the updated definition
+    this.formDefinitionChange.emit(updatedDefinition);
+  }
+  
+  /**
+   * Removes pages associated with a form array item
+   * @param itemIndex The index of the form array item being removed
+   * @param arrayFieldName The name of the form array field
+   */
+  removePageForArrayItem(itemIndex: number, arrayFieldName: string) {
+    const currentDefinition = this.formDefinition();
+    if (!currentDefinition) return;
+  
+    // Find the parent container
+    const parentContainer = currentDefinition.formContainers?.find(container => {
+      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
+        return false;
+      }
+      const field = container.content as FormField;
+      return field.name === arrayFieldName;
+    });
+  
+    if (!parentContainer) return;
+  
+    // Get the nested form definition
+    const nestedForm = (parentContainer.content as FormField).nestedForm;
+    if (!nestedForm) return;
+  
+    // Calculate dimensions
+    const sheetSize = this.sheetSize();
+    const pixelsPerInch = this.pixelsPerInch;
+    const parentContainerHeight = parentContainer.size?.height ?? 0;
+    const nestedFormHeight = (nestedForm.size?.height ?? 1.5) * pixelsPerInch;
+    const itemsPerContainer = Math.floor(parentContainerHeight / nestedFormHeight);
+  
+    // Get remaining items count after removal
+    const formArray = this.form.get(arrayFieldName) as FormArray;
+    const remainingItems = formArray ? formArray.length - 1 : 0;
+  
+    // Calculate how many containers we need for remaining items
+    const requiredContainers = Math.ceil(remainingItems / itemsPerContainer);
+  
+    // Get all containers for this array
+    const arrayContainers = currentDefinition.formContainers?.filter(container => {
+      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
+        return false;
+      }
+      const field = container.content as FormField;
+      return field.name === arrayFieldName;
+    }) ?? [];
+  
+    // Keep only the required number of containers
+    const containersToKeep = arrayContainers.slice(0, requiredContainers);
+    const containerIdsToKeep = new Set(containersToKeep.map(c => c.id));
+  
+    // Filter out excess containers
+    const updatedContainers = currentDefinition.formContainers?.filter(container => {
+      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
+        return true;
+      }
+      const field = container.content as FormField;
+      if (field.name === arrayFieldName) {
+        return containerIdsToKeep.has(container.id);
+      }
+      return true;
+    }) ?? [];
+  
+    const updatedDefinition = new PrintableFormDto({
+      ...currentDefinition,
+      formContainers: updatedContainers
+    });
+  
+    this.formDefinition.set(updatedDefinition);
+    this.formDefinitionChange.emit(updatedDefinition);
   }
 
   private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
-    console.log('Creating array item with fields:', fields);
-    console.log('Data for array item:', data);
     const group = this.fb.group({});
     fields.forEach(field => {
       const value = data[field.name] ?? field.initialValue ?? '';
@@ -155,156 +349,35 @@ export class FormRendererComponent {
     return group;
   }
 
-  getFormArray(name: string): FormArray {
-    return this.form.get(name) as FormArray;
-  }
-
-  addArrayItem(arrayName: string, fields: FormField[]) {
-    const formArray = this.getFormArray(arrayName);
-    if (formArray) {
-      formArray.push(this.createArrayItem(fields));
-      this.form.markAsDirty();
-    }
-  }
-
-  removeArrayItem(arrayName: string, index: number) {
-    const formArray = this.getFormArray(arrayName);
-    if (formArray) {
-      formArray.removeAt(index);
-      this.form.markAsDirty();
-    }
-  }
-
-  private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl | FormArray) {
-    const pathParts = path.split('.');
-    let currentGroup: any = group;
-
-    for (let i = 0; i < pathParts.length - 1; i++) {
-      const part = pathParts[i];
-      if (!currentGroup[part]) {
-        currentGroup[part] = this.fb.group({});
-      }
-      currentGroup = currentGroup[part];
-    }
-
-    const lastPart = pathParts[pathParts.length - 1];
-    if (currentGroup instanceof FormGroup) {
-      currentGroup.addControl(lastPart, control);
-    } else {
-      currentGroup[lastPart] = control;
-    }
-  }
-
-  getFormControl(path: string): FormControl {
-    const control = this.form.get(path);
-    if (!control) {
-      // Return a dummy control to avoid template errors if the control doesn't exist yet
-      return new FormControl();
-    }
-    console.log('Found control:', control);
-    return control as FormControl;
-  }
-
-  getFormControlValue(name: string | null): Observable<any> {
-    if (!name) {
-      return of(''); // Return an observable of an empty string if name is null
-    }
-    const control = this.form.get(name);
-    const value = this.getNestedValue(this.formData(), name);
-    if (!control) {
-      return of(value); // Return an observable of an empty string if control not found
-    }
-    // This is the key: return the valueChanges observable
-    // startWith ensures the initial value is displayed immediately
-    return control.valueChanges.pipe(startWith(control.value));
-  }
-
   private getAllFormFields(): FormField[] {
-    console.log('Containers:', this.containers());
-    return this.containers()
-      .filter(container => (container.contentType === 'formField' || container.contentType === 'repeatingSection') && this.isFormField(container.content))
-      .map(container => container.content as FormField);
+    const containers = this.formDefinition()?.formContainers ?? [];
+    return containers
+      .filter(c => (c.contentType === 'formField' || c.contentType === 'repeatingSection') && this.isFormField(c.content))
+      .map(c => c.content as FormField);
+  }
+
+  private setNestedControl(group: { [key: string]: any }, path: string, control: any) {
+    const parts = path.split('.');
+    let current = group;
+    
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (!current[part]) {
+        current[part] = this.fb.group({});
+      }
+      current = current[part];
+    }
+    
+    current[parts[parts.length - 1]] = control;
   }
 
   private getNestedValue(obj: any, path: string): any {
-    if (!obj || !path) {
-      return null;
-    }
-    return path.split('.').reduce((prev, curr) => (prev ? prev[curr] : null), obj);
-  }
-
-  getContainerStyles(container: FormContainerDto): any {
-    const styles: any = {
-      ...container.style,
-      position: 'absolute',
-      left: `${container.position.x}px`,
-      top: `${container.position.y}px`,
-      width: `${container.size.width}px`,
-      height: `${container.size.height}px`,
-    };
-
-    if (this.isFormField(container.content) && container.content.style) {
-      Object.assign(styles, this.getContainerStyles(container));
-    }
-
-    return styles;
-  }
-
-  getContentStyles(container: FormContainerDto): any {
-    if (!container.contentStyle) {
-      return {};
-    }
-    const styles = { ...container.contentStyle };
-    if (styles.fontSize && typeof styles.fontSize === 'number') {
-      styles.fontSize = `${styles.fontSize}px`;
-    }
-    return styles;
-  }
-
-  getContentStyle(container: FormContainerDto): { [klass: string]: any; }|null|undefined {
-    return {
-      'display': 'flex',
-      'justify-content': container.style.justifyContent?? 'center',
-      'align-items': container.style.alignItems?? 'center',
-    }
-  }
-
-  isFormField(content: any): content is FormField {
-    return content && typeof content === 'object' && 'name' in content && 'type' in content;
-  }
-  
-  isTextContainer(content: any): boolean{
-    return content && content.type && content.type === 'text';
-  }
-
-  isVariableContainer(content: any): boolean{
-    return content && content.type && content.type === 'variable';
-  }
-
-  asFormField(content: any): FormField {
-    if (this.isFormField(content)) {
-      return content;
-    }
-    // This is a type guard; actual return doesn't matter if isFormField is false.
-    // But for safety, we can return a non-FormField-like object.
-    return {} as FormField;
-  }
-
-  onSubmit() {
-    if (this.form.valid) {
-      const originalData = this.formData() || {};
-      const formValue = this.form.value;
-      const mergedData = this.deepMerge(originalData, formValue);
-
-      this.formSubmit.emit(mergedData);
-    } else {
-      this.form.markAllAsTouched();
-    }
+    if (!obj || !path) return undefined;
+    return path.split('.').reduce((acc, part) => acc?.[part], obj);
   }
 
   private deepMerge(target: any, source: any): any {
     const output = { ...target };
-  
     if (this.isObject(target) && this.isObject(source)) {
       Object.keys(source).forEach(key => {
         if (this.isObject(source[key])) {
@@ -318,17 +391,26 @@ export class FormRendererComponent {
         }
       });
     }
-  
     return output;
   }
 
   private isObject(item: any): boolean {
-    return (item && typeof item === 'object' && !Array.isArray(item));
+    return item && typeof item === 'object' && !Array.isArray(item);
   }
-  /**
-   * Hands off the form definition and current data to the PrintService
-   * to be rendered in the dedicated print layout component.
-   */
+
+  isFormField(content: any): content is FormField {
+    return content && typeof content === 'object' && 'type' in content && 'name' in content;
+  }
+
+  onSubmit() {
+    if (this.form.valid) {
+      const originalData = this.formData() || {};
+      const formValue = this.form.value;
+      const mergedData = this.deepMerge(originalData, formValue);
+      this.formSubmit.emit(mergedData);
+    }
+  }
+
   print(): void {
     if (this.formDefinition()) {
       const originalData = this.formData() || {};
@@ -337,10 +419,347 @@ export class FormRendererComponent {
       this.printService.printForm(this.formDefinition()!, mergedData);
     }
   }
-
-  // print(): void {
-  //   this.renderer.addClass(document.body, 'printing');
-  //   window.print();
-  //   this.renderer.removeClass(document.body, 'printing');
-  // }
 }
+
+
+// import { Component, computed, DestroyRef, effect, ElementRef, inject, Input, input, OnChanges, output, Renderer2, signal, Signal, SimpleChanges } from '@angular/core';
+// import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+// import { FormField } from '../../../models/ui/form-field.model';
+// import { FormContainerDto } from '../../../models/forms/form-container.model';
+// import { PrintableFormDto } from '../../../models/forms/printable-form.model';
+// import { CommonModule } from '@angular/common';
+// import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+// import { debounceTime, distinctUntilChanged, Observable, of, startWith } from 'rxjs';
+// import { PrintService } from '../../../services/ui/print.service';
+// import { FormContainerRendererComponent } from "./form-container-renderer/form-container-renderer.component";
+
+// @Component({
+//   selector: 'app-form-renderer',
+//   standalone: true,
+//   imports: [CommonModule, ReactiveFormsModule, FormContainerRendererComponent],
+//   templateUrl: './form-renderer.component.html',
+//   styleUrl: './form-renderer.component.css'
+// })
+// export class FormRendererComponent {
+//   formDefinition = input<PrintableFormDto | null>(null);
+//   @Input() formData: Signal<any> = signal<any | null>(null);
+//   readOnly = input<boolean>(false);
+//   // formData = input<any | null>(null);
+//   formSubmit = output<any>();
+//   formChange = output<any>();
+//   formDelete = output<number>();
+
+//   form: FormGroup;
+//   private fb = inject(FormBuilder);
+//   private destroyRef = inject(DestroyRef);
+//   private renderer = inject(Renderer2);
+//   private el = inject(ElementRef);
+//   private printService = inject(PrintService);
+
+//   // Use computed signals for easier template binding
+//   // containers = computed(() => this.formDefinition()?.formContainers ?? []);
+//   containers = computed(() => {
+//     const originalContainers = this.formDefinition()?.formContainers ?? [];
+//     return originalContainers.map(container => {
+//       if (container.contentType === 'formField' && this.isFormField(container.content)) {
+//         const field = container.content as FormField;
+//         return new FormContainerDto({
+//           ...container,
+//           content: {
+//             ...field,
+//             label: ''
+//           }
+//         });
+//       }
+//       return container;
+//     });
+//   });
+
+//   pages = computed(() => {
+//     const allContainers = this.formDefinition()?.formContainers ?? [];
+//     if (allContainers.length === 0) {
+//       return [{ pageNumber: 1, containers: [] }];
+//     }
+
+//     const pagesMap = new Map<number, FormContainerDto[]>();
+//     allContainers.forEach(container => {
+//       const pageNum = container.pageNumber ?? 1;
+//       if (!pagesMap.has(pageNum)) {
+//         pagesMap.set(pageNum, []);
+//       }
+//       pagesMap.get(pageNum)!.push(container);
+//     });
+
+//     return Array.from(pagesMap.entries())
+//       .map(([pageNumber, containers]) => ({ pageNumber, containers }))
+//       .sort((a, b) => a.pageNumber - b.pageNumber);
+//   });
+
+//   sheetSize = computed(() => this.formDefinition()?.size ?? { width: 8.5, height: 11 });
+//   pixelsPerInch = 96;
+
+//   // constructor() {
+//   //   this.form = this.fb.group({});
+//   // }
+
+//   constructor() {
+//     this.form = this.fb.group({});
+//     effect(() => {
+//       this.formDefinition(); // re-run when form definition changes
+//       this.createForm();
+//     });
+
+//     effect(() => {
+//       const data = this.formData(); // re-run when form data changes
+//       if (data && this.form) {
+//         this.form.patchValue(data, { emitEvent: false });
+//       }
+//     });
+//   }
+
+
+//   createForm() {
+//     const group: { [key: string]: any } = {};
+//     const formFields = this.getAllFormFields();
+
+//     formFields.forEach(field => {
+//       if (field && field.name) {
+//           if (field.type === 'form-array') {
+//             // Handle FormArray
+//             console.log('Handling FormArray:', field);
+//             const arrayData = this.getNestedValue(this.formData(), field.name) || [];
+//             const formArray = this.fb.array(
+//               arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
+//             );
+//             this.setNestedControl(group, field.name, formArray);
+
+//           } else{
+//           let value = this.getNestedValue(this.formData(), field.name);
+
+//           if (field.type === 'file') {
+//             value = null;
+//           } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+//             value = value || [];
+//           } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+//             // Assuming the object has an 'id' property to be used as the form value
+//             value = value.id;
+//           }
+
+//           // Use the new helper to create nested structure
+//           this.setNestedControl(group, field.name, new FormControl(value, []));
+//         }
+//       }
+//     });
+
+//     this.form = this.fb.group(group);
+    
+//     this.form.valueChanges.pipe(
+//       debounceTime(1000), // Wait for 300ms of inactivity before emitting
+//       distinctUntilChanged(), // Only emit if the value has changed
+//       takeUntilDestroyed(this.destroyRef)
+//     ).subscribe(currentValue => {
+//       // console.log('Form value changed: ', currentValue);
+//       const originalData = this.formData() || {};
+//       const formValue = this.form.value;
+//       const mergedData = this.deepMerge(originalData, formValue);
+//       this.formChange.emit(mergedData);
+//     });
+
+//     console.log('Form created: ', this.form);
+//   }
+
+//   private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
+//     console.log('Creating array item with fields:', fields);
+//     console.log('Data for array item:', data);
+//     const group = this.fb.group({});
+//     fields.forEach(field => {
+//       const value = data[field.name] ?? field.initialValue ?? '';
+//       group.addControl(field.name, this.fb.control(value, field.validators));
+//     });
+//     return group;
+//   }
+
+//   getFormArray(name: string): FormArray {
+//     return this.form.get(name) as FormArray;
+//   }
+
+//   addArrayItem(arrayName: string, fields: FormField[]) {
+//     const formArray = this.getFormArray(arrayName);
+//     if (formArray) {
+//       formArray.push(this.createArrayItem(fields));
+//       this.form.markAsDirty();
+//     }
+//   }
+
+//   removeArrayItem(arrayName: string, index: number) {
+//     const formArray = this.getFormArray(arrayName);
+//     if (formArray) {
+//       formArray.removeAt(index);
+//       this.form.markAsDirty();
+//     }
+//   }
+
+//   private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl | FormArray) {
+//     const pathParts = path.split('.');
+//     let currentGroup: any = group;
+
+//     for (let i = 0; i < pathParts.length - 1; i++) {
+//       const part = pathParts[i];
+//       if (!currentGroup[part]) {
+//         currentGroup[part] = this.fb.group({});
+//       }
+//       currentGroup = currentGroup[part];
+//     }
+
+//     const lastPart = pathParts[pathParts.length - 1];
+//     if (currentGroup instanceof FormGroup) {
+//       currentGroup.addControl(lastPart, control);
+//     } else {
+//       currentGroup[lastPart] = control;
+//     }
+//   }
+
+//   getFormControl(path: string): FormControl {
+//     const control = this.form.get(path);
+//     if (!control) {
+//       // Return a dummy control to avoid template errors if the control doesn't exist yet
+//       return new FormControl();
+//     }
+//     console.log('Found control:', control);
+//     return control as FormControl;
+//   }
+
+//   getFormControlValue(name: string | null): Observable<any> {
+//     if (!name) {
+//       return of(''); // Return an observable of an empty string if name is null
+//     }
+//     const control = this.form.get(name);
+//     const value = this.getNestedValue(this.formData(), name);
+//     if (!control) {
+//       return of(value); // Return an observable of an empty string if control not found
+//     }
+//     // This is the key: return the valueChanges observable
+//     // startWith ensures the initial value is displayed immediately
+//     return control.valueChanges.pipe(startWith(control.value));
+//   }
+
+//   private getAllFormFields(): FormField[] {
+//     console.log('Containers:', this.containers());
+//     return this.containers()
+//       .filter(container => (container.contentType === 'formField' || container.contentType === 'repeatingSection') && this.isFormField(container.content))
+//       .map(container => container.content as FormField);
+//   }
+
+//   private getNestedValue(obj: any, path: string): any {
+//     if (!obj || !path) {
+//       return null;
+//     }
+//     return path.split('.').reduce((prev, curr) => (prev ? prev[curr] : null), obj);
+//   }
+
+//   getContainerStyles(container: FormContainerDto): any {
+//     const styles: any = {
+//       ...container.style,
+//       position: 'absolute',
+//       left: `${container.position.x}px`,
+//       top: `${container.position.y}px`,
+//       width: `${container.size.width}px`,
+//       height: `${container.size.height}px`,
+//     };
+
+//     if (this.isFormField(container.content) && container.content.style) {
+//       Object.assign(styles, this.getContainerStyles(container));
+//     }
+
+//     return styles;
+//   }
+
+//   getContentStyles(container: FormContainerDto): any {
+//     if (!container.contentStyle) {
+//       return {};
+//     }
+//     const styles = { ...container.contentStyle };
+//     if (styles.fontSize && typeof styles.fontSize === 'number') {
+//       styles.fontSize = `${styles.fontSize}px`;
+//     }
+//     return styles;
+//   }
+
+//   getContentStyle(container: FormContainerDto): { [klass: string]: any; }|null|undefined {
+//     return {
+//       'display': 'flex',
+//       'justify-content': container.style.justifyContent?? 'center',
+//       'align-items': container.style.alignItems?? 'center',
+//     }
+//   }
+
+//   isFormField(content: any): content is FormField {
+//     return content && typeof content === 'object' && 'name' in content && 'type' in content;
+//   }
+  
+//   isTextContainer(content: any): boolean{
+//     return content && content.type && content.type === 'text';
+//   }
+
+//   isVariableContainer(content: any): boolean{
+//     return content && content.type && content.type === 'variable';
+//   }
+
+//   asFormField(content: any): FormField {
+//     if (this.isFormField(content)) {
+//       return content;
+//     }
+//     // This is a type guard; actual return doesn't matter if isFormField is false.
+//     // But for safety, we can return a non-FormField-like object.
+//     return {} as FormField;
+//   }
+
+//   onSubmit() {
+//     if (this.form.valid) {
+//       const originalData = this.formData() || {};
+//       const formValue = this.form.value;
+//       const mergedData = this.deepMerge(originalData, formValue);
+
+//       this.formSubmit.emit(mergedData);
+//     } else {
+//       this.form.markAllAsTouched();
+//     }
+//   }
+
+//   private deepMerge(target: any, source: any): any {
+//     const output = { ...target };
+  
+//     if (this.isObject(target) && this.isObject(source)) {
+//       Object.keys(source).forEach(key => {
+//         if (this.isObject(source[key])) {
+//           if (!(key in target)) {
+//             Object.assign(output, { [key]: source[key] });
+//           } else {
+//             output[key] = this.deepMerge(target[key], source[key]);
+//           }
+//         } else {
+//           Object.assign(output, { [key]: source[key] });
+//         }
+//       });
+//     }
+  
+//     return output;
+//   }
+
+//   private isObject(item: any): boolean {
+//     return (item && typeof item === 'object' && !Array.isArray(item));
+//   }
+//   /**
+//    * Hands off the form definition and current data to the PrintService
+//    * to be rendered in the dedicated print layout component.
+//    */
+//   print(): void {
+//     if (this.formDefinition()) {
+//       const originalData = this.formData() || {};
+//       const formValue = this.form.value;
+//       const mergedData = this.deepMerge(originalData, formValue);
+//       this.printService.printForm(this.formDefinition()!, mergedData);
+//     }
+//   }
+
+// }
