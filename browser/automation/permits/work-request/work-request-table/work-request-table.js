@@ -79,10 +79,10 @@ const workRequestTable = {
 
         // Create new event listener
         this.rowClickHandler = (event) => {
-            const id = event.detail.id;
+            const id = event.detail.data.id;
             // if(!callback)workRequestService.openBuilder(id);
             if(!callback)showActionMenu(id);
-            else callback(event.detail);
+            else callback(event.detail.data);
         };
 
         // Add the new event listener

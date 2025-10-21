@@ -119,6 +119,16 @@
         function openRedTagControls() {
             window.open('red-tag-controls.html', '_blank', 'width=600,height=400');
         }
+        // Prevent context menu on entire document or on your specific table element
+        document.addEventListener('contextmenu', function(event) {
+            // Optionally filter target elements if needed, e.g. only rows:
+            // if (event.target.closest('tr.row')) {
+            //     event.preventDefault();  // Block the right-click context menu
+            // }
+
+            event.preventDefault();
+        });
+
     </script>
 
 

@@ -79,7 +79,7 @@ const heatTraceTable = {
 
         // Create new event listener
         this.rowClickHandler = (event) => {
-            const clickedHeatTrace = event.detail;
+            const clickedHeatTrace = event.detail.data;
             this.selectedHeatTrace = clickedHeatTrace;
             if (clickedHeatTrace && clickedHeatTrace.pids) {
                 const fileIds = [...clickedHeatTrace.pids, clickedHeatTrace.isometric, clickedHeatTrace.panelSchedule];
