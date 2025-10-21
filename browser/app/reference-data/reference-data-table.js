@@ -28,7 +28,7 @@ const referenceDataTable = {
 
         // Create new event listener
         this.rowClickHandler = (event) => {
-            const clickedItem = event.detail;
+            const clickedItem = event.detail.data;
             this.selected = clickedItem;
             if (clickedItem) {
                 const equipment = clickedItem.tagNumbers ? equipmentService.getEqByTagNumbers(clickedItem.tagNumbers) : null;

@@ -78,21 +78,43 @@ const tableBuilder = {
 
         // Initialize infinite scroll
         this.initInfiniteScroll();
-        table.addEventListener('click', (event) => this.handleRowClick(event));
+        table.addEventListener('mousedown', (event) => this.handleRowClick(event));
     },
 
     handleRowClick: function(event) {
         const row = event.target.closest('tr.row');
         if (row) {
             this.highlightClickedRow(row);
-            const rowIndex = Array.from(row.parentNode.children).filter(child => child.classList.contains('row')).indexOf(row);
+            const rowIndex = Array.from(row.parentNode.children)
+                .filter(child => child.classList.contains('row'))
+                .indexOf(row);
             const clickedData = this.data[rowIndex];
-            
-            // Dispatch a custom event with the clicked row data
-            const clickEvent = new CustomEvent('rowClick', { detail: clickedData });
+
+            // Get mouse button pressed: 0 = left, 1 = middle, 2 = right
+            const mouseButton = event.button;
+
+            // Determine keyboard modifiers (Shift, Ctrl, etc.)
+            const keyboardInfo = {
+                key: event.key || null,
+                altKey: event.altKey,
+                ctrlKey: event.ctrlKey,
+                shiftKey: event.shiftKey
+            };
+
+            // Dispatch custom event with rich detail
+            const clickEvent = new CustomEvent('rowClick', {
+                detail: {
+                    data: clickedData,
+                    mouseButton: mouseButton,
+                    keyboard: keyboardInfo
+                },
+                bubbles: true
+            });
+
             document.dispatchEvent(clickEvent);
         }
     },
+
 
     highlightClickedRow: function(clickedRow) {
         if (this.lastClickedRow) {

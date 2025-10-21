@@ -11,22 +11,6 @@ async function scanForPrinters() {
     try {
         console.log("Scanninbg for printers...");
 
-        // if ('bluetooth' in navigator && 'requestDevice' in navigator.bluetooth) {
-        //     try {
-        //         await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
-        //     } catch (bleError) {
-        //         console.error("Error requesting Bluetooth access:", bleError);
-        //         statusLabel.innerText = "Bluetooth access denied";
-        //         statusLabel.style.color = "red";
-        //         return;
-        //     }
-        // } else {
-        //     console.error("Web Bluetooth API is not supported in this browser");
-        //     statusLabel.innerText = "Bluetooth not supported in this browser";
-        //     statusLabel.style.color = "red";
-        //     return;
-        // }
-
         const sessionId = localStorage.getItem("ownership_guid");
         console.log("Session ID:", sessionId);
 

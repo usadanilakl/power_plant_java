@@ -20,7 +20,7 @@ const lotoStandardTable = {
 
         // Create new event listener
         this.rowClickHandler = (event) => {
-            const standard = event.detail;
+            const standard = event.detail.data;
             this.selected = standard;
             if (standard && standard.lotoPoints) {
                 const lotoPoints = lotoPointService.getLotoPoints(standard.lotoPoints);

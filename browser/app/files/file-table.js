@@ -25,7 +25,7 @@ const fileTable = {
 
         // Create new event listener
         this.rowClickHandler = (event) => {
-            const clickedFile = event.detail;
+            const clickedFile = event.detail.data;
             this.selectedFile = clickedFile;
             if (clickedFile && clickedFile.fileLink) {
                 const imageZoom = new ImageZoomInteractive('../' + clickedFile.fileLink, 'image','jpg',lotoBuildingService,lotoListComponent);

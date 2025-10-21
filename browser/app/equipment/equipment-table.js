@@ -27,7 +27,7 @@ const equipmentTable = {
 
         // Create new event listener
         this.rowClickHandler = (event) => {
-            const clickedEquipment = event.detail;
+            const clickedEquipment = event.detail.data;
             this.selectedEquipment = clickedEquipment;
             if (clickedEquipment && clickedEquipment.relatedEquipment) {
                 const eqIds = [...new Set([...clickedEquipment.relatedEquipment, clickedEquipment.id])];
