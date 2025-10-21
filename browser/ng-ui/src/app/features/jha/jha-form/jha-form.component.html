@@ -1,1 +1,15 @@
-<p>jha-form works!</p>
+<app-reactive-form
+  [entity]="entity()"
+  [fields]="fields()"
+  (formValueChange)="onAnyValueChange($event)"
+  (formSubmit)="onSubmit($event)"
+>
+  <ng-container extra-buttons>
+    <app-email-prompt
+      to="dklokov@jpowerusa.com"
+      subject="Failed to submit JHA"
+      [body]="entity().getEmailBody()"
+    ></app-email-prompt>
+    <button type="button" (click)="addJobStep()">Add Job Step</button>
+  </ng-container>
+</app-reactive-form>

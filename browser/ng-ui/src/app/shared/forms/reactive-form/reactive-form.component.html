@@ -62,6 +62,15 @@
                   [formControl]="getFormControl(field.name)"
                 ></app-multi-text-input>
               }
+              @case('form-array'){
+              <app-form-array-input
+                [label]="field.label"
+                [formArray]="getFormArray(field.name)"
+                [fields]="field.fields!"
+                (addItem)="addArrayItem(field.name, field.fields!)"
+                (removeItem)="removeArrayItem(field.name, $event)">
+              </app-form-array-input>
+              }
               @default {
                 <app-form-input
                   [label]="field.label"

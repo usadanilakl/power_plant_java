@@ -10,6 +10,30 @@
     @for (page of pages(); track page.pageNumber) {
       <div class="form-sheet" [style.width.px]="sheetSize().width * pixelsPerInch" [style.height.px]="sheetSize().height * pixelsPerInch">
         @for (container of page.containers; track container.id) {
+          <app-form-container-renderer
+            [container]="container"
+            [form]="form"
+            [readOnly]="readOnly()"
+            [formData]="formData()">
+          </app-form-container-renderer>
+        }
+      </div>
+    }
+  </form>
+}
+
+<!-- @if (formDefinition()) {
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+  @if (!readOnly()) {
+    <div class="form-actions">
+      <button type="button" (click)="onSubmit()">Submit</button>
+      <button type="button" (click)="print()">Print</button>
+    </div>
+  }
+    @for (page of pages(); track page.pageNumber) {
+      <div class="form-sheet" [style.width.px]="sheetSize().width * pixelsPerInch" [style.height.px]="sheetSize().height * pixelsPerInch">
+        @for (container of page.containers; track container.id) {
           <div class="form-container" [ngStyle]="getContainerStyles(container)">
             @if (isFormField(container.content)) {
               @switch (asFormField(container.content).type) {
@@ -62,6 +86,12 @@
                   </app-radio-checkboxes>
 
                 }
+                @case ('form-array') {
+                  <app-nested-form-input
+                    [formControl]="getFormControl(asFormField(container.content).name!)"
+                  ></app-nested-form-input>
+
+                }
               }
             } @else if(container.contentType==='text') {
               <div class="content-display" [ngStyle]="getContentStyles(container)">
@@ -69,7 +99,7 @@
               </div>
             }@else if(container.contentType==='variable') {
               <div class="content-display" [ngStyle]="getContentStyles(container)">
-                {{ getFormControlValue(container.content) | async }}
+                {{ getFormControlValue($any(container.content)) | async }}
               </div>
             }
           </div>
@@ -77,93 +107,4 @@
       </div>
     }
   </form>
-}
-
-<!-- <div class="printable-sheet" [style.width.px]="sheetSize().width * pixelsPerInch" [style.height.px]="sheetSize().height * pixelsPerInch">
-  <form [formGroup]="form" (ngSubmit)="onSubmit()">
-    @for (container of containers(); track container.id) {
-      <div class="form-container" [ngStyle]="getContainerStyles(container)">
-        @if (isFormField(container.content)) {
-          @switch (asFormField(container.content).type) {
-            @case ('text') {
-              <app-invisible-input-field 
-                [type]="'text'"
-                [formControl]="getFormControl(asFormField(container.content).name!)"
-              ></app-invisible-input-field>
-            }
-            @case ('number') {
-              <app-form-input 
-                [type]="'number'"
-                [formControlName]="asFormField(container.content).name!"
-                [label]="asFormField(container.content).label">
-              </app-form-input>
-            }
-            @case ('date') {
-              <app-invisible-input-field
-                [formControl]="getFormControl(asFormField(container.content).name!)"
-                [type]="'date'">
-              </app-invisible-input-field>
-            }
-            @case ('textarea') {
-              <div class="form-field">
-                <label>{{ asFormField(container.content).label }}</label>
-                <textarea [formControlName]="asFormField(container.content).name!"></textarea>
-              </div>
-            }
-            @case ('checkbox') {
-              <app-chekcbox-x
-                [id]="asFormField(container.content).name!"
-                [formControl]="getFormControl(asFormField(container.content).name!)">
-              </app-chekcbox-x>
-            }
-            @case ('checkbox-group') {
-              <app-checkbox-group 
-                [formControlName]="asFormField(container.content).name!"
-                [label]="asFormField(container.content).label"
-                [options]="asFormField(container.content).options || []">
-              </app-checkbox-group>
-            }
-            @case ('radio') {
-              <app-radio-checkboxes 
-                [formControl]="getFormControl(asFormField(container.content).name!)"
-                [options]="[true,false]">
-              </app-radio-checkboxes>
-            }
-            @case ('select') {
-              <app-invisible-searchable-select 
-                [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}]"
-                [formControl]="getFormControl(asFormField(container.content).name!)"
-              ></app-invisible-searchable-select>
-            }
-            @case('multi-select') {
-              <app-invisible-searchable-multi-select 
-                [options]="[{value:1,label:'one'}, {value:2,label:'two'},{value:3,label:'three'}, {value:4,label:'four'}, {value:5,label:'five'}]"
-                [formControl]="getFormControl(asFormField(container.content).name!)">
-              </app-invisible-searchable-multi-select>
-            }
-                  
-            @case ('file') {
-              <app-invisible-input-field [type]="'file'"></app-invisible-input-field>
-            }
-            @case ('multi-input') {
-              <app-multi-input
-                [formControlName]="asFormField(container.content).name!"
-                [label]="asFormField(container.content).label">
-              </app-multi-input>
-            }
-            @default {
-              <app-invisible-input-field [type]="'time'"></app-invisible-input-field>
-            }
-          }
-        } @else {
-          <div [innerHTML]="container | containerContent"></div>
-        }
-      </div>
-    }
-  </form>
-</div>
-
-<div class="form-actions">
-  <button type="button" (click)="onSubmit()">Submit</button>
-  <button type="button" (click)="print()">Print</button>
-</div> -->
+} -->

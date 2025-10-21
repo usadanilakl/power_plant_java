@@ -12,7 +12,8 @@ export class WorkRequestDbService {
   constructor(private indexedDbService: IndexedDbService) { }
 
   addWorkRequest(workRequestData: Partial<IWorkRequest>): Observable<number> {
-    const newWorkRequest = new WorkRequest(workRequestData);
+    const { id, ...requestData } = workRequestData;
+    const newWorkRequest = new WorkRequest(requestData);
     return from(this.indexedDbService.workRequests.add(newWorkRequest));
   }
 

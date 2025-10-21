@@ -1,0 +1,51 @@
+.form-input {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol";
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.form-input label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: var(--primary-text);
+}
+
+.form-input input {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  background-color: var(--card-background);
+  color: var(--primary-text);
+}
+
+.form-input input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 5px var(--accent-color-shadow);
+}
+
+.form-input input::placeholder {
+  color: var(--secondary-text);
+}
+
+/* Specific styles for different input types */
+.form-input input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.form-input input[type="number"]::-webkit-outer-spin-button,
+.form-input input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.form-input input[type="date"] {
+  padding: 8px 10px;
+}

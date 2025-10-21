@@ -1,10 +1,12 @@
 import { BaseDto, BaseModel } from "../base/base.model";
 import { FormField } from "../ui/form-field.model";
+import { PrintableFormDto, PrintableFormModel } from "./printable-form.model";
 
-export type ContentType = 'text' | 'formField' | 'image' | 'variable';
+export type ContentType = 'text' | 'formField' | 'image' | 'variable' | 'repeatingSection';
 
 export interface FormContainerModel extends BaseModel {
-  content: string | FormField | null;
+  content: string | FormField | PrintableFormDto | null;
+  formControlKey: string | null;
   contentType: ContentType;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -16,7 +18,8 @@ export interface FormContainerModel extends BaseModel {
 }
 
 export class FormContainerDto extends BaseDto implements FormContainerModel {
-  content: string | FormField | null;
+  content: string | FormField | PrintableFormDto | null;
+  formControlKey: string | null;
   contentType: ContentType;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -29,6 +32,7 @@ export class FormContainerDto extends BaseDto implements FormContainerModel {
   constructor(data: Partial<FormContainerModel> = {}) {
     super(data);
     this.content = data.content ?? null;
+    this.formControlKey = data.formControlKey?? null;
     this.contentType = data.contentType ?? 'text';
     this.position = data.position ?? { x: 0, y: 0 };
     this.size = data.size ?? { width: 100, height: 100 };

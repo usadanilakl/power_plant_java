@@ -1,30 +1,18 @@
 import { Component, computed, DestroyRef, effect, ElementRef, inject, Input, input, OnChanges, output, Renderer2, signal, Signal, SimpleChanges } from '@angular/core';
-import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { FormField } from '../../../models/ui/form-field.model';
 import { FormContainerDto } from '../../../models/forms/form-container.model';
 import { PrintableFormDto } from '../../../models/forms/printable-form.model';
 import { CommonModule } from '@angular/common';
-import { ContainerContentPipe } from '../../../pipes/container-content.pipe';
-import { SearchableDropdownComponent } from '../../../shared/searchable-dropdown/searchable-dropdown.component';
-import { CheckboxGroupComponent } from '../../../shared/checkbox-group/checkbox-group.component';
-import { RadioGroupComponent } from '../../../shared/radio-group/radio-group.component';
-import { MultiSelectSearchableDropdownComponent } from '../../../shared/multi-select-searchable-dropdown/multi-select-searchable-dropdown.component';
-import { FileInputComponent } from '../../../shared/file-input/file-input.component';
-import { MultiInputComponent } from '../../../shared/multi-input/multi-input.component';
-import { FormInputComponent } from '../../../shared/form-input/form-input.component';
-import { InvisibleInputFieldComponent } from "../inputs/invisible-input-field/invisible-input-field.component";
-import { RadioCheckboxesComponent } from "../inputs/radio-checkboxes/radio-checkboxes.component";
-import { InvisibleSearchableSelectComponent } from "../inputs/invisible-searchable-select/invisible-searchable-select.component";
-import { ChekcboxXComponent } from "../inputs/chekcbox-x/chekcbox-x.component";
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-searchable-multi-select/invisible-searchable-multi-select.component";
 import { debounceTime, distinctUntilChanged, Observable, of, startWith } from 'rxjs';
 import { PrintService } from '../../../services/ui/print.service';
+import { FormContainerRendererComponent } from "./form-container-renderer/form-container-renderer.component";
 
 @Component({
   selector: 'app-form-renderer',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ContainerContentPipe, SearchableDropdownComponent, CheckboxGroupComponent, RadioGroupComponent, MultiSelectSearchableDropdownComponent, FileInputComponent, MultiInputComponent, FormInputComponent, InvisibleInputFieldComponent, RadioCheckboxesComponent, InvisibleSearchableSelectComponent, ChekcboxXComponent, InvisibleSearchableMultiSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormContainerRendererComponent],
   templateUrl: './form-renderer.component.html',
   styleUrl: './form-renderer.component.css'
 })
@@ -55,7 +43,7 @@ export class FormRendererComponent {
           ...container,
           content: {
             ...field,
-            label: '' // Set label to empty string to hide it
+            label: ''
           }
         });
       }
@@ -112,19 +100,30 @@ export class FormRendererComponent {
 
     formFields.forEach(field => {
       if (field && field.name) {
-        let value = this.getNestedValue(this.formData(), field.name);
+          if (field.type === 'form-array') {
+            // Handle FormArray
+            console.log('Handling FormArray:', field);
+            const arrayData = this.getNestedValue(this.formData(), field.name) || [];
+            const formArray = this.fb.array(
+              arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
+            );
+            this.setNestedControl(group, field.name, formArray);
 
-        if (field.type === 'file') {
-          value = null;
-        } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
-          value = value || [];
-        } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
-          // Assuming the object has an 'id' property to be used as the form value
-          value = value.id;
+          } else{
+          let value = this.getNestedValue(this.formData(), field.name);
+
+          if (field.type === 'file') {
+            value = null;
+          } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+            value = value || [];
+          } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+            // Assuming the object has an 'id' property to be used as the form value
+            value = value.id;
+          }
+
+          // Use the new helper to create nested structure
+          this.setNestedControl(group, field.name, new FormControl(value, []));
         }
-
-        // Use the new helper to create nested structure
-        this.setNestedControl(group, field.name, new FormControl(value, []));
       }
     });
 
@@ -141,9 +140,42 @@ export class FormRendererComponent {
       const mergedData = this.deepMerge(originalData, formValue);
       this.formChange.emit(mergedData);
     });
+
+    console.log('Form created: ', this.form);
   }
 
-  private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl) {
+  private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
+    console.log('Creating array item with fields:', fields);
+    console.log('Data for array item:', data);
+    const group = this.fb.group({});
+    fields.forEach(field => {
+      const value = data[field.name] ?? field.initialValue ?? '';
+      group.addControl(field.name, this.fb.control(value, field.validators));
+    });
+    return group;
+  }
+
+  getFormArray(name: string): FormArray {
+    return this.form.get(name) as FormArray;
+  }
+
+  addArrayItem(arrayName: string, fields: FormField[]) {
+    const formArray = this.getFormArray(arrayName);
+    if (formArray) {
+      formArray.push(this.createArrayItem(fields));
+      this.form.markAsDirty();
+    }
+  }
+
+  removeArrayItem(arrayName: string, index: number) {
+    const formArray = this.getFormArray(arrayName);
+    if (formArray) {
+      formArray.removeAt(index);
+      this.form.markAsDirty();
+    }
+  }
+
+  private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl | FormArray) {
     const pathParts = path.split('.');
     let currentGroup: any = group;
 
@@ -169,6 +201,7 @@ export class FormRendererComponent {
       // Return a dummy control to avoid template errors if the control doesn't exist yet
       return new FormControl();
     }
+    console.log('Found control:', control);
     return control as FormControl;
   }
 
@@ -187,8 +220,9 @@ export class FormRendererComponent {
   }
 
   private getAllFormFields(): FormField[] {
+    console.log('Containers:', this.containers());
     return this.containers()
-      .filter(container => container.contentType === 'formField' && this.isFormField(container.content))
+      .filter(container => (container.contentType === 'formField' || container.contentType === 'repeatingSection') && this.isFormField(container.content))
       .map(container => container.content as FormField);
   }
 

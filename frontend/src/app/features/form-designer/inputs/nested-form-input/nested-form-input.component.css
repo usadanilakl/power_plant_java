@@ -1,0 +1,104 @@
+.nested-form-array-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 10px;
+}
+
+.nested-form-item {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #f9f9f9;
+}
+
+.form-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.item-number {
+  font-weight: bold;
+  font-size: 16px;
+  color: #333;
+}
+
+.printable-sheet {
+  position: relative;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.form-container {
+  box-sizing: border-box;
+}
+
+.add-button,
+.remove-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.add-button {
+  background-color: #4CAF50;
+  color: white;
+  align-self: flex-start;
+}
+
+.add-button:hover {
+  background-color: #45a049;
+}
+
+.remove-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.remove-button:hover:not(:disabled) {
+  background-color: #da190b;
+}
+
+.remove-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+
+/* .nested-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nested-input-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nested-input-item app-invisible-input-field {
+  flex-grow: 1;
+}
+
+.add-item-btn, .remove-item-btn {
+  cursor: pointer;
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.remove-item-btn {
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+} */

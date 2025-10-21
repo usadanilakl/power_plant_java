@@ -26,6 +26,8 @@ import { InvisibleSearchableMultiSelectComponent } from "../inputs/invisible-sea
 import { FormZoomControlsComponent } from "../form-zoom-controls/form-zoom-controls.component";
 import { PageNavigatorComponent } from "../page-navigator/page-navigator.component";
 import { LotoDto } from '../../../models/loto/loto.model';
+import { NestedFormInputComponent } from "../inputs/nested-form-input/nested-form-input.component";
+import { Jha, JobStep } from '../../../models/permits/jha.model';
 
 
 @Component({
@@ -45,7 +47,8 @@ import { LotoDto } from '../../../models/loto/loto.model';
     ChekcboxXComponent,
     InvisibleSearchableMultiSelectComponent,
     FormZoomControlsComponent,
-    PageNavigatorComponent
+    PageNavigatorComponent,
+    NestedFormInputComponent
 ],
   templateUrl: './printable-form-designer.component.html',
   styleUrl: './printable-form-designer.component.css'
@@ -55,7 +58,6 @@ export class PrintableFormDesignerComponent implements OnInit {
   @ViewChild('formContent') formContentElement!: ElementRef<HTMLDivElement>;
   currentPrintableFormService = inject(CurrentPrintableFormService);
   menuPosition = MenuPosition;
-  
 
   currentForm = toSignal(this.currentPrintableFormService.form$, { initialValue: new PrintableFormDto() });
   formScale = 1;
@@ -189,6 +191,9 @@ export class PrintableFormDesignerComponent implements OnInit {
       case 'ConfinedSpace':
         return ConfinedSpaceDto.toFormFields(new ConfinedSpaceDto(), []);
         break;
+      case 'Jha':
+        return new Jha().getFormFields();
+        break;
       case 'Loto':
         return LotoDto.toFormFields(new LotoDto());
         break;
@@ -201,13 +206,30 @@ export class PrintableFormDesignerComponent implements OnInit {
   loadEntityDto(type: string) {
     switch (type) {
       case 'SafeWork':
+        this.currentPrintableFormService.currentEntity = new SafeWorkDto();
+        this.currentPrintableFormService.currentEntityFields = SafeWorkDto.toFormFields(new SafeWorkDto(), []);
         return new SafeWorkDto();
       case 'HotWork':
+        this.currentPrintableFormService.currentEntity = new HotWorkDto();
+        this.currentPrintableFormService.currentEntityFields = HotWorkDto.toFormFields(new HotWorkDto(), []);
         return new HotWorkDto();
       case 'ConfinedSpace':
+        this.currentPrintableFormService.currentEntity = new ConfinedSpaceDto();
+        this.currentPrintableFormService.currentEntityFields = ConfinedSpaceDto.toFormFields(new ConfinedSpaceDto(), []);
         return new ConfinedSpaceDto();
       case 'Loto':
+        this.currentPrintableFormService.currentEntity = new LotoDto();
+        this.currentPrintableFormService.currentEntityFields = LotoDto.toFormFields(new LotoDto());
         return new LotoDto();
+      case 'Jha':
+        this.currentPrintableFormService.currentEntity = new Jha();
+        this.currentPrintableFormService.currentEntityFields = new Jha().getFormFields();
+        return new Jha();
+      case 'JobStep':
+        const js = new JobStep();
+        this.currentPrintableFormService.currentEntity = js;
+        this.currentPrintableFormService.currentEntityFields = js.getFormFields();
+        return js;
       default:
         return null;
     }

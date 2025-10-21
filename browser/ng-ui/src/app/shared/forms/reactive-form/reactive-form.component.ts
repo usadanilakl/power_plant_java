@@ -1,6 +1,6 @@
 import { Component, computed, DestroyRef, effect, inject, Input, input, output, Signal, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { FormField } from '../../../models/inputs/form-field.model';
 import { SearchableSelectInputComponent } from "../../input-fields/searchable-select-input/searchable-select-input.component";
@@ -10,6 +10,7 @@ import { RadioGroupComponent } from "../../input-fields/radio-group/radio-group.
 import { SearchableMultiSelectInputComponent } from "../../input-fields/searchable-multi-select-input/searchable-multi-select-input.component";
 import { MultiTextInputComponent } from "../../input-fields/multi-text-input/multi-text-input.component";
 import { FormInputComponent } from "../../input-fields/form-input/form-input.component";
+import { FormArrayInputComponent } from "../../input-fields/form-array-input/form-array-input.component";
 
 @Component({
   selector: 'app-reactive-form',
@@ -22,7 +23,8 @@ import { FormInputComponent } from "../../input-fields/form-input/form-input.com
     RadioGroupComponent,
     SearchableMultiSelectInputComponent,
     MultiTextInputComponent,
-    FormInputComponent
+    FormInputComponent,
+    FormArrayInputComponent
 ],
   templateUrl: './reactive-form.component.html',
   styleUrl: './reactive-form.component.css'
@@ -61,6 +63,8 @@ export class ReactiveFormComponent {
       groupsMap[groupLabel].push(field);
     });
 
+    console.log('groupedFields', groupsMap);
+
     return groupsMap;
   });
 
@@ -74,40 +78,94 @@ export class ReactiveFormComponent {
     });
 
     effect(() => {
-      const data = this.entity(); // re-run when form data changes
+      const data = this.entity();
       if (data && this.form) {
         this.form.patchValue(data, { emitEvent: false });
       }
     });
   }
 
-   createForm() {
+  //  createForm() {
+  //   const group: { [key: string]: any } = {};
+  //   const formFields = this.fields();
+
+  //   formFields.forEach(field => {
+  //     if (field && field.name) {
+  //       let value = this.getNestedValue(this.entity(), field.name);
+
+  //       if (field.type === 'file') {
+  //         value = null;
+  //       } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+  //         value = value || [];
+  //       } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+  //         // Assuming the object has an 'id' property to be used as the form value
+  //         value = value.id;
+  //       }
+
+  //       if (field.type === 'date' && !value) {
+  //         value = new Date().toISOString().split('T')[0];
+  //       }
+
+  //       if (field.type === 'time' && !value) {
+  //         value = new Date().toTimeString().slice(0, 5)
+  //       }
+
+  //       // Use the new helper to create nested structure
+  //       this.setNestedControl(group, field.name, new FormControl(value, field.validators || []));
+  //     }
+  //   });
+
+  //   this.form = this.fb.group(group);
+  //   this.setupConditionalValidators();
+    
+  //   this.form.valueChanges.pipe(
+  //     debounceTime(1000), // Wait for 300ms of inactivity before emitting
+  //     distinctUntilChanged(), // Only emit if the value has changed
+  //     takeUntilDestroyed(this.destroyRef)
+  //   ).subscribe(currentValue => {
+  //     // console.log('Form value changed: ', currentValue);
+  //     const originalData = this.entity() || {};
+  //     const formValue = this.form.value;
+  //     const mergedData = this.deepMerge(originalData, formValue);
+  //     this.formValueChange.emit(mergedData);
+  //   });
+  // }
+
+  createForm() {
     const group: { [key: string]: any } = {};
     const formFields = this.fields();
 
     formFields.forEach(field => {
       if (field && field.name) {
-        let value = this.getNestedValue(this.entity(), field.name);
+        if (field.type === 'form-array') {
+          // Handle FormArray
+          const arrayData = this.getNestedValue(this.entity(), field.name) || [];
+          const formArray = this.fb.array(
+            arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
+          );
+          this.setNestedControl(group, field.name, formArray);
 
-        if (field.type === 'file') {
-          value = null;
-        } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
-          value = value || [];
-        } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
-          // Assuming the object has an 'id' property to be used as the form value
-          value = value.id;
+        } else {
+          let value = this.getNestedValue(this.entity(), field.name);
+
+          if (field.type === 'file') {
+            value = null;
+          } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+            value = value || [];
+          } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+            value = value.id;
+          }
+
+          if (field.type === 'date' && !value) {
+            value = new Date().toISOString().split('T')[0];
+          }
+
+          if (field.type === 'time' && !value) {
+            value = new Date().toTimeString().slice(0, 5);
+          }
+
+          this.setNestedControl(group, field.name, new FormControl(value, field.validators || []));
         }
-
-        if (field.type === 'date' && !value) {
-          value = new Date().toISOString().split('T')[0];
-        }
-
-        if (field.type === 'time' && !value) {
-          value = new Date().toTimeString().slice(0, 5)
-        }
-
-        // Use the new helper to create nested structure
-        this.setNestedControl(group, field.name, new FormControl(value, field.validators || []));
       }
     });
 
@@ -115,16 +173,45 @@ export class ReactiveFormComponent {
     this.setupConditionalValidators();
     
     this.form.valueChanges.pipe(
-      debounceTime(1000), // Wait for 300ms of inactivity before emitting
-      distinctUntilChanged(), // Only emit if the value has changed
+      debounceTime(1000),
+      distinctUntilChanged(),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(currentValue => {
-      // console.log('Form value changed: ', currentValue);
       const originalData = this.entity() || {};
       const formValue = this.form.value;
       const mergedData = this.deepMerge(originalData, formValue);
       this.formValueChange.emit(mergedData);
+      console.log('Form value changed: ', currentValue);
     });
+  }
+
+  private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
+    const group = this.fb.group({});
+    fields.forEach(field => {
+      const value = data[field.name] ?? field.initialValue ?? '';
+      group.addControl(field.name, this.fb.control(value, field.validators));
+    });
+    return group;
+  }
+
+  getFormArray(name: string): FormArray {
+    return this.form.get(name) as FormArray;
+  }
+
+  addArrayItem(arrayName: string, fields: FormField[]) {
+    const formArray = this.getFormArray(arrayName);
+    if (formArray) {
+      formArray.push(this.createArrayItem(fields));
+      this.form.markAsDirty();
+    }
+  }
+
+  removeArrayItem(arrayName: string, index: number) {
+    const formArray = this.getFormArray(arrayName);
+    if (formArray) {
+      formArray.removeAt(index);
+      this.form.markAsDirty();
+    }
   }
 
   shouldShowField(field: FormField): boolean {
@@ -165,7 +252,36 @@ export class ReactiveFormComponent {
     });
   }
 
-  private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl) {
+  // private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl) {
+  //   const pathParts = path.split('.');
+  //   let currentGroup: any = group;
+
+  //   for (let i = 0; i < pathParts.length - 1; i++) {
+  //     const part = pathParts[i];
+  //     if (!currentGroup[part]) {
+  //       currentGroup[part] = this.fb.group({});
+  //     }
+  //     currentGroup = currentGroup[part];
+  //   }
+
+  //   const lastPart = pathParts[pathParts.length - 1];
+  //   if (currentGroup instanceof FormGroup) {
+  //     currentGroup.addControl(lastPart, control);
+  //   } else {
+  //     currentGroup[lastPart] = control;
+  //   }
+  // }
+
+  // getFormControl(path: string): FormControl {
+  //   const control = this.form.get(path);
+  //   if (!control) {
+  //     // Return a dummy control to avoid template errors if the control doesn't exist yet
+  //     return new FormControl();
+  //   }
+  //   return control as FormControl;
+  // }
+
+  private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl | FormArray) {
     const pathParts = path.split('.');
     let currentGroup: any = group;
 
@@ -187,8 +303,8 @@ export class ReactiveFormComponent {
 
   getFormControl(path: string): FormControl {
     const control = this.form.get(path);
-    if (!control) {
-      // Return a dummy control to avoid template errors if the control doesn't exist yet
+    if (!control || !(control instanceof FormControl)) {
+      // Return a dummy control to avoid template errors if the control doesn't exist or is not a FormControl
       return new FormControl();
     }
     return control as FormControl;
@@ -196,27 +312,36 @@ export class ReactiveFormComponent {
 
   private deepMerge(target: any, source: any): any {
     const output = { ...target };
-  
+
     if (this.isObject(target) && this.isObject(source)) {
       Object.keys(source).forEach(key => {
-        if (this.isObject(source[key])) {
-          if (!(key in target)) {
-            Object.assign(output, { [key]: source[key] });
-          } else {
-            output[key] = this.deepMerge(target[key], source[key]);
-          }
+        const sourceValue = source[key];
+        const targetValue = target[key];
+
+        if (this.isObject(sourceValue) && targetValue) {
+          output[key] = this.deepMerge(targetValue, sourceValue);
+        } else if (targetValue instanceof Date && typeof sourceValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sourceValue)) {
+          // If target is a Date and source is a date-string, convert it back to a Date object.
+          // This handles the case where a date picker returns a string.
+          const [year, month, day] = sourceValue.split('-').map(Number);
+          output[key] = new Date(year, month - 1, day);
         } else {
-          Object.assign(output, { [key]: source[key] });
+          output[key] = sourceValue;
         }
       });
     }
-  
+
     return output;
   }
 
+  // private isObject(item: any): boolean {
+  //   return (item && typeof item === 'object' && !Array.isArray(item));
+  // }
+
   private isObject(item: any): boolean {
-    return (item && typeof item === 'object' && !Array.isArray(item));
+    return (item && typeof item === 'object' && !Array.isArray(item) && !(item instanceof Date));
   }
+  
 
   private getNestedValue(obj: any, path: string): any {
     if (!obj || !path) {
@@ -232,6 +357,9 @@ export class ReactiveFormComponent {
       const originalData = this.entity() || {};
       const formValue = this.form.value;
       const mergedData = this.deepMerge(originalData, formValue);
+      console.log('Merged data:', mergedData.dateOfWork);
+      console.log('Original data:', originalData.dateOfWork);
+      console.log('Form value:', formValue.dateOfWork);
 
       this.formSubmit.emit(mergedData);
     } else {

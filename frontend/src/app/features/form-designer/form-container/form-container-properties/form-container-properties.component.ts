@@ -3,10 +3,11 @@ import { FormContainerDto } from '../../../../models/forms/form-container.model'
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, single } from 'rxjs/operators';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { CurrentPrintableFormService } from '../../../../services/forms/current-printable-form.service';
 import { FormField } from '../../../../models/ui/form-field.model';
 import { TitleCasePipe } from '@angular/common';
+import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 
 interface FieldOption {
   path: string;
@@ -21,6 +22,7 @@ interface FieldOption {
   styleUrl: './form-container-properties.component.css'
 })
 export class FormContainerPropertiesComponent implements OnInit, OnChanges {
+
   @Input() container: FormContainerDto | null = null;
   @Input() availableFields: any = {};
   @Output() updateContainer = new EventEmitter<FormContainerDto>();
@@ -36,10 +38,11 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
   private destroyRef = inject(DestroyRef);
 
   flattenedFields: FieldOption[] = [];
+  arrayFields: FieldOption[] = [];
   formFieldTypes: FormField['type'][] = [
     'text', 'textarea', 'select', 'multi-select', 'date', 'time', 
     'checkbox-group', 'checkbox', 'radio', 'file', 'multi-input', 
-    'number', 'radio-group'
+    'number', 'radio-group', "form-array"
   ];
 
   totalPages = this.currentPrintableFormService.totalPages;
@@ -47,6 +50,8 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
 
   isBulkEditMode = signal<boolean>(false);
   bulkEditTarget = signal<'selected' | 'page' | 'type'>('selected');
+
+  printableForms = toSignal(this.currentPrintableFormService.allForms$, { initialValue: [] });
 
 
   ngOnInit(): void {
@@ -64,11 +69,16 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
       });
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['availableFields'] && this.availableFields) {
-      this.flattenedFields = this.flattenDto(this.availableFields);
+  // ngOnChanges(changes: SimpleChanges): void {
+  //   if (changes['availableFields'] && this.availableFields) {
+  //     this.flattenedFields = this.flattenDto(this.availableFields);
+  //   }
+  // }
+    ngOnChanges(changes: SimpleChanges): void {
+      if (changes['availableFields'] && this.availableFields) {
+        this.processAvailableFields(this.availableFields);
+      }
     }
-  }
 
   onPropertyChange(): void {
     if (this.isBulkEditMode()) {
@@ -194,16 +204,6 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
     this.currentPrintableFormService.bulkUpdateContainers(target, containerType, propertiesToUpdate);
   }
 
-
-
-
-  // onContentTypeChange(): void {
-  //   if (this.container) {
-  //     this.container.content = null;
-  //   }
-  //   this.onPropertyChange();
-  // }
-
   onContentTypeChange(): void {
     if (this.container) {
       if (this.container.contentType === 'formField') {
@@ -219,12 +219,36 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
         }
       } else if (this.container.contentType === 'text') {
         this.container.content = '';
+      } else if(this.container.contentType === 'repeatingSection'){
+          console.log('Setting default repeating section content ', this.container);
+        if (typeof this.container.content !== 'object' || !this.container.content || !('type' in this.container.content)) {
+          this.container.content = {
+            name: '',
+            type: 'form-array',
+            label: '',
+            nestedForm: new PrintableFormDto(),
+            initialValue: null,
+          };
+        }
+
       } else {
         this.container.content = null;
       }
       this.onPropertyChange();
     }
   }
+
+  formId: number = 0;
+  onEntityFieldTypeChange(): void {
+    if(this.container && this.container.contentType === 'repeatingSection' && this.isFormFieldContent(this.container.content)){
+      const selectedForm = this.printableForms().find(form => form.id === this.formId);
+      if(selectedForm){
+        this.container.content.nestedForm = selectedForm;
+      }
+    }
+    this.onPropertyChange();
+  }
+
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -248,28 +272,68 @@ export class FormContainerPropertiesComponent implements OnInit, OnChanges {
 
 
 
-  private flattenDto(obj: any, path: string = '', label: string = ''): FieldOption[] {
+  // private flattenDto(obj: any, path: string = '', label: string = ''): FieldOption[] {
+  //   let fields: FieldOption[] = [];
+  //   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+  //     return [];
+  //   }
+
+  //   for (const key of Object.keys(obj)) {
+  //     // Skip private/internal properties
+  //     if (key.startsWith('_')) continue;
+
+  //     const value = (obj as any)[key];
+  //     const newPath = path ? `${path}.${key}` : key;
+  //     const newLabel = label ? `${label} > ${this.formatLabel(key)}` : this.formatLabel(key);
+
+  //     if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0) {
+  //       fields = fields.concat(this.flattenDto(value, newPath, newLabel));
+  //     } else {
+  //       fields.push({ path: newPath, label: newLabel });
+  //     }
+  //   }
+  //   return fields;
+  // }
+
+    private processAvailableFields(dto: any): void {
+      const { fields, arrayFields } = this.flattenDto(dto);
+      this.flattenedFields = fields;
+      this.arrayFields = arrayFields;
+      console.log('Available fields: ', this.flattenedFields);
+      console.log('Array fields: ', this.arrayFields);
+    }
+
+  private flattenDto(obj: any, path: string = '', label: string = ''): { fields: FieldOption[], arrayFields: FieldOption[] } {
     let fields: FieldOption[] = [];
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
-      return [];
+    let arrayFields: FieldOption[] = [];
+
+    if (!obj || typeof obj !== 'object') {
+      return { fields, arrayFields };
     }
 
     for (const key of Object.keys(obj)) {
-      // Skip private/internal properties
       if (key.startsWith('_')) continue;
 
       const value = (obj as any)[key];
       const newPath = path ? `${path}.${key}` : key;
       const newLabel = label ? `${label} > ${this.formatLabel(key)}` : this.formatLabel(key);
 
-      if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0) {
-        fields = fields.concat(this.flattenDto(value, newPath, newLabel));
+      if (Array.isArray(value)) {
+        arrayFields.push({ path: newPath, label: newLabel });
+        // Optionally, if you want to map fields inside array objects, you can add logic here.
+        // For now, we just mark the array itself.
+      } else if (value && typeof value === 'object' && Object.keys(value).length > 0) {
+        const nested = this.flattenDto(value, newPath, newLabel);
+        fields = fields.concat(nested.fields);
+        arrayFields = arrayFields.concat(nested.arrayFields);
       } else {
         fields.push({ path: newPath, label: newLabel });
       }
     }
-    return fields;
+    return { fields, arrayFields };
   }
+
+
 
   private formatLabel(key: string): string {
     const result = key.replace(/([A-Z])/g, ' $1');

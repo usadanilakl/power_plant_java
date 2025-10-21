@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CurrentPrintableFormService } from '../../../../services/forms/current-printable-form.service';
 import { CurrentConfinedSpaceService } from '../../../../services/current-items-services/current-confined-space.service';
 import { FormRendererComponent } from "../../form-renderer/form-renderer.component";
@@ -6,6 +6,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { CurrentSafeWorkService } from '../../../../services/current-items-services/current-safe-work.service';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 import { map } from 'rxjs';
+import { Jha } from '../../../../models/permits/jha.model';
 
 @Component({
   selector: 'app-printable-form-preview',
@@ -19,9 +20,12 @@ export class PrintableFormPreviewComponent {
   currentSafeWorkService = inject(CurrentSafeWorkService);
 
   form = toSignal(this.currentPrintableFormService.form$, { initialValue: new PrintableFormDto() });
-  data = toSignal(this.currentSafeWorkService.allActiveSafeWorks$.pipe(
-    map(works => (works && works.length > 0 ? works[0] : {}))
-  ), { initialValue: {} });
+  // data = toSignal(this.currentSafeWorkService.allActiveSafeWorks$.pipe(
+  //   map(works => (works && works.length > 0 ? works[0] : {}))
+  // ), { initialValue: {} });
+  data = signal<any>(Jha.getData());
+
+  
   
 
 }
