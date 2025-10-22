@@ -31,7 +31,8 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
   @Input() formTemplate: PrintableFormDto | null = null;
   @Input() formArray!: FormArray;
   @Input() fieldName: string = '';
-  @Input() currentPageNumber: number = 1;
+  @Input() containerIndex: number = 0;
+  @Input() itemsPerContainer: number = 1; 
 
   itemAdded = output<{ index: number; fieldName: string }>();
   itemRemoved = output<{ index: number; fieldName: string }>();
@@ -40,13 +41,54 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
 
   pixelsPerInch = 96;
 
-  constructor() {}
-
   ngOnInit(): void {
-    // Initialize with at least one item if empty
-    if (this.formArray.length === 0) {
-      this.addItem();
+    console.log('FormArray length:', this.formArray.length);
+    console.log('Container Index:', this.containerIndex);
+    console.log('Items Per Container:', this.itemsPerContainer);
+  }
+
+  getFormGroupsForCurrentContainer(): AbstractControl[] {
+    const startIndex = this.containerIndex * this.itemsPerContainer;
+    const endIndex = Math.min((this.containerIndex + 1) * this.itemsPerContainer, this.formArray.length);
+    const groups = this.formArray.controls.slice(startIndex, endIndex);
+    console.log(`Groups for container ${this.containerIndex}:`, groups);
+    return groups;
+  }
+
+  getItemNumber(index: number): number {
+    return this.containerIndex * this.itemsPerContainer + index + 1;
+  }
+
+  getItemIndex(index: number): number {
+    return this.containerIndex * this.itemsPerContainer + index;
+  }
+
+  addItem(): void {
+    const newIndex = this.containerIndex * this.itemsPerContainer + this.getFormGroupsForCurrentContainer().length;
+    const newGroup = this.createFormGroup();
+    
+    console.log('Adding new item at index:', newIndex);
+    this.formArray.insert(newIndex, newGroup);
+    
+    this.itemAdded.emit({ 
+      index: newIndex, 
+      fieldName: this.fieldName 
+    });
+  }
+  
+  removeItem(index: number): void {
+    const actualIndex = this.getItemIndex(index);
+    if (actualIndex < 0 || actualIndex >= this.formArray.length) {
+      return;
     }
+  
+    console.log('Removing item at index:', actualIndex);
+    this.formArray.removeAt(actualIndex);
+    
+    this.itemRemoved.emit({ 
+      index: actualIndex, 
+      fieldName: this.fieldName 
+    });
   }
 
   getSheetSize(): { width: number; height: number } {
@@ -55,35 +97,6 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
 
   getContainers(): FormContainerDto[] {
     return this.formTemplate?.formContainers || [];
-  }
-
-  addItem(): void {
-    const newIndex = this.formArray.length;
-    const newGroup = this.createFormGroup();
-    
-    // Add to formArray
-    this.formArray.push(newGroup);
-    
-    // Notify parent
-    this.itemAdded.emit({ 
-      index: newIndex, 
-      fieldName: this.fieldName 
-    });
-  }
-  
-  removeItem(index: number): void {
-    if (index < 0 || index >= this.formArray.length) {
-      return;
-    }
-  
-    // Remove from formArray
-    this.formArray.removeAt(index);
-    
-    // Notify parent
-    this.itemRemoved.emit({ 
-      index, 
-      fieldName: this.fieldName 
-    });
   }
 
   private createFormGroup(data: any = {}): FormGroup {

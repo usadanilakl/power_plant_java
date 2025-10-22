@@ -7,12 +7,14 @@
       <button type="button" (click)="print()">Print</button>
     </div>
   }
-    @for (page of pages(); track page.pageNumber) {
+    @for (page of pages(); track page.pageNumber; let pageIndex = $index) {
       <div class="form-sheet" [style.width.px]="sheetSize().width * pixelsPerInch" [style.height.px]="sheetSize().height * pixelsPerInch">
-        @for (container of page.containers; track container.id) {
+        @for (container of page.containers; track container.id; let containerIndex = $index) {
           <app-form-container-renderer
             [container]="container"
             [form]="form"
+            [containerIndex]="getContainerIndex(pageIndex, containerIndex)"
+            [itemsPerContainer]="getItemsPerContainer(container)"
             (arrayItemAdded)="onArrayItemAdded($event)"
             (arrayItemRemoved)="onArrayItemRemoved($event)"
             [readOnly]="readOnly()"

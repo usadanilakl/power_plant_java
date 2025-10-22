@@ -1,11 +1,11 @@
 
 <div class="nested-form-array-container">
   @if (formArray.length > 0) {
-    @for (formGroup of formArray.controls; track $index) {
+    @for (formGroup of getFormGroupsForCurrentContainer(); track $index) {
       <div class="form-item-wrapper" [formGroup]="asFormGroup(formGroup)">
         <div class="form-item-header">
-          <span class="item-number">Item {{ $index + 1 }}</span>
-          <button type="button" class="remove-button" (click)="removeItem($index)">Remove</button>
+          <span class="item-number">Item {{ getItemNumber($index) }}</span>
+          <button type="button" class="remove-button" (click)="removeItem(getItemIndex($index))">Remove</button>
         </div>
 
         <div class="form-sheet" 

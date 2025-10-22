@@ -55,6 +55,8 @@
           [formTemplate]="asForm(container().content)"
           [formArray]="getFormArray(asFormField(container().content).name!)"
           [fieldName]="asFormField(container().content).name!"
+          [containerIndex]="containerIndex"
+          [itemsPerContainer]="itemsPerContainer" 
           (itemAdded)="onAddArrayItem($event)"
           (itemRemoved)="onRemoveArrayItem($event)">
         </app-nested-form-input>

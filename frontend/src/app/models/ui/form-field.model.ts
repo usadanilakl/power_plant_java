@@ -40,7 +40,8 @@ export interface FormField {
   };
   group?: FormFieldGroup;
   fields?: FormField[]; 
-  nestedForm?: any
+  nestedForm?: any,
+  arrayIndexRange?: {start: number, end: number };
 }
 
 export interface FormFieldGroup {

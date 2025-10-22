@@ -34,6 +34,8 @@ export class FormContainerRendererComponent {
   @Input() form!: FormGroup;
   @Input() readOnly: boolean = false;
   @Input() formData: any = {};
+  @Input() containerIndex: number = 0;
+  @Input() itemsPerContainer: number = 1;
   arrayItemAdded = output<{ index: number, fieldName: string }>();
   arrayItemRemoved = output<{ index: number, fieldName: string }>();
   private fb = inject(FormBuilder);

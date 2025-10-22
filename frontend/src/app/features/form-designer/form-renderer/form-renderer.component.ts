@@ -1,5 +1,5 @@
 
-import { Component, computed, DestroyRef, effect, inject, input, Input, output, signal, Signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, Input, OnInit, output, signal, Signal } from '@angular/core';
 import { FormBuilder, FormGroup, FormControl, ReactiveFormsModule, FormArray } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { PrintableFormDto } from '../../../models/forms/printable-form.model';
@@ -17,7 +17,7 @@ import { FormContainerRendererComponent } from "./form-container-renderer/form-c
   templateUrl: './form-renderer.component.html',
   styleUrl: './form-renderer.component.css'
 })
-export class FormRendererComponent {
+export class FormRendererComponent implements OnInit{
   formDefinitionInput = input<PrintableFormDto | null>(null);
   @Input() formData: Signal<any> = signal<any | null>(null);
   readOnly = input<boolean>(false);
@@ -49,6 +49,15 @@ export class FormRendererComponent {
       }
       return container;
     });
+  }); 
+  
+  processedFormDefinition = computed(() => {
+    const formDef = this.formDefinition();
+    const formData = this.formData();
+    if (!formDef || !formData) {
+      return formDef;
+    }
+    return this.processFormArrays(formDef, formData);
   });
 
   pages = computed(() => {
@@ -76,18 +85,33 @@ export class FormRendererComponent {
 
   constructor() {
     this.form = this.fb.group({});
+
+    this.formDefinition.set(this.formDefinitionInput());
     
     effect(() => {
-      this.formDefinition.set(this.formDefinitionInput());
-      this.createForm();
+      const newFormDefinition = this.formDefinitionInput();
+      if (newFormDefinition !== this.formDefinition()) {
+        this.formDefinition.set(this.formDefinitionInput());
+        console.log('Form definition changed:', newFormDefinition);
+        this.createForm();
+        // this.initializeAndOrganizeContainers();
+        // this.processFormArrays();
+      }
     });
 
     effect(() => {
+      console.log('FormDef: ', this.processedFormDefinition())
       const data = this.formData();
       if (data && this.form) {
         this.form.patchValue(data, { emitEvent: false });
+        this.createForm();
+        
       }
     });
+  }
+
+  ngOnInit(): void {
+    // this.processFormArrays();
   }
 
   createForm() {
@@ -141,7 +165,7 @@ export class FormRendererComponent {
 onArrayItemAdded(event: { index: number, fieldName: string }): void {
   // The FormArray has already been updated by nested-form-input
   // We just need to create the new page with containers
-  this.addPageForArrayItem(event.index, event.fieldName);
+  // this.addPageForArrayItem(event.index, event.fieldName);
 }
 
 /**
@@ -150,195 +174,12 @@ onArrayItemAdded(event: { index: number, fieldName: string }): void {
 onArrayItemRemoved(event: { index: number, fieldName: string }): void {
   // The FormArray has already been updated by nested-form-input
   // We just need to remove the associated page
-  this.removePageForArrayItem(event.index, event.fieldName);
+  // this.removePageForArrayItem(event.index, event.fieldName);
 }
 
   
   
-  /**
-   * Adds a new page with containers for a form array item
-   * @param itemIndex The index of the form array item
-   * @param arrayFieldName The name of the form array field
-   */
-  addPageForArrayItem(itemIndex: number, arrayFieldName: string) {
-    console.log('Adding page for array item', { itemIndex, arrayFieldName });
-    const currentDefinition = this.formDefinition();
-    if (!currentDefinition) return;
-  
-    // Find the form array field definition
-    const arrayField = this.getAllFormFields().find(f => f.name === arrayFieldName && f.type === 'form-array');
-    if (!arrayField || !arrayField.fields) return;
-  
-    // Find the parent container (the repeating section container)
-    const parentContainer = currentDefinition.formContainers?.find(container => {
-      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
-        return false;
-      }
-      const field = container.content as FormField;
-      return field.name === arrayFieldName;
-    });
-  
-    if (!parentContainer) {
-      console.warn(`No parent container found for array field: ${arrayFieldName}`);
-      return;
-    }
-  
-    // Get the nested form definition from the parent container
-    const nestedForm = (parentContainer.content as FormField).nestedForm;
-    if (!nestedForm || !nestedForm.formContainers) {
-      console.warn(`No nested form found for array field: ${arrayFieldName}`);
-      return;
-    }
-  
-    // Calculate dimensions
-    const sheetSize = this.sheetSize();
-    const pixelsPerInch = this.pixelsPerInch;
-    const sheetHeightPx = sheetSize.height * pixelsPerInch;
-    const parentContainerHeight = parentContainer.size?.height ?? 0;
-    const parentContainerY = parentContainer.position?.y ?? 0;
-    
-    // Get the nested form height (height of one item)
-    const nestedFormHeight = (nestedForm.size?.height ?? 1.5) * pixelsPerInch;
-    
-    // Calculate how many items can fit in the parent container
-    const itemsPerContainer = Math.floor(parentContainerHeight / nestedFormHeight);
-    
-    if (itemsPerContainer === 0) {
-      console.warn('Parent container is too small to fit even one item');
-      return;
-    }
-  
-    // Get all existing array items count
-    const formArray = this.form.get(arrayFieldName) as FormArray;
-    const totalItems = formArray ? formArray.length : itemIndex + 1;
-  
-    // Calculate which container this item should go into
-    const containerIndex = Math.floor(itemIndex / itemsPerContainer);
-    const itemIndexInContainer = itemIndex % itemsPerContainer;
-  
-    console.log(`Item ${itemIndex} should go in container ${containerIndex}, position ${itemIndexInContainer}`);
-    console.log(`Items per container: ${itemsPerContainer}, Total items: ${totalItems}`);
-  
-    // Check if we need to create a new container for this item
-    const existingContainersForArray = currentDefinition.formContainers?.filter(container => {
-      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
-        return false;
-      }
-      const field = container.content as FormField;
-      return field.name === arrayFieldName;
-    }) ?? [];
-  
-    const needsNewContainer = existingContainersForArray.length <= containerIndex;
-  
-    let newContainers: FormContainerDto[] = [];
-  
-    if (needsNewContainer) {
-      // Calculate the new page number
-      const maxPageNumber = Math.max(...(currentDefinition.formContainers?.map(c => c.pageNumber ?? 1) ?? [1]));
-      const newPageNumber = maxPageNumber + 1;
-      
-      console.log(`Creating new container on page ${newPageNumber} for overflow items`);
-  
-      // Clone the parent container for the new page
-      const newParentContainer = new FormContainerDto({
-        ...parentContainer,
-        id: undefined, // Will be assigned by backend
-        pageNumber: newPageNumber,
-        position: {
-          x: parentContainer.position?.x ?? 0,
-          y: parentContainer.position?.y ?? 0
-        }
-      });
-  
-      newContainers.push(newParentContainer);
-    }
-  
-    // Create updated form definition with new containers
-    const updatedDefinition = new PrintableFormDto({
-      ...currentDefinition,
-      formContainers: [
-        ...(currentDefinition.formContainers ?? []),
-        ...newContainers
-      ]
-    });
-  
-    this.formDefinition.set(updatedDefinition);
-  
-    // Emit the updated definition
-    this.formDefinitionChange.emit(updatedDefinition);
-  }
-  
-  /**
-   * Removes pages associated with a form array item
-   * @param itemIndex The index of the form array item being removed
-   * @param arrayFieldName The name of the form array field
-   */
-  removePageForArrayItem(itemIndex: number, arrayFieldName: string) {
-    const currentDefinition = this.formDefinition();
-    if (!currentDefinition) return;
-  
-    // Find the parent container
-    const parentContainer = currentDefinition.formContainers?.find(container => {
-      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
-        return false;
-      }
-      const field = container.content as FormField;
-      return field.name === arrayFieldName;
-    });
-  
-    if (!parentContainer) return;
-  
-    // Get the nested form definition
-    const nestedForm = (parentContainer.content as FormField).nestedForm;
-    if (!nestedForm) return;
-  
-    // Calculate dimensions
-    const sheetSize = this.sheetSize();
-    const pixelsPerInch = this.pixelsPerInch;
-    const parentContainerHeight = parentContainer.size?.height ?? 0;
-    const nestedFormHeight = (nestedForm.size?.height ?? 1.5) * pixelsPerInch;
-    const itemsPerContainer = Math.floor(parentContainerHeight / nestedFormHeight);
-  
-    // Get remaining items count after removal
-    const formArray = this.form.get(arrayFieldName) as FormArray;
-    const remainingItems = formArray ? formArray.length - 1 : 0;
-  
-    // Calculate how many containers we need for remaining items
-    const requiredContainers = Math.ceil(remainingItems / itemsPerContainer);
-  
-    // Get all containers for this array
-    const arrayContainers = currentDefinition.formContainers?.filter(container => {
-      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
-        return false;
-      }
-      const field = container.content as FormField;
-      return field.name === arrayFieldName;
-    }) ?? [];
-  
-    // Keep only the required number of containers
-    const containersToKeep = arrayContainers.slice(0, requiredContainers);
-    const containerIdsToKeep = new Set(containersToKeep.map(c => c.id));
-  
-    // Filter out excess containers
-    const updatedContainers = currentDefinition.formContainers?.filter(container => {
-      if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
-        return true;
-      }
-      const field = container.content as FormField;
-      if (field.name === arrayFieldName) {
-        return containerIdsToKeep.has(container.id);
-      }
-      return true;
-    }) ?? [];
-  
-    const updatedDefinition = new PrintableFormDto({
-      ...currentDefinition,
-      formContainers: updatedContainers
-    });
-  
-    this.formDefinition.set(updatedDefinition);
-    this.formDefinitionChange.emit(updatedDefinition);
-  }
+
 
   private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
     const group = this.fb.group({});
@@ -419,6 +260,500 @@ onArrayItemRemoved(event: { index: number, fieldName: string }): void {
       this.printService.printForm(this.formDefinition()!, mergedData);
     }
   }
+
+
+
+
+
+  //Nested form controls:
+  private itemsPerContainer = 0;
+  
+  private calculateItemsPerContainer(parentContainer: FormContainerDto, nestedForm: PrintableFormDto) {
+    const pixelsPerInch = this.pixelsPerInch;
+    const parentContainerHeight = parentContainer.size?.height ?? 0;
+    const nestedFormHeight = (nestedForm.size?.height ?? 1.5) * pixelsPerInch;
+    this.itemsPerContainer = Math.floor(parentContainerHeight / nestedFormHeight);
+  }
+  
+  addPageForArrayItem(itemIndex: number, arrayFieldName: string) {
+    const currentDefinition = this.formDefinition();
+    if (!currentDefinition) return;
+  
+    const parentContainer = this.findParentContainer(currentDefinition, arrayFieldName);
+    if (!parentContainer) return;
+  
+    const nestedForm = (parentContainer.content as FormField).nestedForm;
+    if (!nestedForm) return;
+  
+    this.calculateItemsPerContainer(parentContainer, nestedForm);
+  
+    const containerIndex = Math.floor(itemIndex / this.itemsPerContainer);
+    const itemIndexInContainer = itemIndex % this.itemsPerContainer;
+  
+    let targetContainer = this.findOrCreateContainer(currentDefinition, arrayFieldName, containerIndex);
+  
+    // Add the new item to the target container
+    this.addItemToContainer(targetContainer, nestedForm, itemIndexInContainer);
+  
+    // Update the form definition
+    this.updateFormDefinition(currentDefinition);
+  }
+  
+  removePageForArrayItem(itemIndex: number, arrayFieldName: string) {
+    const currentDefinition = this.formDefinition();
+    if (!currentDefinition) return;
+  
+    const parentContainer = this.findParentContainer(currentDefinition, arrayFieldName);
+    if (!parentContainer) return;
+  
+    const nestedForm = (parentContainer.content as FormField).nestedForm;
+    if (!nestedForm) return;
+  
+    this.calculateItemsPerContainer(parentContainer, nestedForm);
+  
+    const containerIndex = Math.floor(itemIndex / this.itemsPerContainer);
+    const itemIndexInContainer = itemIndex % this.itemsPerContainer;
+  
+    let targetContainer = this.findContainer(currentDefinition, arrayFieldName, containerIndex);
+    if (!targetContainer) return;
+  
+    // Remove the item from the target container
+    this.removeItemFromContainer(targetContainer, itemIndexInContainer);
+  
+    // Check if we need to consolidate containers
+    this.consolidateContainers(currentDefinition, arrayFieldName);
+  
+    // Update the form definition
+    this.updateFormDefinition(currentDefinition);
+  }
+  
+  private findParentContainer(definition: PrintableFormDto, arrayFieldName: string): FormContainerDto | undefined {
+    return definition.formContainers?.find(container => 
+      container.contentType === 'repeatingSection' && 
+      this.isFormField(container.content) && 
+      (container.content as FormField).name === arrayFieldName
+    );
+  }
+  
+  private findOrCreateContainer(definition: PrintableFormDto, arrayFieldName: string, containerIndex: number): FormContainerDto {
+    let container = this.findContainer(definition, arrayFieldName, containerIndex);
+    if (!container) {
+      container = this.createNewContainer(definition, arrayFieldName, containerIndex);
+      definition.formContainers?.push(container);
+    }
+    return container;
+  }
+  
+  private findContainer(definition: PrintableFormDto, arrayFieldName: string, containerIndex: number): FormContainerDto | undefined {
+    return definition.formContainers?.find(container => 
+      container.contentType === 'repeatingSection' && 
+      this.isFormField(container.content) && 
+      (container.content as FormField).name === arrayFieldName &&
+      container.pageNumber === containerIndex + 1
+    );
+  }
+  
+  private createNewContainer(definition: PrintableFormDto, arrayFieldName: string, containerIndex: number): FormContainerDto {
+    // Create a new container based on the parent container's properties
+    const parentContainer = this.findParentContainer(definition, arrayFieldName);
+    return new FormContainerDto({
+      ...parentContainer,
+      id: Date.now(), // Generate a new ID
+      pageNumber: containerIndex + 1,
+      position: { x: parentContainer?.position?.x ?? 0, y: 0 }, // Reset Y position for new page
+      content: {
+        ...(parentContainer?.content as FormField),
+        initialValue: [] // Reset initial value for new container
+      }
+    });
+  }
+  
+  private addItemToContainer(container: FormContainerDto, nestedForm: PrintableFormDto, itemIndex: number) {
+    if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
+      console.error('Invalid container type for adding items');
+      return;
+    }
+  
+    const formField = container.content as FormField;
+    if (!Array.isArray(formField.initialValue)) {
+      formField.initialValue = [];
+    }
+  
+    // Create a new item based on the nestedForm structure
+    const newItem: any = {};
+    nestedForm.formContainers?.forEach(nestedContainer => {
+      if (this.isFormField(nestedContainer.content)) {
+        const fieldName = (nestedContainer.content as FormField).name;
+        newItem[fieldName] = null; // Or set a default value if needed
+      }
+    });
+  
+    // Add the new item to the formField's initialValue array
+    formField.initialValue.push(newItem);
+  
+    // Adjust the positions of existing items if necessary
+    this.adjustItemPositions(container, itemIndex);
+  }
+  
+  private adjustItemPositions(container: FormContainerDto, startIndex: number) {
+    if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
+      return;
+    }
+  
+    const formField = container.content as FormField;
+    const nestedForm = formField.nestedForm;
+    if (!nestedForm) return;
+  
+    const itemHeight = (nestedForm.size?.height ?? 0) * this.pixelsPerInch;
+    
+    // Instead of adjusting child containers, we'll adjust the positions of the items within the formField
+    if (Array.isArray(formField.initialValue)) {
+      for (let i = startIndex; i < formField.initialValue.length; i++) {
+        // Adjust the Y position of each item
+        const item = formField.initialValue[i];
+        if (item && typeof item === 'object') {
+          if (!item.position) item.position = { x: 0, y: 0 };
+          item.position.y = i * itemHeight;
+        }
+      }
+    }
+  }
+  
+  private removeItemFromContainer(container: FormContainerDto, itemIndex: number) {
+    if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
+      console.error('Invalid container type for removing items');
+      return;
+    }
+  
+    const formField = container.content as FormField;
+    if (formField.type === 'form-array' && Array.isArray(formField.initialValue)) {
+      formField.initialValue.splice(itemIndex, 1);
+    }
+  
+    // Adjust positions of remaining items
+    this.adjustItemPositions(container, itemIndex);
+  }
+  
+  private consolidateContainers(definition: PrintableFormDto, arrayFieldName: string) {
+    const containers = definition.formContainers?.filter(container => 
+      container.contentType === 'repeatingSection' && 
+      this.isFormField(container.content) && 
+      (container.content as FormField).name === arrayFieldName
+    );
+  
+    if (!containers || containers.length <= 1) return;
+  
+    const totalItems = containers.reduce((sum, container) => {
+      const formField = container.content as FormField;
+      return sum + (Array.isArray(formField.initialValue) ? formField.initialValue.length : 0);
+    }, 0);
+  
+    const requiredContainers = Math.ceil(totalItems / this.itemsPerContainer);
+  
+    // Remove excess containers
+    if (containers.length > requiredContainers) {
+      definition.formContainers = definition.formContainers?.filter(container => 
+        container.contentType !== 'repeatingSection' || 
+        !this.isFormField(container.content) || 
+        (container.content as FormField).name !== arrayFieldName ||
+        containers.indexOf(container) < requiredContainers
+      );
+    }
+  }
+  
+  private updateFormDefinition(updatedDefinition: PrintableFormDto) {
+    this.formDefinition.set(updatedDefinition);
+    this.formDefinitionChange.emit(updatedDefinition);
+  }
+
+  private initializeAndOrganizeContainers() {
+    const currentDefinition = this.formDefinition();
+    if (!currentDefinition) return;
+  
+    const updatedContainers: FormContainerDto[] = [];
+  
+    currentDefinition.formContainers?.forEach(container => {
+      if (container.contentType === 'repeatingSection' && this.isFormField(container.content)) {
+        const formField = container.content as FormField;
+        if (formField.type === 'form-array') {
+          this.organizeRepeatingSection(currentDefinition, container, formField, updatedContainers);
+        } else {
+          updatedContainers.push(container);
+        }
+      } else {
+        updatedContainers.push(container);
+      }
+    });
+  
+    currentDefinition.formContainers = updatedContainers;
+    console.log('Form definition before update: ', this.formDefinitionInput());
+    this.updateFormDefinition(currentDefinition);
+  }
+  
+  private organizeRepeatingSection(
+    currentDefinition: PrintableFormDto, 
+    container: FormContainerDto, 
+    formField: FormField, 
+    updatedContainers: FormContainerDto[]
+  ) {
+    const arrayFieldName = formField.name;
+    const arrayData = this.getNestedValue(this.formData(), arrayFieldName) || [];
+  
+    this.calculateItemsPerContainer(container, formField.nestedForm!);
+  
+    const requiredContainers = Math.ceil(arrayData.length / this.itemsPerContainer);
+  
+    console.log(`Organizing containers for ${arrayFieldName}. Total items: ${arrayData.length}, Items per container: ${this.itemsPerContainer}, Required containers: ${requiredContainers}`);
+  
+    for (let i = 0; i < requiredContainers; i++) {
+      let containerToUpdate = this.findContainer(currentDefinition, arrayFieldName, i);
+      if (!containerToUpdate) {
+        containerToUpdate = this.createNewContainer(currentDefinition, arrayFieldName, i);
+      }
+      this.updateContainerItems(containerToUpdate, arrayData, i);
+      updatedContainers.push(containerToUpdate);
+    }
+  
+    // Remove any excess containers
+    const existingContainers = currentDefinition.formContainers?.filter(c => 
+      c.contentType === 'repeatingSection' && 
+      this.isFormField(c.content) && 
+      (c.content as FormField).name === arrayFieldName
+    ) || [];
+  
+    for (let i = requiredContainers; i < existingContainers.length; i++) {
+      const index = currentDefinition.formContainers?.indexOf(existingContainers[i]);
+      if (index !== undefined && index > -1) {
+        currentDefinition.formContainers?.splice(index, 1);
+      }
+    }
+  }
+  
+  private updateContainerItems(container: FormContainerDto, arrayData: any[], containerIndex: number) {
+    if (container.contentType !== 'repeatingSection' || !this.isFormField(container.content)) {
+      console.error('Invalid container type for updating items');
+      return;
+    }
+  
+    const formField = container.content as FormField;
+    const startIndex = containerIndex * this.itemsPerContainer;
+    const endIndex = Math.min((containerIndex + 1) * this.itemsPerContainer, arrayData.length);
+    
+    // Slice the correct portion of the array for this container
+    const containerItems = arrayData.slice(startIndex, endIndex);
+    
+    // Update the formField's initialValue with the correct items for this container
+    if (!Array.isArray(formField.initialValue)) {
+      formField.initialValue = [];
+    }
+  
+    // Clear existing items and add new ones
+    formField.initialValue.length = 0;
+    formField.initialValue.push(...containerItems);
+  
+    // Adjust positions of items within this container
+    this.adjustItemPositions(container, 0);
+  
+    console.log(`Container ${containerIndex + 1} updated with items:`, formField.initialValue);
+  }
+
+  getContainerIndex(pageIndex: number, containerIndex: number): number {
+    return this.pages().slice(0, pageIndex).reduce((sum, page) => sum + page.containers.length, 0) + containerIndex;
+  }
+
+  getItemsPerContainer(container: FormContainerDto): number {
+    if (this.isFormField(container.content) && container.content.type === 'form-array') {
+      return this.itemsPerContainer;
+    }
+    return 1;
+  }
+
+
+  // Nested Form Control 2
+  // processFormArrays(){
+  //   if (!this.formDefinition() ||!this.formDefinition()!.formContainers) {
+  //     return;
+  //   }
+
+  //   const updatedFormDefinition = new PrintableFormDto({...this.formDefinition()});
+
+  //   const repeatingSections = updatedFormDefinition.formContainers.filter(c => c.contentType === 'repeatingSection');
+  //   repeatingSections.forEach(section => {
+  //     const newContainers = this.processFormArray(section);
+  //     const index = updatedFormDefinition.formContainers.indexOf(section);
+  //     if (index > -1) {
+  //       updatedFormDefinition.formContainers.splice(index, 1, ...newContainers);
+  //     }
+  //   });
+  //   this.formDefinition.set(updatedFormDefinition);
+  // }
+
+  // private processFormArray(section: FormContainerDto): FormContainerDto[] {
+
+  //   const formField = section.content as FormField;
+  //   const key = formField.name;
+  //   const formArrayData = this.getNestedValue(this.formData(), key);
+  //   if(!this.formData() || !formArrayData) throw new Error(`No data found for key "${key}"`);
+
+  //   const mainFormPageHight = this.formDefinition()!.size.height * this.pixelsPerInch;
+  //   const repeatingSectionContainerHeight = section.size?.height?? 0;
+  //   const pageNumber = section.pageNumber;
+
+  //   const nestedForm = formField.nestedForm;
+  //   const nestedFormHeight = (nestedForm.size?.height ?? 1.5) * this.pixelsPerInch;
+  //   const firstPageRoom = mainFormPageHight - section.position.y-10;
+  //   const fullPageRoom = mainFormPageHight - 20;
+
+  //   const firstPageCapacity = Math.floor(firstPageRoom / nestedFormHeight);
+  //   const fullPageCapacity = Math.floor(fullPageRoom / nestedFormHeight);
+  //   let containersNeeded;
+  //   if(formArrayData.length <= firstPageCapacity){
+  //     containersNeeded = 1;
+  //   } else {
+  //     const remainingItems = formArrayData.length - firstPageCapacity;
+  //     const fullPageContainersNeeded = Math.ceil(remainingItems / fullPageCapacity);
+  //     containersNeeded = 1 + fullPageContainersNeeded;
+  //   }
+  //   const readyContainers: FormContainerDto[] = [];
+
+  //   for(let i = 0; i < containersNeeded; i++){
+  //     const newContainer = new FormContainerDto({...section});
+  //     let startIndex: number;
+  //     let endIndex: number;
+
+  //     if(i === 0) {
+  //       startIndex = 0;
+  //       endIndex = Math.min(firstPageCapacity - 1, formArrayData.length - 1);
+  //       newContainer.pageNumber = pageNumber;
+  //     } else {
+  //       startIndex = firstPageCapacity + (i - 1) * fullPageCapacity;
+  //       endIndex = Math.min(startIndex + fullPageCapacity - 1, formArrayData.length - 1);
+  //       newContainer.pageNumber = (pageNumber ?? 1) + i;
+  //       newContainer.position = { ...newContainer.position, y: 10 }; // Reset Y position for new page
+  //       newContainer.size = { ...newContainer.size, height: fullPageRoom };
+  //     }
+
+      
+  //     (newContainer.content as FormField).arrayIndexRange = { start: startIndex, end: endIndex };
+  //     readyContainers.push(newContainer);
+  //   }
+
+
+  //   return readyContainers;
+    
+  // }
+
+
+
+  processFormArrays(formDef: PrintableFormDto, formData: any): PrintableFormDto {
+    if (!formDef.formContainers) {
+      return formDef;
+    }
+  
+    const updatedFormDefinition = new PrintableFormDto({ ...formDef });
+    let newContainers = [...updatedFormDefinition.formContainers];
+  
+    const repeatingSections = updatedFormDefinition.formContainers.filter(
+      c => c.contentType === 'repeatingSection' && this.isFormField(c.content)
+    );
+  
+    repeatingSections.forEach(sectionContainer => {
+      const processedSectionContainers = this.processFormArray(sectionContainer, formData);
+      const index = newContainers.findIndex(c => c.id === sectionContainer.id);
+      if (index > -1) {
+        newContainers.splice(index, 1, ...processedSectionContainers);
+      }
+    });
+  
+    updatedFormDefinition.formContainers = newContainers;
+    return updatedFormDefinition;
+  }
+  
+  private processFormArray(sectionContainer: FormContainerDto, formData: any): FormContainerDto[] {
+    if (!this.isFormField(sectionContainer.content)) {
+      return [sectionContainer];
+    }
+  
+    const field = sectionContainer.content as FormField;
+    const nestedForm = field.nestedForm;
+    if (!nestedForm) {
+      return [sectionContainer];
+    }
+  
+    const dataArray = this.getNestedValue(formData, field.name) ?? [];
+  
+    // If there's no data, create one empty container for the section
+    if (dataArray.length === 0) {
+      const emptyContainer = new FormContainerDto({
+        ...sectionContainer,
+        contentType: 'formField',
+        content: {
+          ...nestedForm,
+          name: `${field.name}_0`,
+          type: 'nestedForm',
+        }
+      });
+      (emptyContainer.content as FormField).arrayIndexRange = { start: 0, end: -1 }; // Indicate empty
+      return [emptyContainer];
+    }
+  
+    const { firstPageCapacity, fullPageCapacity } = this.calculateCapacities(sectionContainer, nestedForm);
+  
+    if (firstPageCapacity === 0 && fullPageCapacity === 0) {
+      console.error("Cannot render repeating section, as item height is zero or larger than page height.", sectionContainer);
+      return [sectionContainer]; // Avoid infinite loop
+    }
+  
+    const generatedContainers: FormContainerDto[] = [];
+    let itemsProcessed = 0;
+    let containerIndex = 0;
+  
+    // First page container
+    if (itemsProcessed < dataArray.length) {
+      const newContainer = new FormContainerDto({ ...sectionContainer });
+      const itemsOnThisPage = Math.min(firstPageCapacity, dataArray.length);
+      newContainer.pageNumber = sectionContainer.pageNumber;
+      (newContainer.content as FormField).arrayIndexRange = { start: itemsProcessed, end: itemsProcessed + itemsOnThisPage - 1 };
+      generatedContainers.push(newContainer);
+      itemsProcessed += itemsOnThisPage;
+      containerIndex++;
+    }
+  
+    // Subsequent full-page containers
+    while (itemsProcessed < dataArray.length) {
+      const newContainer = new FormContainerDto({ ...sectionContainer });
+      const itemsOnThisPage = Math.min(fullPageCapacity, dataArray.length - itemsProcessed);
+      if (itemsOnThisPage <= 0) break; // Safety break
+  
+      newContainer.pageNumber = (sectionContainer.pageNumber ?? 1) + containerIndex;
+      newContainer.position = { ...newContainer.position, y: 10 }; // Reset Y for new page
+      (newContainer.content as FormField).arrayIndexRange = { start: itemsProcessed, end: itemsProcessed + itemsOnThisPage - 1 };
+      generatedContainers.push(newContainer);
+      itemsProcessed += itemsOnThisPage;
+      containerIndex++;
+    }
+  
+    return generatedContainers;
+  }
+  
+  private calculateCapacities(sectionContainer: FormContainerDto, nestedForm: PrintableFormDto): { firstPageCapacity: number, fullPageCapacity: number } {
+    const pageHeight = (this.formDefinition()?.size.height ?? 11) * this.pixelsPerInch;
+    const itemHeight = (nestedForm.size?.height ?? 1.5) * this.pixelsPerInch;
+  
+    if (itemHeight <= 0) {
+      return { firstPageCapacity: 0, fullPageCapacity: 0 };
+    }
+  
+    const firstPageRoom = pageHeight - (sectionContainer.position.y ?? 10) - 10;
+    const fullPageRoom = pageHeight - 20;
+  
+    const firstPageCapacity = Math.max(0, Math.floor(firstPageRoom / itemHeight));
+    const fullPageCapacity = Math.max(0, Math.floor(fullPageRoom / itemHeight));
+  
+    return { firstPageCapacity, fullPageCapacity };
+  }
+
+
 }
 
 

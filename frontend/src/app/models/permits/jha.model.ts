@@ -123,9 +123,12 @@ export class Jha implements IJha {
 
     static getTestJobSteps(): JobStep[] {
       return [
-        new JobStep({ sequence: 1, description: 'Step 1', hazard: 'Hazard 1', safetyMeasures: 'Safety Measure 1' }),
-        new JobStep({ sequence: 2, description: 'Step 2', hazard: 'Hazard 2', safetyMeasures: 'Safety Measure 2' }),
-        new JobStep({ sequence: 3, description: 'Step 3', hazard: 'Hazard 3', safetyMeasures: 'Safety Measure 3' })
+        new JobStep({ sequence: 1, description: 'Inspect work area', hazard: 'Slips, trips, and falls', safetyMeasures: 'Clear debris, mark hazards' }),
+        new JobStep({ sequence: 2, description: 'Set up equipment', hazard: 'Pinch points, heavy lifting', safetyMeasures: 'Use proper PPE, team lifting' }),
+        new JobStep({ sequence: 3, description: 'Perform maintenance', hazard: 'Electrical shock, moving parts', safetyMeasures: 'Lock-out/Tag-out, machine guarding' }),
+        new JobStep({ sequence: 4, description: 'Test system', hazard: 'Unexpected startup', safetyMeasures: 'Follow test procedures, clear communication' }),
+        new JobStep({ sequence: 5, description: 'Clean up work area', hazard: 'Chemical exposure, ergonomic strain', safetyMeasures: 'Use proper cleaning agents, correct posture' }),
+        new JobStep({ sequence: 6, description: 'Document and report', hazard: 'Miscommunication', safetyMeasures: 'Double-check records, verbal confirmation' }),
       ];
     }
   static getData() {
