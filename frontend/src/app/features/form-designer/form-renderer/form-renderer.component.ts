@@ -20,15 +20,18 @@ import { FormContainerRendererComponent } from "./form-container-renderer/form-c
 export class FormRendererComponent implements OnInit{
   formDefinitionInput = input<PrintableFormDto | null>(null);
   @Input() formData: Signal<any> = signal<any | null>(null);
+  // formData = input<any | null>(null);
   readOnly = input<boolean>(false);
   
   formSubmit = output<any>();
   formChange = output<any>();
   formDelete = output<number>();
-  formDefinitionChange = output<PrintableFormDto>(); // New output for form definition changes
+  formDefinitionChange = output<PrintableFormDto>();
+  addItem = output<void>();
 
   formDefinition = signal<PrintableFormDto | null>(this.formDefinitionInput());
   private formArrayChanged = signal(0);
+  private addingItem = signal(false);
 
   form: FormGroup;
   private fb = inject(FormBuilder);
@@ -94,11 +97,12 @@ export class FormRendererComponent implements OnInit{
     
     effect(() => {
       const newFormDefinition = this.formDefinitionInput();
-      if (newFormDefinition !== this.formDefinition()) {
+      if (newFormDefinition !== this.formDefinition() && !this.addingItem()) {
         this.formDefinition.set(this.formDefinitionInput());
         console.log('Form definition changed:', newFormDefinition);
         this.createForm();
       }
+      this.addingItem.set(false);
     });
 
     effect(() => {
@@ -124,7 +128,12 @@ export class FormRendererComponent implements OnInit{
     formFields.forEach(field => {
       if (field && field.name) {
         if (field.type === 'form-array') {
-          const arrayData = this.getNestedValue(this.formData(), field.name) || [];
+        const currentFormValue = this.form?.value;
+        const dataSource = currentFormValue && Object.keys(currentFormValue).length > 0 
+          ? currentFormValue 
+          : this.formData();
+        
+        const arrayData = this.getNestedValue(dataSource, field.name) || [];
           const formArray = this.fb.array(
             arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
           );
@@ -165,15 +174,52 @@ export class FormRendererComponent implements OnInit{
  * Handles when a new item is added to a form array
  */
 onArrayItemAdded(formGroup: FormGroup): void {
-  // (this.form.get('jobSteps') as FormArray).push(formGroup)
-  this.formArrayChanged.update(val => val + 1);
+  setTimeout(() => {
+    this.formArrayChanged.update(val => val + 1);
+  }, 0);
+  // this.addItem.emit();
+
 }
+
+
 
 /**
  * Handles when an item is removed from a form array
  */
 onArrayItemRemoved(event: { index: number, fieldName: string }): void {
-  this.formArrayChanged.update(val => val + 1);
+  console.log('=== REMOVAL REQUEST ===');
+  console.log('Field name:', event.fieldName);
+  console.log('Index to remove:', event.index);
+  
+  const formArray = this.form.get(event.fieldName) as FormArray;
+  if (formArray && event.index >= 0 && event.index < formArray.length) {
+    console.log('Array length before removal:', formArray.length);
+    console.log('Full array before removal:', formArray.value);
+    console.log('Item being removed:', formArray.at(event.index).value);
+    
+    // Remove the item from the FormArray
+    formArray.removeAt(event.index);
+    
+    console.log('Array length after removal:', formArray.length);
+    console.log('Full array after removal:', formArray.value);
+    
+    // Emit the updated form value immediately
+    const originalData = this.formData() || {};
+    const formValue = this.form.value;
+    const mergedData = this.deepMerge(originalData, formValue);
+    console.log('Emitting merged data:', mergedData);
+    this.formChange.emit(mergedData);
+    
+    // Update the signal to trigger re-rendering
+    // This will cause processFormArrays to run with the updated form data
+    console.log('Triggering signal update...');
+    this.formArrayChanged.update(val => {
+      console.log('Signal updated from', val, 'to', val + 1);
+      return val + 1;
+    });
+  }
+  
+  console.log('=== END REMOVAL REQUEST ===');
 }
 
   
@@ -286,7 +332,7 @@ onArrayItemRemoved(event: { index: number, fieldName: string }): void {
 
     const formField = section.content as FormField;
     const key = formField.name;
-    const dataSource = this.form ? this.form.value : this.formData();
+    const dataSource = this.form && this.form.value ? this.form.value : this.formData();
     const formArrayData = this.getNestedValue(dataSource, key) ?? [];
     // if(!this.formData() || !formArrayData) throw new Error(`No data found for key "${key}"`);
 

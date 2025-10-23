@@ -31,8 +31,6 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
   formField = input<FormField>();
   formArray = input<FormArray>(new FormArray<AbstractControl>([]));
   @Input() fieldName: string = '';
-  @Input() containerIndex: number = 0;
-  @Input() itemsPerContainer: number = 1; 
 
   itemAdded = output<FormGroup>();
   itemRemoved = output<{ index: number; fieldName: string }>();
@@ -56,30 +54,30 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
     return groups;
   }
 
-  getItemNumber(index: number): number {
-    return this.containerIndex * this.itemsPerContainer + index + 1;
-  }
-
-  getItemIndex(index: number): number {
-    return this.containerIndex * this.itemsPerContainer + index;
-  }
-
   addItem(): void {
     const newGroup = this.createFormGroup();
-    // this.formArray().push(newGroup);
+    this.formArray().push(newGroup);
     
     this.itemAdded.emit(newGroup);
   }
   
+  
+  
   removeItem(index: number): void {
-    const actualIndex = this.getItemIndex(index);
+    const startIndex = this.formField()?.arrayIndexRange?.start ?? 0;
+    const actualIndex = startIndex + index;
+  
     if (actualIndex < 0 || actualIndex >= this.formArray().length) {
+      console.warn(`Invalid index: ${actualIndex} (array length: ${this.formArray().length})`);
       return;
     }
   
-    console.log('Removing item at index:', actualIndex);
-    this.formArray().removeAt(actualIndex);
+    console.log(`Requesting removal at absolute index: ${actualIndex} (relative index: ${index})`);
+    console.log('Current array length:', this.formArray().length);
+    console.log('Item to be removed:', this.formArray().at(actualIndex)?.value);
+    console.log('Full array before removal:', this.formArray().value);
     
+    // Just emit the event - parent will handle the actual removal
     this.itemRemoved.emit({ 
       index: actualIndex, 
       fieldName: this.fieldName 

@@ -6,7 +6,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { CurrentSafeWorkService } from '../../../../services/current-items-services/current-safe-work.service';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 import { map } from 'rxjs';
-import { Jha } from '../../../../models/permits/jha.model';
+import { Jha, JobStep } from '../../../../models/permits/jha.model';
 
 @Component({
   selector: 'app-printable-form-preview',
@@ -24,6 +24,16 @@ export class PrintableFormPreviewComponent {
   //   map(works => (works && works.length > 0 ? works[0] : {}))
   // ), { initialValue: {} });
   data = signal<any>(Jha.getData());
+
+  onAddStep(){
+    const step = new JobStep({
+      description: 'New Job Step',
+      hazard: 'Very Hazardous',
+      safetyMeasures: 'Very Safe'
+    });
+    const jha = new Jha({...this.data(), jobSteps: [...(this.data()?.jobSteps?? []), step]});
+    this.data.set(jha);
+  }
 
   
   

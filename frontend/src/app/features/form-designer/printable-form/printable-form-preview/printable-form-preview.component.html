@@ -3,6 +3,7 @@
 <div class="printable-content">
   <app-form-renderer
     [formDefinitionInput]="form()"
+    (addItem)="onAddStep()"
     [formData]="data"
 ></app-form-renderer>
 </div>
