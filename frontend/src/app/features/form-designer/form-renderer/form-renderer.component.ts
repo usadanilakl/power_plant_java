@@ -165,7 +165,7 @@ export class FormRendererComponent implements OnInit{
  * Handles when a new item is added to a form array
  */
 onArrayItemAdded(formGroup: FormGroup): void {
-  (this.form.get('jobSteps') as FormArray).push(formGroup)
+  // (this.form.get('jobSteps') as FormArray).push(formGroup)
   this.formArrayChanged.update(val => val + 1);
 }
 
