@@ -13,9 +13,7 @@
           <app-form-container-renderer
             [container]="container"
             [form]="form"
-            [containerIndex]="getContainerIndex(pageIndex, containerIndex)"
-            [itemsPerContainer]="getItemsPerContainer(container)"
-            (arrayItemAdded)="onArrayItemAdded($event)"
+            (arrayItemAdded)="onArrayItemAdded()"
             (arrayItemRemoved)="onArrayItemRemoved($event)"
             [readOnly]="readOnly()"
             [formData]="formData()">

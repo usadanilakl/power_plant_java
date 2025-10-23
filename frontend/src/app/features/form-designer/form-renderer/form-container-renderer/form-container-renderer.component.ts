@@ -34,9 +34,7 @@ export class FormContainerRendererComponent {
   @Input() form!: FormGroup;
   @Input() readOnly: boolean = false;
   @Input() formData: any = {};
-  @Input() containerIndex: number = 0;
-  @Input() itemsPerContainer: number = 1;
-  arrayItemAdded = output<{ index: number, fieldName: string }>();
+  arrayItemAdded = output<void>();
   arrayItemRemoved = output<{ index: number, fieldName: string }>();
   private fb = inject(FormBuilder);
   
@@ -134,8 +132,8 @@ export class FormContainerRendererComponent {
   /**
    * Handles when a new item is added to the form array
    */
-  onAddArrayItem(event: { index: number, fieldName: string }): void {
-    this.arrayItemAdded.emit(event);
+  onAddArrayItem(): void {
+    this.arrayItemAdded.emit();
   }
 
   /**

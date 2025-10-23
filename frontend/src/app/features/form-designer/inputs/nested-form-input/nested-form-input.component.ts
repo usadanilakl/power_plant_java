@@ -1,5 +1,5 @@
 
-import { Component, Input, output, OnDestroy, OnInit, OnChanges, SimpleChanges, inject } from '@angular/core';
+import { Component, Input, output, OnDestroy, OnInit, OnChanges, SimpleChanges, inject, computed, input } from '@angular/core';
 import { FormArray, ReactiveFormsModule, FormGroup, FormBuilder, AbstractControl, FormControl } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
@@ -28,30 +28,30 @@ import { Subscription } from 'rxjs';
   ]
 })
 export class NestedFormInputComponent implements OnInit, OnDestroy {
-  @Input() formTemplate: PrintableFormDto | null = null;
+  formField = input<FormField>();
   @Input() formArray!: FormArray;
   @Input() fieldName: string = '';
   @Input() containerIndex: number = 0;
   @Input() itemsPerContainer: number = 1; 
 
-  itemAdded = output<{ index: number; fieldName: string }>();
+  itemAdded = output<void>();
   itemRemoved = output<{ index: number; fieldName: string }>();
+
+  formTemplate = computed<PrintableFormDto>(() => {return this.formField()?.nestedForm as PrintableFormDto; });
 
   private fb = inject(FormBuilder);
 
   pixelsPerInch = 96;
 
   ngOnInit(): void {
-    console.log('FormArray length:', this.formArray.length);
-    console.log('Container Index:', this.containerIndex);
-    console.log('Items Per Container:', this.itemsPerContainer);
+
   }
 
   getFormGroupsForCurrentContainer(): AbstractControl[] {
-    const startIndex = this.containerIndex * this.itemsPerContainer;
-    const endIndex = Math.min((this.containerIndex + 1) * this.itemsPerContainer, this.formArray.length);
+    const startIndex = this.formField()?.arrayIndexRange?.start;
+    const endIndex = this.formField()?.arrayIndexRange?.end;
     const groups = this.formArray.controls.slice(startIndex, endIndex);
-    console.log(`Groups for container ${this.containerIndex}:`, groups);
+    console.log(`Groups for container ${startIndex}-${endIndex}:`, groups);
     return groups;
   }
 
@@ -64,16 +64,10 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
   }
 
   addItem(): void {
-    const newIndex = this.containerIndex * this.itemsPerContainer + this.getFormGroupsForCurrentContainer().length;
     const newGroup = this.createFormGroup();
+    this.formArray.push(newGroup);
     
-    console.log('Adding new item at index:', newIndex);
-    this.formArray.insert(newIndex, newGroup);
-    
-    this.itemAdded.emit({ 
-      index: newIndex, 
-      fieldName: this.fieldName 
-    });
+    this.itemAdded.emit();
   }
   
   removeItem(index: number): void {
@@ -92,11 +86,11 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
   }
 
   getSheetSize(): { width: number; height: number } {
-    return this.formTemplate?.size || { width: 8.5, height: 11 };
+    return this.formTemplate()?.size || { width: 8.5, height: 11 };
   }
 
   getContainers(): FormContainerDto[] {
-    return this.formTemplate?.formContainers || [];
+    return this.formTemplate()?.formContainers || [];
   }
 
   private createFormGroup(data: any = {}): FormGroup {
@@ -123,9 +117,9 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
   }
 
   private getAllFormFields(): FormField[] {
-    if (!this.formTemplate) return [];
+    if (!this.formTemplate()) return [];
     
-    const containers = this.formTemplate.formContainers || [];
+    const containers = this.formTemplate().formContainers || [];
     return containers
       .filter(c => c.contentType === 'formField' && this.isFormField(c.content))
       .map(c => c.content as FormField);

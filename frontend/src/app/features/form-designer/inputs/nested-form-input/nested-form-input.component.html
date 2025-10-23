@@ -3,10 +3,11 @@
   @if (formArray.length > 0) {
     @for (formGroup of getFormGroupsForCurrentContainer(); track $index) {
       <div class="form-item-wrapper" [formGroup]="asFormGroup(formGroup)">
-        <div class="form-item-header">
+        <!-- <div class="form-item-header">
           <span class="item-number">Item {{ getItemNumber($index) }}</span>
           <button type="button" class="remove-button" (click)="removeItem(getItemIndex($index))">Remove</button>
-        </div>
+        </div> -->
+          <button type="button" class="remove-button" (click)="removeItem(getItemIndex($index))">X</button>
 
         <div class="form-sheet" 
              [style.width.px]="getSheetSize().width * pixelsPerInch" 
