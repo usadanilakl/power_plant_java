@@ -36,7 +36,7 @@ export class FormRendererComponent implements OnInit{
   private printService = inject(PrintService);
 
   containers = computed(() => {
-    const originalContainers = this.formDefinition()?.formContainers ?? [];
+    const originalContainers = this.processedFormDefinition()?.formContainers ?? [];
     return originalContainers.map(container => {
       if (container.contentType === 'formField' && this.isFormField(container.content)) {
         const field = container.content as FormField;
@@ -51,10 +51,17 @@ export class FormRendererComponent implements OnInit{
       return container;
     });
   }); 
+
+  fields = computed<FormField[]>(() => {
+    return this.containers()
+      .filter(c => (c.contentType === 'formField' || c.contentType === 'repeatingSection') && this.isFormField(c.content))
+      .map(c => c.content as FormField);
+  });
   
   processedFormDefinition = computed(() => {
     this.formArrayChanged(); 
-    return this.processFormArrays();
+    const formTemplate = this.processFormArrays();
+    return formTemplate;
   });
 
   pages = computed(() => {
@@ -91,8 +98,6 @@ export class FormRendererComponent implements OnInit{
         this.formDefinition.set(this.formDefinitionInput());
         console.log('Form definition changed:', newFormDefinition);
         this.createForm();
-        // this.initializeAndOrganizeContainers();
-        // this.processFormArrays();
       }
     });
 
@@ -113,6 +118,7 @@ export class FormRendererComponent implements OnInit{
 
   createForm() {
     const group: { [key: string]: any } = {};
+    // const formFields = this.fields();
     const formFields = this.getAllFormFields();
 
     formFields.forEach(field => {
@@ -151,13 +157,15 @@ export class FormRendererComponent implements OnInit{
       const mergedData = this.deepMerge(originalData, formValue);
       this.formChange.emit(mergedData);
     });
+    console.log('Form created:', this.form);
   }
   
 
 /**
  * Handles when a new item is added to a form array
  */
-onArrayItemAdded(): void {
+onArrayItemAdded(formGroup: FormGroup): void {
+  (this.form.get('jobSteps') as FormArray).push(formGroup)
   this.formArrayChanged.update(val => val + 1);
 }
 
@@ -278,8 +286,9 @@ onArrayItemRemoved(event: { index: number, fieldName: string }): void {
 
     const formField = section.content as FormField;
     const key = formField.name;
-    const formArrayData = this.getNestedValue(this.formData(), key);
-    if(!this.formData() || !formArrayData) throw new Error(`No data found for key "${key}"`);
+    const dataSource = this.form ? this.form.value : this.formData();
+    const formArrayData = this.getNestedValue(dataSource, key) ?? [];
+    // if(!this.formData() || !formArrayData) throw new Error(`No data found for key "${key}"`);
 
     console.log('Processing form array:', formArrayData);
 

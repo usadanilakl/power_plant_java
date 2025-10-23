@@ -1,6 +1,6 @@
 
 <div class="nested-form-array-container">
-  @if (formArray.length > 0) {
+  @if (formArray().length > 0) {
     @for (formGroup of getFormGroupsForCurrentContainer(); track $index) {
       <div class="form-item-wrapper" [formGroup]="asFormGroup(formGroup)">
         <!-- <div class="form-item-header">

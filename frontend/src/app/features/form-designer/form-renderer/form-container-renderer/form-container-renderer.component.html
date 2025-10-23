@@ -55,7 +55,7 @@
           [formField]="asFormField(container().content)"
           [formArray]="getFormArray(asFormField(container().content).name!)"
           [fieldName]="asFormField(container().content).name!"
-          (itemAdded)="onAddArrayItem()"
+          (itemAdded)="onAddArrayItem($event)"
           (itemRemoved)="onRemoveArrayItem($event)">
         </app-nested-form-input>
       }
@@ -66,7 +66,7 @@
     </div>
   } @else if(container().contentType === 'variable') {
     <div class="content-display" [ngStyle]="getContentStyles(container())">
-      {{ getNestedValue(form.value, $any(container().content)) }}
+      {{ getNestedValue(form()!.value, $any(container().content)) }}
     </div>
   }
 </div>

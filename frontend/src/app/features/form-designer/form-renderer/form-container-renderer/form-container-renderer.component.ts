@@ -31,10 +31,10 @@ import { PrintableFormDto } from '../../../../models/forms/printable-form.model'
 })
 export class FormContainerRendererComponent {
   container = input.required<FormContainerDto>();
-  @Input() form!: FormGroup;
+  form = input<FormGroup>();
   @Input() readOnly: boolean = false;
   @Input() formData: any = {};
-  arrayItemAdded = output<void>();
+  arrayItemAdded = output<FormGroup>();
   arrayItemRemoved = output<{ index: number, fieldName: string }>();
   private fb = inject(FormBuilder);
   
@@ -99,7 +99,7 @@ export class FormContainerRendererComponent {
   }
 
   getFormControl(path: string): FormControl {
-    const control = this.form.get(path);
+    const control = this.form()!.get(path);
     if (!control) {
       console.warn(`Control ${path} not found in form. Creating a new FormControl.`);
       return new FormControl();
@@ -110,7 +110,7 @@ export class FormContainerRendererComponent {
   
 
   getFormArray(path: string): FormArray {
-    const control = this.form.get(path);
+    const control = this.form()!.get(path);
     if (!control) {
       console.error(`FormArray not found at path: ${path}`);
       return this.fb.array([]) as FormArray;
@@ -132,8 +132,8 @@ export class FormContainerRendererComponent {
   /**
    * Handles when a new item is added to the form array
    */
-  onAddArrayItem(): void {
-    this.arrayItemAdded.emit();
+  onAddArrayItem(formGroup: FormGroup): void {
+    this.arrayItemAdded.emit(formGroup);
   }
 
   /**

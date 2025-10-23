@@ -29,12 +29,12 @@ import { Subscription } from 'rxjs';
 })
 export class NestedFormInputComponent implements OnInit, OnDestroy {
   formField = input<FormField>();
-  @Input() formArray!: FormArray;
+  formArray = input<FormArray>(new FormArray<AbstractControl>([]));
   @Input() fieldName: string = '';
   @Input() containerIndex: number = 0;
   @Input() itemsPerContainer: number = 1; 
 
-  itemAdded = output<void>();
+  itemAdded = output<FormGroup>();
   itemRemoved = output<{ index: number; fieldName: string }>();
 
   formTemplate = computed<PrintableFormDto>(() => {return this.formField()?.nestedForm as PrintableFormDto; });
@@ -48,9 +48,10 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
   }
 
   getFormGroupsForCurrentContainer(): AbstractControl[] {
+    // console.log('Current formArray:', this.formArray());
     const startIndex = this.formField()?.arrayIndexRange?.start;
     const endIndex = this.formField()?.arrayIndexRange?.end;
-    const groups = this.formArray.controls.slice(startIndex, endIndex);
+    const groups = this.formArray().controls.slice(startIndex, endIndex);
     console.log(`Groups for container ${startIndex}-${endIndex}:`, groups);
     return groups;
   }
@@ -65,19 +66,19 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
 
   addItem(): void {
     const newGroup = this.createFormGroup();
-    this.formArray.push(newGroup);
+    // this.formArray().push(newGroup);
     
-    this.itemAdded.emit();
+    this.itemAdded.emit(newGroup);
   }
   
   removeItem(index: number): void {
     const actualIndex = this.getItemIndex(index);
-    if (actualIndex < 0 || actualIndex >= this.formArray.length) {
+    if (actualIndex < 0 || actualIndex >= this.formArray().length) {
       return;
     }
   
     console.log('Removing item at index:', actualIndex);
-    this.formArray.removeAt(actualIndex);
+    this.formArray().removeAt(actualIndex);
     
     this.itemRemoved.emit({ 
       index: actualIndex, 
