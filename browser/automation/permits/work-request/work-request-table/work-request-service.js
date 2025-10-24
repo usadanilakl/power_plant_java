@@ -26,9 +26,11 @@ async sendRequest(url, method = 'GET', body = null) {
   }
 },
 
-async getAllRequests() {
+async getAllRequests(status) {
   try {
-    const url = `${this.baseUrl}/get-all-by-status/active`;
+    let url;
+    if(status) url = `${this.baseUrl}/get-all-by-status/${status}`;
+    else url = `${this.baseUrl}/get-all`;
     const result = await this.sendRequest(url);
     
         document.getElementById('responseOutput').textContent = '';
