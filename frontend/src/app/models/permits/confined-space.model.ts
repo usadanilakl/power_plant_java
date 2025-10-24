@@ -34,7 +34,7 @@ export class ConfinedSpacePpe {
   fallProtection: boolean = false;
   retrievalSystem: boolean = false;
   lifeline: boolean = false;
-  personalAtmosphericMeter: boolean = false;
+  personalAtmosphericMeter: boolean = true;
   tripod: boolean = false;
   other: boolean = false;
   otherDescription: string = '';
@@ -123,14 +123,14 @@ export class ConfinedSpaceDto extends BaseDto implements ConfinedSpaceModel {
     this.space = data.space ?? null;
     this.workScope = data.workScope ?? null;
     this.issuedTo = data.issuedTo ?? null;
-    this.duration = data.duration ?? null;
+    this.duration = data.duration ?? '12 hours';
     this.lotoNum = data.lotoNum ?? null;
     this.hotWorkNum = data.hotWorkNum ?? null;
     this.ventilation = data.ventilation ?? false;
     this.blankFlanged = data.blankFlanged ?? false;
     this.meterModel = data.meterModel ?? "RKI GX-3R PRO";
     this.meterNum = data.meterNum ?? null;
-    this.calibrated = data.calibrated ?? false;
+    this.calibrated = data.calibrated ?? true;
     this.oxygen = data?.oxygen ?? null;
     this.lel = data?.lel ?? null;
     this.hydrogenSulfide = data?.hydrogenSulfide ?? null;

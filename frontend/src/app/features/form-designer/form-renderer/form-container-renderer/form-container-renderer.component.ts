@@ -98,8 +98,24 @@ export class FormContainerRendererComponent {
     return content as PrintableFormDto;
   }
 
+  // getFormControl(path: string): FormControl {
+  //   const control = this.form()!.get(path);
+  //   if (!control) {
+  //     console.warn(`Control ${path} not found in form. Creating a new FormControl.`);
+  //     return new FormControl();
+  //   }
+  //   return control as FormControl;
+  // }
+
+  
   getFormControl(path: string): FormControl {
-    const control = this.form()!.get(path);
+    const form = this.form();
+    if (!form) {
+      console.warn(`Form not available. Creating a new FormControl.`);
+      return new FormControl();
+    }
+  
+    const control = form.get(path);
     if (!control) {
       console.warn(`Control ${path} not found in form. Creating a new FormControl.`);
       return new FormControl();

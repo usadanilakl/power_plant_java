@@ -61,15 +61,15 @@ export class SwPermits {
 }
 
 export class SwPpe {
-  hardhat: boolean = false;
-  safetyGlasses: boolean = false;
-  hearingProtection: boolean = false;
-  boots: boolean = false;
+  hardhat: boolean = true;
+  safetyGlasses: boolean = true;
+  hearingProtection: boolean = true;
+  boots: boolean = true;
   fallProtection: boolean = false;
   gfi: boolean = false;
   respirator: boolean = false;
   dustMask: boolean = false;
-  gloves: boolean = false;
+  gloves: boolean = true;
   iceCleats: boolean = false;
   acidSuit: boolean = false;
   barricade: boolean = false;

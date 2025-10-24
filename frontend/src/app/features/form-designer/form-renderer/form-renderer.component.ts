@@ -120,80 +120,149 @@ export class FormRendererComponent implements OnInit{
     // this.processFormArrays();
   }
 
+  // createForm() {
+  //   const group: { [key: string]: any } = {};
+  //   // const formFields = this.fields();
+  //   const formFields = this.getAllFormFields();
+
+  //   // formFields.forEach(field => {
+  //   //   if (field && field.name) {
+  //   //     if (field.type === 'form-array') {
+  //   //     const currentFormValue = this.form?.value;
+  //   //     const dataSource = currentFormValue && Object.keys(currentFormValue).length > 0 
+  //   //       ? currentFormValue 
+  //   //       : this.formData();
+        
+  //   //     const arrayData = this.getNestedValue(dataSource, field.name) || [];
+  //   //       const formArray = this.fb.array(
+  //   //         arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
+  //   //       );
+  //   //       this.setNestedControl(group, field.name, formArray);
+  //   //     } else {
+  //   //       let value = this.getNestedValue(this.formData(), field.name);
+
+  //   //       if (field.type === 'file') {
+  //   //         value = null;
+  //   //       } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+  //   //         value = value || [];
+  //   //       } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+  //   //         value = value.id;
+  //   //       }
+
+  //   //       this.setNestedControl(group, field.name, new FormControl(value, []));
+  //   //     }
+  //   //   }
+  //   // });
+
+  // formFields.forEach(field => {
+  //   if (field && field.name) {
+  //     if (field.type === 'form-array') {
+  //       // Check if FormArray already exists
+  //       const existingArray = this.form?.get(field.name) as FormArray;
+        
+  //       // ALWAYS reuse existing FormArray if it exists, regardless of pristine state
+  //       // This prevents recreating the array after removals
+  //       if (existingArray) {
+  //         this.setNestedControl(group, field.name, existingArray);
+  //         console.log('Reusing existing FormArray:', field.name, existingArray.value);
+  //         return;
+  //       }
+        
+  //       // Only create new FormArray if it doesn't exist
+  //       const dataSource = this.formData();
+  //       const arrayData = this.getNestedValue(dataSource, field.name) || [];
+  //       console.log('Creating new FormArray with data:', arrayData);
+        
+  //       const formArray = this.fb.array(
+  //         arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
+  //       );
+  //       this.setNestedControl(group, field.name, formArray);
+  //     } else {
+  //       let value = this.getNestedValue(this.formData(), field.name);
+
+  //       if (field.type === 'file') {
+  //         value = null;
+  //       } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+  //         value = value || [];
+  //       } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+  //         value = value.id;
+  //       }
+
+  //       this.setNestedControl(group, field.name, new FormControl(value, []));
+  //     }
+  //   }
+  // });
+
+  //   this.form = this.fb.group(group);
+    
+  //   this.form.valueChanges.pipe(
+  //     debounceTime(1000),
+  //     distinctUntilChanged(),
+  //     takeUntilDestroyed(this.destroyRef)
+  //   ).subscribe(currentValue => {
+  //     const originalData = this.formData() || {};
+  //     const formValue = this.form.value;
+  //     const mergedData = this.deepMerge(originalData, formValue);
+  //     this.formChange.emit(mergedData);
+  //   });
+  //   console.log('Form created:', this.form);
+  // }
+
+  // private setNestedControl(group: { [key: string]: any }, path: string, control: any) {
+  //   const parts = path.split('.');
+  //   let current = group;
+    
+  //   for (let i = 0; i < parts.length - 1; i++) {
+  //     const part = parts[i];
+  //     if (!current[part]) {
+  //       current[part] = this.fb.group({});
+  //     }
+  //     current = current[part];
+  //   }
+    
+  //   current[parts[parts.length - 1]] = control;
+  // }
+
+  
   createForm() {
     const group: { [key: string]: any } = {};
-    // const formFields = this.fields();
     const formFields = this.getAllFormFields();
-
-    // formFields.forEach(field => {
-    //   if (field && field.name) {
-    //     if (field.type === 'form-array') {
-    //     const currentFormValue = this.form?.value;
-    //     const dataSource = currentFormValue && Object.keys(currentFormValue).length > 0 
-    //       ? currentFormValue 
-    //       : this.formData();
-        
-    //     const arrayData = this.getNestedValue(dataSource, field.name) || [];
-    //       const formArray = this.fb.array(
-    //         arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
-    //       );
-    //       this.setNestedControl(group, field.name, formArray);
-    //     } else {
-    //       let value = this.getNestedValue(this.formData(), field.name);
-
-    //       if (field.type === 'file') {
-    //         value = null;
-    //       } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
-    //         value = value || [];
-    //       } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
-    //         value = value.id;
-    //       }
-
-    //       this.setNestedControl(group, field.name, new FormControl(value, []));
-    //     }
-    //   }
-    // });
-
-  formFields.forEach(field => {
-    if (field && field.name) {
-      if (field.type === 'form-array') {
-        // Check if FormArray already exists
-        const existingArray = this.form?.get(field.name) as FormArray;
-        
-        // ALWAYS reuse existing FormArray if it exists, regardless of pristine state
-        // This prevents recreating the array after removals
-        if (existingArray) {
-          this.setNestedControl(group, field.name, existingArray);
-          console.log('Reusing existing FormArray:', field.name, existingArray.value);
-          return;
+  
+    formFields.forEach(field => {
+      if (field && field.name) {
+        if (field.type === 'form-array') {
+          const existingArray = this.form?.get(field.name) as FormArray;
+          
+          if (existingArray) {
+            this.setNestedControl(group, field.name, existingArray);
+            return;
+          }
+          
+          const dataSource = this.formData();
+          const arrayData = this.getNestedValue(dataSource, field.name) || [];
+          
+          const formArray = this.fb.array(
+            arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
+          );
+          this.setNestedControl(group, field.name, formArray);
+        } else {
+          let value = this.getNestedValue(this.formData(), field.name);
+  
+          if (field.type === 'file') {
+            value = null;
+          } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+            value = value || [];
+          } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+            value = value.id;
+          }
+  
+          this.setNestedControl(group, field.name, new FormControl(value, []));
         }
-        
-        // Only create new FormArray if it doesn't exist
-        const dataSource = this.formData();
-        const arrayData = this.getNestedValue(dataSource, field.name) || [];
-        console.log('Creating new FormArray with data:', arrayData);
-        
-        const formArray = this.fb.array(
-          arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
-        );
-        this.setNestedControl(group, field.name, formArray);
-      } else {
-        let value = this.getNestedValue(this.formData(), field.name);
-
-        if (field.type === 'file') {
-          value = null;
-        } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
-          value = value || [];
-        } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
-          value = value.id;
-        }
-
-        this.setNestedControl(group, field.name, new FormControl(value, []));
       }
-    }
-  });
-
-    this.form = this.fb.group(group);
+    });
+  
+    // Convert nested plain objects to FormGroups recursively
+    this.form = this.fb.group(this.convertToFormGroup(group));
     
     this.form.valueChanges.pipe(
       debounceTime(1000),
@@ -205,7 +274,44 @@ export class FormRendererComponent implements OnInit{
       const mergedData = this.deepMerge(originalData, formValue);
       this.formChange.emit(mergedData);
     });
-    console.log('Form created:', this.form);
+  }
+  
+  private convertToFormGroup(obj: any): any {
+    const result: any = {};
+    
+    for (const key in obj) {
+      if (obj[key] instanceof FormControl || obj[key] instanceof FormArray) {
+        result[key] = obj[key];
+      } else if (obj[key] instanceof FormGroup) {
+        result[key] = obj[key];
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        result[key] = this.fb.group(this.convertToFormGroup(obj[key]));
+      } else {
+        result[key] = obj[key];
+      }
+    }
+    
+    return result;
+  }
+  
+  private setNestedControl(group: { [key: string]: any }, path: string, control: any) {
+    const parts = path.split('.');
+    let current = group;
+    
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (!current[part]) {
+        current[part] = {}; // Just create plain object, will be converted later
+      }
+      current = current[part];
+    }
+    
+    current[parts[parts.length - 1]] = control;
+  }
+
+  private getNestedValue(obj: any, path: string): any {
+    if (!obj || !path) return undefined;
+    return path.split('.').reduce((acc, part) => acc?.[part], obj);
   }
   
 
@@ -289,26 +395,6 @@ onArrayItemRemoved(event: { index: number, fieldName: string }): void {
     return containers
       .filter(c => (c.contentType === 'formField' || c.contentType === 'repeatingSection') && this.isFormField(c.content))
       .map(c => c.content as FormField);
-  }
-
-  private setNestedControl(group: { [key: string]: any }, path: string, control: any) {
-    const parts = path.split('.');
-    let current = group;
-    
-    for (let i = 0; i < parts.length - 1; i++) {
-      const part = parts[i];
-      if (!current[part]) {
-        current[part] = this.fb.group({});
-      }
-      current = current[part];
-    }
-    
-    current[parts[parts.length - 1]] = control;
-  }
-
-  private getNestedValue(obj: any, path: string): any {
-    if (!obj || !path) return undefined;
-    return path.split('.').reduce((acc, part) => acc?.[part], obj);
   }
 
   private deepMerge(target: any, source: any): any {

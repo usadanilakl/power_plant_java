@@ -72,7 +72,7 @@ export class HotWorkDto extends BaseDto implements HotWorkModel {
     this.measures = data.measures ?? new HotWorkMeasures();
     this.isAirMonitoringRegisteredOnConfinedSpace = data.isAirMonitoringRegisteredOnConfinedSpace ?? false;
     this.timeOfInitialTest = data.timeOfInitialTest ?? '';
-    this.isFireWatchRequired = data.isFireWatchRequired ?? false;
+    this.isFireWatchRequired = data.isFireWatchRequired ?? true;
     this. initialTestResult = data.initialTestResult ?? '';
   }
 
