@@ -31,7 +31,7 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* no browser scroll */
+  overflow: hidden;
 }
 
 /* main container fits everything in viewport height exactly */
@@ -39,14 +39,14 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100%;         /* fills body exactly */
-  overflow: hidden;     /* prevents extending beyond */
+  overflow: auto;     /* prevents extending beyond */
   gap: 10px;            /* optional spacing between elements */
 }
 
 /* Make table wrapper the shrinking flexible child */
 #tableContainer {
   flex: 1;              /* fills remaining vertical space */
-  min-height: 0;        /* required so it doesn't overflow */
+  min-height: 400px;        /* required so it doesn't overflow */
   min-width: 0;         /* allows horizontal scroll */
   overflow-x: auto;     /* enable inner scrolling */
   overflow-y: auto;
