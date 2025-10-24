@@ -31,7 +31,7 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: hidden; /* no browser scroll */
 }
 
 /* main container fits everything in viewport height exactly */
@@ -46,7 +46,7 @@ html, body {
 /* Make table wrapper the shrinking flexible child */
 #tableContainer {
   flex: 1;              /* fills remaining vertical space */
-  min-height: 400px;        /* required so it doesn't overflow */
+  min-height: 300px;        /* required so it doesn't overflow */
   min-width: 0;         /* allows horizontal scroll */
   overflow-x: auto;     /* enable inner scrolling */
   overflow-y: auto;
@@ -61,7 +61,7 @@ html, body {
 #tableContainer table {
   width: 100%;
   min-width: 800px;
-  min-height: 400px;
+  /* min-height: 300px; */
   border-collapse: collapse;
   white-space: nowrap;
   padding-bottom: 14px;         /* adds room for scrollbar track */
@@ -230,13 +230,22 @@ a,
     </div>
   
     <pre id="responseOutput"></pre>
-    
+    <button id="loadAllRequestsBtn">Show All Requests</button>
+    <button id="loadUnprocessedBtn">Show New Unprocessed Requests</button>
     <div id="tableContainer"></div>
     <br>
 
   </div>
 
     <script>
+    
+    document.addEventListener("DOMContentLoaded", () => {
+      
+
+
+      let isReissueOnly = false;
+      const loadAllBtn = document.getElementById('loadAllRequestsBtn');
+      const loadUnprocessedBtn = document.getElementById('loadUnprocessedBtn');
         (function() {
             var isSpringBoot = window.location.hostname !== "" && window.location.hostname === "localhost";
 
@@ -272,6 +281,8 @@ a,
             loadScriptSequentially(scripts, 0, function() {
                 console.log('All scripts loaded; now run the rest of your code.');
                   document.getElementById('sendRequest').addEventListener('click', () => loadAndDisplay());
+                  loadAllBtn.addEventListener('click', () => loadAndDisplay('all'));
+                  loadUnprocessedBtn.addEventListener('click', () => loadAndDisplay());
                   startIntervalLoop(loadAndDisplay)
 
 
@@ -304,9 +315,8 @@ a,
                 console.error('JavaFX bridge not available');
             }
         }
-    </script>
 
-<script>
+
 
 let currentRequests = [];
 
@@ -342,9 +352,17 @@ function formatTime(timeString) {
   }
 }
 
-async function loadAndDisplay() {
+async function loadAndDisplay(status = 'active') {
     workRequestTable.buildTable([]);
-    const data = await workRequestService.getAllRequests();
+    let data;
+    if(status === 'active'){
+      data = await workRequestService.getAllRequests('active');
+      isReissueOnly = false;
+    } 
+    else if(status === 'all'){
+      data = await workRequestService.getAllRequests()
+      isReissueOnly = true;
+    } 
     if (data && data.responseData) {
         console.log('got data: ',data)
         workRequestTable.buildTable(data.responseData);
@@ -381,7 +399,14 @@ function startIntervalLoop(callback) {
 }
 
 
-</script>
+
+
+
+
+    });
+
+    </script>
+
 
 </body>
 </html>
