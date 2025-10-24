@@ -240,10 +240,17 @@ export class FormRendererComponent implements OnInit{
           
           const dataSource = this.formData();
           const arrayData = this.getNestedValue(dataSource, field.name) || [];
+
+          console.log('Creating new FormArray with data:', arrayData);
           
           const formArray = this.fb.array(
             arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
           );
+        
+          console.log('FormArray created:', formArray);
+          console.log('FormArray length:', formArray.length);
+          console.log('FormArray value:', formArray.value);
+          
           this.setNestedControl(group, field.name, formArray);
         } else {
           let value = this.getNestedValue(this.formData(), field.name);
@@ -274,6 +281,7 @@ export class FormRendererComponent implements OnInit{
       const mergedData = this.deepMerge(originalData, formValue);
       this.formChange.emit(mergedData);
     });
+    console.log('Form created:', this.form);
   }
   
   private convertToFormGroup(obj: any): any {
@@ -313,6 +321,48 @@ export class FormRendererComponent implements OnInit{
     if (!obj || !path) return undefined;
     return path.split('.').reduce((acc, part) => acc?.[part], obj);
   }
+ 
+  
+
+
+private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
+  console.log('=== createArrayItem called ===');
+  console.log('Fields:', fields);
+  console.log('Data:', data);
+  
+  const group: { [key: string]: any } = {};
+  
+  fields.forEach(field => {
+    const value = this.getNestedValue(data, field.name) ?? field.initialValue ?? '';
+    console.log(`Field "${field.name}": value = "${value}"`);
+    
+    // Use setNestedControl to support nested paths like "address.street"
+    this.setNestedControl(group, field.name, new FormControl(value, field.validators || []));
+  });
+  
+  console.log('Group before conversion:', group);
+  
+  // Convert nested plain objects to FormGroups recursively
+  const formGroup = this.fb.group(this.convertToFormGroup(group));
+  
+  console.log('FormGroup after conversion:', formGroup);
+  console.log('FormGroup value:', formGroup.value);
+  console.log('=== End createArrayItem ===');
+  
+  return formGroup;
+}
+
+  // private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
+  //   const group = this.fb.group({});
+  //   fields.forEach(field => {
+  //     const value = data[field.name] ?? field.initialValue ?? '';
+  //     group.addControl(field.name, this.fb.control(value, field.validators));
+  //   });
+  //   return group;
+  // }
+
+
+
   
 
 /**
@@ -376,19 +426,6 @@ onArrayItemRemoved(event: { index: number, fieldName: string }): void {
   
   console.log('=== END REMOVAL REQUEST ===');
 }
-
-  
-  
-
-
-  private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
-    const group = this.fb.group({});
-    fields.forEach(field => {
-      const value = data[field.name] ?? field.initialValue ?? '';
-      group.addControl(field.name, this.fb.control(value, field.validators));
-    });
-    return group;
-  }
 
   private getAllFormFields(): FormField[] {
     const containers = this.formDefinition()?.formContainers ?? [];

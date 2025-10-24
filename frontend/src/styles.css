@@ -48,6 +48,12 @@ body.dragging {
 }
 
 @media print {
+  /* Remove default browser print margins */
+  /* @page {
+    margin: 0px;
+    padding: 0;
+    size: letter;
+  } */
   /* Force colors and backgrounds to be printed */
   * {
     -webkit-print-color-adjust: exact !important;
@@ -71,6 +77,9 @@ body.dragging {
     left: 0;
     top: 0;
     width: 100%;
+    /* Add scaling to make everything smaller */
+    transform: scale(1); /* Adjust this value (0.8, 0.9, etc.) to control size */
+    transform-origin: top left; /* Scale from top-left corner */
   }
 
   /* Ensure form sheets break pages correctly */

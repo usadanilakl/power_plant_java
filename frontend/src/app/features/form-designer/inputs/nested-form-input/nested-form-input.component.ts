@@ -92,28 +92,28 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
     return this.formTemplate()?.formContainers || [];
   }
 
-  private createFormGroup(data: any = {}): FormGroup {
-    const group: { [key: string]: any } = {};
-    const fields = this.getAllFormFields();
+  // private createFormGroup(data: any = {}): FormGroup {
+  //   const group: { [key: string]: any } = {};
+  //   const fields = this.getAllFormFields();
   
-    fields.forEach(field => {
-      if (field && field.name) {
-        let value = data[field.name];
+  //   fields.forEach(field => {
+  //     if (field && field.name) {
+  //       let value = data[field.name];
   
-        if (field.type === 'file') {
-          value = null;
-        } else if (field.type === 'checkbox-group' || field.type === 'multi-select') {
-          value = value || [];
-        } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
-          value = value.id;
-        }
+  //       if (field.type === 'file') {
+  //         value = null;
+  //       } else if (field.type === 'checkbox-group' || field.type === 'multi-select') {
+  //         value = value || [];
+  //       } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+  //         value = value.id;
+  //       }
   
-        group[field.name] = new FormControl(value || null, field.validators || []);
-      }
-    });
+  //       group[field.name] = new FormControl(value || null, field.validators || []);
+  //     }
+  //   });
   
-    return this.fb.group(group);
-  }
+  //   return this.fb.group(group);
+  // }
 
   private getAllFormFields(): FormField[] {
     if (!this.formTemplate()) return [];
@@ -124,15 +124,112 @@ export class NestedFormInputComponent implements OnInit, OnDestroy {
       .map(c => c.content as FormField);
   }
 
+  
+  private createFormGroup(data: any = {}): FormGroup {
+    const group: { [key: string]: any } = {};
+    const fields = this.getAllFormFields();
+  
+    fields.forEach(field => {
+      if (field && field.name) {
+        let value = this.getNestedValue(data, field.name);
+  
+        if (field.type === 'file') {
+          value = null;
+        } else if (field.type === 'checkbox-group' || field.type === 'multi-select') {
+          value = value || [];
+        } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+          value = value.id;
+        }
+  
+        // Use setNestedControl to support nested paths like "address.street"
+        this.setNestedControl(group, field.name, new FormControl(value || null, field.validators || []));
+      }
+    });
+  
+    // Convert nested plain objects to FormGroups recursively
+    return this.fb.group(this.convertToFormGroup(group));
+  }
+  
+  // Add these helper methods
+  private convertToFormGroup(obj: any): any {
+    const result: any = {};
+    
+    for (const key in obj) {
+      if (obj[key] instanceof FormControl || obj[key] instanceof FormArray) {
+        result[key] = obj[key];
+      } else if (obj[key] instanceof FormGroup) {
+        result[key] = obj[key];
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        result[key] = this.fb.group(this.convertToFormGroup(obj[key]));
+      } else {
+        result[key] = obj[key];
+      }
+    }
+    
+    return result;
+  }
+  
+  private setNestedControl(group: { [key: string]: any }, path: string, control: any) {
+    const parts = path.split('.');
+    let current = group;
+    
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (!current[part]) {
+        current[part] = {}; // Create plain object, will be converted later
+      }
+      current = current[part];
+    }
+    
+    current[parts[parts.length - 1]] = control;
+  }
+  
   getFormControl(formGroup: FormGroup, path: string): FormControl {
+    // console.log(`Getting form control: ${path}`);
+    // console.log('Form group:', formGroup);
+    // console.log('Form group value:', formGroup.value);
+    
     const control = formGroup.get(path);
+
+    // console.log('Control:', control);
+    
     if (!control) {
       console.warn(`Form control not found: ${path}. Adding it to the form group.`);
+      
+      // Split the path to handle nested structure
+      const parts = path.split('.');
+      let current: any = formGroup;
+      
+      // Navigate/create nested structure
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        let nextControl = current.get(part);
+        
+        if (!nextControl) {
+          // Create intermediate FormGroup if it doesn't exist
+          const newGroup = this.fb.group({});
+          current.addControl(part, newGroup);
+          nextControl = newGroup;
+        }
+        
+        current = nextControl;
+      }
+      
+      // Add the final control
+      const finalKey = parts[parts.length - 1];
       const newControl = new FormControl(null);
-      formGroup.addControl(path, newControl);
+      current.addControl(finalKey, newControl);
+      
       return newControl;
     }
+    
     return control as FormControl;
+  }
+  
+  // Helper method to get nested value (if not already present)
+  private getNestedValue(obj: any, path: string): any {
+    if (!obj || !path) return undefined;
+    return path.split('.').reduce((acc, part) => acc?.[part], obj);
   }
 
   getContainerStyles(container: FormContainerDto): any {
