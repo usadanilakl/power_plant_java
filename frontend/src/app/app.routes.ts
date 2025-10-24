@@ -69,10 +69,15 @@ export const routes: Routes = [
     {
       path: 'permit-builder', component: PermitBuilderPageComponent,
       children: [
-        { path: '', redirectTo: 'jobs', pathMatch: 'full' },
+        { path: '', redirectTo: 'daily-packages', pathMatch: 'full' },
         { path: 'jobs', component: JobLogComponent },
         { path: 'work-requests', component: WorkRequestComponent },
         { path: 'daily-packages', component: DailyPermitPackageComponent },
+        {
+          path: 'daily-packages/re-issue/:workRequestId',
+          component: DailyPermitPackageComponent,
+          data: { mode: 'reissue' }
+        },
         {
           path: 'daily-packages/:workRequestId',
           component: DailyPermitPackageComponent

@@ -26,11 +26,13 @@ import { LotoDetailFormComponent } from "../../../loto/loto-detail-form/loto-det
 import { LotoDto } from '../../../../models/loto/loto.model';
 import { LotoTableComponent } from "../../../loto/loto-table/loto-table.component";
 import { LotoPaperFormComponent } from "../../../loto/loto-paper-form/loto-paper-form.component";
+import { DailyPermitPackageTableComponent } from "../daily-permit-package-table/daily-permit-package-table.component";
+import { DailyPermitPackageDto } from '../../../../models/permits/dailt-permit-package.model';
 
 @Component({
   selector: 'app-daily-permit-package-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent],
+  imports: [CommonModule, FormsModule, ItemCarouselComponent, WorkRequestDisplayComponent, PopupProjectionComponent, WorkRequestTableComponent, WorkRequestFormComponent, SafeWorkFormComponent, HotWorkFormComponent, ConfinedSpaceFormComponent, SafeWorkTableComponent, HotWorkTableComponent, ConfinedSpaceTableComponent, SafeWorkPaperFormComponent, HotWorkPaperFormComponent, ConfinedSpacePaperFormComponent, LotoDetailFormComponent, LotoTableComponent, LotoPaperFormComponent, DailyPermitPackageTableComponent],
   templateUrl: './daily-permit-package-builder.component.html',
   styleUrl: './daily-permit-package-builder.component.css'
 })
@@ -64,10 +66,13 @@ export class DailyPermitPackageBuilderComponent {
   isPopupStepOne = true;
   isAttachingExisting = false;
 
+  isReusePermitsPopupVisible = false;
+
+
   isSafeWorkVisible = true;
   isConfinedSpaceVisible = true;
   isHotWorkVisible = true;
-  isWorkRequestVisible = false;
+  isWorkRequestVisible = true;
   isLotoVisible = true;
 
   packageName: string = '';
@@ -149,6 +154,19 @@ export class DailyPermitPackageBuilderComponent {
     const ids = [item.id];
     this.currentDailyPermitPackageService.addNewAttachments(ids, permitType);
     this.closePopup();
+  }
+
+  reusePermitsPopupOpen(){
+    this.isReusePermitsPopupVisible = true;
+  }
+
+  reusePermitsPopupClose(){
+    this.isReusePermitsPopupVisible = false;
+  }
+
+  reissuePermits(pckg: DailyPermitPackageDto){
+    this.currentDailyPermitPackageService.reissuePermits(pckg);
+    this.reusePermitsPopupClose();
   }
 
 

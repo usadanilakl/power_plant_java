@@ -39,4 +39,10 @@ export class DailyPermitPackageService {
   buildPermitsById(packageId: string, whatToBuild: string = 'all', id: number = 0): Observable<SpringApiResponse<String>> {
     return this.http.get<SpringApiResponse<String>>(`${this.apiUrl}/build-permits/${packageId}/${whatToBuild}/${id}`);
   }
+  reissuePermits(packageIdToReissue: number, targetPackageId: number): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/reissue-permits-from/${packageIdToReissue}/to/${targetPackageId}`, null);
+  }
+  reissuePermitsByWorkRequestId(workRequestId: number): Observable<SpringApiResponse<DailyPermitPackageDto>> {
+    return this.http.post<SpringApiResponse<DailyPermitPackageDto>>(`${this.apiUrl}/reissue-permits-by-work-request-id/${workRequestId}`, null);
+  }
 }

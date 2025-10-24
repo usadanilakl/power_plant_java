@@ -29,4 +29,9 @@ public class DailyPermitPackageDto extends BaseDto {
     private Set<Long> confinedSpaceIds = new HashSet<>();
     private Set<Long> lotoIds = new HashSet<>();
     private Set<Long> workRequestIds = new HashSet<>();
+
+    String companyName;
+    String personName;
+    String date;
+    String time;
 }

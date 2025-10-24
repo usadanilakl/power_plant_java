@@ -105,6 +105,32 @@ public class NgDailyPermitPackageController {
         }
     }
 
+    @PostMapping("/reissue-permits-from/{packageIdToReissue}/to/{targetPackageId}")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> reissuePermits(
+            @PathVariable String packageIdToReissue,
+            @PathVariable String targetPackageId) {
+        try {
+            DailyPermitPackageDto dailyPermitPackageDto = ngDailyPermitPackageService.reissuePermits(packageIdToReissue, targetPackageId);
+            NgApiResponse<DailyPermitPackageDto> response = new NgApiResponse<>(dailyPermitPackageDto, "Permits reissued successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error reissuing permits: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reissue-permits-by-work-request-id/{wrId}/")
+    public ResponseEntity<NgApiResponse<DailyPermitPackageDto>> reissuePermitsByWorkRequestId(@PathVariable String wrId) {
+        try {
+            DailyPermitPackageDto dailyPermitPackageDto = ngDailyPermitPackageService.reissuePermitsByWorkRequestId(wrId);
+            NgApiResponse<DailyPermitPackageDto> response = new NgApiResponse<>(dailyPermitPackageDto, "Permits reissued successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, "Error reissuing permits: " + e.getMessage()));
+        }
+    }
+
 
 
 

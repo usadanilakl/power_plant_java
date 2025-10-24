@@ -14,6 +14,7 @@
         >
       </div>
       <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!packageName">Submit Permit Package</button>
+      <button class="submit-button" (click)="reusePermitsPopupOpen()" [disabled]="!packageName">Get Permits From Another Package</button>
       <button class="delete-button" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Permit Package</button>
       <button class="delete-button" (click)="currentDailyPermitPackageService.build()" [disabled]="currentPackage().id===0">Build Package</button>
     </div>
@@ -277,4 +278,16 @@
         ></app-loto-paper-form>}
     }
   </div>
+</app-popup-projection>
+
+
+<app-popup-projection
+  [title]="'Re-Issue Permits'"
+  [isOpen]="isReusePermitsPopupVisible"
+  (close)="reusePermitsPopupClose()">
+
+  <app-daily-permit-package-table
+    (rowLeftClickEvent)="reissuePermits($event)"
+  ></app-daily-permit-package-table>
+
 </app-popup-projection>

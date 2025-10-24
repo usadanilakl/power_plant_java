@@ -26,10 +26,15 @@ export class DailyPermitPackageComponent {
   private destroyRef = inject(DestroyRef)
   constructor() {
     const workRequestId = this.route.snapshot.paramMap.get('workRequestId');
+    const mode = this.route.snapshot.data['mode'];
     if (workRequestId) {
-      const dailyPackage = new DailyPermitPackageDto();
-      dailyPackage.workRequestIds.push(+workRequestId);
-      this.currendDailyPermitPackageService.createAndAddDailyPackage(dailyPackage);
+      if(mode === 're-issue'){
+        this.currendDailyPermitPackageService.reIssuePermitsByWorkRequestId(+workRequestId);
+      }else {
+        const dailyPackage = new DailyPermitPackageDto();
+        dailyPackage.workRequestIds.push(+workRequestId);
+        this.currendDailyPermitPackageService.createAndAddDailyPackage(dailyPackage);
+      }
     }
   }
 

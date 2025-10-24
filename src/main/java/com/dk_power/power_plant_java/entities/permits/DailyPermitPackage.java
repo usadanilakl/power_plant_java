@@ -41,4 +41,9 @@ public class DailyPermitPackage extends BaseAuditEntity {
     )
     private Set<Loto> lotos = new HashSet<>();
 
+    String companyName;
+    String personName;
+    String date;
+    String time;
+
 }

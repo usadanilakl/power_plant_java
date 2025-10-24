@@ -602,6 +602,44 @@ export class CurrentDailyPermitPackageService {
   }
 
 
+  
+  reissuePermits(pckg: DailyPermitPackageDto) {
+    const packageIdToReissue = pckg.id;
+    const targetPackageId = this.selectedDailyPermitPackageSubject.value?.id;
+    if(!packageIdToReissue || !targetPackageId) throw new Error('No package ID provided to reissue permits');
+    this.dailyPermitPackageService.reissuePermits(packageIdToReissue, targetPackageId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(response => {
+        if(!response?.responseData) throw new Error('No response data from reissuing permits');
+              
+        // Update the current package with the response from server
+        const updatedPackage = new DailyPermitPackageDto(response.responseData);
+        this.selectedDailyPermitPackageSubject.next(updatedPackage);
+        this.updateDailyPermitPackageInList(updatedPackage);
+      }),
+    ).subscribe({
+      next: () => console.log('Permits reissued successfully.'),
+      error: err => console.error('Error reissuing permits:', err)
+    });
+  }
+  reIssuePermitsByWorkRequestId(workRequestId: number) {
+    this.dailyPermitPackageService.reissuePermitsByWorkRequestId(workRequestId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap(response => {
+        if(!response?.responseData) throw new Error('No response data from reissuing permits');
+
+        // Update the current package with the response from server
+        const updatedPackage = new DailyPermitPackageDto(response.responseData);
+        this.selectedDailyPermitPackageSubject.next(updatedPackage);
+        this.updateDailyPermitPackageInList(updatedPackage);
+      }),
+    ).subscribe({
+      next: () => console.log('Permits reissued successfully by work request ID.'),
+      error: err => console.error('Error reissuing permits by work request ID:', err)
+    });
+  }
+
+
 
 
 

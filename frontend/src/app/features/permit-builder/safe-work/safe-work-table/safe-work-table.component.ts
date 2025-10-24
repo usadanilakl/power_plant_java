@@ -6,6 +6,7 @@ import { TableComponent } from "../../../../shared/table/table.component";
 
 @Component({
   selector: 'app-safe-work-table',
+  standalone: true,
   imports: [TableComponent],
   templateUrl: './safe-work-table.component.html',
   styleUrl: './safe-work-table.component.css'

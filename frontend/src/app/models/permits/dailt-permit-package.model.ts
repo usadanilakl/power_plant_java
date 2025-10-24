@@ -18,6 +18,11 @@ export interface DailyPermitPackageModel extends BaseModel {
   lotoIds: number[];
   workRequestIds: number[];
   confinedSpaceIds: number[];
+  
+  companyName: string | null;
+  personName: string | null;
+  date: string | null;
+  time: string | null;
 }
 
 export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackageModel {
@@ -31,6 +36,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
   lotoIds: number[];
   workRequestIds: number[];
   confinedSpaceIds: number[];
+  
+  companyName: string | null;
+  personName: string | null;
+  date: string | null;
+  time: string | null;
 
   constructor(data: Partial<DailyPermitPackageModel> = {}) {
     super(data);
@@ -44,6 +54,10 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
     this.lotoIds = data.lotoIds?? [];
     this.workRequestIds = data.workRequestIds?? [];
     this.confinedSpaceIds = data.confinedSpaceIds?? [];
+    this.companyName = data.companyName ?? null;
+    this.personName = data.personName ?? null;
+    this.date = data.date ?? null;
+    this.time = data.time ?? null;
   }
 
   override toJson(): any {
@@ -59,6 +73,10 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       lotoIds: this.lotoIds,
       workRequestIds: this.workRequestIds,
       confinedSpaceIds: this.confinedSpaceIds,
+      companyName: this.companyName,
+      personName: this.personName,
+      date: this.date,
+      time: this.time,
     };
   }
 
@@ -75,6 +93,10 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       lotoIds: json.lotoIds,
       workRequestIds: json.workRequestIds,
       confinedSpaceIds: json.confinedSpaceIds,
+      companyName: json.companyName,
+      personName: json.personName,
+      date: json.date,
+      time: json.time,
     });
   }
   static toIdModel(permitPackage: DailyPermitPackageDto) {
@@ -107,7 +129,7 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
   static isValidKey(key: string): key is keyof DailyPermitPackageModel {
     return [
       'id', 'workRequests', 'safeWorks', 'hotWorks', 'confinedSpaces', 'lotos',
-      'isVerified', 'name', 'objectType'
+      'isVerified', 'name', 'objectType', 'companyName', 'personName', 'date', 'time'
     ].includes(key);
   }
 
@@ -152,7 +174,11 @@ export class DailyPermitPackageDto extends BaseDto implements DailyPermitPackage
       workRequestIds: { id: 'workRequestIds', header: 'Work Request IDs', accessorFn: (item: DailyPermitPackageDto) => item.workRequestIds.join(', ') },
       hotWorkIds: { id: 'hotWorkIds', header: 'Hot Work IDs', accessorFn: (item: DailyPermitPackageDto) => item.hotWorkIds.join(', ') },
       confinedSpaceIds: { id: 'confinedSpaceIds', header: 'Confined Space IDs', accessorFn: (item: DailyPermitPackageDto) => item.confinedSpaceIds.join(', ') },
-      lotoIds: { id: 'lotoIds', header: 'LOTO IDs', accessorFn: (item: DailyPermitPackageDto) => item.lotoIds.join(', ') }
+      lotoIds: { id: 'lotoIds', header: 'LOTO IDs', accessorFn: (item: DailyPermitPackageDto) => item.lotoIds.join(', ') },
+      companyName: { id: 'companyName', header: 'Company Name', accessorKey: 'companyName' },
+      personName: { id: 'personName', header: 'Person Name', accessorKey: 'personName' },
+      date: { id: 'date', header: 'Date', accessorKey: 'date' },
+      time: { id: 'time', header: 'Time', accessorKey: 'time' }
     };
 
     return fields.map(fieldName => allColumns[fieldName]);

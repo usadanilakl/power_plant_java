@@ -88,6 +88,27 @@ public class DailyPermitPackageMapper implements BaseMapper {
             );
         }
 
+        dto.setDate(entity.getDate());
+        dto.setTime(entity.getTime());
+        dto.setCompanyName(entity.getCompanyName());
+        dto.setPersonName(entity.getPersonName());
+
+        if (entity.getWorkRequests() != null && !entity.getWorkRequests().isEmpty()) {
+            WorkRequest firstWorkRequest = entity.getWorkRequests().iterator().next();
+            if (dto.getDate() == null) {
+                dto.setDate(firstWorkRequest.getDateOfWorkToBePerformed());
+            }
+            if (dto.getTime() == null) {
+                dto.setTime(firstWorkRequest.getTimeOfWorkToBePerformed());
+            }
+            if (dto.getCompanyName() == null || dto.getCompanyName().isEmpty()) {
+                dto.setCompanyName(firstWorkRequest.getCompany());
+            }
+            if (dto.getPersonName() == null || dto.getPersonName().isEmpty()) {
+                dto.setPersonName(firstWorkRequest.getRequestedBy());
+            }
+        }
+
         return dto;
     }
 
@@ -165,6 +186,27 @@ public class DailyPermitPackageMapper implements BaseMapper {
                 if(workScope!=null && !workScope.isEmpty()) name = workScope;
             }
             entity.setName(name);
+        }
+
+        if(dto.getDate()!=null) entity.setDate(dto.getDate());
+        if(dto.getTime()!=null) entity.setTime(dto.getTime());
+        if(dto.getCompanyName()!=null) entity.setCompanyName(dto.getCompanyName());
+        if(dto.getPersonName()!=null) entity.setPersonName(dto.getPersonName());
+
+        if (entity.getWorkRequests() != null && !entity.getWorkRequests().isEmpty()) {
+            WorkRequest firstWorkRequest = entity.getWorkRequests().iterator().next();
+            if (entity.getDate() == null) {
+                entity.setDate(firstWorkRequest.getDateOfWorkToBePerformed());
+            }
+            if (entity.getTime() == null) {
+                entity.setTime(firstWorkRequest.getTimeOfWorkToBePerformed());
+            }
+            if (entity.getCompanyName() == null || entity.getCompanyName().isEmpty()) {
+                entity.setCompanyName(firstWorkRequest.getCompany());
+            }
+            if (entity.getPersonName() == null || entity.getPersonName().isEmpty()) {
+                entity.setPersonName(firstWorkRequest.getRequestedBy());
+            }
         }
 
         return entity;

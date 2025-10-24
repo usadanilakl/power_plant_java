@@ -1,1 +1,5 @@
-<p>daily-permit-package-table works!</p>
+<app-shared-table
+    [items]="currentDailyPermitPackageService.allActiveDailyPermitPackages$"
+    [columns]="columns()"
+    [clickCallback]="onRowLeftClick.bind(this)"
+></app-shared-table>
