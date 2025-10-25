@@ -76,25 +76,51 @@ export class DailyPermitPackageBuilderComponent {
   isLotoVisible = true;
 
   packageName: string = '';
+  companyName: string = '';
+  private fieldUpdate = new Subject<{ field: keyof DailyPermitPackageDto, value: any }>();
   
-  private packageNameUpdate = new Subject<string>();
-  private packageNameSubscription: Subscription;
+  // private packageNameUpdate = new Subject<string>();
+  // private packageNameSubscription: Subscription;
 
 
+  // constructor() {
+  //   effect(() => {
+  //     this.packageName = this.currentPackage().name;});
+  //     this.packageNameSubscription = this.packageNameUpdate.pipe(
+  //     takeUntilDestroyed(this.destroyRef), // Cancel the subscription when the component is destroyed
+  //     debounceTime(500), // Wait for 500ms pause in events
+  //     distinctUntilChanged() // Only emit if value has changed
+  //   ).subscribe(() => {
+  //     this.onSubmitPackage();
+  //   });
+  // }
+
+  // // This method will be called on every keystroke
+  // onPackageNameChange(): void {
+  //   this.packageNameUpdate.next(this.packageName);
+  // }  
   constructor() {
-    effect(() => {this.packageName = this.currentPackage().name;});
-    this.packageNameSubscription = this.packageNameUpdate.pipe(
-      takeUntilDestroyed(this.destroyRef), // Cancel the subscription when the component is destroyed
-      debounceTime(500), // Wait for 500ms pause in events
-      distinctUntilChanged() // Only emit if value has changed
-    ).subscribe(() => {
-      this.onSubmitPackage();
+    this.fieldUpdate.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      debounceTime(500),
+      distinctUntilChanged((prev, curr) => prev.value === curr.value && prev.field === curr.field)
+    ).subscribe(({ field, value }) => {
+      this.updatePackageProperty(field, value);
     });
   }
 
-  // This method will be called on every keystroke
-  onPackageNameChange(): void {
-    this.packageNameUpdate.next(this.packageName);
+  onFieldChange(field: keyof DailyPermitPackageDto, value: any): void {
+    this.fieldUpdate.next({ field, value });
+  }
+
+  updatePackageProperty(field: keyof DailyPermitPackageDto, value: any) {
+    const current = this.currentPackage();
+    if (field === 'name' && !value) {
+      return;
+    }
+    
+    const updatedPackage = { ...current, [field]: value };
+    this.currentDailyPermitPackageService.updateCurrentDailyPacksge(new DailyPermitPackageDto(updatedPackage));
   }
 
 

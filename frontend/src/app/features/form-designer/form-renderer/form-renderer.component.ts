@@ -240,11 +240,12 @@ export class FormRendererComponent implements OnInit{
           
           const dataSource = this.formData();
           const arrayData = this.getNestedValue(dataSource, field.name) || [];
+          const fields = this.getFormFieldsFromFormTemplate(field.nestedForm)
 
           console.log('Creating new FormArray with data:', arrayData);
           
           const formArray = this.fb.array(
-            arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
+            arrayData.map((item: any) => this.createArrayItem(fields ?? [], item))
           );
         
           console.log('FormArray created:', formArray);
@@ -376,11 +377,6 @@ onArrayItemAdded(formGroup: FormGroup): void {
 
 }
 
-
-
-
-
-
 /**
  * Handles when an item is removed from a form array
  */
@@ -429,6 +425,13 @@ onArrayItemRemoved(event: { index: number, fieldName: string }): void {
 
   private getAllFormFields(): FormField[] {
     const containers = this.formDefinition()?.formContainers ?? [];
+    return containers
+      .filter(c => (c.contentType === 'formField' || c.contentType === 'repeatingSection') && this.isFormField(c.content))
+      .map(c => c.content as FormField);
+  }
+
+  private getFormFieldsFromFormTemplate(template: PrintableFormDto): FormField[] {
+    const containers = template?.formContainers ?? [];
     return containers
       .filter(c => (c.contentType === 'formField' || c.contentType === 'repeatingSection') && this.isFormField(c.content))
       .map(c => c.content as FormField);

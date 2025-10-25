@@ -48,7 +48,7 @@ export class SwPermits {
   hotWorkDescription: string = '';
   ventingPurging: boolean = false;
   ventingPurgingDescription: string = '';
-  jha: boolean = false;
+  jha: boolean = true;
   gasTesting: boolean = false;
   excavationPermit: boolean = false;
   energizedPermit: boolean = false;

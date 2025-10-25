@@ -3,18 +3,39 @@
   <div class="package-submission-section">
     <div class="form-controls">
       <div class="form-group">
-        <label for="packageName">Package Name:</label>
-        <input 
-          type="text" 
-          id="packageName" 
-          name="packageName" 
-          [(ngModel)]="packageName" 
-          (ngModelChange)="onPackageNameChange()" 
-          placeholder="Enter a name for this permit package"
-        >
+        <div class="package-name-container">
+            <label for="packageName">Package Name:</label>
+            <input 
+                type="text" 
+                id="packageName" 
+                class="package-name-input" 
+                [ngModel]="currentPackage().name"
+                (ngModelChange)="onFieldChange('name', $event)"
+                placeholder="Enter package name">
+        </div>
+        <div class="company-name-container">
+            <label for="companyName">Company Name:</label>
+            <input 
+                type="text" 
+                id="companyName" 
+                class="company-name-input" 
+                [ngModel]="currentPackage().companyName"
+                (ngModelChange)="onFieldChange('companyName', $event)"
+                placeholder="Enter company name">
+        </div>
+        <div class="person-name-container">
+            <label for="personName">Person Name:</label>
+            <input 
+                type="text" 
+                id="personName" 
+                class="person-name-input" 
+                [ngModel]="currentPackage().personName"
+                (ngModelChange)="onFieldChange('personName', $event)"
+                placeholder="Enter person's name">
+        </div>
       </div>
-      <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!packageName">Submit Permit Package</button>
-      <button class="submit-button" (click)="reusePermitsPopupOpen()" [disabled]="!packageName">Get Permits From Another Package</button>
+      <button class="submit-button" (click)="onSubmitPackage()" [disabled]="!currentPackage().name">Submit Permit Package</button>
+      <button class="submit-button" (click)="reusePermitsPopupOpen()">Get Permits From Another Package</button>
       <button class="delete-button" (click)="onDeletePackage()" [disabled]="currentPackage().id===0">Delete Permit Package</button>
       <button class="delete-button" (click)="currentDailyPermitPackageService.build()" [disabled]="currentPackage().id===0">Build Package</button>
     </div>
