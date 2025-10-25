@@ -22,6 +22,13 @@
                       [style]="asFormField(container.content).style">
                     </app-invisible-input-field>
                   }
+                  @case ('textarea') {
+                    <app-invisible-input-field
+                      [type]="'textarea'"
+                      [formControl]="getFormControl(asFormGroup(formGroup), asFormField(container.content).name!)"
+                      [style]="asFormField(container.content).style">
+                    </app-invisible-input-field>
+                  }
                   @case ('number') {
                     <app-invisible-input-field
                       type="number"

@@ -126,7 +126,7 @@ export class Jha implements IJha {
         new JobStep({ sequence: 1, description: 'Inspect work area', hazard: 'Slips, trips, and falls', safetyMeasures: 'Clear debris, mark hazards' }),
         new JobStep({ sequence: 2, description: 'Set up equipment', hazard: 'Pinch points, heavy lifting', safetyMeasures: 'Use proper PPE, team lifting' }),
         new JobStep({ sequence: 3, description: 'Perform maintenance', hazard: 'Electrical shock, moving parts', safetyMeasures: 'Lock-out/Tag-out, machine guarding' }),
-        new JobStep({ sequence: 4, description: 'Test system', hazard: 'Unexpected startup', safetyMeasures: 'Follow test procedures, clear communication' }),
+        new JobStep({ sequence: 4, description: 'Test system', hazard: 'Unexpected startup', safetyMeasures: 'Follow test procedures, clear communication some, this is really long description to test how text will fit into the input field, if it will stay readable.' }),
         new JobStep({ sequence: 5, description: 'Clean up work area', hazard: 'Chemical exposure, ergonomic strain', safetyMeasures: 'Use proper cleaning agents, correct posture' }),
         new JobStep({ sequence: 6, description: 'Document and report', hazard: 'Miscommunication', safetyMeasures: 'Double-check records, verbal confirmation' }),
       ];

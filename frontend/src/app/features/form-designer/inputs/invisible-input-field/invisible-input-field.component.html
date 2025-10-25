@@ -13,10 +13,39 @@
       <input #timeInput type="time" class="hidden-input" [value]="value" (change)="onValueChange($event)">
     }
     @case ('number') {
-      <input type="number" class="invisible-input" [(ngModel)]="value" (change)="onValueChange($event)">
+      <input type="number" class="invisible-input" [(ngModel)]="value" (input)="onValueChange($event)">
+    }
+    @case ('textarea') {
+      <textarea #textInput class="invisible-input" [(ngModel)]="value" (input)="onValueChange($event)"></textarea>
     }
     @default { <!-- text -->
-      <input type="text" class="invisible-input" [(ngModel)]="value" (change)="onValueChange($event)">
+      <textarea #textInput class="invisible-input" [(ngModel)]="value" (input)="onValueChange($event)"></textarea>
     }
   }
 </div>
+
+<!-- <div class="invisible-input-container" (click)="triggerFileDialog()">
+  @switch (type) {
+    @case ('file') {
+      <input #fileInput type="file" class="hidden-input" (change)="onFileChange($event)">
+      <span class="display-value">{{ fileName || value }}</span>
+    }
+    @case ('date') {
+      <span class="display-value">{{ value }}</span>
+      <input #dateInput type="date" class="hidden-input" [value]="value" (change)="onValueChange($event)">
+    }
+    @case ('time') {
+      <span class="display-value">{{ value }}</span>
+      <input #timeInput type="time" class="hidden-input" [value]="value" (change)="onValueChange($event)">
+    }
+    @case ('number') {
+      <input type="number" class="invisible-input" [(ngModel)]="value" (change)="onValueChange($event)">
+    }
+    @case ('textarea') {
+      <textarea class="invisible-input" [(ngModel)]="value" (change)="onValueChange($event)"></textarea>
+    }
+    @default {
+      <input type="text" class="invisible-input" [(ngModel)]="value" (change)="onValueChange($event)">
+    }
+  }
+</div> -->
