@@ -1,6 +1,9 @@
 package com.dk_power.power_plant_java.clients;
 
+import com.dk_power.power_plant_java.dto.permits.ConfinedSpaceDto;
+import com.dk_power.power_plant_java.dto.permits.SpaceDto;
 import com.dk_power.power_plant_java.dto.permits.WorkRequestDto;
+import com.dk_power.power_plant_java.sevice.HttpService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +14,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +26,8 @@ public class PowerAutomateClient {
 
 //    private static final String WORK_REQUEST_URL = "https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms";
     private static final String WORK_REQUEST_URL = "https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms";
+    private static final String USERS_URL = "https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4";
+    private static final String CS_URL = "https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/3c104b79651e4282b15e8e525c09b8d8/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XwnggyNeW4DxeNek7SdGIJEJpsxP9aocJKbgs51APC4";
 
     public List<WorkRequestDto> getAllRequests() {
         Map<String, String> reqBody = new HashMap<>();
@@ -79,4 +85,32 @@ public class PowerAutomateClient {
     public void changeWorkRequestStatus(String id, String status) throws IOException, InterruptedException {
         postRequestToPermitsFlow(Map.of("actionType","setStatus","id",id, "status",status));
     }
+
+
+
+
+    public List<SpaceDto> getAllSpaces() throws IOException, InterruptedException {
+        Map<String,String> requestMap = Map.of(
+                "actionType","getAllSpaces"
+        );
+        return HttpService.postRequest(
+                requestMap,
+                CS_URL,
+                new TypeReference<List<SpaceDto>>() {}
+        );
+    }
+
+    public List<SpaceDto> getAllSpacesLogs() throws IOException, InterruptedException {
+        Map<String,String> requestMap = Map.of(
+                "actionType","getAllSpaces"
+        );
+        return HttpService.postRequest(
+                requestMap,
+                CS_URL,
+                new TypeReference<List<SpaceDto>>() {}
+        );
+    }
+
+
+
 }
