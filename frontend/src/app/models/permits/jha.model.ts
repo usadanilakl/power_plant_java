@@ -38,6 +38,7 @@ export interface IJha {
   date: string;
   ppe: string;
   loto: string;
+  confinedSpace: string;
   hazCom: string;
   handAndPowerTools: string;
   specialTools: string;
@@ -55,6 +56,7 @@ export class Jha implements IJha {
   date: string;
   ppe: string;
   loto: string;
+  confinedSpace: string;
   hazCom: string;
   handAndPowerTools: string;
   specialTools: string;
@@ -70,6 +72,7 @@ export class Jha implements IJha {
     this.date = data.date ?? '';
     this.ppe = data.ppe ?? '';
     this.loto = data.loto ?? '';
+    this.confinedSpace = data.confinedSpace ?? '';
     this.hazCom = data.hazCom ?? '';
     this.handAndPowerTools = data.handAndPowerTools ?? '';
     this.specialTools = data.specialTools ?? '';
@@ -87,6 +90,7 @@ export class Jha implements IJha {
       { name: 'date', label: 'Date', type: 'date', initialValue: this.date },
       { name: 'ppe', label: 'Personal Protective Equipment (PPE)', type: 'textarea', initialValue: this.ppe },
       { name: 'loto', label: 'LOTO', type: 'textarea', initialValue: this.loto },
+      { name: 'confinedSpace', label: 'Confined Space', type: 'textarea', initialValue: this.loto },
       { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom },
       { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools },
       { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools },
