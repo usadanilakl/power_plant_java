@@ -6,7 +6,7 @@ export interface FormField {
   label: string;
   type: 'text' | 'textarea' | 'select' | 'multi-select' | 'date' | 
   'time' | 'checkbox-group' | 'checkbox' | 'radio' | 'file' | 'multi-input' |
-  'number' | 'radio-group' | 'form-array';
+  'number' | 'radio-group' | 'form-array' | 'email' | 'password';
   validators?: ValidatorFn[];
   options?: Option[];
   initialValue?: any;

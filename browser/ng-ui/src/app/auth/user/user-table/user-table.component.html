@@ -1,0 +1,14 @@
+<app-table
+    [items]="items()"
+    [columns]="columns"
+    (rowClicked)="onRowClick($event)"
+></app-table>
+
+<app-popup
+    [title]="'Select an Action'"
+    [size]="'medium'"
+    [isOpen]="isActionMenuOpen"
+    (close)="closeActionMenu()"
+>
+    <app-buttons [buttons]="actionButtons" [layout]="'column'"></app-buttons>
+</app-popup>
