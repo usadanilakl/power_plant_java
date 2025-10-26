@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.permits.*;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
 import com.dk_power.power_plant_java.entities.permits.HotWork;
+import com.dk_power.power_plant_java.entities.permits.SafeWork;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.angular.permits.NgConfinedSpaceService;
@@ -150,8 +151,10 @@ public class RedTagControlsRestController {
     @GetMapping("/fill-safework-form")
     public ResponseEntity<NgApiResponse<String>> fillOutSafeWorkForm() {
         try {
-            String login = redTagAutomationService.fillOutSafeWorkFormTest();
-            return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Form is filled out "+login));
+            SafeWork first = safeWorkService.getAll().getLast();
+            if(first!=null) redTagAutomationService.fillOutSafeWorkForm(safeWorkService.toDto(first));
+            else redTagAutomationService.fillOutSafeWorkFormTest();
+            return ResponseEntity.ok(new NgApiResponse<>(null, "Safework Form is filled out successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null,"App failed to fill out safe work: " + e.getMessage()));
         }

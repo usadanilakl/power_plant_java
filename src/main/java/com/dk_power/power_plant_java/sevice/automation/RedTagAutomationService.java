@@ -828,12 +828,13 @@ public class RedTagAutomationService {
             location.offset(250, 20).click();
             pasteText(sw.getWorkScope());
 
-            clickLeftSideOfElement(SW_HIGH_TEMP, 2);
 
             if (sw.getHazards().isHighPressure()) {
                 Region hiPressure = screen.find(SW_HIGH_PRESSURE);
                 hiPressure.offset(-hiPressure.w / 2 - 15, 0).click();
             }
+
+            if(sw.getHazards().isHighTemp()) clickLeftSideOfElement(SW_HIGH_TEMP, 2);
 
             if (sw.getHazards().isEnergized()) clickLeftSideOfElement(SW_ENERGIZED, 2);
             if (sw.getHazards().isStoredEnergy()) clickLeftSideOfElement(SW_STORED_ENERGY, 2);
