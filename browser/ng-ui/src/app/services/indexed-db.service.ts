@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 import { IWorkRequest, WorkRequest } from '../models/permits/work-request.model';
 import { IJha, Jha } from '../models/permits/jha.model';
+import { Space } from '../models/permits/space.model';
 
 @Injectable({
   providedIn: 'root'
@@ -9,6 +10,7 @@ import { IJha, Jha } from '../models/permits/jha.model';
 export class IndexedDbService extends Dexie {
   workRequests!: Table<WorkRequest, number>;
   jhas!: Table<Jha, number>;
+  spaces!: Table<Space, number>;
 
   constructor() {
     // 1. Database Name
@@ -34,8 +36,14 @@ export class IndexedDbService extends Dexie {
       });
     });
 
+    // Version 3: Added spaces table
+    this.version(3).stores({
+      spaces: '++id, status, createdAt, updatedAt'
+    });
+
     // 3. Map tables to classes
     this.workRequests.mapToClass(WorkRequest);
     this.jhas.mapToClass(Jha);
+    this.spaces.mapToClass(Space);
   }
 }

@@ -10,6 +10,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/', label: 'Home' },
     { route: '/work-request', label: 'Work Request' },
     { route: '/jha', label: 'JHA' },
+    { route: '/space', label: 'Confined Spaces' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [

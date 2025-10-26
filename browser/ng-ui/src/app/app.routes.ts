@@ -5,6 +5,8 @@ import { JhaPageComponent } from './pages/jha-page/jha-page.component';
 import { WorkRequestComponent } from './features/work-request/work-request.component';
 import { JhaComponent } from './features/jha/jha.component';
 import { standaloneGuard } from './guards/standalone.guard';
+import { SpacePageComponent } from './pages/space-page/space-page.component';
+import { SpaceComponent } from './features/space/space.component';
 
 export const routes: Routes = [
     {
@@ -29,6 +31,15 @@ export const routes: Routes = [
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: JhaComponent }
+      ]
+    },
+    {
+      path: 'space',
+      component: SpacePageComponent,
+      canActivate: [standaloneGuard],
+      children: [
+        { path: '', redirectTo: 'form', pathMatch: 'full' },
+        { path: 'form', component: SpaceComponent }
       ]
     },
 ];
