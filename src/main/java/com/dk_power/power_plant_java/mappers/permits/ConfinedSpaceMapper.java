@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.mappers.permits;
 import com.dk_power.power_plant_java.dto.permits.ConfinedSpaceDto;
 import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.repository.permits.ConfinedSpaceRepo;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ConfinedSpaceMapper implements BaseMapper {
     private final ModelMapper modelMapper;
+    private final ConfinedSpaceRepo confinedSpaceRepo;
 
     public ConfinedSpaceDto convertToDto(ConfinedSpace entity) {
         if (entity == null) return null;
@@ -42,7 +44,10 @@ public class ConfinedSpaceMapper implements BaseMapper {
     public ConfinedSpace convertToEntity(ConfinedSpaceDto dto) {
         if (dto == null) return null;
 
-        ConfinedSpace entity = new ConfinedSpace();
+        ConfinedSpace entity = null;
+        if(dto.getId()!=null && dto.getId()!=0) entity = confinedSpaceRepo.findById(dto.getId()).orElse(new ConfinedSpace());
+        if(entity == null) entity = new ConfinedSpace();
+
 
         entity.setId(dto.getId());
         entity.setDate(dto.getDate());
@@ -54,7 +59,7 @@ public class ConfinedSpaceMapper implements BaseMapper {
         entity.setMeterModel(dto.getMeterModel());
         entity.setMeterNum(dto.getMeterNum());
         entity.setCalibrated(dto.isCalibrated());
-        entity.setRedTagNum(dto.getRedTagNum());
+        if(dto.getRedTagNum()!=null && !dto.getRedTagNum().isEmpty())entity.setRedTagNum(dto.getRedTagNum());
 
         try {
             entity.setHazards(dto.getHazards());

@@ -389,6 +389,7 @@ public class RedTagAutomationService {
         pause(200);
 
         StringBuilder hotworks = new StringBuilder();
+        StringBuilder spaces = new StringBuilder();
         String lotoNumbers = "";
 
         String lotoBoxes = "";
@@ -428,6 +429,7 @@ public class RedTagAutomationService {
             progress.setOpenBuilderMessage(openNewConfinedSpaceBuilder());
             progress.setFillOutForm(fillOutCSForm(cs));
             String permitNum = saveCsForm();
+            spaces.append(",").append(permitNum);
             cs.setRedTagNum(permitNum);
             progress.setSaveForm(permitNum);
             System.out.println(permitNum + " CS saved");
@@ -445,6 +447,11 @@ public class RedTagAutomationService {
                 }else if(!specialInstructions.contains(lotoBoxes)) {
                     specialInstructions += ", " + lotoBoxes;
                 }
+
+                if(lotos!=null && !lotos.isEmpty())safeWork.getPermits().setLotoRequired(true);
+                if(!hotworks.isEmpty()) safeWork.getPermits().setHotWork(true);
+                if(!spaces.isEmpty()) safeWork.getPermits().setConfinedSpace(true);
+
                 safeWork.setSpecialInstructions(specialInstructions);
 
                 SwBuilderProgress progress = new SwBuilderProgress();
@@ -740,6 +747,9 @@ public class RedTagAutomationService {
             clickYesNo(SW_GAS_TESTING, true);
             clickYesNo(SW_EXCAVATION_PERMIT, true);
             clickYesNo(SW_ENERGIZED_PERMIT, true);
+
+            screen.find(SW_ENERGIZED_PERMIT).offset(-70,20).click();
+
             clickYesNo(SW_HARDHAT, true);
             clickYesNo(SW_SAFETY_GLASSES, true);
             clickYesNo(SW_HEARING_PROTECTION, true);
@@ -787,6 +797,8 @@ public class RedTagAutomationService {
             clickYesNo(SW_WELDING_SHIELD, false);
             clickYesNo(SW_WELDING_GLOVES, false);
             clickYesNo(SW_PURGIN_VENTILATION, false);
+
+            screen.find(SW_PURGIN_VENTILATION).offset(-50,20).click();
 
             screen.find(SW_SPECIAL_INSTRUCTIONS).offset(0, 15).click();
             pasteText("Special instructions are here");
@@ -881,6 +893,8 @@ public class RedTagAutomationService {
             clickYesNo(SW_EXCAVATION_PERMIT, sw.getPermits().isExcavationPermit());
             clickYesNo(SW_ENERGIZED_PERMIT, sw.getPermits().isEnergizedPermit());
 
+            screen.find(SW_ENERGIZED_PERMIT).offset(-70,20).click();
+
             clickYesNo(SW_HARDHAT, sw.getPpe().isHardhat());
             clickYesNo(SW_SAFETY_GLASSES, sw.getPpe().isSafetyGlasses());
             clickYesNo(SW_HEARING_PROTECTION, sw.getPpe().isHearingProtection());
@@ -900,6 +914,8 @@ public class RedTagAutomationService {
             clickYesNo(SW_WELDING_SHIELD, sw.getPpe().isWeldingShield());
             clickYesNo(SW_WELDING_GLOVES, sw.getPpe().isWeldingGloves());
             clickYesNo(SW_PURGIN_VENTILATION, sw.getPpe().isPurgingVentilation());
+
+            screen.find(SW_PURGIN_VENTILATION).offset(-50,20).click();
 
             screen.find(SW_SPECIAL_INSTRUCTIONS).offset(0, 15).click();
             pasteText(sw.getSpecialInstructions());
@@ -1119,8 +1135,8 @@ public class RedTagAutomationService {
             meterData.offset(width, 60 - height).click();
             pasteText(cs.getMeterModel());
 
-            meterData.offset(width, 90 - height).click();
-            pasteText(cs.getMeterNum());
+//            meterData.offset(width, 90 - height).click();
+//            pasteText(cs.getMeterNum());
 
             meterData.offset(width, 120 - height).click();
             pasteText(cs.getDate());
@@ -1244,7 +1260,7 @@ public class RedTagAutomationService {
             model.offset(model.w / 2 - 5, 0).click();
             pasteText(hw.getMeterModel());
             screen.type(Key.TAB);
-            pasteText(hw.getMeterNum());
+//            pasteText(hw.getMeterNum());
             screen.type(Key.TAB);
             pasteText(hw.getDate());
 

@@ -1,13 +1,18 @@
 package com.dk_power.power_plant_java.mappers.permits;
 
 import com.dk_power.power_plant_java.dto.permits.SafeWorkDto;
+import com.dk_power.power_plant_java.entities.permits.HotWork;
 import com.dk_power.power_plant_java.entities.permits.SafeWork;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.repository.permits.SafeWorkRepo;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class SafeWorkMapper implements BaseMapper {
+    private final SafeWorkRepo safeWorkRepo;
 
     @Override
     public ModelMapper getMapper() {
@@ -53,8 +58,10 @@ public class SafeWorkMapper implements BaseMapper {
 
     public SafeWork convertToEntity(SafeWorkDto dto) {
         if (dto == null) return null;
+        SafeWork entity = null;
 
-        SafeWork entity = new SafeWork();
+        if(dto.getId()!=null && dto.getId()!=0) entity = safeWorkRepo.findById(dto.getId()).orElse(new SafeWork());
+        if(entity == null) entity = new SafeWork();
 
         if (dto.getId()!= null) entity.setId(dto.getId());
         if (dto.getDate() != null) entity.setDate(dto.getDate());
@@ -64,7 +71,7 @@ public class SafeWorkMapper implements BaseMapper {
         if (dto.getWorkScope() != null) entity.setWorkScope(dto.getWorkScope());
         if (dto.getSpecialInstructions() != null) entity.setSpecialInstructions(dto.getSpecialInstructions());
         if (dto.getRequestedBy() != null) entity.setRequestedBy(dto.getRequestedBy());
-        if (dto.getRedTagNum()!=null) entity.setRedTagNum(dto.getRedTagNum());
+        if(dto.getRedTagNum()!=null && !dto.getRedTagNum().isEmpty())entity.setRedTagNum(dto.getRedTagNum());
 
         // Convert POJOs to JSON strings and set into entity JSON fields
         try {

@@ -1,8 +1,10 @@
 package com.dk_power.power_plant_java.mappers.permits;
 
 import com.dk_power.power_plant_java.dto.permits.HotWorkDto;
+import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
 import com.dk_power.power_plant_java.entities.permits.HotWork;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.repository.permits.HotWorkRepo;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class HotWorkMapper implements BaseMapper {
     private final ModelMapper modelMapper;
+    private final HotWorkRepo hotWorkRepo;
 
     public HotWorkDto convertToDto(HotWork entity) {
         if (entity == null) return null;
@@ -37,7 +40,10 @@ public class HotWorkMapper implements BaseMapper {
 
     public HotWork convertToEntity(HotWorkDto dto) {
         if (dto == null) return null;
-        HotWork entity = new HotWork();
+        HotWork entity = null;
+
+        if(dto.getId()!=null && dto.getId()!=0) entity = hotWorkRepo.findById(dto.getId()).orElse(new HotWork());
+        if(entity == null) entity = new HotWork();
 
         entity.setId(dto.getId());
         entity.setDate(dto.getDate());
@@ -48,7 +54,7 @@ public class HotWorkMapper implements BaseMapper {
         entity.setSpecialInstructions(dto.getSpecialInstructions());
         entity.setLocation(dto.getLocation());
         entity.setWorkScope(dto.getWorkScope());
-        entity.setRedTagNum(dto.getRedTagNum());
+        if(dto.getRedTagNum()!=null && !dto.getRedTagNum().isEmpty())entity.setRedTagNum(dto.getRedTagNum());
 
         try {
             entity.setMeasures(dto.getMeasures());
