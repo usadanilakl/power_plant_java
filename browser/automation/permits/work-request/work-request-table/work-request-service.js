@@ -51,7 +51,7 @@ async openBuilder(id){
         if (window.javaScriptBridge) {
             try {
                 if(id){
-                  await this.setStatus(id,'processed');
+                  this.setStatus(id,'processed');
                   window.javaScriptBridge.openInBrowser('http://localhost:8082/app/permit-builder/daily-packages/'+id);
                 }else {
                   window.javaScriptBridge.openInBrowser('http://localhost:8082/app/permit-builder/daily-packages');

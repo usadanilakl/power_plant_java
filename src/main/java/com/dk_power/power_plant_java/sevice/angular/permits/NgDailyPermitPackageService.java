@@ -128,7 +128,7 @@ public class NgDailyPermitPackageService implements NgCrudService<DailyPermitPac
                 break;
             default:
         }
-        redTagAutomationService.buildDailyPermitPackage(dto);
+//        redTagAutomationService.buildDailyPermitPackage(dto);
         return "Permits built successfully!";
     }
 
