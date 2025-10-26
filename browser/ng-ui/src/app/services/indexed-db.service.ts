@@ -3,6 +3,7 @@ import Dexie, { Table } from 'dexie';
 import { IWorkRequest, WorkRequest } from '../models/permits/work-request.model';
 import { IJha, Jha } from '../models/permits/jha.model';
 import { Space } from '../models/permits/space.model';
+import { User } from '../models/auth/user.model';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +12,7 @@ export class IndexedDbService extends Dexie {
   workRequests!: Table<WorkRequest, number>;
   jhas!: Table<Jha, number>;
   spaces!: Table<Space, number>;
+  users!: Table<User, number>;
 
   constructor() {
     // 1. Database Name
@@ -41,9 +43,15 @@ export class IndexedDbService extends Dexie {
       spaces: '++id, status, createdAt, updatedAt'
     });
 
+    // Version 4: Added users table
+    this.version(4).stores({
+      users: '++id, status, createdAt, updatedAt'
+    });
+
     // 3. Map tables to classes
     this.workRequests.mapToClass(WorkRequest);
     this.jhas.mapToClass(Jha);
     this.spaces.mapToClass(Space);
+    this.users.mapToClass(User);
   }
 }
