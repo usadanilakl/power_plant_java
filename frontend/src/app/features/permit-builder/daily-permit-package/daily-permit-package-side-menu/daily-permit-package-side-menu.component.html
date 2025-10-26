@@ -22,6 +22,12 @@
         (click)="setGroupBy('person')">
         By Person
     </button>
+    <button 
+        class="view-button" 
+        [class.active]="groupBy() === 'date'"
+        (click)="setGroupBy('date')">
+        By Date
+    </button>
 </div>
 
 <ul class="package-menu">

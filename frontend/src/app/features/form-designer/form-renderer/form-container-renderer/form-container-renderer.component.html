@@ -3,6 +3,7 @@
     @switch (asFormField(container().content).type) {
       @case ('text') {
         <app-invisible-input-field
+          type="text"
           [formControl]="getFormControl(asFormField(container().content).name!)"
           [style]="asFormField(container().content).style">
         </app-invisible-input-field>

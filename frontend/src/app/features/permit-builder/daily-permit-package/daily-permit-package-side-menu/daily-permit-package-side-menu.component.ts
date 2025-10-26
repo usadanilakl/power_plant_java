@@ -6,7 +6,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { DailyPermitPackageDto } from '../../../../models/permits/dailt-permit-package.model';
 import { CommonModule } from '@angular/common';
 
-type GroupBy = 'company' | 'person';
+type GroupBy = 'company' | 'person' | 'date';
 
 interface PackageGroup {
   groupName: string;
@@ -31,11 +31,19 @@ export class DailyPermitPackageSideMenuComponent {
   // Track current grouping mode
   groupBy = signal<GroupBy>('company');
 
+  // constructor() { 
+  //   // Expand all groups by default when grouping changes
+  //   effect(() => {
+  //     const groups = this.packagesGrouped().map(g => g.groupName);
+  //     this.expandedGroups.set(new Set(groups));
+  //   });
+  // }
+
   constructor() { 
-    // Expand all groups by default when grouping changes
+    // When grouping changes, collapse all groups.
     effect(() => {
-      const groups = this.packagesGrouped().map(g => g.groupName);
-      this.expandedGroups.set(new Set(groups));
+      this.packagesGrouped(); // Rerun effect when grouping changes
+      this.expandedGroups.set(new Set());
     });
   }
 
@@ -49,8 +57,21 @@ export class DailyPermitPackageSideMenuComponent {
     return this.groupPackages('person');
   });
 
+  packagesByDate = computed(() => {
+    return this.groupPackages('date');
+  });
+
   packagesGrouped = computed(() => {
-    return this.groupBy() === 'company' ? this.packagesByCompany() : this.packagesByPerson();
+    switch (this.groupBy()) {
+      case 'company':
+        return this.packagesByCompany();
+      case 'person':
+        return this.packagesByPerson();
+      case 'date':
+        return this.packagesByDate();
+      default:
+        return [];
+    }
   });
 
   private groupPackages(groupBy: GroupBy): PackageGroup[] {
@@ -58,9 +79,20 @@ export class DailyPermitPackageSideMenuComponent {
     const grouped = new Map<string, DailyPermitPackageDto[]>();
     
     packages.forEach(pkg => {
-      const groupName = groupBy === 'company' 
-        ? (pkg.companyName || 'Unassigned')
-        : (pkg.personName || 'Unassigned');
+      let groupName: string;
+      switch (groupBy) {
+        case 'company':
+          groupName = pkg.companyName || 'Unassigned';
+          break;
+        case 'person':
+          groupName = pkg.personName || 'Unassigned';
+          break;
+        case 'date':
+          groupName = pkg.date ? new Date(pkg.date).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'Unassigned';
+          break;
+        default:
+          groupName = 'Unassigned';
+      }
       
       if (!grouped.has(groupName)) {
         grouped.set(groupName, []);
@@ -82,8 +114,48 @@ export class DailyPermitPackageSideMenuComponent {
         }
         return 0;
       })
-    })).sort((a, b) => a.groupName.localeCompare(b.groupName));
+    })).sort((a, b) => {
+      if (groupBy === 'date') {
+        if (a.groupName === 'Unassigned') return 1;
+        if (b.groupName === 'Unassigned') return -1;
+        return new Date(b.groupName).getTime() - new Date(a.groupName).getTime(); // Sort dates descending
+      }
+      return a.groupName.localeCompare(b.groupName);
+    });
   }
+
+
+  // private groupPackages(groupBy: GroupBy): PackageGroup[] {
+  //   const packages = this.allPackages();
+  //   const grouped = new Map<string, DailyPermitPackageDto[]>();
+    
+  //   packages.forEach(pkg => {
+  //     const groupName = groupBy === 'company' 
+  //       ? (pkg.companyName || 'Unassigned')
+  //       : (pkg.personName || 'Unassigned');
+      
+  //     if (!grouped.has(groupName)) {
+  //       grouped.set(groupName, []);
+  //     }
+  //     grouped.get(groupName)!.push(pkg);
+  //   });
+    
+  //   // Convert Map to array of objects for easier template iteration
+  //   return Array.from(grouped.entries()).map(([groupName, packages]) => ({
+  //     groupName,
+  //     packages: packages.sort((a, b) => {
+  //       // Sort by date, then by time
+  //       if (a.date && b.date) {
+  //         const dateCompare = a.date.localeCompare(b.date);
+  //         if (dateCompare !== 0) return dateCompare;
+  //         if (a.time && b.time) {
+  //           return a.time.localeCompare(b.time);
+  //         }
+  //       }
+  //       return 0;
+  //     })
+  //   })).sort((a, b) => a.groupName.localeCompare(b.groupName));
+  // }
 
   setGroupBy(groupBy: GroupBy) {
     this.groupBy.set(groupBy);

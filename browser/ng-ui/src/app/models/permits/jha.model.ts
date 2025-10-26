@@ -13,6 +13,7 @@ export interface IJha extends IBaseModel {
   date: string;
   ppe: string;
   loto: string;
+  confinedSpace: string;
   hazCom: string;
   handAndPowerTools: string;
   specialTools: string;
@@ -29,6 +30,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
   approvedBy: string;
   date: string;
   ppe: string;
+  confinedSpace: string;
   loto: string;
   hazCom: string;
   handAndPowerTools: string;
@@ -46,6 +48,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
     this.date = data.date ?? '';
     this.ppe = data.ppe ?? '';
     this.loto = data.loto ?? '';
+    this.confinedSpace = data.confinedSpace?? '';
     this.hazCom = data.hazCom ?? '';
     this.handAndPowerTools = data.handAndPowerTools ?? '';
     this.specialTools = data.specialTools ?? '';
@@ -63,6 +66,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
       { name: 'date', label: 'Date', type: 'date', initialValue: this.date },
       { name: 'ppe', label: 'Personal Protective Equipment (PPE)', type: 'textarea', initialValue: this.ppe },
       { name: 'loto', label: 'LOTO', type: 'textarea', initialValue: this.loto },
+      { name: 'confinedSpace', label: 'Confined Space', type: 'textarea', initialValue: this.confinedSpace  },
       { name: 'hazCom', label: 'HazCom', type: 'textarea', initialValue: this.hazCom },
       { name: 'handAndPowerTools', label: 'Hand and Power Tools', type: 'textarea', initialValue: this.handAndPowerTools },
       { name: 'specialTools', label: 'Special Tools', type: 'textarea', initialValue: this.specialTools },
@@ -105,6 +109,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
         date: this.date,
         ppe: this.ppe,
         loto: this.loto,
+        confinedSpace: this.confinedSpace,
         hazCom: this.hazCom,
         handAndPowerTools: this.handAndPowerTools,
         specialTools: this.specialTools,
@@ -123,6 +128,7 @@ export class Jha extends BaseModel<IJha> implements IJha {
       date: 'Date',
       ppe: 'Personal Protective Equipment (PPE)',
       loto: 'LOTO',
+      confinedSpace: 'Confined Space',
       hazCom: 'HazCom',
       handAndPowerTools: 'Hand and Power Tools',
       specialTools: 'Special Tools',

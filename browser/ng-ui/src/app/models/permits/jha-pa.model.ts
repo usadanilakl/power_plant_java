@@ -10,6 +10,7 @@ export interface IJhaPa {
   date: string;
   ppe: string;
   loto: string;
+  confinedSpace: string;
   hazCom: string;
   handAndPowerTools: string;
   specialTools: string;
@@ -26,6 +27,7 @@ export class JhaPa implements IJhaPa {
   date: string;
   ppe: string;
   loto: string;
+  confinedSpace: string;
   hazCom: string;
   handAndPowerTools: string;
   specialTools: string;
@@ -41,6 +43,7 @@ export class JhaPa implements IJhaPa {
     this.date = data.date ?? '';
     this.ppe = data.ppe ?? '';
     this.loto = data.loto ?? '';
+    this.confinedSpace = data.confinedSpace?? '';
     this.hazCom = data.hazCom ?? '';
     this.handAndPowerTools = data.handAndPowerTools ?? '';
     this.specialTools = data.specialTools ?? '';
