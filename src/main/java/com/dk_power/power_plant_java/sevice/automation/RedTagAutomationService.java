@@ -511,6 +511,7 @@ public class RedTagAutomationService {
             fillOutSafeWorkForm(safeWork);
             String permitNum = saveSafeWork();
             safeWork.setRedTagNum(permitNum);
+            safeWorkService.save(safeWork);
 
             associatePermits(packageDto);
         }
@@ -528,6 +529,7 @@ public class RedTagAutomationService {
             fillOutHwForm(hotWork);
             String permitNum = saveHwForm();
             hotWork.setRedTagNum(permitNum);
+            hotWorkService.save(hotWork);
         }
         return "Success";
     }
@@ -543,6 +545,7 @@ public class RedTagAutomationService {
             fillOutCSForm(confinedSpace);
             String permitNum = saveCsForm();
             confinedSpace.setRedTagNum(permitNum);
+            confinedSpaceService.save(confinedSpace);
         }
         return "Success";
     }
