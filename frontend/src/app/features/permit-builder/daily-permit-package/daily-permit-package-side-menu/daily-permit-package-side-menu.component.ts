@@ -82,10 +82,10 @@ export class DailyPermitPackageSideMenuComponent {
       let groupName: string;
       switch (groupBy) {
         case 'company':
-          groupName = pkg.companyName || 'Unassigned';
+          groupName = this.companyNameFilter(pkg.companyName || 'Unassigned'  );
           break;
         case 'person':
-          groupName = pkg.personName || 'Unassigned';
+          groupName = this.formatGroupName(pkg.personName);
           break;
         case 'date':
           groupName = pkg.date ? new Date(pkg.date).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'Unassigned';
@@ -122,6 +122,32 @@ export class DailyPermitPackageSideMenuComponent {
       }
       return a.groupName.localeCompare(b.groupName);
     });
+  }
+
+  private formatGroupName(name: string | null | undefined): string {
+    if (!name) {
+      return 'Unassigned';
+    }
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      return 'Unassigned';
+    }
+    return trimmedName
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  private companyNameFilter(companyName: string): string {
+    const name = companyName.replace(/\s/g, '').toLowerCase();
+    if(name.includes('depue')) return 'Depue';
+    else if(name.includes('kiewit')) return 'Kiewit';
+    else if(name.includes('mitsu') || name==='mhi') return 'Mitsubishi';
+    else if(name.includes('brand')) return 'Brand';
+    else if(name.includes('synergy')) return 'Synergy';
+    else if(name.includes('blockelec')) return 'Block Electric';
+    else if(name==='gts') return 'GTS';
+    return this.formatGroupName(companyName);
   }
 
 
