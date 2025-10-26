@@ -23,6 +23,7 @@
           <main class="main-content" #mainContent>
             <ng-content select="[main-content]"></ng-content>
           </main>
+          @if(withButtomMenu()){
             <div class="footer-resizer" #footerResizer (mousedown)="onFooterResizerMouseDown($event)"></div>
             <footer class="footer" #footer [style.height.px]="footerHeight">
               @if(bottomMenu()!==null){
@@ -30,6 +31,8 @@
               }
               <ng-content select="[bottom-menu]"></ng-content>
             </footer>
+          }
+
         </div>
       </div>
     </div>

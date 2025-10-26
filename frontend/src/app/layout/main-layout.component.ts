@@ -17,6 +17,8 @@ export class MainLayoutComponent implements AfterViewInit {
   @ViewChild('mainContent') mainContent!: ElementRef;
   @ViewChild('footer') footer!: ElementRef;
 
+  withButtomMenu = input<boolean>(false);
+
   isResizing = false;
   isFooterResizing = false;
   menuWidth = 400; // Initial width
