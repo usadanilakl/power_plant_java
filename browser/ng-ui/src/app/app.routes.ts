@@ -7,8 +7,13 @@ import { JhaComponent } from './features/jha/jha.component';
 import { standaloneGuard } from './guards/standalone.guard';
 import { SpacePageComponent } from './pages/space-page/space-page.component';
 import { SpaceComponent } from './features/space/space.component';
+import { authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
+    {
+      path: 'login',
+      loadComponent: () => import('./auth/auth.component').then(m => m.AuthComponent)
+    },
     {
       path: 'install',
       loadComponent: () => import('./pages/install-app-page/install-app-page.component').then(m => m.InstallAppPageComponent),
@@ -36,7 +41,7 @@ export const routes: Routes = [
     {
       path: 'space',
       component: SpacePageComponent,
-      canActivate: [standaloneGuard],
+      canActivate: [standaloneGuard, authGuard],
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: SpaceComponent }

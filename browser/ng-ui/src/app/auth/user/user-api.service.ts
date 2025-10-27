@@ -11,12 +11,14 @@ export class UserApiService {
 
   powerAutomateService = inject(PowerAutomateService);
 
+  private usersUrl = 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/832a87fa6bd042459fbb042c2163f25a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CskQMxLQfynMFCI7AxUQtQWVIzVmkTydg9dxDN1-1M4';
+  
   constructor() { }
 
   createUser(user: User): Observable<any> {
     console.log('Creating user via Power Automate:', user);
     const request: PowerAutomateRequest<User> = {
-      url: '', // Use default URL from PowerAutomateService for users
+      url: this.usersUrl,
       workForm: new User(user),
       actionType: 'save'
     };
@@ -27,7 +29,7 @@ export class UserApiService {
   updateUser(user: User): Observable<any> {
     console.log('Updating user via Power Automate:', user);
     const request: PowerAutomateRequest<User> = {
-      url: '', // Use default URL from PowerAutomateService for users
+      url: this.usersUrl,
       workForm: new User(user),
       actionType: 'save'
     };
@@ -37,9 +39,22 @@ export class UserApiService {
 
   deleteUser(user: User): Observable<any> {
     const request: PowerAutomateRequest<User> = {
+      url: this.usersUrl,
       id: user.id.toString(),
-      actionType: 'delete' // Assuming 'delete' is the action for deletion
+      actionType: 'delete'
     };
     return this.powerAutomateService.submitForm(request);
   }
+
+  authenticateUser(username: string, password: string): Observable<any> {
+    const request: PowerAutomateRequest<any> = {
+      url: this.usersUrl,
+      actionType: 'authenticate',
+      email: username,
+      password: password
+    };
+    return this.powerAutomateService.submitForm(request);
+  }
+
+  
 }
