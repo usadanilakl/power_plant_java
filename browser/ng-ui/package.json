@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "deploy-old": "ng build --configuration production --base-href /permits/ && npx angular-cli-ghpages --dir=docs/browser --repo=https://github.com/JacksonGeneration/permits.git",
-    "deploy": "ng build --configuration production --base-href /permits/ && cp docs/browser/index.html docs/browser/404.html && npx angular-cli-ghpages --dir=docs/browser --repo=https://github.com/JacksonGeneration/permits.git"
+    "deploy": "ng build --configuration production --base-href /permits/ && cp docs/browser/index.html docs/browser/404.html && npx angular-cli-ghpages --dir=docs/browser --repo=https://github.com/JacksonGeneration/permits.git",
+    "deploy-win": "ng build --configuration production --base-href /permits/ && copy docs\\browser\\index.html docs\\browser\\404.html && npx angular-cli-ghpages --dir=docs/browser --repo=https://github.com/JacksonGeneration/permits.git"
   },
   "private": true,
   "dependencies": {

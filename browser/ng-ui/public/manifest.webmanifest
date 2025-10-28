@@ -6,6 +6,8 @@
   "display": "standalone",
   "scope": "/permits/",
   "start_url": "/permits/",
+  "orientation": "any",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icons/icon-72x72.png",

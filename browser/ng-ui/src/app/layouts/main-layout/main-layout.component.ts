@@ -271,6 +271,9 @@ onOverlayClick = (event: MouseEvent) => {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
+  login(): void {
+    this.router.navigate(['/login']);
+  }
 }
 
 

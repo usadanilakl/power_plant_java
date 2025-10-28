@@ -12,6 +12,8 @@
         <app-theme-toggle></app-theme-toggle>
         @if (authService.isLoggedIn()) {
           <button class="auth-btn" (click)="logout()">Logout</button>
+        } @else {
+          <button class="auth-btn" (click)="login()">Login</button>
         }
     </div>
   </header>
