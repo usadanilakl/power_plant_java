@@ -6,6 +6,7 @@ import { UserDbService } from './user-db.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GlobalMessageService } from '../../services/global-message.service';
 import { User } from '../../models/auth/user.model';
+import { UserPa } from '../../models/auth/user-pa.model';
 
 @Injectable({
   providedIn: 'root'
@@ -41,11 +42,14 @@ export class UserStateService {
       next: (response) => {
         // Handle different response structures
         const users = Array.isArray(response) ? response : (response?.data || response?.value || []);
+        if (!users.length) {
+          this.globalMessageService.showMessage('No users found in the database', 'green', 20000);
+          return;
+        }
+
+        const convertedUsers = users.map((userData: any) => new UserPa(userData).convertToUser());
         
-        // Map to User model instances
-        const userInstances = users.map((userData: any) => new User(userData));
-        
-        this.addUsersToList(userInstances);
+        this.addUsersToList(convertedUsers);
       },
       error: (error) => {
         console.error('Error loading users from API:', error);

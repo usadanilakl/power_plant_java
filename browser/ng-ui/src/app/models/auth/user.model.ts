@@ -1,6 +1,7 @@
 import { Column } from "../inputs/column.model";
 import { FormField } from "../inputs/form-field.model";
 import { BaseModel, IBaseModel } from "../permits/base.model";
+import { UserPa } from "./user-pa.model";
 
 export interface IUser extends IBaseModel {
   firstName: string;
@@ -53,5 +54,17 @@ export class User extends BaseModel<IUser> implements IUser {
         accessorFn: (item: IUser) => new Date(item.updatedAt).toLocaleString()
       },
     ];
+  }
+
+  convertToPaModel(): UserPa {
+    return new UserPa({
+      FirstName: this.firstName,
+      LastName: this.lastName,
+      Company: this.company,
+      Email: this.email,
+      Role: this.role,
+      FullName: `${this.firstName} ${this.lastName}`,
+      Password: this.password
+    });
   }
 }

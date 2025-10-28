@@ -11,6 +11,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/work-request', label: 'Work Request' },
     { route: '/jha', label: 'JHA' },
     { route: '/space', label: 'Confined Spaces' },
+    { route: '/users', label: 'Users' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [
