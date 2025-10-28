@@ -5,6 +5,10 @@ CREATE SEQUENCE IF NOT EXISTS id_seq
     MAXVALUE 999999999
     CYCLE;
 
+-- Update work_scope column length
+      ALTER TABLE IF EXISTS work_request ALTER COLUMN work_scope VARCHAR(5000);
+      ALTER TABLE IF EXISTS work_request_aud ALTER COLUMN work_scope VARCHAR(5000);
+
 --CREATE TABLE IF NOT EXISTS reference_object (
 --    id BIGINT AUTO_INCREMENT PRIMARY KEY,
 --    description VARCHAR(255),

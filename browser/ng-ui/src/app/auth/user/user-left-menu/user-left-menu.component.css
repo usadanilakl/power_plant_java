@@ -1,0 +1,8 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto; /* Allow this component to grow and fill space */
+  min-height: 0;  /* Prevent overflow issues in flex containers */
+  width: 100%;
+  overflow: hidden;
+}

@@ -30,9 +30,27 @@ export class UserStateService {
   selectedUser$ = this.selectedUserSubject.asObservable();
 
   loadUsers() {
-    this.userDbService.getAllUsers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (users) => this.allUsersSubject.next(users),
-      error: (error) => this.globalMessageService.showMessage('Error loading users from DB', 'red', 20000)
+    // this.userDbService.getAllUsers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    //   next: (users) => this.allUsersSubject.next(users),
+    //   error: (error) => this.globalMessageService.showMessage('Error loading users from DB', 'red', 20000)
+    // });
+
+    this.userApiService.getUsers().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (response) => {
+        // Handle different response structures
+        const users = Array.isArray(response) ? response : (response?.data || response?.value || []);
+        
+        // Map to User model instances
+        const userInstances = users.map((userData: any) => new User(userData));
+        
+        this.addUsersToList(userInstances);
+      },
+      error: (error) => {
+        console.error('Error loading users from API:', error);
+        this.globalMessageService.showMessage('Error loading users from API', 'red', 20000);
+      }
     });
   }
 

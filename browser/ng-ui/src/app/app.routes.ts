@@ -8,6 +8,8 @@ import { standaloneGuard } from './guards/standalone.guard';
 import { SpacePageComponent } from './pages/space-page/space-page.component';
 import { SpaceComponent } from './features/space/space.component';
 import { authGuard } from './auth/auth.guard';
+import { UserComponent } from './auth/user/user.component';
+import { UserPageComponent } from './pages/user-page/user-page.component';
 
 export const routes: Routes = [
     {
@@ -45,6 +47,15 @@ export const routes: Routes = [
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: SpaceComponent }
+      ]
+    },
+    {
+      path: 'users',
+      component: UserPageComponent,
+      canActivate: [standaloneGuard, authGuard],
+      children: [
+        { path: '', redirectTo: 'form', pathMatch: 'full' },
+        { path: 'form', component: UserComponent }
       ]
     },
 ];

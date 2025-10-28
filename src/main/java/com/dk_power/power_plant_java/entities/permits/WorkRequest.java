@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.entities.permits;
 
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -20,6 +21,8 @@ public class WorkRequest extends BasePermitEntity {
     private String company;
     private String location;
     private String affectedEquipment;
+
+    @Column(length = 5000)
     private String workScope;
 
     private Boolean isHotWorkRequired;

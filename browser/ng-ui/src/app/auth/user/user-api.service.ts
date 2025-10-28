@@ -55,6 +55,13 @@ export class UserApiService {
     };
     return this.powerAutomateService.submitForm(request);
   }
+  getUsers(): Observable<any> {
+    const request: PowerAutomateRequest<any> = {
+      url: this.usersUrl,
+      actionType: 'getAll'
+    };
+    return this.powerAutomateService.submitForm(request);
+  }
 
   
 }

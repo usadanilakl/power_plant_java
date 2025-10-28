@@ -9,7 +9,9 @@ import { IUser, User } from '../../models/auth/user.model';
 })
 export class UserDbService {
 
-  constructor(private indexedDbService: IndexedDbService) { }
+  constructor(
+    private indexedDbService: IndexedDbService
+  ) { }
 
   addUser(userData: Partial<IUser>): Observable<number> {
     const { id, ...requestData } = userData;

@@ -12,7 +12,7 @@ export class PwaService {
    */
   promptEvent$ = this.promptEventSource.asObservable();
 
-  standaloneBypass: boolean = false;
+  standaloneBypass: boolean = true;
 
   constructor() {
     window.addEventListener('beforeinstallprompt', (event: any) => {
