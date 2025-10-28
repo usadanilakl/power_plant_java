@@ -10,9 +10,11 @@
         </div>
         <div class="header-actions">
             <app-theme-toggle></app-theme-toggle>
-            <button class="toggle-menu-btn" (click)="toggleMenu()">
-                {{ isMenuVisible ? 'Hide Menu' : 'Show Menu' }}
-            </button>
+            @if (authService.isLoggedIn()) {
+              <button class="auth-btn" (click)="logout()">Logout</button>
+            } @else {
+              <button class="auth-btn" (click)="login()">Login</button>
+            }
         </div>
       </header>
     
@@ -20,7 +22,11 @@
         <nav class="left-menu" id="leftMenu" #leftMenu [style.width.px]="menuWidth">
           <ng-content select="[left-menu]"></ng-content>
         </nav>
-        <div class="resizer" id="resizer" #resizer (mousedown)="onResizerMouseDown($event)"></div>
+        <div class="resizer" id="resizer" #resizer (mousedown)="onResizerMouseDown($event)">
+          <button class="menu-toggle-btn" (click)="toggleMenu()" title="{{ isMenuVisible ? 'Collapse Menu' : 'Expand Menu' }}">
+            <span class="arrow" [class.collapsed]="!isMenuVisible"></span>
+          </button>
+        </div>
         <div class="main-and-footer">
           <main class="main-content" #mainContent>
             <ng-content select="[main-content]"></ng-content>

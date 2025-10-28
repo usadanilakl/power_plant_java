@@ -1,6 +1,8 @@
-import { AfterViewInit, Component, ElementRef, input, NgZone, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, input, NgZone, ViewChild } from '@angular/core';
 
 import { ThemeToggleComponent } from "../../shared/theme-toggle/theme-toggle.component";
+import { Router } from '@angular/router';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -14,7 +16,11 @@ export class MainLayoutComponent implements AfterViewInit  {
   @ViewChild('mainContent') mainContent!: ElementRef;
   @ViewChild('footer') footer!: ElementRef;
 
+  authService = inject(AuthService);
+  private router = inject(Router);
+
   header = input<string>();
+  isSideMenuEnabled= input<boolean>(false);
   isBottomMenuEnabled= input<boolean>(false);
   bottomMenuHeader = input<string | null>(null);
   isLeftMenuEnabled= input<boolean>(false);
@@ -39,6 +45,14 @@ export class MainLayoutComponent implements AfterViewInit  {
     if (this.footer) {
       this.footerHeight = this.footer.nativeElement.offsetHeight;
     }
+  }
+
+  login(): void {
+    this.router.navigate(['/login']);
+  }
+
+  logout(): void {
+    this.authService.logout();
   }
 
   toggleMenu() {

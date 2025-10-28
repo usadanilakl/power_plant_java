@@ -12,7 +12,7 @@ import { authGuard } from './auth/auth.guard';
 export const routes: Routes = [
     {
       path: 'login',
-      loadComponent: () => import('./auth/auth.component').then(m => m.AuthComponent)
+      loadComponent: () => import('./pages/login-page/login-page.component').then(m => m.LoginPageComponent)
     },
     {
       path: 'install',

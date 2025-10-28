@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { MAIN_MENU_ITEMS, RouterMenuItems } from '../../../models/menu/router-menu.model';

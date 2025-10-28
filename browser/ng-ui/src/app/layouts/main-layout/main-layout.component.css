@@ -27,7 +27,7 @@
   gap: 1rem;
 }
 
-.toggle-menu-btn {
+.toggle-menu-btn .auth-btn {
   position: absolute;
   bottom: 10px;
   left: 10px;
@@ -41,7 +41,7 @@
   transition: background-color 0.2s ease-in-out;
 }
 
-.toggle-menu-btn:hover {
+.toggle-menu-btn:hover .auth-btn:hover {
   background-color: var(--accent-color-hover);
 }
 
@@ -62,9 +62,45 @@
 
 .resizer {
   width: 5px;
-  background-color: var(--border-color);
   cursor: col-resize;
-  transition: background-color 0.3s ease;
+  background-color: var(--border-color);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.menu-toggle-btn {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background-color: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 10;
+  box-shadow: var(--card-shadow);
+}
+
+.menu-toggle-btn .arrow {
+  width: 8px;
+  height: 8px;
+  border-left: 2px solid var(--primary-text);
+  border-bottom: 2px solid var(--primary-text);
+  transform: rotate(45deg); /* Points left */
+  transition: transform 0.2s ease-in-out;
+}
+
+.menu-toggle-btn .arrow.collapsed {
+  transform: rotate(-135deg);
+}
+.resizer.collapsed .menu-toggle-btn {
+  transform: translateX(50%);
 }
 
 .resizer:hover {
