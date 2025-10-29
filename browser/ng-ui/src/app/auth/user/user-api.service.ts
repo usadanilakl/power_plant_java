@@ -3,6 +3,7 @@ import { PowerAutomateService } from "../../services/power-automate.service";
 import { PowerAutomateRequest } from "../../models/api/power-automate-request.model";
 import { User } from "../../models/auth/user.model";
 import { Observable } from "rxjs";
+import { UserPa } from "../../models/auth/user-pa.model";
 
 @Injectable({
   providedIn: 'root'
@@ -28,9 +29,9 @@ export class UserApiService {
 
   updateUser(user: User): Observable<any> {
     console.log('Updating user via Power Automate:', user);
-    const request: PowerAutomateRequest<User> = {
+    const request: PowerAutomateRequest<UserPa> = {
       url: this.usersUrl,
-      workForm: new User(user),
+      user: new User(user).convertToPaModel(),
       actionType: 'save'
     };
     console.log('Request:', request);

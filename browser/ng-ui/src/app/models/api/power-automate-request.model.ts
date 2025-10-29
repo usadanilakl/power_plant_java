@@ -3,6 +3,7 @@ export interface PowerAutomateRequest<T> {
   url?: string;
   workForm?: T;
   jhaForm?: T;
+  user?: T;
   id?: string;
   email?: string;
   password?: string;

@@ -71,7 +71,7 @@ export class UserStateService {
   }
 
   selectUser(user: User) {
-    this.selectedUserSubject.next(user);
+    this.selectedUserSubject.next(new User(user));
   }
 
   getSelectedUser(): User {

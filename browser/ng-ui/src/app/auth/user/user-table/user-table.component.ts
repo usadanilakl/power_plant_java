@@ -40,8 +40,13 @@ export class UserTableComponent implements OnInit {
 
   onRowClick({ item }: { item: User, event: MouseEvent }) {
     this.userStateService.selectUser(item);
+  }
+
+  onRowRightClick({ item }: { item: User, event: MouseEvent }) {
+    this.userStateService.selectUser(item);
     this.isActionMenuOpen = true;
   }
+  
 
   closeActionMenu() {
     this.isActionMenuOpen = false;

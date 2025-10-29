@@ -1,4 +1,5 @@
 export interface IUserPa {
+  ID?: number;
   FirstName?: string;
   LastName?: string;
   Company?: string;
@@ -11,6 +12,7 @@ export interface IUserPa {
 }
 
 export class UserPa implements IUserPa {
+  ID?: number;
   FirstName?: string;
   LastName?: string;
   Company?: string;
@@ -22,6 +24,7 @@ export class UserPa implements IUserPa {
   Password?: string;
 
   constructor(data: Partial<IUserPa> = {}) {
+    this.ID = data.ID;
     this.FirstName = data.FirstName;
     this.LastName = data.LastName;
     this.Company = data.Company;
@@ -35,6 +38,7 @@ export class UserPa implements IUserPa {
 
   convertToUser(): any {
     return {
+      sharepointId: this.ID,
       firstName: this.FirstName,
       lastName: this.LastName,
       company: this.Company,

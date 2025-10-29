@@ -10,6 +10,7 @@ export interface IUser extends IBaseModel {
   email: string;
   role: string;
   password?: string;
+  sharepointId: number | null;
 }
 
 export class User extends BaseModel<IUser> implements IUser {
@@ -19,6 +20,7 @@ export class User extends BaseModel<IUser> implements IUser {
   email: string;
   role: string;
   password?: string;
+  sharepointId: number | null;
 
   constructor(data: Partial<IUser> = {}) {
     super(data);
@@ -28,6 +30,7 @@ export class User extends BaseModel<IUser> implements IUser {
     this.email = data.email ?? '';
     this.role = data.role ?? '';
     this.password = data.password;
+    this.sharepointId = data.sharepointId?? null;
   }
 
   getFormFields(): FormField[] {
@@ -38,6 +41,7 @@ export class User extends BaseModel<IUser> implements IUser {
       { name: 'email', label: 'Email', type: 'email', initialValue: this.email },
       { name: 'role', label: 'Role', type: 'text', initialValue: this.role },
       { name: 'password', label: 'Password', type: 'password', initialValue: this.password },
+      { name:'sharepointId', label: 'SharePoint ID', type: 'text', initialValue: this.sharepointId?.toString() || ''  },
     ];
   }
 
@@ -53,17 +57,18 @@ export class User extends BaseModel<IUser> implements IUser {
         header: 'Last Updated',
         accessorFn: (item: IUser) => new Date(item.updatedAt).toLocaleString()
       },
+      { id:'sharepointId', header: 'SharePoint ID', accessorKey:'sharepointId'  },
     ];
   }
 
   convertToPaModel(): UserPa {
     return new UserPa({
+      ID: this.sharepointId ?? 0,
       FirstName: this.firstName,
       LastName: this.lastName,
       Company: this.company,
       Email: this.email,
       Role: this.role,
-      FullName: `${this.firstName} ${this.lastName}`,
       Password: this.password
     });
   }

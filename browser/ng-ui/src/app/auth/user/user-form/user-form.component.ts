@@ -1,7 +1,6 @@
 import { Component, computed, DestroyRef, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormComponent } from "../../../shared/forms/reactive-form/reactive-form.component";
-import { EmailPromptComponent } from "../../../shared/communication/email-prompt/email-prompt.component";
 import { UserStateService } from '../user-state.service';
 import { User } from '../../../models/auth/user.model';
 import { FormField } from '../../../models/inputs/form-field.model';
@@ -9,7 +8,7 @@ import { FormField } from '../../../models/inputs/form-field.model';
 @Component({
   selector: 'app-user-form',
   standalone: true,
-  imports: [ReactiveFormComponent, EmailPromptComponent],
+  imports: [ReactiveFormComponent],
   templateUrl: './user-form.component.html',
   styleUrl: './user-form.component.css'
 })
@@ -34,7 +33,7 @@ export class UserFormComponent {
   }
 
   onSubmit(user: User) {
-    if (user.id) {
+    if (user.sharepointId) {
       this.userStateService.updateUser(user);
     } else {
       this.userStateService.createNewUser(user);
