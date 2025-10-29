@@ -222,4 +222,33 @@ syncWithApi(): void {
       }
     });
   }
+  deleteUser(user: User) {
+    this.globalMessageService.showMessage('Deleting user...', 'white', 20000);
+    // Assuming an API call to delete/deactivate the user
+    // For now, we'll just update the status locally
+    const updatedUser = new User({...user, status: 'deleted' });
+    this.userDbService.updateUser(updatedUser).pipe(
+      tap(() => {
+        this.selectUser(new User()); // Clear selection
+        // Update the list by replacing the user
+        const currentUsers = this.allUsersSubject.getValue();
+        const index = currentUsers.findIndex(u => u.id === updatedUser.id);
+        if (index!== -1) {
+          currentUsers[index] = updatedUser;
+          this.allUsersSubject.next([...currentUsers]);
+        }
+      })
+      ,
+      takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: () => {
+          this.globalMessageService.showMessage('User deleted successfully.', 'green');
+        },
+        error: (err) => {
+          console.error('Deletion failed!', err);
+          this.globalMessageService.showMessage('Failed to delete user.', 'red');
+        }
+      });
+
+  }
 }

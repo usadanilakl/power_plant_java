@@ -4,6 +4,7 @@ import { ReactiveFormComponent } from "../../../shared/forms/reactive-form/react
 import { UserStateService } from '../user-state.service';
 import { User } from '../../../models/auth/user.model';
 import { FormField } from '../../../models/inputs/form-field.model';
+import { ButtonConfig } from '../../../shared/menus/buttons/buttons.component';
 
 @Component({
   selector: 'app-user-form',
@@ -19,12 +20,19 @@ export class UserFormComponent {
 
   entityInput = input<User>();
   fieldsInput = input<FormField[]>();
+  buttonsInput = input<ButtonConfig[]>();
 
   private entityFromState = toSignal(this.userStateService.selectedUser$, { initialValue: new User() });
   entity = computed(() => this.entityInput() ?? this.entityFromState());
 
   private defaultFields = computed(() => this.entity()?.toFormFields() ?? []);
   fields = computed(() => this.fieldsInput() ?? this.defaultFields());
+
+  private buttons = computed(() =>
+    this.buttonsInput()?? [
+      { name: 'Delete', action: () => this.onDelete(this.entity()), color: 'primary' }
+    ]
+  )
 
   constructor() { }
 
@@ -38,5 +46,9 @@ export class UserFormComponent {
     } else {
       this.userStateService.createNewUser(user);
     }
+  }
+
+  onDelete(user: User) {
+    this.userStateService.deleteUser(user);
   }
 }
