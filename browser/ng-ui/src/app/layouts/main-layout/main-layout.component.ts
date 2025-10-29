@@ -2,10 +2,11 @@ import { AfterViewInit, Component, ElementRef, HostListener, inject, input, NgZo
 import { ThemeToggleComponent } from "../../shared/theme-toggle/theme-toggle.component";
 import { Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { UserIconComponent } from "../../auth/user/user-icon/user-icon.component";
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent],
+  imports: [ThemeToggleComponent, UserIconComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css'
 })

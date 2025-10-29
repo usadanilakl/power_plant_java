@@ -10,6 +10,7 @@
     </div>
     <div class="header-actions">
         <app-theme-toggle></app-theme-toggle>
+        <app-user-icon></app-user-icon>
         @if (authService.isLoggedIn()) {
           <button class="auth-btn" (click)="logout()">Logout</button>
         } @else {
@@ -19,17 +20,18 @@
   </header>
 
   <div class="content-wrapper">
-    <!-- Move overlay BEFORE left-menu -->
-    <div class="overlay" #overlay [class.active]="isMobileView && isMenuVisible" (click)="closeMenu()"></div>
-    
-    <nav class="left-menu" id="leftMenu" #leftMenu [class.active]="isMobileView && isMenuVisible" [style.width.px]="!isMobileView ? menuWidth : null">
-      <ng-content select="[left-menu]"></ng-content>
-    </nav>
-    <div class="resizer" id="resizer" #resizer (mousedown)="onResizerMouseDown($event)">
-      <button class="menu-toggle-btn" (click)="toggleMenu()">
-        <i class="arrow" [class.collapsed]="!isMenuVisible"></i>
-      </button>
-    </div>
+    @if(isSideMenuEnabled()){
+      <div class="overlay" #overlay [class.active]="isMobileView && isMenuVisible" (click)="closeMenu()"></div>
+      
+      <nav class="left-menu" id="leftMenu" #leftMenu [class.active]="isMobileView && isMenuVisible" [style.width.px]="!isMobileView ? menuWidth : null">
+        <ng-content select="[left-menu]"></ng-content>
+      </nav>
+      <div class="resizer" id="resizer" #resizer (mousedown)="onResizerMouseDown($event)">
+        <button class="menu-toggle-btn" (click)="toggleMenu()">
+          <i class="arrow" [class.collapsed]="!isMenuVisible"></i>
+        </button>
+      </div>
+    }
     <div class="main-and-footer">
       <main class="main-content" #mainContent>
         <ng-content select="[main-content]"></ng-content>

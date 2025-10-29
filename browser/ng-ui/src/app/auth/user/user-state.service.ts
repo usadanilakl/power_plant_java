@@ -37,33 +37,44 @@ export class UserStateService {
     // });
 
     this.userApiService.getUsers().pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (response) => {
+      switchMap(response => {
         // Handle different response structures
         const users = Array.isArray(response) ? response : (response?.data || response?.value || []);
         if (!users.length) {
           this.globalMessageService.showMessage('No users found in the database', 'green', 20000);
-          return;
+          return of([]);
         }
 
+        console.log('Users loaded from API:', users);
+    
         const convertedUsers = users.map((userData: any) => new UserPa(userData).convertToUser());
         
-        this.addUsersToList(convertedUsers);
+        // Chain the IndexedDB update operation
+        return this.userDbService.updateUsers(convertedUsers).pipe(
+          tap(() => this.addUsersToList(convertedUsers)),
+          switchMap(() => of(convertedUsers))
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (users) => {
+        if (users.length > 0) {
+          this.globalMessageService.showMessage('Users loaded and synced successfully', 'green');
+        }
       },
       error: (error) => {
-        console.error('Error loading users from API:', error);
-        this.globalMessageService.showMessage('Error loading users from API', 'red', 20000);
+        console.error('Error loading users:', error);
+        this.globalMessageService.showMessage('Error loading users', 'red', 20000);
       }
     });
   }
 
   addUsersToList(users: User[]): void {
     const currentUsers = this.allUsersSubject.getValue();
-    const userMap = new Map(currentUsers.map(u => [u.id, u]));
+    const userMap = new Map(currentUsers.map(u => [u.sharepointId, u]));
 
     users.forEach(newUser => {
-      userMap.set(newUser.id, newUser);
+      userMap.set(newUser.sharepointId, newUser);
     });
 
     const updatedUsers = Array.from(userMap.values());
@@ -94,7 +105,11 @@ export class UserStateService {
     this.userApiService.createUser(user).pipe(
       switchMap(response => {
         console.log('Creation successful!', response);
-        const updatedUser = new User({ ...user, id: response.id, status: 'active' });
+        if(!response.data) {
+          this.globalMessageService.showMessage('Failed to create user. User not provided.', 'red');
+          return of(null);
+        }
+        const updatedUser = new UserPa(response.data).convertToUser();
         return this.userDbService.addUser(updatedUser).pipe(
           tap(() => {
             this.selectUser(updatedUser);

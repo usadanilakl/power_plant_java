@@ -1,0 +1,28 @@
+.user-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--primary-color, #007bff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  user-select: none;
+}
+
+.user-icon:hover {
+  background-color: var(--primary-hover-color, #0056b3);
+  transform: scale(1.05);
+}
+
+.user-icon:active {
+  transform: scale(0.95);
+}
+
+.initials {
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  text-transform: uppercase;
+}

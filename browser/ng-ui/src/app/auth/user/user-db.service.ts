@@ -37,6 +37,20 @@ export class UserDbService {
     };
     return from(this.indexedDbService.users.update(user.id, changes));
   }
+  updateUsers(users: User[]): Observable<void> {
+    return from(
+      this.indexedDbService.users.toArray().then(existingUsers => {
+        const usersToUpdate = users.map(newUser => {
+          // Find existing user by sharepointId
+          const existing = existingUsers.find(u => u.sharepointId === newUser.sharepointId);
+          return existing 
+            ? new User({ ...newUser, id: existing.id, updatedAt: new Date() })
+            : new User({ ...newUser, updatedAt: new Date() });
+        });
+        return this.indexedDbService.users.bulkPut(usersToUpdate);
+      }).then(() => undefined)
+    );
+  }
 
   deleteUser(id: number): Observable<void> {
     return from(this.indexedDbService.users.delete(id));

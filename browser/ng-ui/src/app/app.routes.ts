@@ -10,6 +10,7 @@ import { SpaceComponent } from './features/space/space.component';
 import { authGuard } from './auth/auth.guard';
 import { UserComponent } from './auth/user/user.component';
 import { UserPageComponent } from './pages/user-page/user-page.component';
+import { UserProfilePageComponent } from './pages/user-profile-page/user-profile-page.component';
 
 export const routes: Routes = [
     {
@@ -57,5 +58,10 @@ export const routes: Routes = [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: UserComponent }
       ]
+    },
+    {
+      path: 'user-profile',
+      component: UserProfilePageComponent,
+      canActivate: [standaloneGuard, authGuard]
     },
 ];

@@ -1,0 +1,9 @@
+@if (currentUser$ | async; as user) {
+  <div class="user-icon" (click)="navigateToProfile()" [title]="user.firstName + ' ' + user.lastName">
+    <span class="initials">{{ getInitials(user.firstName, user.lastName) }}</span>
+  </div>
+} @else {
+  <div class="user-icon" (click)="navigateToProfile()" title="Guest User">
+    <span class="initials">U</span>
+  </div>
+}

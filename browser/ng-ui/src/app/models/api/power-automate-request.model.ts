@@ -1,5 +1,5 @@
 export interface PowerAutomateRequest<T> {
-  actionType: 'save' | 'saveJha' | 'revoke' | 'revokeJha' | 'delete' | 'authenticate' | 'getAll';
+  actionType: 'save' | 'saveJha' | 'revoke' | 'revokeJha' | 'delete' | 'authenticate' | 'getAll' | 'create';
   url?: string;
   workForm?: T;
   jhaForm?: T;

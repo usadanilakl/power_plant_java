@@ -19,6 +19,7 @@ export class UserTableComponent implements OnInit {
   destroyRef = inject(DestroyRef);
 
   itemsInput = input<User[]>();
+  tableControlButtonsInput = input<ButtonConfig[]>();
   itemsFromService = toSignal(this.userStateService.allUsers$, { initialValue: [] });
   items = computed(() => this.itemsInput() ?? this.itemsFromService());
   selectedItem = toSignal(this.userStateService.selectedUser$, { initialValue: new User() });
@@ -29,6 +30,13 @@ export class UserTableComponent implements OnInit {
   actionButtons: ButtonConfig[] = [];
 
   isActionMenuOpen = false;
+
+  tableControlDefaultButtons = [
+    { name: 'Add User', action: () => this.onAddUser() },
+    { name: 'Refresh', action: () => this.onRefresh() },
+    { name: 'Export', action: () => this.onExport() }
+  ];
+  tableControlButtons = computed(() => this.tableControlButtonsInput()?? this.tableControlDefaultButtons);
 
   constructor() { }
 
@@ -56,5 +64,16 @@ export class UserTableComponent implements OnInit {
   deleteSelected(): void {
     this.userStateService.deleteSelectedUser();
     this.closeActionMenu();
+  }
+
+  onAddUser(): void {
+    this.userStateService.selectUser(new User());
+  }
+
+  onRefresh(): void {
+    // this.userStateService.refreshUsers();
+  }
+  onExport(): void {
+    // Export logic here
   }
 }

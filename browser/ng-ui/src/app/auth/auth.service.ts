@@ -3,6 +3,7 @@ import { User } from '../models/auth/user.model';
 import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
 import { LocalStorageService } from '../services/local-storage.service';
 import { UserApiService } from './user/user-api.service';
+import { UserPa } from '../models/auth/user-pa.model';
 
 /**
  * Interface for the authentication data structure.
@@ -31,6 +32,22 @@ export class AuthService {
    */
   public authData$: Observable<AuthData | null> = this.authDataSubject.asObservable();
 
+  /**
+   * Observable stream of the currently authenticated user.
+   * Emits the User object when logged in, and null when logged out.
+   */
+  public currentUser$: Observable<User | null> = this.authData$.pipe(
+    map(authData => authData?.user ?? null)
+  );
+
+  /**
+   * Observable stream of the authentication status.
+   * Emits true when logged in, false when logged out.
+   */
+  public isLoggedIn$: Observable<boolean> = this.authData$.pipe(
+    map(authData => !!authData?.token)
+  );
+
   constructor() { }
 
   /**
@@ -46,7 +63,7 @@ export class AuthService {
         // We ensure it's an instance of the User class.
         const authData: AuthData = {
           ...response,
-          user: new User(response.user)
+          user: new UserPa(response.user).convertToUser()
         };
         return authData;
       }),

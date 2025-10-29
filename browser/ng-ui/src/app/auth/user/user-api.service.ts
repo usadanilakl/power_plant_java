@@ -18,10 +18,10 @@ export class UserApiService {
 
   createUser(user: User): Observable<any> {
     console.log('Creating user via Power Automate:', user);
-    const request: PowerAutomateRequest<User> = {
+    const request: PowerAutomateRequest<UserPa> = {
       url: this.usersUrl,
-      workForm: new User(user),
-      actionType: 'save'
+      user: new User(user).convertToPaModel(),
+      actionType: 'create'
     };
     console.log('Request:', request);
     return this.powerAutomateService.submitForm(request);

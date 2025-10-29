@@ -3,7 +3,11 @@
     [columns]="columns"
     (rowClicked)="onRowClick($event)"
     (rowRightClicked)="onRowRightClick($event)"
-></app-table>
+>
+    <div table-controls>
+        <app-buttons [buttons]="tableControlButtons()" [layout]="'row'"></app-buttons>
+    </div>
+</app-table>
 
 <app-popup
     [title]="'Select an Action'"
