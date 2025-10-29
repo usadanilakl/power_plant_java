@@ -7,6 +7,7 @@ import { IUser } from '../../models/auth/user.model';
 })
 export class UserLocalStorageService {
   private readonly DRAFT_KEY = 'user-draft';
+private readonly LAST_SYNC_KEY = 'users_last_sync';
 
   constructor(
     private localStorageService: LocalStorageService
@@ -24,4 +25,14 @@ export class UserLocalStorageService {
   clearDraft(): void {
     this.localStorageService.removeItem(this.DRAFT_KEY);
   }
+
+  setSyncItem(date: number) {
+    this.localStorageService.setItem(this.LAST_SYNC_KEY, date);
+  }
+
+  getSyncItem(): number{
+    return this.localStorageService.getItem<number>(this.LAST_SYNC_KEY) || 0;
+  }
+
+
 }

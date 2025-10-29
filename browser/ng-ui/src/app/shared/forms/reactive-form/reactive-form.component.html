@@ -75,6 +75,7 @@
                 <app-form-input
                   [label]="field.label"
                   [type]="field.type"
+                  [readonly]="field.readonly ?? false"
                   [formControl]="getFormControl(field.name)">
                 </app-form-input>
               }

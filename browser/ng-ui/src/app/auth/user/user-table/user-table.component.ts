@@ -71,7 +71,7 @@ export class UserTableComponent implements OnInit {
   }
 
   onRefresh(): void {
-    // this.userStateService.refreshUsers();
+    this.userStateService.syncWithApi();
   }
   onExport(): void {
     // Export logic here

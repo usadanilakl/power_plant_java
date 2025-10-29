@@ -18,6 +18,7 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule]
 })
 export class FormInputComponent implements ControlValueAccessor {
+  @Input() readonly: boolean = false;
   @Input() label: string = '';
   @Input() type: string = 'text';
   @Input() value: any = '';

@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { User } from '../models/auth/user.model';
-import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { LocalStorageService } from '../services/local-storage.service';
 import { UserApiService } from './user/user-api.service';
 import { UserPa } from '../models/auth/user-pa.model';
+import { UserDbService } from './user/user-db.service';
 
 /**
  * Interface for the authentication data structure.
@@ -22,6 +23,7 @@ export interface AuthData {
 export class AuthService {
   private localStorageService = inject(LocalStorageService);
   private userApiService = inject(UserApiService);
+  private userDbService = inject(UserDbService);
   private readonly AUTH_STORAGE_KEY = 'authData';
 
   private authDataSubject = new BehaviorSubject<AuthData | null>(this.getAuthDataFromStorage());
@@ -58,9 +60,28 @@ export class AuthService {
    */
   authenticate(username: string, password: string): Observable<AuthData> {
     return this.userApiService.authenticateUser(username, password).pipe(
+      switchMap(response => {
+
+        if(!response.user) throw new Error('User not found');
+
+        const userPa = new UserPa(response.user);
+        const convertedUser = userPa.convertToUser();
+        
+        // Check if user exists in DB
+        return this.userDbService.getBySharepointId(userPa.ID ?? 0).pipe(
+          switchMap(existingUser => {
+            // If user doesn't exist, add them first
+            if (!existingUser) {
+              return this.userDbService.addUser(convertedUser).pipe(
+                map(() => response) // Return original response after adding user
+              );
+            }
+            // User exists, just return the response
+            return of(response);
+          })
+        );
+      }),
       map(response => {
-        // The API might return a plain object for the 'user' property.
-        // We ensure it's an instance of the User class.
         const authData: AuthData = {
           ...response,
           user: new UserPa(response.user).convertToUser()
@@ -71,7 +92,6 @@ export class AuthService {
         this.login(authData);
       }),
       catchError(error => {
-        // On authentication failure, ensure the user is logged out.
         this.logout();
         console.error('Authentication failed:', error);
         return throwError(() => new Error('Authentication failed'));

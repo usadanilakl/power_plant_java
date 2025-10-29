@@ -41,7 +41,7 @@ export class User extends BaseModel<IUser> implements IUser {
       { name: 'email', label: 'Email', type: 'email', initialValue: this.email },
       { name: 'role', label: 'Role', type: 'text', initialValue: this.role },
       { name: 'password', label: 'Password', type: 'password', initialValue: this.password },
-      { name:'sharepointId', label: 'SharePoint ID', type: 'text', initialValue: this.sharepointId?.toString() || ''  },
+      { name:'sharepointId', label: 'SharePoint ID', type: 'text', initialValue: this.sharepointId?.toString() || '', readonly: true },
     ];
   }
 

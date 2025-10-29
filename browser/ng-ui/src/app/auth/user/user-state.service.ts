@@ -19,6 +19,8 @@ export class UserStateService {
   globalMessageService = inject(GlobalMessageService);
   destroyRef = inject(DestroyRef)
 
+  private readonly SYNC_INTERVAL_MS = 60 * 60 * 1000;
+
   constructor() {
     this.loadUsers();
     this.loadFromLocalStorage();
@@ -30,51 +32,82 @@ export class UserStateService {
   private selectedUserSubject = new BehaviorSubject<User>(new User());
   selectedUser$ = this.selectedUserSubject.asObservable();
 
-  loadUsers() {
-    // this.userDbService.getAllUsers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-    //   next: (users) => this.allUsersSubject.next(users),
-    //   error: (error) => this.globalMessageService.showMessage('Error loading users from DB', 'red', 20000)
-    // });
+loadUsers() {
+  // Load from IndexedDB first (primary source)
+  this.userDbService.getAllUsers().pipe(
+    takeUntilDestroyed(this.destroyRef)
+  ).subscribe({
+    next: (users) => {
+      this.allUsersSubject.next(users);
+      console.log('Users loaded from IndexedDB:', users.length);
+    },
+    error: (error) => {
+      console.error('Error loading users from IndexedDB:', error);
+      this.globalMessageService.showMessage('Error loading users from local database', 'red', 5000);
+    }
+  });
 
-    this.userApiService.getUsers().pipe(
-      switchMap(response => {
-        // Handle different response structures
-        const users = Array.isArray(response) ? response : (response?.data || response?.value || []);
-        if (!users.length) {
-          this.globalMessageService.showMessage('No users found in the database', 'green', 20000);
-          return of([]);
-        }
+  // Check if we need to sync with API
+  this.syncWithApiIfNeeded();
+}
 
-        console.log('Users loaded from API:', users);
-    
-        const convertedUsers = users.map((userData: any) => new UserPa(userData).convertToUser());
-        
-        // Chain the IndexedDB update operation
-        return this.userDbService.updateUsers(convertedUsers).pipe(
-          tap(() => this.addUsersToList(convertedUsers)),
-          switchMap(() => of(convertedUsers))
-        );
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (users) => {
-        if (users.length > 0) {
-          this.globalMessageService.showMessage('Users loaded and synced successfully', 'green');
-        }
-      },
-      error: (error) => {
-        console.error('Error loading users:', error);
-        this.globalMessageService.showMessage('Error loading users', 'red', 20000);
-      }
-    });
+private syncWithApiIfNeeded(): void {
+  const lastSync = this.userLocalStorageService.getSyncItem();
+  const now = Date.now();
+
+  console.log('Last sync:', lastSync);
+  console.log('Now:', now);
+  console.log('Interval:', this.SYNC_INTERVAL_MS);
+  console.log('Should sync:', now - lastSync);
+  
+  if (!lastSync || (now - lastSync) >= this.SYNC_INTERVAL_MS) {
+    this.syncWithApi();
   }
+}
+
+syncWithApi(): void {
+  console.log('Syncing users ...');
+  this.globalMessageService.showMessage('Syncing users...', 'white', 20000);
+  
+  this.userApiService.getUsers().pipe(
+    switchMap(response => {
+      const users = Array.isArray(response) ? response : (response?.data || response?.value || []);
+      if (!users.length) {
+        return of([]);
+      }
+
+      const convertedUsers = users.map((userData: any) => new UserPa(userData).convertToUser());
+      
+      // Update IndexedDB with API data
+      return this.userDbService.updateUsersBySharepointId(convertedUsers).pipe(
+        tap(() => {
+          this.loadUsers();
+          this.userLocalStorageService.setSyncItem(Date.now());
+        }),
+        switchMap(() => of(convertedUsers))
+      );
+    }),
+    takeUntilDestroyed(this.destroyRef)
+  ).subscribe({
+    next: (users) => {
+      if (users.length > 0) {
+        console.log('Users synced successfully from API:', users.length);
+        this.globalMessageService.showMessage('Users synced successfully', 'green', 2000);
+      }
+    },
+    error: (error) => {
+      console.error('Error syncing users from API:', error);
+      this.globalMessageService.showMessage('Failed to sync users from server', 'red', 5000);
+    }
+  });
+}
 
   addUsersToList(users: User[]): void {
     const currentUsers = this.allUsersSubject.getValue();
-    const userMap = new Map(currentUsers.map(u => [u.sharepointId, u]));
+    const userMap = new Map(currentUsers.map(u => [u.id, u]));
 
     users.forEach(newUser => {
-      userMap.set(newUser.sharepointId, newUser);
+      userMap.set(newUser.id, newUser);
     });
 
     const updatedUsers = Array.from(userMap.values());
@@ -109,7 +142,7 @@ export class UserStateService {
           this.globalMessageService.showMessage('Failed to create user. User not provided.', 'red');
           return of(null);
         }
-        const updatedUser = new UserPa(response.data).convertToUser();
+        const updatedUser = new User({...user, sharepointId: response.data.id });
         return this.userDbService.addUser(updatedUser).pipe(
           tap(() => {
             this.selectUser(updatedUser);
@@ -136,7 +169,7 @@ export class UserStateService {
       switchMap(response => {
         console.log('Update successful!', response);
         const updatedUser = new User({ ...user });
-        return this.userDbService.updateUser(updatedUser).pipe(
+        return this.userDbService.updateUserBySharepointId(updatedUser).pipe(
           tap(() => {
             this.selectUser(updatedUser);
             this.addUsersToList([updatedUser]);

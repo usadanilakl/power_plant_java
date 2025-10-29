@@ -42,6 +42,7 @@ export interface FormField {
     value: any;
   };
   fields?: FormField[]; 
+  readonly?: boolean;
 }
 
 export interface FormFieldGroup {

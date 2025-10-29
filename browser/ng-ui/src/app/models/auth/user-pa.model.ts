@@ -24,6 +24,8 @@ export class UserPa implements IUserPa {
   Password?: string;
 
   constructor(data: Partial<IUserPa> = {}) {
+    if(typeof data === 'string') data = JSON.parse(data);
+
     this.ID = data.ID;
     this.FirstName = data.FirstName;
     this.LastName = data.LastName;

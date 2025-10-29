@@ -48,6 +48,11 @@ export class IndexedDbService extends Dexie {
       users: '++id, status, createdAt, updatedAt'
     });
 
+    // Version 5: Added sharepointId index to users table
+    this.version(5).stores({
+      users: '++id, sharepointId, email, status, createdAt, updatedAt'
+    });
+
     // 3. Map tables to classes
     this.workRequests.mapToClass(WorkRequest);
     this.jhas.mapToClass(Jha);

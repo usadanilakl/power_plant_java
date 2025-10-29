@@ -37,7 +37,29 @@ export class UserDbService {
     };
     return from(this.indexedDbService.users.update(user.id, changes));
   }
-  updateUsers(users: User[]): Observable<void> {
+
+  updateUserBySharepointId(user: User): Observable<number> {
+    const sharedPointId = user.sharepointId;
+    if(!sharedPointId) throw new Error('No sharepointId provided');
+    return from(
+      this.indexedDbService.users
+        .where('sharepointId')
+        .equals(user.sharepointId!)
+        .first()
+        .then(existingUser => {
+          const updatedUser = new User({
+            ...user,
+            id: existingUser?.id, // Use existing id if found, undefined if not
+            updatedAt: new Date()
+          });
+          
+          // put() will update if id exists, or add if id is undefined
+          return this.indexedDbService.users.put(updatedUser);
+        })
+    );
+  }
+  
+  updateUsersBySharepointId(users: User[]): Observable<void> {
     return from(
       this.indexedDbService.users.toArray().then(existingUsers => {
         const usersToUpdate = users.map(newUser => {
@@ -54,5 +76,11 @@ export class UserDbService {
 
   deleteUser(id: number): Observable<void> {
     return from(this.indexedDbService.users.delete(id));
+  }
+
+  getBySharepointId(ID: number): Observable<User | undefined> {
+    return from(
+      this.indexedDbService.users.where('sharepointId').equals(ID).first()
+    );
   }
 }
