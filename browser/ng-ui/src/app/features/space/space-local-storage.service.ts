@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { ISpace } from '../../models/permits/space.model';
+import { ISpace, Space } from '../../models/permits/space.model';
 import { LocalStorageService } from '../../services/local-storage.service';
 
 @Injectable({
@@ -19,7 +19,8 @@ export class SpaceLocalStorageService {
   }
 
   loadDraft(): Partial<ISpace> | null {
-    return this.localStorageService.getItem<Partial<ISpace>>(this.DRAFT_KEY);
+    const draft = this.localStorageService.getItem<Partial<ISpace>>(this.DRAFT_KEY);
+    return draft? new Space(draft) : null;
   }
 
   clearDraft(): void {

@@ -11,7 +11,7 @@ export interface ISpacePa {
   Nh3: number;
   TesterName: string;
   LastStatusChange: string;
-  MeterSerialNumber: string;
+  MeterSerialNumber: number;
 }
 
 export interface ISpacePaOutgoing{
@@ -40,7 +40,7 @@ export class SpacePa implements ISpacePa {
   Nh3: number;
   TesterName: string;
   LastStatusChange: string;
-  MeterSerialNumber: string;
+  MeterSerialNumber: number;
 
   constructor(data: Partial<ISpacePa> = {}) {
     if (typeof data === 'string') data = JSON.parse(data);
@@ -54,7 +54,7 @@ export class SpacePa implements ISpacePa {
     this.Nh3 = data.Nh3 ?? 1000;
     this.TesterName = data.TesterName ?? '';
     this.LastStatusChange = data.LastStatusChange ?? '';
-    this.MeterSerialNumber = data.MeterSerialNumber ?? '';
+    this.MeterSerialNumber = data.MeterSerialNumber ?? 0;
   }
   
   convertToSpace() {

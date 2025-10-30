@@ -6,8 +6,7 @@ export interface ISpaceTestResult {
   H2s: number;
   Nh3: number;
   TesterId: number;
-  LastStatusChange: string;
-  MeterSerialNumber: string;
+  MeterSerialNumber: number;
 }
 
 export class SpaceTestResult implements ISpaceTestResult {
@@ -19,8 +18,7 @@ export class SpaceTestResult implements ISpaceTestResult {
   H2s: number;
   Nh3: number;
   TesterId: number;
-  LastStatusChange: string;
-  MeterSerialNumber: string;
+  MeterSerialNumber: number;
 
   constructor(data: Partial<ISpaceTestResult> = {}) {
     this.SpaceId = data.SpaceId ?? 0;
@@ -30,7 +28,6 @@ export class SpaceTestResult implements ISpaceTestResult {
     this.H2s = data.H2s ?? 1000;
     this.Nh3 = data.Nh3 ?? 1000;
     this.TesterId = data.TesterId ?? 0;
-    this.LastStatusChange = data.LastStatusChange ?? '';
-    this.MeterSerialNumber = data.MeterSerialNumber ?? '';
+    this.MeterSerialNumber = data.MeterSerialNumber ?? 0;
   }
 }

@@ -179,7 +179,7 @@ export class SpaceStateService {
 
     const spaceTestResult = new SpaceTestResult({
       SpaceId: space.sharepointId,
-      TesterId: this.authService.currentUser()?.id,
+      TesterId: this.authService.currentUser()?.sharepointId!,
       Co: space.co,
       Oxygen: space.oxygen,
       Lel: space.lel,
@@ -187,6 +187,8 @@ export class SpaceStateService {
       Nh3: space.nh3,
       MeterSerialNumber: space.meterSerialNumber
     });
+
+    const currentUser = this.authService.currentUser();
 
     this.globalMessageService.showMessage('Submitting test results...', 'white', 20000);
 

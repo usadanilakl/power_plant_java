@@ -40,7 +40,7 @@ export class SpaceFormComponent {
     if(this.customSubmit()) {
       this.submitEvent.emit(space);
     }else{
-      this.spaceStateService.createNewSpace(space);
+      this.spaceStateService.submitNewTest(space);
     }
   }
 

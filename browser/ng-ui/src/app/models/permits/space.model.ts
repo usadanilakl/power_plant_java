@@ -14,7 +14,7 @@ export interface ISpace extends IBaseModel {
   nh3: number;
   testerName: string;
   lastStatusChange: string;
-  meterSerialNumber: string;
+  meterSerialNumber: number;
 }
 
 export class Space extends BaseModel<ISpace> implements ISpace {
@@ -27,7 +27,7 @@ export class Space extends BaseModel<ISpace> implements ISpace {
   nh3: number;
   testerName: string;
   lastStatusChange: string;
-  meterSerialNumber: string;
+  meterSerialNumber: number;
 
   constructor(data: Partial<ISpace> = {}) {
     super(data);
@@ -40,19 +40,19 @@ export class Space extends BaseModel<ISpace> implements ISpace {
     this.nh3 = data.nh3 ?? 1000;
     this.testerName = data.testerName ?? '';
     this.lastStatusChange = data.lastStatusChange ?? '';
-    this.meterSerialNumber = data.meterSerialNumber ?? '';
+    this.meterSerialNumber = data.meterSerialNumber ?? 0;
   }
 
   getFormFields(): FormField[] {
     return [
       { name: 'space', label: 'Space', type: 'text', initialValue: this.space },
-      { name: 'co', label: 'CO', type: 'text', initialValue: this.co },
-      { name: 'oxygen', label: 'Oxygen', type: 'text', initialValue: this.oxygen },
-      { name: 'lel', label: 'LEL', type: 'text', initialValue: this.lel },
-      { name: 'h2s', label: 'H2S', type: 'text', initialValue: this.h2s },
-      { name: 'nh3', label: 'NH3', type: 'text', initialValue: this.nh3 },
+      { name: 'co', label: 'CO', type: 'number', initialValue: this.co },
+      { name: 'oxygen', label: 'Oxygen', type: 'number', initialValue: this.oxygen },
+      { name: 'lel', label: 'LEL', type: 'number', initialValue: this.lel },
+      { name: 'h2s', label: 'H2S', type: 'number', initialValue: this.h2s },
+      { name: 'nh3', label: 'NH3', type: 'number', initialValue: this.nh3 },
       { name: 'testerName', label: 'Tester Name', type: 'text', initialValue: this.testerName },
-      { name: 'meterSerialNumber', label: 'Meter Serial Number', type: 'text', initialValue: this.meterSerialNumber },
+      { name: 'meterSerialNumber', label: 'Meter Serial Number', type: 'number', initialValue: this.meterSerialNumber },
     ];
   }
 
