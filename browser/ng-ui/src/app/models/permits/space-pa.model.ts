@@ -1,5 +1,5 @@
 export interface ISpacePa {
-  sharepointId: string;
+  ID: string;
   space: string;
   status: string;
   co: string;
@@ -13,7 +13,7 @@ export interface ISpacePa {
 }
 
 export class SpacePa implements ISpacePa {
-  sharepointId: string;
+  ID: string;
   space: string;
   status: string;
   co: string;
@@ -26,7 +26,7 @@ export class SpacePa implements ISpacePa {
   meterSerialNumber: string;
 
   constructor(data: Partial<ISpacePa> = {}) {
-    this.sharepointId = data.sharepointId ?? '';
+    this.ID = data.ID ?? '';
     this.space = data.space ?? '';
     this.status = data.status ?? '';
     this.co = data.co ?? '';

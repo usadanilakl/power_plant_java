@@ -7,8 +7,7 @@ import { PowerAutomateRequest } from '../models/api/power-automate-request.model
   providedIn: 'root'
 })
 export class PowerAutomateService {
-
-  private spacesUrl = 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/3c104b79651e4282b15e8e525c09b8d8/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XwnggyNeW4DxeNek7SdGIJEJpsxP9aocJKbgs51APC4';
+  
   private permitsUrl = 'https://defaultaad523c05eba4f99a71343a0609578.cb.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/b6c024f8020c42a4b697425a84a97653/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=qWEExDdL83FWcObWTykEQEG01HKHWAnvKBzA-ttwvms';
 
   constructor(private http: HttpClient) { }

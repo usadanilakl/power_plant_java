@@ -116,4 +116,8 @@ export class SpaceStateService {
         }
       })
   }
+  
+  synchronize(): void {
+    throw new Error('Method not implemented.');
+  }
 }

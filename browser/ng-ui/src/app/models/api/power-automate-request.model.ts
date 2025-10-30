@@ -4,6 +4,7 @@ export interface PowerAutomateRequest<T> {
   workForm?: T;
   jhaForm?: T;
   user?: T;
+  confinedSpace?: T;
   id?: string;
   email?: string;
   password?: string;

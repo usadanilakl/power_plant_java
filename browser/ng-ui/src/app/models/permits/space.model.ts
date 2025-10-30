@@ -95,7 +95,7 @@ export class Space extends BaseModel<ISpace> implements ISpace {
 
   convertToPaModel(): SpacePa {
     return new SpacePa({
-      sharepointId: this.sharepointId,
+      ID: this.sharepointId,
       space: this.space,
       status: this.status,
       co: this.co,

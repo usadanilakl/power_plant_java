@@ -19,9 +19,17 @@ export class SpaceTableComponent implements OnInit {
   destroyRef = inject(DestroyRef);
 
   itemsInput = input<Space[]>();
+  buttonsInput = input<ButtonConfig[]>();
   itemsFromService = toSignal(this.spaceStateService.allSpaces$, { initialValue: [] });
   items = computed(() => this.itemsInput() ?? this.itemsFromService());
   selectedItem = toSignal(this.spaceStateService.selectedSpace$, { initialValue: new Space() });
+
+  private readonly defaultButtons: ButtonConfig[] = [
+    { name: 'Create New', action: () => this.spaceStateService.selectSpace(new Space()), color: 'primary' },
+    { name: 'Refresh Table', action: () => this.spaceStateService.synchronize(), color: 'primary' },
+  ];
+
+  tableButtons = computed(() => this.buttonsInput() ?? this.defaultButtons);
 
   actionPopupClosed = output<void>();
 

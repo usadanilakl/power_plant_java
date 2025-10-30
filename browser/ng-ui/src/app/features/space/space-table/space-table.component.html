@@ -2,7 +2,9 @@
     [items]="items()"
     [columns]="columns"
     (rowClicked)="onRowClick($event)"
-></app-table>
+>
+    <app-buttons [buttons]="tableButtons()"></app-buttons>
+</app-table>
 
 <app-popup
     [title]="'Select an Action'"
