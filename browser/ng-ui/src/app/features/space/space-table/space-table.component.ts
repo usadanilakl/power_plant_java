@@ -5,11 +5,12 @@ import { Space } from '../../../models/permits/space.model';
 import { TableComponent } from "../../../shared/table/table.component";
 import { PopupComponent } from "../../../shared/menus/popup/popup.component";
 import { ButtonConfig, ButtonsComponent } from '../../../shared/menus/buttons/buttons.component';
+import { SpaceFormComponent } from "../space-form/space-form.component";
 
 @Component({
   selector: 'app-space-table',
   standalone: true,
-  imports: [TableComponent, PopupComponent, ButtonsComponent],
+  imports: [TableComponent, PopupComponent, ButtonsComponent, SpaceFormComponent],
   templateUrl: './space-table.component.html',
   styleUrl: './space-table.component.css'
 })
@@ -25,18 +26,20 @@ export class SpaceTableComponent implements OnInit {
   selectedItem = toSignal(this.spaceStateService.selectedSpace$, { initialValue: new Space() });
 
   private readonly defaultButtons: ButtonConfig[] = [
-    { name: 'Create New', action: () => this.spaceStateService.selectSpace(new Space()), color: 'primary' },
+    { name: 'Create New', action: () => this.openNewSpaceFormPopup(), color: 'primary' },
     { name: 'Refresh Table', action: () => this.spaceStateService.synchronize(), color: 'primary' },
   ];
 
   tableButtons = computed(() => this.buttonsInput() ?? this.defaultButtons);
 
   actionPopupClosed = output<void>();
+  newSpacePopupClosed = output<void>();
 
   columns = new Space().toTableColumns();
   actionButtons: ButtonConfig[] = [];
 
   isActionMenuOpen = false;
+  isNewSpacePopupOpen = false;
 
   constructor() { }
 
@@ -59,6 +62,12 @@ export class SpaceTableComponent implements OnInit {
     this.actionPopupClosed.emit();
   }
 
+  closeNewSpacePopup(){
+    this.isNewSpacePopupOpen = false;
+    this.newSpacePopupClosed.emit();
+
+  }
+
   resubmitSelected(): void {
     this.spaceStateService.resubmitSelected();
     this.closeActionMenu();
@@ -72,5 +81,15 @@ export class SpaceTableComponent implements OnInit {
   deleteSelected(): void {
     console.log('Deleting:', this.selectedItem());
     this.closeActionMenu();
+  }
+
+  onCreateNewSpace(space: Space) {
+    this.spaceStateService.createNewSpace(space);
+    this.closeNewSpacePopup();
+  }
+
+  openNewSpaceFormPopup() {
+    this.spaceStateService.selectSpace(new Space());
+    this.isNewSpacePopupOpen = true;
   }
 }

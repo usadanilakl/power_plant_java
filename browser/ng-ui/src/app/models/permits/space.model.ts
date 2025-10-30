@@ -5,39 +5,39 @@ import { SpacePa } from "./space-pa.model";
 
 
 export interface ISpace extends IBaseModel {
-  sharepointId: string;
+  sharepointId: number;
   space: string;
-  co: string;
-  oxygen: string;
-  lel: string;
-  h2s: string;
-  nh3: string;
+  co: number;
+  oxygen: number;
+  lel: number;
+  h2s: number;
+  nh3: number;
   testerName: string;
   lastStatusChange: string;
   meterSerialNumber: string;
 }
 
 export class Space extends BaseModel<ISpace> implements ISpace {
-  sharepointId: string;
+  sharepointId: number;
   space: string;
-  co: string;
-  oxygen: string;
-  lel: string;
-  h2s: string;
-  nh3: string;
+  co: number;
+  oxygen: number;
+  lel: number;
+  h2s: number;
+  nh3: number;
   testerName: string;
   lastStatusChange: string;
   meterSerialNumber: string;
 
   constructor(data: Partial<ISpace> = {}) {
     super(data);
-    this.sharepointId = data.sharepointId ?? '';
+    this.sharepointId = data.sharepointId ?? 0;
     this.space = data.space ?? '';
-    this.co = data.co ?? '';
-    this.oxygen = data.oxygen ?? '';
-    this.lel = data.lel ?? '';
-    this.h2s = data.h2s ?? '';
-    this.nh3 = data.nh3 ?? '';
+    this.co = data.co ?? 1000;
+    this.oxygen = data.oxygen ?? 1000;
+    this.lel = data.lel ?? 1000;
+    this.h2s = data.h2s ?? 1000;
+    this.nh3 = data.nh3 ?? 1000;
     this.testerName = data.testerName ?? '';
     this.lastStatusChange = data.lastStatusChange ?? '';
     this.meterSerialNumber = data.meterSerialNumber ?? '';
@@ -96,17 +96,24 @@ export class Space extends BaseModel<ISpace> implements ISpace {
   convertToPaModel(): SpacePa {
     return new SpacePa({
       ID: this.sharepointId,
-      space: this.space,
-      status: this.status,
-      co: this.co,
-      oxygen: this.oxygen,
-      lel: this.lel,
-      h2s: this.h2s,
-      nh3: this.nh3,
-      testerName: this.testerName,
-      lastStatusChange: this.lastStatusChange,
-      meterSerialNumber: this.meterSerialNumber,
+      Space: this.space,
+      Status: this.status,
+      Co: this.co,
+      Oxygen: this.oxygen,
+      Lel: this.lel,
+      H2s: this.h2s,
+      Nh3: this.nh3,
+      TesterName: this.testerName,
+      LastStatusChange: this.lastStatusChange,
+      MeterSerialNumber: this.meterSerialNumber,
     });
+  }
+  
+  convertToPaOutgoingModel() {
+    return{
+      Space: this.space,
+      Status: this.status || 'Inactive'
+    }
   }
 
   getEmailBody(): string {

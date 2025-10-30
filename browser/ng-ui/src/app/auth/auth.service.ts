@@ -5,6 +5,7 @@ import { LocalStorageService } from '../services/local-storage.service';
 import { UserApiService } from './user/user-api.service';
 import { UserPa } from '../models/auth/user-pa.model';
 import { UserDbService } from './user/user-db.service';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 /**
  * Interface for the authentication data structure.
@@ -41,6 +42,8 @@ export class AuthService {
   public currentUser$: Observable<User | null> = this.authData$.pipe(
     map(authData => authData?.user ?? null)
   );
+
+  public currentUser = toSignal(this.currentUser$, { initialValue: null });
 
   /**
    * Observable stream of the authentication status.

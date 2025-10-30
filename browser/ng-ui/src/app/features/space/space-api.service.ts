@@ -2,7 +2,8 @@ import { inject, Injectable } from "@angular/core";
 import { Space } from "../../models/permits/space.model";
 import { PowerAutomateService } from "../../services/power-automate.service";
 import { PowerAutomateRequest } from "../../models/api/power-automate-request.model";
-import { SpacePa } from "../../models/permits/space-pa.model";
+import { SpacePa, SpacePaOutgoing } from "../../models/permits/space-pa.model";
+import { SpaceTestResult } from "../../models/permits/space-test-result.model";
 
 @Injectable({
   providedIn: 'root'
@@ -18,9 +19,13 @@ export class SpaceApiService {
   submitFormToSharepoint(space: Space) {
 
     console.log('Submitting space to Sharepoint:', space);
-    const request: PowerAutomateRequest<SpacePa> = {
+    console.log('Space to submit:', space);
+    const spacePaOutgoing = new Space(space).convertToPaOutgoingModel();
+    console.log('space to submit: ', spacePaOutgoing)
+    spacePaOutgoing.Status = 'Inactive'
+    const request: PowerAutomateRequest<SpacePaOutgoing> = {
       url: this.spacesUrl,
-      confinedSpace: new Space(space).convertToPaModel(),
+      space: spacePaOutgoing,
       actionType: 'create'
     };
     console.log('Request:', request);
@@ -34,6 +39,21 @@ export class SpaceApiService {
       actionType: 'revoke'
     };
 
+    return this.powerAutomateService.submitForm(request);
+  }
+  getSpaces() {
+    const request: PowerAutomateRequest<any> = {
+      actionType: 'getAll',
+      url: this.spacesUrl
+    }
+    return this.powerAutomateService.submitForm(request);
+  }
+  submitTestResultsToSharepoint(spaceTestResult: SpaceTestResult) {
+    const request: PowerAutomateRequest<any> = {
+      actionType: 'newTest',
+      url: this.spacesUrl,
+      spaceTestResult: spaceTestResult
+    }
     return this.powerAutomateService.submitForm(request);
   }
 

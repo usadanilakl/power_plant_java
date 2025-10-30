@@ -1,41 +1,75 @@
+import { Space } from "./space.model";
+
 export interface ISpacePa {
-  ID: string;
+  ID: number;
+  Space: string;
+  Status: string;
+  Co: number;
+  Oxygen: number;
+  Lel: number;
+  H2s: number;
+  Nh3: number;
+  TesterName: string;
+  LastStatusChange: string;
+  MeterSerialNumber: string;
+}
+
+export interface ISpacePaOutgoing{
   space: string;
   status: string;
-  co: string;
-  oxygen: string;
-  lel: string;
-  h2s: string;
-  nh3: string;
-  testerName: string;
-  lastStatusChange: string;
-  meterSerialNumber: string;
+}
+
+export class SpacePaOutgoing{
+  Space: string;
+  Status: string;
+
+  constructor(data: Partial<ISpacePaOutgoing> = {}) {
+    this.Space = data.space?? '';
+    this.Status = data.status?? '';
+  }
 }
 
 export class SpacePa implements ISpacePa {
-  ID: string;
-  space: string;
-  status: string;
-  co: string;
-  oxygen: string;
-  lel: string;
-  h2s: string;
-  nh3: string;
-  testerName: string;
-  lastStatusChange: string;
-  meterSerialNumber: string;
+  ID: number;
+  Space: string;
+  Status: string;
+  Co: number;
+  Oxygen: number;
+  Lel: number;
+  H2s: number;
+  Nh3: number;
+  TesterName: string;
+  LastStatusChange: string;
+  MeterSerialNumber: string;
 
   constructor(data: Partial<ISpacePa> = {}) {
-    this.ID = data.ID ?? '';
-    this.space = data.space ?? '';
-    this.status = data.status ?? '';
-    this.co = data.co ?? '';
-    this.oxygen = data.oxygen ?? '';
-    this.lel = data.lel ?? '';
-    this.h2s = data.h2s ?? '';
-    this.nh3 = data.nh3 ?? '';
-    this.testerName = data.testerName ?? '';
-    this.lastStatusChange = data.lastStatusChange ?? '';
-    this.meterSerialNumber = data.meterSerialNumber ?? '';
+    if (typeof data === 'string') data = JSON.parse(data);
+    this.ID = data.ID ?? 0;
+    this.Space = data.Space ?? '';
+    this.Status = data.Status ?? '';
+    this.Co = data.Co ?? 1000;
+    this.Oxygen = data.Oxygen ?? 1000;
+    this.Lel = data.Lel ?? 1000;
+    this.H2s = data.H2s ?? 1000;
+    this.Nh3 = data.Nh3 ?? 1000;
+    this.TesterName = data.TesterName ?? '';
+    this.LastStatusChange = data.LastStatusChange ?? '';
+    this.MeterSerialNumber = data.MeterSerialNumber ?? '';
+  }
+  
+  convertToSpace() {
+    return new Space({
+      sharepointId: this.ID,
+      space: this.Space,
+      status: this.Status,
+      co: this.Co,
+      oxygen: this.Oxygen,
+      lel: this.Lel,
+      h2s: this.H2s,
+      nh3: this.Nh3,
+      testerName: this.TesterName,
+      lastStatusChange: this.LastStatusChange,
+      meterSerialNumber: this.MeterSerialNumber,
+    })
   }
 }

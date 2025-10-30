@@ -53,6 +53,11 @@ export class IndexedDbService extends Dexie {
       users: '++id, sharepointId, email, status, createdAt, updatedAt'
     });
 
+    // Version 6: Added sharepointId index to spaces table
+    this.version(6).stores({
+      spaces: '++id, sharepointId, status, createdAt, updatedAt'
+    });
+
     // 3. Map tables to classes
     this.workRequests.mapToClass(WorkRequest);
     this.jhas.mapToClass(Jha);

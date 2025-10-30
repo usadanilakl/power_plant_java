@@ -7,7 +7,7 @@ import { IUser } from '../../models/auth/user.model';
 })
 export class UserLocalStorageService {
   private readonly DRAFT_KEY = 'user-draft';
-private readonly LAST_SYNC_KEY = 'users_last_sync';
+  private readonly LAST_SYNC_KEY = 'users_last_sync';
 
   constructor(
     private localStorageService: LocalStorageService

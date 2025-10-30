@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, input } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, output } from '@angular/core';
 import { SpaceStateService } from '../space-state.service';
 import { Space } from '../../../models/permits/space.model';
 import { FormField } from '../../../models/inputs/form-field.model';
@@ -20,6 +20,9 @@ export class SpaceFormComponent {
 
   entityInput = input<Space>();
   fieldsInput = input<FormField[]>();
+  customSubmit = input<boolean>(false);
+
+  submitEvent = output<Space>();
 
   private entityFromState = toSignal(this.spaceStateService.selectedSpace$, { initialValue: new Space() });
   entity = computed(() => this.entityInput() ?? this.entityFromState());
@@ -34,6 +37,12 @@ export class SpaceFormComponent {
   }
 
   onSubmit(space: Space) {
-    this.spaceStateService.submitNewRequest(space);
+    if(this.customSubmit()) {
+      this.submitEvent.emit(space);
+    }else{
+      this.spaceStateService.createNewSpace(space);
+    }
   }
+
+  
 }

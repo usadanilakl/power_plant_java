@@ -3,7 +3,9 @@
     [columns]="columns"
     (rowClicked)="onRowClick($event)"
 >
-    <app-buttons [buttons]="tableButtons()"></app-buttons>
+    <div table-controls>
+        <app-buttons [buttons]="tableButtons()"></app-buttons>
+    </div>
 </app-table>
 
 <app-popup
@@ -13,4 +15,16 @@
     (close)="closeActionMenu()"
 >
     <app-buttons [buttons]="actionButtons" [layout]="'column'"></app-buttons>
+</app-popup>
+
+<app-popup
+    [title]="'Create a New Space'"
+    [size]="'medium'"
+    [isOpen]="isNewSpacePopupOpen"
+    (close)="closeNewSpacePopup()"
+>
+    <app-space-form
+        [fieldsInput]="spaceStateService.newSpaceFormFields"
+        (submitEvent)="onCreateNewSpace($event)"
+    ></app-space-form>
 </app-popup>
