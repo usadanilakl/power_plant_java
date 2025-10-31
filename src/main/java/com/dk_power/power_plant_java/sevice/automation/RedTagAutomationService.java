@@ -1331,6 +1331,8 @@ public class RedTagAutomationService {
 
 
     public String getPermitNumber() throws FindFailed {
+        this.ungroupByStatus();
+        pause(500);
         Region column = screen.wait(SW_PERMIT_NUMBER_COLUMN,5);
 //        column.click();
         Region firstRow = new Region(column.x-10,column.y+20,column.w+10,column.h+1);
@@ -1340,6 +1342,7 @@ public class RedTagAutomationService {
         String number = firstRow.text();
         logger.info("Found permit number: " + number);
         if(number!=null)number = number.replaceAll("[^0-9]", "");
+        if(number!=null && number.length()>5) number = number.substring(number.length()-5);
         logger.info("Processed number is: " + number);
         return number;
     }

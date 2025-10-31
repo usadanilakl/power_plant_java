@@ -131,7 +131,7 @@ public class WorkRequestMapper implements BaseMapper {
         dto.setIsConfinedSpaceEntryRequired(entity.getIsConfinedSpaceEntryRequired());
         dto.setSpace(entity.getSpace());
         dto.setSharepointId(entity.getSharepointId());
-        dto.setStatus(entity.getPermitStatus().getName());
+        if(entity.getPermitStatus()!=null && entity.getPermitStatus().getName()!=null)dto.setStatus(entity.getPermitStatus().getName());
 
 
         return dto;

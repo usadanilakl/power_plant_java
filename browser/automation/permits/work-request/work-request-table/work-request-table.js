@@ -47,21 +47,17 @@ const workRequestTable = {
         if (items) {
             items.forEach(item => {
                 if (item.dateOfWorkToBePerformed) {
-                    // Parse the date string to a Date object
                     const date = new Date(item.dateOfWorkToBePerformed);
-
-                    // Format the date to a readable string, for example: "MM/DD/YYYY"
                     const formattedDate = date.toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: '2-digit',
-                        day: '2-digit'
+                        day: '2-digit',
+                        timeZone: 'UTC'  // Force UTC for consistent date display
                     });
-
-                    // Replace the original field with formatted string or add a new field
                     item.dateOfWorkToBePerformed = formattedDate;
-
-                    console.log('Formatted date: ',item.dateOfWorkToBePerformed)
+                    console.log('Formatted date: ', item.dateOfWorkToBePerformed);
                 }
+
                 if(item.sharepointId){
                     item.sharepointId = formatSharepointIdToDateTime(item.sharepointId);
 

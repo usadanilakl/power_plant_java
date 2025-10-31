@@ -32,6 +32,7 @@ public class WorkRequestController {
                     new NgApiResponse<>(allDtos, "Successfully got all requests from local DB")
             );
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(
                     new NgApiResponse<>(null, "Failed to get all requests with error: " + e.getMessage())
             );
