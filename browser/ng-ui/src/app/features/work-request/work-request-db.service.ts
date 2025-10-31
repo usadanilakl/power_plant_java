@@ -36,6 +36,17 @@ export class WorkRequestDbService {
     return from(this.indexedDbService.workRequests.update(workRequest.id, changes));
   }
 
+  getWorkRequestWithoutJha(): Observable<WorkRequest[]> {
+    return from(
+      liveQuery(() => 
+        this.indexedDbService.workRequests
+          .where('jhaStatus')
+          .equals('none')
+          .toArray()
+      )
+    );
+  }
+
   deleteWorkRequest(id: number): Observable<void> {
     return from(this.indexedDbService.workRequests.delete(id));
   }
