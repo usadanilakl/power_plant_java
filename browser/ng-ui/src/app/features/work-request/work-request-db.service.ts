@@ -38,12 +38,16 @@ export class WorkRequestDbService {
 
   getWorkRequestWithoutJha(): Observable<WorkRequest[]> {
     return from(
-      liveQuery(() => 
-        this.indexedDbService.workRequests
+      liveQuery(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return this.indexedDbService.workRequests
           .where('jhaStatus')
           .equals('none')
-          .toArray()
-      )
+          .filter(workRequest => new Date(workRequest.dateOfWork) >= today)
+          .toArray();
+      })
     );
   }
 

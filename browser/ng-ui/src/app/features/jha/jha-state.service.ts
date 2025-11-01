@@ -1,4 +1,4 @@
-import { BehaviorSubject, switchMap, tap } from "rxjs";
+import { BehaviorSubject, combineLatest, map, Observable, startWith, switchMap, tap } from "rxjs";
 import { JhaApiService } from "./jha-api.service";
 import { JhaDbService } from "./jha-db.service";
 import { Jha } from "../../models/permits/jha.model";
@@ -7,6 +7,8 @@ import { DestroyRef, inject, Injectable } from "@angular/core";
 import { JhaLocalStorageService } from "./jha-local-storage.service";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { WorkRequestDbService } from "../work-request/work-request-db.service";
+import { RouteDataEncoderService } from "../../services/route-data-encoder.service";
+import { IJhaTransfer, JhaTransfer } from "../../models/permits/jha-transfer.model";
 @Injectable({
   providedIn: 'root'
 })
@@ -17,11 +19,13 @@ export class JhaStateService {
     jhaDbService = inject(JhaDbService);
     globalMessageService = inject(GlobalMessageService);
     workRequestDbService = inject(WorkRequestDbService);
+    routeDataEncoder = inject(RouteDataEncoderService);
     destroyRef = inject(DestroyRef);
 
     constructor() {
         this.loadJhas();
         this.loadFromLocalStorage();
+        this.initializeJhaTransfers();
     }
 
     private allJhasSubject = new BehaviorSubject<Jha[]>([]);
@@ -30,6 +34,56 @@ export class JhaStateService {
     private selectedJhaSubject = new BehaviorSubject<Jha>(new Jha());
     selectedJha$ = this.selectedJhaSubject.asObservable();
 
+    private jhaTransfersSubject = new BehaviorSubject<JhaTransfer[]>([]);
+    jhaTransfers$: Observable<JhaTransfer[]> = this.jhaTransfersSubject.asObservable();
+
+    private queryParamTransfersSubject = new BehaviorSubject<JhaTransfer[]>([]);
+
+
+    private initializeJhaTransfers(): void {
+      combineLatest([
+        this.queryParamTransfersSubject.asObservable(),
+        this.workRequestDbService.getWorkRequestWithoutJha().pipe(
+          map(workRequests =>
+            workRequests.map(workRequest =>
+              new JhaTransfer({
+                requestSharepointId: +workRequest.sharepointId,
+                workScope: workRequest.workScope,
+                dateOfWork: workRequest.dateOfWork
+              })
+            )
+          ),
+          startWith([])
+        )
+      ]).pipe(
+        map(([queryParamTransfers, dbTransfers]) => {
+          const allTransfers = [...queryParamTransfers, ...dbTransfers];
+          const uniqueTransfers = allTransfers.reduce((acc, transfer) => {
+            const exists = acc.find(t => t.requestSharepointId === transfer.requestSharepointId);
+            if (!exists) {
+              acc.push(transfer);
+            }
+            return acc;
+          }, [] as JhaTransfer[]);
+          return uniqueTransfers;
+        })
+      ).subscribe(this.jhaTransfersSubject);
+    }
+
+    /**
+     * Updates the list of JHA transfers that come from route query parameters.
+     * @param encodedData The encoded string from the 'data' query parameter.
+     */
+    updateTransfersFromQueryParams(encodedData: string | null): void {
+      if (encodedData) {
+        const decodedData = this.routeDataEncoder.decode<IJhaTransfer>(encodedData);
+        const transfers = decodedData.map(item => new JhaTransfer(item));
+        this.queryParamTransfersSubject.next(transfers);
+      } else {
+        this.queryParamTransfersSubject.next([]);
+      }
+    }
+    
     loadJhas() {
         this.jhaDbService.getAllJhas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: (jhas) => this.allJhasSubject.next(jhas),
