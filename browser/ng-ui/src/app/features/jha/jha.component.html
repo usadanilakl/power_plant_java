@@ -1,7 +1,17 @@
 <button class="resubmit-button" (click)="openTablePopup()">Resubmit Previous Request</button>
 
-<h3>JHA that needs to be filled out</h3>
-<ul></ul>
+@if (jhaStateService.jhaTransfersSignal().length > 0) {
+    <h3>JHA that needs to be filled out</h3>
+    <ul>
+        @for (transfer of jhaStateService.jhaTransfersSignal(); track transfer.requestSharepointId) {
+            <li>
+                Work Request #{{ transfer.requestSharepointId }}: {{ transfer.workScope }} ({{ transfer.dateOfWork | date:'shortDate' }})
+            </li>
+        }
+    </ul>
+} @else {
+    <p>No new JHAs need to be filled out at this time.</p>
+}
 
 <app-jha-form></app-jha-form>
 <app-popup

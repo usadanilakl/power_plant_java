@@ -5,7 +5,7 @@ import { Jha } from "../../models/permits/jha.model";
 import { GlobalMessageService } from "../../services/global-message.service";
 import { DestroyRef, inject, Injectable } from "@angular/core";
 import { JhaLocalStorageService } from "./jha-local-storage.service";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { WorkRequestDbService } from "../work-request/work-request-db.service";
 import { RouteDataEncoderService } from "../../services/route-data-encoder.service";
 import { IJhaTransfer, JhaTransfer } from "../../models/permits/jha-transfer.model";
@@ -36,6 +36,7 @@ export class JhaStateService {
 
     private jhaTransfersSubject = new BehaviorSubject<JhaTransfer[]>([]);
     jhaTransfers$: Observable<JhaTransfer[]> = this.jhaTransfersSubject.asObservable();
+    jhaTransfersSignal = toSignal(this.jhaTransfersSubject, { initialValue: [] });
 
     private queryParamTransfersSubject = new BehaviorSubject<JhaTransfer[]>([]);
 
@@ -83,7 +84,7 @@ export class JhaStateService {
         this.queryParamTransfersSubject.next([]);
       }
     }
-    
+
     loadJhas() {
         this.jhaDbService.getAllJhas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: (jhas) => this.allJhasSubject.next(jhas),
