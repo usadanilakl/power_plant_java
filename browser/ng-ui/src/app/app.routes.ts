@@ -11,6 +11,8 @@ import { authGuard } from './auth/auth.guard';
 import { UserComponent } from './auth/user/user.component';
 import { UserPageComponent } from './pages/user-page/user-page.component';
 import { UserProfilePageComponent } from './pages/user-profile-page/user-profile-page.component';
+import { InstrumentPageComponent } from './pages/instrument-page/instrument-page.component';
+import { InstrumentComponent } from './features/equipment/instrument/instrument.component';
 
 export const routes: Routes = [
     {
@@ -63,5 +65,14 @@ export const routes: Routes = [
       path: 'user-profile',
       component: UserProfilePageComponent,
       canActivate: [standaloneGuard, authGuard]
+    },
+    {
+      path: 'instruments',
+      component: InstrumentPageComponent,
+      canActivate: [standaloneGuard],
+      children: [
+        { path: '', redirectTo: 'form', pathMatch: 'full' },
+        { path: 'form', component: InstrumentComponent }
+      ]
     },
 ];
