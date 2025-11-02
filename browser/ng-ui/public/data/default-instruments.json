@@ -1,0 +1,42 @@
+[
+  {
+    "tagNumber": "PT-101",
+    "description": "Boiler Feedwater Pressure Transmitter",
+    "vendor": "Rosemount",
+    "location": "Boiler Area",
+    "type": "Pressure Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "TT-205",
+    "description": "Main Steam Temperature Transmitter",
+    "vendor": "Yokogawa",
+    "location": "Turbine Deck",
+    "type": "Temperature Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "LT-300",
+    "description": "Condensate Storage Tank Level Transmitter",
+    "vendor": "Endress+Hauser",
+    "location": "Water Treatment Plant",
+    "type": "Level Transmitter",
+    "status": "Needs Calibration"
+  },
+  {
+    "tagNumber": "FT-410",
+    "description": "Natural Gas Flow Transmitter",
+    "vendor": "Emerson",
+    "location": "Gas Yard",
+    "type": "Flow Transmitter",
+    "status": "Inactive"
+  },
+  {
+    "tagNumber": "VT-550",
+    "description": "Turbine Vibration Sensor",
+    "vendor": "Bently Nevada",
+    "location": "Turbine Casing",
+    "type": "Vibration Transmitter",
+    "status": "Active"
+  }
+]
