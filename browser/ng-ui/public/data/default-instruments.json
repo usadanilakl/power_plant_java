@@ -38,5 +38,350 @@
     "location": "Turbine Casing",
     "type": "Vibration Transmitter",
     "status": "Active"
+  },
+  {
+    "tagNumber": "PT-101",
+    "description": "Boiler Feedwater Pressure Transmitter",
+    "vendor": "Rosemount",
+    "location": "Boiler Area",
+    "type": "Pressure Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "TT-205",
+    "description": "Main Steam Temperature Transmitter",
+    "vendor": "Yokogawa",
+    "location": "Turbine Deck",
+    "type": "Temperature Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "LT-300",
+    "description": "Condensate Storage Tank Level Transmitter",
+    "vendor": "Endress+Hauser",
+    "location": "Water Treatment Plant",
+    "type": "Level Transmitter",
+    "status": "Needs Calibration"
+  },
+  {
+    "tagNumber": "FT-410",
+    "description": "Natural Gas Flow Transmitter",
+    "vendor": "Emerson",
+    "location": "Gas Yard",
+    "type": "Flow Transmitter",
+    "status": "Inactive"
+  },
+  {
+    "tagNumber": "VT-550",
+    "description": "Turbine Vibration Sensor",
+    "vendor": "Bently Nevada",
+    "location": "Turbine Casing",
+    "type": "Vibration Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "AT-601",
+    "description": "Flue Gas Oxygen Analyzer",
+    "vendor": "Siemens",
+    "location": "Stack",
+    "type": "Analyzer",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "PT-102",
+    "description": "Drum Level Pressure Transmitter",
+    "vendor": "Rosemount",
+    "location": "Boiler Area",
+    "type": "Pressure Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "TT-206",
+    "description": "Bearing Temperature Sensor",
+    "vendor": "ABB",
+    "location": "Turbine Deck",
+    "type": "Temperature Transmitter",
+    "status": "Under Maintenance"
+  },
+  {
+    "tagNumber": "LT-301",
+    "description": "Deaerator Level Transmitter",
+    "vendor": "Krohne",
+    "location": "Boiler Area",
+    "type": "Level Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "FT-411",
+    "description": "Cooling Water Flow Transmitter",
+    "vendor": "Yokogawa",
+    "location": "Cooling Tower",
+    "type": "Flow Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "VT-551",
+    "description": "Generator Vibration Sensor",
+    "vendor": "Bently Nevada",
+    "location": "Generator Housing",
+    "type": "Vibration Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "AT-602",
+    "description": "Water pH Analyzer",
+    "vendor": "Endress+Hauser",
+    "location": "Water Treatment Plant",
+    "type": "Analyzer",
+    "status": "Needs Calibration"
+  },
+  {
+    "tagNumber": "PT-103",
+    "description": "Condenser Vacuum Pressure Transmitter",
+    "vendor": "Emerson",
+    "location": "Turbine Deck",
+    "type": "Pressure Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "TT-207",
+    "description": "Exhaust Gas Temperature Sensor",
+    "vendor": "Siemens",
+    "location": "HRSG Area",
+    "type": "Temperature Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "LT-302",
+    "description": "Fuel Oil Tank Level Transmitter",
+    "vendor": "Vega",
+    "location": "Fuel Farm",
+    "type": "Level Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "FT-412",
+    "description": "Feedwater Flow Transmitter",
+    "vendor": "Rosemount",
+    "location": "Boiler Area",
+    "type": "Flow Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "PS-701",
+    "description": "Lube Oil Low Pressure Switch",
+    "vendor": "Honeywell",
+    "location": "Turbine Deck",
+    "type": "Pressure Switch",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "TS-751",
+    "description": "Bearing High Temperature Switch",
+    "vendor": "Foxboro",
+    "location": "Turbine Deck",
+    "type": "Temperature Switch",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "LS-801",
+    "description": "Sump High Level Switch",
+    "vendor": "Endress+Hauser",
+    "location": "Basement",
+    "type": "Level Switch",
+    "status": "Failed"
+  },
+  {
+    "tagNumber": "PT-104",
+    "description": "Main Steam Pressure Transmitter",
+    "vendor": "Yokogawa",
+    "location": "Main Steam Line",
+    "type": "Pressure Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "TT-208",
+    "description": "Ambient Air Temperature Sensor",
+    "vendor": "ABB",
+    "location": "Weather Station",
+    "type": "Temperature Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "LT-303",
+    "description": "Chemical Dosing Tank Level",
+    "vendor": "Krohne",
+    "location": "Water Treatment Plant",
+    "type": "Level Transmitter",
+    "status": "Inactive"
+  },
+  {
+    "tagNumber": "FT-413",
+    "description": "Demin Water Flow Transmitter",
+    "vendor": "Emerson",
+    "location": "Demin Plant",
+    "type": "Flow Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "VT-552",
+    "description": "Cooling Fan Vibration Sensor",
+    "vendor": "Bently Nevada",
+    "location": "Cooling Tower",
+    "type": "Vibration Transmitter",
+    "status": "Under Maintenance"
+  },
+  {
+    "tagNumber": "VT-552",
+    "description": "Cooling Fan Vibration Sensor",
+    "vendor": "Bently Nevada",
+    "location": "Cooling Tower",
+    "type": "Vibration Transmitter",
+    "status": "Under Maintenance"
+  },
+  {
+    "tagNumber": "AT-603",
+    "description": "NOx Analyzer",
+    "vendor": "Siemens",
+    "location": "Stack",
+    "type": "Analyzer",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "CV-901",
+    "description": "Feedwater Control Valve",
+    "vendor": "Fisher",
+    "location": "Boiler Area",
+    "type": "Control Valve",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "PY-901",
+    "description": "Feedwater Valve Positioner",
+    "vendor": "Masoneilan",
+    "location": "Boiler Area",
+    "type": "Positioner",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "SV-850",
+    "description": "Fuel Gas Shutoff Valve",
+    "vendor": "ASCO",
+    "location": "Gas Yard",
+    "type": "Solenoid Valve",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "DT-950",
+    "description": "Flame Detector 1A",
+    "vendor": "Honeywell",
+    "location": "Boiler Burner Front",
+    "type": "Detector",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "DT-951",
+    "description": "Flame Detector 1B",
+    "vendor": "Honeywell",
+    "location": "Boiler Burner Front",
+    "type": "Detector",
+    "status": "Failed"
+  },
+  {
+    "tagNumber": "PT-105",
+    "description": "Furnace Pressure Transmitter",
+    "vendor": "Rosemount",
+    "location": "Boiler Area",
+    "type": "Pressure Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "TT-209",
+    "description": "Superheater Outlet Temperature",
+    "vendor": "Yokogawa",
+    "location": "Boiler Area",
+    "type": "Temperature Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "LT-304",
+    "description": "Hotwell Level Transmitter",
+    "vendor": "Endress+Hauser",
+    "location": "Turbine Deck",
+    "type": "Level Transmitter",
+    "status": "Needs Calibration"
+  },
+  {
+    "tagNumber": "FT-414",
+    "description": "Steam Flow to Turbine",
+    "vendor": "Emerson",
+    "location": "Main Steam Line",
+    "type": "Flow Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "VT-553",
+    "description": "Boiler Feed Pump Vibration",
+    "vendor": "Bently Nevada",
+    "location": "Pump House",
+    "type": "Vibration Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "AT-604",
+    "description": "Conductivity Analyzer",
+    "vendor": "Siemens",
+    "location": "Water Treatment Plant",
+    "type": "Analyzer",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "PS-702",
+    "description": "Instrument Air Low Pressure Switch",
+    "vendor": "Honeywell",
+    "location": "Compressor House",
+    "type": "Pressure Switch",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "TS-752",
+    "description": "Motor Winding High Temp Switch",
+    "vendor": "Foxboro",
+    "location": "Motor Control Center",
+    "type": "Temperature Switch",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "LS-802",
+    "description": "Condensate Tank High Level Switch",
+    "vendor": "Vega",
+    "location": "Water Treatment Plant",
+    "type": "Level Switch",
+    "status": "Bypassed"
+  },
+  {
+    "tagNumber": "PT-106",
+    "description": "Gland Steam Pressure Transmitter",
+    "vendor": "Emerson",
+    "location": "Turbine Deck",
+    "type": "Pressure Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "TT-210",
+    "description": "Reheater Outlet Temperature",
+    "vendor": "ABB",
+    "location": "Boiler Area",
+    "type": "Temperature Transmitter",
+    "status": "Active"
+  },
+  {
+    "tagNumber": "LT-305",
+    "description": "Ammonia Tank Level Transmitter",
+    "vendor": "Krohne",
+    "location": "Chemical Storage",
+    "type": "Level Transmitter",
+    "status": "Active"
   }
+
 ]
