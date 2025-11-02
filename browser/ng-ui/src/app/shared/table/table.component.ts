@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, DestroyRef, ElementRef, inject, input, Input, OnInit, output, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, DestroyRef, ElementRef, inject, input, Input, OnInit, output, ViewChild } from '@angular/core';
 import { Column } from '../../models/inputs/column.model';
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import { SearchCriteria, SearchCriteriaDto } from '../../models/api/search-criteria.model';
@@ -14,16 +14,11 @@ import { CommonModule } from '@angular/common';
   templateUrl: './table.component.html',
   styleUrl: './table.component.css'
 })
-export class TableComponent implements OnInit {
+export class TableComponent implements OnInit, AfterViewInit {
 
   private destroyRef = inject(DestroyRef);
 
   @Input() columns: Column[] = [];
-  // @Input() clickCallback!: (item: any, event: MouseEvent) => void;
-  // @Input() doubleClickCallback?: (item: any) => void;
-  // @Input() rightClickCallback?: (item: any) => void;
-  // @Input() middleClickCallback?: (item: any) => void;
-  // @Input() cellDoubleClickCallback?: (item: any, column: Column) => void;
   @Input() deleteItem?: (item: string) => void;
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
@@ -36,6 +31,9 @@ export class TableComponent implements OnInit {
 
   @ViewChild('tableContainer') tableContainer!: ElementRef;
   @ViewChild('tableBody') tableBody!: ElementRef;
+  @ViewChild('headerContainer', { read: ElementRef }) headerContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('headerTable', { read: ElementRef }) headerTable!: ElementRef<HTMLTableElement>;
+  @ViewChild('bodyTable', { read: ElementRef }) bodyTable!: ElementRef<HTMLTableElement>;
   @ViewChild(CdkVirtualScrollViewport) viewport!: CdkVirtualScrollViewport;
   private resizeObserver?: ResizeObserver;
 
@@ -77,7 +75,6 @@ export class TableComponent implements OnInit {
 
   }
 
-
   
   ngAfterViewInit() {
       setTimeout(() => {
@@ -92,10 +89,21 @@ export class TableComponent implements OnInit {
           }
         }
 
+        // Synchronize column widths after view is initialized
+        this.synchronizeColumnWidths();
+
+        // Listen to viewport scroll events to sync header scroll
+        this.viewport.elementScrolled().pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe(() => {
+          this.syncHorizontalScroll();
+        });
+
         this.resizeObserver = new ResizeObserver(() => {
           if (this.viewport) {
             this.viewport.checkViewportSize();
           }
+          this.synchronizeColumnWidths();
         });
         this.resizeObserver.observe(this.viewport.elementRef.nativeElement);
 
@@ -110,30 +118,91 @@ export class TableComponent implements OnInit {
   }
 
 
+  ngOnInit() {
+    // console.log('TableComponent initialized');
+    this.items$.pipe(
+      debounceTime(0),
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((items) => {
+      // console.log('Items updated:', items);
+      this._items = items;
+      this.updateFilteredItems();
+      this.cdr.detectChanges();
+      setTimeout(() => this.synchronizeColumnWidths(), 100);
+    });
+
+    this.hoverSubject.pipe(
+      debounceTime(this.hoverDebounceTime()),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(item => {
+      this.rowHoveredEvent.emit(item);
+    });
+
+    this.updateItemIndices();
+  }
 
 
-ngOnInit() {
-  // console.log('TableComponent initialized');
-  this.items$.pipe(
-    debounceTime(0),
-    distinctUntilChanged(),
-    takeUntilDestroyed(this.destroyRef)
-  ).subscribe((items) => {
-    // console.log('Items updated:', items);
-    this._items = items;
-    this.updateFilteredItems();
-    this.cdr.detectChanges();
-  });
 
-  this.hoverSubject.pipe(
-    debounceTime(this.hoverDebounceTime()),
-    takeUntilDestroyed(this.destroyRef)
-  ).subscribe(item => {
-    this.rowHoveredEvent.emit(item);
-  });
 
-  this.updateItemIndices();
-}
+  
+  private synchronizeColumnWidths() {
+    if (!this.headerTable?.nativeElement || !this.bodyTable?.nativeElement) return;
+    
+    setTimeout(() => {
+      const headerCells = this.headerTable.nativeElement.querySelectorAll('thead tr:first-child th');
+      const bodyCells = this.bodyTable.nativeElement.querySelectorAll('tbody tr:first-child td');
+  
+      if (bodyCells.length === 0) return;
+  
+      // First, reset any fixed widths to get natural widths
+      headerCells.forEach((cell: Element) => {
+        (cell as HTMLElement).style.width = '';
+        (cell as HTMLElement).style.minWidth = '';
+        (cell as HTMLElement).style.maxWidth = '';
+      });
+  
+      bodyCells.forEach((cell: Element) => {
+        (cell as HTMLElement).style.width = '';
+        (cell as HTMLElement).style.minWidth = '';
+        (cell as HTMLElement).style.maxWidth = '';
+      });
+  
+      // Force a reflow
+      this.bodyTable.nativeElement.offsetHeight;
+  
+      // Get the natural widths from body cells
+      const widths: string[] = [];
+      bodyCells.forEach((cell: Element) => {
+        const width = Math.max((cell as HTMLElement).offsetWidth, 100); // Minimum 100px
+        widths.push(`${width}px`);
+      });
+  
+      // Apply these widths to both header and body cells
+      headerCells.forEach((cell: Element, index: number) => {
+        (cell as HTMLElement).style.width = widths[index];
+        (cell as HTMLElement).style.minWidth = widths[index];
+        (cell as HTMLElement).style.maxWidth = widths[index];
+      });
+  
+      bodyCells.forEach((cell: Element, index: number) => {
+        (cell as HTMLElement).style.width = widths[index];
+        (cell as HTMLElement).style.minWidth = widths[index];
+        (cell as HTMLElement).style.maxWidth = widths[index];
+      });
+    }, 0);
+  }
+
+  private syncHorizontalScroll() {
+    if (!this.viewport || !this.headerContainer?.nativeElement) return;
+    
+    const scrollLeft = this.viewport.measureScrollOffset('left');
+    this.headerContainer.nativeElement.scrollLeft = scrollLeft;
+  }
+
+
+
+
 
   updateItems(newItems: any[]) {
     this._items = newItems;
@@ -194,21 +263,12 @@ ngOnInit() {
 
       this.filteredItems = orderedItems;
       this.updateItemIndices();
+      setTimeout(() => this.synchronizeColumnWidths(), 100);
       // console.log('Filtered items updated:', this.filteredItems.length);
   }
 
   handleScroll() {
-    const end = this.viewport.getRenderedRange().end;
-    const total = this.filteredItems.length;
-    const searchCriteria: SearchCriteria = {
-      type:  this.globalSearchQuery !== '' ? 'global' : 'column',
-      query: this.globalSearchQuery,
-      filters: this.columnFilters
-    }
-    if (end === total) {
-      if(this.globalSearchQuery!=='' || Object.values(this.columnFilters).some(filter => filter !== ''))this.loadMoreItems.emit(searchCriteria);
-      else this.loadMoreItems.emit(new SearchCriteriaDto());
-    }
+    this.syncHorizontalScroll();
   }
 
   trackByFn(index: number, item: any): any {
@@ -235,6 +295,7 @@ ngOnInit() {
     });
   
     this.cdr.detectChanges();
+    setTimeout(() => this.synchronizeColumnWidths(), 100);
   }
 
   getCellValue(item: any, column: Column): string {
@@ -336,124 +397,10 @@ ngOnInit() {
     // console.log('Item indices updated', { filteredItems: this.filteredItems });
   }
   
-  // onRowClick(item: any, event: MouseEvent) {
-  //   if (event.button === 0) { // Left click
-  //     event.preventDefault(); // Prevent default click behavior
-  //     const currentTime = new Date().getTime();
-  //     const timeSinceLastClick = currentTime - this.lastClickTime;
-  
-  //     if (timeSinceLastClick < 300 && !this.isDoubleClickHandled) {
-  //       // Double click
-  //       this.onRowDoubleClick(item);
-  //       setTimeout(() => {
-  //         this.isDoubleClickHandled = false;
-  //       }, 300); // Reset the flag after a short delay
-  //     } else {
-  //       // Single click
-  //       this.lastClickTime = currentTime;
-  //       setTimeout(() => {
-  //         if (!this.isDoubleClickHandled && this.clickCallback) {
-  //           if (event.ctrlKey) {
-  //             this.onRowCtrlClick(item, event);
-  //           } else if (event.shiftKey) {
-  //             this.onRowShiftClick(item, event);
-  //           } else {
-  //             this.clearSelection();
-  //             this.clickCallback(item, event);
-  //           }
-  //         }
-  //       }, 300);
-  //     }
-  //   } else if (event.button === 1 && this.middleClickCallback) { // Middle click
-  //     this.middleClickCallback(item);
-  //   }
-  // }
-  
-  // onRowDoubleClick(item: any) {
-  //   if (this.isDoubleClickHandled) {
-  //     return; // Exit if we've already handled a double-click
-  //   }
-  //   this.isDoubleClickHandled = true;
-  
-  //   if (typeof this.doubleClickCallback === 'function') {
-  //     try {
-  //       this.doubleClickCallback(item);
-  //     } catch (error) {
-  //       console.error('Error executing doubleClickCallback:', error);
-  //     }
-  //   }
-  
-  //   if (typeof this.cellDoubleClickCallback === 'function') {
-  //     try {
-  //       if (this.lastClickedCell && this.lastClickedCell.column) {
-  //         this.cellDoubleClickCallback(item, this.lastClickedCell.column);
-  //       } else {
-  //         console.warn('lastClickedCell or its column is undefined');
-  //       }
-  //     } catch (error) {
-  //       console.error('Error executing cellDoubleClickCallback:', error);
-  //     }
-  //   }
-  // }
-  
-  // onRowRightClick(item: any, event: MouseEvent) {
-  //   if (typeof this.rightClickCallback === 'function') {
-  //     event.preventDefault(); // Prevent the default context menu
-  //     try {
-  //       this.rightClickCallback(item);
-  //     } catch (error) {
-  //       console.error('Error executing rightClickCallback:', error);
-  //     }
-  //   }
-  // }
 
-  // onRowCtrlClick(item: any, event: MouseEvent) {
-  //   const index = this.selectedItems.findIndex(i => i.id === item.id);
-  //   if (index > -1) {
-  //     this.selectedItems.splice(index, 1);
-  //   } else {
-  //     this.selectedItems.push(item);
-  //   }
-  //   this.lastClickedItem = item;
-  //   this.selectedItemsEvent.emit(this.selectedItems);
-  // }
 
-  // onRowShiftClick(item: any, event: MouseEvent) {
-  //   if (!this.lastClickedItem) {
-  //     this.lastClickedItem = item;
-  //     this.selectedItems = [item];
-  //     return;
-  //   }
-  
-  //   const allItems = this._items;
-  //   const lastIndex = allItems.findIndex(i => i.id === this.lastClickedItem.id);
-  //   const currentIndex = allItems.findIndex(i => i.id === item.id);
-  
-  //   if (lastIndex === -1 || currentIndex === -1) return;
-  
-  //   const start = Math.min(lastIndex, currentIndex);
-  //   const end = Math.max(lastIndex, currentIndex);
-  
-  //   const itemsToToggle = allItems.slice(start, end + 1);
-  
-  //   // Determine if we're selecting or unselecting based on the state of the current item
-  //   const isSelecting = !this.selectedItems.some(i => i.id === item.id);
-  
-  //   if (isSelecting) {
-  //     // Add items that are not already selected
-  //     this.selectedItems = [...new Set([...this.selectedItems, ...itemsToToggle])];
-  //   } else {
-  //     // Remove the toggled items from selection
-  //     this.selectedItems = this.selectedItems.filter(i => !itemsToToggle.some(ti => ti.id === i.id));
-  //   }
-  
-  //   this.lastClickedItem = item;
-  //   this.selectedItemsEvent.emit(this.selectedItems);
-  // }
 
-  // onRowHover(item: any) {
-  //   this.hoverSubject.next(item);
-  // }
+
 
   clearSelection() {
     this.selectedItems = [];

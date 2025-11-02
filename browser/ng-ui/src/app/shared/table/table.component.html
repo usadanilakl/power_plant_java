@@ -13,12 +13,12 @@
     </div>
   </div>
 
-  <div class="table-header-container">
-    <table>
+  <div class="table-header-container" #headerContainer>
+    <table #headerTable>
       <thead>
         <tr>
-          @for (column of columns; track column.id) {
-            <th (click)="sortColumn(column)">
+          @for (column of columns; track column.id; let colIndex = $index) {
+            <th (click)="sortColumn(column)" [attr.data-col-index]="colIndex">
               {{ column.header }}
               <div class="resizer"></div>
             </th>
@@ -38,8 +38,8 @@
     </table>
   </div>
 
-  <cdk-virtual-scroll-viewport itemSize="50" class="table-container" (scrolledIndexChange)="handleScroll()">
-    <table>
+  <cdk-virtual-scroll-viewport itemSize="50" class="table-container" (scrolledIndexChange)="handleScroll()" #viewport>
+    <table #bodyTable>
       <tbody #tableBody>
         <tr *cdkVirtualFor="let item of filteredItems; let i = index; trackBy: trackByFn"
             (mouseenter)="onRowHover(item)"
@@ -58,10 +58,11 @@
             [style.cursor]="isDragAndDropEnabled() ? 'move' : 'default'"
             [class.ghost-row]="i === ghostRowIndex"
             [class.dragging]="draggedItem && draggedItem.id === item.id">
-          @for (column of columns; track column.id) {
+          @for (column of columns; track column.id; let colIndex = $index) {
             <td 
               (click)="registerLastClickedCell(item, column, $event)"
               [ngStyle]="getCellStyle(item, column)"
+              [attr.data-col-index]="colIndex"
             >
               {{ getCellValue(item, column) }}
             </td>

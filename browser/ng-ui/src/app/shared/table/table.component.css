@@ -82,13 +82,21 @@ cdk-virtual-scroll-viewport.table-container {
   min-width: 100%;
 }
 
+
 table {
-  width: 100%;
+  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   color: var(--primary-text);
-  /* Let the table grow, don't force it to shrink */
   table-layout: auto;
+}
+
+th, td {
+  white-space: nowrap;
+  padding: 8px 12px;
+  min-width: 100px;
+  border: 1px solid var(--border-color); /* Add this line */
+  text-align: left; /* Add this line */
 }
 
 thead {
@@ -101,15 +109,6 @@ th {
   cursor: pointer;
   color: var(--primary-text);
   position: relative; /* For resizer */
-}
-
-th, td {
-  border: 1px solid var(--border-color);
-  padding: 10px;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 tbody tr:hover {
