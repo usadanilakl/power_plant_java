@@ -1,4 +1,4 @@
-<div class="form-input" [ngStyle]="customStyle">
+<!-- <div class="form-input" [ngStyle]="customStyle">
   @if (label && label!=='') {
   <div class="label-container">
     <label>{{ label }}</label>
@@ -10,4 +10,27 @@
       [readonly]="readonly"
       (input)="onInputChange($event)"
       class="form-input-element">
+</div> -->
+
+<div class="form-input" [ngStyle]="customStyle">
+  @if (label && label!=='') {
+  <div class="label-container">
+    <label>{{ label }}</label>
+  </div>
+  }
+  @if (type === 'textarea') {
+    <textarea 
+      [value]="value" 
+      [readonly]="readonly"
+      (input)="onInputChange($event)"
+      class="form-input-element">
+    </textarea>
+  } @else {
+    <input 
+      [type]="type" 
+      [value]="value" 
+      [readonly]="readonly"
+      (input)="onInputChange($event)"
+      class="form-input-element">
+  }
 </div>

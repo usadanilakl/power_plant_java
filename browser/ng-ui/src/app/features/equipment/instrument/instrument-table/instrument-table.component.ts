@@ -42,7 +42,7 @@ export class InstrumentTableComponent implements OnInit {
 
   onRowClick({ item }: { item: Instrument, event: MouseEvent}){
     this.instrumentStateService.selectInstrument(item);
-    this.isActionMenuOpen = true;
+    // this.isActionMenuOpen = true;
   }
 
   closeActionMenu() {

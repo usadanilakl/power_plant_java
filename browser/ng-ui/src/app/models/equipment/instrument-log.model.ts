@@ -6,6 +6,7 @@ export type InstrumentStatus = 'Disconnected/Removed' | 'In Progress' | 'Normal 
 
 export interface IInstrumentLogEntry extends IBaseModel {
     instrumentTagNumber: string;
+    instrumentDescription: string;
     status: InstrumentStatus;
     date: Date;
     time: string;
@@ -15,6 +16,7 @@ export interface IInstrumentLogEntry extends IBaseModel {
 
 export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implements IInstrumentLogEntry {
     instrumentTagNumber: string;
+    instrumentDescription: string;
     override status: InstrumentStatus;
     date: Date;
     time: string;
@@ -24,6 +26,8 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
     constructor(data: Partial<IInstrumentLogEntry> = {}) {
         super(data);
         this.instrumentTagNumber = data.instrumentTagNumber ?? '';
+        this.instrumentDescription = data.instrumentDescription?? '';
+
         this.status = data.status ?? 'Normal Operation';
         this.date = data.date ? new Date(data.date) : new Date();
         this.time = data.time?? new Date().toTimeString().slice(0, 5);;
@@ -34,6 +38,7 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
     getFormFields(): FormField[] {
         return [
             { name: 'instrumentTagNumber', label: 'Instrument Tag Number', type: 'text', initialValue: this.instrumentTagNumber, readonly: true },
+            { name: 'instrumentDescription', label: 'Instrument Description', type: 'text', initialValue: this.instrumentDescription, readonly: true  },
             { 
                 name: 'status', 
                 label: 'Status', 

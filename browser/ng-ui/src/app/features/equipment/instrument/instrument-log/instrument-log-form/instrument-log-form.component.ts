@@ -33,12 +33,12 @@ export class InstrumentLogFormComponent {
 
   constructor() { }
 
-  onAnyValueChange(workRequest: Instrument) {
-    this.instrumentLocalStorageService.saveDraft(workRequest);
+  onAnyValueChange(instrumentLog: InstrumentLogEntry) {
+    this.instrumentLogEntryLocalStorageService.saveDraft(instrumentLog);
   }
 
-  onSubmit(instrument: Instrument) {
-    this.instrumentStateService.submitForm(instrument);
+  onSubmit(instrumentLog: InstrumentLogEntry) {
+    this.instrumentStateService.submitLogForm(instrumentLog);
   }
 
 }

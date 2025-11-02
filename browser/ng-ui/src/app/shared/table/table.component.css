@@ -15,7 +15,186 @@
   flex: 1 1 auto;
   min-height: 0; /* This is important for Firefox */
   width: 100%;
-  overflow: hidden; /* Changed from visible to hidden */
+  overflow: hidden;
+}
+
+.table-controls {
+  flex: 0 0 auto;
+  padding: 10px;
+  background-color: var(--secondary-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.default-controls {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.button-row button {
+  margin-right: 10px;
+}
+
+.search-row {
+  width: 100%;
+}
+
+.search-input, .filter-input {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin-bottom: 10px;
+  background-color: var(--primary-background);
+  color: var(--primary-text);
+}
+
+.table-header-container {
+  flex-shrink: 0;
+  background-color: var(--secondary-background);
+  overflow-x: auto;
+  /* Hide scrollbar on header, it's controlled by the body scroll */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.table-header-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+cdk-virtual-scroll-viewport.table-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  height: 100%;
+}
+
+.cdk-virtual-scroll-content-wrapper {
+  position: relative;
+  min-width: 100%;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--primary-text);
+  /* Let the table grow, don't force it to shrink */
+  table-layout: auto;
+}
+
+thead {
+  background-color: var(--secondary-background);
+}
+
+th {
+  background-color: var(--secondary-background);
+  box-shadow: 0 1px 0 0 var(--border-color);
+  cursor: pointer;
+  color: var(--primary-text);
+  position: relative; /* For resizer */
+}
+
+th, td {
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+tbody tr:hover {
+  background-color: var(--hover-background);
+}
+
+tbody tr.selected {
+  background-color: var(--selected-background);
+  color: var(--selected-text);
+}
+
+.resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  cursor: col-resize;
+  height: 100%;
+  background-color: transparent;
+  z-index: 3;
+}
+
+.ghost-row {
+  background-color: rgba(0, 123, 255, 0.2);
+  border: 2px dashed #007bff;
+}
+
+.dragging {
+  opacity: 0.5;
+  background-color: #e0e0e0;
+}
+
+/* Custom Scrollbar Styles */
+.table-container::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: var(--secondary-background);
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 6px;
+  border: 3px solid var(--secondary-background);
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary-text);
+}
+
+.table-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--secondary-background);
+}
+
+
+
+
+
+
+
+
+
+
+
+/* :host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--primary-background);
+  color: var(--primary-text);
+}
+
+.table-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .table-controls {
@@ -95,7 +274,7 @@ th {
 }
 
 thead tr:nth-child(2) th {
-  top: 41px; /* Adjust based on the height of your first header row */
+  top: 41px;
 }
 
 th, td {
@@ -122,7 +301,7 @@ tbody tr:hover {
   background-color: var(--menu-item-hover-bg-color);
 }
 
-/* Scrollbar styles */
+
 .table-container::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -167,7 +346,21 @@ tr.selected:hover {
   z-index: 1000;
   pointer-events: none;
   cursor: grabbing;
-}
+} */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* :host {
   display: flex;

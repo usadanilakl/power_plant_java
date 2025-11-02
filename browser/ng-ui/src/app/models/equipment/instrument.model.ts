@@ -57,6 +57,7 @@ export class Instrument extends BaseModel<IInstrument> implements IInstrument {
     toLogEntry(): InstrumentLogEntry {
         return new InstrumentLogEntry({
             instrumentTagNumber: this.tagNumber,
+            instrumentDescription: this.description,
             date: new Date(),
         });
     }
