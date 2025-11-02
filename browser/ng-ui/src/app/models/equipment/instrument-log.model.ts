@@ -8,6 +8,7 @@ export interface IInstrumentLogEntry extends IBaseModel {
     instrumentTagNumber: string;
     status: InstrumentStatus;
     date: Date;
+    time: string;
     name: string;
     comment: string;
 }
@@ -16,6 +17,7 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
     instrumentTagNumber: string;
     override status: InstrumentStatus;
     date: Date;
+    time: string;
     name: string;
     comment: string;
 
@@ -24,13 +26,14 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
         this.instrumentTagNumber = data.instrumentTagNumber ?? '';
         this.status = data.status ?? 'Normal Operation';
         this.date = data.date ? new Date(data.date) : new Date();
+        this.time = data.time?? new Date().toTimeString().slice(0, 5);;
         this.name = data.name ?? '';
         this.comment = data.comment ?? '';
     }
 
     getFormFields(): FormField[] {
         return [
-            { name: 'instrumentTagNumber', label: 'Instrument Tag Number', type: 'text', initialValue: this.instrumentTagNumber },
+            { name: 'instrumentTagNumber', label: 'Instrument Tag Number', type: 'text', initialValue: this.instrumentTagNumber, readonly: true },
             { 
                 name: 'status', 
                 label: 'Status', 
@@ -42,7 +45,8 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
                     { value: 'Disconnected/Removed', label: 'Disconnected/Removed' }
                 ]
             },
-            { name: 'date', label: 'Date', type: 'date', initialValue: this.date },
+            { name: 'date', label: 'Date', type: 'date', initialValue: this.date, validators: [] },
+            { name: 'time', label: 'Time', type: 'time', initialValue: this.time },
             { name: 'name', label: 'Name', type: 'text', initialValue: this.name },
             { name: 'comment', label: 'Comment', type: 'textarea', initialValue: this.comment },
         ];
@@ -57,6 +61,7 @@ export class InstrumentLogEntry extends BaseModel<IInstrumentLogEntry> implement
                 header: 'Date', 
                 accessorFn: (item: IInstrumentLogEntry) => new Date(item.date).toLocaleDateString() 
             },
+            { id: 'time', header: 'Time', accessorKey: 'time' },
             { id: 'name', header: 'Name', accessorKey: 'name' },
             { id: 'comment', header: 'Comment', accessorKey: 'comment' },
         ];

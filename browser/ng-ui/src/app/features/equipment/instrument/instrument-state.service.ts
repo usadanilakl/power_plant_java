@@ -33,11 +33,18 @@ export class InstrumentStateService extends BaseStateService<Instrument> {
         });
     }
 
+
     selectInstrument(instrument: Instrument) {
         this.selectItem(instrument);
     }
 
     getSelectedInstrument(): Instrument | null {
         return this.getSelectedItem();
+    }
+    submitForm(instrument: Instrument) {
+        // Assuming an API call to submit the instrument form
+        // For now, we'll just update the status locally
+        this.globalMessageService.showMessage('Instrument submitted successfully.');
+        
     }
 }

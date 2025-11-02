@@ -1,6 +1,7 @@
 import { BaseModel, IBaseModel } from '../permits/base.model';
 import { FormField } from '../inputs/form-field.model';
 import { Column } from '../inputs/column.model';
+import { InstrumentLogEntry } from './instrument-log.model';
 
 export interface IInstrument extends IBaseModel {
     tagNumber: string;
@@ -50,5 +51,13 @@ export class Instrument extends BaseModel<IInstrument> implements IInstrument {
                 accessorFn: (item: IInstrument) => new Date(item.updatedAt).toLocaleDateString()
             },
         ];
+    }
+
+
+    toLogEntry(): InstrumentLogEntry {
+        return new InstrumentLogEntry({
+            instrumentTagNumber: this.tagNumber,
+            date: new Date(),
+        });
     }
 }

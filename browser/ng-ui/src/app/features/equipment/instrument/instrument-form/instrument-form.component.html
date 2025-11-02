@@ -1,1 +1,15 @@
-<p>instrument-form works!</p>
+<app-reactive-form
+  [entity]="entity()"
+  [fields]="fields()"
+  [title]="'Instrumentation Form'"
+  (formValueChange)="onAnyValueChange($event)"
+  (formSubmit)="onSubmit($event)"
+>
+  <!-- <ng-container extra-buttons>
+    <app-email-prompt
+      to="dklokov@jpowerusa.com"
+      subject="Failed to submit work request"
+      [body]="entity().getEmailBody()"
+    ></app-email-prompt>
+  </ng-container> -->
+</app-reactive-form>

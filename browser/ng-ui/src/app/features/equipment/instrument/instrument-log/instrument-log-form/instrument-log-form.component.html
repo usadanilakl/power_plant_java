@@ -1,1 +1,9 @@
-<p>instrument-log-form works!</p>
+<app-reactive-form
+  [entity]="entity()"
+  [fields]="fields()"
+  [title]="'Work Request'"
+  (formValueChange)="onAnyValueChange($event)"
+  (formSubmit)="onSubmit($event)"
+>
+
+</app-reactive-form>

@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
-import { InstrumentFormComponent } from "./instrument-form/instrument-form.component";
+import { InstrumentLogFormComponent } from "./instrument-log/instrument-log-form/instrument-log-form.component";
 
 @Component({
   selector: 'app-instrument',
-  imports: [InstrumentFormComponent],
+  imports: [InstrumentLogFormComponent],
   templateUrl: './instrument.component.html',
   styleUrl: './instrument.component.css'
 })
