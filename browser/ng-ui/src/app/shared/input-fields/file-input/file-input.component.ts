@@ -26,8 +26,10 @@ export class FileInputComponent implements ControlValueAccessor {
 
   constructor(private host: ElementRef<HTMLInputElement>) {}
 
-  @HostListener('change', ['$event.target.files']) emitFiles(event: FileList) {
-    const file = event && event.item(0);
+  @HostListener('change', ['$event']) emitFiles(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const files = target.files;
+    const file = files && files.item(0);
     this.handleFile(file);
   }
 
