@@ -13,6 +13,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/space', label: 'Confined Spaces' },
     { route: '/instruments', label: 'Instrumentation Log' },
     { route: '/users', label: 'Users' },
+    { route: '/loto', label: 'LOTO' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [

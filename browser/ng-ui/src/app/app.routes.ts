@@ -13,6 +13,8 @@ import { UserPageComponent } from './pages/user-page/user-page.component';
 import { UserProfilePageComponent } from './pages/user-profile-page/user-profile-page.component';
 import { InstrumentPageComponent } from './pages/instrument-page/instrument-page.component';
 import { InstrumentComponent } from './features/equipment/instrument/instrument.component';
+import { QrScannerComponent } from './shared/qr-scanner/qr-scanner.component';
+import { LotoPageComponent } from './pages/loto-page/loto-page.component';
 
 export const routes: Routes = [
     {
@@ -73,6 +75,19 @@ export const routes: Routes = [
       children: [
         { path: '', redirectTo: 'form', pathMatch: 'full' },
         { path: 'form', component: InstrumentComponent }
+      ]
+    },
+      {
+        path: 'qr', // <-- Add this route
+        component: QrScannerComponent
+      },
+    {
+      path: 'loto',
+      component: LotoPageComponent,
+      canActivate: [standaloneGuard],
+      children: [
+        { path: '', redirectTo: 'form', pathMatch: 'full' },
+        { path: 'form', component: WorkRequestComponent }
       ]
     },
 ];
