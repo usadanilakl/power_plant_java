@@ -1,3 +1,25 @@
+
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:host(.full-height) {
+  height: 100%;
+}
+
+.details-scroll-container {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch; /* for smooth scrolling on iOS */
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+
 /* Styles for the full detail view */
 .loto-point-details {
   background-color: var(--secondary-background);

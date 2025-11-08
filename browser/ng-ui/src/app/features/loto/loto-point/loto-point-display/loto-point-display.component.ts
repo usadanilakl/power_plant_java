@@ -1,14 +1,15 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, HostBinding, inject, input } from '@angular/core';
 import { LotoPointStateService } from '../loto-point-state.service';
 import { LotoPoint } from '../../../../models/permits/loto/loto-point.model';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ButtonConfig, ButtonsComponent } from "../../../../shared/menus/buttons/buttons.component";
 import { QrScannerService } from '../../../../shared/qr-scanner/qr-scanner.service';
 import { take } from 'rxjs';
+import { QrGeneratorComponent } from "../../../../shared/qr-generator/qr-generator.component";
 
 @Component({
   selector: 'app-loto-point-display',
-  imports: [ButtonsComponent],
+  imports: [ButtonsComponent, QrGeneratorComponent],
   templateUrl: './loto-point-display.component.html',
   styleUrl: './loto-point-display.component.css'
 })
@@ -20,11 +21,17 @@ export class LotoPointDisplayComponent {
   private lotoPointStateService = inject(LotoPointStateService);
 
   isFullDetailList = input<boolean>(false);
+
+  @HostBinding('class.full-height')
+  get isFullHeight() {
+    return this.isFullDetailList();
+  }
   lotoPointInput = input<LotoPoint>();
   customButtons = input<ButtonConfig[] | null>(null);
   lotoPointFromService = toSignal(this.lotoPointStateService.selectedLotoPoint$, { initialValue: new LotoPoint() });
 
   lotoPoint = computed(() => this.lotoPointInput()?? this.lotoPointFromService());
+  lotoPointJson = computed(() => JSON.stringify(this.lotoPoint()));
   defaultButtons: ButtonConfig[] = [
     { name: 'Scan To Compare', action: () => this.scanForCamparingTags(), color: 'primary' },
     { name: 'Scan To Complete', action: () => this.scanToComplete(), color:'primary' },
@@ -59,8 +66,9 @@ export class LotoPointDisplayComponent {
         // For example, parse the result and load a JHA
         try {
           const data = JSON.parse(resultString);
-          if (data.jhaId) {
-            alert(`Loading JHA with ID: ${data.jhaId}`);
+          if (data.tagNumber) {
+            if(data.tagNumber === this.lotoPoint().tagNumber)alert(`Success: ${data.tagNumber} is scanned and marked as complete.`);
+            else alert(`Error: ${data.tagNumber} is not the same as ${this.lotoPoint().tagNumber}.`);
             // Example: this.jhaStateService.loadJhaById(data.jhaId);
           }
         } catch (e) {

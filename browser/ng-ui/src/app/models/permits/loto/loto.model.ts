@@ -54,10 +54,7 @@ export class Loto extends BaseModel<ILoto> implements ILoto {
       createdAt: new Date(),
       updatedAt: new Date(),
       description: 'Test LOTO',
-      lotoPoints: [
-        LotoPoint.getTestData(),
-        LotoPoint.getTestData()
-      ]
+      lotoPoints: LotoPoint.getTestDataArray()
     });
   }
 }

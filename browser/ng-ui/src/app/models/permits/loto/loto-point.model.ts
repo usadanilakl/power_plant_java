@@ -65,20 +65,80 @@ export class LotoPoint extends BaseModel<ILotoPoint> implements ILotoPoint {
       },
     ];
   }
+
+  static getTestDataArray(): LotoPoint[] {
+    return [
+      new LotoPoint({
+        id: 1,
+        status: 'active',
+        createdAt: new Date('2023-10-01T10:00:00Z'),
+        updatedAt: new Date('2023-10-10T12:30:00Z'),
+        tagNumber: 'LOTO-001',
+        description: 'Main Power Breaker for Unit 1',
+        specificLocation: 'MCC-A, Cubicle 3',
+        generalLocation: 'Turbine Hall',
+        normalPosition: 'Closed',
+        isolatedPosition: 'Open',
+        zeroEnergyMethod: 'Lockout/Tagout',
+        currentPosition: 'Open',
+      }),
+      new LotoPoint({
+        id: 2,
+        status: 'active',
+        createdAt: new Date('2023-11-05T08:00:00Z'),
+        updatedAt: new Date('2023-11-15T14:00:00Z'),
+        tagNumber: 'LOTO-002',
+        description: 'Steam Inlet Valve SV-101',
+        specificLocation: 'Boiler Feedwater Pump Area',
+        generalLocation: 'Boiler House',
+        normalPosition: 'Open',
+        isolatedPosition: 'Closed',
+        zeroEnergyMethod: 'Chain and Lock',
+        currentPosition: 'Closed',
+      }),
+      new LotoPoint({
+        id: 3,
+        status: 'pending',
+        createdAt: new Date('2024-01-20T09:30:00Z'),
+        updatedAt: new Date('2024-01-20T09:30:00Z'),
+        tagNumber: 'LOTO-003',
+        description: 'Cooling Tower Fan Motor',
+        specificLocation: 'Cooling Tower 2, Motor B',
+        generalLocation: 'Switchyard',
+        normalPosition: 'Running',
+        isolatedPosition: 'Off',
+        zeroEnergyMethod: 'Breaker Lockout',
+        currentPosition: 'Off',
+      }),
+    ];
+  }
   static getTestData(): LotoPoint {
+    const randomId = Math.floor(Math.random() * 1000) + 1;
+    const statuses = ['active', 'inactive', 'pending'];
+    const positions = ['Open', 'Closed', 'Tripped'];
+    const methods = ['Lockout', 'Tagout', 'Block', 'Vent'];
+    const buildings = ['Turbine Hall', 'Boiler House', 'Control Room', 'Switchyard'];
+
+    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+    const randomTag = `TAG-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const randomBuilding = buildings[Math.floor(Math.random() * buildings.length)];
+
+    const now = new Date();
+    const randomPastDate = new Date(now.getTime() - Math.random() * 1000 * 60 * 60 * 24 * 30); // within last 30 days
+
     return new LotoPoint({
-      id: 1,
-      status: 'active',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      tagNumber: 'ABC123',
-      description: 'LOTO Point 1',
-      specificLocation: 'Location 1',
-      generalLocation: 'General Location 1',
-      normalPosition: 'Normal Position 1',
-      isolatedPosition: 'Isolated Position 1',
-      zeroEnergyMethod: 'Zero Energy Method 1',
-      currentPosition: 'Current Position 1',
+      id: randomId,
+      status: randomStatus,
+      createdAt: randomPastDate,
+      updatedAt: new Date(randomPastDate.getTime() + Math.random() * (now.getTime() - randomPastDate.getTime())),
+      tagNumber: randomTag,
+      description: `Isolate pump P-${randomId}`,
+      specificLocation: `Panel ${randomId}, Breaker ${Math.floor(Math.random() * 20)}`,
+      generalLocation: randomBuilding,
+      normalPosition: positions[Math.floor(Math.random() * positions.length)],
+      isolatedPosition: positions[Math.floor(Math.random() * positions.length)],
+      zeroEnergyMethod: methods[Math.floor(Math.random() * methods.length)],
+      currentPosition: positions[Math.floor(Math.random() * positions.length)],
     });
   }
 }
