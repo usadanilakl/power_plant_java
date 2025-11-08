@@ -1,3 +1,148 @@
+/* Styles for the full detail view */
+.loto-point-details {
+  background-color: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--primary-text);
+}
+
+.detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.detail-item {
+  flex: 1 1 calc(50% - 8px); /* Two items per row, accounting for gap */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px; /* Prevent items from becoming too narrow */
+}
+
+.detail-item.full-width {
+  flex-basis: 100%;
+}
+
+.detail-item .label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+}
+
+.detail-item span:not(.label) {
+  font-size: 1rem;
+  word-wrap: break-word;
+}
+
+.primary-detail span:not(.label) {
+  font-weight: bold;
+  color: var(--accent-color);
+  font-size: 1.1rem;
+}
+
+
+
+/* Styles for the compact list view */
+.loto-point-container {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 8px;
+  background-color: var(--card-background);
+  color: var(--primary-text);
+}
+
+.loto-point-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.loto-point-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.loto-point-item .label {
+  font-size: 0.8em;
+  color: var(--secondary-text);
+  margin-bottom: 2px;
+}
+
+.tag-number {
+  font-weight: bold;
+}
+
+.description {
+  flex-grow: 1;
+}
+
+.current-position {
+  font-style: italic;
+}
+
+
+/* .loto-point-details {
+  background-color: var(--secondary-background, #f9f9f9);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--primary-text);
+}
+
+.dark-theme .loto-point-details {
+  background-color: var(--secondary-background, #2c2c2c);
+  border-color: var(--border-color, #444);
+}
+
+.detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.detail-item {
+  flex: 1 1 calc(50% - 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+}
+
+.detail-item.full-width {
+  flex-basis: 100%;
+}
+
+.detail-item .label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--secondary-text, #666);
+  text-transform: uppercase;
+}
+
+.dark-theme .detail-item .label {
+  color: var(--secondary-text, #aaa);
+}
+
+.detail-item span:not(.label) {
+  font-size: 1rem;
+  word-wrap: break-word;
+}
+
+
+
+
+
 .loto-point-container {
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -34,4 +179,4 @@
 
 .current-position {
   font-style: italic;
-}
+} */

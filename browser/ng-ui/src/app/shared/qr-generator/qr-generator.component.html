@@ -1,0 +1,12 @@
+<div class="qr-container">
+  @if (qrCodeHtml) {
+    <div [innerHTML]="qrCodeHtml"></div>
+  } @else {
+    <div class="qr-placeholder" [style.width.px]="size" [style.height.px]="size">
+      <span>No data provided</span>
+    </div>
+  }
+  @if (label) {
+    <div class="qr-label">{{ label }}</div>
+  }
+</div>

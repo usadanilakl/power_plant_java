@@ -1,0 +1,29 @@
+.action-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid #eee;
+  font-size: 0.9em;
+}
+
+.action-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.action-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.action-item.comments {
+  flex-basis: 100%;
+}
+
+.label {
+  font-size: 0.8em;
+  color: #666;
+  font-weight: bold;
+}

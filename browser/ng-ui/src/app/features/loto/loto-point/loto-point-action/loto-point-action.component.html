@@ -1,1 +1,24 @@
-<p>loto-point-action works!</p>
+<div class="action-container">
+  <div class="action-row">
+    <div class="action-item action-type">
+      <span class="label">Action:</span>
+      <span>{{ action().actionType }}</span>
+    </div>
+    <div class="action-item performed-by">
+      <span class="label">Performed By:</span>
+      <span>{{ action().performedByUserId }}</span>
+    </div>
+    <div class="action-item performed-at">
+      <span class="label">Date:</span>
+      <span>{{ action().performedAt | date:'short' }}</span>
+    </div>
+  </div>
+  <!-- @if (action().comments) {
+    <div class="action-row">
+      <div class="action-item comments">
+        <span class="label">Comments:</span>
+        <span>{{ action.comments }}</span>
+      </div>
+    </div>
+  } -->
+</div>

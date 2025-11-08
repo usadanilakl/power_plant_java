@@ -1,4 +1,58 @@
 @if (lotoPoint()) {
+  @if(isFullDetailList()){
+    <div class="loto-point-details">
+      <!-- Primary Details -->
+      <div class="detail-row">
+        <div class="detail-item primary-detail">
+          <span class="label">Tag Number</span>
+          <span>{{ lotoPoint().tagNumber }}</span>
+        </div>
+        <div class="detail-item primary-detail">
+          <span class="label">Isolated Position</span>
+          <span>{{ lotoPoint().isolatedPosition }}</span>
+        </div>
+      </div>
+
+      <!-- Secondary Details -->
+      <div class="detail-row">
+        <div class="detail-item">
+          <span class="label">Current Position</span>
+          <span>{{ lotoPoint().currentPosition }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Normal Position</span>
+          <span>{{ lotoPoint().normalPosition }}</span>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <div class="detail-item full-width">
+          <span class="label">Description</span>
+          <span>{{ lotoPoint().description }}</span>
+        </div>
+      </div>
+
+      <!-- Location Details -->
+      <div class="detail-row">
+        <div class="detail-item">
+          <span class="label">General Location</span>
+          <span>{{ lotoPoint().generalLocation }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Specific Location</span>
+          <span>{{ lotoPoint().specificLocation }}</span>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <div class="detail-item full-width">
+          <span class="label">Method to achieve Zero Energy State</span>
+          <span>{{ lotoPoint().zeroEnergyMethod }}</span>
+        </div>
+      </div>
+    </div>
+    <app-buttons [buttons]="buttons()"></app-buttons>
+  }@else {
   <div class="loto-point-container">
     <div class="loto-point-row">
       <div class="loto-point-item tag-number">
@@ -15,4 +69,5 @@
       </div>
     </div>
   </div>
+  }
 }
