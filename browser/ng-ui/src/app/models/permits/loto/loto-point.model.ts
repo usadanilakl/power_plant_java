@@ -1,6 +1,6 @@
-import { IBaseModel, BaseModel } from "./base.model";
-import { FormField } from "../inputs/form-field.model";
-import { Column } from "../inputs/column.model";
+import { IBaseModel, BaseModel } from "../base.model";
+import { FormField } from "../../inputs/form-field.model";
+import { Column } from "../../inputs/column.model";
 
 export interface ILotoPoint extends IBaseModel {
   tagNumber: string | null;
@@ -64,5 +64,21 @@ export class LotoPoint extends BaseModel<ILotoPoint> implements ILotoPoint {
         accessorFn: (item: ILotoPoint) => new Date(item.updatedAt).toLocaleDateString()
       },
     ];
+  }
+  static getTestData(): LotoPoint {
+    return new LotoPoint({
+      id: 1,
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tagNumber: 'ABC123',
+      description: 'LOTO Point 1',
+      specificLocation: 'Location 1',
+      generalLocation: 'General Location 1',
+      normalPosition: 'Normal Position 1',
+      isolatedPosition: 'Isolated Position 1',
+      zeroEnergyMethod: 'Zero Energy Method 1',
+      currentPosition: 'Current Position 1',
+    });
   }
 }

@@ -1,7 +1,7 @@
-import { IBaseModel, BaseModel } from "./base.model";
+import { IBaseModel, BaseModel } from "../base.model";
+import { FormField } from "../../inputs/form-field.model";
+import { Column } from "../../inputs/column.model";
 import { LotoPoint } from "./loto-point.model";
-import { FormField } from "../inputs/form-field.model";
-import { Column } from "../inputs/column.model";
 
 export interface ILoto extends IBaseModel {
   lotoPoints: LotoPoint[];
@@ -45,5 +45,19 @@ export class Loto extends BaseModel<ILoto> implements ILoto {
         accessorFn: (item: ILoto) => new Date(item.updatedAt).toLocaleDateString()
       },
     ];
+  }
+
+  static getTestData(): Loto {
+    return new Loto({
+      id: 1,
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      description: 'Test LOTO',
+      lotoPoints: [
+        LotoPoint.getTestData(),
+        LotoPoint.getTestData()
+      ]
+    });
   }
 }

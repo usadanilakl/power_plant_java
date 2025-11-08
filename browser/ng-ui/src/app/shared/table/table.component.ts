@@ -231,40 +231,58 @@ export class TableComponent implements OnInit, AfterViewInit {
 
     this.columnFilters = {...filters}
 
+    console.log('Column filters: ', this.columnFilters);
+
     this.updateFilteredItems();
     this.search.emit(searchCriteria);
   }
 
+  
   private updateFilteredItems() {
-    // console.log('Updating filtered items: ', this._items.value.length);
-    this.filteredItems = this._items.filter(item => {
+    // console.log('Updating filtered items: ', this._items.length);
+    
+    // Apply global search filter
+    let filtered = this._items.filter(item => {
       if (this.globalSearchQuery) {
         return Object.values(item).some(value => 
           String(value).toLowerCase().includes(this.globalSearchQuery.toLowerCase())
         );
       }
       return true;
-    }).filter(item => {
+    });
+  
+    // Apply column filters
+    filtered = filtered.filter(item => {
       // console.log('Filter conditions:', this.columnFilters);
       // console.log('Item:', item);
       return Object.entries(this.columnFilters).every(([key, value]) => 
         !value || String(this.getNestedProperty(item, key)).toLowerCase().includes(value.toLowerCase())
       );
     });
-
+  
+    // Apply sorting if a column is currently sorted
     if (this.currentSortColumn) {
-      this.sortColumn(this.columns.find(col => col.id === this.currentSortColumn) || this.columns[0]);
+      const sortColumn = this.columns.find(col => col.id === this.currentSortColumn);
+      if (sortColumn) {
+        filtered = [...filtered].sort((a, b) => {
+          const aValue = this.getCellValue(a, sortColumn);
+          const bValue = this.getCellValue(b, sortColumn);
+        
+          if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return this.isAscending ? aValue - bValue : bValue - aValue;
+          } else {
+            return this.isAscending ? 
+              String(aValue).localeCompare(String(bValue)) : 
+              String(bValue).localeCompare(String(aValue));
+          }
+        });
+      }
     }
-
-      // Maintain the current order of items
-      const orderedItems = this._items.filter(item => 
-        this.filteredItems.some(filteredItem => filteredItem.id === item.id)
-      );
-
-      this.filteredItems = orderedItems;
-      this.updateItemIndices();
-      setTimeout(() => this.synchronizeColumnWidths(), 100);
-      // console.log('Filtered items updated:', this.filteredItems.length);
+  
+    this.filteredItems = filtered;
+    this.updateItemIndices();
+    setTimeout(() => this.synchronizeColumnWidths(), 100);
+    // console.log('Filtered items updated:', this.filteredItems.length);
   }
 
   handleScroll() {

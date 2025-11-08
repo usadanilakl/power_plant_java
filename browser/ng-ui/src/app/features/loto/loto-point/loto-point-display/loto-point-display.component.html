@@ -1,0 +1,18 @@
+@if (lotoPoint()) {
+  <div class="loto-point-container">
+    <div class="loto-point-row">
+      <div class="loto-point-item tag-number">
+        <span class="label">Tag:</span>
+        <span>{{ lotoPoint().tagNumber }}</span>
+      </div>
+      <div class="loto-point-item description">
+        <span class="label">Description:</span>
+        <span>{{ lotoPoint().description }}</span>
+      </div>
+      <div class="loto-point-item current-position">
+        <span class="label">Position:</span>
+        <span>{{ lotoPoint().currentPosition }}</span>
+      </div>
+    </div>
+  </div>
+}

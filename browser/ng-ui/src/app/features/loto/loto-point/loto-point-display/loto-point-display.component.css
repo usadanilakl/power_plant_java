@@ -1,0 +1,37 @@
+.loto-point-container {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 8px;
+  background-color: #f9f9f9;
+}
+
+.loto-point-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.loto-point-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.loto-point-item .label {
+  font-size: 0.8em;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.tag-number {
+  font-weight: bold;
+}
+
+.description {
+  flex-grow: 1;
+}
+
+.current-position {
+  font-style: italic;
+}

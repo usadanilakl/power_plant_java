@@ -1,6 +1,15 @@
-<app-reactive-form
-  [fields]="fields()"
-  [entity]="entity()"
-  (formValueChange)="onAnyValueChange($event)"
-  (formSubmit)="onSubmit($event)">
-</app-reactive-form>
+@for(lp of lotoPoints(); track lp){
+  <app-loto-point-display
+    [lotoPointInput]="lp"
+    (click)="onPointClicked(lp)"
+  ></app-loto-point-display>
+}
+
+<app-popup
+  [isOpen]="pointDetailsPopupOpen()"
+  [title]="'Loto Point Details'"
+  [size]="'large'"
+  (close)="closePointDetailsPopup()"
+>
+
+</app-popup>

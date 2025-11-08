@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { Loto } from '../../../models/permits/loto.model';
+import { Loto } from '../../../models/permits/loto/loto.model';
 import { GlobalMessageService } from '../../../services/global-message.service';
 
 @Injectable({
@@ -12,7 +12,7 @@ export class LotoProcessorStateService {
   private allLotosSubject = new BehaviorSubject<Loto[]>([]);
   allLotos$ = this.allLotosSubject.asObservable();
 
-  private selectedLotoSubject = new BehaviorSubject<Loto>(new Loto());
+  private selectedLotoSubject = new BehaviorSubject<Loto>(Loto.getTestData());
   selectedLoto$ = this.selectedLotoSubject.asObservable();
 
   constructor() { }

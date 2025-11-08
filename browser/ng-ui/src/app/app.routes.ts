@@ -15,6 +15,7 @@ import { InstrumentPageComponent } from './pages/instrument-page/instrument-page
 import { InstrumentComponent } from './features/equipment/instrument/instrument.component';
 import { QrScannerComponent } from './shared/qr-scanner/qr-scanner.component';
 import { LotoPageComponent } from './pages/loto-page/loto-page.component';
+import { LotoProcessorComponent } from './features/loto/loto-processor/loto-processor.component';
 
 export const routes: Routes = [
     {
@@ -86,8 +87,8 @@ export const routes: Routes = [
       component: LotoPageComponent,
       canActivate: [standaloneGuard],
       children: [
-        { path: '', redirectTo: 'form', pathMatch: 'full' },
-        { path: 'form', component: WorkRequestComponent }
+        { path: '', redirectTo: 'process', pathMatch: 'full' },
+        { path: 'process', component: LotoProcessorComponent }
       ]
     },
 ];
