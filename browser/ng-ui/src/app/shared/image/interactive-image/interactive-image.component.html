@@ -1,1 +1,22 @@
-<p>interactive-image works!</p>
+
+
+<div #zoomOuter class="zoom-outer">
+    <div #zoomElement class="zoom" 
+    (mousedown)="onMousedown($event)"
+    (mouseup)="onMouseUp($event)"
+    (mousemove)="onMouseMove($event)"
+    (mouseleave)="onMouseLeave($event)"
+    (wheel)="onWheel($event)">
+        <div class="image-canvas-container" #imageContainer>
+            @if (imageUrl() && imageUrl()!.startsWith("http")) {
+                <img #imageElement [src]="imageUrl()" />
+            } @else {
+                <!-- <img #imageElement [src]="'http://localhost:8082/' + imageUrl()" /> -->
+                <img #imageElement [src]="imageUrl()" />
+            }
+
+            <!-- <img #imageElement [src]="'http://localhost:8082/' + imageUrl()" /> -->
+            <canvas #canvasElement></canvas>
+        </div>
+    </div>
+</div>

@@ -16,6 +16,7 @@ import { InstrumentComponent } from './features/equipment/instrument/instrument.
 import { QrScannerComponent } from './shared/qr-scanner/qr-scanner.component';
 import { LotoPageComponent } from './pages/loto-page/loto-page.component';
 import { LotoProcessorComponent } from './features/loto/loto-processor/loto-processor.component';
+import { ImageComponent } from './shared/image/image.component';
 
 export const routes: Routes = [
     {
@@ -90,5 +91,9 @@ export const routes: Routes = [
         { path: '', redirectTo: 'process', pathMatch: 'full' },
         { path: 'process', component: LotoProcessorComponent }
       ]
+    },
+    {
+      path: 'img',
+      component: ImageComponent
     },
 ];

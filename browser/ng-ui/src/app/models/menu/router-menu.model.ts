@@ -14,6 +14,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/instruments', label: 'Instrumentation Log' },
     { route: '/users', label: 'Users' },
     { route: '/loto', label: 'LOTO' },
+    { route: '/img', label: 'Image' },
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [
