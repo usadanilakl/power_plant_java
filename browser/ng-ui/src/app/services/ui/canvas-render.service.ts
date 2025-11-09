@@ -51,28 +51,30 @@ export class CanvasRenderService {
     }
   }
 
+  
   private drawRectangle(
     ctx: CanvasRenderingContext2D,
     rect: RectangleShape,
     originalShape: Shape,
     scale: number
   ): void {
+    // Don't multiply by scale again - scaledShape already has scaled dimensions
     ctx.strokeRect(
-      rect.x * scale,
-      rect.y * scale,
+      rect.x,
+      rect.y,
       rect.width,
       rect.height
     );
-
+  
     if (originalShape.isBulkSelected) {
-      this.drawSelectionHandles(ctx, originalShape, scale, 'orange');
+      this.drawSelectionHandles(ctx, rect, 'orange');
     }
-
+  
     if (originalShape.isSelected) {
-      this.drawSelectionHandles(ctx, originalShape, scale);
+      this.drawSelectionHandles(ctx, rect);
     }
   }
-
+  
   private drawCircle(
     ctx: CanvasRenderingContext2D,
     circle: CircleShape,
@@ -80,69 +82,83 @@ export class CanvasRenderService {
   ): void {
     ctx.beginPath();
     ctx.arc(
-      circle.x * scale,
-      circle.y * scale,
+      circle.x,
+      circle.y,
       circle.radius,
       0,
       2 * Math.PI
     );
     ctx.stroke();
   }
-
+  
   private drawLine(
     ctx: CanvasRenderingContext2D,
     line: LineShape,
     scale: number
   ): void {
     ctx.beginPath();
-    ctx.moveTo(line.startX * scale, line.startY * scale);
-    ctx.lineTo(line.endX * scale, line.endY * scale);
+    ctx.moveTo(line.startX, line.startY);
+    ctx.lineTo(line.endX, line.endY);
     ctx.stroke();
   }
-
+  
   private drawText(
     ctx: CanvasRenderingContext2D,
     text: TextShape,
     scale: number
   ): void {
     ctx.font = `${16 * scale}px Arial`;
-    ctx.fillText(text.text, text.x * scale, text.y * scale);
+    ctx.fillText(text.text, text.x, text.y);
   }
-
+  
   private scaleShape(shape: Shape, scale: number): Shape {
     switch (shape.type) {
       case 'rectangle':
         return {
           ...shape,
+          x: shape.x * scale,
+          y: shape.y * scale,
           width: shape.width * scale,
           height: shape.height * scale,
         };
       case 'circle':
         return {
           ...shape,
+          x: shape.x * scale,
+          y: shape.y * scale,
           radius: shape.radius * scale,
         };
       case 'line':
+        return {
+          ...shape,
+          startX: shape.startX * scale,
+          startY: shape.startY * scale,
+          endX: shape.endX * scale,
+          endY: shape.endY * scale,
+        };
       case 'text':
-        return { ...shape };
+        return {
+          ...shape,
+          x: shape.x * scale,
+          y: shape.y * scale,
+        };
       default:
         return shape;
     }
   }
-
+  
   private drawSelectionHandles(
     ctx: CanvasRenderingContext2D,
     shape: Shape,
-    scale: number,
     color: string = 'blue'
   ): void {
     ctx.fillStyle = color;
     const corners = this.getShapeCorners(shape);
-
+  
     corners.forEach(([x, y]) => {
       ctx.fillRect(
-        x * scale - this.HANDLE_SIZE / 2,
-        y * scale - this.HANDLE_SIZE / 2,
+        x - this.HANDLE_SIZE / 2,
+        y - this.HANDLE_SIZE / 2,
         this.HANDLE_SIZE,
         this.HANDLE_SIZE
       );
@@ -178,14 +194,23 @@ export class CanvasRenderService {
     }
   }
 
-  updateCanvasSize(canvas: HTMLCanvasElement, img: HTMLImageElement): void {
-    const imgRect = img.getBoundingClientRect();
-    canvas.width = imgRect.width;
-    canvas.height = imgRect.height;
-  }
-
-  calculateScale(img: HTMLImageElement): number {
-    const imgRect = img.getBoundingClientRect();
-    return imgRect.width / img.naturalWidth;
-  }
+  
+    updateCanvasSize(canvas: HTMLCanvasElement, img: HTMLImageElement): void {
+      const imgRect = img.getBoundingClientRect();
+      canvas.width = imgRect.width;
+      canvas.height = imgRect.height;
+    }
+  
+    calculateScale(img: HTMLImageElement): number {
+      const imgRect = img.getBoundingClientRect();
+      return imgRect.width / img.naturalWidth;
+    }
+  
+    // New method: Calculate base scale without zoom transformation
+    calculateBaseScale(img: HTMLImageElement): number {
+      // Get the actual displayed width without transform
+      const computedStyle = window.getComputedStyle(img);
+      const width = parseFloat(computedStyle.width);
+      return width / img.naturalWidth;
+    }
 }
