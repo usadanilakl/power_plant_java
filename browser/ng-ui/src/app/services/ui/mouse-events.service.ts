@@ -15,7 +15,9 @@ export interface ClassifiedMouseEvent {
   event: MouseEvent;
 }
 
-@Injectable()
+@Injectable({
+  providedIn: 'root'
+})
 export class MouseEventsService {
   private readonly DOUBLE_CLICK_DELAY = 250; // ms
 
