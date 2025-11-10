@@ -1,18 +1,24 @@
 
-import { Component, DestroyRef, ElementRef, inject, input, ViewChild } from "@angular/core";
+import { Component, DestroyRef, ElementRef, inject, input, signal, ViewChild } from "@angular/core";
 import { fromEvent } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { ImageShape, RectangleShape, Shape } from "../../../models/ui/shape.model";
+import { ImageShape, RectangleShape, Shape, SVGSymbolShape } from "../../../models/ui/shape.model";
 import { MouseEventsService } from "../../../services/ui/mouse-events.service";
 import { TransformState, ZoomPanService } from "../../../services/ui/zoom-pan.service";
 import { CanvasRenderService } from "../../../services/ui/canvas-render.service";
 import { DrawingService } from "../../../services/ui/drawing.service";
 import { ShapeConversionService } from "../../../services/ui/shape-conversion.service";
+import { SymbolPaletteComponent } from "../symbol-palette/symbol-palette.component";
+import { CommonModule } from "@angular/common";
+import { PIDSymbol } from "../../../services/ui/pid-symbols.service";
+
+
+type DrawMode = 'none' | 'rectangle' | 'symbol';
 
 @Component({
   selector: 'app-interactive-image',
   standalone: true,
-  imports: [],
+  imports: [CommonModule, SymbolPaletteComponent],
   templateUrl: './interactive-image.component.html',
   styleUrl: './interactive-image.component.css'
 })
@@ -121,11 +127,14 @@ export class InteractiveImageComponent {
     pointX: 0,
     pointY: 0
   };
+  private zoomEndTimer: any = null;
 
   // Panning state
   private isPanning: boolean = false;
   private panStartPos: { x: number; y: number } = { x: 0, y: 0 };
   private panStartTransform: TransformState = { scale: 1, pointX: 0, pointY: 0 };
+  private panAnimationFrame: number | null = null;
+  private needsCanvasUpdate: boolean = false;
 
   baseImageScale: number = 1;
   imageScale: number = 1;
@@ -134,8 +143,14 @@ export class InteractiveImageComponent {
 
   private shapeIdToConvert: number | null = null;
 
+  //Symbol palette
+  showSymbolPalette = signal<boolean>(true);
+  currentDrawMode = signal<DrawMode>('none');
+  selectedSymbol = signal<PIDSymbol | null>(null);
+
   ngOnDestroy() {
     this.drawingService.cleanup();
+    this.canvasRenderService.clearImageCache();
   }
 
   ngAfterViewInit() {
@@ -187,6 +202,7 @@ export class InteractiveImageComponent {
   }
 
   // Zooming Events
+
   onWheel(event: WheelEvent): void {
     event.preventDefault();
     
@@ -200,15 +216,23 @@ export class InteractiveImageComponent {
       imageRect
     );
 
-    this.zoomPanService.applyTransform(this.zoomElement, this.transformState);
+    this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0s');
     this.updateImageScale();
     this.updateTempCanvasSize();
 
-    setTimeout(() => this.onZoomEnd(), 100);
+    // Clear existing timer and set a new one
+    if (this.zoomEndTimer) {
+      clearTimeout(this.zoomEndTimer);
+    }
+    
+    this.zoomEndTimer = setTimeout(() => {
+      this.onZoomEnd();
+      this.zoomEndTimer = null;
+    }, 150); // Increased from 100ms for better debouncing
   }
 
   private onZoomEnd(): void {
-    this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0s');
+    // this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0s');
     this.updateCanvasAndRedraw();
   }
 
@@ -263,6 +287,7 @@ export class InteractiveImageComponent {
     }
   }
 
+
   onMouseMove(event: MouseEvent): void {
     if (this.drawingService.isDrawing()) {
       event.preventDefault();
@@ -290,6 +315,7 @@ export class InteractiveImageComponent {
         pointY: newPosition.pointY
       };
 
+      // Apply transform immediately (CSS transform is fast)
       this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0s');
       this.cursor = 'grabbing';
     }
@@ -303,13 +329,17 @@ export class InteractiveImageComponent {
 
     if (this.isPanning) {
       this.stopPanning();
+      // Update canvas once at the end
       this.updateCanvasAndRedraw();
     }
   }
 
   onLeftClick(event: MouseEvent): void {
-    console.log('left click');
-    // Handle shape selection or other left click actions here
+  // Handle symbol placement in symbol mode
+    if (this.currentDrawMode() === 'symbol') {
+      this.placeSymbol(event);
+      return;
+    }
   }
 
   onMiddleClick(event: MouseEvent): void {
@@ -327,6 +357,7 @@ export class InteractiveImageComponent {
 
   // Panning Methods
 
+  
   private startPanning(event: MouseEvent): void {
     this.isPanning = true;
     this.panStartPos = {
@@ -335,15 +366,19 @@ export class InteractiveImageComponent {
     };
     this.panStartTransform = { ...this.transformState };
     this.cursor = 'grabbing';
+    
+    // Add dragging class to disable CSS transitions
+    this.zoomElement.classList.add('dragging');
   }
-
+  
   private stopPanning(): void {
-    console.log('Stopping pan');
     this.isPanning = false;
     this.cursor = 'default';
+    
+    // Remove dragging class
+    this.zoomElement.classList.remove('dragging');
   }
 
-  
   private resetTransform(): void {
     this.transformState = {
       scale: 1,
@@ -357,56 +392,56 @@ export class InteractiveImageComponent {
   
     
     
-    // Drawing Methods
-    
-    private startDrawing(event: MouseEvent): void {
-      const imgRect = this.img.getBoundingClientRect();
-      this.drawingService.startDrawing(
-        event.clientX,
-        event.clientY,
-        imgRect,
-        this.baseImageScale, // Pass baseImageScale, not imageScale
-        this.transformState
-      );
-      this.cursor = 'crosshair';
+  // Drawing Methods
+  
+  private startDrawing(event: MouseEvent): void {
+    const imgRect = this.img.getBoundingClientRect();
+    this.drawingService.startDrawing(
+      event.clientX,
+      event.clientY,
+      imgRect,
+      this.baseImageScale, // Pass baseImageScale, not imageScale
+      this.transformState
+    );
+    this.cursor = 'crosshair';
+  }
+  
+  private updateDrawing(event: MouseEvent): void {
+    const imgRect = this.img.getBoundingClientRect();
+    this.drawingService.updateDrawing(
+      event.clientX,
+      event.clientY,
+      imgRect,
+      this.baseImageScale, // Pass baseImageScale, not imageScale
+      this.transformState
+    );
+  }
+  
+  private finishDrawing(event: MouseEvent): void {
+    const imgRect = this.img.getBoundingClientRect();
+    const newShape = this.drawingService.finishDrawing(
+      event.clientX,
+      event.clientY,
+      imgRect,
+      this.baseImageScale,
+      this.transformState,
+      this.img.naturalWidth,
+      this.img.naturalHeight,
+      this.testShapes.length + 1
+    );
+  
+    if (newShape) {
+      this.testShapes.push(newShape);
+      this.updateCanvasAndRedraw();
     }
-    
-    private updateDrawing(event: MouseEvent): void {
-      const imgRect = this.img.getBoundingClientRect();
-      this.drawingService.updateDrawing(
-        event.clientX,
-        event.clientY,
-        imgRect,
-        this.baseImageScale, // Pass baseImageScale, not imageScale
-        this.transformState
-      );
-    }
-    
-    private finishDrawing(event: MouseEvent): void {
-      const imgRect = this.img.getBoundingClientRect();
-      const newShape = this.drawingService.finishDrawing(
-        event.clientX,
-        event.clientY,
-        imgRect,
-        this.baseImageScale, // Pass baseImageScale, not imageScale
-        this.transformState,
-        this.img.naturalWidth,
-        this.img.naturalHeight,
-        this.testShapes.length + 1
-      );
-    
-      if (newShape) {
-        this.testShapes.push(newShape);
-        this.updateCanvasAndRedraw();
-      }
-    
-      this.cursor = 'default';
-    }
+  
+    this.cursor = 'default';
+  }
 
 
 
 
-// Add method to trigger conversion
+//Image Shape Methods
 convertShapeToImage(shapeId: number): void {
   this.shapeIdToConvert = shapeId;
   this.shapeImageInput.nativeElement.click();
@@ -489,6 +524,75 @@ convertImageToRectangle(shapeId: number): void {
 getShapeById(shapeId: number): Shape | undefined {
   return this.testShapes.find(s => s.id === shapeId);
 }
+
+
+
+
+
+// Symbol Palette Methods
+toggleSymbolPalette(): void {
+  this.showSymbolPalette.update(show => !show);
+}
+
+setDrawMode(mode: DrawMode): void {
+  this.currentDrawMode.set(mode);
+  
+  if (mode === 'symbol') {
+    this.cursor = 'crosshair';
+  } else if (mode === 'rectangle') {
+    this.cursor = 'crosshair';
+  } else {
+    this.cursor = 'default';
+  }
+}
+
+onSymbolSelected(symbol: PIDSymbol): void {
+  this.selectedSymbol.set(symbol);
+  this.setDrawMode('symbol');
+  console.log('Symbol selected:', symbol);
+}
+
+private placeSymbol(event: MouseEvent): void {
+  const symbol = this.selectedSymbol();
+  if (!symbol) return;
+
+  const imgRect = this.img.getBoundingClientRect();
+  
+  // Use the drawing service's coordinate conversion method
+  const { x, y } = this.drawingService.clientToImageCoords(
+    event.clientX,
+    event.clientY,
+    imgRect,
+    this.baseImageScale,
+    this.transformState
+  );
+
+  const newSymbol: SVGSymbolShape = {
+    id: this.testShapes.length + 1,
+    type: 'svg-symbol',
+    symbolId: symbol.id,
+    svgPath: symbol.svgPath,
+    x: x - (symbol.width / 2), // Center the symbol on click point
+    y: y - (symbol.height / 2),
+    width: symbol.width,
+    height: symbol.height,
+    color: '#000000',
+    rotation: 0,
+    originalPictureWidth: this.img.naturalWidth,
+    originalPictureHeight: this.img.naturalHeight,
+    isSelected: false,
+    isBulkSelected: false,
+    currentImgWidth: this.img.naturalWidth,
+    currentImgHeigth: this.img.naturalHeight,
+    scaleToCurrentImage: 1
+  };
+
+  this.testShapes.push(newSymbol);
+  this.updateCanvasAndRedraw();
+  
+  console.log('Symbol placed:', newSymbol);
+}
+
 
 
 

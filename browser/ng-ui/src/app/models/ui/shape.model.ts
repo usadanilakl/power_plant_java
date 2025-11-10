@@ -51,5 +51,15 @@ export interface ImageShape extends BaseShape {
   imageData?: string; // Base64 encoded image data
   // aspectRatio: number; // width/height ratio to maintain proportions
 }
+export interface SVGSymbolShape extends BaseShape {
+  type: 'svg-symbol';
+  symbolId: string;
+  svgPath: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+}
 
-export type Shape = RectangleShape | CircleShape | LineShape | TextShape | ImageShape;
+export type Shape = RectangleShape | CircleShape | LineShape | TextShape | ImageShape | SVGSymbolShape;

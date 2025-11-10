@@ -217,7 +217,7 @@
 
 
 import { Injectable } from '@angular/core';
-import { CircleShape, ImageShape, LineShape, RectangleShape, Shape, TextShape } from '../../models/ui/shape.model';
+import { CircleShape, ImageShape, LineShape, RectangleShape, Shape, SVGSymbolShape, TextShape } from '../../models/ui/shape.model';
 
 @Injectable({
   providedIn: 'root'
@@ -272,6 +272,43 @@ export class CanvasRenderService {
       case 'text':
         this.drawText(ctx, scaledShape as TextShape, scale);
         break;
+      case 'svg-symbol':
+        this.drawSVGSymbol(ctx, scaledShape as SVGSymbolShape, scale);
+        break;
+      }
+  }
+
+  
+  private drawSVGSymbol(
+    ctx: CanvasRenderingContext2D,
+    symbol: SVGSymbolShape,
+    scale: number
+  ): void {
+    ctx.save();
+    
+    // Translate to symbol position (already scaled)
+    ctx.translate(symbol.x, symbol.y);
+    
+    // Apply the scale transformation for the symbol itself
+    // Note: symbol.x, symbol.y, width, height are already scaled by scaleShape()
+    // But the SVG path coordinates are in the original coordinate system
+    const symbolScale = symbol.width / (symbol.width / scale); // This gives us the scale factor
+    ctx.scale(symbolScale, symbolScale);
+    
+    // Apply rotation if specified
+    if (symbol.rotation) {
+      ctx.rotate((symbol.rotation * Math.PI) / 180);
+    }
+    
+    // Draw SVG path (using original unscaled path)
+    const path = new Path2D(symbol.svgPath);
+    ctx.stroke(path);
+    
+    ctx.restore();
+    
+    // Draw selection handles if selected (after restoring context)
+    if (symbol.isSelected) {
+      this.drawSelectionHandles(ctx, symbol);
     }
   }
 
@@ -490,6 +527,14 @@ export class CanvasRenderService {
           x: shape.x * scale,
           y: shape.y * scale,
         };
+      case 'svg-symbol':
+        return {
+          ...shape,
+          x: shape.x * scale,
+          y: shape.y * scale,
+          width: shape.width * scale,
+          height: shape.height * scale,
+        };
       default:
         return shape;
     }
@@ -544,6 +589,14 @@ export class CanvasRenderService {
         return [
           [line.startX, line.startY],
           [line.endX, line.endY]
+        ];
+      case 'svg-symbol':
+        const symbol = shape as SVGSymbolShape;
+        return [
+          [symbol.x, symbol.y],
+          [symbol.x + symbol.width, symbol.y],
+          [symbol.x, symbol.y + symbol.height],
+          [symbol.x + symbol.width, symbol.y + symbol.height]
         ];
       default:
         return [];

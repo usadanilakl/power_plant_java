@@ -50,7 +50,7 @@ export class DrawingService {
   /**
    * Convert client coordinates to natural image coordinates
    */
-  private clientToImageCoords(
+  clientToImageCoords(
     clientX: number,
     clientY: number,
     imgRect: DOMRect,

@@ -1,5 +1,5 @@
-<div #zoomOuter class="zoom-outer">
-    <!-- Hidden file input for shape conversion -->
+<!-- <div #zoomOuter class="zoom-outer">
+    
     <input 
         #shapeImageInput 
         type="file" 
@@ -7,7 +7,7 @@
         style="display: none;"
         (change)="onShapeImageSelected($event)"
     />
-    
+
     <div #zoomElement class="zoom" 
     [style.cursor]="cursor"
     (mousedown)="onMouseDown($event)"
@@ -24,4 +24,79 @@
             <canvas #canvasElement></canvas>
         </div>
     </div>
+</div> -->
+
+
+<div class="interactive-image-container">
+  <!-- Symbol Palette Sidebar -->
+  <div class="symbol-palette-sidebar" *ngIf="showSymbolPalette()">
+    <app-symbol-palette 
+      (symbolSelected)="onSymbolSelected($event)">
+    </app-symbol-palette>
+  </div>
+
+  <!-- Main Image Area -->
+  <div class="image-workspace">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button (click)="toggleSymbolPalette()" class="toolbar-btn">
+        <span>{{ showSymbolPalette() ? 'Hide' : 'Show' }} Symbols</span>
+      </button>
+      
+      <button (click)="setDrawMode('rectangle')" 
+              [class.active]="currentDrawMode() === 'rectangle'"
+              class="toolbar-btn">
+        Rectangle
+      </button>
+      
+      <button (click)="setDrawMode('symbol')" 
+              [class.active]="currentDrawMode() === 'symbol'"
+              class="toolbar-btn">
+        Place Symbol
+      </button>
+      
+      <button (click)="setDrawMode('none')" 
+              [class.active]="currentDrawMode() === 'none'"
+              class="toolbar-btn">
+        Select
+      </button>
+    </div>
+
+    <!-- Image Container -->
+    <div #imageContainer class="image-container">
+      <div #zoomOuter class="zoom-outer">
+        <div #zoomElement class="zoom-element">
+          <img 
+            #imageElement
+            [src]="imageUrl()"
+            [alt]="imageName()"
+            class="main-image"
+            (wheel)="onWheel($event)"
+            (mouseleave)="onMouseLeave($event)"
+            (mousedown)="onMouseDown($event)"
+            (mousemove)="onMouseMove($event)"
+            (mouseup)="onMouseUp($event)"
+            (click)="onLeftClick($event)"
+            (auxclick)="onMiddleClick($event)"
+            (contextmenu)="onRightClick($event)"
+            (dblclick)="onDoubleClick($event)"
+            [style.cursor]="cursor"
+          />
+          <canvas 
+            #canvasElement
+            class="shape-canvas">
+          </canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden file input for image conversion -->
+  <input 
+    #shapeImageInput
+    type="file"
+    accept="image/*"
+    (change)="onShapeImageSelected($event)"
+    style="display: none"
+  />
 </div>
