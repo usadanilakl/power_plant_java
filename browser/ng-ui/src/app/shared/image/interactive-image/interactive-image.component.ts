@@ -1,5 +1,5 @@
 
-import { Component, DestroyRef, ElementRef, inject, input, signal, ViewChild } from "@angular/core";
+import { Component, DestroyRef, effect, ElementRef, inject, input, signal, ViewChild } from "@angular/core";
 import { fromEvent } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { ImageShape, RectangleShape, Shape, SVGSymbolShape } from "../../../models/ui/shape.model";
@@ -11,6 +11,7 @@ import { ShapeConversionService } from "../../../services/ui/shape-conversion.se
 import { SymbolPaletteComponent } from "../symbol-palette/symbol-palette.component";
 import { CommonModule } from "@angular/common";
 import { PIDSymbol } from "../../../services/ui/pid-symbols.service";
+import { ShapeManagerService } from "../../../services/ui/shape-manager.service";
 
 
 type DrawMode = 'none' | 'rectangle' | 'symbol';
@@ -36,80 +37,17 @@ export class InteractiveImageComponent {
   private canvasRenderService = inject(CanvasRenderService);
   private drawingService = inject(DrawingService);
   private shapeConversionService = inject(ShapeConversionService);
-  
-  testShapes: Shape[] = [
-    {
-      id: 1,
-      type: 'rectangle',
-      x: 50,
-      y: 50,
-      width: 200,
-      height: 150,
-      color: '#FF0000',
-      originalPictureWidth: 1920,
-      originalPictureHeight: 1080,
-      isSelected: false,
-      isBulkSelected: false,
-      currentImgWidth: 1920,
-      currentImgHeigth: 1080,
-      scaleToCurrentImage: 1
-    },
-    {
-      id: 2,
-      type: 'rectangle',
-      x: 300,
-      y: 200,
-      width: 150,
-      height: 100,
-      color: '#00FF00',
-      originalPictureWidth: 1920,
-      originalPictureHeight: 1080,
-      isSelected: true,
-      isBulkSelected: false,
-      currentImgWidth: 1920,
-      currentImgHeigth: 1080,
-      scaleToCurrentImage: 1
-    },
-    {
-      id: 3,
-      type: 'rectangle',
-      x: 500,
-      y: 100,
-      width: 180,
-      height: 120,
-      color: '#0000FF',
-      originalPictureWidth: 1920,
-      originalPictureHeight: 1080,
-      isSelected: false,
-      isBulkSelected: true,
-      currentImgWidth: 1920,
-      currentImgHeigth: 1080,
-      scaleToCurrentImage: 1
-    },
-    {
-      id: 4,
-      type: 'rectangle',
-      x: 100,
-      y: 300,
-      width: 250,
-      height: 80,
-      color: '#FFA500',
-      originalPictureWidth: 1920,
-      originalPictureHeight: 1080,
-      isSelected: false,
-      isBulkSelected: false,
-      currentImgWidth: 1920,
-      currentImgHeigth: 1080,
-      scaleToCurrentImage: 1
-    }
-  ];
+  private shapeManager = inject(ShapeManagerService);
 
   imageUrl = input<string>();
   imageName = input<string>();
-  shapes = input<Shape[]>(this.testShapes);
-  selectedShapeIds = input<number[]>([]);
-  singleSelectedShapeId = input<number | null>();
+  shapesInput = input<Shape[]>([]);
   isEditEnabled = input<boolean>(false);
+
+
+  shapes = this.shapeManager.shapes;
+  selectedShapeIds = this.shapeManager.selectedShapeIds;
+  singleSelectedShapeId = this.shapeManager.singleSelectedShapeId;
 
   private _zoomElement!: HTMLDivElement;
   private _zoomOuter!: HTMLDivElement;
@@ -147,6 +85,16 @@ export class InteractiveImageComponent {
   showSymbolPalette = signal<boolean>(true);
   currentDrawMode = signal<DrawMode>('none');
   selectedSymbol = signal<PIDSymbol | null>(null);
+
+  constructor() {
+    // Effect to redraw canvas when shapes change
+    effect(() => {
+      const shapes = this.shapes();
+      if (this.canvas && this.img) {
+        this.updateCanvasAndRedraw();
+      }
+    });
+  }
 
   ngOnDestroy() {
     this.drawingService.cleanup();
@@ -249,7 +197,7 @@ export class InteractiveImageComponent {
     this.canvasRenderService.updateCanvasSize(this.canvas, this.img);
     this.canvasRenderService.drawShapes(
       this.canvas,
-      this.testShapes,
+      this.shapes(),
       this.imageScale
     );
   }
@@ -335,9 +283,15 @@ export class InteractiveImageComponent {
   }
 
   onLeftClick(event: MouseEvent): void {
-  // Handle symbol placement in symbol mode
+    // Handle symbol placement in symbol mode
     if (this.currentDrawMode() === 'symbol') {
       this.placeSymbol(event);
+      return;
+    }
+    
+    // Handle shape selection in default mode
+    if (this.currentDrawMode() === 'none') {
+      this.handleShapeSelection(event);
       return;
     }
   }
@@ -347,7 +301,37 @@ export class InteractiveImageComponent {
   }
 
   onRightClick(event: MouseEvent): void {
-    console.log('right click');
+    event.preventDefault();
+    
+    // First check if we clicked on a shape
+    const imgRect = this.img.getBoundingClientRect();
+    const clickX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+    const clickY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+    
+    const shapes = this.shapes();
+    let clickedShapeId: number | null = null;
+    
+    for (let i = shapes.length - 1; i >= 0; i--) {
+      const shape = shapes[i];
+      
+      if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
+        if (clickX >= shape.x && clickX <= shape.x + shape.width &&
+            clickY >= shape.y && clickY <= shape.y + shape.height) {
+          clickedShapeId = shape.id;
+          break;
+        }
+      }
+    }
+    
+    if (clickedShapeId !== null) {
+      // Select the shape if not already selected
+      if (!this.selectedShapeIds().includes(clickedShapeId)) {
+        this.shapeManager.selectShape(clickedShapeId, true);
+      }
+      
+      // Show context menu for shape operations
+      this.showShapeContextMenu(event, clickedShapeId);
+    }
   }
 
   onDoubleClick(event: MouseEvent): void {
@@ -416,7 +400,7 @@ export class InteractiveImageComponent {
       this.transformState
     );
   }
-  
+
   private finishDrawing(event: MouseEvent): void {
     const imgRect = this.img.getBoundingClientRect();
     const newShape = this.drawingService.finishDrawing(
@@ -427,14 +411,14 @@ export class InteractiveImageComponent {
       this.transformState,
       this.img.naturalWidth,
       this.img.naturalHeight,
-      this.testShapes.length + 1
+      this.shapeManager.getNextShapeId() // Changed from this.shapes().length + 1
     );
-  
+
     if (newShape) {
-      this.testShapes.push(newShape);
-      this.updateCanvasAndRedraw();
+      this.shapeManager.addShape(newShape); // Changed from this.shapes().push(newShape)
+      // updateCanvasAndRedraw() will be called automatically by the effect
     }
-  
+
     this.cursor = 'default';
   }
 
@@ -442,88 +426,71 @@ export class InteractiveImageComponent {
 
 
 //Image Shape Methods
-convertShapeToImage(shapeId: number): void {
-  this.shapeIdToConvert = shapeId;
-  this.shapeImageInput.nativeElement.click();
-}
-
-// Handle image selection for shape conversion
-
-async onShapeImageSelected(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement;
-  if (!input.files || input.files.length === 0 || this.shapeIdToConvert === null) {
-    return;
+  convertShapeToImage(shapeId: number): void {
+    this.shapeIdToConvert = shapeId;
+    this.shapeImageInput.nativeElement.click();
   }
 
-  const file = input.files[0];
-  
-  // Validate file type
-  if (!file.type.startsWith('image/')) {
-    console.error('Please select an image file');
-    return;
-  }
-
-  try {
-    const shapeIndex = this.testShapes.findIndex(s => s.id === this.shapeIdToConvert);
-    
-    if (shapeIndex === -1) {
-      console.error('Shape not found');
+  async onShapeImageSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0 || this.shapeIdToConvert === null) {
       return;
     }
 
-    const currentShape = this.testShapes[shapeIndex];
+    const file = input.files[0];
     
-    if (currentShape.type === 'rectangle') {
-      // Convert rectangle to image
-      const imageShape = await this.shapeConversionService.convertRectangleToImage(
-        currentShape as RectangleShape,
-        file
-      );
-      this.testShapes[shapeIndex] = imageShape;
-    } else if (currentShape.type === 'image') {
-      // Update existing image
-      const updatedShape = await this.shapeConversionService.updateImageForShape(
-        currentShape as ImageShape,
-        file
-      );
-      this.testShapes[shapeIndex] = updatedShape;
+    if (!file.type.startsWith('image/')) {
+      console.error('Please select an image file');
+      return;
     }
 
-    this.updateCanvasAndRedraw();
-    console.log('Shape converted to image successfully');
-  } catch (error) {
-    console.error('Failed to convert shape to image:', error);
-  } finally {
-    this.shapeIdToConvert = null;
-    input.value = '';
-  }
-}
+    try {
+      const currentShape = this.shapeManager.getShapeById(this.shapeIdToConvert);
+      
+      if (!currentShape) { // Changed
+        console.error('Shape not found');
+        return;
+      }
 
-// Add method to convert image back to rectangle
-convertImageToRectangle(shapeId: number): void {
-  const shapeIndex = this.testShapes.findIndex(s => s.id === shapeId);
-  
-  if (shapeIndex === -1) {
-    console.error('Shape not found');
-    return;
+      if (currentShape.type === 'rectangle') {
+        const imageShape = await this.shapeConversionService.convertRectangleToImage(
+          currentShape as RectangleShape,
+          file
+        );
+        this.shapeManager.replaceShape(this.shapeIdToConvert, imageShape);
+      } else if (currentShape.type === 'image') {
+        const updatedShape = await this.shapeConversionService.updateImageForShape(
+          currentShape as ImageShape,
+          file
+        );
+        this.shapeManager.replaceShape(this.shapeIdToConvert, updatedShape);
+      }
+
+      console.log('Shape converted to image successfully');
+    } catch (error) {
+      console.error('Failed to convert shape to image:', error);
+    } finally {
+      this.shapeIdToConvert = null;
+      input.value = '';
+    }
   }
 
-  const currentShape = this.testShapes[shapeIndex];
-  
-  if (currentShape.type === 'image') {
-    const rectangleShape = this.shapeConversionService.convertImageToRectangle(
-      currentShape as ImageShape
-    );
-    this.testShapes[shapeIndex] = rectangleShape;
-    this.updateCanvasAndRedraw();
-    console.log('Image converted back to rectangle');
+  convertImageToRectangle(shapeId: number): void {
+    const currentShape = this.shapeManager.getShapeById(shapeId);
+    
+    if (!currentShape) {
+      console.error('Shape not found');
+      return;
+    }
+    
+    if (currentShape.type === 'image') {
+      const rectangleShape = this.shapeConversionService.convertImageToRectangle(
+        currentShape as ImageShape
+      );
+      this.shapeManager.replaceShape(shapeId, rectangleShape);
+      console.log('Image converted back to rectangle');
+    }
   }
-}
-
-// Add method to get shape by ID (useful for context menu)
-getShapeById(shapeId: number): Shape | undefined {
-  return this.testShapes.find(s => s.id === shapeId);
-}
 
 
 
@@ -552,45 +519,165 @@ onSymbolSelected(symbol: PIDSymbol): void {
   console.log('Symbol selected:', symbol);
 }
 
+
+
+
+//Shape Events
+
+
+// Update placeSymbol method (around line 492):
 private placeSymbol(event: MouseEvent): void {
   const symbol = this.selectedSymbol();
   if (!symbol) return;
 
   const imgRect = this.img.getBoundingClientRect();
   
-  // Use the drawing service's coordinate conversion method
-  const { x, y } = this.drawingService.clientToImageCoords(
-    event.clientX,
-    event.clientY,
-    imgRect,
-    this.baseImageScale,
-    this.transformState
+  // Convert client coordinates to image coordinates
+  const relativeX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+  const relativeY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+
+  const newSymbol = this.shapeManager.createSymbol( // Changed to use ShapeManager
+    symbol,
+    relativeX - (symbol.width / 2),
+    relativeY - (symbol.height / 2),
+    this.img.naturalWidth,
+    this.img.naturalHeight
   );
 
-  const newSymbol: SVGSymbolShape = {
-    id: this.testShapes.length + 1,
-    type: 'svg-symbol',
-    symbolId: symbol.id,
-    svgPath: symbol.svgPath,
-    x: x - (symbol.width / 2), // Center the symbol on click point
-    y: y - (symbol.height / 2),
-    width: symbol.width,
-    height: symbol.height,
-    color: '#000000',
-    rotation: 0,
-    originalPictureWidth: this.img.naturalWidth,
-    originalPictureHeight: this.img.naturalHeight,
-    isSelected: false,
-    isBulkSelected: false,
-    currentImgWidth: this.img.naturalWidth,
-    currentImgHeigth: this.img.naturalHeight,
-    scaleToCurrentImage: 1
-  };
-
-  this.testShapes.push(newSymbol);
-  this.updateCanvasAndRedraw();
+  this.shapeManager.addShape(newSymbol); // Changed
   
   console.log('Symbol placed:', newSymbol);
+}
+
+// Add method to handle shape selection (add after onLeftClick):
+private handleShapeSelection(event: MouseEvent): void {
+  const imgRect = this.img.getBoundingClientRect();
+  
+  // Convert click coordinates to image space
+  const clickX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+  const clickY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+  
+  // Find clicked shape (iterate in reverse to get topmost shape)
+  const shapes = this.shapes();
+  let clickedShapeId: number | null = null;
+  
+  for (let i = shapes.length - 1; i >= 0; i--) {
+    const shape = shapes[i];
+    
+    if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
+      if (clickX >= shape.x && clickX <= shape.x + shape.width &&
+          clickY >= shape.y && clickY <= shape.y + shape.height) {
+        clickedShapeId = shape.id;
+        break;
+      }
+    }
+  }
+  
+  if (clickedShapeId !== null) {
+    // Handle selection with Ctrl/Cmd for multi-select
+    if (event.ctrlKey || event.metaKey) {
+      this.shapeManager.toggleShapeSelection(clickedShapeId);
+    } else {
+      this.shapeManager.selectShape(clickedShapeId, true);
+    }
+  } else {
+    // Clicked on empty space - clear selection
+    if (!event.ctrlKey && !event.metaKey) {
+      this.shapeManager.clearSelections();
+    }
+  }
+}
+
+// Add visual feedback for selected shapes in the template
+// Update the cursor based on hover state (add this method):
+private updateCursorForHover(event: MouseEvent): void {
+  if (this.currentDrawMode() !== 'none') return;
+  
+  const imgRect = this.img.getBoundingClientRect();
+  const hoverX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+  const hoverY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+  
+  const shapes = this.shapes();
+  let isOverShape = false;
+  
+  for (let i = shapes.length - 1; i >= 0; i--) {
+    const shape = shapes[i];
+    
+    if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
+      if (hoverX >= shape.x && hoverX <= shape.x + shape.width &&
+          hoverY >= shape.y && hoverY <= shape.y + shape.height) {
+        isOverShape = true;
+        break;
+      }
+    }
+  }
+  
+  this.cursor = isOverShape ? 'pointer' : 'default';
+}
+
+// Add keyboard shortcuts for shape operations (add in ngAfterViewInit):
+private setupKeyboardShortcuts(): void {
+  fromEvent<KeyboardEvent>(document, 'keydown')
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe(event => {
+      // Delete selected shapes with Delete or Backspace
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        const selectedIds = this.selectedShapeIds();
+        if (selectedIds.length > 0) {
+          event.preventDefault();
+          this.shapeManager.deleteShapes(selectedIds);
+          console.log('Deleted shapes:', selectedIds);
+        }
+      }
+      
+      // Select all with Ctrl+A
+      if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+        event.preventDefault();
+        const allShapeIds = this.shapes().map(s => s.id);
+        this.shapeManager.selectMultipleShapes(allShapeIds);
+        console.log('Selected all shapes');
+      }
+      
+      // Deselect all with Escape
+      if (event.key === 'Escape') {
+        this.shapeManager.clearSelections();
+        this.currentDrawMode.set('none');
+        this.selectedSymbol.set(null);
+        this.cursor = 'default';
+      }
+      
+      // Copy selected shapes with Ctrl+C
+      if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+        const selectedShapes = this.shapeManager.getSelectedShapes();
+        if (selectedShapes.length > 0) {
+          event.preventDefault();
+          // Store in clipboard or component state
+          console.log('Copied shapes:', selectedShapes);
+        }
+      }
+    });
+}
+
+// Add a method to show context menu (add after handleShapeSelection):
+private showShapeContextMenu(event: MouseEvent, shapeId: number): void {
+  const shape = this.shapeManager.getShapeById(shapeId);
+  if (!shape) return;
+  
+  console.log('Context menu for shape:', shape);
+  
+  // TODO: Implement actual context menu UI
+  // For now, just log available actions
+  const actions = [];
+  
+  if (shape.type === 'rectangle') {
+    actions.push('Convert to Image');
+  } else if (shape.type === 'image') {
+    actions.push('Change Image', 'Convert to Rectangle');
+  }
+  
+  actions.push('Delete', 'Duplicate', 'Bring to Front', 'Send to Back');
+  
+  console.log('Available actions:', actions);
 }
 
 
