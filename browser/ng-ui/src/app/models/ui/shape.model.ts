@@ -41,4 +41,15 @@ export interface TextShape extends BaseShape {
   text: string;
 }
 
-export type Shape = RectangleShape | CircleShape | LineShape | TextShape;
+export interface ImageShape extends BaseShape {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type: 'image';
+  imageUrl: string;
+  imageData?: string; // Base64 encoded image data
+  // aspectRatio: number; // width/height ratio to maintain proportions
+}
+
+export type Shape = RectangleShape | CircleShape | LineShape | TextShape | ImageShape;

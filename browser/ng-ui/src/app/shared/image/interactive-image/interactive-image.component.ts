@@ -2,11 +2,12 @@
 import { Component, DestroyRef, ElementRef, inject, input, ViewChild } from "@angular/core";
 import { fromEvent } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { RectangleShape, Shape } from "../../../models/ui/shape.model";
+import { ImageShape, RectangleShape, Shape } from "../../../models/ui/shape.model";
 import { MouseEventsService } from "../../../services/ui/mouse-events.service";
 import { TransformState, ZoomPanService } from "../../../services/ui/zoom-pan.service";
 import { CanvasRenderService } from "../../../services/ui/canvas-render.service";
 import { DrawingService } from "../../../services/ui/drawing.service";
+import { ShapeConversionService } from "../../../services/ui/shape-conversion.service";
 
 @Component({
   selector: 'app-interactive-image',
@@ -21,14 +22,16 @@ export class InteractiveImageComponent {
   @ViewChild('zoomOuter') private zoomOuterRef!: ElementRef<HTMLDivElement>;
   @ViewChild('imageElement') private imgRef!: ElementRef<HTMLImageElement>;
   @ViewChild('canvasElement') private canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('shapeImageInput') shapeImageInput!: ElementRef<HTMLInputElement>;
 
   private mouseEventService = inject(MouseEventsService);
   private destroyRef = inject(DestroyRef);
   private zoomPanService = inject(ZoomPanService);
   private canvasRenderService = inject(CanvasRenderService);
   private drawingService = inject(DrawingService);
+  private shapeConversionService = inject(ShapeConversionService);
   
-  testShapes: RectangleShape[] = [
+  testShapes: Shape[] = [
     {
       id: 1,
       type: 'rectangle',
@@ -127,6 +130,9 @@ export class InteractiveImageComponent {
   baseImageScale: number = 1;
   imageScale: number = 1;
   cursor: string = 'default';
+
+
+  private shapeIdToConvert: number | null = null;
 
   ngOnDestroy() {
     this.drawingService.cleanup();
@@ -396,4 +402,95 @@ export class InteractiveImageComponent {
     
       this.cursor = 'default';
     }
+
+
+
+
+// Add method to trigger conversion
+convertShapeToImage(shapeId: number): void {
+  this.shapeIdToConvert = shapeId;
+  this.shapeImageInput.nativeElement.click();
+}
+
+// Handle image selection for shape conversion
+
+async onShapeImageSelected(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement;
+  if (!input.files || input.files.length === 0 || this.shapeIdToConvert === null) {
+    return;
+  }
+
+  const file = input.files[0];
+  
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    console.error('Please select an image file');
+    return;
+  }
+
+  try {
+    const shapeIndex = this.testShapes.findIndex(s => s.id === this.shapeIdToConvert);
+    
+    if (shapeIndex === -1) {
+      console.error('Shape not found');
+      return;
+    }
+
+    const currentShape = this.testShapes[shapeIndex];
+    
+    if (currentShape.type === 'rectangle') {
+      // Convert rectangle to image
+      const imageShape = await this.shapeConversionService.convertRectangleToImage(
+        currentShape as RectangleShape,
+        file
+      );
+      this.testShapes[shapeIndex] = imageShape;
+    } else if (currentShape.type === 'image') {
+      // Update existing image
+      const updatedShape = await this.shapeConversionService.updateImageForShape(
+        currentShape as ImageShape,
+        file
+      );
+      this.testShapes[shapeIndex] = updatedShape;
+    }
+
+    this.updateCanvasAndRedraw();
+    console.log('Shape converted to image successfully');
+  } catch (error) {
+    console.error('Failed to convert shape to image:', error);
+  } finally {
+    this.shapeIdToConvert = null;
+    input.value = '';
+  }
+}
+
+// Add method to convert image back to rectangle
+convertImageToRectangle(shapeId: number): void {
+  const shapeIndex = this.testShapes.findIndex(s => s.id === shapeId);
+  
+  if (shapeIndex === -1) {
+    console.error('Shape not found');
+    return;
+  }
+
+  const currentShape = this.testShapes[shapeIndex];
+  
+  if (currentShape.type === 'image') {
+    const rectangleShape = this.shapeConversionService.convertImageToRectangle(
+      currentShape as ImageShape
+    );
+    this.testShapes[shapeIndex] = rectangleShape;
+    this.updateCanvasAndRedraw();
+    console.log('Image converted back to rectangle');
+  }
+}
+
+// Add method to get shape by ID (useful for context menu)
+getShapeById(shapeId: number): Shape | undefined {
+  return this.testShapes.find(s => s.id === shapeId);
+}
+
+
+
+
   }

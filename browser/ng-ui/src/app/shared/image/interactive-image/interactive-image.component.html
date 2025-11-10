@@ -1,4 +1,13 @@
 <div #zoomOuter class="zoom-outer">
+    <!-- Hidden file input for shape conversion -->
+    <input 
+        #shapeImageInput 
+        type="file" 
+        accept="image/*" 
+        style="display: none;"
+        (change)="onShapeImageSelected($event)"
+    />
+    
     <div #zoomElement class="zoom" 
     [style.cursor]="cursor"
     (mousedown)="onMouseDown($event)"
