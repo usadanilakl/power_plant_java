@@ -91,6 +91,15 @@
     </div>
   </div>
 
+  @if (contextMenu.visible) {
+    <app-context-menu
+      [items]="contextMenu.items"
+      [position]="{ x: contextMenu.x, y: contextMenu.y }"
+      (closeMenu)="closeContextMenu()"
+      (itemClick)="handleContextMenuAction($event)">
+    </app-context-menu>
+  }
+
   <!-- Hidden file input for image conversion -->
   <input 
     #shapeImageInput

@@ -12,6 +12,7 @@ import { SymbolPaletteComponent } from "../symbol-palette/symbol-palette.compone
 import { CommonModule } from "@angular/common";
 import { PIDSymbol } from "../../../services/ui/pid-symbols.service";
 import { ShapeManagerService } from "../../../services/ui/shape-manager.service";
+import { ContextMenuItem, ContextMenuComponent } from "../../menus/context-menu/context-menu.component";
 
 
 type DrawMode = 'none' | 'rectangle' | 'symbol';
@@ -20,7 +21,7 @@ type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 @Component({
   selector: 'app-interactive-image',
   standalone: true,
-  imports: [CommonModule, SymbolPaletteComponent],
+  imports: [CommonModule, SymbolPaletteComponent, ContextMenuComponent],
   templateUrl: './interactive-image.component.html',
   styleUrl: './interactive-image.component.css'
 })
@@ -91,6 +92,18 @@ export class InteractiveImageComponent {
   private initialShapeBounds: { x: number; y: number; width: number; height: number } | null = null;
 
 
+  private lastMouseDownTime: number = 0;
+  private lastMouseDownPos: { x: number, y: number } = { x: 0, y: 0 };
+
+
+
+  contextMenu = {
+    visible: false,
+    x: 0,
+    y: 0,
+    items: [] as ContextMenuItem[],
+    shapeId: null as number | null
+  };
 
 
   private shapeIdToConvert: number | null = null;
@@ -148,6 +161,7 @@ export class InteractiveImageComponent {
             this.onLeftClick(classifiedEvent.event);
             break;
           case 'double':
+            console.log('Double click case');
             this.onDoubleClick(classifiedEvent.event);
             break;
           case 'middle':
@@ -234,49 +248,94 @@ export class InteractiveImageComponent {
     }
   }
 
-  onMouseDown(event: MouseEvent): void {
-    // Right mouse button for drawing
-    if (event.button === 2) {
-      if(this.currentDrawMode()==='symbol'){
-        this.placeSymbol(event);
-        console.log('Placing Symbol');
-        return;
-      }else{
-        event.preventDefault();
-        this.startDrawing(event);
+  // onMouseDown(event: MouseEvent): void {
+  //   // Right mouse button for drawing
+  //   if (event.button === 2) {
+  //     if(this.currentDrawMode()==='symbol'){
+  //       this.placeSymbol(event);
+  //       console.log('Placing Symbol');
+  //       return;
+  //     }else{
+  //       event.preventDefault();
+  //       this.startDrawing(event);
+  //       return;
+  //     }
+  //   }
+
+  //   // Left mouse button for panning
+  //   if (event.button === 0) {
+  //     // First check if clicking on a resize handle
+  //     const handle = this.getResizeHandleAtPoint(event);
+  //     if (handle) {
+  //       event.preventDefault();
+  //       this.startResizingShape(event, handle);
+  //       return;
+  //     }
+    
+  //     // Then check if clicking on a shape
+  //     const clickedShapeId = this.isOverShape(event);
+  //     if (clickedShapeId !== null) {
+  //       // If Ctrl/Cmd is held, don't start dragging - just handle selection
+  //       if (event.ctrlKey || event.metaKey) {
+  //         event.preventDefault();
+  //         // Selection will be handled in onLeftClick
+  //         return;
+  //       }
+  //       // Start dragging the shape(s)
+  //       event.preventDefault();
+  //       this.startDraggingShape(event, clickedShapeId);
+  //       return;
+  //     }
+  //     event.preventDefault();
+  //     this.startPanning(event);
+  //     return;
+  //   }
+  // }
+
+
+    onMouseDown(event: MouseEvent): void {
+      // Prevent default browser behavior, like image dragging
+      event.preventDefault();
+      
+      this.lastMouseDownTime = Date.now();
+      this.lastMouseDownPos = { x: event.clientX, y: event.clientY };
+
+      // Middle mouse button for drawing
+      if (event.button === 1) {
+        if (this.currentDrawMode() !== 'none') {
+          this.startDrawing(event);
+        }
         return;
       }
-    }
-
-    // Left mouse button for panning
-    if (event.button === 0) {
-      // First check if clicking on a resize handle
+      
+      // We only care about left-clicks for the following actions
+      if (event.button !== 0) {
+        return;
+      }
+      
+      // Check for resize handle and start resizing
       const handle = this.getResizeHandleAtPoint(event);
-      if (handle) {
-        event.preventDefault();
+      if (handle && this.singleSelectedShapeId() !== null) {
         this.startResizingShape(event, handle);
         return;
       }
-    
-      // Then check if clicking on a shape
+      
       const clickedShapeId = this.isOverShape(event);
-      if (clickedShapeId !== null) {
-        // If Ctrl/Cmd is held, don't start dragging - just handle selection
-        if (event.ctrlKey || event.metaKey) {
-          event.preventDefault();
-          // Selection will be handled in onLeftClick
+      
+      // If over a shape, prepare for dragging
+      if (clickedShapeId !== null && this.currentDrawMode() === 'none') {
+        // If the clicked shape is part of the current selection, start dragging
+        if (this.selectedShapeIds().includes(clickedShapeId)) {
+          this.startDraggingShape(event, clickedShapeId);
           return;
         }
-        // Start dragging the shape(s)
-        event.preventDefault();
-        this.startDraggingShape(event, clickedShapeId);
-        return;
       }
-      event.preventDefault();
-      this.startPanning(event);
-      return;
+      
+      // If not over a shape and not in a drawing mode, start panning
+      if (this.currentDrawMode() === 'none') {
+        this.startPanning(event);
+      }
     }
-  }
 
 
   onMouseMove(event: MouseEvent): void {
@@ -350,17 +409,43 @@ export class InteractiveImageComponent {
     }
   }
 
-  onLeftClick(event: MouseEvent): void {
-    // Check if Ctrl (Windows/Linux) or Cmd (Mac) is held
-    if (event.ctrlKey || event.metaKey) {
-      this.handleShapeSelection(event);
-    } else {
-      console.log('Ctrl/Cmd key is NOT held');
-      // Handle normal click behavior
-    }
+  // onLeftClick(event: MouseEvent): void {
+  //   // Check if Ctrl (Windows/Linux) or Cmd (Mac) is held
+  //   if (event.ctrlKey || event.metaKey) {
+  //     this.handleShapeSelection(event);
+  //   } else {
+  //     console.log('Ctrl/Cmd key is NOT held');
+  //     // Handle normal click behavior
+  //   }
 
     
-  }
+  // }
+    onLeftClick(event: MouseEvent): void {
+      if (this.isDraggingShape || this.isResizingShape) {
+        return; // Don't process click if a drag/resize just finished
+      }
+      
+      // Logic to distinguish a click from a drag
+      const timeDiff = Date.now() - this.lastMouseDownTime;
+      const posDiff = Math.sqrt(
+        Math.pow(event.clientX - this.lastMouseDownPos.x, 2) +
+        Math.pow(event.clientY - this.lastMouseDownPos.y, 2)
+      );
+      
+      if (timeDiff > 250 || posDiff > 5) {
+        // This was likely a drag, not a click, so do nothing.
+        return;
+      }
+      
+      // Handle drawing modes
+      if (this.currentDrawMode() === 'symbol') {
+        this.placeSymbol(event);
+      } else if (this.currentDrawMode() === 'none') {
+        // Handle shape selection on click
+        const isCtrlClick = event.ctrlKey || event.metaKey;
+        if(isCtrlClick)this.handleShapeSelection(event);
+      }
+    }
 
   onMiddleClick(event: MouseEvent): void {
     console.log('middle click');
@@ -384,9 +469,9 @@ export class InteractiveImageComponent {
   }
 
   onDoubleClick(event: MouseEvent): void {
-    // console.log('double click');
+    console.log('double click');
     // // this.resetTransform();    
-    //   this.handleShapeSelection(event);
+      this.handleShapeSelection(event);
     //   return;
   }
 
@@ -697,28 +782,6 @@ private setupKeyboardShortcuts(): void {
     });
 }
 
-// Add a method to show context menu (add after handleShapeSelection):
-private showShapeContextMenu(event: MouseEvent, shapeId: number): void {
-  const shape = this.shapeManager.getShapeById(shapeId);
-  if (!shape) return;
-  
-  console.log('Context menu for shape:', shape);
-  
-  // TODO: Implement actual context menu UI
-  // For now, just log available actions
-  const actions = [];
-  
-  if (shape.type === 'rectangle') {
-    actions.push('Convert to Image');
-  } else if (shape.type === 'image') {
-    actions.push('Change Image', 'Convert to Rectangle');
-  }
-  
-  actions.push('Delete', 'Duplicate', 'Bring to Front', 'Send to Back');
-  
-  console.log('Available actions:', actions);
-}
-
 private isOverShape(event: MouseEvent){
     const imgRect = this.img.getBoundingClientRect();
     const clickX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
@@ -739,6 +802,56 @@ private isOverShape(event: MouseEvent){
       }
     }
     return clickedShapeId;
+}
+
+closeContextMenu(): void {
+  this.contextMenu.visible = false;
+}
+
+handleContextMenuAction(event: { action: string }): void {
+  if (this.contextMenu.shapeId === null) return;
+
+  switch (event.action) {
+    case 'delete':
+      this.shapeManager.deleteShapes([this.contextMenu.shapeId]);
+      break;
+    case 'duplicate':
+      // TODO: Implement duplication logic
+      console.log('Duplicate shape:', this.contextMenu.shapeId);
+      break;
+    // Add other cases here
+  }
+  this.closeContextMenu();
+}
+
+// Add a method to show context menu (add after handleShapeSelection):
+private showShapeContextMenu(event: MouseEvent, shapeId: number): void {
+  const shape = this.shapeManager.getShapeById(shapeId);
+  if (!shape) return;
+
+  const items: ContextMenuItem[] = [];
+
+  if (shape.type === 'rectangle') {
+    items.push({ label: 'Convert to Image', action: 'convertToImage' });
+  } else if (shape.type === 'image') {
+    items.push({ label: 'Change Image', action: 'changeImage' });
+    items.push({ label: 'Convert to Rectangle', action: 'convertToRect' });
+  }
+
+  items.push(
+    { label: 'Bring to Front', action: 'bringToFront' },
+    { label: 'Send to Back', action: 'sendToBack' },
+    { label: 'Duplicate', action: 'duplicate' },
+    { label: 'Delete', action: 'delete' }
+  );
+
+  this.contextMenu = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    items: items,
+    shapeId: shapeId
+  };
 }
 
 
