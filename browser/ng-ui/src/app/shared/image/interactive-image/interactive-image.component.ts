@@ -15,6 +15,7 @@ import { ShapeManagerService } from "../../../services/ui/shape-manager.service"
 
 
 type DrawMode = 'none' | 'rectangle' | 'symbol';
+type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 
 @Component({
   selector: 'app-interactive-image',
@@ -71,12 +72,25 @@ export class InteractiveImageComponent {
   private isPanning: boolean = false;
   private panStartPos: { x: number; y: number } = { x: 0, y: 0 };
   private panStartTransform: TransformState = { scale: 1, pointX: 0, pointY: 0 };
-  private panAnimationFrame: number | null = null;
-  private needsCanvasUpdate: boolean = false;
 
   baseImageScale: number = 1;
   imageScale: number = 1;
   cursor: string = 'default';
+
+//Shape Dragging state
+  private isDraggingShape: boolean = false;
+  private dragStartPos: { x: number; y: number } = { x: 0, y: 0 };
+  private draggedShapeIds: number[] = [];
+  private initialShapePositions: Map<number, { x: number; y: number }> = new Map();
+
+  // Shape Resizing state
+  private isResizingShape: boolean = false;
+  private resizeHandle: ResizeHandle | null = null;
+  private resizeStartPos: { x: number; y: number } = { x: 0, y: 0 };
+  private resizingShapeId: number | null = null;
+  private initialShapeBounds: { x: number; y: number; width: number; height: number } | null = null;
+
+
 
 
   private shapeIdToConvert: number | null = null;
@@ -119,6 +133,7 @@ export class InteractiveImageComponent {
     };
 
     this.setupMouseEvents();
+    this.setupKeyboardShortcuts();
   }
 
   private setupMouseEvents(): void {
@@ -149,7 +164,7 @@ export class InteractiveImageComponent {
       .subscribe(event => event.preventDefault());
   }
 
-  // Zooming Events
+  // ==================================================Zooming Events==========================================
 
   onWheel(event: WheelEvent): void {
     event.preventDefault();
@@ -207,7 +222,7 @@ export class InteractiveImageComponent {
     this.drawingService.updateTempCanvasSize(this.img, this.baseImageScale);
   }
 
-  // Mouse Event Handlers
+  // ===============================Mouse Event Handlers==============================================
 
   onMouseLeave(event: MouseEvent): void {
     if (this.drawingService.isDrawing()) {
@@ -222,13 +237,41 @@ export class InteractiveImageComponent {
   onMouseDown(event: MouseEvent): void {
     // Right mouse button for drawing
     if (event.button === 2) {
-      event.preventDefault();
-      this.startDrawing(event);
-      return;
+      if(this.currentDrawMode()==='symbol'){
+        this.placeSymbol(event);
+        console.log('Placing Symbol');
+        return;
+      }else{
+        event.preventDefault();
+        this.startDrawing(event);
+        return;
+      }
     }
 
     // Left mouse button for panning
     if (event.button === 0) {
+      // First check if clicking on a resize handle
+      const handle = this.getResizeHandleAtPoint(event);
+      if (handle) {
+        event.preventDefault();
+        this.startResizingShape(event, handle);
+        return;
+      }
+    
+      // Then check if clicking on a shape
+      const clickedShapeId = this.isOverShape(event);
+      if (clickedShapeId !== null) {
+        // If Ctrl/Cmd is held, don't start dragging - just handle selection
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          // Selection will be handled in onLeftClick
+          return;
+        }
+        // Start dragging the shape(s)
+        event.preventDefault();
+        this.startDraggingShape(event, clickedShapeId);
+        return;
+      }
       event.preventDefault();
       this.startPanning(event);
       return;
@@ -240,6 +283,18 @@ export class InteractiveImageComponent {
     if (this.drawingService.isDrawing()) {
       event.preventDefault();
       this.updateDrawing(event);
+      return;
+    }
+
+    if (this.isResizingShape) {
+      event.preventDefault();
+      this.updateResizingShape(event);
+      return;
+    }
+
+    if (this.isDraggingShape) {
+      event.preventDefault();
+      this.updateDraggingShape(event);
       return;
     }
 
@@ -267,11 +322,24 @@ export class InteractiveImageComponent {
       this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0s');
       this.cursor = 'grabbing';
     }
+  
+    // Update cursor based on hover state
+    this.updateCursorForHover(event);
   }
 
   onMouseUp(event: MouseEvent): void {
     if (this.drawingService.isDrawing()) {
       this.finishDrawing(event);
+      return;
+    }
+
+    if (this.isResizingShape) {
+      this.stopResizingShape();
+      return;
+    }
+
+    if (this.isDraggingShape) {
+      this.stopDraggingShape();
       return;
     }
 
@@ -283,17 +351,15 @@ export class InteractiveImageComponent {
   }
 
   onLeftClick(event: MouseEvent): void {
-    // Handle symbol placement in symbol mode
-    if (this.currentDrawMode() === 'symbol') {
-      this.placeSymbol(event);
-      return;
-    }
-    
-    // Handle shape selection in default mode
-    if (this.currentDrawMode() === 'none') {
+    // Check if Ctrl (Windows/Linux) or Cmd (Mac) is held
+    if (event.ctrlKey || event.metaKey) {
       this.handleShapeSelection(event);
-      return;
+    } else {
+      console.log('Ctrl/Cmd key is NOT held');
+      // Handle normal click behavior
     }
+
+    
   }
 
   onMiddleClick(event: MouseEvent): void {
@@ -304,24 +370,7 @@ export class InteractiveImageComponent {
     event.preventDefault();
     
     // First check if we clicked on a shape
-    const imgRect = this.img.getBoundingClientRect();
-    const clickX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
-    const clickY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
-    
-    const shapes = this.shapes();
-    let clickedShapeId: number | null = null;
-    
-    for (let i = shapes.length - 1; i >= 0; i--) {
-      const shape = shapes[i];
-      
-      if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
-        if (clickX >= shape.x && clickX <= shape.x + shape.width &&
-            clickY >= shape.y && clickY <= shape.y + shape.height) {
-          clickedShapeId = shape.id;
-          break;
-        }
-      }
-    }
+    const clickedShapeId = this.isOverShape(event);
     
     if (clickedShapeId !== null) {
       // Select the shape if not already selected
@@ -335,11 +384,13 @@ export class InteractiveImageComponent {
   }
 
   onDoubleClick(event: MouseEvent): void {
-    console.log('double click');
-    this.resetTransform();
+    // console.log('double click');
+    // // this.resetTransform();    
+    //   this.handleShapeSelection(event);
+    //   return;
   }
 
-  // Panning Methods
+  // ==================================================Panning Methods==================================================
 
   
   private startPanning(event: MouseEvent): void {
@@ -376,7 +427,7 @@ export class InteractiveImageComponent {
   
     
     
-  // Drawing Methods
+  // ==================================================Drawing Methods==================================================
   
   private startDrawing(event: MouseEvent): void {
     const imgRect = this.img.getBoundingClientRect();
@@ -384,7 +435,7 @@ export class InteractiveImageComponent {
       event.clientX,
       event.clientY,
       imgRect,
-      this.baseImageScale, // Pass baseImageScale, not imageScale
+      this.baseImageScale,
       this.transformState
     );
     this.cursor = 'crosshair';
@@ -425,7 +476,7 @@ export class InteractiveImageComponent {
 
 
 
-//Image Shape Methods
+//==================================================Image Shape Methods==================================================
   convertShapeToImage(shapeId: number): void {
     this.shapeIdToConvert = shapeId;
     this.shapeImageInput.nativeElement.click();
@@ -496,7 +547,7 @@ export class InteractiveImageComponent {
 
 
 
-// Symbol Palette Methods
+// ==================================================Symbol Palette Methods==================================================
 toggleSymbolPalette(): void {
   this.showSymbolPalette.update(show => !show);
 }
@@ -518,12 +569,6 @@ onSymbolSelected(symbol: PIDSymbol): void {
   this.setDrawMode('symbol');
   console.log('Symbol selected:', symbol);
 }
-
-
-
-
-//Shape Events
-
 
 // Update placeSymbol method (around line 492):
 private placeSymbol(event: MouseEvent): void {
@@ -549,33 +594,20 @@ private placeSymbol(event: MouseEvent): void {
   console.log('Symbol placed:', newSymbol);
 }
 
+
+
+
+//==================================================Shape Events==================================================
+
 // Add method to handle shape selection (add after onLeftClick):
 private handleShapeSelection(event: MouseEvent): void {
-  const imgRect = this.img.getBoundingClientRect();
-  
-  // Convert click coordinates to image space
-  const clickX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
-  const clickY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
-  
-  // Find clicked shape (iterate in reverse to get topmost shape)
-  const shapes = this.shapes();
-  let clickedShapeId: number | null = null;
-  
-  for (let i = shapes.length - 1; i >= 0; i--) {
-    const shape = shapes[i];
-    
-    if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
-      if (clickX >= shape.x && clickX <= shape.x + shape.width &&
-          clickY >= shape.y && clickY <= shape.y + shape.height) {
-        clickedShapeId = shape.id;
-        break;
-      }
-    }
-  }
+
+  const clickedShapeId = this.isOverShape(event)
   
   if (clickedShapeId !== null) {
     // Handle selection with Ctrl/Cmd for multi-select
     if (event.ctrlKey || event.metaKey) {
+      console.log('Multi-select', clickedShapeId);
       this.shapeManager.toggleShapeSelection(clickedShapeId);
     } else {
       this.shapeManager.selectShape(clickedShapeId, true);
@@ -592,6 +624,13 @@ private handleShapeSelection(event: MouseEvent): void {
 // Update the cursor based on hover state (add this method):
 private updateCursorForHover(event: MouseEvent): void {
   if (this.currentDrawMode() !== 'none') return;
+  
+  // Check for resize handles first (highest priority)
+  const handle = this.getResizeHandleAtPoint(event);
+  if (handle) {
+    this.cursor = this.getResizeCursor(handle);
+    return;
+  }
   
   const imgRect = this.img.getBoundingClientRect();
   const hoverX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
@@ -679,6 +718,290 @@ private showShapeContextMenu(event: MouseEvent, shapeId: number): void {
   
   console.log('Available actions:', actions);
 }
+
+private isOverShape(event: MouseEvent){
+    const imgRect = this.img.getBoundingClientRect();
+    const clickX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+    const clickY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+    
+    const shapes = this.shapes();
+    let clickedShapeId: number | null = null;
+    
+    for (let i = shapes.length - 1; i >= 0; i--) {
+      const shape = shapes[i];
+      
+      if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
+        if (clickX >= shape.x && clickX <= shape.x + shape.width &&
+            clickY >= shape.y && clickY <= shape.y + shape.height) {
+          clickedShapeId = shape.id;
+          break;
+        }
+      }
+    }
+    return clickedShapeId;
+}
+
+
+
+
+// ========================================Shape Draggign================================
+private startDraggingShape(event: MouseEvent, clickedShapeId: number): void {
+  // If clicked shape is not selected, select it exclusively
+  if (!this.selectedShapeIds().includes(clickedShapeId)) {
+    // this.shapeManager.selectShape(clickedShapeId, true);
+    return;
+  }
+  
+  this.isDraggingShape = true;
+  this.draggedShapeIds = [...this.selectedShapeIds()];
+  
+  const imgRect = this.img.getBoundingClientRect();
+  this.dragStartPos = {
+    x: (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale,
+    y: (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale
+  };
+  
+  // Store initial positions of all selected shapes
+  this.initialShapePositions.clear();
+  this.draggedShapeIds.forEach(shapeId => {
+    const shape = this.shapeManager.getShapeById(shapeId);
+    if (shape && (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol')) {
+      this.initialShapePositions.set(shapeId, { x: shape.x, y: shape.y });
+    }
+  });
+  
+  this.cursor = 'move';
+}
+
+private updateDraggingShape(event: MouseEvent): void {
+  if (!this.isDraggingShape) return;
+  
+  const imgRect = this.img.getBoundingClientRect();
+  const currentX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+  const currentY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+  
+  const deltaX = currentX - this.dragStartPos.x;
+  const deltaY = currentY - this.dragStartPos.y;
+  
+  // Update positions of all dragged shapes
+  this.draggedShapeIds.forEach(shapeId => {
+    const initialPos = this.initialShapePositions.get(shapeId);
+    if (initialPos) {
+      this.shapeManager.updateShape(shapeId, {
+        x: initialPos.x + deltaX,
+        y: initialPos.y + deltaY
+      });
+    }
+  });
+  
+  // Canvas will be redrawn automatically by the effect
+}
+
+private stopDraggingShape(): void {
+  this.isDraggingShape = false;
+  this.draggedShapeIds = [];
+  this.initialShapePositions.clear();
+  this.cursor = 'default';
+}
+
+
+// ========================================Shape Resizing================================
+private startResizingShape(event: MouseEvent, handle: ResizeHandle): void {
+  const singleSelectedId = this.singleSelectedShapeId();
+  if (singleSelectedId === null) return;
+  
+  const shape = this.shapeManager.getShapeById(singleSelectedId);
+  if (!shape || (shape.type !== 'rectangle' && shape.type !== 'image' && shape.type !== 'svg-symbol')) {
+    return;
+  }
+  
+  this.isResizingShape = true;
+  this.resizeHandle = handle;
+  this.resizingShapeId = singleSelectedId;
+  
+  const imgRect = this.img.getBoundingClientRect();
+  this.resizeStartPos = {
+    x: (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale,
+    y: (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale
+  };
+  
+  this.initialShapeBounds = {
+    x: shape.x,
+    y: shape.y,
+    width: shape.width,
+    height: shape.height
+  };
+  
+  this.cursor = this.getResizeCursor(handle);
+}
+
+private updateResizingShape(event: MouseEvent): void {
+  if (!this.isResizingShape || !this.resizeHandle || this.resizingShapeId === null || !this.initialShapeBounds) {
+    return;
+  }
+  
+  const imgRect = this.img.getBoundingClientRect();
+  const currentX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+  const currentY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+  
+  const deltaX = currentX - this.resizeStartPos.x;
+  const deltaY = currentY - this.resizeStartPos.y;
+  
+  const newBounds = this.calculateNewBounds(
+    this.initialShapeBounds,
+    this.resizeHandle,
+    deltaX,
+    deltaY
+  );
+  
+  // Apply minimum size constraint
+  const minSize = 10;
+  if (newBounds.width < minSize || newBounds.height < minSize) {
+    return;
+  }
+  
+  this.shapeManager.updateShape(this.resizingShapeId, newBounds);
+}
+
+private stopResizingShape(): void {
+  this.isResizingShape = false;
+  this.resizeHandle = null;
+  this.resizingShapeId = null;
+  this.initialShapeBounds = null;
+  this.cursor = 'default';
+}
+
+private calculateNewBounds(
+  initial: { x: number; y: number; width: number; height: number },
+  handle: ResizeHandle,
+  deltaX: number,
+  deltaY: number
+): { x: number; y: number; width: number; height: number } {
+  const bounds = { ...initial };
+  
+  switch (handle) {
+    case 'nw':
+      bounds.x = initial.x + deltaX;
+      bounds.y = initial.y + deltaY;
+      bounds.width = initial.width - deltaX;
+      bounds.height = initial.height - deltaY;
+      break;
+    case 'n':
+      bounds.y = initial.y + deltaY;
+      bounds.height = initial.height - deltaY;
+      break;
+    case 'ne':
+      bounds.y = initial.y + deltaY;
+      bounds.width = initial.width + deltaX;
+      bounds.height = initial.height - deltaY;
+      break;
+    case 'e':
+      bounds.width = initial.width + deltaX;
+      break;
+    case 'se':
+      bounds.width = initial.width + deltaX;
+      bounds.height = initial.height + deltaY;
+      break;
+    case 's':
+      bounds.height = initial.height + deltaY;
+      break;
+    case 'sw':
+      bounds.x = initial.x + deltaX;
+      bounds.width = initial.width - deltaX;
+      bounds.height = initial.height + deltaY;
+      break;
+    case 'w':
+      bounds.x = initial.x + deltaX;
+      bounds.width = initial.width - deltaX;
+      break;
+  }
+  
+  return bounds;
+}
+
+private getResizeHandleAtPoint(event: MouseEvent): ResizeHandle | null {
+  const singleSelectedId = this.singleSelectedShapeId();
+  if (singleSelectedId === null) return null;
+  
+  const shape = this.shapeManager.getShapeById(singleSelectedId);
+  if (!shape || (shape.type !== 'rectangle' && shape.type !== 'image' && shape.type !== 'svg-symbol')) {
+    return null;
+  }
+  
+  const imgRect = this.img.getBoundingClientRect();
+  const mouseX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+  const mouseY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+  
+  // Handle size in image coordinates (adjust based on zoom)
+  const handleSize = 8 / this.transformState.scale / this.baseImageScale;
+  
+  const handles = this.getResizeHandlePositions(shape, handleSize);
+  
+  for (const [handle, pos] of Object.entries(handles)) {
+    if (this.isPointInHandle(mouseX, mouseY, pos, handleSize)) {
+      return handle as ResizeHandle;
+    }
+  }
+  
+  return null;
+}
+
+
+private getResizeHandlePositions(
+  shape: { x: number; y: number; width: number; height: number },
+  handleSize: number
+): Record<ResizeHandle, { x: number; y: number }> {
+  const { x, y, width, height } = shape;
+  const halfHandle = handleSize / 2;
+  
+  return {
+    'nw': { x: x - halfHandle, y: y - halfHandle },
+    'n': { x: x + width / 2 - halfHandle, y: y - halfHandle },
+    'ne': { x: x + width - halfHandle, y: y - halfHandle },
+    'e': { x: x + width - halfHandle, y: y + height / 2 - halfHandle },
+    'se': { x: x + width - halfHandle, y: y + height - halfHandle },
+    's': { x: x + width / 2 - halfHandle, y: y + height - halfHandle },
+    'sw': { x: x - halfHandle, y: y + height - halfHandle },
+    'w': { x: x - halfHandle, y: y + height / 2 - halfHandle }
+  };
+}
+
+private isPointInHandle(
+  mouseX: number,
+  mouseY: number,
+  handlePos: { x: number; y: number },
+  handleSize: number
+): boolean {
+  return (
+    mouseX >= handlePos.x &&
+    mouseX <= handlePos.x + handleSize &&
+    mouseY >= handlePos.y &&
+    mouseY <= handlePos.y + handleSize
+  );
+}
+
+private getResizeCursor(handle: ResizeHandle): string {
+  const cursorMap: Record<ResizeHandle, string> = {
+    'nw': 'nw-resize',
+    'n': 'n-resize',
+    'ne': 'ne-resize',
+    'e': 'e-resize',
+    'se': 'se-resize',
+    's': 's-resize',
+    'sw': 'sw-resize',
+    'w': 'w-resize'
+  };
+  return cursorMap[handle];
+}
+
+private updateCursorForResize(event: MouseEvent): void {
+  const handle = this.getResizeHandleAtPoint(event);
+  if (handle) {
+    this.cursor = this.getResizeCursor(handle);
+  }
+}
+
+
 
 
 

@@ -197,6 +197,7 @@ export class ShapeManagerService {
     }
 
   toggleShapeSelection(shapeId: number): void {
+    console.log('Toggle shape selection', shapeId);
     const isSelected = this.selectedShapeIdsSignal().includes(shapeId);
     if (isSelected) {
       this.deselectShape(shapeId);
