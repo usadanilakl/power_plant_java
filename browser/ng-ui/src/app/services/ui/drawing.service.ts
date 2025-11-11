@@ -188,6 +188,8 @@ export class DrawingService {
       color: '#FF0000',
       originalPictureWidth: naturalWidth,
       originalPictureHeight: naturalHeight,
+      originalWidth: 200,
+      originalHeight: 200,
       isSelected: false,
       isBulkSelected: false,
       currentImgWidth: naturalWidth,

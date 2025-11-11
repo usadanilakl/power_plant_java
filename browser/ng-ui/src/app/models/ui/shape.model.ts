@@ -4,6 +4,8 @@ export interface BaseShape {
   color: string;
   originalPictureWidth: number;
   originalPictureHeight: number;
+  originalWidth: number;
+  originalHeight: number;
   isSelected: boolean;
   isBulkSelected: boolean;
   currentImgWidth: number;

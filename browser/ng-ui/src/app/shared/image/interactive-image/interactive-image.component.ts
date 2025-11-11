@@ -293,56 +293,6 @@ export class InteractiveImageComponent {
   }
 
 
-    // onMouseDown(event: MouseEvent): void {
-    //   // Prevent default browser behavior, like image dragging
-    //   event.preventDefault();
-      
-    //   this.lastMouseDownTime = Date.now();
-    //   this.lastMouseDownPos = { x: event.clientX, y: event.clientY };
-
-    //   // Right mouse button for drawing
-    //   if (event.button === 2) {
-    //     if(this.currentDrawMode()==='symbol'){
-    //       this.placeSymbol(event);
-    //       console.log('Placing Symbol');
-    //       return;
-    //     }else{
-    //       event.preventDefault();
-    //       this.startDrawing(event);
-    //       return;
-    //     }
-    //   }
-      
-    //   // We only care about left-clicks for the following actions
-    //   if (event.button !== 0) {
-    //     return;
-    //   }
-      
-    //   // Check for resize handle and start resizing
-    //   const handle = this.getResizeHandleAtPoint(event);
-    //   if (handle && this.singleSelectedShapeId() !== null) {
-    //     this.startResizingShape(event, handle);
-    //     return;
-    //   }
-      
-    //   const clickedShapeId = this.isOverShape(event);
-      
-    //   // If over a shape, prepare for dragging
-    //   if (clickedShapeId !== null && this.currentDrawMode() === 'none') {
-    //     // If the clicked shape is part of the current selection, start dragging
-    //     if (this.selectedShapeIds().includes(clickedShapeId)) {
-    //       this.startDraggingShape(event, clickedShapeId);
-    //       return;
-    //     }
-    //   }
-      
-    //   // If not over a shape and not in a drawing mode, start panning
-    //   if (this.currentDrawMode() === 'none') {
-    //     this.startPanning(event);
-    //   }
-    // }
-
-
   onMouseMove(event: MouseEvent): void {
     if (this.drawingService.isDrawing()) {
       event.preventDefault();
@@ -425,32 +375,6 @@ export class InteractiveImageComponent {
 
     
   }
-    // onLeftClick(event: MouseEvent): void {
-    //   if (this.isDraggingShape || this.isResizingShape) {
-    //     return; // Don't process click if a drag/resize just finished
-    //   }
-      
-    //   // Logic to distinguish a click from a drag
-    //   const timeDiff = Date.now() - this.lastMouseDownTime;
-    //   const posDiff = Math.sqrt(
-    //     Math.pow(event.clientX - this.lastMouseDownPos.x, 2) +
-    //     Math.pow(event.clientY - this.lastMouseDownPos.y, 2)
-    //   );
-      
-    //   if (timeDiff > 250 || posDiff > 5) {
-    //     // This was likely a drag, not a click, so do nothing.
-    //     return;
-    //   }
-      
-    //   // Handle drawing modes
-    //   if (this.currentDrawMode() === 'symbol') {
-    //     this.placeSymbol(event);
-    //   } else if (this.currentDrawMode() === 'none') {
-    //     // Handle shape selection on click
-    //     const isCtrlClick = event.ctrlKey || event.metaKey;
-    //     if(isCtrlClick)this.handleShapeSelection(event);
-    //   }
-    // }
 
   onMiddleClick(event: MouseEvent): void {
     console.log('middle click');
@@ -661,27 +585,61 @@ onSymbolSelected(symbol: PIDSymbol): void {
 }
 
 // Update placeSymbol method (around line 492):
+// private placeSymbol(event: MouseEvent): void {
+//   const symbol = this.selectedSymbol();
+//   if (!symbol) return;
+
+//   const imgRect = this.img.getBoundingClientRect();
+  
+//   // Convert client coordinates to image coordinates
+//   const relativeX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+//   const relativeY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+
+//   const newSymbol = this.shapeManager.createSymbol( 
+//     symbol,
+//     relativeX - (symbol.width / 2),
+//     relativeY - (symbol.height / 2),
+//     this.img.naturalWidth,
+//     this.img.naturalHeight
+//   );
+
+//   this.shapeManager.addShape(newSymbol); // Changed
+  
+//   console.log('Symbol placed:', newSymbol);
+// }
+
 private placeSymbol(event: MouseEvent): void {
   const symbol = this.selectedSymbol();
   if (!symbol) return;
 
   const imgRect = this.img.getBoundingClientRect();
-  
-  // Convert client coordinates to image coordinates
-  const relativeX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
-  const relativeY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+  const x = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+  const y = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
 
-  const newSymbol = this.shapeManager.createSymbol( // Changed to use ShapeManager
-    symbol,
-    relativeX - (symbol.width / 2),
-    relativeY - (symbol.height / 2),
+  // Use a default width and calculate height based on aspect ratio
+  const initialWidth = 50;
+  const aspectRatio = symbol.originalHeight / symbol.originalWidth;
+  const initialHeight = initialWidth * aspectRatio;
+
+  // Create a temporary symbol object with the correct initial size
+  const sizedSymbol: PIDSymbol = {
+    ...symbol,
+    width: initialWidth,
+    height: initialHeight
+  };
+
+  const newSymbol = this.shapeManager.createSymbol(
+    sizedSymbol,
+    x,
+    y,
     this.img.naturalWidth,
     this.img.naturalHeight
   );
 
-  this.shapeManager.addShape(newSymbol); // Changed
-  
-  console.log('Symbol placed:', newSymbol);
+  this.shapeManager.addShape(newSymbol);
+  this.setDrawMode('none');
+  this.selectedSymbol.set(null);
+  this.cursor = 'default';
 }
 
 

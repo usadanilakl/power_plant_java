@@ -8,6 +8,8 @@ export interface PIDSymbol {
   svgPath: string;
   width: number;
   height: number;
+  originalWidth: number;
+  originalHeight: number;
 }
 
 @Injectable({
@@ -22,7 +24,9 @@ export class PIDSymbolsService {
       category: 'valve',
       svgPath: 'M 0,0 L 20,10 L 0,20 Z M 20,10 L 40,10',
       width: 40,
-      height: 20
+      height: 20,
+      originalWidth: 40,
+      originalHeight: 20
     },
     {
       id: 'centrifugal-pump',
@@ -30,7 +34,9 @@ export class PIDSymbolsService {
       category: 'pump',
       svgPath: 'M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0',
       width: 40,
-      height: 40
+      height: 40,
+      originalWidth: 400,
+      originalHeight: 400
     },
     {
       id: 'pressure-indicator',
@@ -38,7 +44,9 @@ export class PIDSymbolsService {
       category: 'instrument',
       svgPath: 'M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0 M 20,5 L 20,35',
       width: 40,
-      height: 40
+      height: 40,
+      originalWidth: 40,
+      originalHeight: 20
     },
     {
       id: 'motor',
@@ -46,7 +54,9 @@ export class PIDSymbolsService {
       category: 'electrical',
       svgPath: 'M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0 M 20,20 L 35,20',
       width: 40,
-      height: 40
+      height: 40,
+      originalWidth: 40,
+      originalHeight: 20
     }
   ];
   
