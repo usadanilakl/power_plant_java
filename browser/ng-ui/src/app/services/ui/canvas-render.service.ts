@@ -342,14 +342,32 @@ export class CanvasRenderService {
     }
   }
   
-  private drawSelectionHandles(
+  // private drawSelectionHandles(
+  //   ctx: CanvasRenderingContext2D,
+  //   shape: Shape,
+  //   color: string = 'blue'
+  // ): void {
+  //   ctx.fillStyle = color;
+  //   const corners = this.getShapeCorners(shape);
+  
+  //   corners.forEach(([x, y]) => {
+  //     ctx.fillRect(
+  //       x - this.HANDLE_SIZE / 2,
+  //       y - this.HANDLE_SIZE / 2,
+  //       this.HANDLE_SIZE,
+  //       this.HANDLE_SIZE
+  //     );
+  //   });
+  // }
+
+    private drawSelectionHandles(
     ctx: CanvasRenderingContext2D,
     shape: Shape,
     color: string = 'blue'
   ): void {
     ctx.fillStyle = color;
     const corners = this.getShapeCorners(shape);
-  
+
     corners.forEach(([x, y]) => {
       ctx.fillRect(
         x - this.HANDLE_SIZE / 2,
@@ -358,6 +376,28 @@ export class CanvasRenderService {
         this.HANDLE_SIZE
       );
     });
+
+    // Draw rotation handle only for single-selected, rotatable shapes
+    if (shape.isSelected && !shape.isBulkSelected && (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol')) {
+      const handleOffset = 20; // Offset in pixels, independent of zoom
+      const centerX = shape.x + shape.width / 2;
+      const handleX = centerX;
+      const handleY = shape.y - handleOffset;
+
+      // Draw line to rotation handle
+      ctx.beginPath();
+      ctx.moveTo(centerX, shape.y);
+      ctx.lineTo(handleX, handleY);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Draw rotation handle (circle)
+      ctx.beginPath();
+      ctx.arc(handleX, handleY, this.HANDLE_SIZE / 2, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
   }
 
   private getShapeCorners(shape: Shape): [number, number][] {

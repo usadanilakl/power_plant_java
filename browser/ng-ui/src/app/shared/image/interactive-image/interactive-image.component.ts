@@ -94,6 +94,9 @@ export class InteractiveImageComponent {
   private initialShapeBounds: { x: number; y: number; width: number; height: number } | null = null;
   private enforceAspectRatio = signal<boolean>(false);
 
+  private isRotatingShape = false;
+  private rotatingShapeId: number | null = null;
+
 
 
   contextMenu = {
@@ -301,6 +304,12 @@ export class InteractiveImageComponent {
         this.startResizingShape(event, handle);
         return;
       }
+
+      // 2. Check for rotation handle click
+      if (this.isPointInRotationHandle(event)) {
+        this.startRotatingShape(event);
+        return;
+      }
     
       // Then check if clicking on a shape
       const clickedShapeId = this.isOverSelectedShape(event);
@@ -339,6 +348,11 @@ export class InteractiveImageComponent {
     if (this.isDraggingShape) {
       event.preventDefault();
       this.updateDraggingShape(event);
+      return;
+    }
+
+    if (this.isRotatingShape) {
+      this.updateRotatingShape(event);
       return;
     }
 
@@ -384,6 +398,11 @@ export class InteractiveImageComponent {
 
     if (this.isDraggingShape) {
       this.stopDraggingShape();
+      return;
+    }
+    
+    if (this.isRotatingShape) {
+      this.stopRotatingShape();
       return;
     }
 
@@ -818,7 +837,8 @@ private showShapeContextMenu(event: MouseEvent, shapeId: number): void {
     { label: 'Bring to Front', action: 'bringToFront' },
     { label: 'Send to Back', action: 'sendToBack' },
     { label: 'Duplicate', action: 'duplicate' },
-    { label: 'Delete', action: 'delete' }
+    { label: 'Rotate', action: 'rotate' },
+    { label: 'Delete', action: 'delete' },
   );
 
   this.contextMenu = {
@@ -1113,6 +1133,74 @@ private updateCursorForResize(event: MouseEvent): void {
   }
 }
 
+// ========================================Shape Rotation================================
+
+private getRotationHandlePosition(shape: { x: number, y: number, width: number, height: number }): { x: number, y: number } {
+  const centerX = shape.x + shape.width / 2;
+  const topY = shape.y;
+  const handleOffset = 20 / this.transformState.scale / this.baseImageScale; // Make offset independent of zoom
+  return { x: centerX, y: topY - handleOffset };
+}
+
+private isPointInRotationHandle(event: MouseEvent): boolean {
+  const singleSelectedId = this.singleSelectedShapeId();
+  if (singleSelectedId === null) return false;
+
+  const shape = this.shapeManager.getShapeById(singleSelectedId);
+  if (!shape || (shape.type !== 'rectangle' && shape.type !== 'image' && shape.type !== 'svg-symbol')) {
+    return false;
+  }
+
+  const imgRect = this.img.getBoundingClientRect();
+  const mouseX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+  const mouseY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+
+  const handlePos = this.getRotationHandlePosition(shape);
+  const handleSize = 8 / this.transformState.scale / this.baseImageScale;
+
+  return this.isPointInHandle(mouseX, mouseY, handlePos, handleSize);
+}
+
+private startRotatingShape(event: MouseEvent): void {
+  const singleSelectedId = this.singleSelectedShapeId();
+  if (singleSelectedId === null) return;
+
+  this.isRotatingShape = true;
+  this.rotatingShapeId = singleSelectedId;
+  this.cursor = 'crosshair'; // Or a custom rotation cursor
+}
+
+private updateRotatingShape(event: MouseEvent): void {
+  if (!this.isRotatingShape || this.rotatingShapeId === null) return;
+
+  const shape = this.shapeManager.getShapeById(this.rotatingShapeId);
+  if (!shape || (shape.type !== 'rectangle' && shape.type !== 'image' && shape.type !== 'svg-symbol')) {
+    return;
+  }
+
+  console.log('Updating rotation shape');
+
+  const imgRect = this.img.getBoundingClientRect();
+  const mouseX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
+  const mouseY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
+
+  const centerX = shape.x + shape.width / 2;
+  const centerY = shape.y + shape.height / 2;
+
+  const deltaX = mouseX - centerX;
+  const deltaY = mouseY - centerY;
+
+  // Calculate angle, add 90 degrees to offset for the handle's top position
+  const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI) + 90;
+
+  this.shapeManager.updateShape(this.rotatingShapeId, { rotation: angle });
+}
+
+private stopRotatingShape(): void {
+  this.isRotatingShape = false;
+  this.rotatingShapeId = null;
+  this.cursor = 'default';
+}
 
 
 
