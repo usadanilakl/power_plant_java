@@ -17,6 +17,7 @@ import { QrScannerComponent } from './shared/qr-scanner/qr-scanner.component';
 import { LotoPageComponent } from './pages/loto-page/loto-page.component';
 import { LotoProcessorComponent } from './features/loto/loto-processor/loto-processor.component';
 import { ImageComponent } from './shared/image/image.component';
+import { TestPageComponent } from './pages/test-page/test-page.component';
 
 export const routes: Routes = [
     {
@@ -94,6 +95,10 @@ export const routes: Routes = [
     },
     {
       path: 'img',
-      component: ImageComponent
+      component: TestPageComponent,
+      children: [
+        { path: '', redirectTo: 'process', pathMatch: 'full' },
+        { path: 'process', component: ImageComponent }
+      ]
     },
 ];

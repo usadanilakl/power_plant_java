@@ -29,14 +29,56 @@ export class PIDSymbolsService {
       originalHeight: 20
     },
     {
+      id: 'globe-valve',
+      name: 'Globe Valve',
+      category: 'valve',
+      svgPath: 'M 0,0 L 20,10 L 0,20 Z M 40,0 L 20,10 L 40,20 Z',
+      width: 40,
+      height: 20,
+      originalWidth: 40,
+      originalHeight: 20
+    },
+    {
+      id: 'globe-valve-motor-operated',
+      name: 'Motor Operated Valve',
+      category: 'valve',
+      // svgPath: 'M 0,25 L 20,35 L 0,45 Z M 40,25 L 20,35 L 40,45 Z M 20,35 L 20,15 M 20,5 m -10,0 a 10,10 0 1,0 20,0 a 10,10 0 1,0 -20,0 M 15,5 l 10,0 l -5,8 z',
+      svgPath: 'M 0,25 L 20,35 L 0,45 Z M 40,25 L 20,35 L 40,45 Z M 20,35 L 20,15 M 20,5 m -10,0 a 10,10 0 1,0 20,0 a 10,10 0 1,0 -20,0 M 16,10 L 16,0 L 20,5 L 24,0 L 24,10',
+      width: 40,
+      height: 50,
+      originalWidth: 40,
+      originalHeight: 50
+    },
+    {
+      id: 'globe-valve-solenoid-operated',
+      name: 'Air Operated Valve',
+      category: 'valve',
+      svgPath: 'M 0,25 L 20,35 L 0,45 Z M 40,25 L 20,35 L 40,45 Z M 20,35 L 20,15 M 10,0 h 20 v 15 h -20 z M 15,12 l 5,-10 l 5,10 M 17,8 h 6',
+      width: 40,
+      height: 50,
+      originalWidth: 40,
+      originalHeight: 50
+    },
+    {
+      id: 'globe-valve-air-operated',
+      name: 'Control Valve',
+      category: 'valve',
+      // svgPath: 'M 0,25 L 20,35 L 0,45 Z M 40,25 L 20,35 L 40,45 Z M 20,35 L 20,15 M 5,15 A 15,15 0 0 1 35,15',
+      svgPath: 'M 0,25 L 20,35 L 0,45 Z M 40,25 L 20,35 L 40,45 Z M 20,35 L 20,15 M 5,15 A 15,15 0 0 1 35,15 Z',
+      width: 40,
+      height: 50,
+      originalWidth: 40,
+      originalHeight: 50
+    },
+    {
       id: 'centrifugal-pump',
       name: 'Centrifugal Pump',
       category: 'pump',
       svgPath: 'M 20,20 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0',
       width: 40,
       height: 40,
-      originalWidth: 400,
-      originalHeight: 400
+      originalWidth: 40,
+      originalHeight: 40
     },
     {
       id: 'pressure-indicator',

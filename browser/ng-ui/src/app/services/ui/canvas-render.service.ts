@@ -60,84 +60,50 @@ export class CanvasRenderService {
       }
   }
 
-  
-  // private drawSVGSymbol(
-  //   ctx: CanvasRenderingContext2D,
-  //   symbol: SVGSymbolShape,
-  //   scale: number
-  // ): void {
-  //   ctx.save();
-    
-  //   // Translate to symbol position (already scaled)
-  //   ctx.translate(symbol.x, symbol.y);
-    
-  //   // Apply the scale transformation for the symbol itself
-  //   // Note: symbol.x, symbol.y, width, height are already scaled by scaleShape()
-  //   // But the SVG path coordinates are in the original coordinate system
-  //   const symbolScale = symbol.width / (symbol.width / scale); // This gives us the scale factor
-  //   ctx.scale(symbolScale, symbolScale);
-    
-  //   // Apply rotation if specified
-  //   if (symbol.rotation) {
-  //     ctx.rotate((symbol.rotation * Math.PI) / 180);
-  //   }
-    
-  //   // Draw SVG path (using original unscaled path)
-  //   const path = new Path2D(symbol.svgPath);
-  //   ctx.stroke(path);
-    
-  //   ctx.restore();
-    
-  //   // Draw selection handles if selected (after restoring context)
-  //   if (symbol.isSelected) {
-  //     this.drawSelectionHandles(ctx, symbol);
-  //   }
-  // }
 
+  private drawSVGSymbol(
+    ctx: CanvasRenderingContext2D,
+    symbol: SVGSymbolShape,
+    scale: number
+  ): void {
+    ctx.save();
 
+    // Translate to the top-left of the scaled bounding box
+    ctx.translate(symbol.x, symbol.y);
 
-private drawSVGSymbol(
-  ctx: CanvasRenderingContext2D,
-  symbol: SVGSymbolShape,
-  scale: number
-): void {
-  ctx.save();
+    // Apply rotation if specified, rotating around the center of the bounding box
+    if (symbol.rotation) {
+      ctx.translate(symbol.width / 2, symbol.height / 2);
+      ctx.rotate((symbol.rotation * Math.PI) / 180);
+      ctx.translate(-symbol.width / 2, -symbol.height / 2);
+    }
 
-  // Translate to the top-left of the scaled bounding box
-  ctx.translate(symbol.x, symbol.y);
+    // The context is already scaled by the main canvas transform.
+    // We need to scale the path to fit the symbol's bounding box.
+    // symbol.width and symbol.height are already scaled by the canvas zoom.
+    // We calculate the ratio needed to fit the original path into this box.
+    const scaleX = symbol.width / symbol.originalWidth;
+    const scaleY = symbol.height / symbol.originalHeight;
 
-  // Apply rotation if specified, rotating around the center of the bounding box
-  if (symbol.rotation) {
-    ctx.translate(symbol.width / 2, symbol.height / 2);
-    ctx.rotate((symbol.rotation * Math.PI) / 180);
-    ctx.translate(-symbol.width / 2, -symbol.height / 2);
+    // Apply this calculated scale to the context
+    ctx.scale(scaleX, scaleY);
+
+    // Draw the original, unscaled SVG path. It will be transformed by the context.
+    const path = new Path2D(symbol.svgPath);
+    ctx.stroke(path);
+
+    ctx.restore();
+
+    // Draw selection handles if selected (after restoring context)
+    if (symbol.isSelected) {
+      // Create a temporary rectangle shape representing the bounding box for the handles
+      const boundingBox = {
+        ...symbol,
+        type: 'rectangle',
+      } as RectangleShape;
+      this.drawSelectionHandles(ctx, boundingBox);
+    }
   }
-
-  // Calculate the scale required to fit the original path into the current bounding box.
-  // symbol.width and symbol.height are already scaled by the canvas zoom.
-  // symbol.originalWidth and symbol.originalHeight are the intrinsic dimensions of the SVG path.
-  const scaleX = symbol.width / symbol.originalWidth;
-  const scaleY = symbol.height / symbol.originalHeight;
-
-  // Apply this calculated scale to the context
-  ctx.scale(scaleX, scaleY);
-
-  // Draw the original, unscaled SVG path. It will be transformed by the context.
-  const path = new Path2D(symbol.svgPath);
-  ctx.stroke(path);
-
-  ctx.restore();
-
-  // Draw selection handles if selected (after restoring context)
-  if (symbol.isSelected) {
-    // Create a temporary rectangle shape representing the bounding box for the handles
-    const boundingBox = {
-      ...symbol,
-      type: 'rectangle',
-    } as RectangleShape;
-    this.drawSelectionHandles(ctx, boundingBox);
-  }
-}
 
   private drawRectangle(
     ctx: CanvasRenderingContext2D,

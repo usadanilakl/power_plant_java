@@ -1,31 +1,3 @@
-<!-- <div #zoomOuter class="zoom-outer">
-    
-    <input 
-        #shapeImageInput 
-        type="file" 
-        accept="image/*" 
-        style="display: none;"
-        (change)="onShapeImageSelected($event)"
-    />
-
-    <div #zoomElement class="zoom" 
-    [style.cursor]="cursor"
-    (mousedown)="onMouseDown($event)"
-    (mouseup)="onMouseUp($event)"
-    (mousemove)="onMouseMove($event)"
-    (mouseleave)="onMouseLeave($event)"
-    (wheel)="onWheel($event)">
-        <div class="image-canvas-container" #imageContainer>
-            @if (imageUrl() && imageUrl()!.startsWith("http")) {
-                <img #imageElement [src]="imageUrl()" />
-            } @else {
-                <img #imageElement [src]="imageUrl()" />
-            }
-            <canvas #canvasElement></canvas>
-        </div>
-    </div>
-</div> -->
-
 
 <div class="interactive-image-container">
   <!-- Symbol Palette Sidebar -->
@@ -37,31 +9,7 @@
 
   <!-- Main Image Area -->
   <div class="image-workspace">
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <button (click)="toggleSymbolPalette()" class="toolbar-btn">
-        <span>{{ showSymbolPalette() ? 'Hide' : 'Show' }} Symbols</span>
-      </button>
-      
-      <button (click)="setDrawMode('rectangle')" 
-              [class.active]="currentDrawMode() === 'rectangle'"
-              class="toolbar-btn">
-        Rectangle
-      </button>
-      
-      <button (click)="setDrawMode('symbol')" 
-              [class.active]="currentDrawMode() === 'symbol'"
-              class="toolbar-btn">
-        Place Symbol
-      </button>
-      
-      <button (click)="setDrawMode('none')" 
-              [class.active]="currentDrawMode() === 'none'"
-              class="toolbar-btn">
-        Select
-      </button>
-    </div>
-
+  <app-toolbar [items]="toolbarItems"></app-toolbar>
     <!-- Image Container -->
     <div #imageContainer class="image-container">
       <div #zoomOuter class="zoom-outer">

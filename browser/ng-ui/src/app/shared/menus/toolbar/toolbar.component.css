@@ -1,0 +1,28 @@
+.toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--secondary-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toolbar-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-background);
+  color: var(--primary-text);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.toolbar-btn:hover {
+  background-color: var(--menu-item-hover-bg-color);
+}
+
+.toolbar-btn.active {
+  background-color: var(--accent-color-shadow);
+  border-color: var(--accent-color);
+  color: var(--menu-item-active-text-color);
+}

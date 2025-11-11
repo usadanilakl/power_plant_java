@@ -13,6 +13,8 @@ import { CommonModule } from "@angular/common";
 import { PIDSymbol } from "../../../services/ui/pid-symbols.service";
 import { ShapeManagerService } from "../../../services/ui/shape-manager.service";
 import { ContextMenuItem, ContextMenuComponent } from "../../menus/context-menu/context-menu.component";
+import { ToolbarItem } from "../../../models/ui/toolbar.model";
+import { ToolbarComponent } from "../../menus/toolbar/toolbar.component";
 
 
 type DrawMode = 'none' | 'rectangle' | 'symbol';
@@ -21,7 +23,7 @@ type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 @Component({
   selector: 'app-interactive-image',
   standalone: true,
-  imports: [CommonModule, SymbolPaletteComponent, ContextMenuComponent],
+  imports: [CommonModule, SymbolPaletteComponent, ContextMenuComponent, ToolbarComponent],
   templateUrl: './interactive-image.component.html',
   styleUrl: './interactive-image.component.css'
 })
@@ -90,10 +92,7 @@ export class InteractiveImageComponent {
   private resizeStartPos: { x: number; y: number } = { x: 0, y: 0 };
   private resizingShapeId: number | null = null;
   private initialShapeBounds: { x: number; y: number; width: number; height: number } | null = null;
-
-
-  private lastMouseDownTime: number = 0;
-  private lastMouseDownPos: { x: number, y: number } = { x: 0, y: 0 };
+  private enforceAspectRatio = signal<boolean>(false);
 
 
 
@@ -112,6 +111,37 @@ export class InteractiveImageComponent {
   showSymbolPalette = signal<boolean>(true);
   currentDrawMode = signal<DrawMode>('none');
   selectedSymbol = signal<PIDSymbol | null>(null);
+
+  toolbarItems: ToolbarItem[] = [
+    {
+      id: 'toggle-symbols',
+      label: this.showSymbolPalette() ? 'Hide Symbols' : 'Show Symbols',
+      tooltip: 'Show/Hide the symbol palette',
+      action: () => this.toggleSymbolPalette()
+    },
+    {
+      id: 'draw-rectangle',
+      label: 'Rectangle',
+      tooltip: 'Draw a rectangle',
+      isActive: () => this.currentDrawMode() === 'rectangle',
+      action: () => this.setDrawMode('rectangle')
+    },
+    {
+      id: 'place-symbol',
+      label: 'Place Symbol',
+      tooltip: 'Place a symbol from the palette',
+      isActive: () => this.currentDrawMode() === 'symbol',
+      action: () => this.setDrawMode('symbol')
+    },
+    {
+      id: 'select',
+      label: 'Select',
+      tooltip: 'Select and move shapes',
+      isActive: () => this.currentDrawMode() === 'none',
+      action: () => this.setDrawMode('none')
+    }
+  ];
+
 
   constructor() {
     // Effect to redraw canvas when shapes change
@@ -584,30 +614,6 @@ onSymbolSelected(symbol: PIDSymbol): void {
   console.log('Symbol selected:', symbol);
 }
 
-// Update placeSymbol method (around line 492):
-// private placeSymbol(event: MouseEvent): void {
-//   const symbol = this.selectedSymbol();
-//   if (!symbol) return;
-
-//   const imgRect = this.img.getBoundingClientRect();
-  
-//   // Convert client coordinates to image coordinates
-//   const relativeX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
-//   const relativeY = (event.clientY - imgRect.top) / this.transformState.scale / this.baseImageScale;
-
-//   const newSymbol = this.shapeManager.createSymbol( 
-//     symbol,
-//     relativeX - (symbol.width / 2),
-//     relativeY - (symbol.height / 2),
-//     this.img.naturalWidth,
-//     this.img.naturalHeight
-//   );
-
-//   this.shapeManager.addShape(newSymbol); // Changed
-  
-//   console.log('Symbol placed:', newSymbol);
-// }
-
 private placeSymbol(event: MouseEvent): void {
   const symbol = this.selectedSymbol();
   if (!symbol) return;
@@ -922,6 +928,9 @@ private updateResizingShape(event: MouseEvent): void {
   if (!this.isResizingShape || !this.resizeHandle || this.resizingShapeId === null || !this.initialShapeBounds) {
     return;
   }
+
+  const shape = this.shapeManager.getShapeById(this.resizingShapeId);
+  if (!shape) return;
   
   const imgRect = this.img.getBoundingClientRect();
   const currentX = (event.clientX - imgRect.left) / this.transformState.scale / this.baseImageScale;
@@ -936,6 +945,26 @@ private updateResizingShape(event: MouseEvent): void {
     deltaX,
     deltaY
   );
+
+  // Enforce aspect ratio for SVG symbols
+  if (this.enforceAspectRatio()) {
+    const aspectRatio = shape.originalHeight / shape.originalWidth;
+    if (newBounds.width !== this.initialShapeBounds.width) {
+      const oldHeight = newBounds.height;
+      newBounds.height = newBounds.width * aspectRatio;
+      // Adjust 'y' for 'n' handles
+      if (this.resizeHandle.includes('n')) {
+        newBounds.y += oldHeight - newBounds.height;
+      }
+    } else if (newBounds.height !== this.initialShapeBounds.height) {
+      const oldWidth = newBounds.width;
+      newBounds.width = newBounds.height / aspectRatio;
+      // Adjust 'x' for 'w' handles
+      if (this.resizeHandle.includes('w')) {
+        newBounds.x += oldWidth - newBounds.width;
+      }
+    }
+  }
   
   // Apply minimum size constraint
   const minSize = 10;

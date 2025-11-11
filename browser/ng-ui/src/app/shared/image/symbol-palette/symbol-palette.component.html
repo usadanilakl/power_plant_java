@@ -1,1 +1,60 @@
-<p>symbol-palette works!</p>
+
+    <div class="symbol-palette">
+      <h3>P&ID Symbols</h3>
+      
+      <div class="symbol-category">
+        <h4>Valves</h4>
+        <div class="symbol-grid">
+          @for (symbol of getSymbolsByCategory('valve'); track symbol.id) {
+            <div class="symbol-item" (click)="onSymbolSelect(symbol)">
+              <svg [attr.width]="symbol.width" [attr.height]="symbol.height">
+                <path [attr.d]="symbol.svgPath" stroke="black" fill="none"/>
+              </svg>
+              <span>{{ symbol.name }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      
+      <div class="symbol-category">
+        <h4>Pumps</h4>
+        <div class="symbol-grid">
+          @for (symbol of getSymbolsByCategory('pump'); track symbol.id) {
+            <div class="symbol-item" (click)="onSymbolSelect(symbol)">
+              <svg [attr.width]="symbol.width" [attr.height]="symbol.height">
+                <path [attr.d]="symbol.svgPath" stroke="black" fill="none"/>
+              </svg>
+              <span>{{ symbol.name }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      
+      <div class="symbol-category">
+        <h4>Instruments</h4>
+        <div class="symbol-grid">
+          @for (symbol of getSymbolsByCategory('instrument'); track symbol.id) {
+            <div class="symbol-item" (click)="onSymbolSelect(symbol)">
+              <svg [attr.width]="symbol.width" [attr.height]="symbol.height">
+                <path [attr.d]="symbol.svgPath" stroke="black" fill="none"/>
+              </svg>
+              <span>{{ symbol.name }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      
+      <div class="symbol-category">
+        <h4>Electrical</h4>
+        <div class="symbol-grid">
+          @for (symbol of getSymbolsByCategory('electrical'); track symbol.id) {
+            <div class="symbol-item" (click)="onSymbolSelect(symbol)">
+              <svg [attr.width]="symbol.width" [attr.height]="symbol.height">
+                <path [attr.d]="symbol.svgPath" stroke="black" fill="none"/>
+              </svg>
+              <span>{{ symbol.name }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
