@@ -248,94 +248,99 @@ export class InteractiveImageComponent {
     }
   }
 
-  // onMouseDown(event: MouseEvent): void {
-  //   // Right mouse button for drawing
-  //   if (event.button === 2) {
-  //     if(this.currentDrawMode()==='symbol'){
-  //       this.placeSymbol(event);
-  //       console.log('Placing Symbol');
-  //       return;
-  //     }else{
-  //       event.preventDefault();
-  //       this.startDrawing(event);
-  //       return;
-  //     }
-  //   }
-
-  //   // Left mouse button for panning
-  //   if (event.button === 0) {
-  //     // First check if clicking on a resize handle
-  //     const handle = this.getResizeHandleAtPoint(event);
-  //     if (handle) {
-  //       event.preventDefault();
-  //       this.startResizingShape(event, handle);
-  //       return;
-  //     }
-    
-  //     // Then check if clicking on a shape
-  //     const clickedShapeId = this.isOverShape(event);
-  //     if (clickedShapeId !== null) {
-  //       // If Ctrl/Cmd is held, don't start dragging - just handle selection
-  //       if (event.ctrlKey || event.metaKey) {
-  //         event.preventDefault();
-  //         // Selection will be handled in onLeftClick
-  //         return;
-  //       }
-  //       // Start dragging the shape(s)
-  //       event.preventDefault();
-  //       this.startDraggingShape(event, clickedShapeId);
-  //       return;
-  //     }
-  //     event.preventDefault();
-  //     this.startPanning(event);
-  //     return;
-  //   }
-  // }
-
-
-    onMouseDown(event: MouseEvent): void {
-      // Prevent default browser behavior, like image dragging
-      event.preventDefault();
-      
-      this.lastMouseDownTime = Date.now();
-      this.lastMouseDownPos = { x: event.clientX, y: event.clientY };
-
-      // Middle mouse button for drawing
-      if (event.button === 1) {
-        if (this.currentDrawMode() !== 'none') {
-          this.startDrawing(event);
-        }
+  onMouseDown(event: MouseEvent): void {
+    // Right mouse button for drawing
+    if (event.button === 2) {
+      if(this.currentDrawMode()==='symbol'){
+        this.placeSymbol(event);
+        console.log('Placing Symbol');
+        return;
+      }else{
+        event.preventDefault();
+        this.startDrawing(event);
         return;
       }
-      
-      // We only care about left-clicks for the following actions
-      if (event.button !== 0) {
-        return;
-      }
-      
-      // Check for resize handle and start resizing
+    }
+
+    // Left mouse button for panning
+    if (event.button === 0) {
+      // First check if clicking on a resize handle
       const handle = this.getResizeHandleAtPoint(event);
-      if (handle && this.singleSelectedShapeId() !== null) {
+      if (handle) {
+        event.preventDefault();
         this.startResizingShape(event, handle);
         return;
       }
-      
-      const clickedShapeId = this.isOverShape(event);
-      
-      // If over a shape, prepare for dragging
-      if (clickedShapeId !== null && this.currentDrawMode() === 'none') {
-        // If the clicked shape is part of the current selection, start dragging
-        if (this.selectedShapeIds().includes(clickedShapeId)) {
-          this.startDraggingShape(event, clickedShapeId);
+    
+      // Then check if clicking on a shape
+      const clickedShapeId = this.isOverSelectedShape(event);
+      if (clickedShapeId !== null) {
+        // If Ctrl/Cmd is held, don't start dragging - just handle selection
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          // Selection will be handled in onLeftClick
           return;
         }
+        // Start dragging the shape(s)
+        event.preventDefault();
+        this.startDraggingShape(event, clickedShapeId);
+        return;
       }
-      
-      // If not over a shape and not in a drawing mode, start panning
-      if (this.currentDrawMode() === 'none') {
-        this.startPanning(event);
-      }
+      event.preventDefault();
+      this.startPanning(event);
+      return;
     }
+  }
+
+
+    // onMouseDown(event: MouseEvent): void {
+    //   // Prevent default browser behavior, like image dragging
+    //   event.preventDefault();
+      
+    //   this.lastMouseDownTime = Date.now();
+    //   this.lastMouseDownPos = { x: event.clientX, y: event.clientY };
+
+    //   // Right mouse button for drawing
+    //   if (event.button === 2) {
+    //     if(this.currentDrawMode()==='symbol'){
+    //       this.placeSymbol(event);
+    //       console.log('Placing Symbol');
+    //       return;
+    //     }else{
+    //       event.preventDefault();
+    //       this.startDrawing(event);
+    //       return;
+    //     }
+    //   }
+      
+    //   // We only care about left-clicks for the following actions
+    //   if (event.button !== 0) {
+    //     return;
+    //   }
+      
+    //   // Check for resize handle and start resizing
+    //   const handle = this.getResizeHandleAtPoint(event);
+    //   if (handle && this.singleSelectedShapeId() !== null) {
+    //     this.startResizingShape(event, handle);
+    //     return;
+    //   }
+      
+    //   const clickedShapeId = this.isOverShape(event);
+      
+    //   // If over a shape, prepare for dragging
+    //   if (clickedShapeId !== null && this.currentDrawMode() === 'none') {
+    //     // If the clicked shape is part of the current selection, start dragging
+    //     if (this.selectedShapeIds().includes(clickedShapeId)) {
+    //       this.startDraggingShape(event, clickedShapeId);
+    //       return;
+    //     }
+    //   }
+      
+    //   // If not over a shape and not in a drawing mode, start panning
+    //   if (this.currentDrawMode() === 'none') {
+    //     this.startPanning(event);
+    //   }
+    // }
 
 
   onMouseMove(event: MouseEvent): void {
@@ -409,43 +414,43 @@ export class InteractiveImageComponent {
     }
   }
 
-  // onLeftClick(event: MouseEvent): void {
-  //   // Check if Ctrl (Windows/Linux) or Cmd (Mac) is held
-  //   if (event.ctrlKey || event.metaKey) {
-  //     this.handleShapeSelection(event);
-  //   } else {
-  //     console.log('Ctrl/Cmd key is NOT held');
-  //     // Handle normal click behavior
-  //   }
+  onLeftClick(event: MouseEvent): void {
+    // Check if Ctrl (Windows/Linux) or Cmd (Mac) is held
+    if (event.ctrlKey || event.metaKey) {
+      this.handleShapeSelection(event);
+    } else {
+      console.log('Ctrl/Cmd key is NOT held');
+      // Handle normal click behavior
+    }
 
     
-  // }
-    onLeftClick(event: MouseEvent): void {
-      if (this.isDraggingShape || this.isResizingShape) {
-        return; // Don't process click if a drag/resize just finished
-      }
+  }
+    // onLeftClick(event: MouseEvent): void {
+    //   if (this.isDraggingShape || this.isResizingShape) {
+    //     return; // Don't process click if a drag/resize just finished
+    //   }
       
-      // Logic to distinguish a click from a drag
-      const timeDiff = Date.now() - this.lastMouseDownTime;
-      const posDiff = Math.sqrt(
-        Math.pow(event.clientX - this.lastMouseDownPos.x, 2) +
-        Math.pow(event.clientY - this.lastMouseDownPos.y, 2)
-      );
+    //   // Logic to distinguish a click from a drag
+    //   const timeDiff = Date.now() - this.lastMouseDownTime;
+    //   const posDiff = Math.sqrt(
+    //     Math.pow(event.clientX - this.lastMouseDownPos.x, 2) +
+    //     Math.pow(event.clientY - this.lastMouseDownPos.y, 2)
+    //   );
       
-      if (timeDiff > 250 || posDiff > 5) {
-        // This was likely a drag, not a click, so do nothing.
-        return;
-      }
+    //   if (timeDiff > 250 || posDiff > 5) {
+    //     // This was likely a drag, not a click, so do nothing.
+    //     return;
+    //   }
       
-      // Handle drawing modes
-      if (this.currentDrawMode() === 'symbol') {
-        this.placeSymbol(event);
-      } else if (this.currentDrawMode() === 'none') {
-        // Handle shape selection on click
-        const isCtrlClick = event.ctrlKey || event.metaKey;
-        if(isCtrlClick)this.handleShapeSelection(event);
-      }
-    }
+    //   // Handle drawing modes
+    //   if (this.currentDrawMode() === 'symbol') {
+    //     this.placeSymbol(event);
+    //   } else if (this.currentDrawMode() === 'none') {
+    //     // Handle shape selection on click
+    //     const isCtrlClick = event.ctrlKey || event.metaKey;
+    //     if(isCtrlClick)this.handleShapeSelection(event);
+    //   }
+    // }
 
   onMiddleClick(event: MouseEvent): void {
     console.log('middle click');
@@ -802,6 +807,13 @@ private isOverShape(event: MouseEvent){
       }
     }
     return clickedShapeId;
+}
+
+private isOverSelectedShape(event: MouseEvent) {
+  const shapeId = this.isOverShape(event);
+  if(shapeId && this.selectedShapeIds().includes(shapeId)) return shapeId;
+  return null;
+  
 }
 
 closeContextMenu(): void {
