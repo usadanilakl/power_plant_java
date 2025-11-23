@@ -1,6 +1,6 @@
-import { RxdbService, MyDatabaseCollections } from './rxdb.service';
-import { RxCollection } from 'rxdb';
-import { BaseModel } from '../../models/permits/base.model';
+import { RxCollection, RxDocument } from 'rxdb';
+import { BaseModel } from '../models/permits/base.model';
+import { MyDatabaseCollections, RxdbService } from './db/rxdb.service';
 
 // This interface ensures that the model class has a constructor that can be called with `new`
 interface IModel<T> {
@@ -20,7 +20,7 @@ export abstract class BaseDbService<
 
   protected async _getCollection(): Promise<CollectionType> {
     const db = await this.rxdbService.getDb();
-    return db[this.collectionName] as CollectionType;
+    return db[this.collectionName] as unknown as CollectionType;
   }
 
   async getAll(): Promise<ModelType[]> {
@@ -35,27 +35,29 @@ export abstract class BaseDbService<
     return doc ? new this.modelConstructor(doc.toJSON()) : null;
   }
 
-  async add(item: ModelType): Promise<DocType> {
+  async add(item: ModelType): Promise<RxDocument<DocType>> {
     const collection = await this._getCollection();
-    const data = item.toObject ? item.toObject() : { ...item };
+    const data = item.toObject();
     return collection.insert(data);
   }
 
-  async update(item: ModelType): Promise<DocType> {
+  async update(item: ModelType): Promise<RxDocument<DocType>> {
     const collection = await this._getCollection();
     const doc = await collection.findOne(item.id).exec();
     if (!doc) {
       throw new Error(`${this.collectionName} with id ${item.id} not found`);
     }
-    const data = item.toObject ? item.toObject() : { ...item };
+    const data = item.toObject();
     return doc.patch(data);
   }
 
-  async remove(id: string): Promise<any> {
+  async remove(id: string): Promise<RxDocument<DocType> | null> {
     const collection = await this._getCollection();
     const doc = await collection.findOne(id).exec();
     if (doc) {
-      return doc.remove();
+      await doc.remove();
+      return doc;
     }
+    return null;
   }
 }
