@@ -1,15 +1,18 @@
-import { DestroyRef, inject, Injectable } from '@angular/core';
-import { BehaviorSubject, map, Observable, take } from 'rxjs';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { BehaviorSubject, forkJoin, map, Observable, Subject, take, tap } from 'rxjs';
 import { FileDto } from '../models/file/file.model';
 import { EquipmentDto } from '../models/equipment/equipment.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { LotoPointDto } from '../models/loto/loto-point.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FileService } from './file.service';
+import { subscribe } from 'diagnostics_channel';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CurrentFileService {
+    private fileService = inject(FileService);
     private destroyRef = inject(DestroyRef);
     private currentFileSubject = new BehaviorSubject<FileDto | null>(null);
     currentFile$: Observable<FileDto | null> = this.currentFileSubject.asObservable();
@@ -27,6 +30,52 @@ export class CurrentFileService {
     uniqueEquipmentTypes$ = this.uniqueEquipmentTypesSubject.asObservable();
 
     private equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
+
+    fileTypes = [
+      'pid',
+      'elect',
+      'ht panel',
+      'iso'
+    ]
+
+    private fileMapByTypeSubject = new BehaviorSubject<Map<string, FileDto[]>>(new Map());
+    fileMapByType$ = this.fileMapByTypeSubject.asObservable();
+    filesLoadedSubject = new BehaviorSubject<boolean>(false);
+    filesLoaded$ = this.filesLoadedSubject.asObservable();
+    private filesUpdtedSubject = new Subject<void>();
+    filesUpdated$ = this.filesUpdtedSubject.asObservable();
+
+    
+
+    isProcessingFile = signal(false);
+    
+    constructor() {
+      this.loadAllFilesByType();
+    }
+  
+    private loadAllFilesByType(): void {
+      const fileObservables = this.fileTypes.map(type =>
+        this.fileService.getByFileType(type).pipe(
+          map(response => ({ type, files: response.responseData }))
+        )
+      );
+    
+      forkJoin(fileObservables).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(results => {
+        const fileMap = new Map<string, FileDto[]>();
+        results.forEach(result => {
+          fileMap.set(result.type, result.files);
+        });
+        this.fileMapByTypeSubject.next(fileMap);
+        this.filesLoadedSubject.next(true);
+      });
+    }
+
+    getFilesByType(type: string): FileDto[] {
+      return this.fileMapByTypeSubject.getValue().get(type) || [];
+    }
+
   
 
     setCurrentFile(file: FileDto | null): void {
@@ -45,6 +94,38 @@ export class CurrentFileService {
         
         this.updateElementsToRender(this.equipmentNotSelectedByDefault);
     }
+
+    saveFile(formDataToSend: FormData): Observable<FileDto> {
+      this.isProcessingFile.set(true);
+      return this.fileService.updateFile(formDataToSend).pipe(
+        map((response: SpringApiResponse<FileDto>) => FileDto.fromJson(response.responseData)),
+        tap(updatedFile => {
+            // Update the current file with the updated data
+            this.setCurrentFile(updatedFile);
+            this.updateMapByType(updatedFile.fileType.name ?? '', updatedFile);
+            this.isProcessingFile.set(false);
+        })
+      );
+    }
+
+    private updateMapByType(type: string, file: FileDto): void {
+      const partualType = this.fileTypes.find(t => type.toLowerCase().includes(t.toLowerCase()));
+      if (!partualType) {
+          return;
+      }
+      const currentFilesByType = this.getFilesByType(partualType);
+      const updatedFilesByType = currentFilesByType.filter(f => f.id!== file.id);
+      updatedFilesByType.push(file);
+
+      const currentMap = this.fileMapByTypeSubject.getValue();
+      const newMap = new Map(currentMap);
+      newMap.set(partualType, updatedFilesByType);
+      
+      this.fileMapByTypeSubject.next(newMap);
+      this.filesUpdtedSubject.next();
+    }
+
+
 
     setElementsToRender(elements: EquipmentDto[]): void {
         this.elementsToRenderSubject.next(elements);

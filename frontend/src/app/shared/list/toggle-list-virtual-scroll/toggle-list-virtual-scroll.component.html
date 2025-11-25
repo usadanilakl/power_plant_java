@@ -3,6 +3,29 @@
 <cdk-virtual-scroll-viewport itemSize="40" class="toggle-list">
   <ng-container *cdkVirtualFor="let item of flatItems(); trackBy: trackByFn">
     <div class="item-content"
+         [class.highlighted]="highlightOnHover()"
+         [class.clicked]="item.isClicked"
+         [class.last-clicked]="item.isLastClicked"
+         [class.level-1]="colorLevels() && item.level === 0"
+         [class.level-2]="colorLevels() && item.level === 1"
+         [class.level-3]="colorLevels() && item.level === 2"
+         [style.padding-left.px]="item.level * 20"
+         [style.backgroundColor]="getItemColor(item)"
+         (click)="onClick($event, item)"
+         (dblclick)="onDoubleClick(item)"
+         (contextmenu)="onRightClick($event, item)"
+         (mousedown)="onMiddleClick($event, item)">
+      <span class="toggle-icon" *ngIf="item.values && item.values.length > 0">
+        {{ item.isExpanded ? '▼' : '▶' }}
+      </span>
+      <span class="item-name">{{ item.name }}</span>
+    </div>
+  </ng-container>
+</cdk-virtual-scroll-viewport>
+
+<!-- <cdk-virtual-scroll-viewport itemSize="40" class="toggle-list">
+  <ng-container *cdkVirtualFor="let item of flatItems(); trackBy: trackByFn">
+    <div class="item-content"
          [class.highlighted]="highlightOnHover"
      [class.clicked]="isItemClicked(item)"
      [class.last-clicked]="isItemLastClicked(item)"
@@ -21,4 +44,4 @@
       <span class="item-name">{{ item.name }}</span>
     </div>
   </ng-container>
-</cdk-virtual-scroll-viewport>
+</cdk-virtual-scroll-viewport> -->

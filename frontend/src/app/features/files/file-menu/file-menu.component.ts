@@ -4,12 +4,12 @@ import { FileService } from '../../../services/file.service';
 import { ToggleMenuComponent } from "../../../shared/menu/toggle-menu/toggle-menu.component";
 import { FileDto } from '../../../models/file/file.model';
 import { RouteService } from '../../../services/util/rout.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CurrentFileService } from '../../../services/current-file.service';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { FileDetailFormComponent } from "../file-detail-form/file-detail-form.component";
 import { FloatingMenuComponent } from "../../../shared/menu/floating-menu/floating-menu.component";
-import { tap } from 'rxjs';
+import { combineLatest, filter, tap } from 'rxjs';
 
 @Component({
   selector: 'app-file-menu',
@@ -28,18 +28,49 @@ export class FileMenuComponent implements OnInit{
   isProcessingFile = signal(false);
   fileSubmitMessage = signal<string>("");
 
+  currentRoute = signal("");
+
+  selectedType = signal<string>("pid");
+
 
 constructor(
   private fileService: FileService, 
   private routService: RouteService,
   private destroyRef: DestroyRef,
   private currentFileService: CurrentFileService,
-) {}
-
-  currentRoute = signal("");
+) { }
 
   ngOnInit(): void {
-    this.loadFiles();
+    
+    this.currentFileService.filesLoaded$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (loaded) => {
+        if(loaded){
+          this.loadFiles();
+          this.isLoading.set(false);
+        }
+        else{
+          this.isLoading.set(true);
+        } 
+      },
+      error: (error) => {
+        console.error('Error loading files:', error);
+        this.error.set(error.message);
+      }
+    })
+
+    this.currentFileService.filesUpdated$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        this.loadFiles(this.selectedType());
+      },
+      error: (error) => {
+        console.error('Error fetching current file:', error);
+      }
+    });
+
     this.currentRoute.set(this.routService.getCurrentRouteInfo().path);
     this.routService.onRouteChange().pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -54,23 +85,11 @@ constructor(
     });
   }
 
+
   loadFiles(type: string = 'pid'): void {
-    this.isLoading.set(true);
-    this.fileService.getByFileType(type).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(
-      (response) => {
-        this.isLoading.set(false);
-        // Choose 'vendor', 'system', or 'fileType' as the grouping criteria
         const criteria = type==='pid' ? 'vendor' : 'fileType';
-        const nestedItems = this.createListOfNestedItems(response.responseData, criteria);
+        const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
         this.menuItems.set(nestedItems);
-      },
-      (error) => {
-        this.isLoading.set(false);
-        this.error.set(error.message);
-      }
-    );
   }
 
   private createListOfNestedItems(data: FileDto[], groupBy: 'vendor' | 'system' | 'fileType'): NestedItem[] {
@@ -139,56 +158,57 @@ constructor(
 
   onFormSubmit(formData: any) {
 
-    if(!this.currentFile()) return;
-    const formDataToSend = new FormData();
-    this.isProcessingFile.set(true);
+    this.isFileFormOpen.set(false);
+    // if(!this.currentFile()) return;
+    // const formDataToSend = new FormData();
+    // this.isProcessingFile.set(true);
   
-    // Extract file from formData and remove it from the object
-    let file: File | null = null;
-    if (formData.file instanceof File) {
-      file = formData.file;
-      delete formData.file; // Remove file from formData
-    }
+    // // Extract file from formData and remove it from the object
+    // let file: File | null = null;
+    // if (formData.file instanceof File) {
+    //   file = formData.file;
+    //   delete formData.file; // Remove file from formData
+    // }
   
-    // Append the file if it exists
-    if (file) {
-      formDataToSend.append('file', file);
-    }
+    // // Append the file if it exists
+    // if (file) {
+    //   formDataToSend.append('file', file);
+    // }
 
-      // Extract the override/revision checkbox value
-      const overrideFile = formData.overrideFile;
-      delete formData.overrideFile; // Remove it from formData as it's not part of the FileDto
+    //   // Extract the override/revision checkbox value
+    //   const overrideFile = formData.overrideFile;
+    //   delete formData.overrideFile; // Remove it from formData as it's not part of the FileDto
   
-    // Continue with the rest of your logic...
-    // Merge the existing item data with the new form data
-    const updatedItem = { ...this.currentFile(), ...formData };
+    // // Continue with the rest of your logic...
+    // // Merge the existing item data with the new form data
+    // const updatedItem = { ...this.currentFile(), ...formData };
   
-    // Append the JSON data
-    formDataToSend.append('fileDto', new Blob([JSON.stringify(new FileDto(updatedItem).toIdModel())], {
-      type: "application/json"
-    }));
+    // // Append the JSON data
+    // formDataToSend.append('fileDto', new Blob([JSON.stringify(new FileDto(updatedItem).toIdModel())], {
+    //   type: "application/json"
+    // }));
 
-      // Append the override/revision flag
-      formDataToSend.append('overrideFile', overrideFile);
+    //   // Append the override/revision flag
+    //   formDataToSend.append('overrideFile', overrideFile);
     
   
-    // Update in the backend
-    this.fileService.updateFile(formDataToSend).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(
-      (response) => {
+    // // Update in the backend
+    // this.fileService.updateFile(formDataToSend).pipe(
+    //   takeUntilDestroyed(this.destroyRef)
+    // ).subscribe(
+    //   (response) => {
 
-        this.fileSubmitMessage.set('File updated successfully');
-        this.currentFile.set(response.responseData);
+    //     this.fileSubmitMessage.set('File updated successfully');
+    //     this.currentFile.set(response.responseData);
   
-        this.isProcessingFile.set(false);
-        this.isFileFormOpen.set(false);
-      },
-      error => {
-        console.error('Error updating file:', error);
-        this.fileSubmitMessage.set('Error updating file ' + error.message);
-      }
-    );
+    //     this.isProcessingFile.set(false);
+    //     this.isFileFormOpen.set(false);
+    //   },
+    //   error => {
+    //     console.error('Error updating file:', error);
+    //     this.fileSubmitMessage.set('Error updating file ' + error.message);
+    //   }
+    // );
   }
 
   onFormDelete() {
@@ -249,24 +269,6 @@ constructor(
     this.handleFileEditClick(item);
   }
   
-  // private handleFileEditClick(item: NestedItem): void {
-  //   if (item.values && item.values.length > 0) return;
-  //   // console.log('Handling click for edit route', item);
-
-  //   this.fileService.getFileById(item.id.toString()).pipe(
-  //     takeUntilDestroyed(this.destroyRef)
-  //   ).subscribe(
-  //     (response) => {
-  //       const file = FileDto.fromJson(response.responseData);
-  //       file.fileLink = file.fileLink.replaceAll('pdf','jpg');
-  //       this.currentFileService.setCurrentFile(file);
-  //       this.currentFile.set(file);
-  //     },
-  //     (error) => {
-  //       console.error('Error getting file for edit:', error);
-  //     }
-  //   );
-  // }
   private handleFileEditClick(item: NestedItem): void {
     if (item.values && item.values.length > 0) return;
   

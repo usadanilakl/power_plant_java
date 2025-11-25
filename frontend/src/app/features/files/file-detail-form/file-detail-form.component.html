@@ -1,7 +1,7 @@
   @if(isFormReady()){
   <app-reactive-form
       [fields]="fields()"
-      [values]="values()"
+      [values]="entity()"
       [layout]="'reactive'"
       (formSubmit)="onFormSubmit($event)"
       (formDelete)="onFormDelete()">

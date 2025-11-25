@@ -1,9 +1,11 @@
-import { Component, OnInit, DestroyRef, signal, computed, Output, EventEmitter, input, output } from '@angular/core';
+import { Component, OnInit, DestroyRef, signal, computed, Output, EventEmitter, input, output, inject } from '@angular/core';
 import { ReactiveFormComponent } from '../../../shared/reactive-form/reactive-form.component';
 import { CurrentValueService } from '../../../services/current-value.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { Option } from '../../../models/option.model';
 import { Validators } from '@angular/forms';
+import { CurrentFileService } from '../../../services/current-file.service';
+import { FileDto } from '../../../models/file/file.model';
 
 @Component({
   selector: 'app-file-detail-form',
@@ -13,6 +15,11 @@ import { Validators } from '@angular/forms';
   styleUrl: './file-detail-form.component.css'
 })
 export class FileDetailFormComponent implements OnInit {
+
+  currentFileService = inject(CurrentFileService);
+  currentValueService = inject(CurrentValueService);
+  private destroyRef = inject(DestroyRef);
+
   values = input<any>({});
   openImage = output<void>();
   formSubmit = output<any>();
@@ -21,6 +28,9 @@ export class FileDetailFormComponent implements OnInit {
   private fileTypeOptions = signal<Option[]>([]);
   private systemOptions = signal<Option[]>([]);
   private vendorOptions = signal<Option[]>([]);
+
+  selectedFileFromService = toSignal(this.currentFileService.currentFile$, { initialValue: new FileDto() });
+  entity = computed(() => this.values() ?? this.selectedFileFromService());
   
   fields = computed(() => [
     { name: 'name', label: 'File Name', type: 'text', validators: [Validators.required] },
@@ -46,10 +56,8 @@ export class FileDetailFormComponent implements OnInit {
   isValueEditMenuOpen = signal(false);
   selectedCategoryName = signal('');
 
-  constructor(
-    private currentValueService: CurrentValueService,
-    private destroyRef: DestroyRef
-  ) {}
+  isProcessingFile = this.currentFileService.isProcessingFile;
+
   
   ngOnInit() {
     this.loadOptions('fileType', this.fileTypeOptions);
@@ -75,7 +83,53 @@ export class FileDetailFormComponent implements OnInit {
   }
 
   onFormSubmit(formData: any) {
-    this.formSubmit.emit(formData);
+
+    if(!this.entity()) return;
+    const formDataToSend = new FormData();
+    this.isProcessingFile.set(true);
+  
+    // Extract file from formData and remove it from the object
+    let file: File | null = null;
+    if (formData.file instanceof File) {
+      file = formData.file;
+      delete formData.file; // Remove file from formData
+    }
+  
+    // Append the file if it exists
+    if (file) {
+      formDataToSend.append('file', file);
+    }
+
+      // Extract the override/revision checkbox value
+      const overrideFile = formData.overrideFile;
+      delete formData.overrideFile; // Remove it from formData as it's not part of the FileDto
+  
+    // Continue with the rest of your logic...
+    // Merge the existing item data with the new form data
+    const updatedItem = { ...this.entity(), ...formData };
+  
+    // Append the JSON data
+    formDataToSend.append('fileDto', new Blob([JSON.stringify(new FileDto(updatedItem).toIdModel())], {
+      type: "application/json"
+    }));
+
+      // Append the override/revision flag
+      formDataToSend.append('overrideFile', overrideFile);
+    
+  
+    // Update in the backend
+    this.currentFileService.saveFile(formDataToSend).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        this.isProcessingFile.set(false);
+        this.formSubmit.emit(formData);
+      },
+      error: (error) => {
+        console.error('Error saving file:', error);
+        this.isProcessingFile.set(false);
+      }
+    });
   }
 
   onFormDelete() {
