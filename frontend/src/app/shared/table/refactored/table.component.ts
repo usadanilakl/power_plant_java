@@ -28,6 +28,7 @@ import { TableSyncService } from './services/table-sync.service';
 import { TableSearchService } from './services/table-search.service';
 import { TableSortService } from './services/table-sort.service';
 import { TableSelectionService } from './services/table-selection.service';
+import { TableResizeService } from './services/table-resize.service';
 
 export interface ClickSetup{
   applyTo: 'row' | 'cell';
@@ -49,6 +50,7 @@ export interface FilterOutRules {
     TableClickService,
     TableSyncService,
     TableSelectionService,
+    TableResizeService
   ],
   templateUrl: './table.component.html',
   styleUrl: './table.component.css',
@@ -63,6 +65,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   private searchService = inject(TableSearchService);
   private sortService = inject(TableSortService);
   private selectionService = inject(TableSelectionService);
+  private resizeService = inject(TableResizeService);
 
   // Inputs
   columns = input<Column[]>([]);
@@ -109,6 +112,12 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   private hoverSubject = new Subject<any>();
   private resizeObserver?: ResizeObserver;
+
+  //Resize state
+  resizeState = this.resizeService.resizeState$;
+  private columnWidths = new Map<string, number>();
+  private resizeMouseMoveListener: ((e: MouseEvent) => void) | null = null;
+  private resizeMouseUpListener: (() => void) | null = null;
 
   // Signals from services
   dragState = this.dragService.dragState$;
@@ -164,6 +173,7 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.initializeTable();
     this.setupResizeObserver();
     this.setupHorizontalScrollSync();
+    this.setupResizeListeners();
   }
 
   get totalTableWidth(): number {
@@ -673,6 +683,79 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   onRowHover(item: any): void {
     this.hoverSubject.next(item);
+  }
+
+
+  // ============ Resize Methods ============//
+
+private setupResizeListeners(): void {
+  this.resizeMouseMoveListener = (e: MouseEvent) => this.onResizeMouseMove(e);
+  this.resizeMouseUpListener = () => this.onResizeMouseUp();
+
+  document.addEventListener('mousemove', this.resizeMouseMoveListener);
+  document.addEventListener('mouseup', this.resizeMouseUpListener);
+
+  this.destroyRef.onDestroy(() => {
+    if (this.resizeMouseMoveListener) {
+      document.removeEventListener('mousemove', this.resizeMouseMoveListener);
+    }
+    if (this.resizeMouseUpListener) {
+      document.removeEventListener('mouseup', this.resizeMouseUpListener);
+    }
+  });
+}
+
+onResizeStart(event: MouseEvent, columnId: string, currentWidth: number): void {
+  if (!isPlatformBrowser(this.platformId)) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  this.resizeService.startResize(columnId, event.clientX, currentWidth);
+}
+
+private onResizeMouseMove(event: MouseEvent): void {
+  if (!this.resizeService.isResizing()) return;
+
+  const newWidth = this.resizeService.updateResize(event.clientX);
+  const columnId = this.resizeService.getResizingColumnId();
+
+  if (columnId) {
+    this.columnWidths.set(columnId, newWidth);
+    this.updateColumnWidth(columnId, newWidth);
+    // Sync widths immediately during resize
+    this.syncService.synchronizeColumnWidths();
+    this.cdr.detectChanges();
+  }
+}
+
+private onResizeMouseUp(): void {
+  if (this.resizeService.isResizing()) {
+    this.resizeService.endResize();
+    this.syncService.synchronizeColumnWidths();
+    this.cdr.detectChanges();
+  }
+}
+
+private updateColumnWidth(columnId: string, width: number): void {
+  const column = this.columns().find((col) => col.id === columnId);
+  if (column) {
+    column.width = width;
+  }
+}
+
+  getColumnWidth(columnId: string): number {
+    return this.columnWidths.get(columnId) || 
+           this.columns().find((col) => col.id === columnId)?.width || 
+           120;
+  }
+
+  isResizing(): boolean {
+    return this.resizeService.isResizing();
+  }
+
+  getResizingColumnId(): string | null {
+    return this.resizeService.getResizingColumnId();
   }
 
   // ============ Utility Methods ============
