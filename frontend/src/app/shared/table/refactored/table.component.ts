@@ -29,6 +29,11 @@ import { TableSearchService } from './services/table-search.service';
 import { TableSortService } from './services/table-sort.service';
 import { TableSelectionService } from './services/table-selection.service';
 
+export interface ClickSetup{
+  applyTo: 'row' | 'cell';
+  actions: ('leftClick' | 'rightClick' | 'middleClick' | 'doubleClick')[];
+}
+
 @Component({
   selector: 'app-table',
   standalone: true,
@@ -52,6 +57,10 @@ export class TableComponent implements OnInit, AfterViewInit {
   deleteItem = input<string | undefined>();
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
+  clickSetupInput = input<ClickSetup>({
+    applyTo: 'row',
+    actions: ['leftClick', 'rightClick','middleClick', 'doubleClick']
+  });
 
   // Outputs
   rowClicked = output<{ item: any; event: MouseEvent }>();
@@ -602,6 +611,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   registerLastClickedCell(item: any, column: Column, event: MouseEvent): void {
     this.lastClickedCell = { item, column };
+    console.log('registerLastClickedCell', item, column, event);
   }
     
     private syncHorizontalScroll(): void {

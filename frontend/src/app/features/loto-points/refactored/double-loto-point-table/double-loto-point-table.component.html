@@ -6,7 +6,7 @@
       <!-- <span class="item-count">{{ availableItems().length }} items</span> -->
     </div>
     <app-rf-loto-point-table
-      [enableDragDrop]="true"
+      [enableDragDrop]="false"
       [loadMoreEnabled]="true"
       [fieldsToDisplay]="fieldsToDisplay()"
       (rowDoubleClickEvent)="onAvailableItemDoubleClick($event)">

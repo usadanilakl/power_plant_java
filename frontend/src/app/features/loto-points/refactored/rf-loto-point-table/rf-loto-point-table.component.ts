@@ -39,6 +39,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   inputItems = input<LotoPointDto[] | null>(null);
   loadMoreEnabled = input<boolean>(true);
   enableDragDrop = input<boolean>(false);
+  isIsolated = input<boolean>(false);
   hoverDebounceTime = input<number>(0);
   fieldsToDisplay = input<(keyof LotoPointDto)[]>([
     'isVerified',
@@ -90,6 +91,9 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
      * Load initial batch of LOTO points
      */
     private loadInitialData(): void {
+
+      if(this.inputItems()) return; // If items are provided, no need to load initial data.
+
       this.isLoading.set(true);
       this.errorMessage.set(null);
   
@@ -113,36 +117,6 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
         )
         .subscribe();
     }
-  
-    // /**
-    //  * Handle search/filter from table component
-    //  */
-    // onSearch(criteria: SearchCriteria): void {
-    //   this.isLoading.set(true);
-    //   this.errorMessage.set(null);
-  
-    //   this.apiService
-    //     .searchLotoPoints(criteria, 50)
-    //     .pipe(
-    //       tap(response => {
-    //         if (response.responseData?.content) {
-    //           // Replace current items with search results
-    //           this.stateService.clearLotoPoints();
-    //           this.stateService.addLotoPoints(response.responseData.content);
-    //           this.stateService.incrementPage();
-    //         }
-    //         this.isLoading.set(false);
-    //       }),
-    //       catchError(error => {
-    //         console.error('Error searching LOTO points:', error);
-    //         this.errorMessage.set('Search failed');
-    //         this.isLoading.set(false);
-    //         return of(null);
-    //       }),
-    //       takeUntilDestroyed(this.destroyRef)
-    //     )
-    //     .subscribe();
-    // }
 
     /**
      * Handle search/filter from table component

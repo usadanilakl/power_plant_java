@@ -66,7 +66,7 @@
               *ngFor="let column of columns()"
               [style.width.px]="column.width"
               [ngStyle]="getCellStyle(item, column)"
-              (dblclick)="registerLastClickedCell(item, column, $event)"
+              (mousedown)="registerLastClickedCell(item, column, $event)"
               class="table-cell"
             >
               <span *ngIf="!column.template">
