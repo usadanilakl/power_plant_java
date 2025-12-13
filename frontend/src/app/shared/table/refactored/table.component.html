@@ -53,6 +53,7 @@
             [class.drag-hover-top]="item === hoveredItem() && dragState().isDragging"
             [class.selected]="isItemSelected(item)"
             [class.dragged]="isItemDragged(item)"
+            [ngStyle]="getRowStyle(item)"
             [class.ghost-row]="dragState().ghostRowIndex === item.index"
             (mousedown)="onMouseDown($event, item)"
             (mouseup)="onMouseUp($event)"

@@ -1,22 +1,47 @@
-import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef, output, input, inject, DestroyRef, HostListener, effect, PLATFORM_ID } from '@angular/core';
+import {
+  Component,
+  Input,
+  OnInit,
+  ViewChild,
+  ElementRef,
+  Output,
+  EventEmitter,
+  ChangeDetectorRef,
+  output,
+  input,
+  inject,
+  DestroyRef,
+  HostListener,
+  effect,
+  PLATFORM_ID,
+} from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Column } from '../../models/column.model';
-import { BehaviorSubject, debounceTime, distinctUntilChanged, Observable, Subject, Subscription } from 'rxjs';
+import {
+  BehaviorSubject,
+  debounceTime,
+  distinctUntilChanged,
+  Observable,
+  Subject,
+  Subscription,
+} from 'rxjs';
 import { SearchCriteria } from '../../models/api/search-criteria.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CopyPasteDirective } from '../../directives/copy-paste.directive';
-import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
+import {
+  ScrollingModule,
+  CdkVirtualScrollViewport,
+} from '@angular/cdk/scrolling';
 
 @Component({
   selector: 'app-shared-table',
   standalone: true,
   imports: [CommonModule, FormsModule, CopyPasteDirective, ScrollingModule],
   templateUrl: './table.component.html',
-  styleUrls: ['./table.component.css']
+  styleUrls: ['./table.component.css'],
 })
 export class TableComponent implements OnInit {
-
   private destroyRef = inject(DestroyRef);
   private platformId = inject(PLATFORM_ID);
 
@@ -45,12 +70,12 @@ export class TableComponent implements OnInit {
   lastClickedItem: any = null;
   private lastClickTime: number = 0;
   private isDoubleClickHandled: boolean = false;
-  lastClickedCell!: { item: any, column: Column };
+  lastClickedCell!: { item: any; column: Column };
   rowHeight = 50;
 
   isDraggingAndDropping = false;
   draggedItem: any = null;
-  private startDragPosition: { x: number, y: number } = { x: 0, y: 0 };
+  private startDragPosition: { x: number; y: number } = { x: 0, y: 0 };
   ghostRowIndex: number | null = null;
 
   private _items = new BehaviorSubject<any[]>([]);
@@ -65,12 +90,9 @@ export class TableComponent implements OnInit {
   private clickDelay = 250; // milliseconds
   private hoverSubject = new Subject<any>();
 
-  constructor(private cdr: ChangeDetectorRef) {
-
-  }
+  constructor(private cdr: ChangeDetectorRef) {}
 
   private itemsSubscription: Subscription | null = null;
-
 
   @Input() set items(value: any[] | Observable<any[]>) {
     // console.log('Items input received:', value);
@@ -80,16 +102,15 @@ export class TableComponent implements OnInit {
     } else if (value instanceof Observable) {
       // console.log('Observable received');
       this.itemsSubscription?.unsubscribe();
-      this.itemsSubscription = value.pipe(
-        takeUntilDestroyed(this.destroyRef)
-      ).subscribe(items => {
-        // console.log('Items from Observable:', items);
-        this._items.next(items);
-      });
+      this.itemsSubscription = value
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((items) => {
+          // console.log('Items from Observable:', items);
+          this._items.next(items);
+        });
     }
   }
 
-  
   // ngAfterViewInit() {
   //   setTimeout(() => {
   //     if (this.tableBody && this.tableBody.nativeElement) {
@@ -102,12 +123,12 @@ export class TableComponent implements OnInit {
   //         this.cdr.detectChanges();
   //       }
   //     }
-  
+
   //     this.resizeObserver = new ResizeObserver(() => {
   //       this.viewport.checkViewportSize();
   //     });
   //     this.resizeObserver.observe(this.viewport.elementRef.nativeElement);
-  
+
   //     // Use destroyRef for cleanup
   //     this.destroyRef.onDestroy(() => {
   //       if (this.resizeObserver) {
@@ -119,7 +140,6 @@ export class TableComponent implements OnInit {
   //   console.log('isDragAndDropEnabled:', this.isDragAndDropEnabled());
   // }
 
-  
   ngAfterViewInit() {
     if (isPlatformBrowser(this.platformId)) {
       setTimeout(() => {
@@ -153,30 +173,31 @@ export class TableComponent implements OnInit {
     console.log('isDragAndDropEnabled:', this.isDragAndDropEnabled());
   }
 
+  ngOnInit() {
+    // console.log('TableComponent initialized');
+    this._items
+      .pipe(
+        debounceTime(0),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((items) => {
+        // console.log('Items updated:', items);
+        this.updateFilteredItems();
+        this.cdr.detectChanges();
+      });
 
+    this.hoverSubject
+      .pipe(
+        debounceTime(this.hoverDebounceTime()),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((item) => {
+        this.rowHoveredEvent.emit(item);
+      });
 
-
-ngOnInit() {
-  // console.log('TableComponent initialized');
-  this._items.pipe(
-    debounceTime(0),
-    distinctUntilChanged(),
-    takeUntilDestroyed(this.destroyRef)
-  ).subscribe((items) => {
-    // console.log('Items updated:', items);
-    this.updateFilteredItems();
-    this.cdr.detectChanges();
-  });
-
-  this.hoverSubject.pipe(
-    debounceTime(this.hoverDebounceTime()),
-    takeUntilDestroyed(this.destroyRef)
-  ).subscribe(item => {
-    this.rowHoveredEvent.emit(item);
-  });
-
-  this.updateItemIndices();
-}
+    this.updateItemIndices();
+  }
 
   updateItems(newItems: any[]) {
     this._items.next(newItems);
@@ -199,55 +220,70 @@ ngOnInit() {
       type: this.globalSearchQuery ? 'global' : 'column',
       query: this.globalSearchQuery,
       filters: filters,
-      page: 1
+      page: 1,
     };
 
-    this.columnFilters = {...filters}
+    this.columnFilters = { ...filters };
 
     this.search.emit(searchCriteria);
   }
 
   private updateFilteredItems() {
     // console.log('Updating filtered items: ', this._items.value.length);
-    this.filteredItems = this._items.value.filter(item => {
-      if (this.globalSearchQuery) {
-        return Object.values(item).some(value => 
-          String(value).toLowerCase().includes(this.globalSearchQuery.toLowerCase())
+    this.filteredItems = this._items.value
+      .filter((item) => {
+        if (this.globalSearchQuery) {
+          return Object.values(item).some((value) =>
+            String(value)
+              .toLowerCase()
+              .includes(this.globalSearchQuery.toLowerCase())
+          );
+        }
+        return true;
+      })
+      .filter((item) => {
+        // console.log('Filter conditions:', this.columnFilters);
+        // console.log('Item:', item);
+        return Object.entries(this.columnFilters).every(
+          ([key, value]) =>
+            !value ||
+            String(this.getNestedProperty(item, key))
+              .toLowerCase()
+              .includes(value.toLowerCase())
         );
-      }
-      return true;
-    }).filter(item => {
-      // console.log('Filter conditions:', this.columnFilters);
-      // console.log('Item:', item);
-      return Object.entries(this.columnFilters).every(([key, value]) => 
-        !value || String(this.getNestedProperty(item, key)).toLowerCase().includes(value.toLowerCase())
-      );
-    });
+      });
 
     if (this.currentSortColumn) {
-      this.sortColumn(this.columns.find(col => col.id === this.currentSortColumn) || this.columns[0]);
+      this.sortColumn(
+        this.columns.find((col) => col.id === this.currentSortColumn) ||
+          this.columns[0]
+      );
     }
 
-      // Maintain the current order of items
-      const orderedItems = this._items.value.filter(item => 
-        this.filteredItems.some(filteredItem => filteredItem.id === item.id)
-      );
+    // Maintain the current order of items
+    const orderedItems = this._items.value.filter((item) =>
+      this.filteredItems.some((filteredItem) => filteredItem.id === item.id)
+    );
 
-      this.filteredItems = orderedItems;
-      this.updateItemIndices();
-      // console.log('Filtered items updated:', this.filteredItems.length);
+    this.filteredItems = orderedItems;
+    this.updateItemIndices();
+    // console.log('Filtered items updated:', this.filteredItems.length);
   }
 
   handleScroll() {
     const end = this.viewport.getRenderedRange().end;
     const total = this.filteredItems.length;
     const searchCriteria: SearchCriteria = {
-      type:  this.globalSearchQuery !== '' ? 'global' : 'column',
+      type: this.globalSearchQuery !== '' ? 'global' : 'column',
       query: this.globalSearchQuery,
-      filters: this.columnFilters
-    }
+      filters: this.columnFilters,
+    };
     if (end === total) {
-      if(this.globalSearchQuery!=='' || Object.values(this.columnFilters).some(filter => filter !== ''))this.loadMoreItems.emit(searchCriteria);
+      if (
+        this.globalSearchQuery !== '' ||
+        Object.values(this.columnFilters).some((filter) => filter !== '')
+      )
+        this.loadMoreItems.emit(searchCriteria);
       else this.loadMoreItems.emit();
     }
   }
@@ -257,29 +293,34 @@ ngOnInit() {
   }
 
   sortColumn(column: Column) {
-    if(this.isDragAndDropEnabled()) return;
+    if (this.isDragAndDropEnabled()) return;
     const columnKey = column.accessorKey || column.id;
-    this.isAscending = this.currentSortColumn === columnKey ? !this.isAscending : true;
+    this.isAscending =
+      this.currentSortColumn === columnKey ? !this.isAscending : true;
     this.currentSortColumn = columnKey;
-  
+
     this.filteredItems = [...this.filteredItems].sort((a, b) => {
       const aValue = this.getCellValue(a, column);
       const bValue = this.getCellValue(b, column);
-  
+
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return this.isAscending ? aValue - bValue : bValue - aValue;
       } else {
-        return this.isAscending ? 
-          String(aValue).localeCompare(String(bValue)) : 
-          String(bValue).localeCompare(String(aValue));
+        return this.isAscending
+          ? String(aValue).localeCompare(String(bValue))
+          : String(bValue).localeCompare(String(aValue));
       }
     });
-  
+
     this.cdr.detectChanges();
   }
 
   getCellValue(item: any, column: Column): string {
-    return column.accessorFn ? column.accessorFn(item) : column.accessorKey ? this.getNestedProperty(item, column.accessorKey) : '';
+    return column.accessorFn
+      ? column.accessorFn(item)
+      : column.accessorKey
+      ? this.getNestedProperty(item, column.accessorKey)
+      : '';
   }
 
   getCellStyle(item: any, column: any): { [key: string]: string } {
@@ -295,7 +336,9 @@ ngOnInit() {
       if (key.includes('[') && key.includes(']')) {
         const [arrayKey, indexStr] = key.split(/[\[\]]/);
         const index = parseInt(indexStr);
-        return current[arrayKey] && current[arrayKey][index] ? current[arrayKey][index] : '';
+        return current[arrayKey] && current[arrayKey][index]
+          ? current[arrayKey][index]
+          : '';
       }
       return current[key] !== undefined ? current[key] : '';
     }, obj);
@@ -317,11 +360,11 @@ ngOnInit() {
       // console.log('onMouseMove - dragging', { clientY: event.clientY, draggedItem: this.draggedItem });
       const currentY = event.clientY;
       const rows = this.tableBody.nativeElement.querySelectorAll('tr');
-      
+
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rect = row.getBoundingClientRect();
-        
+
         if (currentY > rect.top && currentY < rect.bottom) {
           if (i !== this.draggedItem.index) {
             this.ghostRowIndex = i;
@@ -337,7 +380,11 @@ ngOnInit() {
 
   onMouseUp(event: MouseEvent) {
     // console.log('onMouseUp called', { isDraggingAndDropping: this.isDraggingAndDropping });
-    if (this.isDraggingAndDropping && this.draggedItem && this.ghostRowIndex !== null) {
+    if (
+      this.isDraggingAndDropping &&
+      this.draggedItem &&
+      this.ghostRowIndex !== null
+    ) {
       this.moveItem(this.draggedItem.index, this.ghostRowIndex);
       this.isDraggingAndDropping = false;
       this.draggedItem = null;
@@ -350,12 +397,10 @@ ngOnInit() {
     }
   }
 
-  
-
   onDragOver(event: MouseEvent) {
     event.preventDefault(); // Necessary to allow dropping
   }
-  
+
   moveItem(fromIndex: number, toIndex: number) {
     // console.log('moveItem called', { fromIndex, toIndex });
     requestAnimationFrame(() => {
@@ -367,7 +412,7 @@ ngOnInit() {
       // console.log('Item moved', { newFilteredItems: this.filteredItems });
     });
   }
-  
+
   updateItemIndices() {
     // console.log('updateItemIndices called');
     this.filteredItems.forEach((item, index) => {
@@ -376,25 +421,26 @@ ngOnInit() {
     this.cdr.markForCheck();
     // console.log('Item indices updated', { filteredItems: this.filteredItems });
   }
-  
+
   // @HostListener('document:mousemove', ['$event'])
   // onDocumentMouseMove(event: MouseEvent) {
   //   // console.log('document:mousemove', { clientY: event.clientY, isDraggingAndDropping: this.isDraggingAndDropping });
   //   // this.onMouseMove(event);
   // }
-  
+
   // @HostListener('document:mouseup', ['$event'])
   // onDocumentMouseUp(event: MouseEvent) {
   //   // console.log('document:mouseup');
   //   // this.onMouseUp(event);
   // }
-  
+
   onRowClick(item: any, event: MouseEvent) {
-    if (event.button === 0) { // Left click
+    if (event.button === 0) {
+      // Left click
       event.preventDefault(); // Prevent default click behavior
       const currentTime = new Date().getTime();
       const timeSinceLastClick = currentTime - this.lastClickTime;
-  
+
       if (timeSinceLastClick < 300 && !this.isDoubleClickHandled) {
         // Double click
         this.onRowDoubleClick(item);
@@ -417,17 +463,18 @@ ngOnInit() {
           }
         }, 300);
       }
-    } else if (event.button === 1 && this.middleClickCallback) { // Middle click
+    } else if (event.button === 1 && this.middleClickCallback) {
+      // Middle click
       this.middleClickCallback(item);
     }
   }
-  
+
   onRowDoubleClick(item: any) {
     if (this.isDoubleClickHandled) {
       return; // Exit if we've already handled a double-click
     }
     this.isDoubleClickHandled = true;
-  
+
     if (typeof this.doubleClickCallback === 'function') {
       try {
         this.doubleClickCallback(item);
@@ -435,7 +482,7 @@ ngOnInit() {
         console.error('Error executing doubleClickCallback:', error);
       }
     }
-  
+
     if (typeof this.cellDoubleClickCallback === 'function') {
       try {
         if (this.lastClickedCell && this.lastClickedCell.column) {
@@ -448,7 +495,7 @@ ngOnInit() {
       }
     }
   }
-  
+
   onRowRightClick(item: any, event: MouseEvent) {
     if (typeof this.rightClickCallback === 'function') {
       event.preventDefault(); // Prevent the default context menu
@@ -461,7 +508,7 @@ ngOnInit() {
   }
 
   onRowCtrlClick(item: any, event: MouseEvent) {
-    const index = this.selectedItems.findIndex(i => i.id === item.id);
+    const index = this.selectedItems.findIndex((i) => i.id === item.id);
     if (index > -1) {
       this.selectedItems.splice(index, 1);
     } else {
@@ -477,29 +524,35 @@ ngOnInit() {
       this.selectedItems = [item];
       return;
     }
-  
+
     const allItems = this._items.value;
-    const lastIndex = allItems.findIndex(i => i.id === this.lastClickedItem.id);
-    const currentIndex = allItems.findIndex(i => i.id === item.id);
-  
+    const lastIndex = allItems.findIndex(
+      (i) => i.id === this.lastClickedItem.id
+    );
+    const currentIndex = allItems.findIndex((i) => i.id === item.id);
+
     if (lastIndex === -1 || currentIndex === -1) return;
-  
+
     const start = Math.min(lastIndex, currentIndex);
     const end = Math.max(lastIndex, currentIndex);
-  
+
     const itemsToToggle = allItems.slice(start, end + 1);
-  
+
     // Determine if we're selecting or unselecting based on the state of the current item
-    const isSelecting = !this.selectedItems.some(i => i.id === item.id);
-  
+    const isSelecting = !this.selectedItems.some((i) => i.id === item.id);
+
     if (isSelecting) {
       // Add items that are not already selected
-      this.selectedItems = [...new Set([...this.selectedItems, ...itemsToToggle])];
+      this.selectedItems = [
+        ...new Set([...this.selectedItems, ...itemsToToggle]),
+      ];
     } else {
       // Remove the toggled items from selection
-      this.selectedItems = this.selectedItems.filter(i => !itemsToToggle.some(ti => ti.id === i.id));
+      this.selectedItems = this.selectedItems.filter(
+        (i) => !itemsToToggle.some((ti) => ti.id === i.id)
+      );
     }
-  
+
     this.lastClickedItem = item;
     this.selectedItemsEvent.emit(this.selectedItems);
   }
@@ -520,30 +573,30 @@ ngOnInit() {
   onDeleteSelectedItems() {
     if (this.deleteItem && this.selectedItems.length > 0) {
       const deletedIds = new Set();
-  
+
       // Delete items and collect their IDs
       for (let item of this.selectedItems) {
         this.deleteItem(item.id);
         deletedIds.add(item.id);
       }
-  
+
       // Remove deleted items from _items
-      const updatedItems = this._items.value.filter(item => !deletedIds.has(item.id));
+      const updatedItems = this._items.value.filter(
+        (item) => !deletedIds.has(item.id)
+      );
       this._items.next(updatedItems);
-  
+
       // Clear selected items
       this.selectedItems = [];
-  
+
       // Update filtered items
       this.updateFilteredItems();
-  
+
       // Trigger change detection
       this.cdr.detectChanges();
     }
   }
-
 }
-
 
 // import { Component, Input, OnInit, ViewChild, ElementRef, Output, EventEmitter, ChangeDetectorRef, output, input, inject, DestroyRef } from '@angular/core';
 // import { CommonModule } from '@angular/common';
@@ -600,7 +653,7 @@ ngOnInit() {
 //   constructor(private cdr: ChangeDetectorRef) {}
 
 //   private itemsSubscription: Subscription | null = null;
-  
+
 //   // @Input() set items(value: any[] | Observable<any[]>) {
 //   //   if (Array.isArray(value)) {
 //   //     this._items.next(value);
@@ -683,13 +736,13 @@ ngOnInit() {
 //   private updateFilteredItems() {
 //     this.filteredItems = this._items.value.filter(item => {
 //       if (this.globalSearchQuery) {
-//         return Object.values(item).some(value => 
+//         return Object.values(item).some(value =>
 //           String(value).toLowerCase().includes(this.globalSearchQuery.toLowerCase())
 //         );
 //       }
 //       return true;
 //     }).filter(item => {
-//       return Object.entries(this.columnFilters).every(([key, value]) => 
+//       return Object.entries(this.columnFilters).every(([key, value]) =>
 //         !value || String(this.getNestedProperty(item, key)).toLowerCase().includes(value.toLowerCase())
 //       );
 //     });
@@ -744,13 +797,13 @@ ngOnInit() {
 
 //   private lastClickTime: number = 0;
 //   private isDoubleClickHandled: boolean = false;
-  
+
 //   onRowClick(item: any, event: MouseEvent) {
 //     if (event.button === 0) { // Left click
 //       event.preventDefault(); // Prevent default click behavior
 //       const currentTime = new Date().getTime();
 //       const timeSinceLastClick = currentTime - this.lastClickTime;
-  
+
 //       if (timeSinceLastClick < 300 && !this.isDoubleClickHandled) {
 //         // Double click
 //         this.onRowDoubleClick(item);
@@ -777,13 +830,13 @@ ngOnInit() {
 //       this.middleClickCallback(item);
 //     }
 //   }
-  
+
 //   onRowDoubleClick(item: any) {
 //     if (this.isDoubleClickHandled) {
 //       return; // Exit if we've already handled a double-click
 //     }
 //     this.isDoubleClickHandled = true;
-  
+
 //     if (typeof this.doubleClickCallback === 'function') {
 //       try {
 //         this.doubleClickCallback(item);
@@ -791,7 +844,7 @@ ngOnInit() {
 //         console.error('Error executing doubleClickCallback:', error);
 //       }
 //     }
-  
+
 //     if (typeof this.cellDoubleClickCallback === 'function') {
 //       try {
 //         if (this.lastClickedCell && this.lastClickedCell.column) {
@@ -804,7 +857,7 @@ ngOnInit() {
 //       }
 //     }
 //   }
-  
+
 //   onRowRightClick(item: any, event: MouseEvent) {
 //     if (typeof this.rightClickCallback === 'function') {
 //       event.preventDefault(); // Prevent the default context menu
@@ -833,21 +886,21 @@ ngOnInit() {
 //       this.selectedItems = [item];
 //       return;
 //     }
-  
+
 //     const allItems = this._items.value;
 //     const lastIndex = allItems.findIndex(i => i.id === this.lastClickedItem.id);
 //     const currentIndex = allItems.findIndex(i => i.id === item.id);
-  
+
 //     if (lastIndex === -1 || currentIndex === -1) return;
-  
+
 //     const start = Math.min(lastIndex, currentIndex);
 //     const end = Math.max(lastIndex, currentIndex);
-  
+
 //     const itemsToToggle = allItems.slice(start, end + 1);
-  
+
 //     // Determine if we're selecting or unselecting based on the state of the current item
 //     const isSelecting = !this.selectedItems.some(i => i.id === item.id);
-  
+
 //     if (isSelecting) {
 //       // Add items that are not already selected
 //       this.selectedItems = [...new Set([...this.selectedItems, ...itemsToToggle])];
@@ -855,7 +908,7 @@ ngOnInit() {
 //       // Remove the toggled items from selection
 //       this.selectedItems = this.selectedItems.filter(i => !itemsToToggle.some(ti => ti.id === i.id));
 //     }
-  
+
 //     this.lastClickedItem = item;
 //     this.selectedItemsEvent.emit(this.selectedItems);
 //   }
@@ -878,23 +931,23 @@ ngOnInit() {
 //   onDeleteSelectedItems() {
 //     if (this.deleteItem && this.selectedItems.length > 0) {
 //       const deletedIds = new Set();
-  
+
 //       // Delete items and collect their IDs
 //       for (let item of this.selectedItems) {
 //         this.deleteItem(item.id);
 //         deletedIds.add(item.id);
 //       }
-  
+
 //       // Remove deleted items from _items
 //       const updatedItems = this._items.value.filter(item => !deletedIds.has(item.id));
 //       this._items.next(updatedItems);
-  
+
 //       // Clear selected items
 //       this.selectedItems = [];
-  
+
 //       // Update filtered items
 //       this.updateFilteredItems();
-  
+
 //       // Trigger change detection
 //       this.cdr.detectChanges();
 //     }

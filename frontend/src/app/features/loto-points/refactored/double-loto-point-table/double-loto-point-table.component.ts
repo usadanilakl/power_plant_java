@@ -7,25 +7,23 @@ import {
   OnInit,
   output,
   signal,
-  effect,
-  computed
+  effect
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfLotoPointTableComponent } from '../rf-loto-point-table/rf-loto-point-table.component';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
-import { SearchCriteria } from '../../../../models/api/search-criteria.model';
-import { Column } from '../../../../models/column.model';
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
+import { FilterOutRules } from '../../../../shared/table/refactored/table.component';
 
 @Component({
   selector: 'app-double-loto-point-table',
   standalone: true,
   imports: [CommonModule, RfLotoPointTableComponent],
   templateUrl: './double-loto-point-table.component.html',
-  styleUrl: './double-loto-point-table.component.css'
+  styleUrl: './double-loto-point-table.component.css',
 })
 export class DoubleLotoPointTableComponent implements OnInit {
-    private stateService = inject(RfLotoPointStateService);
+  private stateService = inject(RfLotoPointStateService);
   private destroyRef = inject(DestroyRef);
 
   // Inputs
@@ -38,7 +36,7 @@ export class DoubleLotoPointTableComponent implements OnInit {
     'specificLocation',
     'isoPos',
     'normPos',
-    'zeroEnergyMethod'
+    'zeroEnergyMethod',
   ]);
 
   // Outputs
@@ -49,15 +47,25 @@ export class DoubleLotoPointTableComponent implements OnInit {
 
   // State
   currentSelectedItems = signal<LotoPointDto[]>([]);
+  filterOutRules = signal<FilterOutRules>({
+    action: 'highlight',
+    items: this.selectedItems(),
+    style: { 'background-color': 'lightyellow' },
+  });
 
   constructor() {
     // Sync availableItems with allItems input
     effect(() => {
       const selected = this.currentSelectedItems();
-      
+
       // Filter out items that are in selected
-      const selectedIds = new Set(selected.map(item => item.id));
+      const selectedIds = new Set(selected.map((item) => item.id));
       this.stateService.filterOutItems.set(selected);
+      this.filterOutRules.set({
+        action: 'highlight',
+        items: selected,
+        style: { 'background-color': 'lightyellow' },
+      });
     });
 
     // Sync currentSelectedItems with selectedItems input
@@ -90,9 +98,9 @@ export class DoubleLotoPointTableComponent implements OnInit {
    */
   private addItemToSelected(item: LotoPointDto): void {
     const selected = this.currentSelectedItems();
-    
+
     // Check if item already exists
-    if (selected.some(s => s.id === item.id)) {
+    if (selected.some((s) => s.id === item.id)) {
       return;
     }
 
@@ -107,8 +115,8 @@ export class DoubleLotoPointTableComponent implements OnInit {
    */
   private removeItemFromSelected(item: LotoPointDto): void {
     const selected = this.currentSelectedItems();
-    const updated = selected.filter(s => s.id !== item.id);
-    
+    const updated = selected.filter((s) => s.id !== item.id);
+
     this.currentSelectedItems.set(updated);
     this.itemRemovedFromSelected.emit(item);
     this.selectedItemsChanged.emit(updated);
@@ -122,5 +130,4 @@ export class DoubleLotoPointTableComponent implements OnInit {
     this.selectedItemsReordered.emit(items);
     this.selectedItemsChanged.emit(items);
   }
-
 }

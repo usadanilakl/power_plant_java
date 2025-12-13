@@ -8,7 +8,7 @@
     <app-rf-loto-point-table
       [enableDragDrop]="false"
       [loadMoreEnabled]="true"
-      [fieldsToDisplay]="fieldsToDisplay()"
+      [filterOutItems]="filterOutRules()"
       (rowDoubleClickEvent)="onAvailableItemDoubleClick($event)">
     </app-rf-loto-point-table>
   </div>

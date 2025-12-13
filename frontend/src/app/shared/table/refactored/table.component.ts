@@ -37,16 +37,21 @@ export interface ClickSetup{
 export interface FilterOutRules {
   action: 'highlight' | 'exclude';
   items: any[];
-  style: string;
+  style: { [key: string]: string };
 }
 
 @Component({
   selector: 'app-table',
   standalone: true,
   imports: [CommonModule, FormsModule, ScrollingModule],
-  providers: [TableDragService, TableClickService, TableSyncService, TableSelectionService],
+  providers: [
+    TableDragService,
+    TableClickService,
+    TableSyncService,
+    TableSelectionService,
+  ],
   templateUrl: './table.component.html',
-  styleUrl: './table.component.css'
+  styleUrl: './table.component.css',
 })
 export class TableComponent implements OnInit, AfterViewInit {
   private platformId = inject(PLATFORM_ID);
@@ -67,7 +72,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   filterOutItems = input<FilterOutRules | undefined>();
   clickSetupInput = input<ClickSetup>({
     applyTo: 'row',
-    actions: ['leftClick', 'rightClick','middleClick', 'doubleClick']
+    actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],
   });
 
   // Outputs
@@ -85,9 +90,12 @@ export class TableComponent implements OnInit, AfterViewInit {
   // ViewChild references
   @ViewChild('tableContainer') tableContainer!: ElementRef;
   @ViewChild('tableBody') tableBody!: ElementRef;
-  @ViewChild('headerContainer', { read: ElementRef }) headerContainer!: ElementRef<HTMLDivElement>;
-  @ViewChild('headerTable', { read: ElementRef }) headerTable!: ElementRef<HTMLTableElement>;
-  @ViewChild('bodyTable', { read: ElementRef }) bodyTable!: ElementRef<HTMLTableElement>;
+  @ViewChild('headerContainer', { read: ElementRef })
+  headerContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('headerTable', { read: ElementRef })
+  headerTable!: ElementRef<HTMLTableElement>;
+  @ViewChild('bodyTable', { read: ElementRef })
+  bodyTable!: ElementRef<HTMLTableElement>;
   @ViewChild(CdkVirtualScrollViewport) viewport!: CdkVirtualScrollViewport;
 
   // Component state
@@ -102,12 +110,10 @@ export class TableComponent implements OnInit, AfterViewInit {
   private hoverSubject = new Subject<any>();
   private resizeObserver?: ResizeObserver;
 
-  
   // Signals from services
   dragState = this.dragService.dragState$;
   selectedItems = this.selectionService.selectedItems$;
   lastClickedItem = this.selectionService.lastClickedItem$;
-  
 
   private _items: any[] = [];
   private lastClickedCell!: { item: any; column: Column };
@@ -117,11 +123,11 @@ export class TableComponent implements OnInit, AfterViewInit {
   );
   private excludedItemIds = new Set<any>();
   private highlightedItemIds = new Set<any>();
-  private highlightStyleClass = '';
+  private highlightStyle: { [key: string]: string } = {};
 
   constructor() {
     this.setupHoverHandlers();
-  
+
     effect(() => {
       const items = this.items();
       this._items = items;
@@ -133,15 +139,15 @@ export class TableComponent implements OnInit, AfterViewInit {
       const rules = this.filterOutItems();
       this.excludedItemIds.clear();
       this.highlightedItemIds.clear();
-      this.highlightStyleClass = '';
+      this.highlightStyle = {};
 
       if (rules && rules.items.length > 0) {
-        const itemIds = new Set(rules.items.map(item => item.id));
+        const itemIds = new Set(rules.items.map((item) => item.id));
         if (rules.action === 'exclude') {
           this.excludedItemIds = itemIds;
         } else if (rules.action === 'highlight') {
           this.highlightedItemIds = itemIds;
-          this.highlightStyleClass = rules.style;
+          this.highlightStyle = rules.style;
         }
       }
       this.updateFilteredItems();
@@ -160,27 +166,26 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.setupHorizontalScrollSync();
   }
 
-  
   get totalTableWidth(): number {
     return this.columns().reduce((sum, col) => sum + (col.width || 120), 0);
   }
-  
+
   private setupHorizontalScrollSync(): void {
     if (!this.viewport) return;
-  
+
     this.viewport.scrolledIndexChange
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.syncHeaderScroll();
         this.checkForLoadMore();
       });
-  
+
     // Store the handler reference so it can be removed
     const scrollHandler = () => this.syncHeaderScroll();
     const viewportElement = this.viewport.elementRef.nativeElement;
-    
+
     viewportElement.addEventListener('scroll', scrollHandler);
-  
+
     this.destroyRef.onDestroy(() => {
       viewportElement.removeEventListener('scroll', scrollHandler);
     });
@@ -211,9 +216,6 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ============ Initialization Methods ============
 
-  
-  
-  
   // private updateFilteredItems(): void {
   //   const itemsToFilter = this._items.filter(item => !this.excludedItemIds.has(item.id));
   //   this.filteredItems = this.searchService.performSearch(
@@ -221,16 +223,16 @@ export class TableComponent implements OnInit, AfterViewInit {
   //     this.globalSearchQuery,
   //     this.columnFilters
   //   );
-  
+
   //   if (this.currentSortColumn) {
   //     const column = this.columns().find(col => col.id === this.currentSortColumn);
   //     if (column) {
   //       this.sortColumn(column);
   //     }
   //   }
-  
+
   //   this.updateItemIndices();
-    
+
   //   // ← Sync AFTER sort completes and DOM updates
   //   setTimeout(() => {
   //     this.syncService.synchronizeColumnWidths();
@@ -239,7 +241,9 @@ export class TableComponent implements OnInit, AfterViewInit {
   // }
   private updateFilteredItems(): void {
     // Start with all items, but filter out any that are in the exclusion set.
-    const itemsToFilter = this._items.filter(item => !this.excludedItemIds.has(item.id));
+    const itemsToFilter = this._items.filter(
+      (item) => !this.excludedItemIds.has(item.id)
+    );
 
     // Apply global and column-specific search queries.
     this.filteredItems = this.searchService.performSearch(
@@ -250,7 +254,9 @@ export class TableComponent implements OnInit, AfterViewInit {
 
     // Re-apply the current sort order to the newly filtered list.
     if (this.currentSortColumn) {
-      const column = this.columns().find(col => col.id === this.currentSortColumn);
+      const column = this.columns().find(
+        (col) => col.id === this.currentSortColumn
+      );
       if (column) {
         // The sortColumn method sorts `this.filteredItems` in place.
         this.sortColumn(column);
@@ -267,20 +273,12 @@ export class TableComponent implements OnInit, AfterViewInit {
       this.cdr.detectChanges();
     }, 50);
   }
-  
-  getRowClass(item: any): { [key: string]: boolean } {
-    const isHighlighted = this.highlightedItemIds.has(item.id);
-    const classes: { [key: string]: boolean } = {
-      'selected': this.selectedItems().includes(item),
-      'hovered': item === this.hoveredItem(),
-      'dragging': this.dragService.getDragState().draggedItem === item,
-    };
-    
-    if (isHighlighted && this.highlightStyleClass) {
-      classes[this.highlightStyleClass] = true;
+
+  getRowStyle(item: any): { [key: string]: string } {
+    if (this.highlightedItemIds.has(item.id)) {
+      return this.highlightStyle;
     }
-    
-    return classes;
+    return {};
   }
 
   private setupHoverHandlers(): void {
@@ -289,17 +287,16 @@ export class TableComponent implements OnInit, AfterViewInit {
         debounceTime(this.hoverDebounceTime()),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe(item => {
+      .subscribe((item) => {
         this.rowHoveredEvent.emit(item);
         this.hoveredItem.set(item);
       });
   }
 
-  
   private setupSelectionEmitter(): void {
     this.selectedItems$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(items => {
+      .subscribe((items) => {
         this.selectedItemsEvent.emit(items);
       });
   }
@@ -349,18 +346,17 @@ export class TableComponent implements OnInit, AfterViewInit {
     });
   }
 
-  
   private calculateInitialColumnWidths(): void {
     if (!this.columns || this.columns.length === 0) return;
-  
-    this.columns().forEach(column => {
+
+    this.columns().forEach((column) => {
       if (!column.width || column.width === 0) {
         // Estimate width: ~8px per character + padding
         const estimatedWidth = Math.max(
-          120,  // minimum width
+          120, // minimum width
           (column.header?.length || 10) * 8 + 24
         );
-        column.width = estimatedWidth;  // ← This sets the width property
+        column.width = estimatedWidth; // ← This sets the width property
       }
     });
   }
@@ -386,22 +382,21 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ============ Sorting Methods ============
 
-  
   sortColumn(column: Column): void {
     if (this.isDragAndDropEnabled()) return;
-  
+
     const columnKey = column.accessorKey || column.id;
     this.isAscending =
       this.currentSortColumn === columnKey ? !this.isAscending : true;
     this.currentSortColumn = columnKey;
-  
+
     this.filteredItems = this.sortService.sortItems(
       this.filteredItems,
       column,
       this.isAscending,
       (obj, path) => this.searchService.getNestedProperty(obj, path)
     );
-  
+
     this.cdr.detectChanges();
     // Remove this line - sync is now called in updateFilteredItems()
     // setTimeout(() => this.syncService.synchronizeColumnWidths(), 100);
@@ -428,8 +423,6 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ============ Drag and Drop Methods ============
 
-  
-  
   onMouseDown(event: MouseEvent, item: any): void {
     if (this.isDragAndDropEnabled()) {
       // Ensure item has index property before starting drag
@@ -441,7 +434,7 @@ export class TableComponent implements OnInit, AfterViewInit {
       event.preventDefault();
     }
   }
-  
+
   onMouseUp(event: MouseEvent): void {
     // console.log('onMouseUp triggered');
     const dragState = this.dragService.getDragState();
@@ -451,7 +444,9 @@ export class TableComponent implements OnInit, AfterViewInit {
       const hovered = this.hoveredItem();
       // console.log('Hovered item:', hovered);
       if (hovered) {
-        const toIndex = this.filteredItems.findIndex(item => item === hovered);
+        const toIndex = this.filteredItems.findIndex(
+          (item) => item === hovered
+        );
         // console.log('Calculated toIndex:', toIndex);
         if (toIndex !== -1) {
           // console.log(`Moving item from ${dragState.startIndex} to ${toIndex}`);
@@ -466,35 +461,35 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.dragService.endDrag();
     // console.log('Drag ended.');
   }
-  
+
   private moveItem(fromIndex: number, toIndex: number): void {
     requestAnimationFrame(() => {
       // Find the actual item from filteredItems
       const movedItem = this.filteredItems[fromIndex];
-  
+
       // Find the original index in the master _items array
-      const originalFromIndex = this._items.findIndex(i => i === movedItem);
-  
+      const originalFromIndex = this._items.findIndex((i) => i === movedItem);
+
       // Find the target item in filteredItems to determine where to move in _items
       const targetItem = this.filteredItems[toIndex];
-      const originalToIndex = this._items.findIndex(i => i === targetItem);
-  
+      const originalToIndex = this._items.findIndex((i) => i === targetItem);
+
       if (originalFromIndex !== -1 && originalToIndex !== -1) {
         // Perform the move in the master array
         const [itemToMove] = this._items.splice(originalFromIndex, 1);
         this._items.splice(originalToIndex, 0, itemToMove);
-  
+
         // Re-apply filtering and sorting to get the new filteredItems
         this.updateFilteredItems();
-  
+
         // Emit the reordered master list
         this.itemsReordered.emit([...this._items]);
-  
+
         this.cdr.detectChanges();
       }
     });
   }
-  
+
   private updateItemIndices(): void {
     this.filteredItems.forEach((item, index) => {
       item.index = index;
@@ -545,7 +540,7 @@ export class TableComponent implements OnInit, AfterViewInit {
     if (this.lastClickedCell) {
       this.cellDoubleClicked.emit({
         item,
-        column: this.lastClickedCell.column
+        column: this.lastClickedCell.column,
       });
     }
   }
@@ -568,7 +563,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
     this.selectionService.selectRange(this._items, lastItem, item);
   }
-  
+
   // private setupClickHandlers(): void {
   //   this.clickService.doubleClick$
   //     .pipe(takeUntilDestroyed(this.destroyRef))
@@ -578,7 +573,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   //         this.onRowDoubleClick(item);
   //       }
   //     });
-  
+
   //   this.clickService.singleClick$
   //     .pipe(takeUntilDestroyed(this.destroyRef))
   //     .subscribe(event => {
@@ -599,7 +594,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   //   return this.filteredItems.find(item => item.id.toString() === itemId);
   // }
-  
+
   // onRowClick(item: any, event: MouseEvent): void {
   //   if (event.button === 0) {
   //     // Left click
@@ -610,7 +605,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   //     this.rowMiddleClicked.emit(item);
   //   }
   // }
-  
+
   // private handleSingleClick(item: any, event: MouseEvent): void {
   //   const dragState = this.dragService.getDragState();
   //   if (dragState.isDragging) return;
@@ -618,7 +613,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   //   this.selectionService.setLastClickedItem(item);
   //   console.log('handleSingleClick ', item);
   //   console.log('handleSingleClickEvent ', event);
-  
+
   //   if (event.ctrlKey) {
   //     this.onRowCtrlClick(item);
   //   } else if (event.shiftKey) {
@@ -629,11 +624,11 @@ export class TableComponent implements OnInit, AfterViewInit {
   //     this.rowClicked.emit({ item, event });
   //   }
   // }
-  
+
   // private onRowCtrlClick(item: any): void {
   //   this.selectionService.toggleItem(item);
   // }
-  
+
   // private onRowShiftClick(item: any): void {
   //   const lastItem = this.lastClickedItem();
   //   console.log('onRowShiftClick', lastItem);
@@ -641,10 +636,10 @@ export class TableComponent implements OnInit, AfterViewInit {
   //     this.selectionService.selectItem(item);
   //     return;
   //   }
-  
+
   //   this.selectionService.selectRange(this.filteredItems, lastItem, item);
   // }
-  
+
   // onRowDoubleClick(item: any): void {
   //   this.rowDoubleClicked.emit(item);
   //   if (this.lastClickedCell) {
@@ -654,7 +649,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   //     });
   //   }
   // }
-  
+
   // onRowRightClick(item: any, event: MouseEvent): void {
   //   event.preventDefault();
   //   this.rowRightClicked.emit(item);
@@ -667,10 +662,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   onDeleteSelectedItems(): void {
     if (this.deleteItem) {
       this.selectionService.deleteSelected(this.deleteItem);
-      const deletedIds = new Set(
-        this.selectedItems().map(item => item.id)
-      );
-      this._items = this._items.filter(item => !deletedIds.has(item.id));
+      const deletedIds = new Set(this.selectedItems().map((item) => item.id));
+      this._items = this._items.filter((item) => !deletedIds.has(item.id));
       this.updateFilteredItems();
       this.cdr.detectChanges();
     }
@@ -686,33 +679,32 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   registerLastClickedCell(item: any, column: Column, event: MouseEvent): void {
     this.lastClickedCell = { item, column };
-    console.log('registerLastClickedCell', item, column, event);
   }
-    
-    private syncHorizontalScroll(): void {
-      if (!this.viewport || !this.headerContainer?.nativeElement) return;
-      const scrollLeft = this.viewport.measureScrollOffset('left');
-      this.headerContainer.nativeElement.scrollLeft = scrollLeft;
-    }
-  
-    isItemSelected(item: any): boolean {
-      return this.selectedItems().some(i => i.id === item.id);
-    }
-  
-    isItemDragged(item: any): boolean {
-      const dragState = this.dragService.getDragState();
-      return dragState.draggedItem?.id === item.id;
-    }
-  
-    trackByItemId(index: number, item: any): any {
-      return item.id || index;
-    }
-  
-    ngOnDestroy(): void {
-      this.clickService.reset();
-      this.hoverSubject.complete();
-    }
+
+  private syncHorizontalScroll(): void {
+    if (!this.viewport || !this.headerContainer?.nativeElement) return;
+    const scrollLeft = this.viewport.measureScrollOffset('left');
+    this.headerContainer.nativeElement.scrollLeft = scrollLeft;
   }
+
+  isItemSelected(item: any): boolean {
+    return this.selectedItems().some((i) => i.id === item.id);
+  }
+
+  isItemDragged(item: any): boolean {
+    const dragState = this.dragService.getDragState();
+    return dragState.draggedItem?.id === item.id;
+  }
+
+  trackByItemId(index: number, item: any): any {
+    return item.id || index;
+  }
+
+  ngOnDestroy(): void {
+    this.clickService.reset();
+    this.hoverSubject.complete();
+  }
+}
 
 
 

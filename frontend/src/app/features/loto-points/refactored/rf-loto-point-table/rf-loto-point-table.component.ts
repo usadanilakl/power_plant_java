@@ -16,7 +16,7 @@ import { RfLotoPointStateService } from '../services/rf-loto-point-state.service
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { TableComponent } from '../../../../shared/table/refactored/table.component';
+import { FilterOutRules, TableComponent } from '../../../../shared/table/refactored/table.component';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
@@ -40,6 +40,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   loadMoreEnabled = input<boolean>(true);
   enableDragDrop = input<boolean>(false);
   isIsolated = input<boolean>(false);
+  filterOutItems = input<FilterOutRules | undefined>();
   hoverDebounceTime = input<number>(0);
   fieldsToDisplay = input<(keyof LotoPointDto)[]>([
     'isVerified',
