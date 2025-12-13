@@ -116,28 +116,25 @@ export class TableComponent implements OnInit, AfterViewInit {
   get totalTableWidth(): number {
     return this.columns.reduce((sum, col) => sum + (col.width || 120), 0);
   }
-
+  
   private setupHorizontalScrollSync(): void {
     if (!this.viewport) return;
-
-    // Listen to viewport scroll events
+  
     this.viewport.scrolledIndexChange
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.syncHeaderScroll();
         this.checkForLoadMore();
       });
-
-    // Also listen to actual scroll events for horizontal sync
+  
+    // Store the handler reference so it can be removed
+    const scrollHandler = () => this.syncHeaderScroll();
     const viewportElement = this.viewport.elementRef.nativeElement;
-    viewportElement.addEventListener('scroll', () => {
-      this.syncHeaderScroll();
-    });
-
+    
+    viewportElement.addEventListener('scroll', scrollHandler);
+  
     this.destroyRef.onDestroy(() => {
-      viewportElement.removeEventListener('scroll', () => {
-        this.syncHeaderScroll();
-      });
+      viewportElement.removeEventListener('scroll', scrollHandler);
     });
   }
 
