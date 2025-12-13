@@ -1,0 +1,101 @@
+<div class="table-wrapper">
+  <!-- Search Bar -->
+  <div class="search-bar">
+    <input
+      type="text"
+      placeholder="Global Search"
+      [(ngModel)]="globalSearchQuery"
+      (input)="onGlobalSearchChange()"
+      class="global-search"
+    />
+  </div>
+
+  <!-- Header Container -->
+  <div #headerContainer class="header-container">
+    <table #headerTable class="table table-header">
+      <thead>
+        <tr>
+          <th *ngFor="let column of columns" 
+              [style.width.px]="column.width"
+              (click)="sortColumn(column)"
+              class="sortable-header">
+            <div class="header-content">
+              <span>{{ column.header }}</span>
+              <span *ngIf="currentSortColumn === column.id" 
+                    class="sort-indicator">
+                {{ isAscending ? '▲' : '▼' }}
+              </span>
+            </div>
+            <input
+              *ngIf="column.filterable"
+              type="text"
+              placeholder="Filter..."
+              [(ngModel)]="columnFilters[column.id]"
+              (input)="onColumnSearchChange()"
+              class="column-filter"
+              (click)="$event.stopPropagation()"
+            />
+          </th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+
+  <!-- Body Container with Virtual Scrolling -->
+  <div #tableContainer class="table-container">
+    <cdk-virtual-scroll-viewport
+      [itemSize]="rowHeight"
+      class="viewport"
+    >
+      <table #bodyTable class="table table-body">
+        <tbody>
+          <tr
+            *cdkVirtualFor="let item of filteredItems; trackBy: trackByItemId"
+            [class.selected]="isItemSelected(item)"
+            [class.dragged]="isItemDragged(item)"
+            [class.ghost-row]="dragState().ghostRowIndex === item.index"
+            (mousedown)="onMouseDown($event, item)"
+            (mousemove)="onMouseMove($event)"
+            (mouseup)="onMouseUp($event)"
+            (dragover)="onDragOver($event)"
+            (click)="onRowClick(item, $event)"
+            (dblclick)="onRowDoubleClick(item)"
+            (contextmenu)="onRowRightClick(item, $event)"
+            (mouseenter)="onRowHover(item)"
+          >
+            <td
+              *ngFor="let column of columns"
+              [style.width.px]="column.width"
+              [ngStyle]="getCellStyle(item, column)"
+              (dblclick)="registerLastClickedCell(item, column, $event)"
+              class="table-cell"
+            >
+              <span *ngIf="!column.template">
+                {{ getCellValue(item, column) }}
+              </span>
+              <ng-container *ngIf="column.template">
+                <ng-container *ngTemplateOutlet="column.template; context: { $implicit: item, column: column }"></ng-container>
+              </ng-container>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </cdk-virtual-scroll-viewport>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="filteredItems.length === 0" class="empty-state">
+    <p>No items found</p>
+  </div>
+
+  <!-- Selection Info -->
+  <div *ngIf="selectedItems().length > 0" class="selection-info">
+    <span>{{ selectedItems().length }} item(s) selected</span>
+    <button (click)="onDeleteSelectedItems()" class="delete-btn">
+      Delete Selected
+    </button>
+    <button (click)="clearSelection()" class="clear-btn">
+      Clear Selection
+    </button>
+  </div>
+</div>

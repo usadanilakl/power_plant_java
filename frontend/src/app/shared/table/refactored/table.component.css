@@ -1,0 +1,193 @@
+.table-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.search-bar {
+  padding: 12px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.global-search {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.header-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table-header {
+  background-color: #f9f9f9;
+}
+
+.table-header thead th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-right: 1px solid #e0e0e0;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.table-header thead th:hover {
+  background-color: #f0f0f0;
+}
+
+.sortable-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.sort-indicator {
+  font-size: 12px;
+  color: #666;
+}
+
+.column-filter {
+  width: 100%;
+  padding: 4px 8px;
+  margin-top: 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.table-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.viewport {
+  height: 100%;
+}
+
+.table-body tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.15s;
+}
+
+.table-body tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.table-body tbody tr.selected {
+  background-color: #e3f2fd;
+}
+
+.table-body tbody tr.dragged {
+  opacity: 0.6;
+  background-color: #fff3cd;
+}
+
+.table-body tbody tr.ghost-row {
+  border-top: 3px solid #2196f3;
+  background-color: #f0f8ff;
+}
+
+.table-cell {
+  padding: 12px;
+  border-right: 1px solid #e0e0e0;
+  word-break: break-word;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #999;
+  font-size: 16px;
+}
+
+.selection-info {
+  padding: 12px;
+  background-color: #e3f2fd;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.delete-btn,
+.clear-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.delete-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.delete-btn:hover {
+  background-color: #d32f2f;
+}
+
+.clear-btn {
+  background-color: #757575;
+  color: white;
+}
+
+.clear-btn:hover {
+  background-color: #616161;
+}
+
+/* Scrollbar styling */
+.header-container::-webkit-scrollbar,
+.table-container::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.header-container::-webkit-scrollbar-track,
+.table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.header-container::-webkit-scrollbar-thumb,
+.table-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.header-container::-webkit-scrollbar-thumb:hover,
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
