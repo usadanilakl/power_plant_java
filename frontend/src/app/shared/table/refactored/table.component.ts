@@ -34,10 +34,17 @@ export interface ClickSetup{
   actions: ('leftClick' | 'rightClick' | 'middleClick' | 'doubleClick')[];
 }
 
+export interface FilterOutRules {
+  action: 'highlight' | 'exclude';
+  items: any[];
+  style: string;
+}
+
 @Component({
   selector: 'app-table',
   standalone: true,
   imports: [CommonModule, FormsModule, ScrollingModule],
+  providers: [TableDragService, TableClickService, TableSyncService, TableSelectionService],
   templateUrl: './table.component.html',
   styleUrl: './table.component.css'
 })
@@ -57,6 +64,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   deleteItem = input<string | undefined>();
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
+  filterOutItems = input<FilterOutRules | undefined>();
   clickSetupInput = input<ClickSetup>({
     applyTo: 'row',
     actions: ['leftClick', 'rightClick','middleClick', 'doubleClick']
@@ -107,6 +115,9 @@ export class TableComponent implements OnInit, AfterViewInit {
   private selectedItems$ = toObservable(this.selectedItems).pipe(
     takeUntilDestroyed(this.destroyRef)
   );
+  private excludedItemIds = new Set<any>();
+  private highlightedItemIds = new Set<any>();
+  private highlightStyleClass = '';
 
   constructor() {
     this.setupHoverHandlers();
@@ -116,6 +127,24 @@ export class TableComponent implements OnInit, AfterViewInit {
       this._items = items;
       this.updateFilteredItems();
       this.cdr.detectChanges();
+    });
+
+    effect(() => {
+      const rules = this.filterOutItems();
+      this.excludedItemIds.clear();
+      this.highlightedItemIds.clear();
+      this.highlightStyleClass = '';
+
+      if (rules && rules.items.length > 0) {
+        const itemIds = new Set(rules.items.map(item => item.id));
+        if (rules.action === 'exclude') {
+          this.excludedItemIds = itemIds;
+        } else if (rules.action === 'highlight') {
+          this.highlightedItemIds = itemIds;
+          this.highlightStyleClass = rules.style;
+        }
+      }
+      this.updateFilteredItems();
     });
   }
 
@@ -185,27 +214,73 @@ export class TableComponent implements OnInit, AfterViewInit {
   
   
   
+  // private updateFilteredItems(): void {
+  //   const itemsToFilter = this._items.filter(item => !this.excludedItemIds.has(item.id));
+  //   this.filteredItems = this.searchService.performSearch(
+  //     itemsToFilter,
+  //     this.globalSearchQuery,
+  //     this.columnFilters
+  //   );
+  
+  //   if (this.currentSortColumn) {
+  //     const column = this.columns().find(col => col.id === this.currentSortColumn);
+  //     if (column) {
+  //       this.sortColumn(column);
+  //     }
+  //   }
+  
+  //   this.updateItemIndices();
+    
+  //   // ← Sync AFTER sort completes and DOM updates
+  //   setTimeout(() => {
+  //     this.syncService.synchronizeColumnWidths();
+  //     this.cdr.detectChanges();
+  //   }, 50);
+  // }
   private updateFilteredItems(): void {
+    // Start with all items, but filter out any that are in the exclusion set.
+    const itemsToFilter = this._items.filter(item => !this.excludedItemIds.has(item.id));
+
+    // Apply global and column-specific search queries.
     this.filteredItems = this.searchService.performSearch(
-      this._items,
+      itemsToFilter,
       this.globalSearchQuery,
       this.columnFilters
     );
-  
+
+    // Re-apply the current sort order to the newly filtered list.
     if (this.currentSortColumn) {
       const column = this.columns().find(col => col.id === this.currentSortColumn);
       if (column) {
+        // The sortColumn method sorts `this.filteredItems` in place.
         this.sortColumn(column);
       }
     }
-  
+
+    // Update the indices for virtual scrolling.
     this.updateItemIndices();
-    
-    // ← Sync AFTER sort completes and DOM updates
+
+    // Use a small timeout to ensure the DOM has updated before syncing widths.
+    // This is crucial for accurate width calculation after filtering/sorting.
     setTimeout(() => {
       this.syncService.synchronizeColumnWidths();
       this.cdr.detectChanges();
     }, 50);
+  }
+  
+  getRowClass(item: any): { [key: string]: boolean } {
+    const isHighlighted = this.highlightedItemIds.has(item.id);
+    const classes: { [key: string]: boolean } = {
+      'selected': this.selectedItems().includes(item),
+      'hovered': item === this.hoveredItem(),
+      'dragging': this.dragService.getDragState().draggedItem === item,
+    };
+    
+    if (isHighlighted && this.highlightStyleClass) {
+      classes[this.highlightStyleClass] = true;
+    }
+    
+    return classes;
   }
 
   private setupHoverHandlers(): void {
