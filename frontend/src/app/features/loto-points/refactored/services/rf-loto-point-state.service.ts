@@ -1,5 +1,5 @@
 
-import { Injectable } from "@angular/core";
+import { Injectable, signal } from "@angular/core";
 import { LotoPointDto } from "../../../../models/loto/loto-point.model";
 import { BehaviorSubject, Observable } from "rxjs";
 
@@ -10,16 +10,18 @@ export class RfLotoPointStateService {
   private pageSize = 50; // Load 50 items at a time
   private currentPage = 1;
   
-  private allLoadedLotoPoints = new BehaviorSubject<LotoPointDto[]>([]);
-  allShapes$ = this.allLoadedLotoPoints.asObservable();
+  private allLoadedLotoPointsSubject = new BehaviorSubject<LotoPointDto[]>([]);
+  allLoadedLotoPoints$ = this.allLoadedLotoPointsSubject.asObservable();
+  
+  filterOutItems = signal<LotoPointDto[]>([]);
 
   addLotoPoints(items: LotoPointDto[]): void {
-    const current = this.allLoadedLotoPoints.value;
-    this.allLoadedLotoPoints.next([...current, ...items]);
+    const current = this.allLoadedLotoPointsSubject.value;
+    this.allLoadedLotoPointsSubject.next([...current, ...items]);
   }
 
   clearLotoPoints(): void {
-    this.allLoadedLotoPoints.next([]);
+    this.allLoadedLotoPointsSubject.next([]);
     this.currentPage = 1;
   }
 

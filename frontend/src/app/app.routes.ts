@@ -33,6 +33,7 @@ import { PrintableFormComponent } from './features/form-designer/printable-form/
 import { PrintableFormPreviewComponent } from './features/form-designer/printable-form/printable-form-preview/printable-form-preview.component';
 import { RfLotoPointPageComponent } from './features/loto-points/refactored/rf-loto-point-page/rf-loto-point-page.component';
 import { RfLotoPointTableComponent } from './features/loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
+import { DoubleLotoPointTableComponent } from './features/loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -66,7 +67,7 @@ export const routes: Routes = [
       path: 'loto-points', component: RfLotoPointPageComponent,
       children: [
         { path: '', redirectTo: 'table', pathMatch: 'full' },
-        { path: 'table', component: RfLotoPointTableComponent },
+        { path: 'table', component: DoubleLotoPointTableComponent },
         { path: ':lotoPointId', component: LotoPointComponent }
       ]
     },

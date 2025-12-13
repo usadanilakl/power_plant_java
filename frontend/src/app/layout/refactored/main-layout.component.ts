@@ -1,7 +1,8 @@
-import { AfterViewInit, Component, ElementRef, HostListener, inject, input, NgZone, OnDestroy, Renderer2, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, inject, input, NgZone, OnDestroy, PLATFORM_ID, Renderer2, ViewChild } from '@angular/core';
 import { ThemeToggleComponent } from "../../shared/theme-toggle/theme-toggle.component";
 import { Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { isPlatformBrowser } from '@angular/common';
 
 @Component({
   selector: 'app-main-layout',
@@ -18,6 +19,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
 
   private router = inject(Router);
   private renderer = inject(Renderer2);
+  private platformId = inject(PLATFORM_ID);
 
   header = input<string>();
   isSideMenuEnabled= input<boolean>(false);
@@ -41,42 +43,45 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
 
   isMobileView = false;
   isMenuVisible = true;
-  
-  private mediaQuery: MediaQueryList;
+
+  private mediaQuery: MediaQueryList | null = null;
   private resizeObserver?: ResizeObserver;
   
-  // eslint-disable-next-line @angular-eslint/prefer-inject
   constructor(private ngZone: NgZone) {
-    // Use matchMedia for more reliable mobile detection
-    this.mediaQuery = window.matchMedia('(max-width: 768px)');
-    this.isMobileView = this.mediaQuery.matches;
-    
-    // Listen for media query changes
-    this.mediaQuery.addEventListener('change', this.handleMediaQueryChange);
-    
-    // Fix for Android viewport height issues
-    this.updateViewportHeight();
-    window.addEventListener('resize', this.updateViewportHeight);
-    window.addEventListener('orientationchange', this.updateViewportHeight);
+    // Only initialize browser-specific code if running in browser
+    if (isPlatformBrowser(this.platformId)) {
+      this.mediaQuery = window.matchMedia('(max-width: 768px)');
+      this.isMobileView = this.mediaQuery.matches;
+      
+      // Listen for media query changes
+      this.mediaQuery.addEventListener('change', this.handleMediaQueryChange);
+      
+      // Fix for Android viewport height issues
+      this.updateViewportHeight();
+      window.addEventListener('resize', this.updateViewportHeight);
+      window.addEventListener('orientationchange', this.updateViewportHeight);
+    }
   }
 
-  
   ngOnDestroy() {
-    this.mediaQuery.removeEventListener('change', this.handleMediaQueryChange);
-    window.removeEventListener('resize', this.updateViewportHeight);
-    window.removeEventListener('orientationchange', this.updateViewportHeight);
-    
-    // Clean up overlay listener
-    if (this.overlay?.nativeElement) {
-      this.overlay.nativeElement.removeEventListener('click', this.onOverlayClick);
-    }
-    
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
+    if (isPlatformBrowser(this.platformId) && this.mediaQuery) {
+      this.mediaQuery.removeEventListener('change', this.handleMediaQueryChange);
+      window.removeEventListener('resize', this.updateViewportHeight);
+      window.removeEventListener('orientationchange', this.updateViewportHeight);
+      
+      // Clean up overlay listener
+      if (this.overlay?.nativeElement) {
+        this.overlay.nativeElement.removeEventListener('click', this.onOverlayClick);
+      }
+      
+      if (this.resizeObserver) {
+        this.resizeObserver.disconnect();
+      }
     }
   }
 
   private updateViewportHeight = () => {
+    if (!isPlatformBrowser(this.platformId)) return;
     // Fix for Android browsers where 100vh includes the address bar
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -111,32 +116,37 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
     });
   }
 
-  ngAfterViewInit() {
-    // Double-check mobile state after view init
-    setTimeout(() => {
-      this.isMobileView = this.mediaQuery.matches;
+  
+    ngAfterViewInit() {
+      // Double-check mobile state after view init
+      setTimeout(() => {
+        if (isPlatformBrowser(this.platformId) && this.mediaQuery) {
+          this.isMobileView = this.mediaQuery.matches;
+        }
+        
+        if (this.footer) {
+          this.footerHeight = this.footer.nativeElement.offsetHeight;
+        }
+        
+        // Only set width for desktop view
+        if (!this.isMobileView && this.leftMenu?.nativeElement) {
+          this.leftMenu.nativeElement.style.width = `${this.menuWidth}px`;
+          this.isMenuVisible = true;
+        } else {
+          this.isMenuVisible = false;
+        }
+        
+        // Update viewport height after view initialization
+        if (isPlatformBrowser(this.platformId)) {
+          this.updateViewportHeight();
+        }
       
-      if (this.footer) {
-        this.footerHeight = this.footer.nativeElement.offsetHeight;
-      }
-      
-      // Only set width for desktop view
-      if (!this.isMobileView && this.leftMenu?.nativeElement) {
-        this.leftMenu.nativeElement.style.width = `${this.menuWidth}px`;
-        this.isMenuVisible = true;
-      } else {
-        this.isMenuVisible = false;
-      }
-      
-      // Update viewport height after view initialization
-      this.updateViewportHeight();
-    
-    // Add click listener to overlay for mobile
-    if (this.overlay?.nativeElement) {
-      this.overlay.nativeElement.addEventListener('click', this.onOverlayClick);
+        // Add click listener to overlay for mobile
+        if (this.overlay?.nativeElement) {
+          this.overlay.nativeElement.addEventListener('click', this.onOverlayClick);
+        }
+      }, 0);
     }
-    }, 0);
-  }
 
 /**
  * Handle overlay click - only close menu if clicking directly on overlay
@@ -203,6 +213,7 @@ onOverlayClick = (event: MouseEvent) => {
     }
 
     this.animationFrameId = requestAnimationFrame(() => {
+      if (!isPlatformBrowser(this.platformId)) return;
       const newWidth = event.clientX;
       if (newWidth > 200 && newWidth < window.innerWidth * 0.8) {
         this.menuWidth = newWidth;
@@ -243,6 +254,7 @@ onOverlayClick = (event: MouseEvent) => {
     }
 
     this.footerAnimationFrameId = requestAnimationFrame(() => {
+      if (!isPlatformBrowser(this.platformId)) return;
       const deltaY = this.initialMouseY - event.clientY;
       const newHeight = this.initialFooterHeight + deltaY;
       const minHeight = 100;

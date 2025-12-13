@@ -47,6 +47,10 @@ export class TableClickService {
     }
   }
 
+  isDoubleClickHandled(): boolean {
+    return this.clickState.isDoubleClickHandled;
+  }
+
   reset(): void {
     this.clickState = {
       lastClickTime: 0,

@@ -15,7 +15,7 @@
     <table #headerTable class="table table-header" [style.width.px]="totalTableWidth">
       <thead>
         <tr>
-          <th *ngFor="let column of columns" 
+          <th *ngFor="let column of columns()" 
               [style.width.px]="column.width"
               (click)="sortColumn(column)"
               class="sortable-header">
@@ -50,11 +50,11 @@
         <tbody>
           <tr
             *cdkVirtualFor="let item of filteredItems; trackBy: trackByItemId"
+            [class.drag-hover-top]="item === hoveredItem() && dragState().isDragging"
             [class.selected]="isItemSelected(item)"
             [class.dragged]="isItemDragged(item)"
             [class.ghost-row]="dragState().ghostRowIndex === item.index"
             (mousedown)="onMouseDown($event, item)"
-            (mousemove)="onMouseMove($event)"
             (mouseup)="onMouseUp($event)"
             (dragover)="onDragOver($event)"
             (click)="onRowClick(item, $event)"
@@ -63,7 +63,7 @@
             (mouseenter)="onRowHover(item)"
           >
             <td
-              *ngFor="let column of columns"
+              *ngFor="let column of columns()"
               [style.width.px]="column.width"
               [ngStyle]="getCellStyle(item, column)"
               (dblclick)="registerLastClickedCell(item, column, $event)"

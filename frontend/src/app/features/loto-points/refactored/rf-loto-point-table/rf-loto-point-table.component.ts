@@ -7,12 +7,13 @@ import {
   OnInit,
   output,
   signal,
-  effect
+  effect,
+  computed
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { TableComponent } from '../../../../shared/table/refactored/table.component';
@@ -35,6 +36,8 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   private destroyRef = inject(DestroyRef);
 
   // Inputs
+  inputItems = input<LotoPointDto[] | null>(null);
+  loadMoreEnabled = input<boolean>(true);
   enableDragDrop = input<boolean>(false);
   hoverDebounceTime = input<number>(0);
   fieldsToDisplay = input<(keyof LotoPointDto)[]>([
@@ -57,10 +60,14 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   itemsReorderedEvent = output<LotoPointDto[]>();
 
   // State
-  items$ = this.stateService.allShapes$;
+  items$ = toSignal(this.stateService.allLoadedLotoPoints$, { initialValue: [] });
   columns = signal<Column[]>([]);
   isLoading = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
+
+  items = computed(() => {
+    return this.inputItems() ?? this.items$();
+  });
 
   constructor() {
     // Initialize columns whenever fieldsToDisplay changes
@@ -107,13 +114,86 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
         .subscribe();
     }
   
+    // /**
+    //  * Handle search/filter from table component
+    //  */
+    // onSearch(criteria: SearchCriteria): void {
+    //   this.isLoading.set(true);
+    //   this.errorMessage.set(null);
+  
+    //   this.apiService
+    //     .searchLotoPoints(criteria, 50)
+    //     .pipe(
+    //       tap(response => {
+    //         if (response.responseData?.content) {
+    //           // Replace current items with search results
+    //           this.stateService.clearLotoPoints();
+    //           this.stateService.addLotoPoints(response.responseData.content);
+    //           this.stateService.incrementPage();
+    //         }
+    //         this.isLoading.set(false);
+    //       }),
+    //       catchError(error => {
+    //         console.error('Error searching LOTO points:', error);
+    //         this.errorMessage.set('Search failed');
+    //         this.isLoading.set(false);
+    //         return of(null);
+    //       }),
+    //       takeUntilDestroyed(this.destroyRef)
+    //     )
+    //     .subscribe();
+    // }
+
     /**
      * Handle search/filter from table component
      */
     onSearch(criteria: SearchCriteria): void {
+      const isUsingInputItems = this.inputItems();
+    
+      if (isUsingInputItems) {
+        // Search within provided items only
+        this.searchWithinInputItems(criteria);
+      } else {
+        // Search in database
+        this.searchInDatabase(criteria);
+      }
+    }
+    
+    /**
+     * Search within the provided input items
+     */
+    private searchWithinInputItems(criteria: SearchCriteria): void {
+      const inputItems = this.inputItems();
+      if(!inputItems || inputItems.length === 0) return;
+      
+      let filtered = inputItems;
+    
+      if (criteria.type === 'global' && criteria.query) {
+        // Global search across all properties
+        filtered = inputItems.filter(item =>
+          Object.values(item).some(value =>
+            String(value).toLowerCase().includes(criteria.query!.toLowerCase())
+          )
+        );
+      } else if (criteria.type === 'column' && criteria.filters) {
+        // Column-specific search
+        filtered = inputItems.filter(item =>
+          Object.entries(criteria.filters!).every(([key, value]) => {
+            if (!value) return true;
+            const itemValue = (item as any)[key];
+            return String(itemValue).toLowerCase().includes(value.toLowerCase());
+          })
+        );
+      }
+    }
+    
+    /**
+     * Search in database
+     */
+    private searchInDatabase(criteria: SearchCriteria): void {
       this.isLoading.set(true);
       this.errorMessage.set(null);
-  
+    
       this.apiService
         .searchLotoPoints(criteria, 50)
         .pipe(
@@ -141,6 +221,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
      * Handle load more when user scrolls to bottom
      */
     onLoadMore(criteria: SearchCriteria): void {
+      if (!this.loadMoreEnabled()) return;
       if (this.isLoading()) return;
   
       this.isLoading.set(true);

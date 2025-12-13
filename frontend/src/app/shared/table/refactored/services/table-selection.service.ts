@@ -16,6 +16,14 @@ export class TableSelectionService {
     this.lastClickedItem.set(item);
   }
 
+  setSelectedItems(items: any[]): void {
+    this.selectedItems.set(items);
+  }
+
+  setLastClickedItem(item: any): void {
+    this.lastClickedItem.set(item);
+  }
+
   deselectItem(item: any): void {
     this.selectedItems.update(items =>
       items.filter(i => i.id !== item.id)
@@ -54,6 +62,8 @@ export class TableSelectionService {
     }
 
     this.lastClickedItem.set(endItem);
+
+    console.log('Selected items:', this.selectedItems());
   }
 
   clearSelection(): void {
