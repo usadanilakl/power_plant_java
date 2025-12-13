@@ -1,0 +1,18 @@
+.theme-toggle-button {
+  background-color: var(--secondary-background);
+  color: var(--primary-text);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.theme-toggle-button:hover {
+  background-color: color-mix(in srgb, var(--secondary-background) 80%, var(--primary-text));
+}

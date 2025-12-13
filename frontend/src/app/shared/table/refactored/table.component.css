@@ -1,3 +1,4 @@
+
 .table-wrapper {
   display: flex;
   flex-direction: column;
@@ -21,16 +22,21 @@
   font-size: 14px;
 }
 
-.header-container {
-  overflow-x: auto;
-  overflow-y: hidden;
-  border-bottom: 2px solid #e0e0e0;
-}
-
 .table {
-  width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  table-layout: auto;  /* ← Change from fixed to auto */
+  width: auto;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  box-sizing: border-box; 
 }
 
 .table-header {
@@ -46,6 +52,8 @@
   cursor: pointer;
   user-select: none;
   transition: background-color 0.2s;
+  display: table-cell;
+  word-break: break-word; 
 }
 
 .table-header thead th:hover {
@@ -79,17 +87,56 @@
   font-size: 12px;
 }
 
+.header-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 2px solid #e0e0e0;
+  flex-shrink: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.header-container::-webkit-scrollbar {
+  display: none;
+}
+
 .table-container {
   flex: 1;
   overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .viewport {
-  height: 100%;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-width: auto;
+  -ms-overflow-style: auto;
+}
+
+.viewport::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+  height: 8px;
+}
+
+.viewport::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.viewport::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.viewport::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 .table-body tbody tr {
+  display: table-row;
   border-bottom: 1px solid #e0e0e0;
   transition: background-color 0.15s;
 }
@@ -115,11 +162,13 @@
 .table-cell {
   padding: 12px;
   border-right: 1px solid #e0e0e0;
-  word-break: break-word;
-  max-width: 300px;
+  display: table-cell;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;  /* ← Change from 'nowrap' to 'normal' */
+  word-break: break-word;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .empty-state {
@@ -169,7 +218,7 @@
   background-color: #616161;
 }
 
-/* Scrollbar styling */
+
 .header-container::-webkit-scrollbar,
 .table-container::-webkit-scrollbar {
   height: 8px;

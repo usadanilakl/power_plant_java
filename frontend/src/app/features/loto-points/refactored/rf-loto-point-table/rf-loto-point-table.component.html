@@ -1,0 +1,36 @@
+
+<div class="loto-point-table-container">
+  <!-- Error message display -->
+  @if (errorMessage()) {
+    <div class="error-message">
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Loading indicator -->
+  @if (isLoading()) {
+    <div class="loading-indicator">
+      Loading LOTO points...
+    </div>
+  }
+
+  <!-- Table component -->
+  <app-table
+    [items]="items$"
+    [columns]="columns()"
+    [isDragAndDropEnabled]="enableDragDrop()"
+    [hoverDebounceTime]="hoverDebounceTime()"
+    (rowClicked)="onRowLeftClick($event)"
+    (rowDoubleClicked)="onRowDoubleClick($event)"
+    (rowRightClicked)="onRowRightClick($event)"
+    (rowMiddleClicked)="onRowMiddleClick($event)"
+    (cellDoubleClicked)="onCellDoubleClick($event)"
+    (selectedItemsEvent)="onSelectedItems($event)"
+    (itemsReordered)="onItemsReordered($event)"
+    (search)="onSearch($event)"
+    (loadMoreItems)="onLoadMore($event)">
+    <div table-controls>
+      <ng-content select="[table-controls]"></ng-content>
+    </div>
+  </app-table>
+</div>

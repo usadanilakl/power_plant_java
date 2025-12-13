@@ -1,0 +1,94 @@
+/* Light Theme (default) */
+:root {
+  --primary-background: #ffffff;
+  --secondary-background: #f0f2f5;
+  --primary-text: #212529;
+  --secondary-text: #495057;
+  --accent-color: #007bff;
+  --accent-color-hover: #0056b3;
+  --border-color: #dee2e6;
+  --card-background: #ffffff;
+  --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --header-background: #3f51b5;
+  --header-text: #ffffff;
+  --accent-color-shadow: rgba(0, 123, 255, 0.25);
+  --disabled-background: #cccccc;
+  --hover-color: #cadff5;
+
+  /* Menu Variables */
+  --menu-item-text-color: var(--primary-text);
+  --menu-item-hover-bg-color: var(--secondary-background);
+  --menu-item-active-text-color: var(--accent-color-hover);
+  --menu-item-active-indicator-color: var(--accent-color);
+}
+
+/* Dark Theme */
+.dark-theme {
+  --primary-background: #1a1a1a;
+  --secondary-background: #2c2c2c;
+  --primary-text: #e0e0e0;
+  --secondary-text: #b0b0b0;
+  --accent-color: #4dabf7;
+  --accent-color-hover: #2196f3;
+  --border-color: #424242;
+  --card-background: #2c2c2c;
+  --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --header-background: #2c3e50;
+  --header-text: #e0e0e0;
+  --accent-color-shadow: rgba(77, 171, 247, 0.25);
+  --disabled-background: #5a5a5a;
+  --hover-color: #41418528;
+
+  /* Menu Variables */
+  --menu-item-text-color: var(--primary-text);
+  --menu-item-hover-bg-color: var(--secondary-background);
+  --menu-item-active-text-color: var(--accent-color-hover);
+  --menu-item-active-indicator-color: var(--accent-color);
+}
+
+
+
+/* Permits Section */
+.permits-section {
+  --accent-color: #ff9800; /* Orange */
+  --accent-color-hover: #f57c00;
+  --accent-color-shadow: rgba(255, 152, 0, 0.25);
+  --header-background: #e65100; /* Darker Orange */
+}
+
+.dark-theme.permits-section {
+  --accent-color: #ffb74d; /* Light Orange */
+  --accent-color-hover: #ffa726;
+  --accent-color-shadow: rgba(255, 183, 77, 0.25);
+  --header-background: #4a2c0f; /* Dark Brown/Orange */
+}
+
+/* Equipment Section */
+.equipment-section {
+  --accent-color: #4caf50; /* Green */
+  --accent-color-hover: #388e3c;
+  --accent-color-shadow: rgba(76, 175, 80, 0.25);
+  --header-background: #2e7d32; /* Darker Green */
+}
+
+.dark-theme.equipment-section {
+  --accent-color: #81c784; /* Light Green */
+  --accent-color-hover: #66bb6a;
+  --accent-color-shadow: rgba(129, 199, 132, 0.25);
+  --header-background: #1b3a1d; /* Dark Green */
+}
+
+/* Admin Section */
+.admin-section {
+  --accent-color: #9c27b0; /* Purple */
+  --accent-color-hover: #7b1fa2;
+  --accent-color-shadow: rgba(156, 39, 176, 0.25);
+  --header-background: #6a1b9a; /* Darker Purple */
+}
+
+.dark-theme.admin-section {
+  --accent-color: #ce93d8; /* Light Purple */
+  --accent-color-hover: #ba68c8;
+  --accent-color-shadow: rgba(206, 147, 216, 0.25);
+  --header-background: #38134b; /* Dark Purple */
+}

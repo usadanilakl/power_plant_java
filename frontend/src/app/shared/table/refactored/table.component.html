@@ -1,5 +1,6 @@
+
 <div class="table-wrapper">
-  <!-- Search Bar -->
+
   <div class="search-bar">
     <input
       type="text"
@@ -10,9 +11,8 @@
     />
   </div>
 
-  <!-- Header Container -->
   <div #headerContainer class="header-container">
-    <table #headerTable class="table table-header">
+    <table #headerTable class="table table-header" [style.width.px]="totalTableWidth">
       <thead>
         <tr>
           <th *ngFor="let column of columns" 
@@ -41,13 +41,12 @@
     </table>
   </div>
 
-  <!-- Body Container with Virtual Scrolling -->
   <div #tableContainer class="table-container">
     <cdk-virtual-scroll-viewport
       [itemSize]="rowHeight"
       class="viewport"
     >
-      <table #bodyTable class="table table-body">
+      <table #bodyTable class="table table-body"  [style.width.px]="totalTableWidth">
         <tbody>
           <tr
             *cdkVirtualFor="let item of filteredItems; trackBy: trackByItemId"
@@ -83,12 +82,10 @@
     </cdk-virtual-scroll-viewport>
   </div>
 
-  <!-- Empty State -->
   <div *ngIf="filteredItems.length === 0" class="empty-state">
     <p>No items found</p>
   </div>
 
-  <!-- Selection Info -->
   <div *ngIf="selectedItems().length > 0" class="selection-info">
     <span>{{ selectedItems().length }} item(s) selected</span>
     <button (click)="onDeleteSelectedItems()" class="delete-btn">

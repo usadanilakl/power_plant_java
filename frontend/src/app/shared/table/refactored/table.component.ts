@@ -89,12 +89,15 @@ export class TableComponent implements OnInit, AfterViewInit {
   dragState = this.dragService.dragState$;
   selectedItems = this.selectionService.selectedItems$;
   lastClickedItem = this.selectionService.lastClickedItem$;
+  
 
   private _items: any[] = [];
   private lastClickedCell!: { item: any; column: Column };
+  private selectedItems$ = toObservable(this.selectedItems).pipe(
+    takeUntilDestroyed(this.destroyRef)
+  );
 
   constructor() {
-    this.setupClickHandlers();
     this.setupHoverHandlers();
   }
 
@@ -106,15 +109,68 @@ export class TableComponent implements OnInit, AfterViewInit {
   ngAfterViewInit(): void {
     this.initializeTable();
     this.setupResizeObserver();
-    this.setupScrollSync();
+    this.setupHorizontalScrollSync();
+  }
+
+  
+  get totalTableWidth(): number {
+    return this.columns.reduce((sum, col) => sum + (col.width || 120), 0);
+  }
+
+  private setupHorizontalScrollSync(): void {
+    if (!this.viewport) return;
+
+    // Listen to viewport scroll events
+    this.viewport.scrolledIndexChange
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.syncHeaderScroll();
+        this.checkForLoadMore();
+      });
+
+    // Also listen to actual scroll events for horizontal sync
+    const viewportElement = this.viewport.elementRef.nativeElement;
+    viewportElement.addEventListener('scroll', () => {
+      this.syncHeaderScroll();
+    });
+
+    this.destroyRef.onDestroy(() => {
+      viewportElement.removeEventListener('scroll', () => {
+        this.syncHeaderScroll();
+      });
+    });
+  }
+
+  private syncHeaderScroll(): void {
+    if (!this.viewport || !this.headerContainer?.nativeElement) return;
+
+    const scrollLeft = this.viewport.elementRef.nativeElement.scrollLeft;
+    this.headerContainer.nativeElement.scrollLeft = scrollLeft;
+  }
+
+  private checkForLoadMore(): void {
+    if (!this.viewport) return;
+
+    const end = this.viewport.getRenderedRange().end;
+    const total = this.filteredItems.length;
+
+    if (end >= total - 5 && total > 0) {
+      // Trigger load more when within 5 items of the end
+      const searchCriteria = this.searchService.buildSearchCriteria(
+        this.globalSearchQuery,
+        this.columnFilters
+      );
+      this.loadMoreItems.emit(searchCriteria);
+    }
   }
 
   // ============ Initialization Methods ============
 
+  
   private setupItemsSubscription(): void {
     this.items$
       .pipe(
-        debounceTime(0),
+        debounceTime(100),  // ← Increase debounce time
         distinctUntilChanged(),
         takeUntilDestroyed(this.destroyRef)
       )
@@ -122,22 +178,32 @@ export class TableComponent implements OnInit, AfterViewInit {
         this._items = items;
         this.updateFilteredItems();
         this.cdr.detectChanges();
-        setTimeout(() => this.syncService.synchronizeColumnWidths(), 100);
+        // Remove or reduce sync calls
       });
   }
-
-  private setupClickHandlers(): void {
-    this.clickService.doubleClick$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(event => {
-        // Double click is handled in onRowClick
-      });
-
-    this.clickService.singleClick$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(event => {
-        // Single click is handled in onRowClick
-      });
+  
+  
+  private updateFilteredItems(): void {
+    this.filteredItems = this.searchService.performSearch(
+      this._items,
+      this.globalSearchQuery,
+      this.columnFilters
+    );
+  
+    if (this.currentSortColumn) {
+      const column = this.columns.find(col => col.id === this.currentSortColumn);
+      if (column) {
+        this.sortColumn(column);
+      }
+    }
+  
+    this.updateItemIndices();
+    
+    // ← Sync AFTER sort completes and DOM updates
+    setTimeout(() => {
+      this.syncService.synchronizeColumnWidths();
+      this.cdr.detectChanges();
+    }, 50);
   }
 
   private setupHoverHandlers(): void {
@@ -152,17 +218,18 @@ export class TableComponent implements OnInit, AfterViewInit {
   }
 
   
-    private setupSelectionEmitter(): void {
-      toObservable(this.selectedItems)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(items => {
-          this.selectedItemsEvent.emit(items);
-        });
-    }
+  private setupSelectionEmitter(): void {
+    this.selectedItems$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(items => {
+        this.selectedItemsEvent.emit(items);
+      });
+  }
 
   private initializeTable(): void {
     setTimeout(() => {
       this.detectRowHeight();
+      this.calculateInitialColumnWidths();
       this.syncService.setSyncElements(
         this.headerTable?.nativeElement,
         this.bodyTable?.nativeElement,
@@ -204,17 +271,20 @@ export class TableComponent implements OnInit, AfterViewInit {
   }
 
   
-    private setupScrollSync(): void {
-      if (!this.viewport) return;
-      
-      this.viewport
-        .elementScrolled()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => {
-          this.syncHorizontalScroll();
-        });
-    }
-
+  private calculateInitialColumnWidths(): void {
+    if (!this.columns || this.columns.length === 0) return;
+  
+    this.columns.forEach(column => {
+      if (!column.width || column.width === 0) {
+        // Estimate width: ~8px per character + padding
+        const estimatedWidth = Math.max(
+          120,  // minimum width
+          (column.header?.length || 10) * 8 + 24
+        );
+        column.width = estimatedWidth;  // ← This sets the width property
+      }
+    });
+  }
   // ============ Search and Filter Methods ============
 
   onGlobalSearchChange(): void {
@@ -235,43 +305,27 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.search.emit(searchCriteria);
   }
 
-  private updateFilteredItems(): void {
-    this.filteredItems = this.searchService.performSearch(
-      this._items,
-      this.globalSearchQuery,
-      this.columnFilters
-    );
-
-    if (this.currentSortColumn) {
-      const column = this.columns.find(col => col.id === this.currentSortColumn);
-      if (column) {
-        this.sortColumn(column);
-      }
-    }
-
-    this.updateItemIndices();
-    setTimeout(() => this.syncService.synchronizeColumnWidths(), 100);
-  }
-
   // ============ Sorting Methods ============
 
+  
   sortColumn(column: Column): void {
     if (this.isDragAndDropEnabled()) return;
-
+  
     const columnKey = column.accessorKey || column.id;
     this.isAscending =
       this.currentSortColumn === columnKey ? !this.isAscending : true;
     this.currentSortColumn = columnKey;
-
+  
     this.filteredItems = this.sortService.sortItems(
       this.filteredItems,
       column,
       this.isAscending,
       (obj, path) => this.searchService.getNestedProperty(obj, path)
     );
-
+  
     this.cdr.detectChanges();
-    setTimeout(() => this.syncService.synchronizeColumnWidths(), 100);
+    // Remove this line - sync is now called in updateFilteredItems()
+    // setTimeout(() => this.syncService.synchronizeColumnWidths(), 100);
   }
 
   // ============ Cell Value Methods ============
@@ -447,14 +501,13 @@ export class TableComponent implements OnInit, AfterViewInit {
   registerLastClickedCell(item: any, column: Column, event: MouseEvent): void {
     this.lastClickedCell = { item, column };
   }
-
-  
+    
     private syncHorizontalScroll(): void {
-      if (!this.viewport) return;
+      if (!this.viewport || !this.headerContainer?.nativeElement) return;
       const scrollLeft = this.viewport.measureScrollOffset('left');
-      this.syncService.syncHorizontalScroll(scrollLeft);
+      this.headerContainer.nativeElement.scrollLeft = scrollLeft;
     }
-  
+    
     private updateItemIndices(): void {
       this.filteredItems.forEach((item, index) => {
         item.index = index;

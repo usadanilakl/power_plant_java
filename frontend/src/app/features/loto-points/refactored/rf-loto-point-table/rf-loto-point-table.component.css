@@ -1,0 +1,28 @@
+.loto-point-table-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.error-message {
+  padding: 12px;
+  margin-bottom: 12px;
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+.loading-indicator {
+  padding: 12px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+app-table {
+  flex: 1;
+  overflow: hidden;
+}
