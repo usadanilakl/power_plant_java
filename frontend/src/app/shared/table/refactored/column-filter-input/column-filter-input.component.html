@@ -1,25 +1,28 @@
 
 <div class="filter-input-container">
-  <input 
-    type="text" 
-    class="filter-input"
-    [value]="filterValue()"
-    (input)="onInputChange($event)"
-    (focus)="onInputFocus()"
-    (blur)="onInputBlur()"
-    placeholder="Filter..."
-  />
+  <div class="input-wrapper">
+    <input 
+      #inputElement
+      type="text" 
+      class="filter-input"
+      [value]="filterValue()"
+      (input)="onInputChange($event)"
+      (focus)="onInputFocus($event)"
+      (blur)="onInputBlur($event)"
+      placeholder="Filter..."
+    />
+    <button 
+      *ngIf="filterValue()" 
+      (click)="clearFilter()" 
+      class="clear-btn-inline"
+      type="button"
+      (mousedown)="$event.preventDefault()"
+    >
+      ✕
+    </button>
+  </div>
   
-  <div class="filter-dropdown" *ngIf="filterDropdownOpen()">
-    <div class="search-box">
-      <input 
-        type="text" 
-        placeholder="Search values..."
-        (input)="onSearch($event)"
-        (click)="$event.stopPropagation()"
-      />
-    </div>
-    
+  <div class="filter-dropdown" *ngIf="filterDropdownOpen()" [ngStyle]="dropdownStyle()">
     <div class="options-list">
       <div 
         *ngFor="let option of filteredOptions()" 
@@ -33,9 +36,54 @@
         No options found
       </div>
     </div>
-    
-    <div class="actions">
-      <button (click)="clearFilter()" class="clear-btn">Clear</button>
-    </div>
   </div>
 </div>
+
+<!-- 
+<div class="filter-input-wrapper" #wrapper>
+  <input
+    type="text"
+    placeholder="Filter..."
+    [value]="filterValue()"
+    (input)="onInputChange($event)"
+    (focus)="onInputFocus($event)"
+    class="filter-input"
+  />
+  
+  <button 
+    *ngIf="filterValue()" 
+    (click)="clearFilter()" 
+    class="clear-btn"
+    type="button"
+  >
+    ✕
+  </button>
+
+  <div 
+    *ngIf="filterDropdownOpen()" 
+    class="filter-dropdown"
+    [ngStyle]="dropdownStyle()"
+  >
+    <input
+      type="text"
+      placeholder="Search..."
+      (input)="onSearch($event)"
+      class="search-input"
+      (click)="$event.stopPropagation()"
+    />
+    
+    <div class="options-list">
+      <div 
+        *ngFor="let option of filteredOptions()"
+        (click)="selectOption(option)"
+        class="option-item"
+      >
+        {{ option }}
+      </div>
+      
+      <div *ngIf="filteredOptions().length === 0" class="no-options">
+        No options available
+      </div>
+    </div>
+  </div>
+</div> -->

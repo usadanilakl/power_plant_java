@@ -15,6 +15,7 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -249,5 +250,25 @@ private String processDescription(String text, String fromUnit, String toUnit) {
     public LotoPointIdDto toIdDto(LotoPoint lotoPoint) {
         return this.lotoPointMapper.toIdDto(lotoPoint);
     }
+
+
+    public List<String> getUniqueValuesOfColumn(String column) {
+        return this.getUniqueValuesOfColumn(lotoPointRepo, column);
+    }
+
+
+    public Page<String> getFilteredUniqueValuesOfColumn(
+            String column,
+            String filter,
+            int page,
+            int pageSize) {
+        return this.getFilteredUniqueValuesOfColumn(
+                lotoPointRepo,
+                column,
+                filter,
+                PageRequest.of(page - 1, pageSize)
+        );
+    }
+
 }
 

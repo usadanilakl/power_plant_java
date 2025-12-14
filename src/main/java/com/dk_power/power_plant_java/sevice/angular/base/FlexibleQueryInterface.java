@@ -6,14 +6,13 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public interface FlexibleQueryInterface {
 
@@ -42,18 +41,6 @@ public interface FlexibleQueryInterface {
         Specification<T> spec = buildComplexSpecification(criteria, andLogicIsEnabled, baseCriteria);
         return repository.findAll(spec, pageable);
     }
-
-//    default <T extends BaseIdEntity> Page<T> complexSearchWithPagination(
-//            JpaSpecificationExecutor<T> repository,
-//            SearchCriteria criteria,
-//            Pageable pageable,
-//            boolean andLogicIsEnabled) {
-//
-//        System.out.println("Filters: " + criteria.getFilters());
-//        Specification<T> spec = buildComplexSpecification(criteria, andLogicIsEnabled);
-//        System.out.println("Specification: " + spec);
-//        return repository.findAll(spec, pageable);
-//    }
     
     default <T extends BaseIdEntity> Page<T> complexSearchWithPagination(
         JpaSpecificationExecutor<T> repository,
@@ -79,35 +66,95 @@ public interface FlexibleQueryInterface {
 }
 
 
-    
-//    default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled, SearchCriteria baseCriteria) {
-//        return (root, query, criteriaBuilder) -> {
-//            List<Predicate> predicates = new ArrayList<>();
-//            List<Predicate> basePredicates = new ArrayList<>();
-//
-//            // Handle base criteria
-//            if (baseCriteria != null && baseCriteria.getFilters() != null) {
-//                basePredicates.addAll(buildPredicates(root, criteriaBuilder, baseCriteria.getFilters()));
-//            }
-//
-//            // Handle main criteria
-//            predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters()));
-//
-//            // Combine base predicates (always with AND logic)
-//            Predicate basePredicate = criteriaBuilder.and(basePredicates.toArray(new Predicate[0]));
-//
-//            // Combine main predicates based on andLogicIsEnabled
-//            Predicate mainPredicate;
-//            if (andLogicIsEnabled) {
-//                mainPredicate = criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-//            } else {
-//                mainPredicate = criteriaBuilder.or(predicates.toArray(new Predicate[0]));
-//            }
-//
-//            // Combine base predicate with main predicate
-//            return criteriaBuilder.and(basePredicate, mainPredicate);
-//        };
-//    }
+    default <T extends BaseIdEntity> List<String> getUniqueValuesOfColumn(
+            JpaSpecificationExecutor<T> repository,
+            String columnName) {
+
+        // Validate column name to prevent SQL injection
+        if (columnName == null || columnName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Column name cannot be null or empty");
+        }
+
+        try {
+            // Use a native query approach instead of Specification
+            List<?> results = repository.findAll((root, query, criteriaBuilder) -> {
+                // Handle nested properties (e.g., "isoPos.name")
+                String[] pathParts = columnName.split("\\.");
+                Path<?> path = root;
+
+                for (String part : pathParts) {
+                    path = path.get(part);
+                }
+
+                // Set the result type and distinct
+                query.multiselect(path).distinct(true);
+                query.orderBy(criteriaBuilder.asc(path));
+
+                return criteriaBuilder.conjunction();
+            });
+
+            // Extract and convert values to strings
+            return results.stream()
+                    .map(obj -> obj != null ? obj.toString() : null)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .sorted()
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid column name: " + columnName, e);
+        }
+    }
+
+
+    default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
+            JpaSpecificationExecutor<T> repository,
+            String columnName,
+            String filterValue,
+            Pageable pageable) {
+
+        if (columnName == null || columnName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Column name cannot be null or empty");
+        }
+
+        try {
+            Specification<T> spec = (root, query, criteriaBuilder) -> {
+                String[] pathParts = columnName.split("\\.");
+                Path<?> path = root;
+
+                for (String part : pathParts) {
+                    path = path.get(part);
+                }
+
+                query.multiselect(path).distinct(true);
+                query.orderBy(criteriaBuilder.asc(path));
+
+                // Add filter if provided
+                if (filterValue != null && !filterValue.isEmpty()) {
+                    return criteriaBuilder.like(
+                            criteriaBuilder.lower(path.as(String.class)),
+                            "%" + filterValue.toLowerCase() + "%"
+                    );
+                }
+
+                return criteriaBuilder.conjunction();
+            };
+
+            Page<T> results = repository.findAll(spec, pageable);
+
+            // Convert to Page<String>
+            List<String> stringValues = results.getContent().stream()
+                    .map(obj -> obj != null ? obj.toString() : null)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            return new PageImpl<>(stringValues, pageable, results.getTotalElements());
+
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid column name: " + columnName, e);
+        }
+    }
 
 
     default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled, SearchCriteria baseCriteria) {

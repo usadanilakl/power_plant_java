@@ -168,33 +168,38 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.updateFilteredItems();
   });
 
+  // NEW: Store unique values per column based on ORIGINAL items
+  columnUniqueValuesMap = signal<{ [columnId: string]: string[] }>({});
+
+  // Effect to calculate unique values whenever items change
+  private calculateUniqueValues = effect(() => {
+    const currentItems = this.items();
+    const currentColumns = this.columns();
+    
+    if (!currentItems || !currentColumns) return;
+
+    const uniqueValuesMap: { [columnId: string]: string[] } = {};
+
+    currentColumns.forEach(column => {
+      if (!column.filterable) return;
+
+      const uniqueValues = new Set<string>();
+      
+      currentItems.forEach(item => {
+        const value = this.getCellValue(item, column);
+        if (value !== null && value !== undefined && value !== '') {
+          uniqueValues.add(String(value).toLowerCase());
+        }
+      });
+
+      uniqueValuesMap[column.id] = Array.from(uniqueValues).sort();
+    });
+
+    this.columnUniqueValuesMap.set(uniqueValuesMap);
+  });
+
   constructor() {
     this.setupHoverHandlers();
-
-    // effect(() => {
-    //   const items = this.items();
-    //   this._items = items;
-    //   this.updateFilteredItems();
-    //   this.cdr.detectChanges();
-    // });
-
-    // effect(() => {
-    //   const rules = this.filterOutItems();
-    //   this.excludedItemIds.clear();
-    //   this.highlightedItemIds.clear();
-    //   this.highlightStyle = {};
-
-    //   if (rules && rules.items.length > 0) {
-    //     const itemIds = new Set(rules.items.map((item) => item.id));
-    //     if (rules.action === 'exclude') {
-    //       this.excludedItemIds = itemIds;
-    //     } else if (rules.action === 'highlight') {
-    //       this.highlightedItemIds = itemIds;
-    //       this.highlightStyle = rules.style;
-    //     }
-    //   }
-    //   this.updateFilteredItems();
-    // });
   }
 
   ngOnInit(): void {
@@ -425,14 +430,15 @@ export class TableComponent implements OnInit, AfterViewInit {
   }
 
   
-  /**
-   * Handle column filter change
-   */
-  onColumnFilterChange(columnId: string, filterValue: string): void {
-    this.columnFilters[columnId] = filterValue;
-    this.updateFilteredItems();
-    this.cdr.detectChanges();
-  }
+/**
+ * Handle column filter change
+ */
+onColumnFilterChange(columnId: string, filterValue: string): void {
+  this.columnFilters[columnId] = filterValue;
+  this.performSearch();
+  this.cdr.detectChanges();
+
+}
 
   // ============ Sorting Methods ============
 

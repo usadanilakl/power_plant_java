@@ -99,5 +99,27 @@ export class RfLotoPointApiService {
     return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/${lotoPointId}/related-files`);
   }
 
+  getUniqueValuesOfColumn(column: string): Observable<SpringApiResponse<string[]>> {
+    return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/unique-values/${column}`);
+  }
+
+getFilteredUniqueValuesOfColumn(
+  column: string,
+  filter: string,
+  page: number = 1,
+  pageSize: number = 50
+): Observable<SpringPaginatedResponse<string>> {
+  return this.http.get<SpringPaginatedResponse<string>>(
+    `${this.apiUrl}/unique-values/${column}/filtered`,
+    {
+      params: {
+        filter: filter,
+        page: page.toString(),
+        pageSize: pageSize.toString()
+      }
+    }
+  );
+}
+
   
 }

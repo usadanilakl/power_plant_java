@@ -62,76 +62,46 @@ public class NgLotoPointController {
         }
     }
 
-//    @PostMapping("/search")
-//    public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> searchFiles(
-//            @RequestBody SearchCriteria criteria,
-//            @RequestParam(defaultValue = "1") int page,
-//            @RequestParam(defaultValue = "50") int pageSize) {
-//        try {
-//            Page<LotoPointDto> searchResults = null;
-//            if (criteria.getType().equals(SearchCriteria.SearchType.COLUMN)) {
-//                searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, "tagNumber", "asc", true);
-//            } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
-//                searchResults = ngLotoPointService.complexSearch(criteria.getQuery(), page - 1, pageSize);
-//            }else if(criteria.getType().equals(SearchCriteria.SearchType.SORT) && criteria.getSortColumn()!=null){
-//                // Handle sorting case
-//                String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
-//                searchResults = ngLotoPointService.complexSearch(
-//                        criteria,
-//                        page - 1,
-//                        pageSize,
-//                        criteria.getSortColumn(),
-//                        sortDirection,
-//                        true
-//                );
-//            }
-//            NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
-//            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
-//        }
-//    }
-@PostMapping("/search")
-public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> searchFiles(
-        @RequestBody SearchCriteria criteria,
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "50") int pageSize) {
-    try {
-        Page<LotoPointDto> searchResults = null;
+    @PostMapping("/search")
+    public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> searchFiles(
+            @RequestBody SearchCriteria criteria,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            Page<LotoPointDto> searchResults = null;
 
-        if (criteria.getType().equals(SearchCriteria.SearchType.COLUMN)) {
-            // Use client-provided sort if available, otherwise default to tagNumber/asc
-            String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "tagNumber";
-            String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
+            if (criteria.getType().equals(SearchCriteria.SearchType.COLUMN)) {
+                // Use client-provided sort if available, otherwise default to tagNumber/asc
+                String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "tagNumber";
+                String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
 
-            searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, true);
-        } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
-            // Use client-provided sort if available, otherwise default to tagNumber/asc
-            String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "tagNumber";
-            String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
+                searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, true);
+            } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
+                // Use client-provided sort if available, otherwise default to tagNumber/asc
+                String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "tagNumber";
+                String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
 
-            searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, true);
-        } else if (criteria.getType().equals(SearchCriteria.SearchType.SORT) && criteria.getSortColumn() != null) {
-            // Handle explicit sorting case
-            String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
-            searchResults = ngLotoPointService.complexSearch(
-                    criteria,
-                    page - 1,
-                    pageSize,
-                    criteria.getSortColumn(),
-                    sortDirection,
-                    true
-            );
+                searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, true);
+            } else if (criteria.getType().equals(SearchCriteria.SearchType.SORT) && criteria.getSortColumn() != null) {
+                // Handle explicit sorting case
+                String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
+                searchResults = ngLotoPointService.complexSearch(
+                        criteria,
+                        page - 1,
+                        pageSize,
+                        criteria.getSortColumn(),
+                        sortDirection,
+                        true
+                );
+            }
+
+            NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
-
-        NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(searchResults, "Search completed successfully");
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
     }
-}
 
     @PostMapping("/search-by-base-tag-number")
     public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> searchByBaseTagNumber(
@@ -249,6 +219,47 @@ public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> searchFiles(
             String newTagNumber = ngLotoPointService.generateTagNumber(system);
             NgApiResponse<String> response = new NgApiResponse<>(newTagNumber, "New tag number generated successfully");
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/unique-values/{column}")
+    public ResponseEntity<NgApiResponse<List<String>>> getUniqueValuesOfColumn(@PathVariable String column) {
+        try {
+            List<String> uniqueValues = ngLotoPointService.getUniqueValuesOfColumn(column);
+            NgApiResponse<List<String>> response = new NgApiResponse<>(uniqueValues, "Unique values retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+
+    @GetMapping("/unique-values/{column}/filtered")
+    public ResponseEntity<NgApiResponse<Page<String>>> getFilteredUniqueValuesOfColumn(
+            @PathVariable String column,
+            @RequestParam String filter,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        try {
+            Page<String> uniqueValues = ngLotoPointService.getFilteredUniqueValuesOfColumn(
+                    column,
+                    filter,
+                    page,
+                    pageSize
+            );
+            NgApiResponse<Page<String>> response = new NgApiResponse<>(
+                    uniqueValues,
+                    "Filtered unique values retrieved successfully"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
