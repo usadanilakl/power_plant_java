@@ -205,6 +205,7 @@ export class TableComponent implements OnInit, AfterViewInit {
     });
 
     this.columnUniqueValuesMap.set(uniqueValuesMap);
+    console.log('uniqueValuesMap: ', uniqueValuesMap);
   });
 
   constructor() {

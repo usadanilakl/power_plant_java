@@ -157,8 +157,9 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    * Load more unique items for a column (delegates to state service)
    */
   loadMoreUniqueItems(columnKey: string, searchString: string): void {
-    const key = columnKey as keyof LotoPointDto;
-    this.stateService.loadMoreUniqueItems(key, searchString);
+    // const key = columnKey as keyof LotoPointDto;
+    // this.stateService.loadMoreUniqueItems(key, searchString);
+    this.onLoadMore()
   }
 
   /**

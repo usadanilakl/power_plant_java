@@ -38,17 +38,16 @@
             
             
             
-            <!-- <app-column-filter-input
+            <app-column-filter-input
               *ngIf="column.filterable"
               [column]="column"
               [filterValue]="columnFilters[column.id] || ''"
               [uniqueValues]="columnUniqueValuesMap()[column.id] || []"
               (filterChange)="onColumnFilterChange(column.id, $event)"
               (loadMoreOptions)="loadMoreOptions.emit({column: column.id, filter: $event})"
-              (loadInitialOptions)="loadInitialOptions.emit({column: column.id, filter: $event})"
-            ></app-column-filter-input>             -->
+            ></app-column-filter-input>
             
-            <app-column-filter-input
+            <!-- <app-column-filter-input
               *ngIf="column.filterable"
               [column]="column"
               [filterValue]="columnFilters[column.id] || ''"
@@ -56,7 +55,7 @@
               (filterChange)="onColumnFilterChange(column.id, $event)"
               (loadMoreOptions)="loadMoreOptions.emit({column: column.id, filter: $event})"
               (loadInitialOptions)="loadInitialOptions.emit({column: column.id, filter: $event})"
-            ></app-column-filter-input>
+            ></app-column-filter-input> -->
             <div class="resize-handle"
                  (mousedown)="onResizeStart($event, column.id, getColumnWidth(column.id))"
                  [class.resizing]="getResizingColumnId() === column.id">
