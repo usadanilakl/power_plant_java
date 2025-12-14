@@ -74,7 +74,9 @@ export class TableComponent implements OnInit, AfterViewInit {
   private resizeService = inject(TableResizeService);
 
   // Inputs
+  items = input.required<any[]>();
   columns = input<Column[]>([]);
+  columnUniqueOptions = signal<string[]>([]);//this will be passed to filter input component instead of current item. 
   deleteItem = input<string | undefined>();
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
@@ -96,6 +98,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   selectedItemsEvent = output<any[]>();
   itemsReordered = output<any[]>();
   sortChanged = output<{ column: Column; isAscending: boolean }>();
+  loadMoreOptions = output<{column:string, filter:string }>();
+  loadInitialOptions = output<{column:string, filter:string }>();
 
   // ViewChild references
   @ViewChild('tableContainer') tableContainer!: ElementRef;
@@ -110,7 +114,6 @@ export class TableComponent implements OnInit, AfterViewInit {
   @ViewChild('selectionActions', { read: TemplateRef }) selectionActionsTemplate!: TemplateRef<any>;
 
   // Component state
-  items = input.required<any[]>();
   filteredItems: any[] = [];
   globalSearchQuery: string = '';
   columnFilters: { [key: string]: string } = {};

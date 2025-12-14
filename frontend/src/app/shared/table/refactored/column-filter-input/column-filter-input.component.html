@@ -23,7 +23,11 @@
   </div>
   
   <div class="filter-dropdown" *ngIf="filterDropdownOpen()" [ngStyle]="dropdownStyle()">
-    <div class="options-list">
+    <div 
+      #optionsList
+      class="options-list"
+      (scroll)="onOptionsScroll($event)"
+    >
       <div 
         *ngFor="let option of filteredOptions()" 
         class="option"
@@ -35,54 +39,49 @@
       <div *ngIf="filteredOptions().length === 0" class="option disabled">
         No options found
       </div>
+      
+      <div *ngIf="isLoadingMore()" class="loading-indicator">
+        <span class="spinner"></span>
+        Loading more...
+      </div>
     </div>
   </div>
 </div>
-
-<!-- 
-<div class="filter-input-wrapper" #wrapper>
-  <input
-    type="text"
-    placeholder="Filter..."
-    [value]="filterValue()"
-    (input)="onInputChange($event)"
-    (focus)="onInputFocus($event)"
-    class="filter-input"
-  />
-  
-  <button 
-    *ngIf="filterValue()" 
-    (click)="clearFilter()" 
-    class="clear-btn"
-    type="button"
-  >
-    ✕
-  </button>
-
-  <div 
-    *ngIf="filterDropdownOpen()" 
-    class="filter-dropdown"
-    [ngStyle]="dropdownStyle()"
-  >
-    <input
-      type="text"
-      placeholder="Search..."
-      (input)="onSearch($event)"
-      class="search-input"
-      (click)="$event.stopPropagation()"
+<!-- <div class="filter-input-container">
+  <div class="input-wrapper">
+    <input 
+      #inputElement
+      type="text" 
+      class="filter-input"
+      [value]="filterValue()"
+      (input)="onInputChange($event)"
+      (focus)="onInputFocus($event)"
+      (blur)="onInputBlur($event)"
+      placeholder="Filter..."
     />
-    
+    <button 
+      *ngIf="filterValue()" 
+      (click)="clearFilter()" 
+      class="clear-btn-inline"
+      type="button"
+      (mousedown)="$event.preventDefault()"
+    >
+      ✕
+    </button>
+  </div>
+  
+  <div class="filter-dropdown" *ngIf="filterDropdownOpen()" [ngStyle]="dropdownStyle()">
     <div class="options-list">
       <div 
-        *ngFor="let option of filteredOptions()"
+        *ngFor="let option of filteredOptions()" 
+        class="option"
         (click)="selectOption(option)"
-        class="option-item"
       >
         {{ option }}
       </div>
       
-      <div *ngIf="filteredOptions().length === 0" class="no-options">
-        No options available
+      <div *ngIf="filteredOptions().length === 0" class="option disabled">
+        No options found
       </div>
     </div>
   </div>

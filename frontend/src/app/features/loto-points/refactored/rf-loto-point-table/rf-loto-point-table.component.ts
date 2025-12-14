@@ -140,6 +140,26 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
         )
         .subscribe();
     }
+    /**
+     * Load unique items for a column (delegates to state service)
+     */
+    loadUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
+      this.stateService.loadUniqueItems(columnKey, searchString);
+    }
+
+    /**
+     * Load more unique items for a column (delegates to state service)
+     */
+    loadMoreUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
+      this.stateService.loadMoreUniqueItems(columnKey, searchString);
+    }
+
+    /**
+     * Clear unique values cache (delegates to state service)
+     */
+    clearUniqueValuesCache(): void {
+      this.stateService.clearUniqueValuesCache();
+    }
 
     /**
      * Handle search/filter from table component
@@ -317,82 +337,6 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
         .subscribe();
     }
   
-    // /**
-    //  * Handle load more when user scrolls to bottom
-    //  */
-    // onLoadMore(criteria: SearchCriteria): void {
-    //   if (!this.loadMoreEnabled()) return;
-    //   if (this.isLoading()) return;
-  
-    //   this.isLoading.set(true);
-  
-    //   criteria.page = this.stateService.getCurrentPage();
-    //   this.apiService
-    //     .searchLotoPoints(criteria, 50)
-    //     .pipe(
-    //       tap(response => {
-    //         if (response.responseData?.content && response.responseData.content.length > 0) {
-    //           this.stateService.addLotoPoints(response.responseData.content);
-    //           this.stateService.incrementPage();
-    //         }
-    //         this.isLoading.set(false);
-    //       }),
-    //       catchError(error => {
-    //         console.error('Error loading more LOTO points:', error);
-    //         this.isLoading.set(false);
-    //         return of(null);
-    //       }),
-    //       takeUntilDestroyed(this.destroyRef)
-    //     )
-    //     .subscribe();
-    // }
-    
-    
-    // onTableSortChanged(event: { column: Column; isAscending: boolean }): void {
-    //   const isUsingInputItems = this.inputItems();
-      
-    //   if (isUsingInputItems) {
-    //     // For input items, sort locally - table will handle it
-    //     // Just emit the sort event and let table component sort
-    //     return;
-    //   }
-      
-    //   // For paginated data from server, reset and fetch sorted results
-    //   this.stateService.clearLotoPoints();
-    //   this.stateService.resetPage();
-      
-    //   const searchCriteria: SearchCriteria = {
-    //     type: 'sort',
-    //     sortColumn: event.column.id,
-    //     sortDirection: event.isAscending ? 'ASC' : 'DESC',
-    //     page: 1,
-    //     pageSize: 50
-    //   };
-      
-    //   this.isLoading.set(true);
-    //   this.errorMessage.set(null);
-    
-    //   this.apiService
-    //     .searchLotoPoints(searchCriteria, 50)
-    //     .pipe(
-    //       tap(response => {
-    //         if (response.responseData?.content && response.responseData.content.length > 0) {
-    //           this.stateService.addLotoPoints(response.responseData.content);
-    //           this.stateService.incrementPage();
-    //         }
-    //         this.isLoading.set(false);
-    //       }),
-    //       catchError(error => {
-    //         console.error('Error loading sorted LOTO points:', error);
-    //         this.errorMessage.set('Failed to load sorted data');
-    //         this.isLoading.set(false);
-    //         return of(null);
-    //       }),
-    //       takeUntilDestroyed(this.destroyRef)
-    //     )
-    //     .subscribe();
-    // }
-
   /**
    * Handle row left click
    */

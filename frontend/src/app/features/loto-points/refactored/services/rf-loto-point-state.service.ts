@@ -1,24 +1,29 @@
 
-import { Injectable, signal } from "@angular/core";
+import { Injectable, inject, DestroyRef, signal } from "@angular/core";
 import { LotoPointDto } from "../../../../models/loto/loto-point.model";
 import { BehaviorSubject, Observable } from "rxjs";
 import { SearchCriteria } from "../../../../models/api/search-criteria.model";
+import { RfLotoPointApiService } from "./rf-loto-point-api.service";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { tap, catchError } from "rxjs/operators";
+import { of } from "rxjs";
 
 @Injectable({
   providedIn: 'root'
 })
 export class RfLotoPointStateService {
-  private pageSize = 50; // Load 50 items at a time
+  private apiService = inject(RfLotoPointApiService);
+  private destroyRef = inject(DestroyRef);
+
+  private pageSize = 50;
   private currentPage = 1;
   
   private allLoadedLotoPointsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   allLoadedLotoPoints$ = this.allLoadedLotoPointsSubject.asObservable();
   
   filterOutItems = signal<LotoPointDto[]>([]);
-
   selectedItems = signal<LotoPointDto[]>([]);
   
-  // Add sort state
   private currentSortColumnSubject = new BehaviorSubject<string | null>(null);
   currentSortColumn$ = this.currentSortColumnSubject.asObservable();
 
@@ -27,6 +32,12 @@ export class RfLotoPointStateService {
 
   private currentSearchCriteriaSubject = new BehaviorSubject<SearchCriteria | null>(null);
   currentSearchCriteria$ = this.currentSearchCriteriaSubject.asObservable();
+
+  // Unique items cache for column filters
+  private uniqueItemsCache = new Map<string, BehaviorSubject<any[]>>();
+  
+  // Unique values cache with pagination metadata
+  private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
 
   addLotoPoints(items: LotoPointDto[]): void {
     const current = this.allLoadedLotoPointsSubject.value;
@@ -45,16 +56,15 @@ export class RfLotoPointStateService {
   incrementPage(): void {
     this.currentPage++;
   }
+
   setSelectedLotoPoints(items: LotoPointDto[]) {
     this.selectedItems.set(items);
   }
+
   resetPage() {
     this.currentPage = 1;
   }
 
-
-  // Sorting
-  
   setSortState(sortColumn: string, sortDirection: 'ASC' | 'DESC'): void {
     this.currentSortColumnSubject.next(sortColumn);
     this.currentSortDirectionSubject.next(sortDirection);
@@ -72,5 +82,151 @@ export class RfLotoPointStateService {
     this.currentSortColumnSubject.next(null);
     this.currentSortDirectionSubject.next('ASC');
     this.currentSearchCriteriaSubject.next(null);
+  }
+
+  /**
+   * Set unique items for a specific column
+   */
+  setUniqueItems(columnKey: string, values: any[]): void {
+    if (!this.uniqueItemsCache.has(columnKey)) {
+      this.uniqueItemsCache.set(columnKey, new BehaviorSubject<any[]>(values));
+    } else {
+      const subject = this.uniqueItemsCache.get(columnKey)!;
+      subject.next(values);
+    }
+  }
+
+  /**
+   * Get unique items observable for a specific column
+   */
+  getUniqueItems$(columnKey: string): Observable<any[]> {
+    if (!this.uniqueItemsCache.has(columnKey)) {
+      this.uniqueItemsCache.set(columnKey, new BehaviorSubject<any[]>([]));
+    }
+    return this.uniqueItemsCache.get(columnKey)!.asObservable();
+  }
+
+  /**
+   * Get unique items value for a specific column
+   */
+  getUniqueItemsValue(columnKey: string): any[] {
+    if (!this.uniqueItemsCache.has(columnKey)) {
+      return [];
+    }
+    return this.uniqueItemsCache.get(columnKey)!.value;
+  }
+
+  /**
+   * Clear unique items cache for a specific column
+   */
+  clearUniqueItemsForColumn(columnKey: string): void {
+    if (this.uniqueItemsCache.has(columnKey)) {
+      this.uniqueItemsCache.get(columnKey)!.next([]);
+    }
+  }
+
+  /**
+   * Clear all unique items cache
+   */
+  clearAllUniqueItems(): void {
+    this.uniqueItemsCache.forEach(subject => subject.next([]));
+    this.uniqueItemsCache.clear();
+  }
+
+  
+    /**
+     * Load unique items for a column with server-side filtering and pagination
+     */
+    loadUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
+      const cacheKey = `${columnKey}:${searchString}`;
+      
+      // Check if we have cached results for this column and search term
+      const cached = this.uniqueValuesCache.get(cacheKey);
+      if (cached) {
+        this.setUniqueItems(String(columnKey), cached.values);
+        return;
+      }
+  
+      // Fetch from server with pagination
+      this.apiService
+        .getFilteredUniqueValuesOfColumn(
+          String(columnKey),
+          searchString,
+          1,
+          50
+        )
+        .pipe(
+          tap(response => {
+            if (response.responseData?.content && response.responseData.content.length > 0) {
+              const uniqueValues = response.responseData.content;
+              this.setUniqueItems(String(columnKey), uniqueValues);
+              
+              // Cache the results
+              this.uniqueValuesCache.set(cacheKey, {
+                values: uniqueValues,
+                page: 1,
+                hasMore: !response.responseData.last
+              });
+            }
+          }),
+          catchError(error => {
+            console.error(`Error loading unique items for column ${columnKey}:`, error);
+            return of(null);
+          }),
+          takeUntilDestroyed(this.destroyRef)
+        )
+        .subscribe();
+    }
+  
+    /**
+     * Load more unique items for a column (pagination)
+     */
+    loadMoreUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
+      const cacheKey = `${columnKey}:${searchString}`;
+      const cached = this.uniqueValuesCache.get(cacheKey);
+      
+      if (!cached || !cached.hasMore) {
+        return; // No more items to load
+      }
+  
+      const nextPage = cached.page + 1;
+  
+      this.apiService
+        .getFilteredUniqueValuesOfColumn(
+          String(columnKey),
+          searchString,
+          nextPage,
+          50
+        )
+        .pipe(
+          tap(response => {
+            if (response.responseData?.content && response.responseData.content.length > 0) {
+              const currentValues = cached.values;
+              const newValues = [...currentValues, ...response.responseData.content];
+              
+              this.setUniqueItems(String(columnKey), newValues);
+              
+              // Update cache with new values and page
+              this.uniqueValuesCache.set(cacheKey, {
+                values: newValues,
+                page: nextPage,
+                hasMore: !response.responseData.last
+              });
+            }
+          }),
+          catchError(error => {
+            console.error(`Error loading more unique items for column ${columnKey}:`, error);
+            return of(null);
+          }),
+          takeUntilDestroyed(this.destroyRef)
+        )
+        .subscribe();
+    }
+
+  /**
+   * Clear unique values cache (useful when data changes)
+   */
+  clearUniqueValuesCache(): void {
+    this.uniqueValuesCache.clear();
   }
 }

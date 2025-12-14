@@ -44,6 +44,8 @@
               [filterValue]="columnFilters[column.id] || ''"
               [uniqueValues]="columnUniqueValuesMap()[column.id] || []"
               (filterChange)="onColumnFilterChange(column.id, $event)"
+              (loadMoreOptions)="loadMoreOptions.emit({column: column.id, filter: $event})"
+              (loadInitialOptions)="loadInitialOptions.emit({column: column.id, filter: $event})"
             ></app-column-filter-input>
             <div class="resize-handle"
                  (mousedown)="onResizeStart($event, column.id, getColumnWidth(column.id))"
