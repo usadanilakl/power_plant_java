@@ -51,7 +51,11 @@ export interface FilterOutRules {
     TableClickService,
     TableSyncService,
     TableSelectionService,
-    TableResizeService
+    TableResizeService,
+    TableSearchService,
+    TableSortService,
+    TableSelectionService,
+    TableResizeService,
   ],
   templateUrl: './table.component.html',
   styleUrl: './table.component.css',
@@ -90,6 +94,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   rowHoveredEvent = output<any>();
   selectedItemsEvent = output<any[]>();
   itemsReordered = output<any[]>();
+  sortChanged = output<{ column: Column; isAscending: boolean }>();
 
   // ViewChild references
   @ViewChild('tableContainer') tableContainer!: ElementRef;
@@ -271,7 +276,7 @@ export class TableComponent implements OnInit, AfterViewInit {
       );
       if (column) {
         // The sortColumn method sorts `this.filteredItems` in place.
-        this.sortColumn(column);
+        // this.sortColumn(column);
       }
     }
 
@@ -394,7 +399,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ============ Sorting Methods ============
 
-  sortColumn(column: Column): void {
+  sortColumn(column: Column, emit = false): void {
     if (this.isDragAndDropEnabled()) return;
 
     const columnKey = column.accessorKey || column.id;
@@ -409,6 +414,7 @@ export class TableComponent implements OnInit, AfterViewInit {
       (obj, path) => this.searchService.getNestedProperty(obj, path)
     );
 
+    if(emit)this.sortChanged.emit({ column, isAscending: this.isAscending });
     this.cdr.detectChanges();
     // Remove this line - sync is now called in updateFilteredItems()
     // setTimeout(() => this.syncService.synchronizeColumnWidths(), 100);
@@ -515,7 +521,19 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ============ Selection Methods ============
 
+  private isProcessingDoubleClick = false;
   onRowClick(item: any, event: MouseEvent): void {
+    if (this.isProcessingDoubleClick) {
+      return;
+    }
+    
+    this.isProcessingDoubleClick = true;
+    
+    // Reset flag after a short delay to allow for rapid double-clicks
+    setTimeout(() => {
+      this.isProcessingDoubleClick = false;
+    }, 500);
+  
     if (event.button === 0) {
       // Left click
       event.preventDefault();
@@ -547,11 +565,17 @@ export class TableComponent implements OnInit, AfterViewInit {
     }
   }
 
+  
   onRowDoubleClick(item: any): void {
-    this.rowDoubleClicked.emit(item);
+    // Normalize the item to ensure consistency after sorting/filtering
+    const normalizedItem = this._items.find(i => i.id === item.id) || item;
+    
+    this.rowDoubleClicked.emit(normalizedItem);
+    console.log('Row double-clicked:', normalizedItem);
+    
     if (this.lastClickedCell) {
       this.cellDoubleClicked.emit({
-        item,
+        item: normalizedItem,
         column: this.lastClickedCell.column,
       });
     }

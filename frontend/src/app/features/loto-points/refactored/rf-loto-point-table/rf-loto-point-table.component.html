@@ -29,6 +29,7 @@
     (selectedItemsEvent)="onSelectedItems($event)"
     (itemsReordered)="onItemsReordered($event)"
     (search)="onSearch($event)"
+    (sortChanged)="onTableSortChanged($event)"
     (loadMoreItems)="onLoadMore($event)">
     <div table-controls>
       <ng-content select="[table-controls]"></ng-content>

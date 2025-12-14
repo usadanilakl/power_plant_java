@@ -18,7 +18,7 @@
           <th *ngFor="let column of columns()" 
               [style.width.px]="getColumnWidth(column.id)"
               class="sortable-header">
-            <div class="header-content" (click)="sortColumn(column)">
+            <div class="header-content" (click)="sortColumn(column, true)">
               <span>{{ column.header }}</span>
               <span *ngIf="currentSortColumn === column.id" 
                     class="sort-indicator">

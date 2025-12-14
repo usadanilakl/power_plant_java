@@ -80,25 +80,66 @@ public interface FlexibleQueryInterface {
 
 
     
+//    default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled, SearchCriteria baseCriteria) {
+//        return (root, query, criteriaBuilder) -> {
+//            List<Predicate> predicates = new ArrayList<>();
+//            List<Predicate> basePredicates = new ArrayList<>();
+//
+//            // Handle base criteria
+//            if (baseCriteria != null && baseCriteria.getFilters() != null) {
+//                basePredicates.addAll(buildPredicates(root, criteriaBuilder, baseCriteria.getFilters()));
+//            }
+//
+//            // Handle main criteria
+//            predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters()));
+//
+//            // Combine base predicates (always with AND logic)
+//            Predicate basePredicate = criteriaBuilder.and(basePredicates.toArray(new Predicate[0]));
+//
+//            // Combine main predicates based on andLogicIsEnabled
+//            Predicate mainPredicate;
+//            if (andLogicIsEnabled) {
+//                mainPredicate = criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+//            } else {
+//                mainPredicate = criteriaBuilder.or(predicates.toArray(new Predicate[0]));
+//            }
+//
+//            // Combine base predicate with main predicate
+//            return criteriaBuilder.and(basePredicate, mainPredicate);
+//        };
+//    }
+
+
     default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled, SearchCriteria baseCriteria) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
             List<Predicate> basePredicates = new ArrayList<>();
 
             // Handle base criteria
-            if (baseCriteria != null && baseCriteria.getFilters() != null) {
+            if (baseCriteria != null && baseCriteria.getFilters() != null && !baseCriteria.getFilters().isEmpty()) {
                 basePredicates.addAll(buildPredicates(root, criteriaBuilder, baseCriteria.getFilters()));
             }
 
-            // Handle main criteria
-            predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters()));
+            // Handle main criteria - only if filters exist and are not empty
+            if (criteria.getFilters() != null && !criteria.getFilters().isEmpty()) {
+                predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters()));
+            }
+
+            // If no predicates, return all records (empty conjunction)
+            if (basePredicates.isEmpty() && predicates.isEmpty()) {
+                return criteriaBuilder.conjunction(); // Returns true for all records
+            }
 
             // Combine base predicates (always with AND logic)
-            Predicate basePredicate = criteriaBuilder.and(basePredicates.toArray(new Predicate[0]));
+            Predicate basePredicate = basePredicates.isEmpty()
+                    ? criteriaBuilder.conjunction()
+                    : criteriaBuilder.and(basePredicates.toArray(new Predicate[0]));
 
             // Combine main predicates based on andLogicIsEnabled
             Predicate mainPredicate;
-            if (andLogicIsEnabled) {
+            if (predicates.isEmpty()) {
+                mainPredicate = criteriaBuilder.conjunction();
+            } else if (andLogicIsEnabled) {
                 mainPredicate = criteriaBuilder.and(predicates.toArray(new Predicate[0]));
             } else {
                 mainPredicate = criteriaBuilder.or(predicates.toArray(new Predicate[0]));

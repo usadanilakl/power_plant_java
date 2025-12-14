@@ -1,20 +1,31 @@
+
 export interface SearchCriteria {
-  type?: 'global' | 'column';
+  type?: 'global' | 'column' | 'sort';
   query?: string;
   filters?: { [key: string]: string };
+  sortColumn?: string;
+  sortDirection?: 'ASC' | 'DESC';
   page?: number;
+  pageSize?: number;
 }
 
 export class SearchCriteriaDto implements SearchCriteria {
-  type?: 'global' | 'column';
+  type?: 'global' | 'column' | 'sort';
   query?: string;
   filters?: { [key: string]: string };
   page?: number;
+  pageSize?: number;
+  sortColumn?: string;
+  sortDirection?: 'ASC' | 'DESC';
 
   constructor(data: Partial<SearchCriteria> = {}) {
     this.type = data.type;
     this.query = data.query;
     this.filters = data.filters;
+    this.page = data.page?? 1;
+    this.pageSize = data.pageSize?? 10;
+    this.sortColumn = data.sortColumn;
+    this.sortDirection = data.sortDirection;
   }
 
   // You can add methods here if needed, for example:

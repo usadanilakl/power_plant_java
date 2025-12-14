@@ -2,6 +2,7 @@
 import { Injectable, signal } from "@angular/core";
 import { LotoPointDto } from "../../../../models/loto/loto-point.model";
 import { BehaviorSubject, Observable } from "rxjs";
+import { SearchCriteria } from "../../../../models/api/search-criteria.model";
 
 @Injectable({
   providedIn: 'root'
@@ -16,6 +17,16 @@ export class RfLotoPointStateService {
   filterOutItems = signal<LotoPointDto[]>([]);
 
   selectedItems = signal<LotoPointDto[]>([]);
+  
+  // Add sort state
+  private currentSortColumnSubject = new BehaviorSubject<string | null>(null);
+  currentSortColumn$ = this.currentSortColumnSubject.asObservable();
+
+  private currentSortDirectionSubject = new BehaviorSubject<'ASC' | 'DESC'>('ASC');
+  currentSortDirection$ = this.currentSortDirectionSubject.asObservable();
+
+  private currentSearchCriteriaSubject = new BehaviorSubject<SearchCriteria | null>(null);
+  currentSearchCriteria$ = this.currentSearchCriteriaSubject.asObservable();
 
   addLotoPoints(items: LotoPointDto[]): void {
     const current = this.allLoadedLotoPointsSubject.value;
@@ -36,5 +47,30 @@ export class RfLotoPointStateService {
   }
   setSelectedLotoPoints(items: LotoPointDto[]) {
     this.selectedItems.set(items);
+  }
+  resetPage() {
+    this.currentPage = 1;
+  }
+
+
+  // Sorting
+  
+  setSortState(sortColumn: string, sortDirection: 'ASC' | 'DESC'): void {
+    this.currentSortColumnSubject.next(sortColumn);
+    this.currentSortDirectionSubject.next(sortDirection);
+  }
+
+  setSearchCriteria(criteria: SearchCriteria): void {
+    this.currentSearchCriteriaSubject.next(criteria);
+  }
+
+  getCurrentSearchCriteria(): SearchCriteria | null {
+    return this.currentSearchCriteriaSubject.value;
+  }
+
+  clearSortState(): void {
+    this.currentSortColumnSubject.next(null);
+    this.currentSortDirectionSubject.next('ASC');
+    this.currentSearchCriteriaSubject.next(null);
   }
 }
