@@ -8,6 +8,8 @@
     <app-rf-loto-point-table
       [enableDragDrop]="false"
       [loadMoreEnabled]="true"
+      [selectionControlButtonsInput]="bulkControlButtonsForSourceTable"
+      (selectedItemsEvent)="availableTableHighlightedItems.set($event)"
       [filterOutItems]="filterOutRules()"
       (rowDoubleClickEvent)="onAvailableItemDoubleClick($event)">
     </app-rf-loto-point-table>
@@ -25,6 +27,8 @@
       [enableDragDrop]="enableDragDropOnSelected()"
       [loadMoreEnabled]="false"
       [fieldsToDisplay]="fieldsToDisplay()"
+      [selectionControlButtonsInput]="bulkControlButtonsForDestinationTable"
+      (selectedItemsEvent)="selectedTableHighlightedItems.set($event)"
       (rowDoubleClickEvent)="onSelectedItemDoubleClick($event)"
       (itemsReorderedEvent)="onSelectedItemsReordered($event)">
     </app-rf-loto-point-table>

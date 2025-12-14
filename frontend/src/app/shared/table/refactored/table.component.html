@@ -90,11 +90,23 @@
     <p>No items found</p>
   </div>
 
-  <div *ngIf="selectedItems().length > 0" class="selection-info">
+  <!-- <div *ngIf="selectedItems().length > 0" class="selection-info">
     <span>{{ selectedItems().length }} item(s) selected</span>
     <button (click)="onDeleteSelectedItems()" class="delete-btn">
       Delete Selected
     </button>
+    <button (click)="clearSelection()" class="clear-btn">
+      Clear Selection
+    </button>
+  </div> -->
+
+  <div *ngIf="selectedItems().length > 0" class="selection-info">
+    <span>{{ selectedItems().length }} item(s) selected</span>
+    <ng-container #selectionActions>
+      <ng-content select="[table-selection-actions]" 
+                   [ngTemplateOutletContext]="{ $implicit: selectedItems() }">
+      </ng-content>
+    </ng-container>
     <button (click)="clearSelection()" class="clear-btn">
       Clear Selection
     </button>

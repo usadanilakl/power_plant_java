@@ -13,6 +13,7 @@ import {
   output,
   PLATFORM_ID,
   signal,
+  TemplateRef,
   ViewChild
 } from '@angular/core';
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
@@ -100,6 +101,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   @ViewChild('bodyTable', { read: ElementRef })
   bodyTable!: ElementRef<HTMLTableElement>;
   @ViewChild(CdkVirtualScrollViewport) viewport!: CdkVirtualScrollViewport;
+  @ViewChild('selectionActions', { read: TemplateRef }) selectionActionsTemplate!: TemplateRef<any>;
 
   // Component state
   items = input.required<any[]>();

@@ -21,11 +21,12 @@ import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
+import { ButtonColor, ButtonConfig, ButtonsComponent } from '../../../../shared/menu/buttons/buttons.component';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent],
+  imports: [CommonModule, TableComponent, ButtonsComponent],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css'
 })
@@ -42,6 +43,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   isIsolated = input<boolean>(false);
   filterOutItems = input<FilterOutRules | undefined>();
   hoverDebounceTime = input<number>(0);
+  selectionControlButtonsInput = input<ButtonConfig[] | undefined>();
   fieldsToDisplay = input<(keyof LotoPointDto)[]>([
     'isVerified',
     'tagNumber',
@@ -69,6 +71,26 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
 
   items = computed(() => {
     return this.inputItems() ?? this.items$();
+  });
+  selectionControlButtons = computed(() => {
+    return this.selectionControlButtonsInput()?? [
+      {
+        name: 'Select',
+        action: () => {
+          // Implement selection logic
+          console.log('Select is not implemented yet.');
+        },
+        color: 'primary' as ButtonColor
+      },
+      {
+        name: 'Delete',
+        action: () => {
+          // Implement delete logic
+          console.log('Delete is not implemented yet.');
+        },
+        color: 'warn' as ButtonColor
+      }
+    ];
   });
 
   constructor() {
@@ -260,6 +282,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    * Handle selected items change
    */
   onSelectedItems(items: LotoPointDto[]): void {
+    this.stateService.setSelectedLotoPoints(items);
     this.selectedItemsEvent.emit(items);
   }
 

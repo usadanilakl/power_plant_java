@@ -15,6 +15,8 @@ export class RfLotoPointStateService {
   
   filterOutItems = signal<LotoPointDto[]>([]);
 
+  selectedItems = signal<LotoPointDto[]>([]);
+
   addLotoPoints(items: LotoPointDto[]): void {
     const current = this.allLoadedLotoPointsSubject.value;
     this.allLoadedLotoPointsSubject.next([...current, ...items]);
@@ -31,5 +33,8 @@ export class RfLotoPointStateService {
 
   incrementPage(): void {
     this.currentPage++;
+  }
+  setSelectedLotoPoints(items: LotoPointDto[]) {
+    this.selectedItems.set(items);
   }
 }

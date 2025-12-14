@@ -33,5 +33,8 @@
     <div table-controls>
       <ng-content select="[table-controls]"></ng-content>
     </div>
+    <div table-selection-actions>
+      <app-buttons [buttons]="selectionControlButtons()"></app-buttons>
+    </div>
   </app-table>
 </div>
