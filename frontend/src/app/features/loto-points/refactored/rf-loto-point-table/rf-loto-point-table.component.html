@@ -18,6 +18,7 @@
   <app-table
     [items]="items()"
     [columns]="columns()"
+    [columnUniqueOptions]="stateService.currentColumnUniqueItems()"
     [isDragAndDropEnabled]="enableDragDrop()"
     [hoverDebounceTime]="hoverDebounceTime()"
     [filterOutItems]="filterOutItems()"
@@ -30,7 +31,10 @@
     (itemsReordered)="onItemsReordered($event)"
     (search)="onSearch($event)"
     (sortChanged)="onTableSortChanged($event)"
-    (loadMoreItems)="onLoadMore($event)">
+    (loadMoreItems)="onLoadMore($event)"
+    (loadInitialOptions)="loadUniqueItems($event.column, $event.filter)"
+    (loadMoreOptions)="loadMoreUniqueItems($event.column, $event.filter)"
+    >
     <div table-controls>
       <ng-content select="[table-controls]"></ng-content>
     </div>

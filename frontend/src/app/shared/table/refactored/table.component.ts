@@ -46,7 +46,12 @@ export interface FilterOutRules {
 @Component({
   selector: 'app-table',
   standalone: true,
-  imports: [CommonModule, FormsModule, ScrollingModule, ColumnFilterInputComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ScrollingModule,
+    ColumnFilterInputComponent,
+  ],
   providers: [
     TableDragService,
     TableClickService,
@@ -76,7 +81,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   // Inputs
   items = input.required<any[]>();
   columns = input<Column[]>([]);
-  columnUniqueOptions = signal<string[]>([]);//this will be passed to filter input component instead of current item. 
+  columnUniqueOptions = input<string[]>([]); //this will be passed to filter input component instead of current item.
   deleteItem = input<string | undefined>();
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
@@ -98,8 +103,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   selectedItemsEvent = output<any[]>();
   itemsReordered = output<any[]>();
   sortChanged = output<{ column: Column; isAscending: boolean }>();
-  loadMoreOptions = output<{column:string, filter:string }>();
-  loadInitialOptions = output<{column:string, filter:string }>();
+  loadMoreOptions = output<{ column: string; filter: string }>();
+  loadInitialOptions = output<{ column: string; filter: string }>();
 
   // ViewChild references
   @ViewChild('tableContainer') tableContainer!: ElementRef;
@@ -111,7 +116,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   @ViewChild('bodyTable', { read: ElementRef })
   bodyTable!: ElementRef<HTMLTableElement>;
   @ViewChild(CdkVirtualScrollViewport) viewport!: CdkVirtualScrollViewport;
-  @ViewChild('selectionActions', { read: TemplateRef }) selectionActionsTemplate!: TemplateRef<any>;
+  @ViewChild('selectionActions', { read: TemplateRef })
+  selectionActionsTemplate!: TemplateRef<any>;
 
   // Component state
   filteredItems: any[] = [];
@@ -178,17 +184,17 @@ export class TableComponent implements OnInit, AfterViewInit {
   private calculateUniqueValues = effect(() => {
     const currentItems = this.items();
     const currentColumns = this.columns();
-    
+
     if (!currentItems || !currentColumns) return;
 
     const uniqueValuesMap: { [columnId: string]: string[] } = {};
 
-    currentColumns.forEach(column => {
+    currentColumns.forEach((column) => {
       if (!column.filterable) return;
 
       const uniqueValues = new Set<string>();
-      
-      currentItems.forEach(item => {
+
+      currentItems.forEach((item) => {
         const value = this.getCellValue(item, column);
         if (value !== null && value !== undefined && value !== '') {
           uniqueValues.add(String(value).toLowerCase());
@@ -432,16 +438,14 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.search.emit(searchCriteria);
   }
 
-  
-/**
- * Handle column filter change
- */
-onColumnFilterChange(columnId: string, filterValue: string): void {
-  this.columnFilters[columnId] = filterValue;
-  this.performSearch();
-  this.cdr.detectChanges();
-
-}
+  /**
+   * Handle column filter change
+   */
+  onColumnFilterChange(columnId: string, filterValue: string): void {
+    this.columnFilters[columnId] = filterValue;
+    this.performSearch();
+    this.cdr.detectChanges();
+  }
 
   // ============ Sorting Methods ============
 
@@ -460,7 +464,7 @@ onColumnFilterChange(columnId: string, filterValue: string): void {
       (obj, path) => this.searchService.getNestedProperty(obj, path)
     );
 
-    if(emit)this.sortChanged.emit({ column, isAscending: this.isAscending });
+    if (emit) this.sortChanged.emit({ column, isAscending: this.isAscending });
     this.cdr.detectChanges();
     // Remove this line - sync is now called in updateFilteredItems()
     // setTimeout(() => this.syncService.synchronizeColumnWidths(), 100);
@@ -572,14 +576,14 @@ onColumnFilterChange(columnId: string, filterValue: string): void {
     if (this.isProcessingDoubleClick) {
       return;
     }
-    
+
     this.isProcessingDoubleClick = true;
-    
+
     // Reset flag after a short delay to allow for rapid double-clicks
     setTimeout(() => {
       this.isProcessingDoubleClick = false;
     }, 500);
-  
+
     if (event.button === 0) {
       // Left click
       event.preventDefault();
@@ -611,14 +615,13 @@ onColumnFilterChange(columnId: string, filterValue: string): void {
     }
   }
 
-  
   onRowDoubleClick(item: any): void {
     // Normalize the item to ensure consistency after sorting/filtering
-    const normalizedItem = this._items.find(i => i.id === item.id) || item;
-    
+    const normalizedItem = this._items.find((i) => i.id === item.id) || item;
+
     this.rowDoubleClicked.emit(normalizedItem);
     console.log('Row double-clicked:', normalizedItem);
-    
+
     if (this.lastClickedCell) {
       this.cellDoubleClicked.emit({
         item: normalizedItem,
@@ -757,69 +760,74 @@ onColumnFilterChange(columnId: string, filterValue: string): void {
     this.hoverSubject.next(item);
   }
 
-
   // ============ Resize Methods ============//
 
-private setupResizeListeners(): void {
-  this.resizeMouseMoveListener = (e: MouseEvent) => this.onResizeMouseMove(e);
-  this.resizeMouseUpListener = () => this.onResizeMouseUp();
+  private setupResizeListeners(): void {
+    this.resizeMouseMoveListener = (e: MouseEvent) => this.onResizeMouseMove(e);
+    this.resizeMouseUpListener = () => this.onResizeMouseUp();
 
-  document.addEventListener('mousemove', this.resizeMouseMoveListener);
-  document.addEventListener('mouseup', this.resizeMouseUpListener);
+    document.addEventListener('mousemove', this.resizeMouseMoveListener);
+    document.addEventListener('mouseup', this.resizeMouseUpListener);
 
-  this.destroyRef.onDestroy(() => {
-    if (this.resizeMouseMoveListener) {
-      document.removeEventListener('mousemove', this.resizeMouseMoveListener);
+    this.destroyRef.onDestroy(() => {
+      if (this.resizeMouseMoveListener) {
+        document.removeEventListener('mousemove', this.resizeMouseMoveListener);
+      }
+      if (this.resizeMouseUpListener) {
+        document.removeEventListener('mouseup', this.resizeMouseUpListener);
+      }
+    });
+  }
+
+  onResizeStart(
+    event: MouseEvent,
+    columnId: string,
+    currentWidth: number
+  ): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.resizeService.startResize(columnId, event.clientX, currentWidth);
+  }
+
+  private onResizeMouseMove(event: MouseEvent): void {
+    if (!this.resizeService.isResizing()) return;
+
+    const newWidth = this.resizeService.updateResize(event.clientX);
+    const columnId = this.resizeService.getResizingColumnId();
+
+    if (columnId) {
+      this.columnWidths.set(columnId, newWidth);
+      this.updateColumnWidth(columnId, newWidth);
+      // Sync widths immediately during resize
+      this.syncService.synchronizeColumnWidths();
+      this.cdr.detectChanges();
     }
-    if (this.resizeMouseUpListener) {
-      document.removeEventListener('mouseup', this.resizeMouseUpListener);
+  }
+
+  private onResizeMouseUp(): void {
+    if (this.resizeService.isResizing()) {
+      this.resizeService.endResize();
+      this.syncService.synchronizeColumnWidths();
+      this.cdr.detectChanges();
     }
-  });
-}
-
-onResizeStart(event: MouseEvent, columnId: string, currentWidth: number): void {
-  if (!isPlatformBrowser(this.platformId)) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  this.resizeService.startResize(columnId, event.clientX, currentWidth);
-}
-
-private onResizeMouseMove(event: MouseEvent): void {
-  if (!this.resizeService.isResizing()) return;
-
-  const newWidth = this.resizeService.updateResize(event.clientX);
-  const columnId = this.resizeService.getResizingColumnId();
-
-  if (columnId) {
-    this.columnWidths.set(columnId, newWidth);
-    this.updateColumnWidth(columnId, newWidth);
-    // Sync widths immediately during resize
-    this.syncService.synchronizeColumnWidths();
-    this.cdr.detectChanges();
   }
-}
 
-private onResizeMouseUp(): void {
-  if (this.resizeService.isResizing()) {
-    this.resizeService.endResize();
-    this.syncService.synchronizeColumnWidths();
-    this.cdr.detectChanges();
+  private updateColumnWidth(columnId: string, width: number): void {
+    const column = this.columns().find((col) => col.id === columnId);
+    if (column) {
+      column.width = width;
+    }
   }
-}
-
-private updateColumnWidth(columnId: string, width: number): void {
-  const column = this.columns().find((col) => col.id === columnId);
-  if (column) {
-    column.width = width;
-  }
-}
 
   getColumnWidth(columnId: string): number {
-    return this.columnWidths.get(columnId) || 
-           this.columns().find((col) => col.id === columnId)?.width || 
-           120;
+    return (
+      this.columnWidths.get(columnId) ||
+      this.columns().find((col) => col.id === columnId)?.width ||
+      120
+    );
   }
 
   isResizing(): boolean {

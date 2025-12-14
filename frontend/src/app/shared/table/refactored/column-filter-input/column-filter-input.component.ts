@@ -50,7 +50,8 @@ export class ColumnFilterInputComponent {
   }
   
   onInputFocus(event: Event): void {
-    console.log('onInputFocus - uniqueValues:', this.uniqueValues());
+    const value = (event.target as HTMLInputElement).value;
+    this.loadInitialOptions.emit(value);
     this.filterDropdownOpen.set(true);
     
     // Show all options or filtered based on current input

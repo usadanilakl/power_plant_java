@@ -38,6 +38,8 @@ export class RfLotoPointStateService {
   
   // Unique values cache with pagination metadata
   private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
+  currentColumnUniqueItems = signal<string[]>([]);
+  
 
   addLotoPoints(items: LotoPointDto[]): void {
     const current = this.allLoadedLotoPointsSubject.value;
@@ -142,10 +144,10 @@ export class RfLotoPointStateService {
       
       // Check if we have cached results for this column and search term
       const cached = this.uniqueValuesCache.get(cacheKey);
-      if (cached) {
-        this.setUniqueItems(String(columnKey), cached.values);
-        return;
-      }
+      // if (cached) {
+      //   this.setUniqueItems(String(columnKey), cached.values);
+      //   return;
+      // }
   
       // Fetch from server with pagination
       this.apiService
@@ -160,6 +162,7 @@ export class RfLotoPointStateService {
             if (response.responseData?.content && response.responseData.content.length > 0) {
               const uniqueValues = response.responseData.content;
               this.setUniqueItems(String(columnKey), uniqueValues);
+              this.currentColumnUniqueItems.set(uniqueValues);
               
               // Cache the results
               this.uniqueValuesCache.set(cacheKey, {
