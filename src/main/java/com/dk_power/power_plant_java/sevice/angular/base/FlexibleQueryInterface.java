@@ -107,7 +107,7 @@ public interface FlexibleQueryInterface {
     }
 
 
-    default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
+    default <T extends BaseIdEntity> Page<T> getFilteredUniqueValuesOfColumn(
             JpaSpecificationExecutor<T> repository,
             String columnName,
             String filterValue,
@@ -142,14 +142,15 @@ public interface FlexibleQueryInterface {
 
             Page<T> results = repository.findAll(spec, pageable);
 
-            // Convert to Page<String>
-            List<String> stringValues = results.getContent().stream()
-                    .map(obj -> obj != null ? obj.toString() : null)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .collect(Collectors.toList());
-
-            return new PageImpl<>(stringValues, pageable, results.getTotalElements());
+//            // Convert to Page<String>
+//            List<String> stringValues = results.getContent().stream()
+//                    .map(obj -> obj != null ? obj.toString() : null)
+//                    .filter(Objects::nonNull)
+//                    .distinct()
+//                    .collect(Collectors.toList());
+//
+//            return new PageImpl<>(stringValues, pageable, results.getTotalElements());
+            return results;
 
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid column name: " + columnName, e);

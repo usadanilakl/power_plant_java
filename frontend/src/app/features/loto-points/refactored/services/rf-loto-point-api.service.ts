@@ -108,8 +108,8 @@ getFilteredUniqueValuesOfColumn(
   filter: string,
   page: number = 1,
   pageSize: number = 50
-): Observable<SpringPaginatedResponse<string>> {
-  return this.http.get<SpringPaginatedResponse<string>>(
+): Observable<SpringPaginatedResponse<LotoPointDto>> {
+  return this.http.get<SpringPaginatedResponse<LotoPointDto>>(
     `${this.apiUrl}/unique-values/${column}/filtered`,
     {
       params: {

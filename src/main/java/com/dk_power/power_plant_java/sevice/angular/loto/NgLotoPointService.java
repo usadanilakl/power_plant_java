@@ -15,7 +15,9 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -257,18 +259,23 @@ private String processDescription(String text, String fromUnit, String toUnit) {
     }
 
 
-    public Page<String> getFilteredUniqueValuesOfColumn(
-            String column,
-            String filter,
-            int page,
-            int pageSize) {
-        return this.getFilteredUniqueValuesOfColumn(
-                lotoPointRepo,
-                column,
-                filter,
-                PageRequest.of(page - 1, pageSize)
-        );
+    public Page<LotoPointDto> getFilteredUniqueValuesOfColumn(
+            String column, String filter, int page, int pageSize) {
+
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Page<LotoPoint> entities = this.getFilteredUniqueValuesOfColumn(
+                lotoPointRepo, column, filter, pageable);
+
+        // Convert preserving pagination metadata
+        List<LotoPointDto> dtos = entities.getContent().stream()
+                .map(lotoPointMapper::convertToDto)
+                .filter(Objects::nonNull)
+                .distinct()  // Only if DTO equality is properly implemented
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(dtos, pageable, entities.getTotalElements());
     }
+
 
 }
 

@@ -17,10 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/ng/loto-points")
@@ -241,19 +239,20 @@ public class NgLotoPointController {
 
 
     @GetMapping("/unique-values/{column}/filtered")
-    public ResponseEntity<NgApiResponse<Page<String>>> getFilteredUniqueValuesOfColumn(
+    public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> getFilteredUniqueValuesOfColumn(
             @PathVariable String column,
             @RequestParam String filter,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize) {
         try {
-            Page<String> uniqueValues = ngLotoPointService.getFilteredUniqueValuesOfColumn(
+            Page<LotoPointDto> uniqueValues = ngLotoPointService.getFilteredUniqueValuesOfColumn(
                     column,
                     filter,
                     page,
                     pageSize
             );
-            NgApiResponse<Page<String>> response = new NgApiResponse<>(
+
+            NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(
                     uniqueValues,
                     "Filtered unique values retrieved successfully"
             );

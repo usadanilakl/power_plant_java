@@ -160,7 +160,8 @@ export class RfLotoPointStateService {
         .pipe(
           tap(response => {
             if (response.responseData?.content && response.responseData.content.length > 0) {
-              const uniqueValues = response.responseData.content;
+              const uniqueValueDtos = response.responseData.content;
+              const uniqueValues = uniqueValueDtos.map(dto => dto[columnKey] as string);
               this.setUniqueItems(String(columnKey), uniqueValues);
               this.currentColumnUniqueItems.set(uniqueValues);
               
@@ -205,7 +206,9 @@ export class RfLotoPointStateService {
           tap(response => {
             if (response.responseData?.content && response.responseData.content.length > 0) {
               const currentValues = cached.values;
-              const newValues = [...currentValues, ...response.responseData.content];
+              const uniqueValueDtos = response.responseData.content;
+              const uniqueValues = uniqueValueDtos.map(dto => dto[columnKey] as string);
+              const newValues = [...currentValues, ...uniqueValues];
               
               this.setUniqueItems(String(columnKey), newValues);
               
