@@ -34,6 +34,13 @@
               class="column-filter"
               (click)="$event.stopPropagation()"
             />
+            <!-- <app-column-filter-input
+              *ngIf="column.filterable"
+              [column]="column"
+              [filterValue]="columnFilters[column.id] || ''"
+              [items]="filteredItems"
+              (filterChange)="onColumnFilterChange(column.id, $event)"
+            ></app-column-filter-input> -->
             <div class="resize-handle"
                  (mousedown)="onResizeStart($event, column.id, getColumnWidth(column.id))"
                  [class.resizing]="getResizingColumnId() === column.id">

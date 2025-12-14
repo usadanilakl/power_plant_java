@@ -30,6 +30,7 @@ import { TableSearchService } from './services/table-search.service';
 import { TableSortService } from './services/table-sort.service';
 import { TableSelectionService } from './services/table-selection.service';
 import { TableResizeService } from './services/table-resize.service';
+import { ColumnFilterInputComponent } from "./column-filter-input/column-filter-input.component";
 
 export interface ClickSetup{
   applyTo: 'row' | 'cell';
@@ -45,7 +46,7 @@ export interface FilterOutRules {
 @Component({
   selector: 'app-table',
   standalone: true,
-  imports: [CommonModule, FormsModule, ScrollingModule],
+  imports: [CommonModule, FormsModule, ScrollingModule, ColumnFilterInputComponent],
   providers: [
     TableDragService,
     TableClickService,
@@ -131,7 +132,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   selectedItems = this.selectionService.selectedItems$;
   lastClickedItem = this.selectionService.lastClickedItem$;
 
-  private _items: any[] = [];
+  protected _items: any[] = [];
   private lastClickedCell!: { item: any; column: Column };
   hoveredItem = signal<any>(null);
   private selectedItems$ = toObservable(this.selectedItems).pipe(
@@ -141,33 +142,59 @@ export class TableComponent implements OnInit, AfterViewInit {
   private highlightedItemIds = new Set<any>();
   private highlightStyle: { [key: string]: string } = {};
 
+  // Move effects to field initializers
+  private itemsEffect = effect(() => {
+    const items = this.items();
+    this._items = items;
+    this.updateFilteredItems();
+    this.cdr.detectChanges();
+  });
+
+  private filterOutEffect = effect(() => {
+    const rules = this.filterOutItems();
+    this.excludedItemIds.clear();
+    this.highlightedItemIds.clear();
+    this.highlightStyle = {};
+
+    if (rules && rules.items.length > 0) {
+      const itemIds = new Set(rules.items.map((item) => item.id));
+      if (rules.action === 'exclude') {
+        this.excludedItemIds = itemIds;
+      } else if (rules.action === 'highlight') {
+        this.highlightedItemIds = itemIds;
+        this.highlightStyle = rules.style;
+      }
+    }
+    this.updateFilteredItems();
+  });
+
   constructor() {
     this.setupHoverHandlers();
 
-    effect(() => {
-      const items = this.items();
-      this._items = items;
-      this.updateFilteredItems();
-      this.cdr.detectChanges();
-    });
+    // effect(() => {
+    //   const items = this.items();
+    //   this._items = items;
+    //   this.updateFilteredItems();
+    //   this.cdr.detectChanges();
+    // });
 
-    effect(() => {
-      const rules = this.filterOutItems();
-      this.excludedItemIds.clear();
-      this.highlightedItemIds.clear();
-      this.highlightStyle = {};
+    // effect(() => {
+    //   const rules = this.filterOutItems();
+    //   this.excludedItemIds.clear();
+    //   this.highlightedItemIds.clear();
+    //   this.highlightStyle = {};
 
-      if (rules && rules.items.length > 0) {
-        const itemIds = new Set(rules.items.map((item) => item.id));
-        if (rules.action === 'exclude') {
-          this.excludedItemIds = itemIds;
-        } else if (rules.action === 'highlight') {
-          this.highlightedItemIds = itemIds;
-          this.highlightStyle = rules.style;
-        }
-      }
-      this.updateFilteredItems();
-    });
+    //   if (rules && rules.items.length > 0) {
+    //     const itemIds = new Set(rules.items.map((item) => item.id));
+    //     if (rules.action === 'exclude') {
+    //       this.excludedItemIds = itemIds;
+    //     } else if (rules.action === 'highlight') {
+    //       this.highlightedItemIds = itemIds;
+    //       this.highlightStyle = rules.style;
+    //     }
+    //   }
+    //   this.updateFilteredItems();
+    // });
   }
 
   ngOnInit(): void {
@@ -395,6 +422,16 @@ export class TableComponent implements OnInit, AfterViewInit {
 
     this.updateFilteredItems();
     this.search.emit(searchCriteria);
+  }
+
+  
+  /**
+   * Handle column filter change
+   */
+  onColumnFilterChange(columnId: string, filterValue: string): void {
+    this.columnFilters[columnId] = filterValue;
+    this.updateFilteredItems();
+    this.cdr.detectChanges();
   }
 
   // ============ Sorting Methods ============

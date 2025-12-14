@@ -1,0 +1,41 @@
+
+<div class="filter-input-container">
+  <input 
+    type="text" 
+    class="filter-input"
+    [value]="filterValue()"
+    (input)="onInputChange($event)"
+    (focus)="onInputFocus()"
+    (blur)="onInputBlur()"
+    placeholder="Filter..."
+  />
+  
+  <div class="filter-dropdown" *ngIf="filterDropdownOpen()">
+    <div class="search-box">
+      <input 
+        type="text" 
+        placeholder="Search values..."
+        (input)="onSearch($event)"
+        (click)="$event.stopPropagation()"
+      />
+    </div>
+    
+    <div class="options-list">
+      <div 
+        *ngFor="let option of filteredOptions()" 
+        class="option"
+        (click)="selectOption(option)"
+      >
+        {{ option }}
+      </div>
+      
+      <div *ngIf="filteredOptions().length === 0" class="option disabled">
+        No options found
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button (click)="clearFilter()" class="clear-btn">Clear</button>
+    </div>
+  </div>
+</div>
