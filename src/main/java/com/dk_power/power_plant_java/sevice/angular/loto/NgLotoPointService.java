@@ -276,6 +276,39 @@ private String processDescription(String text, String fromUnit, String toUnit) {
         return new PageImpl<>(dtos, pageable, entities.getTotalElements());
     }
 
+//    public Page<LotoPointDto> getFilteredUniqueValuesOfColumn(
+//            String column, Map<String,String> filters, int page, int pageSize, boolean andLogicEnabled) {
+//
+//        Pageable pageable = PageRequest.of(page - 1, pageSize);
+//        Page<LotoPoint> entities = this.getFilteredUniqueValuesOfColumn(
+//                lotoPointRepo, column, filters, pageable, andLogicEnabled);
+//
+//        // Convert preserving pagination metadata
+//        List<LotoPointDto> dtos = entities.getContent().stream()
+//                .map(lotoPointMapper::convertToDto)
+//                .filter(Objects::nonNull)
+//                .distinct()  // Only if DTO equality is properly implemented
+//                .collect(Collectors.toList());
+//
+//        return new PageImpl<>(dtos, pageable, entities.getTotalElements());
+//    }
+public Page<String> getFilteredUniqueValuesOfColumn(
+        String column, Map<String,String> filters, int page, int pageSize, boolean andLogicEnabled) {
+
+    Pageable pageable = PageRequest.of(page - 1, pageSize);
+
+    Page<String> uniqueValues = this.getFilteredUniqueValuesOfColumn(
+            lotoPointRepo, column, filters, pageable, andLogicEnabled);
+
+    // The uniqueValues are already strings and distinct from the default method
+    // Just return them as-is with pagination metadata preserved
+    return new PageImpl<>(
+            uniqueValues.getContent(),
+            pageable,
+            uniqueValues.getTotalElements()
+    );
+}
+
 
 }
 

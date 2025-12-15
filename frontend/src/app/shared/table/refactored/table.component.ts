@@ -202,10 +202,10 @@ export class TableComponent implements OnInit, AfterViewInit {
       });
 
       uniqueValuesMap[column.id] = Array.from(uniqueValues).sort();
+      console.log('Updating unique values: ', uniqueValues.size);
     });
 
     this.columnUniqueValuesMap.set(uniqueValuesMap);
-    console.log('uniqueValuesMap: ', uniqueValuesMap);
   });
 
   constructor() {

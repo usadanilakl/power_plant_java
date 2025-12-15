@@ -2,7 +2,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, input, output, signal, ViewChild, ElementRef, effect, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Column } from '../../../../models/column.model';
 
 @Component({
   selector: 'app-column-filter-input',
@@ -15,8 +14,6 @@ export class ColumnFilterInputComponent {
   @ViewChild('inputElement') inputElement?: ElementRef<HTMLInputElement>;
   @ViewChild('optionsList') optionsList?: ElementRef<HTMLDivElement>;
   
-  column = input.required<Column>();
-  filterValue = input<string>('');
   uniqueValues = input<string[]>([]);
   
   filterChange = output<string>();
@@ -28,17 +25,19 @@ export class ColumnFilterInputComponent {
   filteredOptions = signal<string[]>([]);
   dropdownStyle = signal<{ [key: string]: string }>({});
   isLoadingMore = signal(false);
+  filterValue = signal<string>('');
 
   constructor(private cdr: ChangeDetectorRef) {
     effect(() => {
       const values = this.uniqueValues();
-      console.log('uniqueValues input received in child:', values);
-      console.log('filterDropdownOpen:', this.filterDropdownOpen());
+      // console.log('uniqueValues input received in child:', values);
+      // console.log('filterDropdownOpen:', this.filterDropdownOpen());
     });
   }
 
   onInputChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
+    this.filterValue.set(value);
     this.filterChange.emit(value);
     
     // Filter options as user types
@@ -51,6 +50,7 @@ export class ColumnFilterInputComponent {
   
   onInputFocus(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
+    this.filterValue.set(value);
     this.loadInitialOptions.emit(value);
     this.filterDropdownOpen.set(true);
     
@@ -136,6 +136,7 @@ export class ColumnFilterInputComponent {
 // })
 // export class ColumnFilterInputComponent {
 //   @ViewChild('inputElement') inputElement?: ElementRef<HTMLInputElement>;
+//   @ViewChild('optionsList') optionsList?: ElementRef<HTMLDivElement>;
   
 //   column = input.required<Column>();
 //   filterValue = input<string>('');
@@ -143,20 +144,22 @@ export class ColumnFilterInputComponent {
   
 //   filterChange = output<string>();
 //   optionSelected = output<string>();
+//   loadInitialOptions = output<string>();
+//   loadMoreOptions = output<string>();
 
 //   filterDropdownOpen = signal(false);
 //   filteredOptions = signal<string[]>([]);
 //   dropdownStyle = signal<{ [key: string]: string }>({});
+//   isLoadingMore = signal(false);
 
 //   constructor(private cdr: ChangeDetectorRef) {
 //     effect(() => {
 //       const values = this.uniqueValues();
-//       console.log('uniqueValues input received in child:', values);
-//       console.log('filterDropdownOpen:', this.filterDropdownOpen());
+//       // console.log('uniqueValues input received in child:', values);
+//       // console.log('filterDropdownOpen:', this.filterDropdownOpen());
 //     });
 //   }
 
-  
 //   onInputChange(event: Event): void {
 //     const value = (event.target as HTMLInputElement).value;
 //     this.filterChange.emit(value);
@@ -170,7 +173,8 @@ export class ColumnFilterInputComponent {
 //   }
   
 //   onInputFocus(event: Event): void {
-//     console.log('onInputFocus - uniqueValues:', this.uniqueValues());
+//     const value = (event.target as HTMLInputElement).value;
+//     this.loadInitialOptions.emit(value);
 //     this.filterDropdownOpen.set(true);
     
 //     // Show all options or filtered based on current input
@@ -204,6 +208,24 @@ export class ColumnFilterInputComponent {
 //   clearFilter(): void {
 //     this.filterChange.emit('');
 //     this.filterDropdownOpen.set(false);
+//   }
+
+//   onOptionsScroll(event: Event): void {
+//     const scrollElement = event.target as HTMLDivElement;
+//     const scrollTop = scrollElement.scrollTop;
+//     const scrollHeight = scrollElement.scrollHeight;
+//     const clientHeight = scrollElement.clientHeight;
+    
+//     // Trigger load more when user scrolls within 50px of the bottom
+//     if (scrollHeight - (scrollTop + clientHeight) < 50 && !this.isLoadingMore()) {
+//       this.isLoadingMore.set(true);
+//       const currentSearchTerm = this.filterValue();
+//       this.loadMoreOptions.emit(currentSearchTerm);
+//     }
+//   }
+
+//   onLoadMoreComplete(): void {
+//     this.isLoadingMore.set(false);
 //   }
 
 //   private positionDropdown(inputElement: HTMLInputElement): void {

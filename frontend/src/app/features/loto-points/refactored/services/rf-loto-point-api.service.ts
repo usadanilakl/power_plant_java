@@ -103,21 +103,42 @@ export class RfLotoPointApiService {
     return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/unique-values/${column}`);
   }
 
+
+// getFilteredUniqueValuesOfColumn(
+//   column: string,
+//   filters: { [key: string]: string },
+//   page: number = 1,
+//   pageSize: number = 50,
+//   andLogicEnabled: boolean = true
+// ): Observable<SpringPaginatedResponse<LotoPointDto>> {
+//   const params = new HttpParams()
+//     .set('page', page.toString())
+//     .set('pageSize', pageSize.toString())
+//     .set('andLogicEnabled', andLogicEnabled.toString());
+
+//   return this.http.post<SpringPaginatedResponse<LotoPointDto>>(
+//     `${this.apiUrl}/unique-values/${column}/filtered`,
+//     filters,
+//     { params }
+//   );
+// }
+
 getFilteredUniqueValuesOfColumn(
   column: string,
-  filter: string,
+  filters: { [key: string]: string },
   page: number = 1,
-  pageSize: number = 50
-): Observable<SpringPaginatedResponse<LotoPointDto>> {
-  return this.http.get<SpringPaginatedResponse<LotoPointDto>>(
+  pageSize: number = 50,
+  andLogicEnabled: boolean = true
+): Observable<SpringPaginatedResponse<string>> {
+  const params = new HttpParams()
+    .set('page', page.toString())
+    .set('pageSize', pageSize.toString())
+    .set('andLogicEnabled', andLogicEnabled.toString());
+
+  return this.http.post<SpringPaginatedResponse<string>>(
     `${this.apiUrl}/unique-values/${column}/filtered`,
-    {
-      params: {
-        filter: filter,
-        page: page.toString(),
-        pageSize: pageSize.toString()
-      }
-    }
+    filters,
+    { params }
   );
 }
 

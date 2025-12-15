@@ -238,30 +238,62 @@ public class NgLotoPointController {
     }
 
 
-    @GetMapping("/unique-values/{column}/filtered")
-    public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> getFilteredUniqueValuesOfColumn(
-            @PathVariable String column,
-            @RequestParam String filter,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "50") int pageSize) {
-        try {
-            Page<LotoPointDto> uniqueValues = ngLotoPointService.getFilteredUniqueValuesOfColumn(
-                    column,
-                    filter,
-                    page,
-                    pageSize
-            );
+//    @PostMapping("/unique-values/{column}/filtered")
+//    public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> getFilteredUniqueValuesOfColumn(
+//            @PathVariable String column,
+//            @RequestBody Map<String, String> filters,
+//            @RequestParam(defaultValue = "1") int page,
+//            @RequestParam(defaultValue = "50") int pageSize,
+//            @RequestParam(defaultValue = "true") boolean andLogicEnabled
+//    ) {
+//        try {
+//            Page<LotoPointDto> uniqueValues = ngLotoPointService.getFilteredUniqueValuesOfColumn(
+//                    column,
+//                    filters,
+//                    page,
+//                    pageSize,
+//                    andLogicEnabled
+//            );
+//
+//            NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(
+//                    uniqueValues,
+//                    "Filtered unique values retrieved successfully"
+//            );
+//            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+//        } catch (IllegalArgumentException e) {
+//            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+//        }
+//    }
+@PostMapping("/unique-values/{column}/filtered")
+public ResponseEntity<NgApiResponse<Page<String>>> getFilteredUniqueValuesOfColumn(
+        @PathVariable String column,
+        @RequestBody Map<String, String> filters,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "50") int pageSize,
+        @RequestParam(defaultValue = "true") boolean andLogicEnabled
+) {
+    try {
+        Page<String> uniqueValues = ngLotoPointService.getFilteredUniqueValuesOfColumn(
+                column,
+                filters,
+                page,
+                pageSize,
+                andLogicEnabled
+        );
 
-            NgApiResponse<Page<LotoPointDto>> response = new NgApiResponse<>(
-                    uniqueValues,
-                    "Filtered unique values retrieved successfully"
-            );
-            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
-        }
+        NgApiResponse<Page<String>> response = new NgApiResponse<>(
+                uniqueValues,
+                "Filtered unique values retrieved successfully"
+        );
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+    } catch (IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
     }
+}
 }

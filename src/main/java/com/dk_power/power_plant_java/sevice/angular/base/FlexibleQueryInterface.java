@@ -14,6 +14,8 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.apache.commons.beanutils.BeanUtils.getNestedProperty;
+
 public interface FlexibleQueryInterface {
 
     default <T extends BaseIdEntity> Specification<T> buildSpecification(SearchCriteria criteria) {
@@ -142,20 +144,147 @@ public interface FlexibleQueryInterface {
 
             Page<T> results = repository.findAll(spec, pageable);
 
-//            // Convert to Page<String>
-//            List<String> stringValues = results.getContent().stream()
-//                    .map(obj -> obj != null ? obj.toString() : null)
-//                    .filter(Objects::nonNull)
-//                    .distinct()
-//                    .collect(Collectors.toList());
-//
-//            return new PageImpl<>(stringValues, pageable, results.getTotalElements());
             return results;
 
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid column name: " + columnName, e);
         }
     }
+
+//    default <T extends BaseIdEntity> Page<T> getFilteredUniqueValuesOfColumn(
+//            JpaSpecificationExecutor<T> repository,
+//            String columnName,
+//            Map<String, String> filters,  // { "name": "john", "city": "NY" }
+//            Pageable pageable,
+//            boolean andLogicIsEnabled) {
+//
+////        System.out.println("Column: "+ columnName);
+////        System.out.println("Filters: "+ filters);
+//
+//        if (columnName == null || columnName.trim().isEmpty()) {
+//            throw new IllegalArgumentException("Column name cannot be null or empty");
+//        }
+//
+//        try {
+//            Specification<T> spec = (root, query, criteriaBuilder) -> {
+//                // Build target column path for SELECT/ORDER
+//                String[] pathParts = columnName.split("\\.");
+//                Path<?> targetPath = root;
+//                for (String part : pathParts) {
+//                    targetPath = targetPath.get(part);
+//                }
+//
+//                query.multiselect(targetPath).distinct(true);
+//                query.orderBy(criteriaBuilder.asc(targetPath));
+//
+//                // Build multi-column filters as OR predicates
+//                List<Predicate> filterPredicates = new ArrayList<>();
+//                for (Map.Entry<String, String> filter : filters.entrySet()) {
+//                    if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+//                        String[] filterPathParts = filter.getKey().split("\\.");
+//                        Path<?> filterPath = root;
+//                        for (String part : filterPathParts) {
+////                            System.out.println("Part: " + part);
+//                            filterPath = filterPath.get(part);
+//                        }
+//                        filterPredicates.add(criteriaBuilder.like(
+//                                criteriaBuilder.lower(filterPath.as(String.class)),
+//                                "%" + filter.getValue().toLowerCase() + "%"
+//                        ));
+//                    }
+//                }
+//
+//                // Combine filters with AND, require all matches
+//                if(andLogicIsEnabled)return filterPredicates.isEmpty()
+//                        ? criteriaBuilder.conjunction()
+//                        : criteriaBuilder.and(filterPredicates.toArray(new Predicate[0]));
+//
+//                // Combine filters with OR, require at least one match
+//                return filterPredicates.isEmpty()
+//                        ? criteriaBuilder.conjunction()
+//                        : criteriaBuilder.or(filterPredicates.toArray(new Predicate[0]));
+//            };
+//
+//            return repository.findAll(spec, pageable);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            throw new IllegalArgumentException("Invalid column name: " + columnName, e);
+//        }
+//    }
+default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
+        JpaSpecificationExecutor<T> repository,
+        String columnName,
+        Map<String, String> filters,
+        Pageable pageable,
+        boolean andLogicIsEnabled) {
+
+    if (columnName == null || columnName.trim().isEmpty()) {
+        throw new IllegalArgumentException("Column name cannot be null or empty");
+    }
+
+    try {
+        Specification<T> spec = (root, query, criteriaBuilder) -> {
+            String[] pathParts = columnName.split("\\.");
+            Path<?> targetPath = root;
+            for (String part : pathParts) {
+                targetPath = targetPath.get(part);
+            }
+
+            // Select ONLY the column value
+            query.multiselect(targetPath.as(String.class)).distinct(true);
+            query.orderBy(criteriaBuilder.asc(targetPath));
+
+            List<Predicate> filterPredicates = new ArrayList<>();
+            for (Map.Entry<String, String> filter : filters.entrySet()) {
+                if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+                    String[] filterPathParts = filter.getKey().split("\\.");
+                    Path<?> filterPath = root;
+                    for (String part : filterPathParts) {
+                        filterPath = filterPath.get(part);
+                    }
+                    filterPredicates.add(criteriaBuilder.like(
+                            criteriaBuilder.lower(filterPath.as(String.class)),
+                            "%" + filter.getValue().toLowerCase() + "%"
+                    ));
+                }
+            }
+
+            if(andLogicIsEnabled) {
+                return filterPredicates.isEmpty()
+                        ? criteriaBuilder.conjunction()
+                        : criteriaBuilder.and(filterPredicates.toArray(new Predicate[0]));
+            }
+            return filterPredicates.isEmpty()
+                    ? criteriaBuilder.conjunction()
+                    : criteriaBuilder.or(filterPredicates.toArray(new Predicate[0]));
+        };
+
+        Page<T> entityPage = repository.findAll(spec, pageable);
+
+        // Extract actual column value via reflection or entity method
+        List<String> values = entityPage.getContent().stream()
+                .map(entity -> {
+                    try {
+                        // Dynamic property access (your original path logic)
+                        Object value = getNestedProperty(entity, columnName);
+                        return value != null ? value.toString() : null;
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()  // Client-side sort since projection ignored ORDER BY
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(values, pageable, entityPage.getTotalElements());
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        throw new IllegalArgumentException("Invalid column name: " + columnName, e);
+    }
+}
+
 
 
     default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled, SearchCriteria baseCriteria) {
