@@ -232,7 +232,7 @@ default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
 
             // Select ONLY the column value
             query.multiselect(targetPath.as(String.class)).distinct(true);
-            query.orderBy(criteriaBuilder.asc(targetPath));
+            query.orderBy(criteriaBuilder.desc(targetPath));
 
             List<Predicate> filterPredicates = new ArrayList<>();
             for (Map.Entry<String, String> filter : filters.entrySet()) {
@@ -276,6 +276,9 @@ default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
                 .distinct()
                 .sorted()  // Client-side sort since projection ignored ORDER BY
                 .collect(Collectors.toList());
+
+        System.out.println("Filters: " + filters + " on column " + columnName);
+        System.out.println("Result: " + values);
 
         return new PageImpl<>(values, pageable, entityPage.getTotalElements());
 
