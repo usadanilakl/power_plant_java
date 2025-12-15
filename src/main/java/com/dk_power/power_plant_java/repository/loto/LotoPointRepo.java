@@ -4,6 +4,9 @@ import com.dk_power.power_plant_java.dto.permits.LotoPointDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -43,5 +46,238 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
 //           "(:values IS NULL OR :values IS EMPTY OR " +
 //           "l.tagNumber LIKE CONCAT('%', CONCAT(REPLACE(REPLACE(REPLACE(CAST(:values AS string), '[', ''), ']', ''), ',', '%'), '%')))")
 //    List<String> findTagNumbersContainingAllValues(@Param("values") List<String> values);
+
+    @Query("""
+        SELECT DISTINCT lp.unit
+        FROM LotoPoint lp
+        WHERE
+          (:and = true AND
+             (:unit IS NULL OR LOWER(lp.unit) LIKE LOWER(CONCAT('%', :unit, '%')))
+             AND (:tagged IS NULL OR LOWER(lp.tagged) LIKE LOWER(CONCAT('%', :tagged, '%')))
+             AND (:tagNumber IS NULL OR LOWER(lp.tagNumber) LIKE LOWER(CONCAT('%', :tagNumber, '%')))
+             AND (:description IS NULL OR LOWER(lp.description) LIKE LOWER(CONCAT('%', :description, '%')))
+             AND (:specificLocation IS NULL OR LOWER(lp.specificLocation) LIKE LOWER(CONCAT('%', :specificLocation, '%')))
+             AND (:standard IS NULL OR LOWER(lp.standard) LIKE LOWER(CONCAT('%', :standard, '%')))
+             AND (:generalLocation IS NULL OR LOWER(lp.generalLocation) LIKE LOWER(CONCAT('%', :generalLocation, '%')))
+             AND (:equipment IS NULL OR LOWER(lp.equipment) LIKE LOWER(CONCAT('%', :equipment, '%')))
+             AND (:extraInfo IS NULL OR LOWER(lp.extraInfo) LIKE LOWER(CONCAT('%', :extraInfo, '%')))
+             AND (:type IS NULL OR LOWER(lp.type) LIKE LOWER(CONCAT('%', :type, '%')))
+             AND (:system IS NULL OR LOWER(lp.system) LIKE LOWER(CONCAT('%', :system, '%')))
+             AND (:normalPosition IS NULL OR LOWER(lp.normalPosition) LIKE LOWER(CONCAT('%', :normalPosition, '%')))
+             AND (:isolatedPosition IS NULL OR LOWER(lp.isolatedPosition) LIKE LOWER(CONCAT('%', :isolatedPosition, '%')))
+             AND (:fluid IS NULL OR LOWER(lp.fluid) LIKE LOWER(CONCAT('%', :fluid, '%')))
+             AND (:size IS NULL OR LOWER(lp.size) LIKE LOWER(CONCAT('%', :size, '%')))
+             AND (:electricalCheckStatus IS NULL OR LOWER(lp.electricalCheckStatus) LIKE LOWER(CONCAT('%', :electricalCheckStatus, '%')))
+             AND (:redTagId IS NULL OR LOWER(lp.redTagId) LIKE LOWER(CONCAT('%', :redTagId, '%')))
+             AND (:oldId IS NULL OR LOWER(lp.oldId) LIKE LOWER(CONCAT('%', :oldId, '%')))
+             AND (:conflictStatus IS NULL OR LOWER(lp.conflictStatus) LIKE LOWER(CONCAT('%', :conflictStatus, '%')))
+             AND (:conflictId IS NULL OR LOWER(lp.conflictId) LIKE LOWER(CONCAT('%', :conflictId, '%'))))
+          OR
+          (:and = false AND
+             (
+               (:unit IS NOT NULL AND LOWER(lp.unit) LIKE LOWER(CONCAT('%', :unit, '%')))
+               OR (:tagged IS NOT NULL AND LOWER(lp.tagged) LIKE LOWER(CONCAT('%', :tagged, '%')))
+               OR (:tagNumber IS NOT NULL AND LOWER(lp.tagNumber) LIKE LOWER(CONCAT('%', :tagNumber, '%')))
+               OR (:description IS NOT NULL AND LOWER(lp.description) LIKE LOWER(CONCAT('%', :description, '%')))
+               OR (:specificLocation IS NOT NULL AND LOWER(lp.specificLocation) LIKE LOWER(CONCAT('%', :specificLocation, '%')))
+               OR (:standard IS NOT NULL AND LOWER(lp.standard) LIKE LOWER(CONCAT('%', :standard, '%')))
+               OR (:generalLocation IS NOT NULL AND LOWER(lp.generalLocation) LIKE LOWER(CONCAT('%', :generalLocation, '%')))
+               OR (:equipment IS NOT NULL AND LOWER(lp.equipment) LIKE LOWER(CONCAT('%', :equipment, '%')))
+               OR (:extraInfo IS NOT NULL AND LOWER(lp.extraInfo) LIKE LOWER(CONCAT('%', :extraInfo, '%')))
+               OR (:type IS NOT NULL AND LOWER(lp.type) LIKE LOWER(CONCAT('%', :type, '%')))
+               OR (:system IS NOT NULL AND LOWER(lp.system) LIKE LOWER(CONCAT('%', :system, '%')))
+               OR (:normalPosition IS NOT NULL AND LOWER(lp.normalPosition) LIKE LOWER(CONCAT('%', :normalPosition, '%')))
+               OR (:isolatedPosition IS NOT NULL AND LOWER(lp.isolatedPosition) LIKE LOWER(CONCAT('%', :isolatedPosition, '%')))
+               OR (:fluid IS NOT NULL AND LOWER(lp.fluid) LIKE LOWER(CONCAT('%', :fluid, '%')))
+               OR (:size IS NOT NULL AND LOWER(lp.size) LIKE LOWER(CONCAT('%', :size, '%')))
+               OR (:electricalCheckStatus IS NOT NULL AND LOWER(lp.electricalCheckStatus) LIKE LOWER(CONCAT('%', :electricalCheckStatus, '%')))
+               OR (:redTagId IS NOT NULL AND LOWER(lp.redTagId) LIKE LOWER(CONCAT('%', :redTagId, '%')))
+               OR (:oldId IS NOT NULL AND LOWER(lp.oldId) LIKE LOWER(CONCAT('%', :oldId, '%')))
+               OR (:conflictStatus IS NOT NULL AND LOWER(lp.conflictStatus) LIKE LOWER(CONCAT('%', :conflictStatus, '%')))
+               OR (:conflictId IS NOT NULL AND LOWER(lp.conflictId) LIKE LOWER(CONCAT('%', :conflictId, '%')))
+             ))
+        ORDER BY lp.unit
+        """)
+    Page<String> findDistinctUnit(
+        @Param("unit") String unit,
+        @Param("tagged") String tagged,
+        @Param("tagNumber") String tagNumber,
+        @Param("description") String description,
+        @Param("specificLocation") String specificLocation,
+        @Param("standard") String standard,
+        @Param("generalLocation") String generalLocation,
+        @Param("equipment") String equipment,
+        @Param("extraInfo") String extraInfo,
+        @Param("type") String type,
+        @Param("system") String system,
+        @Param("normalPosition") String normalPosition,
+        @Param("isolatedPosition") String isolatedPosition,
+        @Param("fluid") String fluid,
+        @Param("size") String size,
+        @Param("electricalCheckStatus") String electricalCheckStatus,
+        @Param("redTagId") String redTagId,
+        @Param("oldId") String oldId,
+        @Param("conflictStatus") String conflictStatus,
+        @Param("conflictId") String conflictId,
+        @Param("and") boolean andLogic,
+        Pageable pageable
+    );
+
+    
+        @Query("""
+            SELECT DISTINCT lp.tagNumber
+            FROM LotoPoint lp
+            WHERE
+              (:and = true AND
+                 (:unit IS NULL OR LOWER(lp.unit) LIKE LOWER(CONCAT('%', :unit, '%')))
+                 AND (:tagged IS NULL OR LOWER(lp.tagged) LIKE LOWER(CONCAT('%', :tagged, '%')))
+                 AND (:tagNumber IS NULL OR LOWER(lp.tagNumber) LIKE LOWER(CONCAT('%', :tagNumber, '%')))
+                 AND (:description IS NULL OR LOWER(lp.description) LIKE LOWER(CONCAT('%', :description, '%')))
+                 AND (:specificLocation IS NULL OR LOWER(lp.specificLocation) LIKE LOWER(CONCAT('%', :specificLocation, '%')))
+                 AND (:standard IS NULL OR LOWER(lp.standard) LIKE LOWER(CONCAT('%', :standard, '%')))
+                 AND (:generalLocation IS NULL OR LOWER(lp.generalLocation) LIKE LOWER(CONCAT('%', :generalLocation, '%')))
+                 AND (:equipment IS NULL OR LOWER(lp.equipment) LIKE LOWER(CONCAT('%', :equipment, '%')))
+                 AND (:extraInfo IS NULL OR LOWER(lp.extraInfo) LIKE LOWER(CONCAT('%', :extraInfo, '%')))
+                 AND (:type IS NULL OR LOWER(lp.type) LIKE LOWER(CONCAT('%', :type, '%')))
+                 AND (:system IS NULL OR LOWER(lp.system) LIKE LOWER(CONCAT('%', :system, '%')))
+                 AND (:normalPosition IS NULL OR LOWER(lp.normalPosition) LIKE LOWER(CONCAT('%', :normalPosition, '%')))
+                 AND (:isolatedPosition IS NULL OR LOWER(lp.isolatedPosition) LIKE LOWER(CONCAT('%', :isolatedPosition, '%')))
+                 AND (:fluid IS NULL OR LOWER(lp.fluid) LIKE LOWER(CONCAT('%', :fluid, '%')))
+                 AND (:size IS NULL OR LOWER(lp.size) LIKE LOWER(CONCAT('%', :size, '%')))
+                 AND (:electricalCheckStatus IS NULL OR LOWER(lp.electricalCheckStatus) LIKE LOWER(CONCAT('%', :electricalCheckStatus, '%')))
+                 AND (:redTagId IS NULL OR LOWER(lp.redTagId) LIKE LOWER(CONCAT('%', :redTagId, '%')))
+                 AND (:oldId IS NULL OR LOWER(lp.oldId) LIKE LOWER(CONCAT('%', :oldId, '%')))
+                 AND (:conflictStatus IS NULL OR LOWER(lp.conflictStatus) LIKE LOWER(CONCAT('%', :conflictStatus, '%')))
+                 AND (:conflictId IS NULL OR LOWER(lp.conflictId) LIKE LOWER(CONCAT('%', :conflictId, '%'))))
+              OR
+              (:and = false AND
+                 (
+                   (:unit IS NOT NULL AND LOWER(lp.unit) LIKE LOWER(CONCAT('%', :unit, '%')))
+                   OR (:tagged IS NOT NULL AND LOWER(lp.tagged) LIKE LOWER(CONCAT('%', :tagged, '%')))
+                   OR (:tagNumber IS NOT NULL AND LOWER(lp.tagNumber) LIKE LOWER(CONCAT('%', :tagNumber, '%')))
+                   OR (:description IS NOT NULL AND LOWER(lp.description) LIKE LOWER(CONCAT('%', :description, '%')))
+                   OR (:specificLocation IS NOT NULL AND LOWER(lp.specificLocation) LIKE LOWER(CONCAT('%', :specificLocation, '%')))
+                   OR (:standard IS NOT NULL AND LOWER(lp.standard) LIKE LOWER(CONCAT('%', :standard, '%')))
+                   OR (:generalLocation IS NOT NULL AND LOWER(lp.generalLocation) LIKE LOWER(CONCAT('%', :generalLocation, '%')))
+                   OR (:equipment IS NOT NULL AND LOWER(lp.equipment) LIKE LOWER(CONCAT('%', :equipment, '%')))
+                   OR (:extraInfo IS NOT NULL AND LOWER(lp.extraInfo) LIKE LOWER(CONCAT('%', :extraInfo, '%')))
+                   OR (:type IS NOT NULL AND LOWER(lp.type) LIKE LOWER(CONCAT('%', :type, '%')))
+                   OR (:system IS NOT NULL AND LOWER(lp.system) LIKE LOWER(CONCAT('%', :system, '%')))
+                   OR (:normalPosition IS NOT NULL AND LOWER(lp.normalPosition) LIKE LOWER(CONCAT('%', :normalPosition, '%')))
+                   OR (:isolatedPosition IS NOT NULL AND LOWER(lp.isolatedPosition) LIKE LOWER(CONCAT('%', :isolatedPosition, '%')))
+                   OR (:fluid IS NOT NULL AND LOWER(lp.fluid) LIKE LOWER(CONCAT('%', :fluid, '%')))
+                   OR (:size IS NOT NULL AND LOWER(lp.size) LIKE LOWER(CONCAT('%', :size, '%')))
+                   OR (:electricalCheckStatus IS NOT NULL AND LOWER(lp.electricalCheckStatus) LIKE LOWER(CONCAT('%', :electricalCheckStatus, '%')))
+                   OR (:redTagId IS NOT NULL AND LOWER(lp.redTagId) LIKE LOWER(CONCAT('%', :redTagId, '%')))
+                   OR (:oldId IS NOT NULL AND LOWER(lp.oldId) LIKE LOWER(CONCAT('%', :oldId, '%')))
+                   OR (:conflictStatus IS NOT NULL AND LOWER(lp.conflictStatus) LIKE LOWER(CONCAT('%', :conflictStatus, '%')))
+                   OR (:conflictId IS NOT NULL AND LOWER(lp.conflictId) LIKE LOWER(CONCAT('%', :conflictId, '%')))
+                 ))
+            ORDER BY lp.tagNumber
+            """)
+        Page<String> findDistinctTagNumber(
+            @Param("unit") String unit,
+            @Param("tagged") String tagged,
+            @Param("tagNumber") String tagNumber,
+            @Param("description") String description,
+            @Param("specificLocation") String specificLocation,
+            @Param("standard") String standard,
+            @Param("generalLocation") String generalLocation,
+            @Param("equipment") String equipment,
+            @Param("extraInfo") String extraInfo,
+            @Param("type") String type,
+            @Param("system") String system,
+            @Param("normalPosition") String normalPosition,
+            @Param("isolatedPosition") String isolatedPosition,
+            @Param("fluid") String fluid,
+            @Param("size") String size,
+            @Param("electricalCheckStatus") String electricalCheckStatus,
+            @Param("redTagId") String redTagId,
+            @Param("oldId") String oldId,
+            @Param("conflictStatus") String conflictStatus,
+            @Param("conflictId") String conflictId,
+            @Param("and") boolean andLogic,
+            Pageable pageable
+        );
+
+        
+        @Query("""
+            SELECT DISTINCT COALESCE(lp.isoPos.name, '')
+            FROM LotoPoint lp
+            WHERE
+              (:and = true AND
+                 (:unit IS NULL OR LOWER(lp.unit) LIKE LOWER(CONCAT('%', :unit, '%')))
+                 AND (:tagged IS NULL OR LOWER(lp.tagged) LIKE LOWER(CONCAT('%', :tagged, '%')))
+                 AND (:tagNumber IS NULL OR LOWER(lp.tagNumber) LIKE LOWER(CONCAT('%', :tagNumber, '%')))
+                 AND (:description IS NULL OR LOWER(lp.description) LIKE LOWER(CONCAT('%', :description, '%')))
+                 AND (:specificLocation IS NULL OR LOWER(lp.specificLocation) LIKE LOWER(CONCAT('%', :specificLocation, '%')))
+                 AND (:standard IS NULL OR LOWER(lp.standard) LIKE LOWER(CONCAT('%', :standard, '%')))
+                 AND (:generalLocation IS NULL OR LOWER(lp.generalLocation) LIKE LOWER(CONCAT('%', :generalLocation, '%')))
+                 AND (:equipment IS NULL OR LOWER(lp.equipment) LIKE LOWER(CONCAT('%', :equipment, '%')))
+                 AND (:extraInfo IS NULL OR LOWER(lp.extraInfo) LIKE LOWER(CONCAT('%', :extraInfo, '%')))
+                 AND (:type IS NULL OR LOWER(lp.type) LIKE LOWER(CONCAT('%', :type, '%')))
+                 AND (:system IS NULL OR LOWER(lp.system) LIKE LOWER(CONCAT('%', :system, '%')))
+                 AND (:normalPosition IS NULL OR LOWER(lp.normalPosition) LIKE LOWER(CONCAT('%', :normalPosition, '%')))
+                 AND (:isolatedPosition IS NULL OR LOWER(lp.isolatedPosition) LIKE LOWER(CONCAT('%', :isolatedPosition, '%')))
+                 AND (:fluid IS NULL OR LOWER(lp.fluid) LIKE LOWER(CONCAT('%', :fluid, '%')))
+                 AND (:size IS NULL OR LOWER(lp.size) LIKE LOWER(CONCAT('%', :size, '%')))
+                 AND (:electricalCheckStatus IS NULL OR LOWER(lp.electricalCheckStatus) LIKE LOWER(CONCAT('%', :electricalCheckStatus, '%')))
+                 AND (:redTagId IS NULL OR LOWER(lp.redTagId) LIKE LOWER(CONCAT('%', :redTagId, '%')))
+                 AND (:oldId IS NULL OR LOWER(lp.oldId) LIKE LOWER(CONCAT('%', :oldId, '%')))
+                 AND (:conflictStatus IS NULL OR LOWER(lp.conflictStatus) LIKE LOWER(CONCAT('%', :conflictStatus, '%')))
+                 AND (:conflictId IS NULL OR LOWER(lp.conflictId) LIKE LOWER(CONCAT('%', :conflictId, '%')))
+                 AND (:isoPos IS NULL OR LOWER(lp.isoPos.name) LIKE LOWER(CONCAT('%', :isoPos, '%'))))
+              OR
+              (:and = false AND
+                 (
+                   (:unit IS NOT NULL AND LOWER(lp.unit) LIKE LOWER(CONCAT('%', :unit, '%')))
+                   OR (:tagged IS NOT NULL AND LOWER(lp.tagged) LIKE LOWER(CONCAT('%', :tagged, '%')))
+                   OR (:tagNumber IS NOT NULL AND LOWER(lp.tagNumber) LIKE LOWER(CONCAT('%', :tagNumber, '%')))
+                   OR (:description IS NOT NULL AND LOWER(lp.description) LIKE LOWER(CONCAT('%', :description, '%')))
+                   OR (:specificLocation IS NOT NULL AND LOWER(lp.specificLocation) LIKE LOWER(CONCAT('%', :specificLocation, '%')))
+                   OR (:standard IS NOT NULL AND LOWER(lp.standard) LIKE LOWER(CONCAT('%', :standard, '%')))
+                   OR (:generalLocation IS NOT NULL AND LOWER(lp.generalLocation) LIKE LOWER(CONCAT('%', :generalLocation, '%')))
+                   OR (:equipment IS NOT NULL AND LOWER(lp.equipment) LIKE LOWER(CONCAT('%', :equipment, '%')))
+                   OR (:extraInfo IS NOT NULL AND LOWER(lp.extraInfo) LIKE LOWER(CONCAT('%', :extraInfo, '%')))
+                   OR (:type IS NOT NULL AND LOWER(lp.type) LIKE LOWER(CONCAT('%', :type, '%')))
+                   OR (:system IS NOT NULL AND LOWER(lp.system) LIKE LOWER(CONCAT('%', :system, '%')))
+                   OR (:normalPosition IS NOT NULL AND LOWER(lp.normalPosition) LIKE LOWER(CONCAT('%', :normalPosition, '%')))
+                   OR (:isolatedPosition IS NOT NULL AND LOWER(lp.isolatedPosition) LIKE LOWER(CONCAT('%', :isolatedPosition, '%')))
+                   OR (:fluid IS NOT NULL AND LOWER(lp.fluid) LIKE LOWER(CONCAT('%', :fluid, '%')))
+                   OR (:size IS NOT NULL AND LOWER(lp.size) LIKE LOWER(CONCAT('%', :size, '%')))
+                   OR (:electricalCheckStatus IS NOT NULL AND LOWER(lp.electricalCheckStatus) LIKE LOWER(CONCAT('%', :electricalCheckStatus, '%')))
+                   OR (:redTagId IS NOT NULL AND LOWER(lp.redTagId) LIKE LOWER(CONCAT('%', :redTagId, '%')))
+                   OR (:oldId IS NOT NULL AND LOWER(lp.oldId) LIKE LOWER(CONCAT('%', :oldId, '%')))
+                   OR (:conflictStatus IS NOT NULL AND LOWER(lp.conflictStatus) LIKE LOWER(CONCAT('%', :conflictStatus, '%')))
+                   OR (:conflictId IS NOT NULL AND LOWER(lp.conflictId) LIKE LOWER(CONCAT('%', :conflictId, '%')))
+                   OR (:isoPos IS NOT NULL AND LOWER(lp.isoPos.name) LIKE LOWER(CONCAT('%', :isoPos, '%')))
+                 ))
+            ORDER BY COALESCE(lp.isoPos.name, '')
+            """)
+        Page<String> findDistinctIsoPos(
+            @Param("unit") String unit,
+            @Param("tagged") String tagged,
+            @Param("tagNumber") String tagNumber,
+            @Param("description") String description,
+            @Param("specificLocation") String specificLocation,
+            @Param("standard") String standard,
+            @Param("generalLocation") String generalLocation,
+            @Param("equipment") String equipment,
+            @Param("extraInfo") String extraInfo,
+            @Param("type") String type,
+            @Param("system") String system,
+            @Param("normalPosition") String normalPosition,
+            @Param("isolatedPosition") String isolatedPosition,
+            @Param("fluid") String fluid,
+            @Param("size") String size,
+            @Param("electricalCheckStatus") String electricalCheckStatus,
+            @Param("redTagId") String redTagId,
+            @Param("oldId") String oldId,
+            @Param("conflictStatus") String conflictStatus,
+            @Param("conflictId") String conflictId,
+            @Param("isoPos") String isoPos,
+            @Param("and") boolean andLogic,
+            Pageable pageable
+        );
 
 }

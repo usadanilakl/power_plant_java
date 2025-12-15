@@ -292,21 +292,137 @@ private String processDescription(String text, String fromUnit, String toUnit) {
 //
 //        return new PageImpl<>(dtos, pageable, entities.getTotalElements());
 //    }
+//public Page<String> getFilteredUniqueValuesOfColumn(
+//        String column, Map<String,String> filters, int page, int pageSize, boolean andLogicEnabled) {
+//
+//    Pageable pageable = PageRequest.of(page - 1, pageSize);
+//
+//    Page<String> uniqueValues = this.getFilteredUniqueValuesOfColumn(
+//            lotoPointRepo, column, filters, pageable, andLogicEnabled);
+//
+//    // The uniqueValues are already strings and distinct from the default method
+//    // Just return them as-is with pagination metadata preserved
+//    return new PageImpl<>(
+//            uniqueValues.getContent(),
+//            pageable,
+//            uniqueValues.getTotalElements()
+//    );
+//}
+
+
 public Page<String> getFilteredUniqueValuesOfColumn(
-        String column, Map<String,String> filters, int page, int pageSize, boolean andLogicEnabled) {
-
+        String columnName, Map<String, String> filters, int page, int pageSize, boolean andLogic) {
     Pageable pageable = PageRequest.of(page - 1, pageSize);
+    // Extract only the filters you actually use (null-safe)
+    String unit = filters.get("unit");
+    String tagged = filters.get("tagged");
+    String tagNumber = filters.get("tagNumber");
+    String description = filters.get("description");
+    String specificLocation = filters.get("specificLocation");
+    String standard = filters.get("standard");
+    String generalLocation = filters.get("generalLocation");
+    String equipment = filters.get("equipment");
+    String extraInfo = filters.get("extraInfo");
+    String type = filters.get("type");
+    String system = filters.get("system");
+    String normalPosition = filters.get("normalPosition");
+    String isolatedPosition = filters.get("isolatedPosition");
+    String fluid = filters.get("fluid");
+    String size = filters.get("size");
+    String electricalCheckStatus = filters.get("electricalCheckStatus");
+    String redTagId = filters.get("redTagId");
+    String oldId = filters.get("oldId");
+    String conflictStatus = filters.get("conflictStatus");
+    String conflictId = filters.get("conflictId");
+    String isoPos = filters.get("isoPos");
 
-    Page<String> uniqueValues = this.getFilteredUniqueValuesOfColumn(
-            lotoPointRepo, column, filters, pageable, andLogicEnabled);
+    return switch(columnName.toLowerCase()) {
+        case "unit" -> lotoPointRepo.findDistinctUnit(unit, tagged, tagNumber, description, specificLocation, 
+                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition, 
+                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+        
+        case "tagnumber" -> lotoPointRepo.findDistinctTagNumber(unit, tagged, tagNumber, description, specificLocation, 
+                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition, 
+                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
 
-    // The uniqueValues are already strings and distinct from the default method
-    // Just return them as-is with pagination metadata preserved
-    return new PageImpl<>(
-            uniqueValues.getContent(),
-            pageable,
-            uniqueValues.getTotalElements()
-    );
+        case "isoPos" -> lotoPointRepo.findDistinctIsoPos(unit, tagged, tagNumber, description, specificLocation,
+                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, isoPos, andLogic, pageable);
+        
+//        case "description" -> lotoPointRepo.findDistinctDescription(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "specificlocation" -> lotoPointRepo.findDistinctSpecificLocation(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "standard" -> lotoPointRepo.findDistinctStandard(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "generallocation" -> lotoPointRepo.findDistinctGeneralLocation(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "equipment" -> lotoPointRepo.findDistinctEquipment(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "extrainfo" -> lotoPointRepo.findDistinctExtraInfo(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "type" -> lotoPointRepo.findDistinctType(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "system" -> lotoPointRepo.findDistinctSystem(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "normalposition" -> lotoPointRepo.findDistinctNormalPosition(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "isolatedposition" -> lotoPointRepo.findDistinctIsolatedPosition(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "fluid" -> lotoPointRepo.findDistinctFluid(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "size" -> lotoPointRepo.findDistinctSize(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "electricalcheckstatus" -> lotoPointRepo.findDistinctElectricalCheckStatus(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "redtagid" -> lotoPointRepo.findDistinctRedTagId(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "oldid" -> lotoPointRepo.findDistinctOldId(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "conflictstatus" -> lotoPointRepo.findDistinctConflictStatus(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "conflictid" -> lotoPointRepo.findDistinctConflictId(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+//        case "tagged" -> lotoPointRepo.findDistinctTagged(unit, tagged, tagNumber, description, specificLocation,
+//                standard, generalLocation, equipment, extraInfo, type, system, normalPosition, isolatedPosition,
+//                fluid, size, electricalCheckStatus, redTagId, oldId, conflictStatus, conflictId, andLogic, pageable);
+//
+        default -> throw new IllegalArgumentException("Column not supported: " + columnName);
+    };
 }
 
 
