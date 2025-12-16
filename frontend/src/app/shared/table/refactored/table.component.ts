@@ -814,7 +814,7 @@ export class TableComponent implements OnInit, AfterViewInit {
         this.rowRightClicked.emit(normalizedItem);
       }
     } else {
-      this.rowRightClicked.emit(normalizedItem);
+      this.rowRightClicked.emit({item: normalizedItem, event});
     }
   }
 

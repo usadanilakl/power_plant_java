@@ -22,11 +22,14 @@ import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { ButtonColor, ButtonConfig, ButtonsComponent } from '../../../../shared/menu/buttons/buttons.component';
+import { LotoPointContextMenuComponent } from "../../loto-point-context-menu/loto-point-context-menu.component";
+import { LotoPointContextMenuService } from '../../loto-point-context-menu/loto-point-context-menu.service';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, ButtonsComponent],
+  imports: [CommonModule, TableComponent, ButtonsComponent, LotoPointContextMenuComponent],
+  providers: [LotoPointContextMenuComponent],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',
 })
@@ -34,6 +37,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   private apiService = inject(RfLotoPointApiService);
   protected stateService = inject(RfLotoPointStateService);
   private mapperService = inject(LotoPointMapperService);
+  protected contextMenuService = inject(LotoPointContextMenuService);
   private destroyRef = inject(DestroyRef);
 
   // Inputs
@@ -420,9 +424,17 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   /**
    * Handle row right click
    */
-  onRowRightClick(item: LotoPointDto): void {
-    this.rowRightClickEvent.emit(item);
-    console.log('Row right clicked item:', item);
+  // onRowRightClick(item: LotoPointDto): void {
+  //   this.rowRightClickEvent.emit(item);
+  //   console.log('Row right clicked item:', item);
+  //   this.contextMenuService.showContextMenu(item);
+  // }
+  
+  onRowRightClick(event: { item: LotoPointDto; event: MouseEvent }): void {
+    this.rowRightClickEvent.emit(event.item);
+    this.contextMenuService.showContextMenu(event.item, event.event);
+    // Position with estimated menu dimensions
+    this.contextMenuService.positionContextMenu(event.event, 220, 320);
   }
 
   /**

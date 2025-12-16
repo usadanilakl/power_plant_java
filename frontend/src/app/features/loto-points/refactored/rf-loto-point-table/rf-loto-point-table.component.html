@@ -54,3 +54,12 @@
     </div>
   </app-table>
 </div>
+
+<app-loto-point-context-menu
+  [selectedItem]="contextMenuService.contextMenuSelectedItem()"
+  [isVisible]="contextMenuService.contextMenuVisible()"
+  [position]="contextMenuService.contextMenuPosition()"
+  [actions]="contextMenuService.contextMenuActions()"
+  (actionSelected)="$event"
+  (closeMenu)="contextMenuService.closeContextMenu()"
+></app-loto-point-context-menu>
