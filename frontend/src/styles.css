@@ -1,6 +1,6 @@
 /* Add these global styles */
 @import url('./app/form-validation.styles.css');
-@import url('./styles.css');
+@import url('./theme-styles.css');
 *{
   padding: 0;
   margin: 0;

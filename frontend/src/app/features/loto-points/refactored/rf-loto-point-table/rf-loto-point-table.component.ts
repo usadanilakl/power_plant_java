@@ -22,8 +22,8 @@ import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { ButtonColor, ButtonConfig, ButtonsComponent } from '../../../../shared/menu/buttons/buttons.component';
-import { LotoPointContextMenuComponent } from "../../loto-point-context-menu/loto-point-context-menu.component";
-import { LotoPointContextMenuService } from '../../loto-point-context-menu/loto-point-context-menu.service';
+import { LotoPointContextMenuComponent } from "../loto-point-context-menu/loto-point-context-menu.component";
+import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-point-context-menu.service';
 
 @Component({
   selector: 'app-rf-loto-point-table',

@@ -1,7 +1,9 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';  
+import { Validators } from '@angular/forms';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
+import { FormField } from '../../../../models/ui/form-field.model';
 
 @Injectable({
   providedIn: 'root'
@@ -223,6 +225,163 @@ export class LotoPointMapperService {
       .map(fieldName => allColumns[fieldName])
       .filter((column): column is Column => column !== undefined);
   }
+
+  
+    
+      /**
+       * Maps LotoPoint to form fields
+       * @param lotoPoint - The LotoPointDto to map
+       * @param isoPosOptions - Options for ISO Position select
+       * @param normPosOptions - Options for Normal Position select
+       * @param fields - Array of field names to include (defaults to all fields)
+       * @returns Array of FormField objects
+       */
+      toFormFields(
+        lotoPoint: LotoPointDto,
+        isoPosOptions: any[] = [],
+        normPosOptions: any[] = [],
+        fields: (keyof LotoPointDto)[] = [
+          'tagNumber',
+          'description',
+          'unit',
+          'tagged',
+          'isoPos',
+          'normPos',
+          'specificLocation',
+          'standard',
+          'generalLocation',
+          'equipmentIdList',
+          'normalPosition',
+          'isolatedPosition',
+          'oldId',
+          'isUpdated',
+          'fileIds',
+          'conflictStatus',
+          'zeroEnergyMethod'
+        ]
+      ): FormField[] {
+        const allFields: { [key in keyof LotoPointDto]?: FormField } = {
+          tagNumber: {
+            name: 'tagNumber',
+            label: 'Tag Number',
+            type: 'text',
+            validators: [Validators.required],
+            initialValue: lotoPoint.tagNumber || ''
+          },
+          description: {
+            name: 'description',
+            label: 'Description',
+            type: 'text',
+            validators: [Validators.required],
+            initialValue: lotoPoint.description || ''
+          },
+          unit: {
+            name: 'unit',
+            label: 'Unit',
+            type: 'text',
+            initialValue: lotoPoint.unit || ''
+          },
+          tagged: {
+            name: 'tagged',
+            label: 'Tagged',
+            type: 'text',
+            initialValue: lotoPoint.tagged || ''
+          },
+          isoPos: {
+            name: 'isoPos',
+            label: 'Isolated Position',
+            type: 'select',
+            options: isoPosOptions,
+            validators: [Validators.required],
+            initialValue: lotoPoint.isoPos?.id || null
+          },
+          normPos: {
+            name: 'normPos',
+            label: 'Normal Position',
+            type: 'select',
+            options: normPosOptions,
+            validators: [Validators.required],
+            initialValue: lotoPoint.normPos?.id || null
+          },
+          specificLocation: {
+            name: 'specificLocation',
+            label: 'Specific Location',
+            type: 'text',
+            validators: [Validators.required],
+            initialValue: lotoPoint.specificLocation || ''
+          },
+          standard: {
+            name: 'standard',
+            label: 'Standard',
+            type: 'text',
+            initialValue: lotoPoint.standard || ''
+          },
+          generalLocation: {
+            name: 'generalLocation',
+            label: 'General Location',
+            type: 'text',
+            initialValue: lotoPoint.generalLocation || ''
+          },
+          equipmentIdList: {
+            name: 'equipmentIdList',
+            label: 'Equipment IDs',
+            type: 'multi-select',
+            initialValue: lotoPoint.equipmentIdList || []
+          },
+          normalPosition: {
+            name: 'normalPosition',
+            label: 'Normal Position',
+            type: 'text',
+            initialValue: lotoPoint.normalPosition || ''
+          },
+          isolatedPosition: {
+            name: 'isolatedPosition',
+            label: 'Isolated Position',
+            type: 'text',
+            initialValue: lotoPoint.isolatedPosition || ''
+          },
+          oldId: {
+            name: 'oldId',
+            label: 'Old ID',
+            type: 'text',
+            initialValue: lotoPoint.oldId || ''
+          },
+          isUpdated: {
+            name: 'isUpdated',
+            label: 'Is Updated',
+            type: 'select',
+            options: [
+              { value: 'true', label: 'Yes' },
+              { value: 'false', label: 'No' }
+            ],
+            initialValue: lotoPoint.isUpdated?.toString() || 'false'
+          },
+          fileIds: {
+            name: 'fileIds',
+            label: 'File IDs',
+            type: 'text',
+            initialValue: lotoPoint.fileIds || ''
+          },
+          conflictStatus: {
+            name: 'conflictStatus',
+            label: 'Conflict Status',
+            type: 'text',
+            initialValue: lotoPoint.conflictStatus || ''
+          },
+          zeroEnergyMethod: {
+            name: 'zeroEnergyMethod',
+            label: 'Zero Energy Method',
+            type: 'text',
+            validators: [Validators.required],
+            initialValue: lotoPoint.zeroEnergyMethod || ''
+          }
+        };
+    
+        return fields
+          .map(fieldName => allFields[fieldName])
+          .filter((field): field is FormField => field !== undefined);
+      }
+    
 
   
     /**

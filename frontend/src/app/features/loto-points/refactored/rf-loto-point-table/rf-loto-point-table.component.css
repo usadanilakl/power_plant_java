@@ -9,16 +9,16 @@
 .error-message {
   padding: 12px;
   margin-bottom: 12px;
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background-color: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef5350;
   border-radius: 4px;
 }
 
 .loading-indicator {
   padding: 12px;
   text-align: center;
-  color: #666;
+  color: var(--secondary-text);
   font-size: 14px;
 }
 

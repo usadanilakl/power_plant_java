@@ -1,0 +1,12 @@
+<div class="form-input" [ngStyle]="customStyle">
+  @if (label && label!=='') {
+  <div class="label-container">
+    <label>{{ label }}</label>
+  </div>
+  }
+    <input 
+      [type]="type" 
+      [value]="value" 
+      (input)="onInputChange($event)"
+      class="form-input-element">
+</div>

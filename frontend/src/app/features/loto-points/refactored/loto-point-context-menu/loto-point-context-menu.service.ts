@@ -1,5 +1,5 @@
 import { computed, Injectable, signal } from "@angular/core";
-import { LotoPointDto } from "../../../models/loto/loto-point.model";
+import { LotoPointDto } from "../../../../models/loto/loto-point.model";
 import { ContextMenuAction } from "./loto-point-context-menu.component";
 
 @Injectable({

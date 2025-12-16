@@ -1,0 +1,58 @@
+.styled-checkbox-container {
+  display: inline-block;
+  position: relative; /* This is the key for positioning the input inside */
+}
+
+/* This class now positions the checkbox behind the label */
+.hidden-checkbox {
+  position: absolute;
+  opacity: 0; /* Make it invisible but still focusable and clickable */
+  cursor: pointer;
+  height: 100%; /* Cover the full area of the container */
+  width: 100%;
+  left: 0;
+  top: 0;
+  margin: 0;
+  padding: 0;
+  z-index: 1; /* Place it on top of the label visually, though it's transparent */
+}
+
+label {
+  display: inline-block;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: var(--secondary-background);
+  color: var(--primary-text);
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  user-select: none;
+}
+
+/* Add a focus style for keyboard users */
+.hidden-checkbox:focus + label {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+label:hover {
+  background-color: var(--menu-item-hover-bg-color);
+}
+
+label.checked {
+  background-color: var(--accent-color);
+  color: var(--header-text);
+  border-color: var(--accent-color);
+}
+
+label.disabled {
+  background-color: #e9ecef; /* Using a standard disabled color as no theme variable exists */
+  color: #6c757d;
+  cursor: not-allowed;
+  border-color: #ced4da;
+}
+
+/* When the input is disabled, make sure its cursor doesn't interfere */
+.hidden-checkbox:disabled {
+  cursor: not-allowed;
+}

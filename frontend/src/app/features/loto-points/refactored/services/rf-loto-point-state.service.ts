@@ -20,9 +20,11 @@ export class RfLotoPointStateService {
   
   private allLoadedLotoPointsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   allLoadedLotoPoints$ = this.allLoadedLotoPointsSubject.asObservable();
+
   
   filterOutItems = signal<LotoPointDto[]>([]);
   selectedItems = signal<LotoPointDto[]>([]);
+  selectedItem = signal<LotoPointDto | null>(null);
   
   private currentSortColumnSubject = new BehaviorSubject<string | null>(null);
   currentSortColumn$ = this.currentSortColumnSubject.asObservable();
@@ -62,6 +64,10 @@ export class RfLotoPointStateService {
 
   setSelectedLotoPoints(items: LotoPointDto[]) {
     this.selectedItems.set(items);
+  }
+
+  setSelectedItem(item: LotoPointDto | null): void {
+    this.selectedItem.set(item);
   }
 
   resetPage() {

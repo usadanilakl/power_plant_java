@@ -1,0 +1,54 @@
+.file-input-container {
+  border: 2px dashed var(--border-color);
+  border-radius: 4px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  color: var(--primary-text);
+}
+
+.file-input-container.dragover {
+  background-color: var(--secondary-background);
+  border-color: var(--accent-color);
+}
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.file-input-label {
+  padding: 10px 15px;
+  background-color: var(--accent-color);
+  color: var(--header-text);
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-block;
+  margin-top: 10px;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-info {
+  margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.file-name {
+  font-size: 0.9em;
+  color: var(--secondary-text);
+}
+
+.remove-file {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}

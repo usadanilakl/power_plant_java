@@ -1,7 +1,7 @@
 
 import { Component, inject, input, output, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LotoPointDto } from '../../../models/loto/loto-point.model';
+import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 
 export interface ContextMenuAction {
   id: string;

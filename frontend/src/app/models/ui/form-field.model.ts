@@ -5,14 +5,26 @@ import { Question } from "./question.model";
 export interface FormField {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'select' | 'multi-select' | 'date' | 
-  'time' | 'checkbox-group' | 'checkbox' | 'radio' | 'file' | 'multi-input' |
-  'number' | 'radio-group' | 'form-array';
+  type:
+    | 'text'
+    | 'textarea'
+    | 'select'
+    | 'multi-select'
+    | 'date'
+    | 'time'
+    | 'checkbox-group'
+    | 'checkbox'
+    | 'radio'
+    | 'file'
+    | 'multi-input'
+    | 'number'
+    | 'radio-group'
+    | 'form-array';
   validators?: ValidatorFn[];
   options?: Option[];
   initialValue?: any;
   currentValue?: any;
-  question?: Question
+  question?: Question;
   position?: { x: number; y: number };
   size?: { width: number; height: number };
   style?: {
@@ -39,9 +51,14 @@ export interface FormField {
     left?: boolean;
   };
   group?: FormFieldGroup;
-  fields?: FormField[]; 
-  nestedForm?: any,
-  arrayIndexRange?: {start: number, end: number };
+  fields?: FormField[];
+  nestedForm?: any;
+  arrayIndexRange?: { start: number; end: number };
+  readonly?: boolean;
+  showWhen?: {
+    field: string;
+    value: any;
+  };
 }
 
 export interface FormFieldGroup {
