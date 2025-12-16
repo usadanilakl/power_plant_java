@@ -10,6 +10,11 @@
       class="global-search"
     />
   </div>
+  
+  <div class="table-controls">
+    <!-- <ng-content select="[table-controls]"></ng-content> -->
+     <app-buttons [buttons]="tableControlButtons()"></app-buttons>
+  </div>
 
   <div #headerContainer class="header-container">
     <table #headerTable class="table table-header" [style.width.px]="totalTableWidth">
@@ -71,6 +76,7 @@
             (mouseup)="onMouseUp($event)"
             (dragover)="onDragOver($event)"
             (click)="onRowClick(item, $event)"
+            (auxclick)="$event.preventDefault(); $event.stopPropagation()"
             (dblclick)="onRowDoubleClick(item)"
             (contextmenu)="onRowRightClick(item, $event)"
             (mouseenter)="onRowHover(item)"
@@ -78,8 +84,11 @@
             <td
               *ngFor="let column of columns()"
               [style.width.px]="getColumnWidth(column.id)"
-              [ngStyle]="getCellStyle(item, column)"
+              [ngStyle]="getCellStyleWithHover(item, column)"
               (mousedown)="registerLastClickedCell(item, column, $event)"
+              (auxclick)="handleMiddleClick(item, $event)"
+              (mouseenter)="onCellHover(item, column)"
+              (mouseleave)="onCellLeave()"
               class="table-cell"
             >
               <span *ngIf="!column.template">

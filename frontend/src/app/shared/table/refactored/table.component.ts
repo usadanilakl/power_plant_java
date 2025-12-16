@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   ChangeDetectorRef,
   Component,
+  computed,
   DestroyRef,
   effect,
   ElementRef,
@@ -31,6 +32,7 @@ import { TableSortService } from './services/table-sort.service';
 import { TableSelectionService } from './services/table-selection.service';
 import { TableResizeService } from './services/table-resize.service';
 import { ColumnFilterInputComponent } from "./column-filter-input/column-filter-input.component";
+import { ButtonColor, ButtonConfig, ButtonsComponent } from '../../menu/buttons/buttons.component';
 
 export interface ClickSetup{
   applyTo: 'row' | 'cell';
@@ -43,6 +45,8 @@ export interface FilterOutRules {
   style: { [key: string]: string };
 }
 
+export type TableMode = 'row' | 'cell';
+
 @Component({
   selector: 'app-table',
   standalone: true,
@@ -51,7 +55,8 @@ export interface FilterOutRules {
     FormsModule,
     ScrollingModule,
     ColumnFilterInputComponent,
-  ],
+    ButtonsComponent
+],
   providers: [
     TableDragService,
     TableClickService,
@@ -91,13 +96,22 @@ export class TableComponent implements OnInit, AfterViewInit {
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],
   });
+  tableMode = signal< 'row' | 'cell' >('row');
+  tableControlButtonsInput = input<ButtonConfig[] | undefined>();
+  defaultTableControlsEnabled = input<boolean>(true);
 
   // Outputs
   rowClicked = output<{ item: any; event: MouseEvent }>();
   rowDoubleClicked = output<any>();
   rowRightClicked = output<any>();
   rowMiddleClicked = output<any>();
+
   cellDoubleClicked = output<{ item: any; column: Column }>();
+  cellClicked = output<{ item: any; column: Column }>();
+  cellRightClicked = output<{ item: any; column: Column }>();
+  cellMiddleClicked = output<{ item: any; column: Column }>();
+
+
   loadMoreItems = output<SearchCriteria>();
   search = output<SearchCriteria>();
   rowHoveredEvent = output<any>();
@@ -106,6 +120,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   sortChanged = output<{ column: Column; isAscending: boolean }>();
   loadMoreOptions = output<{ column: string; filter: string }>();
   loadInitialOptions = output<{ column: string; filter: string }>();
+  tableModeChange = output<TableMode>();
 
   // ViewChild references
   @ViewChild('tableContainer') tableContainer!: ElementRef;
@@ -208,6 +223,54 @@ export class TableComponent implements OnInit, AfterViewInit {
 
     this.columnUniqueValuesMap.set(uniqueValuesMap);
   });
+  
+  
+  tableControlButtons = computed(() => {
+    const inputButtons = this.tableControlButtonsInput();
+    const defaultEnabled = this.defaultTableControlsEnabled();
+  
+    // Only input provided and default disabled
+    if (inputButtons && !defaultEnabled) {
+      return inputButtons;
+    }
+  
+    // Only default enabled (no input or input is empty)
+    if (!inputButtons && defaultEnabled) {
+      return this.getDefaultTableControlButtons();
+    }
+  
+    // Both input and default enabled - combine them
+    if (inputButtons && defaultEnabled) {
+      return [...this.getDefaultTableControlButtons(), ...inputButtons];
+    }
+  
+    // Neither enabled
+    return [];
+  });
+  
+  private getDefaultTableControlButtons(): ButtonConfig[] {
+    return [
+      {
+        name: 'Row-Mode',
+        action: () => {
+          this.setTableMode('row');
+        },
+        color: 'primary' as ButtonColor,
+      },
+      {
+        name: 'Cell-Mode',
+        action: () => {
+          this.setTableMode('cell');
+        },
+        color: 'warn' as ButtonColor,
+      },
+    ];
+  }
+
+  setTableMode(mode: TableMode): void {
+    this.tableMode.set(mode);
+    this.tableModeChange.emit(mode);
+  }
 
   constructor() {
     this.setupHoverHandlers();
@@ -573,68 +636,186 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ============ Selection Methods ============
 
+  // private isProcessingDoubleClick = false;
+
+  
+  
+  // onRowClick(item: any, event: MouseEvent): void {
+  //   if (this.isProcessingDoubleClick) {
+  //     return;
+  //   }
+  
+  //   this.isProcessingDoubleClick = true;
+  
+  //   // Reset flag after a short delay to allow for rapid double-clicks
+  //   setTimeout(() => {
+  //     this.isProcessingDoubleClick = false;
+  //   }, 600);
+  
+  //   if (event.button === 0) {
+  //     // Left click
+  //     event.preventDefault();
+  //     this.clickService.handleClick(event);
+  
+  //     // Determine click type and handle accordingly
+  //     const dragState = this.dragService.getDragState();
+  //     if (dragState.isDragging) return;
+  
+  //     if (this.clickService['clickState']?.isDoubleClickHandled) {
+  //       this.onRowDoubleClick(item);
+  //     } else {
+  //       setTimeout(() => {
+  //         console.log('Single click detected, emitting rowClicked event');
+  //         if (!this.clickService['clickState']?.isDoubleClickHandled) {
+  //           // Normalize the item here for consistency
+  //           const normalizedItem = this._items.find((i) => i.id === item.id) || item;
+            
+  //           if (event.ctrlKey) {
+  //             this.onRowCtrlClick(normalizedItem);
+  //           } else if (event.shiftKey) {
+  //             this.onRowShiftClick(normalizedItem);
+  //           } else {
+  //             this.selectionService.clearSelection();
+              
+  //             // Handle cell mode vs row mode
+  //             if (this.tableMode() === 'cell') {
+  //               if (this.lastClickedCell) {
+  //                 this.cellClicked.emit({
+  //                   item: normalizedItem,
+  //                   column: this.lastClickedCell.column,
+  //                 });
+  //               }
+  //             } else {
+  //               this.rowClicked.emit({ item: normalizedItem, event });
+  //             }
+  //           }
+  //         }
+  //       }, 300);
+  //     }
+  //   } else if (event.button === 1) {
+  //     // Middle click - also normalize here
+  //     const normalizedItem = this._items.find((i) => i.id === item.id) || item;
+      
+  //     // Handle cell mode vs row mode
+  //     if (this.tableMode() === 'cell') {
+  //       if (this.lastClickedCell) {
+  //         this.cellMiddleClicked.emit({
+  //           item: normalizedItem,
+  //           column: this.lastClickedCell.column,
+  //         });
+  //       }
+  //     } else {
+  //       this.rowMiddleClicked.emit(normalizedItem);
+  //     }
+  //   }
+  // }
+
+  private singleClickTimeout: any = null;
+  private doubleClickWindow = 300; // ms
   private isProcessingDoubleClick = false;
+
   onRowClick(item: any, event: MouseEvent): void {
-    if (this.isProcessingDoubleClick) {
+
+    event.preventDefault();
+    
+    // Cancel any pending single click
+    if (this.singleClickTimeout) {
+      clearTimeout(this.singleClickTimeout);
+      this.singleClickTimeout = null;
+      console.log('Single click cancelled - double click detected');
+      this.onRowDoubleClick(item);
       return;
     }
 
-    this.isProcessingDoubleClick = true;
+    // Schedule single click
+    this.singleClickTimeout = setTimeout(() => {
+      this.singleClickTimeout = null;
+      console.log('Single click executed');
+      this.handleSingleClick(item, event);
+    }, this.doubleClickWindow);
+  }
 
-    // Reset flag after a short delay to allow for rapid double-clicks
-    setTimeout(() => {
-      this.isProcessingDoubleClick = false;
-    }, 500);
-
-    if (event.button === 0) {
-      // Left click
-      event.preventDefault();
-      this.clickService.handleClick(event);
-
-      // Determine click type and handle accordingly
-      const dragState = this.dragService.getDragState();
-      if (dragState.isDragging) return;
-
-      if (this.clickService['clickState']?.isDoubleClickHandled) {
-        this.onRowDoubleClick(item);
+  private handleSingleClick(item: any, event: MouseEvent) {
+    const normalizedItem = this._items.find(i => i.id === item.id) || item;
+    
+    if (event.ctrlKey) {
+      this.onRowCtrlClick(normalizedItem);
+    } else if (event.shiftKey) {
+      this.onRowShiftClick(normalizedItem);
+    } else {
+      this.selectionService.clearSelection();
+      if (this.tableMode() === 'cell' && this.lastClickedCell) {
+        this.cellClicked.emit({ item: normalizedItem, column: this.lastClickedCell.column });
       } else {
-        setTimeout(() => {
-          if (!this.clickService['clickState']?.isDoubleClickHandled) {
-            if (event.ctrlKey) {
-              this.onRowCtrlClick(item);
-            } else if (event.shiftKey) {
-              this.onRowShiftClick(item);
-            } else {
-              this.selectionService.clearSelection();
-              this.rowClicked.emit({ item, event });
-            }
-          }
-        }, 300);
+        this.rowClicked.emit({ item: normalizedItem, event });
       }
-    } else if (event.button === 1) {
-      // Middle click
-      this.rowMiddleClicked.emit(item);
+    }
+  }
+
+  handleMiddleClick(item: any, event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const normalizedItem = this._items.find(i => i.id === item.id) || item;
+    console.log('Middle click detected');
+      
+    // Handle cell mode vs row mode
+    if (this.tableMode() === 'cell') {
+      if (this.lastClickedCell) {
+        this.cellMiddleClicked.emit({
+          item: normalizedItem,
+          column: this.lastClickedCell.column,
+        });
+      }
+    } else {
+      this.rowMiddleClicked.emit(normalizedItem);
     }
   }
 
   onRowDoubleClick(item: any): void {
-    // Normalize the item to ensure consistency after sorting/filtering
+    if (this.isProcessingDoubleClick) {
+      return;
+    }
+  
+    this.isProcessingDoubleClick = true;
+  
+    // Reset flag after a short delay to allow for rapid double-clicks
+    setTimeout(() => {
+      this.isProcessingDoubleClick = false;
+    }, 600);
     const normalizedItem = this._items.find((i) => i.id === item.id) || item;
-
-    this.rowDoubleClicked.emit(normalizedItem);
-    console.log('Row double-clicked:', normalizedItem);
-
-    if (this.lastClickedCell) {
+    
+    if (this.tableMode() === 'cell') {
+      if (!this.lastClickedCell) {
+        console.warn('Cell mode active but no cell was clicked');
+      }
       this.cellDoubleClicked.emit({
         item: normalizedItem,
-        column: this.lastClickedCell.column,
+        column: this.lastClickedCell?.column || { id: 'unknown' } as Column,
       });
+    } else {
+      this.rowDoubleClicked.emit(normalizedItem);
     }
   }
 
+  
   onRowRightClick(item: any, event: MouseEvent): void {
     event.preventDefault();
-    this.rowRightClicked.emit(item);
+    const normalizedItem = this._items.find((i) => i.id === item.id) || item;
+  
+    if (this.tableMode() === 'cell') {
+      if (this.lastClickedCell) {
+        this.cellRightClicked.emit({
+          item: normalizedItem,
+          column: this.lastClickedCell.column,
+        });
+      } else {
+        console.warn('Cell mode active but no cell was clicked');
+        this.rowRightClicked.emit(normalizedItem);
+      }
+    } else {
+      this.rowRightClicked.emit(normalizedItem);
+    }
   }
 
   private onRowCtrlClick(item: any): void {
@@ -758,6 +939,46 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ============ Hover Methods ============
 
+  hoveredCell = signal<{ item: any; column: Column } | null>(null);
+  
+  // Add method to handle cell hover
+  onCellHover(item: any, column: Column): void {
+    if (this.tableMode()!=='cell') return;
+    this.hoveredCell.set({ item, column });
+  }
+  
+  // Add method to handle cell leave
+  onCellLeave(): void {
+    this.hoveredCell.set(null);
+  }
+  
+  // Add method to check if cell should be highlighted
+  isCellHighlighted(item: any, column: Column): boolean {
+    const hovered = this.hoveredCell();
+    return hovered !== null && hovered.item.id === item.id && hovered.column.id === column.id;
+  }
+  
+  // Add method to get cell style with hover highlight
+  getCellStyleWithHover(item: any, column: Column): { [key: string]: string } {
+      // Get base conditional styling
+      let style: { [key: string]: string } = {};
+      
+      if (column.conditionalStyling) {
+        style = column.conditionalStyling(item, column);
+      }
+
+      // Add hover styling on top
+      if (this.isCellHighlighted(item, column)) {
+        return {
+          ...style,
+          'box-shadow': 'inset 0 0 4px rgba(33, 150, 243, 0.3)',
+          'outline': '2px solid rgba(33, 150, 243, 0.5)'
+        };
+      }
+
+      return style;
+  }
+
   onRowHover(item: any): void {
     this.hoverSubject.next(item);
   }
@@ -868,554 +1089,9 @@ export class TableComponent implements OnInit, AfterViewInit {
   ngOnDestroy(): void {
     this.clickService.reset();
     this.hoverSubject.complete();
+    // Clean up any pending timeouts
+    if (this.singleClickTimeout) {
+      clearTimeout(this.singleClickTimeout);
+    }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//   import {
-//   AfterViewInit,
-//   ChangeDetectorRef,
-//   Component,
-//   DestroyRef,
-//   ElementRef,
-//   inject,
-//   input,
-//   Input,
-//   OnInit,
-//   output,
-//   signal,
-//   ViewChild
-// } from '@angular/core';
-// import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
-// import { Observable, of, Subject, switchMap, debounceTime, distinctUntilChanged } from 'rxjs';
-// import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-// import { FormsModule } from '@angular/forms';
-// import { CommonModule } from '@angular/common';
-// import { Column } from '../../../models/column.model';
-// import { SearchCriteria } from '../../../models/api/search-criteria.model';
-// import { TableDragService } from './services/table-drag.service';
-// import { TableClickService } from './services/table-click.service';
-// import { TableSyncService } from './services/table-sync.service';
-// import { TableSearchService } from './services/table-search.service';
-// import { TableSortService } from './services/table-sort.service';
-// import { TableSelectionService } from './services/table-selection.service';
-
-// @Component({
-//   selector: 'app-table',
-//   standalone: true,
-//   imports: [CommonModule, FormsModule, ScrollingModule],
-//   templateUrl: './table.component.html',
-//   styleUrl: './table.component.css'
-// })
-// export class TableComponent implements OnInit, AfterViewInit {
-//   private destroyRef = inject(DestroyRef);
-//   private cdr = inject(ChangeDetectorRef);
-//   private dragService = inject(TableDragService);
-//   private clickService = inject(TableClickService);
-//   private syncService = inject(TableSyncService);
-//   private searchService = inject(TableSearchService);
-//   private sortService = inject(TableSortService);
-//   private selectionService = inject(TableSelectionService);
-
-//   // Inputs
-//   @Input() columns: Column[] = [];
-//   @Input() deleteItem?: (item: string) => void;
-//   columns = input<Column[]>([]);
-//   deleteItem = input<string | undefined>();
-//   hoverDebounceTime = input<number>(0);
-//   isDragAndDropEnabled = input<boolean>(false);
-
-//   // Outputs
-//   rowClicked = output<{ item: any; event: MouseEvent }>();
-//   rowDoubleClicked = output<any>();
-//   rowRightClicked = output<any>();
-//   rowMiddleClicked = output<any>();
-//   cellDoubleClicked = output<{ item: any; column: Column }>();
-//   loadMoreItems = output<SearchCriteria>();
-//   search = output<SearchCriteria>();
-//   rowHoveredEvent = output<any>();
-//   selectedItemsEvent = output<any[]>();
-//   itemsReordered = output<any[]>();
-
-//   // ViewChild references
-//   @ViewChild('tableContainer') tableContainer!: ElementRef;
-//   @ViewChild('tableBody') tableBody!: ElementRef;
-//   @ViewChild('headerContainer', { read: ElementRef }) headerContainer!: ElementRef<HTMLDivElement>;
-//   @ViewChild('headerTable', { read: ElementRef }) headerTable!: ElementRef<HTMLTableElement>;
-//   @ViewChild('bodyTable', { read: ElementRef }) bodyTable!: ElementRef<HTMLTableElement>;
-//   @ViewChild(CdkVirtualScrollViewport) viewport!: CdkVirtualScrollViewport;
-
-//   // Component state
-//   items = input.required<any[] | Observable<any[]>>({ alias: 'items' });
-//   filteredItems: any[] = [];
-//   globalSearchQuery: string = '';
-//   columnFilters: { [key: string]: string } = {};
-//   currentSortColumn: string | null = null;
-//   isAscending: boolean = true;
-//   rowHeight = 50;
-
-//   // Observables
-//   private items$ = toObservable(this.items).pipe(
-//     switchMap(value => (Array.isArray(value) ? of(value) : value))
-//   );
-//   private hoverSubject = new Subject<any>();
-//   private resizeObserver?: ResizeObserver;
-
-  
-//   // Signals from services
-//   dragState = this.dragService.dragState$;
-//   selectedItems = this.selectionService.selectedItems$;
-//   lastClickedItem = this.selectionService.lastClickedItem$;
-  
-
-//   private _items: any[] = [];
-//   private lastClickedCell!: { item: any; column: Column };
-//   private selectedItems$ = toObservable(this.selectedItems).pipe(
-//     takeUntilDestroyed(this.destroyRef)
-//   );
-
-//   constructor() {
-//     this.setupHoverHandlers();
-//   }
-
-//   ngOnInit(): void {
-//     this.setupItemsSubscription();
-//     this.setupSelectionEmitter();
-//   }
-
-//   ngAfterViewInit(): void {
-//     this.initializeTable();
-//     this.setupResizeObserver();
-//     this.setupHorizontalScrollSync();
-//   }
-
-  
-//   get totalTableWidth(): number {
-//     return this.columns.reduce((sum, col) => sum + (col.width || 120), 0);
-//   }
-  
-//   private setupHorizontalScrollSync(): void {
-//     if (!this.viewport) return;
-  
-//     this.viewport.scrolledIndexChange
-//       .pipe(takeUntilDestroyed(this.destroyRef))
-//       .subscribe(() => {
-//         this.syncHeaderScroll();
-//         this.checkForLoadMore();
-//       });
-  
-//     // Store the handler reference so it can be removed
-//     const scrollHandler = () => this.syncHeaderScroll();
-//     const viewportElement = this.viewport.elementRef.nativeElement;
-    
-//     viewportElement.addEventListener('scroll', scrollHandler);
-  
-//     this.destroyRef.onDestroy(() => {
-//       viewportElement.removeEventListener('scroll', scrollHandler);
-//     });
-//   }
-
-//   private syncHeaderScroll(): void {
-//     if (!this.viewport || !this.headerContainer?.nativeElement) return;
-
-//     const scrollLeft = this.viewport.elementRef.nativeElement.scrollLeft;
-//     this.headerContainer.nativeElement.scrollLeft = scrollLeft;
-//   }
-
-//   private checkForLoadMore(): void {
-//     if (!this.viewport) return;
-
-//     const end = this.viewport.getRenderedRange().end;
-//     const total = this.filteredItems.length;
-
-//     if (end >= total - 5 && total > 0) {
-//       // Trigger load more when within 5 items of the end
-//       const searchCriteria = this.searchService.buildSearchCriteria(
-//         this.globalSearchQuery,
-//         this.columnFilters
-//       );
-//       this.loadMoreItems.emit(searchCriteria);
-//     }
-//   }
-
-//   // ============ Initialization Methods ============
-
-  
-//   private setupItemsSubscription(): void {
-//     this.items$
-//       .pipe(
-//         debounceTime(100),  // ← Increase debounce time
-//         distinctUntilChanged(),
-//         takeUntilDestroyed(this.destroyRef)
-//       )
-//       .subscribe(items => {
-//         this._items = items;
-//         this.updateFilteredItems();
-//         this.cdr.detectChanges();
-//         // Remove or reduce sync calls
-//       });
-//   }
-  
-  
-//   private updateFilteredItems(): void {
-//     this.filteredItems = this.searchService.performSearch(
-//       this._items,
-//       this.globalSearchQuery,
-//       this.columnFilters
-//     );
-  
-//     if (this.currentSortColumn) {
-//       const column = this.columns.find(col => col.id === this.currentSortColumn);
-//       if (column) {
-//         this.sortColumn(column);
-//       }
-//     }
-  
-//     this.updateItemIndices();
-    
-//     // ← Sync AFTER sort completes and DOM updates
-//     setTimeout(() => {
-//       this.syncService.synchronizeColumnWidths();
-//       this.cdr.detectChanges();
-//     }, 50);
-//   }
-
-//   private setupHoverHandlers(): void {
-//     this.hoverSubject
-//       .pipe(
-//         debounceTime(this.hoverDebounceTime()),
-//         takeUntilDestroyed(this.destroyRef)
-//       )
-//       .subscribe(item => {
-//         this.rowHoveredEvent.emit(item);
-//       });
-//   }
-
-  
-//   private setupSelectionEmitter(): void {
-//     this.selectedItems$
-//       .pipe(takeUntilDestroyed(this.destroyRef))
-//       .subscribe(items => {
-//         this.selectedItemsEvent.emit(items);
-//       });
-//   }
-
-//   private initializeTable(): void {
-//     setTimeout(() => {
-//       this.detectRowHeight();
-//       this.calculateInitialColumnWidths();
-//       this.syncService.setSyncElements(
-//         this.headerTable?.nativeElement,
-//         this.bodyTable?.nativeElement,
-//         this.headerContainer?.nativeElement
-//       );
-//       this.syncService.synchronizeColumnWidths();
-//       this.updateItemIndices();
-//     });
-//   }
-
-//   private detectRowHeight(): void {
-//     if (this.tableBody?.nativeElement) {
-//       const sampleRow = this.tableBody.nativeElement.querySelector('tr');
-//       if (sampleRow) {
-//         this.rowHeight = sampleRow.offsetHeight;
-//         if (this.viewport) {
-//           this.viewport.checkViewportSize();
-//         }
-//         this.cdr.detectChanges();
-//       }
-//     }
-//   }
-
-//   private setupResizeObserver(): void {
-//     this.resizeObserver = new ResizeObserver(() => {
-//       if (this.viewport) {
-//         this.viewport.checkViewportSize();
-//       }
-//       this.syncService.synchronizeColumnWidths();
-//     });
-
-//     if (this.viewport?.elementRef.nativeElement) {
-//       this.resizeObserver.observe(this.viewport.elementRef.nativeElement);
-//     }
-
-//     this.destroyRef.onDestroy(() => {
-//       this.resizeObserver?.disconnect();
-//     });
-//   }
-
-  
-//   private calculateInitialColumnWidths(): void {
-//     if (!this.columns || this.columns.length === 0) return;
-  
-//     this.columns.forEach(column => {
-//       if (!column.width || column.width === 0) {
-//         // Estimate width: ~8px per character + padding
-//         const estimatedWidth = Math.max(
-//           120,  // minimum width
-//           (column.header?.length || 10) * 8 + 24
-//         );
-//         column.width = estimatedWidth;  // ← This sets the width property
-//       }
-//     });
-//   }
-//   // ============ Search and Filter Methods ============
-
-//   onGlobalSearchChange(): void {
-//     this.performSearch();
-//   }
-
-//   onColumnSearchChange(): void {
-//     this.performSearch();
-//   }
-
-//   private performSearch(): void {
-//     const searchCriteria = this.searchService.buildSearchCriteria(
-//       this.globalSearchQuery,
-//       this.columnFilters
-//     );
-
-//     this.updateFilteredItems();
-//     this.search.emit(searchCriteria);
-//   }
-
-//   // ============ Sorting Methods ============
-
-  
-//   sortColumn(column: Column): void {
-//     if (this.isDragAndDropEnabled()) return;
-  
-//     const columnKey = column.accessorKey || column.id;
-//     this.isAscending =
-//       this.currentSortColumn === columnKey ? !this.isAscending : true;
-//     this.currentSortColumn = columnKey;
-  
-//     this.filteredItems = this.sortService.sortItems(
-//       this.filteredItems,
-//       column,
-//       this.isAscending,
-//       (obj, path) => this.searchService.getNestedProperty(obj, path)
-//     );
-  
-//     this.cdr.detectChanges();
-//     // Remove this line - sync is now called in updateFilteredItems()
-//     // setTimeout(() => this.syncService.synchronizeColumnWidths(), 100);
-//   }
-
-//   // ============ Cell Value Methods ============
-
-//   getCellValue(item: any, column: Column): string {
-//     if (column.accessorFn) {
-//       return column.accessorFn(item);
-//     }
-//     if (column.accessorKey) {
-//       return this.searchService.getNestedProperty(item, column.accessorKey);
-//     }
-//     return '';
-//   }
-
-//   getCellStyle(item: any, column: any): { [key: string]: string } {
-//     if (column.conditionalStyling) {
-//       return column.conditionalStyling(item, column);
-//     }
-//     return {};
-//   }
-
-//   // ============ Drag and Drop Methods ============
-
-//   onMouseDown(event: MouseEvent, item: any): void {
-//     if (this.isDragAndDropEnabled()) {
-//       this.dragService.startDrag(item, { x: event.clientX, y: event.clientY });
-//       event.preventDefault();
-//     }
-//   }
-
-//   onMouseMove(event: MouseEvent): void {
-//     const dragState = this.dragService.getDragState();
-//     if (!dragState.isDragging || !dragState.draggedItem) return;
-
-//     const currentY = event.clientY;
-//     const rows = this.tableBody?.nativeElement?.querySelectorAll('tr');
-
-//     if (!rows) return;
-
-//     for (let i = 0; i < rows.length; i++) {
-//       const row = rows[i];
-//       const rect = row.getBoundingClientRect();
-
-//       if (currentY > rect.top && currentY < rect.bottom) {
-//         if (i !== dragState.draggedItem.index) {
-//           this.dragService.updateGhostRow(i);
-//           this.cdr.detectChanges();
-//           break;
-//         }
-//       }
-//     }
-//   }
-
-//   onMouseUp(event: MouseEvent): void {
-//     const dragState = this.dragService.getDragState();
-
-//     if (
-//       dragState.isDragging &&
-//       dragState.draggedItem &&
-//       dragState.ghostRowIndex !== null
-//     ) {
-//       this.moveItem(dragState.draggedItem.index, dragState.ghostRowIndex);
-//       this.dragService.endDrag();
-//       this.cdr.detectChanges();
-
-//       setTimeout(() => {
-//         this.itemsReordered.emit(this.filteredItems);
-//       });
-//     }
-//   }
-
-//   onDragOver(event: MouseEvent): void {
-//     event.preventDefault();
-//   }
-
-//   private moveItem(fromIndex: number, toIndex: number): void {
-//     requestAnimationFrame(() => {
-//       const item = this.filteredItems[fromIndex];
-//       this.filteredItems.splice(fromIndex, 1);
-//       this.filteredItems.splice(toIndex, 0, item);
-//       this.updateItemIndices();
-//       this.cdr.detectChanges();
-//     });
-//   }
-
-//   // ============ Selection Methods ============
-
-//   onRowClick(item: any, event: MouseEvent): void {
-//     if (event.button === 0) {
-//       // Left click
-//       event.preventDefault();
-//       this.clickService.handleClick(event);
-
-//       // Determine click type and handle accordingly
-//       const dragState = this.dragService.getDragState();
-//       if (dragState.isDragging) return;
-
-//       if (this.clickService['clickState']?.isDoubleClickHandled) {
-//         this.onRowDoubleClick(item);
-//       } else {
-//         setTimeout(() => {
-//           if (!this.clickService['clickState']?.isDoubleClickHandled) {
-//             if (event.ctrlKey) {
-//               this.onRowCtrlClick(item);
-//             } else if (event.shiftKey) {
-//               this.onRowShiftClick(item);
-//             } else {
-//               this.selectionService.clearSelection();
-//               this.rowClicked.emit({ item, event });
-//             }
-//           }
-//         }, 300);
-//       }
-//     } else if (event.button === 1) {
-//       // Middle click
-//       this.rowMiddleClicked.emit(item);
-//     }
-//   }
-
-//   onRowDoubleClick(item: any): void {
-//     this.rowDoubleClicked.emit(item);
-//     if (this.lastClickedCell) {
-//       this.cellDoubleClicked.emit({
-//         item,
-//         column: this.lastClickedCell.column
-//       });
-//     }
-//   }
-
-//   onRowRightClick(item: any, event: MouseEvent): void {
-//     event.preventDefault();
-//     this.rowRightClicked.emit(item);
-//   }
-
-//   private onRowCtrlClick(item: any): void {
-//     this.selectionService.toggleItem(item);
-//   }
-
-//   private onRowShiftClick(item: any): void {
-//     const lastItem = this.lastClickedItem();
-//     if (!lastItem) {
-//       this.selectionService.selectItem(item);
-//       return;
-//     }
-
-//     this.selectionService.selectRange(this._items, lastItem, item);
-//   }
-
-//   clearSelection(): void {
-//     this.selectionService.clearSelection();
-//   }
-
-//   onDeleteSelectedItems(): void {
-//     if (this.deleteItem) {
-//       this.selectionService.deleteSelected(this.deleteItem);
-//       const deletedIds = new Set(
-//         this.selectedItems().map(item => item.id)
-//       );
-//       this._items = this._items.filter(item => !deletedIds.has(item.id));
-//       this.updateFilteredItems();
-//       this.cdr.detectChanges();
-//     }
-//   }
-
-//   // ============ Hover Methods ============
-
-//   onRowHover(item: any): void {
-//     this.hoverSubject.next(item);
-//   }
-
-//   // ============ Utility Methods ============
-
-//   registerLastClickedCell(item: any, column: Column, event: MouseEvent): void {
-//     this.lastClickedCell = { item, column };
-//   }
-    
-//     private syncHorizontalScroll(): void {
-//       if (!this.viewport || !this.headerContainer?.nativeElement) return;
-//       const scrollLeft = this.viewport.measureScrollOffset('left');
-//       this.headerContainer.nativeElement.scrollLeft = scrollLeft;
-//     }
-    
-//     private updateItemIndices(): void {
-//       this.filteredItems.forEach((item, index) => {
-//         item.index = index;
-//       });
-//     }
-  
-//     isItemSelected(item: any): boolean {
-//       return this.selectedItems().some(i => i.id === item.id);
-//     }
-  
-//     isItemDragged(item: any): boolean {
-//       const dragState = this.dragService.getDragState();
-//       return dragState.draggedItem?.id === item.id;
-//     }
-  
-//     trackByItemId(index: number, item: any): any {
-//       return item.id || index;
-//     }
-  
-//     ngOnDestroy(): void {
-//       this.clickService.reset();
-//       this.hoverSubject.complete();
-//     }
-//   }

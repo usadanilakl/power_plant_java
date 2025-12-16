@@ -16,7 +16,7 @@ import { RfLotoPointStateService } from '../services/rf-loto-point-state.service
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { FilterOutRules, TableComponent } from '../../../../shared/table/refactored/table.component';
+import { FilterOutRules, TableComponent, TableMode } from '../../../../shared/table/refactored/table.component';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
@@ -40,9 +40,10 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   inputItems = input<LotoPointDto[] | null>(null);
   loadMoreEnabled = input<boolean>(true);
   enableDragDrop = input<boolean>(false);
-  isIsolated = input<boolean>(false);
   filterOutItems = input<FilterOutRules | undefined>();
   hoverDebounceTime = input<number>(0);
+  tableControlButtonsInput = input<ButtonConfig[] | undefined>();
+  defaultTableControlsEnabled = input<boolean>(true);
   selectionControlButtonsInput = input<ButtonConfig[] | undefined>();
   fieldsToDisplay = input<(keyof LotoPointDto)[]>([
     'isVerified',
@@ -74,6 +75,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   items = computed(() => {
     return this.inputItems() ?? this.items$();
   });
+
   selectionControlButtons = computed(() => {
     return (
       this.selectionControlButtonsInput() ?? [
@@ -96,6 +98,51 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
       ]
     );
   });
+  
+  
+  tableControlButtons = computed(() => {
+    const inputButtons = this.tableControlButtonsInput();
+    const defaultEnabled = this.defaultTableControlsEnabled();
+  
+    // Only input provided and default disabled
+    if (inputButtons && !defaultEnabled) {
+      return inputButtons;
+    }
+  
+    // Only default enabled (no input or input is empty)
+    if (!inputButtons && defaultEnabled) {
+      return this.getDefaultTableControlButtons();
+    }
+  
+    // Both input and default enabled - combine them
+    if (inputButtons && defaultEnabled) {
+      return [...this.getDefaultTableControlButtons(), ...inputButtons];
+    }
+  
+    // Neither enabled
+    return [];
+  });
+  
+  private getDefaultTableControlButtons(): ButtonConfig[] {
+    return [
+      {
+        name: 'LP-Table default1',
+        action: () => {
+          // Implement selection logic
+          console.log('Select is not implemented yet.');
+        },
+        color: 'primary' as ButtonColor,
+      },
+      {
+        name: 'LP-Table default2',
+        action: () => {
+          // Implement delete logic
+          console.log('Delete is not implemented yet.');
+        },
+        color: 'warn' as ButtonColor,
+      },
+    ];
+  }
 
   constructor() {
     // Initialize columns whenever fieldsToDisplay changes
@@ -111,6 +158,10 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
 
   ngAfterViewInit(): void {
     // Any additional initialization after view is ready
+  }
+  
+  onTableModeChange(mode: TableMode) {
+    console.log('Table mode changed to:', mode);
   }
 
   /**
@@ -355,6 +406,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    */
   onRowLeftClick(event: { item: LotoPointDto; event: MouseEvent }): void {
     this.rowLeftClickEvent.emit(event.item);
+    console.log('Row left clicked item:', event.item);
   }
 
   /**
@@ -362,6 +414,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    */
   onRowDoubleClick(item: LotoPointDto): void {
     this.rowDoubleClickEvent.emit(item);
+    console.log('Row double clicked item:', item);
   }
 
   /**
@@ -369,6 +422,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    */
   onRowRightClick(item: LotoPointDto): void {
     this.rowRightClickEvent.emit(item);
+    console.log('Row right clicked item:', item);
   }
 
   /**
@@ -376,6 +430,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    */
   onRowMiddleClick(item: LotoPointDto): void {
     this.rowMiddleClickEvent.emit(item);
+    console.log('Row middle clicked item:', item);
   }
 
   /**
@@ -383,6 +438,27 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    */
   onCellDoubleClick(event: { item: LotoPointDto; column: Column }): void {
     this.cellDoubleClickEvent.emit(event);
+    console.log('Cell double clicked item:', event.item);
+    console.log('Cell double clicked column:', event.column);
+  }
+
+  
+  onCellClick = (event: { item: LotoPointDto; column: Column }) => {
+    console.log('Cell clicked item:', event.item);
+    console.log('Cell clicked column:', event.column);
+    // Implement your cell click logic here
+  }
+  
+  onCellRightClick = (event: { item: LotoPointDto; column: Column }) => {
+    console.log('Cell right clicked item:', event.item);
+    console.log('Cell right clicked column:', event.column);
+    // Implement your cell right-click logic here
+  }
+  
+  onCellMiddleClick = (event: { item: LotoPointDto; column: Column }) => {
+    console.log('Cell middle clicked item:', event.item);
+    console.log('Cell middle clicked column:', event.column);
+    // Implement your cell middle-click logic here
   }
 
   /**

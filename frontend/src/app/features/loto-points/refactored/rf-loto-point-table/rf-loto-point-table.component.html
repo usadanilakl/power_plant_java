@@ -23,11 +23,20 @@
     [isDragAndDropEnabled]="enableDragDrop()"
     [hoverDebounceTime]="hoverDebounceTime()"
     [filterOutItems]="filterOutItems()"
+    [tableControlButtonsInput]="tableControlButtons()"
+    [defaultTableControlsEnabled]="true"
+
     (rowClicked)="onRowLeftClick($event)"
     (rowDoubleClicked)="onRowDoubleClick($event)"
     (rowRightClicked)="onRowRightClick($event)"
     (rowMiddleClicked)="onRowMiddleClick($event)"
+
     (cellDoubleClicked)="onCellDoubleClick($event)"
+    (cellClicked)="onCellClick($event)"
+    (cellRightClicked)="onCellRightClick($event)"
+    (cellMiddleClicked)="onCellMiddleClick($event)"
+
+
     (selectedItemsEvent)="onSelectedItems($event)"
     (itemsReordered)="onItemsReordered($event)"
     (search)="onSearch($event)"
@@ -35,10 +44,11 @@
     (loadMoreItems)="onLoadMore($event)"
     (loadInitialOptions)="loadUniqueItems($event.column, $event.filter)"
     (loadMoreOptions)="loadMoreUniqueItems($event.column, $event.filter)"
+    (tableModeChange)="onTableModeChange($event)"
     >
-    <div table-controls>
-      <ng-content select="[table-controls]"></ng-content>
-    </div>
+    <!-- <div table-controls>
+      <app-buttons [buttons]="tableControlButtons()"></app-buttons>
+    </div> -->
     <div table-selection-actions>
       <app-buttons [buttons]="selectionControlButtons()"></app-buttons>
     </div>
