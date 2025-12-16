@@ -18,17 +18,20 @@ import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { FilterOutRules, TableComponent, TableMode } from '../../../../shared/table/refactored/table.component';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
-import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { LotoPointDto, LotoPointFieldName, LotoPointModel } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { ButtonColor, ButtonConfig, ButtonsComponent } from '../../../../shared/menu/buttons/buttons.component';
 import { LotoPointContextMenuComponent } from "../loto-point-context-menu/loto-point-context-menu.component";
 import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-point-context-menu.service';
+import { RfLotoPointFormComponent } from "../rf-loto-point-form/rf-loto-point-form.component";
+import { PopupProjectionComponent } from "../../../../shared/popup-projection/popup-projection.component";
+import { FormField } from '../../../../models/ui/form-field.model';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, ButtonsComponent, LotoPointContextMenuComponent],
+  imports: [CommonModule, TableComponent, ButtonsComponent, LotoPointContextMenuComponent, RfLotoPointFormComponent, PopupProjectionComponent],
   providers: [LotoPointContextMenuComponent],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',
@@ -72,7 +75,9 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   items$ = toSignal(this.stateService.allLoadedLotoPoints$, {
     initialValue: [],
   });
+  tableMode = signal<TableMode>('row');
   columns = signal<Column[]>([]);
+  formFields = signal<LotoPointFieldName[]>([]);
   isLoading = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
 
@@ -126,6 +131,9 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     // Neither enabled
     return [];
   });
+
+
+  isLotoPointFormOpen = signal<boolean>(false);
   
   private getDefaultTableControlButtons(): ButtonConfig[] {
     return [
@@ -165,7 +173,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   }
   
   onTableModeChange(mode: TableMode) {
-    console.log('Table mode changed to:', mode);
+    this.tableMode.set(mode);
   }
 
   /**
@@ -411,6 +419,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   onRowLeftClick(event: { item: LotoPointDto; event: MouseEvent }): void {
     this.rowLeftClickEvent.emit(event.item);
     console.log('Row left clicked item:', event.item);
+    this.openForm();
   }
 
   /**
@@ -420,15 +429,6 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     this.rowDoubleClickEvent.emit(item);
     console.log('Row double clicked item:', item);
   }
-
-  /**
-   * Handle row right click
-   */
-  // onRowRightClick(item: LotoPointDto): void {
-  //   this.rowRightClickEvent.emit(item);
-  //   console.log('Row right clicked item:', item);
-  //   this.contextMenuService.showContextMenu(item);
-  // }
   
   onRowRightClick(event: { item: LotoPointDto; event: MouseEvent }): void {
     this.rowRightClickEvent.emit(event.item);
@@ -458,6 +458,8 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   onCellClick = (event: { item: LotoPointDto; column: Column }) => {
     console.log('Cell clicked item:', event.item);
     console.log('Cell clicked column:', event.column);
+    const field = event.column.accessorKey as keyof LotoPointModel;
+    this.openForm([field]);
     // Implement your cell click logic here
   }
   
@@ -486,5 +488,19 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
    */
   onItemsReordered(items: LotoPointDto[]): void {
     this.itemsReorderedEvent.emit(items);
+  }
+
+
+  /**
+   * Handle form
+   */
+  openForm(fields: LotoPointFieldName[] = []): void {
+    this.formFields.set(fields);
+    this.isLotoPointFormOpen.set(true);
+  }
+
+  closeForm(): void {
+    this.isLotoPointFormOpen.set(false);
+    this.stateService.selectedItem.set(null);
   }
 }

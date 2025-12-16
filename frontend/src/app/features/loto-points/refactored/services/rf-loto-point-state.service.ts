@@ -7,12 +7,14 @@ import { RfLotoPointApiService } from "./rf-loto-point-api.service";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { tap, catchError } from "rxjs/operators";
 import { of } from "rxjs";
+import { LotoPointLocalStorageService } from "./rf-loto-point-local-storage.service";
 
 @Injectable({
   providedIn: 'root'
 })
 export class RfLotoPointStateService {
   private apiService = inject(RfLotoPointApiService);
+  private localStorage = inject(LotoPointLocalStorageService)
   private destroyRef = inject(DestroyRef);
 
   private pageSize = 50;
@@ -42,6 +44,10 @@ export class RfLotoPointStateService {
   private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
   currentColumnUniqueItems = signal<string[]>([]);
   loadingUniqueItems = signal<boolean>(false);
+
+  constructor() {
+    this.loadFromLocalStorage();
+  }
   
 
   addLotoPoints(items: LotoPointDto[]): void {
@@ -68,6 +74,19 @@ export class RfLotoPointStateService {
 
   setSelectedItem(item: LotoPointDto | null): void {
     this.selectedItem.set(item);
+  }
+  submitForm(item: LotoPointDto) {
+    throw new Error('Method not implemented.');
+  }
+  saveDraft(item: LotoPointDto) {
+    this.localStorage.saveDraft(item);
+  }
+
+  loadFromLocalStorage() {
+    const draft = this.localStorage.loadDraft();
+    if (draft) {
+      this.selectedItem.set(new LotoPointDto(draft));
+    }
   }
 
   resetPage() {

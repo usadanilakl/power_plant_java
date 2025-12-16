@@ -63,3 +63,11 @@
   (actionSelected)="$event"
   (closeMenu)="contextMenuService.closeContextMenu()"
 ></app-loto-point-context-menu>
+
+<app-popup-projection
+  [isOpen]="isLotoPointFormOpen()"
+  (close)="closeForm()"
+>
+  <app-rf-loto-point-form [fieldsInput]="formFields()"></app-rf-loto-point-form>
+
+</app-popup-projection>

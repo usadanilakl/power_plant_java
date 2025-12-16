@@ -1,1 +1,11 @@
-<p>rf-loto-point-form works!</p>
+<app-rf-reactive-form
+  [entity]="entity()"
+  [fields]="fields()"
+  [title]="'Loto Point Form'"
+  (formValueChange)="onAnyValueChange($event)"
+  (formSubmit)="onSubmit($event)"
+>
+  <ng-container extra-buttons>
+
+  </ng-container>
+</app-rf-reactive-form>
