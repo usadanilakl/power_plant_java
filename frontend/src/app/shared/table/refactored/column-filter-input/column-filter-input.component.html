@@ -1,5 +1,5 @@
 
-<div class="filter-input-container">
+<div class="filter-input-container" (mouseenter)="onMouseEnter()" (mouseleave)="onMouseLeave()">
   <div class="input-wrapper">
     <input 
       #inputElement
@@ -8,7 +8,7 @@
       [value]="filterValue()"
       (input)="onInputChange($event)"
       (focus)="onInputFocus($event)"
-      (blur)="onInputBlur($event)"
+      (click)="onInputClick($event)"
       placeholder="Filter..."
     />
     <button 
@@ -29,14 +29,14 @@
       (scroll)="onOptionsScroll($event)"
     >
       <div 
-        *ngFor="let option of uniqueValues()" 
+        *ngFor="let option of filteredOptions()" 
         class="option"
         (click)="selectOption(option)"
       >
         {{ option }}
       </div>
       
-      <div *ngIf="uniqueValues().length === 0" class="option disabled">
+      <div *ngIf="filteredOptions().length === 0" class="option disabled">
         No options found
       </div>
       
@@ -48,8 +48,8 @@
   </div>
 </div>
 
-<!-- 
-<div class="filter-input-container">
+
+<!-- <div class="filter-input-container">
   <div class="input-wrapper">
     <input 
       #inputElement

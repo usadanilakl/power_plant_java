@@ -27,64 +27,91 @@ export class ColumnFilterInputComponent {
   isLoadingMore = signal(false);
   filterValue = signal<string>('');
 
+  private closeDropdownTimeout: any;
+
   constructor(private cdr: ChangeDetectorRef) {
     effect(() => {
-      const values = this.uniqueValues();
-      // console.log('uniqueValues input received in child:', values);
-      // console.log('filterDropdownOpen:', this.filterDropdownOpen());
+      this.filteredOptions.set(this.uniqueValues());
     });
   }
 
   onInputChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.filterValue.set(value);
+    this.loadInitialOptions.emit(value);
     this.filterChange.emit(value);
-    
-    // Filter options as user types
-    const searchTerm = value.toLowerCase();
-    const filtered = this.uniqueValues().filter(option =>
-      option.toLowerCase().includes(searchTerm)
-    );
-    this.filteredOptions.set(filtered);
   }
   
   onInputFocus(event: Event): void {
+    // Cancel any pending close
+    if (this.closeDropdownTimeout) {
+      clearTimeout(this.closeDropdownTimeout);
+      this.closeDropdownTimeout = null;
+    }
+
     const value = (event.target as HTMLInputElement).value;
     this.filterValue.set(value);
+    this.filteredOptions.set([]);
     this.loadInitialOptions.emit(value);
     this.filterDropdownOpen.set(true);
-    
-    // Show all options or filtered based on current input
-    const currentValue = (event.target as HTMLInputElement).value.toLowerCase();
-    if (currentValue === '') {
-      this.filteredOptions.set(this.uniqueValues());
-    } else {
-      const filtered = this.uniqueValues().filter(option =>
-        option.toLowerCase().includes(currentValue)
-      );
-      this.filteredOptions.set(filtered);
-    }
-    
-    console.log('Dropdown opened, options:', this.filteredOptions());
     
     // Position the dropdown below the input
     this.positionDropdown(event.target as HTMLInputElement);
   }
 
-  onInputBlur(event: Event): void {
-    setTimeout(() => {
+  onInputClick(event: Event): void {
+    event.stopPropagation();
+    // Cancel any pending close
+    if (this.closeDropdownTimeout) {
+      clearTimeout(this.closeDropdownTimeout);
+      this.closeDropdownTimeout = null;
+    }
+    if (!this.filterDropdownOpen()) {
+      this.onInputFocus(event);
+    }
+  }
+
+  
+  onMouseEnter(): void {
+    // Cancel any pending close when mouse enters the container
+    if (this.closeDropdownTimeout) {
+      clearTimeout(this.closeDropdownTimeout);
+      this.closeDropdownTimeout = null;
+    }
+    
+    // If input is focused and dropdown was closed, reopen it
+    if (this.inputElement?.nativeElement === document.activeElement && !this.filterDropdownOpen()) {
+      this.filterDropdownOpen.set(true);
+      this.positionDropdown(this.inputElement.nativeElement);
+    }
+  }
+
+  onMouseLeave(): void {
+    // Set a 1 second delay before closing
+    this.closeDropdownTimeout = setTimeout(() => {
       this.filterDropdownOpen.set(false);
-    }, 200);
+      this.closeDropdownTimeout = null;
+    }, 1000);
   }
 
   selectOption(option: string): void {
+    this.filterValue.set(option);
     this.filterChange.emit(option);
     this.filterDropdownOpen.set(false);
+    if (this.closeDropdownTimeout) {
+      clearTimeout(this.closeDropdownTimeout);
+      this.closeDropdownTimeout = null;
+    }
   }
 
   clearFilter(): void {
+    this.filterValue.set('');
     this.filterChange.emit('');
     this.filterDropdownOpen.set(false);
+    if (this.closeDropdownTimeout) {
+      clearTimeout(this.closeDropdownTimeout);
+      this.closeDropdownTimeout = null;
+    }
   }
 
   onOptionsScroll(event: Event): void {
@@ -122,10 +149,11 @@ export class ColumnFilterInputComponent {
     }, 0);
   }
 }
+
+
 // import { CommonModule } from '@angular/common';
 // import { Component, input, output, signal, ViewChild, ElementRef, effect, ChangeDetectorRef } from '@angular/core';
 // import { FormsModule } from '@angular/forms';
-// import { Column } from '../../../../models/column.model';
 
 // @Component({
 //   selector: 'app-column-filter-input',
@@ -138,8 +166,6 @@ export class ColumnFilterInputComponent {
 //   @ViewChild('inputElement') inputElement?: ElementRef<HTMLInputElement>;
 //   @ViewChild('optionsList') optionsList?: ElementRef<HTMLDivElement>;
   
-//   column = input.required<Column>();
-//   filterValue = input<string>('');
 //   uniqueValues = input<string[]>([]);
   
 //   filterChange = output<string>();
@@ -151,44 +177,27 @@ export class ColumnFilterInputComponent {
 //   filteredOptions = signal<string[]>([]);
 //   dropdownStyle = signal<{ [key: string]: string }>({});
 //   isLoadingMore = signal(false);
+//   filterValue = signal<string>('');
 
 //   constructor(private cdr: ChangeDetectorRef) {
 //     effect(() => {
-//       const values = this.uniqueValues();
-//       // console.log('uniqueValues input received in child:', values);
-//       // console.log('filterDropdownOpen:', this.filterDropdownOpen());
+//       this.filteredOptions.set(this.uniqueValues());
 //     });
 //   }
 
 //   onInputChange(event: Event): void {
 //     const value = (event.target as HTMLInputElement).value;
+//     this.filterValue.set(value);
+//     this.loadInitialOptions.emit(value);
 //     this.filterChange.emit(value);
-    
-//     // Filter options as user types
-//     const searchTerm = value.toLowerCase();
-//     const filtered = this.uniqueValues().filter(option =>
-//       option.toLowerCase().includes(searchTerm)
-//     );
-//     this.filteredOptions.set(filtered);
 //   }
   
 //   onInputFocus(event: Event): void {
 //     const value = (event.target as HTMLInputElement).value;
+//     this.filterValue.set(value);
+//     this.filteredOptions.set([]);
 //     this.loadInitialOptions.emit(value);
 //     this.filterDropdownOpen.set(true);
-    
-//     // Show all options or filtered based on current input
-//     const currentValue = (event.target as HTMLInputElement).value.toLowerCase();
-//     if (currentValue === '') {
-//       this.filteredOptions.set(this.uniqueValues());
-//     } else {
-//       const filtered = this.uniqueValues().filter(option =>
-//         option.toLowerCase().includes(currentValue)
-//       );
-//       this.filteredOptions.set(filtered);
-//     }
-    
-//     console.log('Dropdown opened, options:', this.filteredOptions());
     
 //     // Position the dropdown below the input
 //     this.positionDropdown(event.target as HTMLInputElement);
@@ -197,6 +206,7 @@ export class ColumnFilterInputComponent {
 //   onInputBlur(event: Event): void {
 //     setTimeout(() => {
 //       this.filterDropdownOpen.set(false);
+//       this.filteredOptions.set([]);
 //     }, 200);
 //   }
 
@@ -243,5 +253,9 @@ export class ColumnFilterInputComponent {
 //         this.cdr.detectChanges();
 //       }
 //     }, 0);
+//   }
+
+//   closeDropdown(): void {
+//     this.filterDropdownOpen.set(false);
 //   }
 // }
