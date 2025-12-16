@@ -7,7 +7,7 @@ import { LotoPointIdDto } from './loto-point-id.model';
 import { Column } from '../column.model';
 import { BaseDto, BaseModel } from '../base/base.model';
 
-type LotoPointFieldName = keyof LotoPointModel;
+export type LotoPointFieldName = keyof LotoPointModel;
 
 export interface LotoPointModel extends BaseModel{
   unit: string | null;

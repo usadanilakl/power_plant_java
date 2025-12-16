@@ -1,13 +1,13 @@
 import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { FormField } from '@dk-power-full-stack/shared-interfaces';
-import { FormInputComponent } from '../form-input/rf-form-input.component';
+import { RfFormInputComponent } from '../form-input/rf-form-input.component';
+import { FormField } from '../../../../../models/ui/form-field.model';
 
 @Component({
   selector: 'app-form-array-input',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, RfFormInputComponent],
   templateUrl: './form-array-input.component.html',
   styleUrl: './form-array-input.component.css',
 })

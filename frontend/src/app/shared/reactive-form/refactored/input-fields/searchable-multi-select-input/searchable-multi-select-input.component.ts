@@ -1,10 +1,10 @@
 import { Component, EventEmitter, forwardRef, input, Input, OnChanges, OnInit, output, Output } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { Option } from '@dk-power-full-stack/shared-interfaces';
 import { BehaviorSubject, combineLatest, map, Observable, startWith } from 'rxjs';
 import { SearchableSelectInputComponent } from "../searchable-select-input/searchable-select-input.component";
-import { FindPipe } from "../../../pipes/find.pipe";
 import { CommonModule } from '@angular/common';
+import { FindPipe } from '../../../../../pipes/find.pipe';
+import { Option } from '../../../../../models/option.model';
 
 @Component({
   selector: 'app-searchable-multi-select-input',

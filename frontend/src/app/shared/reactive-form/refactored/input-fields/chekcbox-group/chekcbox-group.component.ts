@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { Option } from '@dk-power-full-stack/shared-interfaces';
+import { Option } from '../../../../../models/option.model';
 
 @Component({
   selector: 'app-chekcbox-group',

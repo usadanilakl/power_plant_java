@@ -1,14 +1,18 @@
 
-import { Injectable } from '@angular/core';  
+import { Injectable, signal } from '@angular/core';  
 import { Validators } from '@angular/forms';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
 import { FormField } from '../../../../models/ui/form-field.model';
+import { Option } from '../../../../models/option.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LotoPointMapperService {
+
+  isoPosOptions = signal<Option[]> ([]);
+  normPosOptions = signal<Option[]> ([]);
 
   /**
    * Maps LotoPointDto fields to table columns
@@ -238,25 +242,16 @@ export class LotoPointMapperService {
        */
       toFormFields(
         lotoPoint: LotoPointDto,
-        isoPosOptions: any[] = [],
-        normPosOptions: any[] = [],
         fields: (keyof LotoPointDto)[] = [
+          'unit',
           'tagNumber',
           'description',
-          'unit',
           'tagged',
           'isoPos',
           'normPos',
           'specificLocation',
           'standard',
           'generalLocation',
-          'equipmentIdList',
-          'normalPosition',
-          'isolatedPosition',
-          'oldId',
-          'isUpdated',
-          'fileIds',
-          'conflictStatus',
           'zeroEnergyMethod'
         ]
       ): FormField[] {
@@ -291,7 +286,7 @@ export class LotoPointMapperService {
             name: 'isoPos',
             label: 'Isolated Position',
             type: 'select',
-            options: isoPosOptions,
+            options: this.isoPosOptions(),
             validators: [Validators.required],
             initialValue: lotoPoint.isoPos?.id || null
           },
@@ -299,7 +294,7 @@ export class LotoPointMapperService {
             name: 'normPos',
             label: 'Normal Position',
             type: 'select',
-            options: normPosOptions,
+            options: this.normPosOptions(),
             validators: [Validators.required],
             initialValue: lotoPoint.normPos?.id || null
           },

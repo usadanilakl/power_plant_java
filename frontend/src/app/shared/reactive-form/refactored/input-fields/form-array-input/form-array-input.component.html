@@ -4,11 +4,11 @@
     <div class="item-fields">
       <ng-container *ngFor="let field of fields()">
         <div class="form-field">
-          <app-form-input
+          <app-rf-form-input
             [label]="field.label"
             [type]="field.type"
             [formControlName]="field.name">
-          </app-form-input>
+          </app-rf-form-input>
         </div>
       </ng-container>
     </div>
