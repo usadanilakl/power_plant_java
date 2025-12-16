@@ -15,6 +15,7 @@ export class ColumnFilterInputComponent {
   @ViewChild('optionsList') optionsList?: ElementRef<HTMLDivElement>;
   
   uniqueValues = input<string[]>([]);
+  isLoadingMore = input<boolean>(false);
   
   filterChange = output<string>();
   optionSelected = output<string>();
@@ -24,7 +25,6 @@ export class ColumnFilterInputComponent {
   filterDropdownOpen = signal(false);
   filteredOptions = signal<string[]>([]);
   dropdownStyle = signal<{ [key: string]: string }>({});
-  isLoadingMore = signal(false);
   filterValue = signal<string>('');
 
   private closeDropdownTimeout: any;
@@ -122,14 +122,9 @@ export class ColumnFilterInputComponent {
     
     // Trigger load more when user scrolls within 50px of the bottom
     if (scrollHeight - (scrollTop + clientHeight) < 50 && !this.isLoadingMore()) {
-      this.isLoadingMore.set(true);
       const currentSearchTerm = this.filterValue();
       this.loadMoreOptions.emit(currentSearchTerm);
     }
-  }
-
-  onLoadMoreComplete(): void {
-    this.isLoadingMore.set(false);
   }
 
   private positionDropdown(inputElement: HTMLInputElement): void {

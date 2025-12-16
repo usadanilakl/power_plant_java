@@ -39,6 +39,7 @@ export class RfLotoPointStateService {
   // Unique values cache with pagination metadata
   private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
   currentColumnUniqueItems = signal<string[]>([]);
+  loadingUniqueItems = signal<boolean>(false);
   
 
   addLotoPoints(items: LotoPointDto[]): void {
@@ -238,6 +239,7 @@ export class RfLotoPointStateService {
          */
         loadUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
           const cacheKey = `${columnKey}:${searchString}`;
+          this.loadingUniqueItems.set(true);
           
           // Check if we have cached results for this column and search term
           const cached = this.uniqueValuesCache.get(cacheKey);
@@ -262,6 +264,7 @@ export class RfLotoPointStateService {
                   const uniqueValues = response.responseData.content;
                   this.setUniqueItems(String(columnKey), uniqueValues);
                   this.currentColumnUniqueItems.set(uniqueValues);
+                  this.loadingUniqueItems.set(false);
                   
                   // Cache the results
                   this.uniqueValuesCache.set(cacheKey, {
@@ -273,6 +276,7 @@ export class RfLotoPointStateService {
               }),
               catchError(error => {
                 console.error(`Error loading unique items for column ${columnKey}:`, error);
+                this.loadingUniqueItems.set(false);
                 return of(null);
               }),
               takeUntilDestroyed(this.destroyRef)
@@ -286,8 +290,10 @@ export class RfLotoPointStateService {
         loadMoreUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
           const cacheKey = `${columnKey}:${searchString}`;
           const cached = this.uniqueValuesCache.get(cacheKey);
+          this.loadingUniqueItems.set(true);
           
           if (!cached || !cached.hasMore) {
+            this.loadingUniqueItems.set(false);
             return; // No more items to load
           }
       
@@ -310,6 +316,7 @@ export class RfLotoPointStateService {
                   
                   this.setUniqueItems(String(columnKey), newValues);
                   this.currentColumnUniqueItems.update(existing => [...existing, ...newValues]);
+                  this.loadingUniqueItems.set(false);
                   
                   // Update cache with new values and page
                   this.uniqueValuesCache.set(cacheKey, {
@@ -321,6 +328,7 @@ export class RfLotoPointStateService {
               }),
               catchError(error => {
                 console.error(`Error loading more unique items for column ${columnKey}:`, error);
+                this.loadingUniqueItems.set(false);
                 return of(null);
               }),
               takeUntilDestroyed(this.destroyRef)

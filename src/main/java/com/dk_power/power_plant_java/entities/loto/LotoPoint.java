@@ -48,7 +48,7 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private Long isUpdated;
     private Boolean isProcessed;
     private String fileIds;
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "isoPos_id")
     private Value isoPos;
     @ManyToOne

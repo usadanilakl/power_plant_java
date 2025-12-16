@@ -38,7 +38,8 @@
             <app-column-filter-input
               *ngIf="column.filterable"
               [uniqueValues]="columnUniqueOptions()"
-              (filterChange)="onColumnFilterChange(column.id, $event)"
+              [isLoadingMore]="isLoadingMore()"
+              (filterChange)="onColumnFilterChange(column.accessorKey!, $event)"
               (loadMoreOptions)="loadMoreOptions.emit({column: column.id, filter: $event})"
               (loadInitialOptions)="loadInitialOptions.emit({column: column.id, filter: $event})"
             ></app-column-filter-input>

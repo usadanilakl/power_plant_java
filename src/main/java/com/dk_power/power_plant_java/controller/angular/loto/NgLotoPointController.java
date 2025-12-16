@@ -73,6 +73,12 @@ public class NgLotoPointController {
                 String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "tagNumber";
                 String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
 
+                if(criteria.getFilters().get("isoPos")!=null){
+                    criteria.getFilters().put("isoPos.name", criteria.getFilters().get("isoPos"));
+                    criteria.getFilters().remove("isoPos");
+                }
+
+
                 searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, true);
             } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
                 // Use client-provided sort if available, otherwise default to tagNumber/asc

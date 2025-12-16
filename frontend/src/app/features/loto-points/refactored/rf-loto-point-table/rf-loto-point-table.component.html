@@ -19,6 +19,7 @@
     [items]="items()"
     [columns]="columns()"
     [columnUniqueOptions]="stateService.currentColumnUniqueItems()"
+    [isLoadingMore]="stateService.loadingUniqueItems()"
     [isDragAndDropEnabled]="enableDragDrop()"
     [hoverDebounceTime]="hoverDebounceTime()"
     [filterOutItems]="filterOutItems()"

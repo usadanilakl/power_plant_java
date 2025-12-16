@@ -94,6 +94,7 @@ export class LotoPointMapperService {
       isoPos: {
         id: 'isoPos',
         header: 'ISO Position',
+        accessorKey: 'isoPos.name',
         accessorFn: (item: LotoPointDto) => item.isoPos?.name || 'N/A',
         width: 150,
         filterable: true,
@@ -102,6 +103,7 @@ export class LotoPointMapperService {
       normPos: {
         id: 'normPos',
         header: 'Normal Position',
+        accessorKey: 'normPos.name',
         accessorFn: (item: LotoPointDto) => item.normPos?.name || 'N/A',
         width: 150,
         filterable: true,

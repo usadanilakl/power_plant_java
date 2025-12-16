@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.sevice.angular.base;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import jakarta.persistence.Entity;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.domain.Page;
@@ -330,48 +331,121 @@ default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
         };
     }
 
+    // private List<Predicate> buildPredicates(Root<?> root, CriteriaBuilder criteriaBuilder, Map<String, String> filters) {
+    //     List<Predicate> predicates = new ArrayList<>();
+
+    //     filters.forEach((key, value) -> {
+    //         String[] pathParts = key.split("\\.");
+    //         From<?, ?> from = root;
+    //         Path<?> path = root;
+    //         boolean isNullable = false;
+
+    //         for (int i = 0; i < pathParts.length - 1; i++) {
+    //             if (path.get(pathParts[i]).getJavaType().isAssignableFrom(Collection.class)) {
+    //                 from = from.join(pathParts[i], JoinType.LEFT);
+    //                 path = from;
+    //                 isNullable = true;
+    //             } else {
+    //                 path = path.get(pathParts[i]);
+    //                 if (path.getJavaType().isAnnotationPresent(jakarta.persistence.Entity.class)) {
+    //                     from = from.join(pathParts[i], JoinType.LEFT);
+    //                     path = from;
+    //                     isNullable = true;
+    //                 }
+    //             }
+    //         }
+    //         String fieldName = pathParts[pathParts.length - 1];
+
+    //         Class<?> fieldType = path.get(fieldName).getJavaType();
+
+    //         Predicate fieldPredicate;
+    //         if (value == null || value.isEmpty()) {
+    //             fieldPredicate = criteriaBuilder.disjunction();
+    //         } else if (Collection.class.isAssignableFrom(fieldType)) {
+    //             fieldPredicate = handleCollectionField(criteriaBuilder, from, fieldName, value);
+    //         } else {
+    //             fieldPredicate = handleSingleField(criteriaBuilder, path, fieldName, value);
+    //         }
+
+    //         predicates.add(fieldPredicate);
+
+    //         System.out.println(key + ": " + value);
+    //     });
+
+    //     return predicates;
+    // }
+
+    
+    
+    
     private List<Predicate> buildPredicates(Root<?> root, CriteriaBuilder criteriaBuilder, Map<String, String> filters) {
         List<Predicate> predicates = new ArrayList<>();
-
+    
         filters.forEach((key, value) -> {
+            
             String[] pathParts = key.split("\\.");
             From<?, ?> from = root;
             Path<?> path = root;
-            boolean isNullable = false;
-
+    
+            // Navigate through all path parts except the last one
             for (int i = 0; i < pathParts.length - 1; i++) {
-                if (path.get(pathParts[i]).getJavaType().isAssignableFrom(Collection.class)) {
-                    from = from.join(pathParts[i], JoinType.LEFT);
-                    path = from;
-                    isNullable = true;
-                } else {
-                    path = path.get(pathParts[i]);
-                    if (path.getJavaType().isAnnotationPresent(jakarta.persistence.Entity.class)) {
-                        from = from.join(pathParts[i], JoinType.LEFT);
+                String part = pathParts[i];
+                
+                try {
+                    Path<?> nextPath = path.get(part);
+                    Class<?> nextType = nextPath.getJavaType();
+    
+                    // Check if it's a Collection or an Entity that needs joining
+                    if (Collection.class.isAssignableFrom(nextType) || 
+                        nextType.isAnnotationPresent(jakarta.persistence.Entity.class)) {
+                        from = from.join(part, JoinType.LEFT);
                         path = from;
-                        isNullable = true;
+                        System.out.println("Joined: " + part + " (type: " + nextType.getSimpleName() + ")");
+                    } else {
+                        path = nextPath;
+                        System.out.println("Navigated: " + part + " (type: " + nextType.getSimpleName() + ")");
                     }
+                } catch (Exception e) {
+                    System.err.println("Error navigating path part '" + part + "': " + e.getMessage());
+                    e.printStackTrace();
+                    return;
                 }
             }
+    
             String fieldName = pathParts[pathParts.length - 1];
-
-            Class<?> fieldType = path.get(fieldName).getJavaType();
-
-            Predicate fieldPredicate;
-            if (value == null || value.isEmpty()) {
-                fieldPredicate = criteriaBuilder.disjunction();
-            } else if (Collection.class.isAssignableFrom(fieldType)) {
-                fieldPredicate = handleCollectionField(criteriaBuilder, from, fieldName, value);
-            } else {
-                fieldPredicate = handleSingleField(criteriaBuilder, path, fieldName, value);
+            
+            try {
+                Class<?> fieldType = path.get(fieldName).getJavaType();
+    
+                Predicate fieldPredicate;
+                if (value == null || value.isEmpty()) {
+                    fieldPredicate = criteriaBuilder.disjunction();
+                } else if (Collection.class.isAssignableFrom(fieldType)) {
+                    fieldPredicate = handleCollectionField(criteriaBuilder, from, fieldName, value);
+                } else {
+                    // Pass 'from' instead of 'path' to use the correct join context
+                    fieldPredicate = handleSingleField(criteriaBuilder, from, fieldName, value);
+                }
+    
+                predicates.add(fieldPredicate);
+                System.out.println("✓ Filter applied: " + key + " = '" + value + "'");
+            } catch (Exception e) {
+                System.err.println("✗ Error applying filter for '" + key + "': " + e.getMessage());
+                e.printStackTrace();
             }
-
-            predicates.add(fieldPredicate);
-
-            System.out.println(key + ": " + value);
         });
-
+    
         return predicates;
+    }
+    
+    default Predicate handleSingleField(CriteriaBuilder criteriaBuilder, From<?, ?> from, String fieldName, String value) {
+        Class<?> fieldType = from.get(fieldName).getJavaType();
+    
+        if (isStringNumberOrDate(fieldType)) {
+            return criteriaBuilder.like(criteriaBuilder.lower(from.get(fieldName).as(String.class)), "%" + value.toLowerCase() + "%");
+        } else {
+            return criteriaBuilder.equal(from.get(fieldName), value);
+        }
     }
 
     default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled) {

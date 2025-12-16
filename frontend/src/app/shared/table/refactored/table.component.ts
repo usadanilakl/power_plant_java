@@ -81,7 +81,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   // Inputs
   items = input.required<any[]>();
   columns = input<Column[]>([]);
-  columnUniqueOptions = input<string[]>([]); //this will be passed to filter input component instead of current item.
+  columnUniqueOptions = input<string[]>([]);
+  isLoadingMore = input<boolean>(false);
   deleteItem = input<string | undefined>();
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
