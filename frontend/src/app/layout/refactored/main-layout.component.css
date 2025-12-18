@@ -42,13 +42,17 @@
 }
 
 .header-content::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
   width: 30px;
-  background: linear-gradient(to right, hsla(0, 0%, 100%, 0), var(--header-background));
+  background: linear-gradient(
+    to right,
+    hsla(0, 0%, 100%, 0),
+    var(--header-background)
+  );
   pointer-events: none;
 }
 
@@ -221,7 +225,6 @@
   pointer-events: auto;
 }
 
-
 /* Add these Android-specific fixes */
 @supports (-webkit-touch-callout: none) {
   /* iOS Safari specific fix */
@@ -237,7 +240,7 @@
     min-height: calc(var(--vh, 1vh) * 100);
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .content-wrapper {
     flex: 1;
     display: flex;
@@ -247,7 +250,7 @@
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }
-  
+
   .main-and-footer {
     flex: 1;
     display: flex;
@@ -256,7 +259,7 @@
     /* Prevent rubber-band scrolling on Android */
     overscroll-behavior: contain;
   }
-  
+
   .main-content {
     flex: 1;
     overflow: auto;
@@ -278,7 +281,7 @@
     max-width: 100% !important;
     z-index: 1002 !important;
     transform: translateX(-100%) !important;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.2) !important;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2) !important;
     transition: transform 0.3s ease-in-out !important;
   }
 
@@ -354,11 +357,17 @@
   }
 }
 
-
-
-
-
-
+.clipboard-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  cursor: move;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  background-color: white;
+  max-width: 400px;
+}
 
 /* .layout-container {
   display: flex;
@@ -605,36 +614,6 @@
     width: 100%;
   }
 } */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /* .layout-container {
   display: flex;

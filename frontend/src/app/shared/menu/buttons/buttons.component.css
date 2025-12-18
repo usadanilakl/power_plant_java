@@ -1,60 +1,74 @@
-.buttons-container {
+.buttons-row {
   display: flex;
   flex-direction: row;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.buttons-container.layout-column {
+.buttons-column {
+  display: flex;
   flex-direction: column;
+  gap: 8px;
 }
 
-.btn {
-  padding: 10px 20px;
-  font-size: 16px;
+button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.3s ease, color 0.3s ease;
-  color: var(--header-text);
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
-.btn:disabled {
+button:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
-  opacity: 0.6;
 }
 
-/* Primary Button (Default) */
-.btn-primary {
-  background-color: var(--header-background);
+button.has-icon {
+  gap: 8px;
 }
 
-.btn-primary:not(:disabled):hover {
-  background-color: var(--accent-color-hover);
+.button-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
 }
 
-/* Accent Button */
-.btn-accent {
-  background-color: var(--accent-color);
+/* Color variants */
+button.color-primary {
+  background-color: #1976d2;
+  color: white;
 }
 
-.btn-accent:not(:disabled):hover {
-  background-color: var(--accent-color-hover);
+button.color-primary:hover:not(:disabled) {
+  background-color: #1565c0;
 }
 
-/* Warn Button */
-.btn-warn {
-  background-color: #f44336; /* A common 'warn' color */
+button.color-accent {
+  background-color: #ff4081;
+  color: white;
 }
 
-.btn-warn:not(:disabled):hover {
-  background-color: #d32f2f;
+button.color-accent:hover:not(:disabled) {
+  background-color: #f50057;
 }
 
-.dark-theme .btn-warn {
-  background-color: #e57373;
+button.color-warn {
+  background-color: #f44336;
+  color: white;
 }
 
-.dark-theme .btn-warn:not(:disabled):hover {
-  background-color: #ef5350;
+button.color-warn:hover:not(:disabled) {
+  background-color: #da190b;
+}
+
+span {
+  white-space: nowrap;
 }

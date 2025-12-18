@@ -27,11 +27,19 @@ import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-poi
 import { RfLotoPointFormComponent } from "../rf-loto-point-form/rf-loto-point-form.component";
 import { PopupProjectionComponent } from "../../../../shared/popup-projection/popup-projection.component";
 import { FormField } from '../../../../models/ui/form-field.model';
+import { ClipboardService } from '../../../../services/util/clipboard.service';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, ButtonsComponent, LotoPointContextMenuComponent, RfLotoPointFormComponent, PopupProjectionComponent],
+  imports: [
+    CommonModule,
+    TableComponent,
+    ButtonsComponent,
+    LotoPointContextMenuComponent,
+    RfLotoPointFormComponent,
+    PopupProjectionComponent,
+  ],
   providers: [LotoPointContextMenuComponent],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',
@@ -41,6 +49,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   protected stateService = inject(RfLotoPointStateService);
   private mapperService = inject(LotoPointMapperService);
   protected contextMenuService = inject(LotoPointContextMenuService);
+  private clipboardService = inject(ClipboardService);
   private destroyRef = inject(DestroyRef);
 
   // Inputs
@@ -107,34 +116,32 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
       ]
     );
   });
-  
-  
+
   tableControlButtons = computed(() => {
     const inputButtons = this.tableControlButtonsInput();
     const defaultEnabled = this.defaultTableControlsEnabled();
-  
+
     // Only input provided and default disabled
     if (inputButtons && !defaultEnabled) {
       return inputButtons;
     }
-  
+
     // Only default enabled (no input or input is empty)
     if (!inputButtons && defaultEnabled) {
       return this.getDefaultTableControlButtons();
     }
-  
+
     // Both input and default enabled - combine them
     if (inputButtons && defaultEnabled) {
       return [...this.getDefaultTableControlButtons(), ...inputButtons];
     }
-  
+
     // Neither enabled
     return [];
   });
 
-
   isLotoPointFormOpen = signal<boolean>(false);
-  
+
   private getDefaultTableControlButtons(): ButtonConfig[] {
     return [
       {
@@ -171,7 +178,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   ngAfterViewInit(): void {
     // Any additional initialization after view is ready
   }
-  
+
   onTableModeChange(mode: TableMode) {
     this.tableMode.set(mode);
   }
@@ -419,6 +426,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   onRowLeftClick(event: { item: LotoPointDto; event: MouseEvent }): void {
     this.rowLeftClickEvent.emit(event.item);
     console.log('Row left clicked item:', event.item);
+    this.stateService.setSelectedItem(event.item);
     this.openForm();
   }
 
@@ -429,7 +437,7 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     this.rowDoubleClickEvent.emit(item);
     console.log('Row double clicked item:', item);
   }
-  
+
   onRowRightClick(event: { item: LotoPointDto; event: MouseEvent }): void {
     this.rowRightClickEvent.emit(event.item);
     this.contextMenuService.showContextMenu(event.item, event.event);
@@ -454,26 +462,26 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
     console.log('Cell double clicked column:', event.column);
   }
 
-  
   onCellClick = (event: { item: LotoPointDto; column: Column }) => {
     console.log('Cell clicked item:', event.item);
     console.log('Cell clicked column:', event.column);
     const field = event.column.accessorKey as keyof LotoPointModel;
+    this.stateService.setSelectedItem(event.item);
     this.openForm([field]);
     // Implement your cell click logic here
-  }
-  
+  };
+
   onCellRightClick = (event: { item: LotoPointDto; column: Column }) => {
     console.log('Cell right clicked item:', event.item);
     console.log('Cell right clicked column:', event.column);
     // Implement your cell right-click logic here
-  }
-  
+  };
+
   onCellMiddleClick = (event: { item: LotoPointDto; column: Column }) => {
     console.log('Cell middle clicked item:', event.item);
     console.log('Cell middle clicked column:', event.column);
     // Implement your cell middle-click logic here
-  }
+  };
 
   /**
    * Handle selected items change
@@ -489,7 +497,6 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit {
   onItemsReordered(items: LotoPointDto[]): void {
     this.itemsReorderedEvent.emit(items);
   }
-
 
   /**
    * Handle form

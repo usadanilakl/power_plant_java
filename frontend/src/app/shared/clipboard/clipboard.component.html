@@ -1,0 +1,95 @@
+<div class="clipboard-wrapper">
+  <!-- Collapsed Icon View -->
+  <button
+    *ngIf="!isExpanded()"
+    class="clipboard-icon-button"
+    (click)="toggleClipboard()"
+    [matTooltip]="'Clipboard (' + itemCount() + ' items)'"
+  >
+    <mat-icon>assignment</mat-icon>
+    <span class="item-badge" *ngIf="itemCount() > 0">{{ itemCount() }}</span>
+  </button>
+
+  <!-- Expanded Clipboard View -->
+  <div *ngIf="isExpanded()" class="clipboard-container">
+    <div class="clipboard-header">
+      <h3>Clipboard</h3>
+      <button class="close-button" (click)="toggleClipboard()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="clipboard-content">
+      <!-- Sections Tabs -->
+      <div class="sections-tabs">
+        <button
+          *ngFor="let section of sections()"
+          [class.active]="activeSection()?.id === section.id"
+          (click)="setActiveSection(section.id)"
+          class="section-tab"
+        >
+          {{ section.name }}
+          <span class="section-count">({{ section.items.length }})</span>
+        </button>
+      </div>
+
+      <!-- Active Section Items -->
+      <div class="section-items" *ngIf="activeSection()">
+        <div class="section-actions">
+          <button
+            (click)="clearSection(activeSection()!.id)"
+            class="action-button"
+            [disabled]="activeSection()!.items.length === 0"
+          >
+            <mat-icon>delete_sweep</mat-icon>
+            Clear
+          </button>
+          <button
+            (click)="deleteSection(activeSection()!.id)"
+            class="action-button"
+          >
+            <mat-icon>delete</mat-icon>
+            Delete Section
+          </button>
+        </div>
+
+        <div class="items-list">
+          <div
+            *ngFor="let item of activeSection()!.items; let i = index"
+            class="clipboard-item"
+          >
+            <div class="item-content">
+              <pre>{{ item | json }}</pre>
+            </div>
+            <div class="item-actions">
+              <button
+                (click)="copyToClipboard(item)"
+                class="item-action-button"
+                matTooltip="Copy to system clipboard"
+              >
+                <mat-icon>content_copy</mat-icon>
+              </button>
+              <button
+                (click)="removeItem(activeSection()!.id, i)"
+                class="item-action-button"
+                matTooltip="Remove from clipboard"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="activeSection()!.items.length === 0" class="empty-state">
+            <mat-icon>inbox</mat-icon>
+            <p>No items in this section</p>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="!activeSection()" class="empty-state">
+        <mat-icon>inbox</mat-icon>
+        <p>No sections yet</p>
+      </div>
+    </div>
+  </div>
+</div>

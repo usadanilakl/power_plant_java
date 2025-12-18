@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 export interface ButtonConfig {
   name: string;
@@ -17,9 +18,9 @@ export type ButtonColor = 'primary' | 'accent' | 'warn';
 @Component({
   selector: 'app-buttons',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule, MatTooltipModule],
   templateUrl: './buttons.component.html',
-  styleUrl: './buttons.component.css'
+  styleUrl: './buttons.component.css',
 })
 export class ButtonsComponent {
   buttons = input.required<ButtonConfig[]>();

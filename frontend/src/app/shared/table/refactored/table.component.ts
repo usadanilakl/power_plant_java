@@ -6,19 +6,23 @@ import {
   DestroyRef,
   effect,
   ElementRef,
-  HostListener,
   inject,
   input,
-  Input,
   OnInit,
   output,
   PLATFORM_ID,
   signal,
   TemplateRef,
-  ViewChild
+  ViewChild,
 } from '@angular/core';
-import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
-import { Observable, of, Subject, switchMap, debounceTime, distinctUntilChanged } from 'rxjs';
+import {
+  CdkVirtualScrollViewport,
+  ScrollingModule,
+} from '@angular/cdk/scrolling';
+import {
+  Subject,
+  debounceTime,
+} from 'rxjs';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
@@ -31,10 +35,14 @@ import { TableSearchService } from './services/table-search.service';
 import { TableSortService } from './services/table-sort.service';
 import { TableSelectionService } from './services/table-selection.service';
 import { TableResizeService } from './services/table-resize.service';
-import { ColumnFilterInputComponent } from "./column-filter-input/column-filter-input.component";
-import { ButtonColor, ButtonConfig, ButtonsComponent } from '../../menu/buttons/buttons.component';
+import { ColumnFilterInputComponent } from './column-filter-input/column-filter-input.component';
+import {
+  ButtonColor,
+  ButtonConfig,
+  ButtonsComponent,
+} from '../../menu/buttons/buttons.component';
 
-export interface ClickSetup{
+export interface ClickSetup {
   applyTo: 'row' | 'cell';
   actions: ('leftClick' | 'rightClick' | 'middleClick' | 'doubleClick')[];
 }
@@ -55,8 +63,8 @@ export type TableMode = 'row' | 'cell';
     FormsModule,
     ScrollingModule,
     ColumnFilterInputComponent,
-    ButtonsComponent
-],
+    ButtonsComponent,
+  ],
   providers: [
     TableDragService,
     TableClickService,
@@ -96,7 +104,7 @@ export class TableComponent implements OnInit, AfterViewInit {
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],
   });
-  tableMode = signal< 'row' | 'cell' >('row');
+  tableMode = signal<'row' | 'cell'>('row');
   tableControlButtonsInput = input<ButtonConfig[] | undefined>();
   defaultTableControlsEnabled = input<boolean>(true);
 
@@ -110,7 +118,6 @@ export class TableComponent implements OnInit, AfterViewInit {
   cellClicked = output<{ item: any; column: Column }>();
   cellRightClicked = output<{ item: any; column: Column }>();
   cellMiddleClicked = output<{ item: any; column: Column }>();
-
 
   loadMoreItems = output<SearchCriteria>();
   search = output<SearchCriteria>();
@@ -223,31 +230,30 @@ export class TableComponent implements OnInit, AfterViewInit {
 
     this.columnUniqueValuesMap.set(uniqueValuesMap);
   });
-  
-  
+
   tableControlButtons = computed(() => {
     const inputButtons = this.tableControlButtonsInput();
     const defaultEnabled = this.defaultTableControlsEnabled();
-  
+
     // Only input provided and default disabled
     if (inputButtons && !defaultEnabled) {
       return inputButtons;
     }
-  
+
     // Only default enabled (no input or input is empty)
     if (!inputButtons && defaultEnabled) {
       return this.getDefaultTableControlButtons();
     }
-  
+
     // Both input and default enabled - combine them
     if (inputButtons && defaultEnabled) {
       return [...this.getDefaultTableControlButtons(), ...inputButtons];
     }
-  
+
     // Neither enabled
     return [];
   });
-  
+
   private getDefaultTableControlButtons(): ButtonConfig[] {
     return [
       {
@@ -256,6 +262,7 @@ export class TableComponent implements OnInit, AfterViewInit {
           this.setTableMode('row');
         },
         color: 'primary' as ButtonColor,
+        icon: 'view_agenda',
       },
       {
         name: 'Cell-Mode',
@@ -263,6 +270,15 @@ export class TableComponent implements OnInit, AfterViewInit {
           this.setTableMode('cell');
         },
         color: 'warn' as ButtonColor,
+        icon: 'grid_on',
+      },
+      {
+        name: 'Add to Clipboard',
+        action: () => {
+          this.selectionService.addToClipboard();
+        },
+        color: 'primary' as ButtonColor,
+        icon: 'content_copy',
       },
     ];
   }
@@ -339,29 +355,6 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ============ Initialization Methods ============
 
-  // private updateFilteredItems(): void {
-  //   const itemsToFilter = this._items.filter(item => !this.excludedItemIds.has(item.id));
-  //   this.filteredItems = this.searchService.performSearch(
-  //     itemsToFilter,
-  //     this.globalSearchQuery,
-  //     this.columnFilters
-  //   );
-
-  //   if (this.currentSortColumn) {
-  //     const column = this.columns().find(col => col.id === this.currentSortColumn);
-  //     if (column) {
-  //       this.sortColumn(column);
-  //     }
-  //   }
-
-  //   this.updateItemIndices();
-
-  //   // ← Sync AFTER sort completes and DOM updates
-  //   setTimeout(() => {
-  //     this.syncService.synchronizeColumnWidths();
-  //     this.cdr.detectChanges();
-  //   }, 50);
-  // }
   private updateFilteredItems(): void {
     // Start with all items, but filter out any that are in the exclusion set.
     const itemsToFilter = this._items.filter(
@@ -636,88 +629,13 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   // ============ Selection Methods ============
 
-  // private isProcessingDoubleClick = false;
-
-  
-  
-  // onRowClick(item: any, event: MouseEvent): void {
-  //   if (this.isProcessingDoubleClick) {
-  //     return;
-  //   }
-  
-  //   this.isProcessingDoubleClick = true;
-  
-  //   // Reset flag after a short delay to allow for rapid double-clicks
-  //   setTimeout(() => {
-  //     this.isProcessingDoubleClick = false;
-  //   }, 600);
-  
-  //   if (event.button === 0) {
-  //     // Left click
-  //     event.preventDefault();
-  //     this.clickService.handleClick(event);
-  
-  //     // Determine click type and handle accordingly
-  //     const dragState = this.dragService.getDragState();
-  //     if (dragState.isDragging) return;
-  
-  //     if (this.clickService['clickState']?.isDoubleClickHandled) {
-  //       this.onRowDoubleClick(item);
-  //     } else {
-  //       setTimeout(() => {
-  //         console.log('Single click detected, emitting rowClicked event');
-  //         if (!this.clickService['clickState']?.isDoubleClickHandled) {
-  //           // Normalize the item here for consistency
-  //           const normalizedItem = this._items.find((i) => i.id === item.id) || item;
-            
-  //           if (event.ctrlKey) {
-  //             this.onRowCtrlClick(normalizedItem);
-  //           } else if (event.shiftKey) {
-  //             this.onRowShiftClick(normalizedItem);
-  //           } else {
-  //             this.selectionService.clearSelection();
-              
-  //             // Handle cell mode vs row mode
-  //             if (this.tableMode() === 'cell') {
-  //               if (this.lastClickedCell) {
-  //                 this.cellClicked.emit({
-  //                   item: normalizedItem,
-  //                   column: this.lastClickedCell.column,
-  //                 });
-  //               }
-  //             } else {
-  //               this.rowClicked.emit({ item: normalizedItem, event });
-  //             }
-  //           }
-  //         }
-  //       }, 300);
-  //     }
-  //   } else if (event.button === 1) {
-  //     // Middle click - also normalize here
-  //     const normalizedItem = this._items.find((i) => i.id === item.id) || item;
-      
-  //     // Handle cell mode vs row mode
-  //     if (this.tableMode() === 'cell') {
-  //       if (this.lastClickedCell) {
-  //         this.cellMiddleClicked.emit({
-  //           item: normalizedItem,
-  //           column: this.lastClickedCell.column,
-  //         });
-  //       }
-  //     } else {
-  //       this.rowMiddleClicked.emit(normalizedItem);
-  //     }
-  //   }
-  // }
-
   private singleClickTimeout: any = null;
   private doubleClickWindow = 300; // ms
   private isProcessingDoubleClick = false;
 
   onRowClick(item: any, event: MouseEvent): void {
-
     event.preventDefault();
-    
+
     // Cancel any pending single click
     if (this.singleClickTimeout) {
       clearTimeout(this.singleClickTimeout);
@@ -736,8 +654,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   }
 
   private handleSingleClick(item: any, event: MouseEvent) {
-    const normalizedItem = this._items.find(i => i.id === item.id) || item;
-    
+    const normalizedItem = this._items.find((i) => i.id === item.id) || item;
+
     if (event.ctrlKey) {
       this.onRowCtrlClick(normalizedItem);
     } else if (event.shiftKey) {
@@ -745,7 +663,10 @@ export class TableComponent implements OnInit, AfterViewInit {
     } else {
       this.selectionService.clearSelection();
       if (this.tableMode() === 'cell' && this.lastClickedCell) {
-        this.cellClicked.emit({ item: normalizedItem, column: this.lastClickedCell.column });
+        this.cellClicked.emit({
+          item: normalizedItem,
+          column: this.lastClickedCell.column,
+        });
       } else {
         this.rowClicked.emit({ item: normalizedItem, event });
       }
@@ -755,10 +676,10 @@ export class TableComponent implements OnInit, AfterViewInit {
   handleMiddleClick(item: any, event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    
-    const normalizedItem = this._items.find(i => i.id === item.id) || item;
+
+    const normalizedItem = this._items.find((i) => i.id === item.id) || item;
     console.log('Middle click detected');
-      
+
     // Handle cell mode vs row mode
     if (this.tableMode() === 'cell') {
       if (this.lastClickedCell) {
@@ -776,33 +697,32 @@ export class TableComponent implements OnInit, AfterViewInit {
     if (this.isProcessingDoubleClick) {
       return;
     }
-  
+
     this.isProcessingDoubleClick = true;
-  
+
     // Reset flag after a short delay to allow for rapid double-clicks
     setTimeout(() => {
       this.isProcessingDoubleClick = false;
     }, 600);
     const normalizedItem = this._items.find((i) => i.id === item.id) || item;
-    
+
     if (this.tableMode() === 'cell') {
       if (!this.lastClickedCell) {
         console.warn('Cell mode active but no cell was clicked');
       }
       this.cellDoubleClicked.emit({
         item: normalizedItem,
-        column: this.lastClickedCell?.column || { id: 'unknown' } as Column,
+        column: this.lastClickedCell?.column || ({ id: 'unknown' } as Column),
       });
     } else {
       this.rowDoubleClicked.emit(normalizedItem);
     }
   }
 
-  
   onRowRightClick(item: any, event: MouseEvent): void {
     event.preventDefault();
     const normalizedItem = this._items.find((i) => i.id === item.id) || item;
-  
+
     if (this.tableMode() === 'cell') {
       if (this.lastClickedCell) {
         this.cellRightClicked.emit({
@@ -814,12 +734,13 @@ export class TableComponent implements OnInit, AfterViewInit {
         this.rowRightClicked.emit(normalizedItem);
       }
     } else {
-      this.rowRightClicked.emit({item: normalizedItem, event});
+      this.rowRightClicked.emit({ item: normalizedItem, event });
     }
   }
 
   private onRowCtrlClick(item: any): void {
     this.selectionService.toggleItem(item);
+    console.log("Selected items in control mode: ", this.selectionService.selectedItems());
   }
 
   private onRowShiftClick(item: any): void {
@@ -940,43 +861,47 @@ export class TableComponent implements OnInit, AfterViewInit {
   // ============ Hover Methods ============
 
   hoveredCell = signal<{ item: any; column: Column } | null>(null);
-  
+
   // Add method to handle cell hover
   onCellHover(item: any, column: Column): void {
-    if (this.tableMode()!=='cell') return;
+    if (this.tableMode() !== 'cell') return;
     this.hoveredCell.set({ item, column });
   }
-  
+
   // Add method to handle cell leave
   onCellLeave(): void {
     this.hoveredCell.set(null);
   }
-  
+
   // Add method to check if cell should be highlighted
   isCellHighlighted(item: any, column: Column): boolean {
     const hovered = this.hoveredCell();
-    return hovered !== null && hovered.item.id === item.id && hovered.column.id === column.id;
+    return (
+      hovered !== null &&
+      hovered.item.id === item.id &&
+      hovered.column.id === column.id
+    );
   }
-  
+
   // Add method to get cell style with hover highlight
   getCellStyleWithHover(item: any, column: Column): { [key: string]: string } {
-      // Get base conditional styling
-      let style: { [key: string]: string } = {};
-      
-      if (column.conditionalStyling) {
-        style = column.conditionalStyling(item, column);
-      }
+    // Get base conditional styling
+    let style: { [key: string]: string } = {};
 
-      // Add hover styling on top
-      if (this.isCellHighlighted(item, column)) {
-        return {
-          ...style,
-          'box-shadow': 'inset 0 0 4px rgba(33, 150, 243, 0.3)',
-          'outline': '2px solid rgba(33, 150, 243, 0.5)'
-        };
-      }
+    if (column.conditionalStyling) {
+      style = column.conditionalStyling(item, column);
+    }
 
-      return style;
+    // Add hover styling on top
+    if (this.isCellHighlighted(item, column)) {
+      return {
+        ...style,
+        'box-shadow': 'inset 0 0 4px rgba(33, 150, 243, 0.3)',
+        outline: '2px solid rgba(33, 150, 243, 0.5)',
+      };
+    }
+
+    return style;
   }
 
   onRowHover(item: any): void {

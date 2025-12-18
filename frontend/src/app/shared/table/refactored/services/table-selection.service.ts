@@ -1,18 +1,22 @@
 
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
+import { ClipboardService } from '../../../clipboard/clipboard.service';
+import { BaseModel } from '../../../../models/base/base.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TableSelectionService {
-  private selectedItems = signal<any[]>([]);
+  private clipboardService = inject(ClipboardService);
+
+  selectedItems = signal<any[]>([]);
   private lastClickedItem = signal<any | null>(null);
 
   selectedItems$ = this.selectedItems.asReadonly();
   lastClickedItem$ = this.lastClickedItem.asReadonly();
 
   selectItem(item: any): void {
-    this.selectedItems.update(items => [...items, item]);
+    this.selectedItems.update((items) => [...items, item]);
     this.lastClickedItem.set(item);
   }
 
@@ -25,13 +29,11 @@ export class TableSelectionService {
   }
 
   deselectItem(item: any): void {
-    this.selectedItems.update(items =>
-      items.filter(i => i.id !== item.id)
-    );
+    this.selectedItems.update((items) => items.filter((i) => i.id !== item.id));
   }
 
   toggleItem(item: any): void {
-    const isSelected = this.selectedItems().some(i => i.id === item.id);
+    const isSelected = this.selectedItems().some((i) => i.id === item.id);
     if (isSelected) {
       this.deselectItem(item);
     } else {
@@ -40,8 +42,8 @@ export class TableSelectionService {
   }
 
   selectRange(items: any[], startItem: any, endItem: any): void {
-    const startIndex = items.findIndex(i => i.id === startItem.id);
-    const endIndex = items.findIndex(i => i.id === endItem.id);
+    const startIndex = items.findIndex((i) => i.id === startItem.id);
+    const endIndex = items.findIndex((i) => i.id === endItem.id);
 
     if (startIndex === -1 || endIndex === -1) return;
 
@@ -49,15 +51,15 @@ export class TableSelectionService {
     const end = Math.max(startIndex, endIndex);
     const rangeItems = items.slice(start, end + 1);
 
-    const isSelecting = !this.selectedItems().some(i => i.id === endItem.id);
+    const isSelecting = !this.selectedItems().some((i) => i.id === endItem.id);
 
     if (isSelecting) {
-      this.selectedItems.update(current =>
-        [...new Set([...current, ...rangeItems])]
-      );
+      this.selectedItems.update((current) => [
+        ...new Set([...current, ...rangeItems]),
+      ]);
     } else {
-      this.selectedItems.update(current =>
-        current.filter(i => !rangeItems.some(ri => ri.id === i.id))
+      this.selectedItems.update((current) =>
+        current.filter((i) => !rangeItems.some((ri) => ri.id === i.id))
       );
     }
 
@@ -72,8 +74,25 @@ export class TableSelectionService {
   }
 
   deleteSelected(deleteCallback: (id: any) => void): void {
-    const deletedIds = new Set(this.selectedItems().map(item => item.id));
-    deletedIds.forEach(id => deleteCallback(id));
+    const deletedIds = new Set(this.selectedItems().map((item) => item.id));
+    deletedIds.forEach((id) => deleteCallback(id));
     this.clearSelection();
   }
+
+  
+    /**
+     * Add items to specific section
+     */
+    addToClipboard(): void {
+      console.log('Adding items to clipboard:', this.selectedItems());
+      if (!this.selectedItems() || this.selectedItems().length === 0) return;
+      const objectType = this.selectedItems()[0].objectType ?? 'Other';
+      const items = this.selectedItems();
+      items.forEach((item) => {
+        if (!item.objectType) {
+          item.objectType = objectType;
+        }
+      });
+      this.clipboardService.addItems(this.selectedItems());
+    }
 }

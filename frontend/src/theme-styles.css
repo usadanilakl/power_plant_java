@@ -13,7 +13,8 @@
   --header-text: #ffffff;
   --accent-color-shadow: rgba(0, 123, 255, 0.25);
   --disabled-background: #cccccc;
-  --hover-color: #cadff5;
+  /* --hover-color: #cadff5; */
+  --hover-color: rgba(65, 65, 133, 0.15);
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);
@@ -37,7 +38,8 @@
   --header-text: #e0e0e0;
   --accent-color-shadow: rgba(77, 171, 247, 0.25);
   --disabled-background: #5a5a5a;
-  --hover-color: #41418528;
+  /* --hover-color: #41418528; */
+  --hover-color: rgba(65, 65, 133, 0.15);
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);
@@ -50,45 +52,45 @@
 
 /* Permits Section */
 .permits-section {
-  --accent-color: #ff9800; /* Orange */
+  --accent-color: #ff9800;
   --accent-color-hover: #f57c00;
   --accent-color-shadow: rgba(255, 152, 0, 0.25);
-  --header-background: #e65100; /* Darker Orange */
+  --header-background: #e65100;
 }
 
 .dark-theme.permits-section {
-  --accent-color: #ffb74d; /* Light Orange */
+  --accent-color: #ffb74d;
   --accent-color-hover: #ffa726;
   --accent-color-shadow: rgba(255, 183, 77, 0.25);
-  --header-background: #4a2c0f; /* Dark Brown/Orange */
+  --header-background: #4a2c0f;
 }
 
 /* Equipment Section */
 .equipment-section {
-  --accent-color: #4caf50; /* Green */
+  --accent-color: #4caf50;
   --accent-color-hover: #388e3c;
   --accent-color-shadow: rgba(76, 175, 80, 0.25);
-  --header-background: #2e7d32; /* Darker Green */
+  --header-background: #2e7d32;
 }
 
 .dark-theme.equipment-section {
-  --accent-color: #81c784; /* Light Green */
+  --accent-color: #81c784;
   --accent-color-hover: #66bb6a;
   --accent-color-shadow: rgba(129, 199, 132, 0.25);
-  --header-background: #1b3a1d; /* Dark Green */
+  --header-background: #1b3a1d;
 }
 
 /* Admin Section */
 .admin-section {
-  --accent-color: #9c27b0; /* Purple */
+  --accent-color: #9c27b0;
   --accent-color-hover: #7b1fa2;
   --accent-color-shadow: rgba(156, 39, 176, 0.25);
-  --header-background: #6a1b9a; /* Darker Purple */
+  --header-background: #6a1b9a;
 }
 
 .dark-theme.admin-section {
-  --accent-color: #ce93d8; /* Light Purple */
+  --accent-color: #ce93d8;
   --accent-color-hover: #ba68c8;
   --accent-color-shadow: rgba(206, 147, 216, 0.25);
-  --header-background: #38134b; /* Dark Purple */
+  --header-background: #38134b;
 }

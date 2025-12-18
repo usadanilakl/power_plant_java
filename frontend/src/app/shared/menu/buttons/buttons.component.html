@@ -1,8 +1,19 @@
-<div class="buttons-container" [class.layout-column]="layout() === 'column'">
-  <button *ngFor="let button of buttons()"
-          [ngClass]="['btn', button.color ? 'btn-' + button.color : 'btn-primary']"
-          (click)="onButtonClick(button)"
-          [disabled]="button.disabled">
-    {{ button.name }}
+<div [ngClass]="'buttons-' + layout()">
+  <button
+    *ngFor="let button of buttons()"
+    [ngClass]="[
+      'button',
+      button.class || '',
+      'color-' + (button.color || 'primary')
+    ]"
+    [disabled]="button.disabled"
+    (click)="onButtonClick(button)"
+    [matTooltip]="button.tooltip || ''"
+    [class.has-icon]="button.icon"
+  >
+    <mat-icon *ngIf="button.icon" class="button-icon">{{
+      button.icon
+    }}</mat-icon>
+    <span>{{ button.name }}</span>
   </button>
 </div>

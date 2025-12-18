@@ -1,16 +1,16 @@
 import { AfterViewInit, Component, ElementRef, HostListener, inject, input, NgZone, OnDestroy, PLATFORM_ID, Renderer2, ViewChild } from '@angular/core';
 import { ThemeToggleComponent } from "../../shared/theme-toggle/theme-toggle.component";
 import { Router } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
+import { ClipboardComponent } from "../../shared/clipboard/clipboard.component";
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent],
+  imports: [ThemeToggleComponent, ClipboardComponent],
   templateUrl: './main-layout.component.html',
-  styleUrl: './main-layout.component.css'
+  styleUrl: './main-layout.component.css',
 })
-export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
+export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   @ViewChild('leftMenu') leftMenu!: ElementRef;
   @ViewChild('resizer') resizer!: ElementRef;
   @ViewChild('mainContent') mainContent!: ElementRef;
@@ -22,11 +22,10 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
   private platformId = inject(PLATFORM_ID);
 
   header = input<string>();
-  isSideMenuEnabled= input<boolean>(false);
-  isBottomMenuEnabled= input<boolean>(false);
+  isSideMenuEnabled = input<boolean>(false);
+  isBottomMenuEnabled = input<boolean>(false);
   bottomMenuHeader = input<string | null>(null);
-  isLeftMenuEnabled= input<boolean>(false);
-
+  isLeftMenuEnabled = input<boolean>(false);
 
   initialFooterHeight = 0;
   initialMouseY = 0;
@@ -46,16 +45,16 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
 
   private mediaQuery: MediaQueryList | null = null;
   private resizeObserver?: ResizeObserver;
-  
+
   constructor(private ngZone: NgZone) {
     // Only initialize browser-specific code if running in browser
     if (isPlatformBrowser(this.platformId)) {
       this.mediaQuery = window.matchMedia('(max-width: 768px)');
       this.isMobileView = this.mediaQuery.matches;
-      
+
       // Listen for media query changes
       this.mediaQuery.addEventListener('change', this.handleMediaQueryChange);
-      
+
       // Fix for Android viewport height issues
       this.updateViewportHeight();
       window.addEventListener('resize', this.updateViewportHeight);
@@ -65,15 +64,24 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
 
   ngOnDestroy() {
     if (isPlatformBrowser(this.platformId) && this.mediaQuery) {
-      this.mediaQuery.removeEventListener('change', this.handleMediaQueryChange);
+      this.mediaQuery.removeEventListener(
+        'change',
+        this.handleMediaQueryChange
+      );
       window.removeEventListener('resize', this.updateViewportHeight);
-      window.removeEventListener('orientationchange', this.updateViewportHeight);
-      
+      window.removeEventListener(
+        'orientationchange',
+        this.updateViewportHeight
+      );
+
       // Clean up overlay listener
       if (this.overlay?.nativeElement) {
-        this.overlay.nativeElement.removeEventListener('click', this.onOverlayClick);
+        this.overlay.nativeElement.removeEventListener(
+          'click',
+          this.onOverlayClick
+        );
       }
-      
+
       if (this.resizeObserver) {
         this.resizeObserver.disconnect();
       }
@@ -85,12 +93,12 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
     // Fix for Android browsers where 100vh includes the address bar
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
-  }
+  };
 
   private handleMediaQueryChange = (e: MediaQueryListEvent) => {
     const wasMobile = this.isMobileView;
     this.isMobileView = e.matches;
-    
+
     this.ngZone.run(() => {
       // If switching from mobile to desktop
       if (wasMobile && !this.isMobileView && this.leftMenu?.nativeElement) {
@@ -102,7 +110,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
         this.isMenuVisible = true;
         this.renderer.removeClass(document.body, 'menu-open');
       }
-      
+
       // If switching from desktop to mobile
       if (!wasMobile && this.isMobileView && this.leftMenu?.nativeElement) {
         this.leftMenu.nativeElement.style.width = '';
@@ -114,49 +122,52 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy  {
         this.renderer.removeClass(document.body, 'menu-open');
       }
     });
+  };
+
+  ngAfterViewInit() {
+    // Double-check mobile state after view init
+    setTimeout(() => {
+      if (isPlatformBrowser(this.platformId) && this.mediaQuery) {
+        this.isMobileView = this.mediaQuery.matches;
+      }
+
+      if (this.footer) {
+        this.footerHeight = this.footer.nativeElement.offsetHeight;
+      }
+
+      // Only set width for desktop view
+      if (!this.isMobileView && this.leftMenu?.nativeElement) {
+        this.leftMenu.nativeElement.style.width = `${this.menuWidth}px`;
+        this.isMenuVisible = true;
+      } else {
+        this.isMenuVisible = false;
+      }
+
+      // Update viewport height after view initialization
+      if (isPlatformBrowser(this.platformId)) {
+        this.updateViewportHeight();
+      }
+
+      // Add click listener to overlay for mobile
+      if (this.overlay?.nativeElement) {
+        this.overlay.nativeElement.addEventListener(
+          'click',
+          this.onOverlayClick
+        );
+      }
+      this.initClipbordDragAndDrop();
+    }, 0);
   }
 
-  
-    ngAfterViewInit() {
-      // Double-check mobile state after view init
-      setTimeout(() => {
-        if (isPlatformBrowser(this.platformId) && this.mediaQuery) {
-          this.isMobileView = this.mediaQuery.matches;
-        }
-        
-        if (this.footer) {
-          this.footerHeight = this.footer.nativeElement.offsetHeight;
-        }
-        
-        // Only set width for desktop view
-        if (!this.isMobileView && this.leftMenu?.nativeElement) {
-          this.leftMenu.nativeElement.style.width = `${this.menuWidth}px`;
-          this.isMenuVisible = true;
-        } else {
-          this.isMenuVisible = false;
-        }
-        
-        // Update viewport height after view initialization
-        if (isPlatformBrowser(this.platformId)) {
-          this.updateViewportHeight();
-        }
-      
-        // Add click listener to overlay for mobile
-        if (this.overlay?.nativeElement) {
-          this.overlay.nativeElement.addEventListener('click', this.onOverlayClick);
-        }
-      }, 0);
+  /**
+   * Handle overlay click - only close menu if clicking directly on overlay
+   */
+  onOverlayClick = (event: MouseEvent) => {
+    // Only close if the click target is the overlay itself, not its children
+    if (event.target === this.overlay.nativeElement) {
+      this.closeMenu();
     }
-
-/**
- * Handle overlay click - only close menu if clicking directly on overlay
- */
-onOverlayClick = (event: MouseEvent) => {
-  // Only close if the click target is the overlay itself, not its children
-  if (event.target === this.overlay.nativeElement) {
-    this.closeMenu();
-  }
-}
+  };
 
   toggleMenu() {
     if (this.isMobileView) {
@@ -196,7 +207,7 @@ onOverlayClick = (event: MouseEvent) => {
 
   onResizerMouseDown(event: MouseEvent) {
     if (this.isMobileView) return; // Disable resizing on mobile
-    
+
     event.preventDefault();
     this.isResizing = true;
     this.ngZone.runOutsideAngular(() => {
@@ -220,11 +231,11 @@ onOverlayClick = (event: MouseEvent) => {
         this.leftMenu.nativeElement.style.width = `${newWidth}px`;
       }
     });
-  }
+  };
 
   onMouseUp = () => {
     if (!this.isResizing) return;
-    
+
     this.isResizing = false;
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
@@ -232,7 +243,7 @@ onOverlayClick = (event: MouseEvent) => {
     }
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('mouseup', this.onMouseUp);
-  }
+  };
 
   onFooterResizerMouseDown(event: MouseEvent) {
     event.preventDefault();
@@ -265,11 +276,11 @@ onOverlayClick = (event: MouseEvent) => {
         this.footer.nativeElement.style.height = `${newHeight}px`;
       }
     });
-  }
+  };
 
   onFooterMouseUp = () => {
     if (!this.isFooterResizing) return;
-    
+
     this.isFooterResizing = false;
     if (this.footerAnimationFrameId !== null) {
       cancelAnimationFrame(this.footerAnimationFrameId);
@@ -277,8 +288,51 @@ onOverlayClick = (event: MouseEvent) => {
     }
     document.removeEventListener('mousemove', this.onFooterMouseMove);
     document.removeEventListener('mouseup', this.onFooterMouseUp);
+  };
+
+  //Clipboard drag and drop feature
+
+  @ViewChild('clipboardContainer') clipboardContainer!: ElementRef;
+  private isDragging = false;
+  private dragOffsetX = 0;
+  private dragOffsetY = 0;
+
+  private initClipbordDragAndDrop(): void {
+    if (this.clipboardContainer) {
+      this.clipboardContainer.nativeElement.addEventListener(
+        'mousedown',
+        (e: MouseEvent) => {
+          this.startDrag(e);
+        }
+      );
+      document.addEventListener('mousemove', (e: MouseEvent) => {
+        this.drag(e);
+      });
+      document.addEventListener('mouseup', () => {
+        this.stopDrag();
+      });
+    }
+  }
+  private startDrag(event: MouseEvent): void {
+    this.isDragging = true;
+    const rect = this.clipboardContainer.nativeElement.getBoundingClientRect();
+    this.dragOffsetX = event.clientX - rect.left;
+    this.dragOffsetY = event.clientY - rect.top;
   }
 
+  private drag(event: MouseEvent): void {
+    if (!this.isDragging) return;
+
+    const element = this.clipboardContainer.nativeElement;
+    element.style.right = 'auto';
+    element.style.bottom = 'auto';
+    element.style.left = event.clientX - this.dragOffsetX + 'px';
+    element.style.top = event.clientY - this.dragOffsetY + 'px';
+  }
+
+  private stopDrag(): void {
+    this.isDragging = false;
+  }
 }
 
 
