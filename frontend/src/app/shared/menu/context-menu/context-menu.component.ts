@@ -1,7 +1,6 @@
 
 import { Component, inject, input, output, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 
 export interface ContextMenuAction {
   id: string;
@@ -9,25 +8,25 @@ export interface ContextMenuAction {
   icon?: string;
   disabled?: boolean;
   divider?: boolean;
-  action: (item: LotoPointDto) => void;
+  action: (item: any) => void;
 }
 
 @Component({
-  selector: 'app-loto-point-context-menu',
+  selector: 'app-context-menu',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './loto-point-context-menu.component.html',
-  styleUrl: './loto-point-context-menu.component.css'
+  templateUrl: './context-menu.component.html',
+  styleUrl: './context-menu.component.css'
 })
-export class LotoPointContextMenuComponent implements AfterViewInit {
+export class ContextMenuComponent implements AfterViewInit {
   @ViewChild('menuContainer') menuContainer!: ElementRef<HTMLDivElement>;
 
-  selectedItem = input<LotoPointDto | null>(null);
+  selectedItem = input<any | null>(null);
   isVisible = input<boolean>(false);
   position = input<{ x: number; y: number }>({ x: 0, y: 0 });
   actions = input<ContextMenuAction[]>([]);
 
-  actionSelected = output<{ action: ContextMenuAction; item: LotoPointDto }>();
+  actionSelected = output<{ action: ContextMenuAction; item: any }>();
   closeMenu = output<void>();
   positionAdjusted = output<{ x: number; y: number }>();
 

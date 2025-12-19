@@ -1,4 +1,3 @@
-
 <div class="loto-point-table-container">
   <!-- Error message display -->
   @if (errorMessage()) {
@@ -15,6 +14,67 @@
   }
 
   <!-- Table component -->
+  <app-table
+    #tableComponent
+    [items]="items()"
+    [columns]="columns()"
+    [columnUniqueOptions]="stateService.currentColumnUniqueItems()"
+    [isLoadingMore]="stateService.loadingUniqueItems()"
+    [isDragAndDropEnabled]="enableDragDrop()"
+    [hoverDebounceTime]="hoverDebounceTime()"
+    [filterOutItems]="filterOutItems()"
+    [tableControlButtonsInput]="tableControlButtons()"
+    [defaultTableControlsEnabled]="true"
+
+
+    (selectedItemsEvent)="onSelectedItems($event)"
+    (itemsReordered)="onItemsReordered($event)"
+    (search)="onSearch($event)"
+    (sortChanged)="onTableSortChanged($event)"
+    (loadMoreItems)="onLoadMore($event)"
+    (loadInitialOptions)="loadUniqueItems($event.column, $event.filter)"
+    (loadMoreOptions)="loadMoreUniqueItems($event.column, $event.filter)"
+    >
+    <!-- <div table-controls>
+      <app-buttons [buttons]="tableControlButtons()"></app-buttons>
+    </div> -->
+    <div table-selection-actions>
+      <app-buttons [buttons]="selectionControlButtons()"></app-buttons>
+    </div>
+  </app-table>
+</div>
+
+<app-context-menu
+  [selectedItem]="contextMenuService.contextMenuSelectedItem()"
+  [isVisible]="contextMenuService.contextMenuVisible()"
+  [position]="contextMenuService.contextMenuPosition()"
+  [actions]="contextMenuService.contextMenuActions"
+  (closeMenu)="contextMenuService.closeContextMenu()"
+></app-context-menu>
+
+<app-popup-projection
+  [isOpen]="isLotoPointFormOpen()"
+  (close)="closeForm()"
+>
+  <app-rf-loto-point-form [fieldsInput]="formFields()"></app-rf-loto-point-form>
+
+</app-popup-projection>
+
+
+
+<!-- <div class="loto-point-table-container">
+  @if (errorMessage()) {
+    <div class="error-message">
+      {{ errorMessage() }}
+    </div>
+  }
+
+  @if (isLoading()) {
+    <div class="loading-indicator">
+      Loading LOTO points...
+    </div>
+  }
+
   <app-table
     [items]="items()"
     [columns]="columns()"
@@ -44,25 +104,20 @@
     (loadMoreItems)="onLoadMore($event)"
     (loadInitialOptions)="loadUniqueItems($event.column, $event.filter)"
     (loadMoreOptions)="loadMoreUniqueItems($event.column, $event.filter)"
-    (tableModeChange)="onTableModeChange($event)"
     >
-    <!-- <div table-controls>
-      <app-buttons [buttons]="tableControlButtons()"></app-buttons>
-    </div> -->
     <div table-selection-actions>
       <app-buttons [buttons]="selectionControlButtons()"></app-buttons>
     </div>
   </app-table>
 </div>
 
-<app-loto-point-context-menu
+<app-context-menu
   [selectedItem]="contextMenuService.contextMenuSelectedItem()"
   [isVisible]="contextMenuService.contextMenuVisible()"
   [position]="contextMenuService.contextMenuPosition()"
-  [actions]="contextMenuService.contextMenuActions()"
-  (actionSelected)="$event"
+  [actions]="contextMenuService.contextMenuActions"
   (closeMenu)="contextMenuService.closeContextMenu()"
-></app-loto-point-context-menu>
+></app-context-menu>
 
 <app-popup-projection
   [isOpen]="isLotoPointFormOpen()"
@@ -70,4 +125,4 @@
 >
   <app-rf-loto-point-form [fieldsInput]="formFields()"></app-rf-loto-point-form>
 
-</app-popup-projection>
+</app-popup-projection> -->
