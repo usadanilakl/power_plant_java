@@ -4,7 +4,7 @@ import { TableClickService } from '../../../../shared/table/refactored/services/
 import { RfLotoPointStateService } from './rf-loto-point-state.service';
 import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-point-context-menu.service';
 import { Column } from '../../../../models/column.model';
-import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { LotoPointDto, LotoPointModel } from '../../../../models/loto/loto-point.model';
 
 @Injectable({
   providedIn: 'root'
@@ -49,6 +49,8 @@ export class RfLotoPointClickService extends TableClickService {
     console.log('LOTO: Cell double click -', normalizedItem, column);
     
     this.lotoStateService.setSelectedItem(normalizedItem);
+    const field = column.accessorKey as keyof LotoPointModel;
+    this.lotoStateService.openForm([field]);
     // Open form with specific field
   }
 

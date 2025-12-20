@@ -1,6 +1,6 @@
 
 import { Injectable, inject, DestroyRef, signal } from "@angular/core";
-import { LotoPointDto } from "../../../../models/loto/loto-point.model";
+import { LotoPointDto, LotoPointFieldName } from "../../../../models/loto/loto-point.model";
 import { BehaviorSubject, Observable } from "rxjs";
 import { SearchCriteria } from "../../../../models/api/search-criteria.model";
 import { RfLotoPointApiService } from "./rf-loto-point-api.service";
@@ -161,210 +161,129 @@ export class RfLotoPointStateService {
     this.uniqueItemsCache.clear();
   }
 
-  
-    // /**
-    //  * Load unique items for a column with server-side filtering and pagination
-    //  */
-    // loadUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
-    //   const cacheKey = `${columnKey}:${searchString}`;
-      
-    //   // Check if we have cached results for this column and search term
-    //   const cached = this.uniqueValuesCache.get(cacheKey);
-    //   // if (cached) {
-    //   //   this.setUniqueItems(String(columnKey), cached.values);
-    //   //   return;
-    //   // }
 
-    //   const filters = this.getCurrentSearchCriteria()?.filters ?? {};
-  
-    //   // Fetch from server with pagination
-    //   this.apiService
-    //     .getFilteredUniqueValuesOfColumn(
-    //       String(columnKey),
-    //       filters,
-    //       1,
-    //       50
-    //     )
-    //     .pipe(
-    //       tap(response => {
-    //         if (response.responseData?.content && response.responseData.content.length > 0) {
-    //           const uniqueValueDtos = response.responseData.content;
-    //           const uniqueValues = uniqueValueDtos.map(dto => dto[columnKey] as string);
-    //           this.setUniqueItems(String(columnKey), uniqueValues);
-    //           this.currentColumnUniqueItems.set(uniqueValues);
-              
-    //           // Cache the results
-    //           this.uniqueValuesCache.set(cacheKey, {
-    //             values: uniqueValues,
-    //             page: 1,
-    //             hasMore: !response.responseData.last
-    //           });
-    //         }
-    //       }),
-    //       catchError(error => {
-    //         console.error(`Error loading unique items for column ${columnKey}:`, error);
-    //         return of(null);
-    //       }),
-    //       takeUntilDestroyed(this.destroyRef)
-    //     )
-    //     .subscribe();
-    // }
-  
-    // /**
-    //  * Load more unique items for a column (pagination)
-    //  */
-    // loadMoreUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
-    //   const cacheKey = `${columnKey}:${searchString}`;
-    //   const cached = this.uniqueValuesCache.get(cacheKey);
-      
-    //   if (!cached || !cached.hasMore) {
-    //     return; // No more items to load
-    //   }
-  
-    //   const nextPage = cached.page + 1;
-    //   const filters = this.getCurrentSearchCriteria()?.filters ?? {};
-  
-    //   this.apiService
-    //     .getFilteredUniqueValuesOfColumn(
-    //       String(columnKey),
-    //       filters,
-    //       nextPage,
-    //       50
-    //     )
-    //     .pipe(
-    //       tap(response => {
-    //         if (response.responseData?.content && response.responseData.content.length > 0) {
-    //           const currentValues = cached.values;
-    //           const uniqueValueDtos = response.responseData.content;
-    //           const uniqueValues = uniqueValueDtos.map(dto => dto[columnKey] as string);
-    //           const newValues = [...currentValues, ...uniqueValues];
-              
-    //           this.setUniqueItems(String(columnKey), newValues);
-    //           this.currentColumnUniqueItems.update(existing => [...existing, ...newValues]);
-              
-    //           // Update cache with new values and page
-    //           this.uniqueValuesCache.set(cacheKey, {
-    //             values: newValues,
-    //             page: nextPage,
-    //             hasMore: !response.responseData.last
-    //           });
-    //         }
-    //       }),
-    //       catchError(error => {
-    //         console.error(`Error loading more unique items for column ${columnKey}:`, error);
-    //         return of(null);
-    //       }),
-    //       takeUntilDestroyed(this.destroyRef)
-    //     )
-    //     .subscribe();
-    // }
-
-        /**
-         * Load unique items for a column with server-side filtering and pagination
-         */
-        loadUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
-          const cacheKey = `${columnKey}:${searchString}`;
-          this.loadingUniqueItems.set(true);
-          
-          // Check if we have cached results for this column and search term
-          const cached = this.uniqueValuesCache.get(cacheKey);
-          // if (cached) {
-          //   this.setUniqueItems(String(columnKey), cached.values);
-          //   return;
-          // }
+  /**
+   * Load unique items for a column with server-side filtering and pagination
+   */
+  loadUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
+    const cacheKey = `${columnKey}:${searchString}`;
+    this.loadingUniqueItems.set(true);
     
-          const filters = this.getCurrentSearchCriteria()?.filters ?? {};
-      
-          // Fetch from server with pagination
-          this.apiService
-            .getFilteredUniqueValuesOfColumn(
-              String(columnKey),
-              filters,
-              1,
-              50
-            )
-            .pipe(
-              tap(response => {
-                if (response.responseData?.content && response.responseData.content.length > 0) {
-                  const uniqueValues = response.responseData.content;
-                  this.setUniqueItems(String(columnKey), uniqueValues);
-                  this.currentColumnUniqueItems.set(uniqueValues);
-                  this.loadingUniqueItems.set(false);
-                  
-                  // Cache the results
-                  this.uniqueValuesCache.set(cacheKey, {
-                    values: uniqueValues,
-                    page: 1,
-                    hasMore: !response.responseData.last
-                  });
-                }
-              }),
-              catchError(error => {
-                console.error(`Error loading unique items for column ${columnKey}:`, error);
-                this.loadingUniqueItems.set(false);
-                return of(null);
-              }),
-              takeUntilDestroyed(this.destroyRef)
-            )
-            .subscribe();
-        }
-      
-        /**
-         * Load more unique items for a column (pagination)
-         */
-        loadMoreUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
-          const cacheKey = `${columnKey}:${searchString}`;
-          const cached = this.uniqueValuesCache.get(cacheKey);
-          this.loadingUniqueItems.set(true);
-          
-          if (!cached || !cached.hasMore) {
+    // Check if we have cached results for this column and search term
+    const cached = this.uniqueValuesCache.get(cacheKey);
+    // if (cached) {
+    //   this.setUniqueItems(String(columnKey), cached.values);
+    //   return;
+    // }
+
+    const filters = this.getCurrentSearchCriteria()?.filters ?? {};
+
+    // Fetch from server with pagination
+    this.apiService
+      .getFilteredUniqueValuesOfColumn(
+        String(columnKey),
+        filters,
+        1,
+        50
+      )
+      .pipe(
+        tap(response => {
+          if (response.responseData?.content && response.responseData.content.length > 0) {
+            const uniqueValues = response.responseData.content;
+            this.setUniqueItems(String(columnKey), uniqueValues);
+            this.currentColumnUniqueItems.set(uniqueValues);
             this.loadingUniqueItems.set(false);
-            return; // No more items to load
+            
+            // Cache the results
+            this.uniqueValuesCache.set(cacheKey, {
+              values: uniqueValues,
+              page: 1,
+              hasMore: !response.responseData.last
+            });
           }
-      
-          const nextPage = cached.page + 1;
-          const filters = this.getCurrentSearchCriteria()?.filters ?? {};
-      
-          this.apiService
-            .getFilteredUniqueValuesOfColumn(
-              String(columnKey),
-              filters,
-              nextPage,
-              50
-            )
-            .pipe(
-              tap(response => {
-                if (response.responseData?.content && response.responseData.content.length > 0) {
-                  const currentValues = cached.values;
-                  const uniqueValues = response.responseData.content;
-                  const newValues = [...currentValues, ...uniqueValues];
-                  
-                  this.setUniqueItems(String(columnKey), newValues);
-                  this.currentColumnUniqueItems.update(existing => [...existing, ...newValues]);
-                  this.loadingUniqueItems.set(false);
-                  
-                  // Update cache with new values and page
-                  this.uniqueValuesCache.set(cacheKey, {
-                    values: newValues,
-                    page: nextPage,
-                    hasMore: !response.responseData.last
-                  });
-                }
-              }),
-              catchError(error => {
-                console.error(`Error loading more unique items for column ${columnKey}:`, error);
-                this.loadingUniqueItems.set(false);
-                return of(null);
-              }),
-              takeUntilDestroyed(this.destroyRef)
-            )
-            .subscribe();
-        }
+        }),
+        catchError(error => {
+          console.error(`Error loading unique items for column ${columnKey}:`, error);
+          this.loadingUniqueItems.set(false);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  /**
+   * Load more unique items for a column (pagination)
+   */
+  loadMoreUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
+    const cacheKey = `${columnKey}:${searchString}`;
+    const cached = this.uniqueValuesCache.get(cacheKey);
+    this.loadingUniqueItems.set(true);
+    
+    if (!cached || !cached.hasMore) {
+      this.loadingUniqueItems.set(false);
+      return; // No more items to load
+    }
+
+    const nextPage = cached.page + 1;
+    const filters = this.getCurrentSearchCriteria()?.filters ?? {};
+
+    this.apiService
+      .getFilteredUniqueValuesOfColumn(
+        String(columnKey),
+        filters,
+        nextPage,
+        50
+      )
+      .pipe(
+        tap(response => {
+          if (response.responseData?.content && response.responseData.content.length > 0) {
+            const currentValues = cached.values;
+            const uniqueValues = response.responseData.content;
+            const newValues = [...currentValues, ...uniqueValues];
+            
+            this.setUniqueItems(String(columnKey), newValues);
+            this.currentColumnUniqueItems.update(existing => [...existing, ...newValues]);
+            this.loadingUniqueItems.set(false);
+            
+            // Update cache with new values and page
+            this.uniqueValuesCache.set(cacheKey, {
+              values: newValues,
+              page: nextPage,
+              hasMore: !response.responseData.last
+            });
+          }
+        }),
+        catchError(error => {
+          console.error(`Error loading more unique items for column ${columnKey}:`, error);
+          this.loadingUniqueItems.set(false);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
 
   /**
    * Clear unique values cache (useful when data changes)
    */
   clearUniqueValuesCache(): void {
     this.uniqueValuesCache.clear();
+  }
+
+  /**
+   * Handle form
+   */
+  
+  formFields = signal<LotoPointFieldName[]>([]);
+  isLotoPointFormOpen = signal<boolean>(false);
+  openForm(fields: LotoPointFieldName[] = []): void {
+    this.formFields.set(fields);
+    this.isLotoPointFormOpen.set(true);
+  }
+
+  closeForm(): void {
+    this.isLotoPointFormOpen.set(false);
+    this.selectedItem.set(null);
   }
 }

@@ -101,7 +101,6 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit, OnDestr
   });
   tableMode = signal<TableMode>('row');
   columns = signal<Column[]>([]);
-  formFields = signal<LotoPointFieldName[]>([]);
   isLoading = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
 
@@ -155,7 +154,6 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit, OnDestr
     return [];
   });
 
-  isLotoPointFormOpen = signal<boolean>(false);
 
   private getDefaultTableControlButtons(): ButtonConfig[] {
     return [
@@ -631,19 +629,6 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit, OnDestr
    */
   onItemsReordered(items: LotoPointDto[]): void {
     this.itemsReorderedEvent.emit(items);
-  }
-
-  /**
-   * Handle form
-   */
-  openForm(fields: LotoPointFieldName[] = []): void {
-    this.formFields.set(fields);
-    this.isLotoPointFormOpen.set(true);
-  }
-
-  closeForm(): void {
-    this.isLotoPointFormOpen.set(false);
-    this.stateService.selectedItem.set(null);
   }
 }
 
