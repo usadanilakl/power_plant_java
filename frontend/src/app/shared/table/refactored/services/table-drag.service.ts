@@ -4,9 +4,7 @@ import { TableDataService } from "./table-data.service";
 import { TableSearchService } from "./table-search.service";
 
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class TableDragService {
   dataService = inject(TableDataService);
   searchService = inject(TableSearchService);

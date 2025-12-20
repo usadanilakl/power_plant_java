@@ -7,9 +7,7 @@ import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TableDataService } from './table-data.service';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable()
 export class TableClickService {
   private selectionService = inject(TableSelectionService);
   protected stateService = inject(TableStateService);

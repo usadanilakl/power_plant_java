@@ -4,9 +4,7 @@ import { ClipboardService } from '../../../clipboard/clipboard.service';
 import { BaseModel } from '../../../../models/base/base.model';
 import { TableDataService } from './table-data.service';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class TableSelectionService {
   private clipboardService = inject(ClipboardService);
   private dataService = inject(TableDataService);

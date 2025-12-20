@@ -2,9 +2,7 @@ import { Injectable, signal } from "@angular/core";
 
 export type TableMode = 'row' | 'cell';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable()
 export class TableStateService{
     tableMode = signal<'row' | 'cell'>('row');
 

@@ -11,7 +11,7 @@ export interface ResizeState {
   startWidth: number;
 }
 
-@Injectable()
+@Injectable( )
 export class TableResizeService {
   dataService = inject(TableDataService);
   syncService = inject(TableSyncService);

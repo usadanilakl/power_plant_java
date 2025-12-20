@@ -5,9 +5,7 @@ import { ClickSetup, FilterOutRules } from "../table.component";
 import { CdkVirtualScrollViewport } from "@angular/cdk/scrolling";
 import { SearchCriteria } from "../../../../models/api/search-criteria.model";
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class TableDataService {
   //Input Signals
   items = signal<any[]>([]);

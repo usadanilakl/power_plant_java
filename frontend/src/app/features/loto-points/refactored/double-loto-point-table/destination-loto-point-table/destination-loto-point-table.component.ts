@@ -13,20 +13,22 @@ import { TableDataService } from '../../../../../shared/table/refactored/service
 import { TableSearchService } from '../../../../../shared/table/refactored/services/table-search.service';
 import { TableSortService } from '../../../../../shared/table/refactored/services/table-sort.service';
 import { TableResizeService } from '../../../../../shared/table/refactored/services/table-resize.service';
+import { TableSyncService } from '../../../../../shared/table/refactored/services/table-sync.service';
 
 @Component({
   selector: 'app-destination-loto-point-table',
   imports: [RfLotoPointTableComponent],
   providers: [
-    TableSelectionService,
-    TableDragService,
-    TableControlsService,
-    TableStateService,
-    TableDataService,
-    TableSelectionService,
-    TableSearchService,
-    TableSortService,
-    TableResizeService,
+      TableSelectionService,
+      TableDragService,
+      TableControlsService,
+      TableStateService,
+      TableDataService,
+      TableSelectionService,
+      TableSearchService,
+      TableSortService,
+      TableResizeService,
+      TableSyncService,
     {
       provide: TableClickService,
       useClass: DestinationLotoPointTableClickService,

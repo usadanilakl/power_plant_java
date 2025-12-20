@@ -217,6 +217,9 @@ export class TableComponent implements OnInit, AfterViewInit {
       const notEmpty = value && value.length > 0;
       if (notEmpty) this.itemsReordered.emit(value);
     });
+    effect(() => {
+      this.rowHoveredEvent.emit(this.dataService.hoveredRow());
+    });
   }
 
   ngOnInit(): void {}

@@ -5,9 +5,7 @@ import { TableDataService } from './table-data.service';
 import { TableSyncService } from './table-sync.service';
 import { TableUtilService } from './table-util.service';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class TableSearchService {
   private dataService = inject(TableDataService);
   private syncService = inject(TableSyncService);

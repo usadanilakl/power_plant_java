@@ -13,10 +13,11 @@ import { TableSelectionService } from '../../../../../shared/table/refactored/se
 import { TableSortService } from '../../../../../shared/table/refactored/services/table-sort.service';
 import { TableDragService } from '../../../../../shared/table/refactored/services/table-drag.service';
 import { TableResizeService } from '../../../../../shared/table/refactored/services/table-resize.service';
+import { TableSyncService } from '../../../../../shared/table/refactored/services/table-sync.service';
 
 @Component({
   selector: 'app-source-loto-point-table',
-  imports: [RfLotoPointTableComponent],
+  imports: [RfLotoPointTableComponent ],
   providers: [
     TableSearchService,
     TableControlsService,
@@ -27,6 +28,7 @@ import { TableResizeService } from '../../../../../shared/table/refactored/servi
     TableSortService,
     TableDragService,
     TableResizeService,
+    TableSyncService,
     { provide: TableClickService, useClass: SourceLotoPointTableClickService  }
   ],
   templateUrl: './source-loto-point-table.component.html',

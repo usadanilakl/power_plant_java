@@ -6,9 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TableUtilService } from './table-util.service';
 import { isPlatformBrowser } from '@angular/common';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class TableSyncService {
   private dataService = inject(TableDataService);
   private utilServce = inject(TableUtilService);
