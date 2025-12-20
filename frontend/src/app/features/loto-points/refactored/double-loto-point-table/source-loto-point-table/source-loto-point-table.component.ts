@@ -12,6 +12,7 @@ import { TableDataService } from '../../../../../shared/table/refactored/service
 import { TableSelectionService } from '../../../../../shared/table/refactored/services/table-selection.service';
 import { TableSortService } from '../../../../../shared/table/refactored/services/table-sort.service';
 import { TableDragService } from '../../../../../shared/table/refactored/services/table-drag.service';
+import { TableResizeService } from '../../../../../shared/table/refactored/services/table-resize.service';
 
 @Component({
   selector: 'app-source-loto-point-table',
@@ -25,6 +26,7 @@ import { TableDragService } from '../../../../../shared/table/refactored/service
     TableSearchService,
     TableSortService,
     TableDragService,
+    TableResizeService,
     { provide: TableClickService, useClass: SourceLotoPointTableClickService  }
   ],
   templateUrl: './source-loto-point-table.component.html',

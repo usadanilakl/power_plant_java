@@ -11,17 +11,13 @@ import {
   OnInit,
   output,
   PLATFORM_ID,
-  signal,
   TemplateRef,
   viewChild,
-  ViewChild,
 } from '@angular/core';
 import {
   CdkVirtualScrollViewport,
   ScrollingModule,
 } from '@angular/cdk/scrolling';
-import { Subject, debounceTime } from 'rxjs';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Column } from '../../../models/column.model';
@@ -35,11 +31,9 @@ import { TableSelectionService } from './services/table-selection.service';
 import { TableResizeService } from './services/table-resize.service';
 import { ColumnFilterInputComponent } from './column-filter-input/column-filter-input.component';
 import {
-  ButtonColor,
   ButtonConfig,
   ButtonsComponent,
 } from '../../menu/buttons/buttons.component';
-import { TableStateService } from './services/table-state.service';
 import { TableControlsService } from './services/table-controls.service';
 import { TableDataService } from './services/table-data.service';
 import { TableUtilService } from './services/table-util.service';
@@ -65,23 +59,11 @@ export interface FilterOutRules {
     ColumnFilterInputComponent,
     ButtonsComponent,
   ],
-  providers: [
-    TableDragService,
-    // TableClickService,
-    TableSyncService,
-    // TableSelectionService,
-    TableResizeService,
-    TableSearchService,
-    TableSortService,
-    // TableControlsService,
-    // TableStateService
-  ],
   templateUrl: './table.component.html',
   styleUrl: './table.component.css',
 })
 export class TableComponent implements OnInit, AfterViewInit {
   private platformId = inject(PLATFORM_ID);
-  private destroyRef = inject(DestroyRef);
   private cdr = inject(ChangeDetectorRef);
   protected dragService = inject(TableDragService);
   public clickService = inject(TableClickService);
@@ -90,7 +72,6 @@ export class TableComponent implements OnInit, AfterViewInit {
   protected sortService = inject(TableSortService);
   protected selectionService = inject(TableSelectionService);
   protected resizeService = inject(TableResizeService);
-  private tableStateService = inject(TableStateService);
   private controlsService = inject(TableControlsService);
   protected dataService = inject(TableDataService);
   protected utilService = inject(TableUtilService);
