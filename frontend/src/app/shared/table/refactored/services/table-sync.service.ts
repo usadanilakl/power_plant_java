@@ -1,72 +1,97 @@
 
-import { Injectable } from '@angular/core';
+import { DestroyRef, inject, Injectable } from '@angular/core';
 import { SynchronizationState } from '../models/table.types';
+import { TableDataService } from './table-data.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TableUtilService } from './table-util.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TableSyncService {
+  private dataService = inject(TableDataService);
+  private utilServce = inject(TableUtilService);
+  private destroyRef = inject(DestroyRef);
+
   private syncState: SynchronizationState = {
     headerTable: null,
     bodyTable: null,
-    headerContainer: null
+    headerContainer: null,
   };
 
-  setSyncElements(
-    headerTable: HTMLTableElement | null,
-    bodyTable: HTMLTableElement | null,
-    headerContainer: HTMLDivElement | null
-  ): void {
-    this.syncState = { headerTable, bodyTable, headerContainer };
+  setupHorizontalScrollSync(): void {
+    if (!this.dataService.viewport()) return;
+
+    this.dataService
+      .viewport()!
+      .scrolledIndexChange.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.syncHeaderScroll();
+        this.checkForLoadMore();
+      });
+
+    // Store the handler reference so it can be removed
+    const scrollHandler = () => this.syncHeaderScroll();
+    const viewportElement =
+      this.dataService.viewport()!.elementRef.nativeElement;
+
+    viewportElement.addEventListener('scroll', scrollHandler);
+
+    this.destroyRef.onDestroy(() => {
+      viewportElement.removeEventListener('scroll', scrollHandler);
+    });
   }
 
-  // synchronizeColumnWidths(): void {
-  //   if (!this.syncState.headerTable || !this.syncState.bodyTable) return;
+  private syncHeaderScroll(): void {
+    if (
+      !this.dataService.viewport() ||
+      !this.dataService.headerContainer()?.nativeElement
+    )
+      return;
 
-  //   requestAnimationFrame(() => {
-  //     const headerCells = this.syncState.headerTable!.querySelectorAll('thead tr:first-child th');
-  //     const bodyCells = this.syncState.bodyTable!.querySelectorAll('tbody tr:first-child td');
+    const scrollLeft =
+      this.dataService.viewport()!.elementRef.nativeElement.scrollLeft;
+    this.dataService.headerContainer()!.nativeElement.scrollLeft = scrollLeft;
+  }
 
-  //     if (bodyCells.length === 0) return;
+  private checkForLoadMore(): void {
+    if (!this.dataService.viewport()) return;
 
-  //     // Reset widths
-  //     this.resetCellWidths(headerCells);
-  //     this.resetCellWidths(bodyCells);
+    const end = this.dataService.viewport()!.getRenderedRange().end;
+    const total = this.dataService.filteredItems.length;
 
-  //     // Force reflow
-  //     this.syncState.bodyTable!.offsetHeight;
+    if (end >= total - 5 && total > 0) {
+      // Trigger load more when within 5 items of the end
+      const searchCriteria = this.utilServce.buildSearchCriteria(
+        this.dataService.globalSearchQuery,
+        this.dataService.columnFilters()
+      );
+      this.dataService.loadMoreItems.set({ ...searchCriteria });
+    }
+  }
 
-  //     // Get natural widths
-  //     const widths = this.getColumnWidths(bodyCells);
-
-  //     // Apply widths
-  //     this.applyCellWidths(headerCells, widths);
-  //     this.applyCellWidths(bodyCells, widths);
-  //   });
-  // }
-  
-  
-  
   synchronizeColumnWidths(): void {
     if (!this.syncState.headerTable || !this.syncState.bodyTable) return;
-  
+
     requestAnimationFrame(() => {
-      const headerCells = this.syncState.headerTable!.querySelectorAll('thead th');
-      const allBodyCells = this.syncState.bodyTable!.querySelectorAll('tbody td');
-  
+      const headerCells =
+        this.syncState.headerTable!.querySelectorAll('thead th');
+      const allBodyCells =
+        this.syncState.bodyTable!.querySelectorAll('tbody td');
+
       if (headerCells.length === 0 || allBodyCells.length === 0) return;
-  
+
       // Get widths from header only (source of truth)
       const headerWidths: number[] = [];
-      headerCells.forEach(cell => {
+      headerCells.forEach((cell) => {
         headerWidths.push((cell as HTMLElement).offsetWidth);
       });
-  
+
       // Apply header widths to ALL body cells (not just first row)
       allBodyCells.forEach((cell, index) => {
         const columnIndex = index % headerWidths.length;
         const width = headerWidths[columnIndex];
-        
+
         if (width > 0) {
           (cell as HTMLElement).style.width = width + 'px';
           (cell as HTMLElement).style.minWidth = width + 'px';
@@ -74,12 +99,6 @@ export class TableSyncService {
         }
       });
     });
-  }
-
-  syncHorizontalScroll(scrollLeft: number): void {
-    if (this.syncState.headerContainer) {
-      this.syncState.headerContainer.scrollLeft = scrollLeft;
-    }
   }
 
   private resetCellWidths(cells: NodeListOf<Element>): void {
@@ -107,5 +126,11 @@ export class TableSyncService {
       htmlCell.style.minWidth = widths[index];
       htmlCell.style.maxWidth = widths[index];
     });
+  }
+  getRowStyle(item: any): { [key: string]: string } {
+    if (this.dataService.highlightedItemIds.has(item.id)) {
+      return this.dataService.highlightStyle;
+    }
+    return {};
   }
 }

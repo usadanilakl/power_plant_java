@@ -5,7 +5,7 @@
     <input
       type="text"
       placeholder="Global Search"
-      [(ngModel)]="globalSearchQuery"
+      [(ngModel)]="dataService.globalSearchQuery"
       (input)="onGlobalSearchChange()"
       class="global-search"
     />
@@ -25,9 +25,9 @@
               class="sortable-header">
             <div class="header-content" (click)="sortColumn(column, true)">
               <span>{{ column.header }}</span>
-              <span *ngIf="currentSortColumn === column.id" 
+              <span *ngIf="dataService.currentSortColumn === column.id" 
                     class="sort-indicator">
-                {{ isAscending ? '▲' : '▼' }}
+                {{ dataService.isAscending ? '▲' : '▼' }}
               </span>
             </div>
             
@@ -57,11 +57,11 @@
       <table #bodyTable class="table table-body" [style.width.px]="totalTableWidth">
         <tbody>
           <tr
-            *cdkVirtualFor="let item of filteredItems; trackBy: trackByItemId"
+            *cdkVirtualFor="let item of dataService.filteredItems; trackBy: trackByItemId"
             [class.drag-hover-top]="item === hoveredItem() && dragState().isDragging"
             [class.selected]="isItemSelected(item)"
             [class.dragged]="isItemDragged(item)"
-            [ngStyle]="getRowStyle(item)"
+            [ngStyle]="syncService.getRowStyle(item)"
             [class.ghost-row]="dragState().ghostRowIndex === item.index"
             (mousedown)="onMouseDown($event, item)"
             (mouseup)="onMouseUp($event)"
@@ -94,7 +94,7 @@
     </cdk-virtual-scroll-viewport>
   </div>
 
-  <div *ngIf="filteredItems.length === 0" class="empty-state">
+  <div *ngIf="dataService.filteredItems.length === 0" class="empty-state">
     <p>No items found</p>
   </div>
 

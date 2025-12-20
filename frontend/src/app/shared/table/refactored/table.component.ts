@@ -13,16 +13,14 @@ import {
   PLATFORM_ID,
   signal,
   TemplateRef,
+  viewChild,
   ViewChild,
 } from '@angular/core';
 import {
   CdkVirtualScrollViewport,
   ScrollingModule,
 } from '@angular/cdk/scrolling';
-import {
-  Subject,
-  debounceTime,
-} from 'rxjs';
+import { Subject, debounceTime } from 'rxjs';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
@@ -43,6 +41,8 @@ import {
 } from '../../menu/buttons/buttons.component';
 import { TableStateService } from './services/table-state.service';
 import { TableControlsService } from './services/table-controls.service';
+import { TableDataService } from './services/table-data.service';
+import { TableUtilService } from './services/table-util.service';
 
 export interface ClickSetup {
   applyTo: 'row' | 'cell';
@@ -85,17 +85,18 @@ export class TableComponent implements OnInit, AfterViewInit {
   private cdr = inject(ChangeDetectorRef);
   private dragService = inject(TableDragService);
   public clickService = inject(TableClickService);
-  private syncService = inject(TableSyncService);
+  protected syncService = inject(TableSyncService);
   private searchService = inject(TableSearchService);
   private sortService = inject(TableSortService);
   private selectionService = inject(TableSelectionService);
   private resizeService = inject(TableResizeService);
-  private tableStateService = inject(TableStateService)
+  private tableStateService = inject(TableStateService);
   private controlsService = inject(TableControlsService);
+  protected dataService = inject(TableDataService);
+  private utilService = inject(TableUtilService);
 
   // Inputs
   items = input.required<any[]>();
-  // clickService = input.required<TableClickService>();
   columns = input<Column[]>([]);
   columnUniqueOptions = input<string[]>([]);
   isLoadingMore = input<boolean>(false);
@@ -121,25 +122,14 @@ export class TableComponent implements OnInit, AfterViewInit {
   loadMoreOptions = output<{ column: string; filter: string }>();
   loadInitialOptions = output<{ column: string; filter: string }>();
 
-  // ViewChild references
-  @ViewChild('tableContainer') tableContainer!: ElementRef;
-  @ViewChild('tableBody') tableBody!: ElementRef;
-  @ViewChild('headerContainer', { read: ElementRef })
-  headerContainer!: ElementRef<HTMLDivElement>;
-  @ViewChild('headerTable', { read: ElementRef })
-  headerTable!: ElementRef<HTMLTableElement>;
-  @ViewChild('bodyTable', { read: ElementRef })
-  bodyTable!: ElementRef<HTMLTableElement>;
-  @ViewChild(CdkVirtualScrollViewport) viewport!: CdkVirtualScrollViewport;
-  @ViewChild('selectionActions', { read: TemplateRef })
-  selectionActionsTemplate!: TemplateRef<any>;
+ 
+  headerContainer = viewChild<ElementRef<HTMLDivElement>>('headerContainer');
+  headerTable = viewChild<ElementRef<HTMLTableElement>>('headerTable');
+  bodyTable = viewChild<ElementRef<HTMLTableElement>>('bodyTable');
+  tableBody = viewChild<ElementRef<HTMLDivElement>>('tableBody');
+  viewport = viewChild(CdkVirtualScrollViewport);
+  selectionActionsTemplate = viewChild(TemplateRef);
 
-  // Component state
-  filteredItems: any[] = [];
-  globalSearchQuery: string = '';
-  columnFilters: { [key: string]: string } = {};
-  currentSortColumn: string | null = null;
-  isAscending: boolean = true;
   rowHeight = 50;
   private resizeObserver?: ResizeObserver;
 
@@ -154,48 +144,46 @@ export class TableComponent implements OnInit, AfterViewInit {
   selectedItems = this.selectionService.selectedItems$;
   lastClickedItem = this.selectionService.lastClickedItem$;
 
-  protected _items: any[] = [];
+  // protected _items: any[] = [];
   hoveredItem = this.clickService.hoveredRow;
   private selectedItems$ = toObservable(this.selectedItems).pipe(
     takeUntilDestroyed(this.destroyRef)
   );
-  private excludedItemIds = new Set<any>();
-  private highlightedItemIds = new Set<any>();
-  private highlightStyle: { [key: string]: string } = {};
 
   // Move effects to field initializers
   private itemsEffect = effect(() => {
     const items = this.items();
-    this._items = items;
+    // this.dataService.items() = items;
+    this.dataService.items.set(items);
     this.clickService.allItems.set(items);
-    this.updateFilteredItems();
+    this.searchService.updateFilteredItems();
     this.cdr.detectChanges();
   });
 
   private filterOutEffect = effect(() => {
     const rules = this.filterOutItems();
-    this.excludedItemIds.clear();
-    this.highlightedItemIds.clear();
-    this.highlightStyle = {};
+    this.dataService.excludedItemIds.clear();
+    this.dataService.highlightedItemIds.clear();
+    this.dataService.highlightStyle = {};
 
     if (rules && rules.items.length > 0) {
       const itemIds = new Set(rules.items.map((item) => item.id));
       if (rules.action === 'exclude') {
-        this.excludedItemIds = itemIds;
+        this.dataService.excludedItemIds = itemIds;
       } else if (rules.action === 'highlight') {
-        this.highlightedItemIds = itemIds;
-        this.highlightStyle = rules.style;
+        this.dataService.highlightedItemIds = itemIds;
+        this.dataService.highlightStyle = rules.style;
       }
     }
-    this.updateFilteredItems();
+    this.searchService.updateFilteredItems();
   });
-  
-tableControlButtons = computed(() => {
-  return this.controlsService.getTableControlButtons(
-    this.tableControlButtonsInput(),
-    this.defaultTableControlsEnabled()
-  );
-});
+
+  tableControlButtons = computed(() => {
+    return this.controlsService.getTableControlButtons(
+      this.tableControlButtonsInput(),
+      this.defaultTableControlsEnabled()
+    );
+  });
 
   // NEW: Store unique values per column based on ORIGINAL items
   columnUniqueValuesMap = signal<{ [columnId: string]: string[] }>({});
@@ -228,7 +216,18 @@ tableControlButtons = computed(() => {
     this.columnUniqueValuesMap.set(uniqueValuesMap);
   });
 
+  private syncDataTableServiceEffect = effect(() => {
+    this.dataService.headerContainer.set(this.headerContainer());
+    this.dataService.headerTable.set(this.headerTable());
+    this.dataService.bodyTable.set(this.bodyTable());
+    this.dataService.viewport.set(this.viewport());
+    this.dataService.selectionActionsTemplate.set(
+      this.selectionActionsTemplate()
+    );
+  });
+
   constructor() {
+    effect(() => {this.loadMoreItems.emit(this.dataService.loadMoreItems());});
   }
 
   ngOnInit(): void {
@@ -239,7 +238,7 @@ tableControlButtons = computed(() => {
     if (!isPlatformBrowser(this.platformId)) return;
     this.initializeTable();
     this.setupResizeObserver();
-    this.setupHorizontalScrollSync();
+    this.syncService.setupHorizontalScrollSync();
     this.setupResizeListeners();
   }
 
@@ -247,93 +246,8 @@ tableControlButtons = computed(() => {
     return this.columns().reduce((sum, col) => sum + (col.width || 120), 0);
   }
 
-  private setupHorizontalScrollSync(): void {
-    if (!this.viewport) return;
-
-    this.viewport.scrolledIndexChange
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.syncHeaderScroll();
-        this.checkForLoadMore();
-      });
-
-    // Store the handler reference so it can be removed
-    const scrollHandler = () => this.syncHeaderScroll();
-    const viewportElement = this.viewport.elementRef.nativeElement;
-
-    viewportElement.addEventListener('scroll', scrollHandler);
-
-    this.destroyRef.onDestroy(() => {
-      viewportElement.removeEventListener('scroll', scrollHandler);
-    });
-  }
-
-  private syncHeaderScroll(): void {
-    if (!this.viewport || !this.headerContainer?.nativeElement) return;
-
-    const scrollLeft = this.viewport.elementRef.nativeElement.scrollLeft;
-    this.headerContainer.nativeElement.scrollLeft = scrollLeft;
-  }
-
-  private checkForLoadMore(): void {
-    if (!this.viewport) return;
-
-    const end = this.viewport.getRenderedRange().end;
-    const total = this.filteredItems.length;
-
-    if (end >= total - 5 && total > 0) {
-      // Trigger load more when within 5 items of the end
-      const searchCriteria = this.searchService.buildSearchCriteria(
-        this.globalSearchQuery,
-        this.columnFilters
-      );
-      this.loadMoreItems.emit(searchCriteria);
-    }
-  }
-
   // ============ Initialization Methods ============
 
-  private updateFilteredItems(): void {
-    // Start with all items, but filter out any that are in the exclusion set.
-    const itemsToFilter = this._items.filter(
-      (item) => !this.excludedItemIds.has(item.id)
-    );
-
-    // Apply global and column-specific search queries.
-    this.filteredItems = this.searchService.performSearch(
-      itemsToFilter,
-      this.globalSearchQuery,
-      this.columnFilters
-    );
-
-    // Re-apply the current sort order to the newly filtered list.
-    if (this.currentSortColumn) {
-      const column = this.columns().find(
-        (col) => col.id === this.currentSortColumn
-      );
-      if (column) {
-        // The sortColumn method sorts `this.filteredItems` in place.
-        // this.sortColumn(column);
-      }
-    }
-
-    // Update the indices for virtual scrolling.
-    this.updateItemIndices();
-
-    // Use a small timeout to ensure the DOM has updated before syncing widths.
-    // This is crucial for accurate width calculation after filtering/sorting.
-    setTimeout(() => {
-      this.syncService.synchronizeColumnWidths();
-      this.cdr.detectChanges();
-    }, 50);
-  }
-
-  getRowStyle(item: any): { [key: string]: string } {
-    if (this.highlightedItemIds.has(item.id)) {
-      return this.highlightStyle;
-    }
-    return {};
-  }
 
   private setupSelectionEmitter(): void {
     this.selectedItems$
@@ -348,23 +262,18 @@ tableControlButtons = computed(() => {
     setTimeout(() => {
       this.detectRowHeight();
       this.calculateInitialColumnWidths();
-      this.syncService.setSyncElements(
-        this.headerTable?.nativeElement,
-        this.bodyTable?.nativeElement,
-        this.headerContainer?.nativeElement
-      );
       this.syncService.synchronizeColumnWidths();
-      this.updateItemIndices();
+      this.searchService.updateItemIndices();
     });
   }
 
   private detectRowHeight(): void {
-    if (this.tableBody?.nativeElement) {
-      const sampleRow = this.tableBody.nativeElement.querySelector('tr');
+    if (this.tableBody() && this.tableBody()!.nativeElement) {
+      const sampleRow = this.tableBody()!.nativeElement.querySelector('tr');
       if (sampleRow) {
         this.rowHeight = sampleRow.offsetHeight;
         if (this.viewport) {
-          this.viewport.checkViewportSize();
+          this.viewport()!.checkViewportSize();
         }
         this.cdr.detectChanges();
       }
@@ -375,13 +284,13 @@ tableControlButtons = computed(() => {
     if (!isPlatformBrowser(this.platformId)) return;
     this.resizeObserver = new ResizeObserver(() => {
       if (this.viewport) {
-        this.viewport.checkViewportSize();
+        this.viewport()!.checkViewportSize();
       }
       this.syncService.synchronizeColumnWidths();
     });
 
-    if (this.viewport?.elementRef.nativeElement) {
-      this.resizeObserver.observe(this.viewport.elementRef.nativeElement);
+    if (this.viewport()!.elementRef.nativeElement) {
+      this.resizeObserver.observe(this.viewport()!.elementRef.nativeElement);
     }
 
     this.destroyRef.onDestroy(() => {
@@ -399,7 +308,7 @@ tableControlButtons = computed(() => {
           120, // minimum width
           (column.header?.length || 10) * 8 + 24
         );
-        column.width = estimatedWidth; // ← This sets the width property
+        column.width = estimatedWidth;
       }
     });
   }
@@ -414,20 +323,25 @@ tableControlButtons = computed(() => {
   }
 
   private performSearch(): void {
-    const searchCriteria = this.searchService.buildSearchCriteria(
-      this.globalSearchQuery,
-      this.columnFilters
+    const searchCriteria = this.utilService.buildSearchCriteria(
+      this.dataService.globalSearchQuery,
+      this.dataService.columnFilters()
     );
 
-    this.updateFilteredItems();
+    this.searchService.updateFilteredItems();
     this.search.emit(searchCriteria);
   }
 
   /**
    * Handle column filter change
    */
+
   onColumnFilterChange(columnId: string, filterValue: string): void {
-    this.columnFilters[columnId] = filterValue;
+    const currentFilters = this.dataService.columnFilters();
+    this.dataService.columnFilters.set({
+      ...currentFilters,
+      [columnId]: filterValue,
+    });
     this.performSearch();
     this.cdr.detectChanges();
   }
@@ -438,21 +352,19 @@ tableControlButtons = computed(() => {
     if (this.isDragAndDropEnabled()) return;
 
     const columnKey = column.accessorKey || column.id;
-    this.isAscending =
-      this.currentSortColumn === columnKey ? !this.isAscending : true;
-    this.currentSortColumn = columnKey;
+    this.dataService.isAscending =
+      this.dataService.currentSortColumn === columnKey ? !this.dataService.isAscending : true;
+    this.dataService.currentSortColumn = columnKey;
 
-    this.filteredItems = this.sortService.sortItems(
-      this.filteredItems,
+    this.dataService.filteredItems = this.sortService.sortItems(
+      this.dataService.filteredItems,
       column,
-      this.isAscending,
+      this.dataService.isAscending,
       (obj, path) => this.searchService.getNestedProperty(obj, path)
     );
 
-    if (emit) this.sortChanged.emit({ column, isAscending: this.isAscending });
+    if (emit) this.sortChanged.emit({ column, isAscending: this.dataService.isAscending });
     this.cdr.detectChanges();
-    // Remove this line - sync is now called in updateFilteredItems()
-    // setTimeout(() => this.syncService.synchronizeColumnWidths(), 100);
   }
 
   // ============ Cell Value Methods ============
@@ -480,7 +392,7 @@ tableControlButtons = computed(() => {
     if (this.isDragAndDropEnabled()) {
       // Ensure item has index property before starting drag
       if (!item.hasOwnProperty('index')) {
-        const itemIndex = this.filteredItems.indexOf(item);
+        const itemIndex = this.dataService.filteredItems.indexOf(item);
         item.index = itemIndex;
         console.log('Item index updated:', item);
       }
@@ -498,7 +410,7 @@ tableControlButtons = computed(() => {
       const hovered = this.clickService.hoveredRow();
       console.log('Hovered item:', hovered);
       if (hovered) {
-        const toIndex = this.filteredItems.findIndex(
+        const toIndex = this.dataService.filteredItems.findIndex(
           (item) => item === hovered
         );
         // console.log('Calculated toIndex:', toIndex);
@@ -519,36 +431,29 @@ tableControlButtons = computed(() => {
   private moveItem(fromIndex: number, toIndex: number): void {
     requestAnimationFrame(() => {
       // Find the actual item from filteredItems
-      const movedItem = this.filteredItems[fromIndex];
+      const movedItem = this.dataService.filteredItems[fromIndex];
 
       // Find the original index in the master _items array
-      const originalFromIndex = this._items.findIndex((i) => i === movedItem);
+      const originalFromIndex = this.dataService.items().findIndex((i) => i === movedItem);
 
       // Find the target item in filteredItems to determine where to move in _items
-      const targetItem = this.filteredItems[toIndex];
-      const originalToIndex = this._items.findIndex((i) => i === targetItem);
+      const targetItem = this.dataService.filteredItems[toIndex];
+      const originalToIndex = this.dataService.items().findIndex((i) => i === targetItem);
 
       if (originalFromIndex !== -1 && originalToIndex !== -1) {
         // Perform the move in the master array
-        const [itemToMove] = this._items.splice(originalFromIndex, 1);
-        this._items.splice(originalToIndex, 0, itemToMove);
+        const [itemToMove] = this.dataService.items().splice(originalFromIndex, 1);
+        this.dataService.items().splice(originalToIndex, 0, itemToMove);
 
         // Re-apply filtering and sorting to get the new filteredItems
-        this.updateFilteredItems();
+        this.searchService.updateFilteredItems();
 
         // Emit the reordered master list
-        this.itemsReordered.emit([...this._items]);
+        this.itemsReordered.emit([...this.dataService.items()]);
 
         this.cdr.detectChanges();
       }
     });
-  }
-
-  private updateItemIndices(): void {
-    this.filteredItems.forEach((item, index) => {
-      item.index = index;
-    });
-    this.cdr.markForCheck();
   }
 
   onDragOver(event: MouseEvent): void {
@@ -658,12 +563,6 @@ tableControlButtons = computed(() => {
 
   // ============ Utility Methods ============
 
-  private syncHorizontalScroll(): void {
-    if (!this.viewport || !this.headerContainer?.nativeElement) return;
-    const scrollLeft = this.viewport.measureScrollOffset('left');
-    this.headerContainer.nativeElement.scrollLeft = scrollLeft;
-  }
-
   isItemSelected(item: any): boolean {
     return this.selectedItems().some((i) => i.id === item.id);
   }
@@ -681,7 +580,6 @@ tableControlButtons = computed(() => {
     this.clickService.onDestroy();
   }
 }
-
 
 // import {
 //   AfterViewInit,
@@ -862,7 +760,7 @@ tableControlButtons = computed(() => {
 //   // Move effects to field initializers
 //   private itemsEffect = effect(() => {
 //     const items = this.items();
-//     this._items = items;
+//     this.dataService.items() = items;
 //     this.updateFilteredItems();
 //     this.cdr.detectChanges();
 //   });
@@ -1042,7 +940,7 @@ tableControlButtons = computed(() => {
 
 //   private updateFilteredItems(): void {
 //     // Start with all items, but filter out any that are in the exclusion set.
-//     const itemsToFilter = this._items.filter(
+//     const itemsToFilter = this.dataService.items().filter(
 //       (item) => !this.excludedItemIds.has(item.id)
 //     );
 
@@ -1279,22 +1177,22 @@ tableControlButtons = computed(() => {
 //       const movedItem = this.filteredItems[fromIndex];
 
 //       // Find the original index in the master _items array
-//       const originalFromIndex = this._items.findIndex((i) => i === movedItem);
+//       const originalFromIndex = this.dataService.items().findIndex((i) => i === movedItem);
 
 //       // Find the target item in filteredItems to determine where to move in _items
 //       const targetItem = this.filteredItems[toIndex];
-//       const originalToIndex = this._items.findIndex((i) => i === targetItem);
+//       const originalToIndex = this.dataService.items().findIndex((i) => i === targetItem);
 
 //       if (originalFromIndex !== -1 && originalToIndex !== -1) {
 //         // Perform the move in the master array
-//         const [itemToMove] = this._items.splice(originalFromIndex, 1);
-//         this._items.splice(originalToIndex, 0, itemToMove);
+//         const [itemToMove] = this.dataService.items().splice(originalFromIndex, 1);
+//         this.dataService.items().splice(originalToIndex, 0, itemToMove);
 
 //         // Re-apply filtering and sorting to get the new filteredItems
 //         this.updateFilteredItems();
 
 //         // Emit the reordered master list
-//         this.itemsReordered.emit([...this._items]);
+//         this.itemsReordered.emit([...this.dataService.items()]);
 
 //         this.cdr.detectChanges();
 //       }
@@ -1339,7 +1237,7 @@ tableControlButtons = computed(() => {
 //   }
 
 //   private handleSingleClick(item: any, event: MouseEvent) {
-//     const normalizedItem = this._items.find((i) => i.id === item.id) || item;
+//     const normalizedItem = this.dataService.items().find((i) => i.id === item.id) || item;
 
 //     if (event.ctrlKey) {
 //       this.onRowCtrlClick(normalizedItem);
@@ -1362,7 +1260,7 @@ tableControlButtons = computed(() => {
 //     event.preventDefault();
 //     event.stopPropagation();
 
-//     const normalizedItem = this._items.find((i) => i.id === item.id) || item;
+//     const normalizedItem = this.dataService.items().find((i) => i.id === item.id) || item;
 //     console.log('Middle click detected');
 
 //     // Handle cell mode vs row mode
@@ -1389,7 +1287,7 @@ tableControlButtons = computed(() => {
 //     setTimeout(() => {
 //       this.isProcessingDoubleClick = false;
 //     }, 600);
-//     const normalizedItem = this._items.find((i) => i.id === item.id) || item;
+//     const normalizedItem = this.dataService.items().find((i) => i.id === item.id) || item;
 
 //     if (this.tableMode() === 'cell') {
 //       if (!this.lastClickedCell) {
@@ -1406,7 +1304,7 @@ tableControlButtons = computed(() => {
 
 //   onRowRightClick(item: any, event: MouseEvent): void {
 //     event.preventDefault();
-//     const normalizedItem = this._items.find((i) => i.id === item.id) || item;
+//     const normalizedItem = this.dataService.items().find((i) => i.id === item.id) || item;
 
 //     if (this.tableMode() === 'cell') {
 //       if (this.lastClickedCell) {
@@ -1435,7 +1333,7 @@ tableControlButtons = computed(() => {
 //       return;
 //     }
 
-//     this.selectionService.selectRange(this._items, lastItem, item);
+//     this.selectionService.selectRange(this.dataService.items(), lastItem, item);
 //   }
 
 //   clearSelection(): void {
@@ -1446,7 +1344,7 @@ tableControlButtons = computed(() => {
 //     if (this.deleteItem) {
 //       this.selectionService.deleteSelected(this.deleteItem);
 //       const deletedIds = new Set(this.selectedItems().map((item) => item.id));
-//       this._items = this._items.filter((item) => !deletedIds.has(item.id));
+//       this.dataService.items() = this.dataService.items().filter((item) => !deletedIds.has(item.id));
 //       this.updateFilteredItems();
 //       this.cdr.detectChanges();
 //     }
