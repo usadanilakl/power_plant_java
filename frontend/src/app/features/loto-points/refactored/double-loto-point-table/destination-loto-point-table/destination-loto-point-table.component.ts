@@ -5,11 +5,19 @@ import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { ButtonColor } from '../../../../../shared/menu/buttons/buttons.component';
 import { TableClickService } from '../../../../../shared/table/refactored/services/table-click.service';
 import { DestinationLotoPointTableClickService } from './destination-loto-point-table-click.service';
+import { TableSelectionService } from '../../../../../shared/table/refactored/services/table-selection.service';
+import { TableDragService } from '../../../../../shared/table/refactored/services/table-drag.service';
+import { TableControlsService } from '../../../../../shared/table/refactored/services/table-controls.service';
+import { TableStateService } from '../../../../../shared/table/refactored/services/table-state.service';
 
 @Component({
   selector: 'app-destination-loto-point-table',
   imports: [RfLotoPointTableComponent],
     providers: [
+      TableSelectionService,
+      TableDragService,
+    TableControlsService,
+    TableStateService,
       { provide: TableClickService, useClass: DestinationLotoPointTableClickService  }
     ],
   templateUrl: './destination-loto-point-table.component.html',

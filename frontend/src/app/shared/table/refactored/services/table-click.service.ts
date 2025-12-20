@@ -13,6 +13,8 @@ export class TableClickService {
   private selectionService = inject(TableSelectionService);
   protected stateService = inject(TableStateService);
   private destroyRef = inject(DestroyRef);
+  
+  public debugInstanceId = `TableClickService-${Math.random().toString(36).substr(2, 9)}`;
 
   // Internal state
   private lastClickedCell = signal<{ item: any; column: Column } | null>(null);
@@ -66,15 +68,17 @@ export class TableClickService {
     if (this.singleClickTimeout) {
       clearTimeout(this.singleClickTimeout);
       this.singleClickTimeout = null;
-      console.log('Single click cancelled - double click detected');
-      this.handleRowDoubleClick(item, event);
+      console.log('Single click cancelled - double click detected in mode: ', this.stateService.tableMode());
+      if(this.stateService.tableMode()==='row') this.handleRowDoubleClick(item, event);
+      else if(this.stateService.tableMode()==='cell') this.handleCellDoubleClick(item, this.lastClickedCell()?.column!);
       return;
     }
 
     this.singleClickTimeout = setTimeout(() => {
       this.singleClickTimeout = null;
       console.log('Single click executed');
-      this.handleRowLeftClick(item, event);
+      if(this.stateService.tableMode()==='row') this.handleRowLeftClick(item, event);
+      else this.handleCellClick(item, this.lastClickedCell()?.column!);
     }, this.doubleClickWindow);
   }
 
@@ -162,30 +166,29 @@ export class TableClickService {
   /**
    * Default row left click handler - OVERRIDE in subclasses
    */
-  protected handleRowLeftClick(item: any, event: MouseEvent): void {
-    const normalizedItem = this.normalizeItem(item);
-    console.log('🔴 Default: Single click detected on item:', normalizedItem);
+    protected handleRowLeftClick(item: any, event: MouseEvent): void {
+      const normalizedItem = this.normalizeItem(item);
+      // console.log('🔴 Default: Single click detected on item:', normalizedItem);
 
-    if (event.ctrlKey) {
-      this.selectionService.toggleItem(normalizedItem);
-    } else if (event.shiftKey) {
-      const lastItem = this.lastClickedRow()?.item;
-      if (!lastItem) {
-        this.selectionService.selectItem(normalizedItem);
+      if (event.ctrlKey) {
+        this.selectionService.toggleItem(normalizedItem);
+      } else if (event.shiftKey) {
+        const lastItem = this.lastClickedRow()?.item;
+        if (!lastItem) {
+          this.selectionService.selectItem(normalizedItem);
+        } else {
+          this.selectionService.selectRange(this.allItems(), lastItem, normalizedItem);
+        }
       } else {
-        this.selectionService.selectRange(this.allItems(), lastItem, normalizedItem);
-      }
-    } else {
-      this.selectionService.clearSelection();
-      if (this.stateService.tableMode() === 'cell' && this.lastClickedCell()) {
-        // Cell mode - handled by cellClicked
-      } else {
-        this.lastClickedRow.set({ item: normalizedItem, event });
+        this.selectionService.clearSelection();
+        if (this.stateService.tableMode() === 'cell' && this.lastClickedCell()) {
+          // Cell mode - handled by cellClicked
+        } else {
+          this.lastClickedRow.set({ item: normalizedItem, event });
+        }
       }
     }
-  }
-  
-public debugInstanceId = `TableClickService-${Math.random().toString(36).substr(2, 9)}`;
+
   /**
    * Default row double click handler - OVERRIDE in subclasses
    */

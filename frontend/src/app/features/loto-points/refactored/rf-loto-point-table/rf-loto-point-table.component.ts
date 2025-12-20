@@ -35,6 +35,7 @@ import { ContextMenuComponent } from "../../../../shared/menu/context-menu/conte
 import { TableMode } from '../../../../shared/table/refactored/services/table-state.service';
 import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
 import { RfLotoPointClickService } from '../services/rf-loto-point-click.service';
+import { TableSelectionService } from '../../../../shared/table/refactored/services/table-selection.service';
 
 @Component({
   selector: 'app-rf-loto-point-table',

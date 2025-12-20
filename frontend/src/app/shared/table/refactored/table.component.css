@@ -244,7 +244,7 @@ th, td {
 }
 
 .table-body tbody tr.ghost-row {
-  border-top: 3px solid var(--accent-color, #2196f3);
+  /* border-top: 3px solid var(--accent-color, #2196f3); */
   background-color: var(--accent-color-shadow, #f0f8ff);
 }
 

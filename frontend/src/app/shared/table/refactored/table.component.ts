@@ -69,14 +69,12 @@ export interface FilterOutRules {
     TableDragService,
     // TableClickService,
     TableSyncService,
-    TableSelectionService,
+    // TableSelectionService,
     TableResizeService,
     TableSearchService,
     TableSortService,
-    TableSelectionService,
-    TableResizeService,
-    TableControlsService,
-    TableStateService
+    // TableControlsService,
+    // TableStateService
   ],
   templateUrl: './table.component.html',
   styleUrl: './table.component.css',
@@ -157,7 +155,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   lastClickedItem = this.selectionService.lastClickedItem$;
 
   protected _items: any[] = [];
-  hoveredItem = signal<any>(null);
+  hoveredItem = this.clickService.hoveredRow;
   private selectedItems$ = toObservable(this.selectedItems).pipe(
     takeUntilDestroyed(this.destroyRef)
   );
@@ -484,6 +482,7 @@ tableControlButtons = computed(() => {
       if (!item.hasOwnProperty('index')) {
         const itemIndex = this.filteredItems.indexOf(item);
         item.index = itemIndex;
+        console.log('Item index updated:', item);
       }
       this.dragService.startDrag(item, { x: event.clientX, y: event.clientY });
       event.preventDefault();
@@ -491,13 +490,13 @@ tableControlButtons = computed(() => {
   }
 
   onMouseUp(event: MouseEvent): void {
-    // console.log('onMouseUp triggered');
+    console.log('onMouseUp triggered');
     const dragState = this.dragService.getDragState();
-    // console.log('Drag state:', dragState);
+    console.log('Drag state:', dragState);
     if (dragState.isDragging && dragState.startIndex !== null) {
-      // console.log('Item was being dragged. Start index:', dragState.startIndex);
-      const hovered = this.hoveredItem();
-      // console.log('Hovered item:', hovered);
+      console.log('Item was being dragged. Start index:', dragState.startIndex);
+      const hovered = this.clickService.hoveredRow();
+      console.log('Hovered item:', hovered);
       if (hovered) {
         const toIndex = this.filteredItems.findIndex(
           (item) => item === hovered
@@ -666,7 +665,6 @@ tableControlButtons = computed(() => {
   }
 
   isItemSelected(item: any): boolean {
-    console.log('Checking if item is selected:', this.selectedItems().length);
     return this.selectedItems().some((i) => i.id === item.id);
   }
 

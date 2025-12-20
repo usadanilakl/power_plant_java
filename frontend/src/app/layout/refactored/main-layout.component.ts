@@ -298,6 +298,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   private dragOffsetY = 0;
 
   private initClipbordDragAndDrop(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     if (this.clipboardContainer) {
       this.clipboardContainer.nativeElement.addEventListener(
         'mousedown',

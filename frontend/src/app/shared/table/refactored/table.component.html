@@ -68,7 +68,6 @@
             (dragover)="onDragOver($event)"
             (click)="clickService.onRowClick(item, $event)"
             (auxclick)="$event.preventDefault(); $event.stopPropagation()"
-            (dblclick)="clickService.onRowDoubleClick(item, $event)"
             (contextmenu)="clickService.onRowRightClick(item, $event)"
             (mouseenter)="clickService.onRowHover(item)"
           >
