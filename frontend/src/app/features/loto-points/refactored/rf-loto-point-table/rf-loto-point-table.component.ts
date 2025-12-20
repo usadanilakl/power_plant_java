@@ -13,7 +13,8 @@ import {
   Injector,
   EffectRef,
   runInInjectionContext,
-  OnDestroy
+  OnDestroy,
+  InjectFlags
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
@@ -48,10 +49,6 @@ import { RfLotoPointClickService } from '../services/rf-loto-point-click.service
 ],
   providers: [
     ContextMenuComponent,
-    {
-      provide: TableClickService,
-      useClass: RfLotoPointClickService, // ✅ Use specialized service
-    },
   ],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',

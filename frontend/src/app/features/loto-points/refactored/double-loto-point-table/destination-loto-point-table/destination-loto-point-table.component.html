@@ -1,0 +1,14 @@
+
+  <div class="table-wrapper">
+    <div class="table-header">
+      <h3>Selected LOTO Points</h3>
+      <span class="item-count">{{ doubleTableService.currentSelectedItems().length }} items</span>
+    </div>
+    <app-rf-loto-point-table
+      [inputItems]="doubleTableService.currentSelectedItems()"
+      [enableDragDrop]="true"
+      [loadMoreEnabled]="false"
+      [selectionControlButtonsInput]="bulkControlButtonsForDestinationTable"
+      (selectedItemsEvent)="selectedTableHighlightedItems.set($event)">
+    </app-rf-loto-point-table>
+  </div>

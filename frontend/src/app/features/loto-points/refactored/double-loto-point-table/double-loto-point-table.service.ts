@@ -3,23 +3,83 @@ import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-poi
 import { Column } from '../../../../models/column.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { RfLotoPointClickService } from '../services/rf-loto-point-click.service';
+import { FilterOutRules } from '../../../../shared/table/refactored/table.component';
 
-@Injectable()
-export class DoubleLotoPointTableClickService extends RfLotoPointClickService {
-
-    doubleClickedRow = signal<LotoPointDto | null>(null);
+@Injectable({
+  providedIn: 'root'
+})
+export class DoubleLotoPointTableService{
+  selectedItems = signal<LotoPointDto[]>([]);
+  currentSelectedItems = signal<LotoPointDto[]>([]);
+  filterOutRules = signal<FilterOutRules>({
+    action: 'highlight',
+    items: this.selectedItems(),
+    style: { 'background-color': 'lightyellow' },
+  });
 
   /**
-   * Override: Handle row double click for LOTO points
+   * Handle adding multiple items to selected items
    */
-  protected override handleRowDoubleClick(item: any, event: MouseEvent): void {
-    const normalizedItem = this.normalizeItem(item) as LotoPointDto;
-    console.log('🟢 LOTO: Double click -', normalizedItem);
-    console.log(`🆔 [${this.debugInstanceId}] LOTO double click:`, item);
-
-    this.doubleClickedRow.set(normalizedItem);
+  onAddItemsToSelected(items: LotoPointDto[]): void {
+    const currentSelected = this.currentSelectedItems();
+    const currentIds = new Set(currentSelected.map(item => item.id));
     
-    // this.lotoStateService.setSelectedItem(normalizedItem);
-    // Emit event or trigger form opening
+    // Filter out items that already exist
+    const newItems = items.filter(item => !currentIds.has(item.id));
+    
+    if (newItems.length === 0) {
+      return; // No new items to add
+    }
+    
+    const updated = [...currentSelected, ...newItems];
+    this.currentSelectedItems.set(updated);
+  }
+  
+  /**
+   * Handle removing multiple items from selected items
+   */
+  onRemoveItemsFromSelected(items: LotoPointDto[]): void {
+    const currentSelected = this.currentSelectedItems();
+    const itemsToRemoveIds = new Set(items.map(item => item.id));
+    
+    const updated = currentSelected.filter(item => !itemsToRemoveIds.has(item.id));
+    
+    if (updated.length === currentSelected.length) {
+      return; // No items were removed
+    }
+    
+    this.currentSelectedItems.set(updated);
+  }
+
+  /**
+   * Add item to selected items
+   */
+  addItemToSelected(item: LotoPointDto): void {
+    const selected = this.currentSelectedItems();
+
+    // Check if item already exists
+    if (selected.some((s) => s.id === item.id)) {
+      return;
+    }
+
+    const updated = [...selected, item];
+    this.currentSelectedItems.set(updated);
+  }
+
+  /**
+   * Remove item from selected items
+   */
+  removeItemFromSelected(item: LotoPointDto): void {
+    const selected = this.currentSelectedItems();
+    const updated = selected.filter((s) => s.id !== item.id);
+
+    this.currentSelectedItems.set(updated);
+  }
+
+  /**
+   * Handle reordering of selected items
+   */
+  onSelectedItemsReordered(items: LotoPointDto[]): void {
+    this.currentSelectedItems.set(items);
   }
 }

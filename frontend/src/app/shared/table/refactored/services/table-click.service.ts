@@ -6,7 +6,9 @@ import { Column } from '../../../../models/column.model';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root'
+})
 export class TableClickService {
   private selectionService = inject(TableSelectionService);
   protected stateService = inject(TableStateService);
@@ -182,6 +184,7 @@ export class TableClickService {
       }
     }
   }
+  
 public debugInstanceId = `TableClickService-${Math.random().toString(36).substr(2, 9)}`;
   /**
    * Default row double click handler - OVERRIDE in subclasses

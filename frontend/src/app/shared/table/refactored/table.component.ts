@@ -86,7 +86,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   private destroyRef = inject(DestroyRef);
   private cdr = inject(ChangeDetectorRef);
   private dragService = inject(TableDragService);
-  public readonly clickService = inject(TableClickService);
+  public clickService = inject(TableClickService);
   private syncService = inject(TableSyncService);
   private searchService = inject(TableSearchService);
   private sortService = inject(TableSortService);
@@ -341,6 +341,7 @@ tableControlButtons = computed(() => {
     this.selectedItems$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((items) => {
+        console.log('Selected items:', items);
         this.selectedItemsEvent.emit(items);
       });
   }
@@ -665,6 +666,7 @@ tableControlButtons = computed(() => {
   }
 
   isItemSelected(item: any): boolean {
+    console.log('Checking if item is selected:', this.selectedItems().length);
     return this.selectedItems().some((i) => i.id === item.id);
   }
 

@@ -6,7 +6,9 @@ import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-poi
 import { Column } from '../../../../models/column.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root'
+})
 export class RfLotoPointClickService extends TableClickService {
   private lotoStateService = inject(RfLotoPointStateService);
   private contextMenuService = inject(LotoPointContextMenuService);
@@ -14,26 +16,6 @@ export class RfLotoPointClickService extends TableClickService {
   constructor() {
     super();
     console.log(`��� [${this.debugInstanceId}] Initialized`);
-  }
-
-  /**
-   * Override: Handle row left click for LOTO points
-   */
-  protected override handleRowLeftClick(item: any, event: MouseEvent): void {
-    const normalizedItem = this.normalizeItem(item) as LotoPointDto;
-    console.log('🔴 LOTO: Single click -', normalizedItem);
-
-    if (event.ctrlKey) {
-      // Multi-select mode
-      console.log('LOTO: Control+click - toggle selection');
-    } else if (event.shiftKey) {
-      // Range select mode
-      console.log('LOTO: Shift+click - range selection');
-    } else {
-      // Single select - open form
-      this.lotoStateService.setSelectedItem(normalizedItem);
-      console.log('LOTO: Selected item set:', normalizedItem);
-    }
   }
 
   /**
