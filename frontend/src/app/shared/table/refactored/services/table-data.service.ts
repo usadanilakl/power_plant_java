@@ -1,4 +1,4 @@
-import { ElementRef, Injectable, signal, TemplateRef } from "@angular/core";
+import { computed, ElementRef, Injectable, signal, TemplateRef } from "@angular/core";
 import { Column } from "../../../../models/column.model";
 import { ButtonConfig } from "../../../menu/buttons/buttons.component";
 import { ClickSetup, FilterOutRules } from "../table.component";
@@ -37,13 +37,23 @@ export class TableDataService {
   currentSortColumn: string | null = null;
   isAscending: boolean = true;
 
+  selectedItems = signal<any[]>([]);
+  hoveredRow = signal<any | undefined>(undefined);
+
+  rowHeight = 50;
+  totalTableWidth = computed(() => this.columns().reduce((sum, col) => sum + (col.width || 120), 0))
+
   // ViewChild signals - set from component
   headerContainer = signal<ElementRef<HTMLDivElement> | undefined>(undefined);
   headerTable = signal<ElementRef<HTMLTableElement> | undefined>(undefined);
   bodyTable = signal<ElementRef<HTMLTableElement> | undefined>(undefined);
+  tableBody = signal<ElementRef<HTMLDivElement> | undefined>(undefined);
   viewport = signal<CdkVirtualScrollViewport | undefined>(undefined);
   selectionActionsTemplate = signal<TemplateRef<any> | undefined>(undefined);
 
   //Output Signals
   loadMoreItems = signal<SearchCriteria>({});
+  search = signal<SearchCriteria>({});
+  sortChanged = signal<{ column: Column; isAscending: boolean } | null>(null);
+  itemsReordered = signal<any[]>([]);
 }

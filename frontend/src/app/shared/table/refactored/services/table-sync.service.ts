@@ -1,9 +1,10 @@
 
-import { DestroyRef, inject, Injectable } from '@angular/core';
+import { DestroyRef, inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { SynchronizationState } from '../models/table.types';
 import { TableDataService } from './table-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TableUtilService } from './table-util.service';
+import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({
   providedIn: 'root',
@@ -12,6 +13,9 @@ export class TableSyncService {
   private dataService = inject(TableDataService);
   private utilServce = inject(TableUtilService);
   private destroyRef = inject(DestroyRef);
+  private platformId = inject(PLATFORM_ID);
+
+  private resizeObserver?: ResizeObserver;
 
   private syncState: SynchronizationState = {
     headerTable: null,
@@ -132,5 +136,65 @@ export class TableSyncService {
       return this.dataService.highlightStyle;
     }
     return {};
+  }
+  initializeTable(): void {
+    setTimeout(() => {
+      this.detectRowHeight();
+      this.calculateInitialColumnWidths();
+      this.synchronizeColumnWidths();
+      this.utilServce.updateItemIndices(this.dataService.filteredItems);
+    });
+  }
+
+  private detectRowHeight(): void {
+    if (
+      this.dataService.tableBody() &&
+      this.dataService.tableBody()!.nativeElement
+    ) {
+      const sampleRow = this.dataService
+        .tableBody()!
+        .nativeElement.querySelector('tr');
+      if (sampleRow) {
+        this.dataService.rowHeight = sampleRow.offsetHeight;
+        if (this.dataService.viewport()) {
+          this.dataService.viewport()!.checkViewportSize();
+        }
+      }
+    }
+  }
+
+  private calculateInitialColumnWidths(): void {
+    if (!this.dataService.columns() || this.dataService.columns().length === 0)
+      return;
+
+    this.dataService.columns().forEach((column) => {
+      if (!column.width || column.width === 0) {
+        // Estimate width: ~8px per character + padding
+        const estimatedWidth = Math.max(
+          120, // minimum width
+          (column.header?.length || 10) * 8 + 24
+        );
+        column.width = estimatedWidth;
+      }
+    });
+  }
+  setupResizeObserver(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.dataService.viewport()) {
+        this.dataService.viewport()!.checkViewportSize();
+      }
+      this.synchronizeColumnWidths();
+    });
+
+    if (this.dataService.viewport()!.elementRef.nativeElement) {
+      this.resizeObserver.observe(
+        this.dataService.viewport()!.elementRef.nativeElement
+      );
+    }
+
+    this.destroyRef.onDestroy(() => {
+      this.resizeObserver?.disconnect();
+    });
   }
 }

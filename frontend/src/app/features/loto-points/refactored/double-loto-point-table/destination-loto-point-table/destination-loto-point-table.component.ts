@@ -10,34 +10,42 @@ import { TableDragService } from '../../../../../shared/table/refactored/service
 import { TableControlsService } from '../../../../../shared/table/refactored/services/table-controls.service';
 import { TableStateService } from '../../../../../shared/table/refactored/services/table-state.service';
 import { TableDataService } from '../../../../../shared/table/refactored/services/table-data.service';
+import { TableSearchService } from '../../../../../shared/table/refactored/services/table-search.service';
+import { TableSortService } from '../../../../../shared/table/refactored/services/table-sort.service';
 
 @Component({
   selector: 'app-destination-loto-point-table',
   imports: [RfLotoPointTableComponent],
-    providers: [
-      TableSelectionService,
-      TableDragService,
-      TableControlsService,
-      TableStateService,
-      TableDataService,
-      { provide: TableClickService, useClass: DestinationLotoPointTableClickService  }
-    ],
+  providers: [
+    TableSelectionService,
+    TableDragService,
+    TableControlsService,
+    TableStateService,
+    TableDataService,
+    TableSelectionService,
+    TableSearchService,
+    TableSortService,
+    {
+      provide: TableClickService,
+      useClass: DestinationLotoPointTableClickService,
+    },
+  ],
   templateUrl: './destination-loto-point-table.component.html',
-  styleUrl: './destination-loto-point-table.component.css'
+  styleUrl: './destination-loto-point-table.component.css',
 })
 export class DestinationLotoPointTableComponent {
   doubleTableService = inject(DoubleLotoPointTableService);
-  
-  
+
   selectedTableHighlightedItems = signal<LotoPointDto[]>([]);
   bulkControlButtonsForDestinationTable = [
-    { 
-      name: 'Remove Selected', 
-      action: () => { 
-        this.doubleTableService.onRemoveItemsFromSelected(this.selectedTableHighlightedItems()) 
-      }, 
-      color: 'primary' as ButtonColor
+    {
+      name: 'Remove Selected',
+      action: () => {
+        this.doubleTableService.onRemoveItemsFromSelected(
+          this.selectedTableHighlightedItems()
+        );
+      },
+      color: 'primary' as ButtonColor,
     },
-  ]
-
+  ];
 }

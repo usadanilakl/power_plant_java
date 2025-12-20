@@ -1,42 +1,44 @@
-import { Injectable, signal } from "@angular/core";
+import { inject, Injectable, signal } from "@angular/core";
 import { DragState } from "../models/table.types";
+import { TableDataService } from "./table-data.service";
+import { TableSearchService } from "./table-search.service";
 
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TableDragService {
-  private dragState = signal<DragState & { startIndex: number | null }>({
+  dataService = inject(TableDataService);
+  searchService = inject(TableSearchService);
+
+  dragState = signal<DragState & { startIndex: number | null }>({
     isDragging: false,
     draggedItem: null,
     startPosition: { x: 0, y: 0 },
     ghostRowIndex: null,
-    startIndex: null // Add startIndex to the state
+    startIndex: null, // Add startIndex to the state
   });
-
-  // Note: We don't expose startIndex in the public-facing type if not needed elsewhere
-  dragState$ = this.dragState.asReadonly();
 
   startDrag(item: any, position: { x: number; y: number }): void {
     // Ensure item has index before dragging
     if (!item.hasOwnProperty('index')) {
       console.warn('Item missing index property during drag start');
     }
-    
-    this.dragState.update(state => ({
+
+    this.dragState.update((state) => ({
       ...state,
       isDragging: true,
       draggedItem: { ...item }, // Create a copy to preserve original state
       startPosition: position,
       ghostRowIndex: item.index, // Initialize ghost row to current position
-      startIndex: item.index // <<< Store the original index here
+      startIndex: item.index, // <<< Store the original index here
     }));
   }
 
   updateGhostRow(rowIndex: number | null): void {
-    this.dragState.update(state => ({
+    this.dragState.update((state) => ({
       ...state,
-      ghostRowIndex: rowIndex
+      ghostRowIndex: rowIndex,
     }));
     console.log('Updated ghost row:', rowIndex);
   }
@@ -50,11 +52,94 @@ export class TableDragService {
       draggedItem: null,
       startPosition: { x: 0, y: 0 },
       ghostRowIndex: null,
-      startIndex: null // Reset startIndex
+      startIndex: null, // Reset startIndex
     });
   }
 
   getDragState(): DragState & { startIndex: number | null } {
     return this.dragState();
+  }
+
+  // ============ Drag and Drop Methods ============
+
+  onMouseDown(event: MouseEvent, item: any): void {
+    if (this.dataService.isDragAndDropEnabled()) {
+      // Ensure item has index property before starting drag
+      if (!item.hasOwnProperty('index')) {
+        const itemIndex = this.dataService.filteredItems.indexOf(item);
+        item.index = itemIndex;
+        console.log('Item index updated:', item);
+      }
+      this.startDrag(item, { x: event.clientX, y: event.clientY });
+      event.preventDefault();
+    }
+  }
+
+  onMouseUp(event: MouseEvent): void {
+    console.log('onMouseUp triggered');
+    const dragState = this.getDragState();
+    console.log('Drag state:', dragState);
+    if (dragState.isDragging && dragState.startIndex !== null) {
+      console.log('Item was being dragged. Start index:', dragState.startIndex);
+      const hovered = this.dataService.hoveredRow();
+      console.log('Hovered item:', hovered);
+      if (hovered) {
+        const toIndex = this.dataService.filteredItems.findIndex(
+          (item) => item === hovered
+        );
+        // console.log('Calculated toIndex:', toIndex);
+        if (toIndex !== -1) {
+          // console.log(`Moving item from ${dragState.startIndex} to ${toIndex}`);
+          this.moveItem(dragState.startIndex, toIndex);
+        } else {
+          console.log('Hovered item not found in filteredItems, not moving.');
+        }
+      } else {
+        console.log('No item was hovered, not moving.');
+      }
+    }
+    this.endDrag();
+    // console.log('Drag ended.');
+  }
+
+  private moveItem(fromIndex: number, toIndex: number): void {
+    requestAnimationFrame(() => {
+      // Find the actual item from filteredItems
+      const movedItem = this.dataService.filteredItems[fromIndex];
+
+      // Find the original index in the master _items array
+      const originalFromIndex = this.dataService
+        .items()
+        .findIndex((i) => i === movedItem);
+
+      // Find the target item in filteredItems to determine where to move in _items
+      const targetItem = this.dataService.filteredItems[toIndex];
+      const originalToIndex = this.dataService
+        .items()
+        .findIndex((i) => i === targetItem);
+
+      if (originalFromIndex !== -1 && originalToIndex !== -1) {
+        // Perform the move in the master array
+        const [itemToMove] = this.dataService
+          .items()
+          .splice(originalFromIndex, 1);
+        this.dataService.items().splice(originalToIndex, 0, itemToMove);
+
+        // Re-apply filtering and sorting to get the new filteredItems
+        this.searchService.updateFilteredItems();
+
+        // Emit the reordered master list
+        this.dataService.itemsReordered.set([...this.dataService.items()]);
+      }
+    });
+  }
+
+  onDragOver(event: MouseEvent): void {
+    event.preventDefault();
+  }
+
+  isItemDragged(item: any): boolean {
+    const dragState = this.getDragState();
+    return dragState.draggedItem?.id === item.id;
   }
 }

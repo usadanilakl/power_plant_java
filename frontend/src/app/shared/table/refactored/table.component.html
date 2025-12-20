@@ -1,12 +1,12 @@
 
-<div class="table-wrapper" [class.resizing]="isResizing()">
+<div class="table-wrapper" [class.resizing]="resizeService.isResizing()">
 
   <div class="search-bar">
     <input
       type="text"
       placeholder="Global Search"
       [(ngModel)]="dataService.globalSearchQuery"
-      (input)="onGlobalSearchChange()"
+      (input)="searchService.onGlobalSearchChange()"
       class="global-search"
     />
   </div>
@@ -17,13 +17,13 @@
   </div>
 
   <div #headerContainer class="header-container">
-    <table #headerTable class="table table-header" [style.width.px]="totalTableWidth">
+    <table #headerTable class="table table-header" [style.width.px]="dataService.totalTableWidth()">
       <thead>
         <tr>
           <th *ngFor="let column of columns()" 
-              [style.width.px]="getColumnWidth(column.id)"
+              [style.width.px]="resizeService.getColumnWidth(column.id)"
               class="sortable-header">
-            <div class="header-content" (click)="sortColumn(column, true)">
+            <div class="header-content" (click)="sortService.sortColumn(column, true)">
               <span>{{ column.header }}</span>
               <span *ngIf="dataService.currentSortColumn === column.id" 
                     class="sort-indicator">
@@ -35,13 +35,13 @@
               *ngIf="column.filterable"
               [uniqueValues]="columnUniqueOptions()"
               [isLoadingMore]="isLoadingMore()"
-              (filterChange)="onColumnFilterChange(column.accessorKey!, $event)"
+              (filterChange)="searchService.onColumnFilterChange(column.accessorKey!, $event)"
               (loadMoreOptions)="loadMoreOptions.emit({column: column.id, filter: $event})"
               (loadInitialOptions)="loadInitialOptions.emit({column: column.id, filter: $event})"
             ></app-column-filter-input>
             <div class="resize-handle"
-                 (mousedown)="onResizeStart($event, column.id, getColumnWidth(column.id))"
-                 [class.resizing]="getResizingColumnId() === column.id">
+                 (mousedown)="resizeService.onResizeStart($event, column.id, resizeService.getColumnWidth(column.id))"
+                 [class.resizing]="resizeService.getResizingColumnId() === column.id">
             </div>
           </th>
         </tr>
@@ -51,21 +51,21 @@
 
   <div #tableContainer class="table-container">
     <cdk-virtual-scroll-viewport
-      [itemSize]="rowHeight"
+      [itemSize]="dataService.rowHeight"
       class="viewport"
     >
-      <table #bodyTable class="table table-body" [style.width.px]="totalTableWidth">
+      <table #bodyTable class="table table-body" [style.width.px]="dataService.totalTableWidth()">
         <tbody>
           <tr
-            *cdkVirtualFor="let item of dataService.filteredItems; trackBy: trackByItemId"
-            [class.drag-hover-top]="item === hoveredItem() && dragState().isDragging"
-            [class.selected]="isItemSelected(item)"
-            [class.dragged]="isItemDragged(item)"
+            *cdkVirtualFor="let item of dataService.filteredItems; trackBy: utilService.trackByItemId"
+            [class.drag-hover-top]="item === dataService.hoveredRow() && dragService.dragState().isDragging"
+            [class.selected]="selectionService.isItemSelected(item)"
+            [class.dragged]="dragService.isItemDragged(item)"
             [ngStyle]="syncService.getRowStyle(item)"
-            [class.ghost-row]="dragState().ghostRowIndex === item.index"
-            (mousedown)="onMouseDown($event, item)"
-            (mouseup)="onMouseUp($event)"
-            (dragover)="onDragOver($event)"
+            [class.ghost-row]="dragService.dragState().ghostRowIndex === item.index"
+            (mousedown)="dragService.onMouseDown($event, item)"
+            (mouseup)="dragService.onMouseUp($event)"
+            (dragover)="dragService.onDragOver($event)"
             (click)="clickService.onRowClick(item, $event)"
             (auxclick)="$event.preventDefault(); $event.stopPropagation()"
             (contextmenu)="clickService.onRowRightClick(item, $event)"
@@ -73,7 +73,7 @@
           >
             <td
               *ngFor="let column of columns()"
-              [style.width.px]="getColumnWidth(column.id)"
+              [style.width.px]="resizeService.getColumnWidth(column.id)"
               [ngStyle]="clickService.getCellStyleWithHover(item, column)"
               (mousedown)="clickService.registerCellClick(item, column, $event)"
               (auxclick)="clickService.onRowMiddleClick(item, $event)"
@@ -82,7 +82,7 @@
               class="table-cell"
             >
               <span *ngIf="!column.template">
-                {{ getCellValue(item, column) }}
+                {{ utilService.getCellValue(item, column) }}
               </span>
               <ng-container *ngIf="column.template">
                 <ng-container *ngTemplateOutlet="column.template; context: { $implicit: item, column: column }"></ng-container>
@@ -98,129 +98,15 @@
     <p>No items found</p>
   </div>
 
-  <div *ngIf="selectedItems().length > 0" class="selection-info">
-    <span>{{ selectedItems().length }} item(s) selected</span>
+  <div *ngIf="dataService.selectedItems().length > 0" class="selection-info">
+    <span>{{ dataService.selectedItems().length }} item(s) selected</span>
     <ng-container #selectionActions>
       <ng-content select="[table-selection-actions]" 
                    [ngTemplateOutletContext]="{ $implicit: selectedItems() }">
       </ng-content>
     </ng-container>
-    <button (click)="clearSelection()" class="clear-btn">
+    <button (click)="selectionService.clearSelection()" class="clear-btn">
       Clear Selection
     </button>
   </div>
 </div>
-
-
-<!-- <div class="table-wrapper" [class.resizing]="isResizing()">
-
-  <div class="search-bar">
-    <input
-      type="text"
-      placeholder="Global Search"
-      [(ngModel)]="globalSearchQuery"
-      (input)="onGlobalSearchChange()"
-      class="global-search"
-    />
-  </div>
-  
-  <div class="table-controls">
-     <app-buttons [buttons]="tableControlButtons()"></app-buttons>
-  </div>
-
-  <div #headerContainer class="header-container">
-    <table #headerTable class="table table-header" [style.width.px]="totalTableWidth">
-      <thead>
-        <tr>
-          <th *ngFor="let column of columns()" 
-              [style.width.px]="getColumnWidth(column.id)"
-              class="sortable-header">
-            <div class="header-content" (click)="sortColumn(column, true)">
-              <span>{{ column.header }}</span>
-              <span *ngIf="currentSortColumn === column.id" 
-                    class="sort-indicator">
-                {{ isAscending ? '▲' : '▼' }}
-              </span>
-            </div>
-            
-            <app-column-filter-input
-              *ngIf="column.filterable"
-              [uniqueValues]="columnUniqueOptions()"
-              [isLoadingMore]="isLoadingMore()"
-              (filterChange)="onColumnFilterChange(column.accessorKey!, $event)"
-              (loadMoreOptions)="loadMoreOptions.emit({column: column.id, filter: $event})"
-              (loadInitialOptions)="loadInitialOptions.emit({column: column.id, filter: $event})"
-            ></app-column-filter-input>
-            <div class="resize-handle"
-                 (mousedown)="onResizeStart($event, column.id, getColumnWidth(column.id))"
-                 [class.resizing]="getResizingColumnId() === column.id">
-            </div>
-          </th>
-        </tr>
-      </thead>
-    </table>
-  </div>
-
-  <div #tableContainer class="table-container">
-    <cdk-virtual-scroll-viewport
-      [itemSize]="rowHeight"
-      class="viewport"
-    >
-      <table #bodyTable class="table table-body" [style.width.px]="totalTableWidth">
-        <tbody>
-          <tr
-            *cdkVirtualFor="let item of filteredItems; trackBy: trackByItemId"
-            [class.drag-hover-top]="item === hoveredItem() && dragState().isDragging"
-            [class.selected]="isItemSelected(item)"
-            [class.dragged]="isItemDragged(item)"
-            [ngStyle]="getRowStyle(item)"
-            [class.ghost-row]="dragState().ghostRowIndex === item.index"
-            (mousedown)="onMouseDown($event, item)"
-            (mouseup)="onMouseUp($event)"
-            (dragover)="onDragOver($event)"
-            (click)="onRowClick(item, $event)"
-            (auxclick)="$event.preventDefault(); $event.stopPropagation()"
-            (dblclick)="onRowDoubleClick(item)"
-            (contextmenu)="onRowRightClick(item, $event)"
-            (mouseenter)="onRowHover(item)"
-          >
-            <td
-              *ngFor="let column of columns()"
-              [style.width.px]="getColumnWidth(column.id)"
-              [ngStyle]="getCellStyleWithHover(item, column)"
-              (mousedown)="registerLastClickedCell(item, column, $event)"
-              (auxclick)="handleMiddleClick(item, $event)"
-              (mouseenter)="onCellHover(item, column)"
-              (mouseleave)="onCellLeave()"
-              class="table-cell"
-            >
-              <span *ngIf="!column.template">
-                {{ getCellValue(item, column) }}
-              </span>
-              <ng-container *ngIf="column.template">
-                <ng-container *ngTemplateOutlet="column.template; context: { $implicit: item, column: column }"></ng-container>
-              </ng-container>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </cdk-virtual-scroll-viewport>
-  </div>
-
-  <div *ngIf="filteredItems.length === 0" class="empty-state">
-    <p>No items found</p>
-  </div>
-
-  <div *ngIf="selectedItems().length > 0" class="selection-info">
-    <span>{{ selectedItems().length }} item(s) selected</span>
-    <ng-container #selectionActions>
-      <ng-content select="[table-selection-actions]" 
-                   [ngTemplateOutletContext]="{ $implicit: selectedItems() }">
-      </ng-content>
-    </ng-container>
-    <button (click)="clearSelection()" class="clear-btn">
-      Clear Selection
-    </button>
-  </div>
-</div> -->
-

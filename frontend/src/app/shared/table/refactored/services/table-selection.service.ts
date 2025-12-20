@@ -2,14 +2,16 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { ClipboardService } from '../../../clipboard/clipboard.service';
 import { BaseModel } from '../../../../models/base/base.model';
+import { TableDataService } from './table-data.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class TableSelectionService {
   private clipboardService = inject(ClipboardService);
+  private dataService = inject(TableDataService);
 
-  selectedItems = signal<any[]>([]);
+  selectedItems = this.dataService.selectedItems;
   private lastClickedItem = signal<any | null>(null);
 
   selectedItems$ = this.selectedItems.asReadonly();
@@ -79,20 +81,35 @@ export class TableSelectionService {
     this.clearSelection();
   }
 
-  
-    /**
-     * Add items to specific section
-     */
-    addToClipboard(): void {
-      console.log('Adding items to clipboard:', this.selectedItems());
-      if (!this.selectedItems() || this.selectedItems().length === 0) return;
-      const objectType = this.selectedItems()[0].objectType ?? 'Other';
-      const items = this.selectedItems();
-      items.forEach((item) => {
-        if (!item.objectType) {
-          item.objectType = objectType;
-        }
-      });
-      this.clipboardService.addItems(this.selectedItems());
+  /**
+   * Add items to specific section
+   */
+  addToClipboard(): void {
+    console.log('Adding items to clipboard:', this.selectedItems());
+    if (!this.selectedItems() || this.selectedItems().length === 0) return;
+    const objectType = this.selectedItems()[0].objectType ?? 'Other';
+    const items = this.selectedItems();
+    items.forEach((item) => {
+      if (!item.objectType) {
+        item.objectType = objectType;
+      }
+    });
+    this.clipboardService.addItems(this.selectedItems());
+  }
+
+  isItemSelected(item: any): boolean {
+    return this.selectedItems().some((i) => i.id === item.id);
+  }
+
+  /**
+   * Delete selected items
+   */
+  deleteSelectedItems(deleteItemFn: (ids: any[]) => void): void {
+    const selectedItems = this.selectedItems();
+    if (selectedItems.length > 0) {
+      const ids = selectedItems.map((item) => item.id);
+      deleteItemFn(ids);
+      this.clearSelection();
     }
+  }
 }

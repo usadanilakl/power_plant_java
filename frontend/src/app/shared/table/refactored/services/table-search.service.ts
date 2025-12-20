@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { TableDataService } from './table-data.service';
 import { TableSyncService } from './table-sync.service';
+import { TableUtilService } from './table-util.service';
 
 @Injectable({
   providedIn: 'root',
@@ -10,6 +11,7 @@ import { TableSyncService } from './table-sync.service';
 export class TableSearchService {
   private dataService = inject(TableDataService);
   private syncService = inject(TableSyncService);
+  private utilService = inject(TableUtilService);
   performSearch(
     items: any[],
     globalQuery: string,
@@ -34,21 +36,9 @@ export class TableSearchService {
   ): boolean {
     return Object.entries(filters).every(([key, value]) => {
       if (!value) return true;
-      const itemValue = this.getNestedProperty(item, key);
+      const itemValue = this.utilService.getNestedProperty(item, key);
       return String(itemValue).toLowerCase().includes(value.toLowerCase());
     });
-  }
-
-  getNestedProperty(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => {
-      if (current == null) return '';
-      if (key.includes('[') && key.includes(']')) {
-        const [arrayKey, indexStr] = key.split(/[\[\]]/);
-        const index = parseInt(indexStr);
-        return current[arrayKey]?.[index] ?? '';
-      }
-      return current[key] ?? '';
-    }, obj);
   }
 
   updateFilteredItems(): void {
@@ -76,7 +66,7 @@ export class TableSearchService {
     }
 
     // Update the indices for virtual scrolling.
-    this.updateItemIndices();
+    this.utilService.updateItemIndices(this.dataService.filteredItems);
 
     // Use a small timeout to ensure the DOM has updated before syncing widths.
     // This is crucial for accurate width calculation after filtering/sorting.
@@ -85,11 +75,35 @@ export class TableSearchService {
       // this.cdr.detectChanges();
     }, 50);
   }
-
-  updateItemIndices(): void {
-    this.dataService.filteredItems.forEach((item, index) => {
-      item.index = index;
-    });
-    // this.cdr.markForCheck();
-  }
+  
+    onGlobalSearchChange(): void {
+      this.search();
+    }
+  
+    onColumnSearchChange(): void {
+      this.search();
+    }
+  
+    search(): void {
+      const searchCriteria = this.utilService.buildSearchCriteria(
+        this.dataService.globalSearchQuery,
+        this.dataService.columnFilters()
+      );
+  
+      this.updateFilteredItems();
+      this.dataService.search.set({...searchCriteria});
+    }
+  
+    /**
+     * Handle column filter change
+     */
+  
+    onColumnFilterChange(columnId: string, filterValue: string): void {
+      const currentFilters = this.dataService.columnFilters();
+      this.dataService.columnFilters.set({
+        ...currentFilters,
+        [columnId]: filterValue,
+      });
+      this.search();
+    }
 }
