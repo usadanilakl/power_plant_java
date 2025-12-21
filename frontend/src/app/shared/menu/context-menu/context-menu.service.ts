@@ -1,10 +1,13 @@
-import { computed, Injectable, signal } from "@angular/core";
+import { computed, inject, Injectable, signal } from "@angular/core";
 import { ContextMenuAction } from "./context-menu.component";
+import { ClipboardService } from "../../clipboard/clipboard.service";
 
 @Injectable({
     providedIn: "root"
 })
 export class ContextMenuService {
+
+  protected clibpoardService = inject(ClipboardService);
       // Context menu state
   contextMenuVisible = signal<boolean>(false);
   contextMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -23,10 +26,10 @@ export class ContextMenuService {
         action: (item) => this.handleEdit(item),
       },
       {
-        id: 'duplicate',
-        label: 'Duplicate',
+        id: 'clipboard',
+        label: 'Add to Clipboard',
         icon: '📋',
-        action: (item) => this.handleDuplicate(item),
+        action: (item) => this.handleClipboard(item),
       },
       {
         id: 'divider1',
@@ -70,9 +73,8 @@ export class ContextMenuService {
     // Implement edit logic
   }
 
-  private handleDuplicate(item: any): void {
-    console.log('Duplicating:', item);
-    // Implement duplicate logic
+  private handleClipboard(item: any): void {
+    this.clibpoardService.addItem(item);
   }
 
   private handleVerify(item: any): void {

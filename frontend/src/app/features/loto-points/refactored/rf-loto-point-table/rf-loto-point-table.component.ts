@@ -15,15 +15,18 @@ import { RfLotoPointStateService } from '../services/rf-loto-point-state.service
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { FilterOutRules, TableComponent } from '../../../../shared/table/refactored/table.component';
+import {
+  FilterOutRules,
+  TableComponent,
+} from '../../../../shared/table/refactored/table.component';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
-import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-point-context-menu.service';
-import { RfLotoPointFormComponent } from "../rf-loto-point-form/rf-loto-point-form.component";
-import { PopupProjectionComponent } from "../../../../shared/popup-projection/popup-projection.component";
-import { ContextMenuComponent } from "../../../../shared/menu/context-menu/context-menu.component";
+import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
+import { RfLotoPointFormComponent } from '../rf-loto-point-form/rf-loto-point-form.component';
+import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
+import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
 
 @Component({
   selector: 'app-rf-loto-point-table',
@@ -33,17 +36,13 @@ import { ContextMenuComponent } from "../../../../shared/menu/context-menu/conte
     TableComponent,
     RfLotoPointFormComponent,
     PopupProjectionComponent,
-    ContextMenuComponent
-],
-  providers: [
     ContextMenuComponent,
   ],
+  providers: [ContextMenuComponent],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',
 })
-export class RfLotoPointTableComponent implements OnInit{
-
-  
+export class RfLotoPointTableComponent implements OnInit {
   private apiService = inject(RfLotoPointApiService);
   protected stateService = inject(RfLotoPointStateService);
   private mapperService = inject(LotoPointMapperService);
@@ -74,7 +73,7 @@ export class RfLotoPointTableComponent implements OnInit{
   items$ = toSignal(this.stateService.allLoadedLotoPoints$, {
     initialValue: [],
   });
-  
+
   columns = signal<Column[]>([]);
   isLoading = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
@@ -82,7 +81,6 @@ export class RfLotoPointTableComponent implements OnInit{
   items = computed(() => {
     return this.inputItems() ?? this.items$();
   });
-
 
   constructor() {
     // Initialize columns whenever fieldsToDisplay changes
@@ -95,7 +93,6 @@ export class RfLotoPointTableComponent implements OnInit{
   ngOnInit(): void {
     this.loadInitialData();
   }
-
 
   /**
    * Load initial batch of LOTO points
@@ -333,6 +330,4 @@ export class RfLotoPointTableComponent implements OnInit{
       )
       .subscribe();
   }
-
 }
-

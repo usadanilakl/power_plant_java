@@ -1,13 +1,13 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-point-context-menu.service';
+import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
 import { Column } from '../../../../models/column.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { FilterOutRules } from '../../../../shared/table/refactored/table.component';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
-export class DoubleLotoPointTableService{
+export class DoubleLotoPointTableService {
   selectedItems = signal<LotoPointDto[]>([]);
   currentSelectedItems = signal<LotoPointDto[]>([]);
   filterOutRules = signal<FilterOutRules>({
@@ -20,34 +20,36 @@ export class DoubleLotoPointTableService{
    * Handle adding multiple items to selected items
    */
   onAddItemsToSelected(items: LotoPointDto[]): void {
-    console.log('adding items; ', items)
+    console.log('adding items; ', items);
     const currentSelected = this.currentSelectedItems();
-    const currentIds = new Set(currentSelected.map(item => item.id));
-    
+    const currentIds = new Set(currentSelected.map((item) => item.id));
+
     // Filter out items that already exist
-    const newItems = items.filter(item => !currentIds.has(item.id));
-    
+    const newItems = items.filter((item) => !currentIds.has(item.id));
+
     if (newItems.length === 0) {
       return; // No new items to add
     }
-    
+
     const updated = [...currentSelected, ...newItems];
     this.currentSelectedItems.set(updated);
   }
-  
+
   /**
    * Handle removing multiple items from selected items
    */
   onRemoveItemsFromSelected(items: LotoPointDto[]): void {
     const currentSelected = this.currentSelectedItems();
-    const itemsToRemoveIds = new Set(items.map(item => item.id));
-    
-    const updated = currentSelected.filter(item => !itemsToRemoveIds.has(item.id));
-    
+    const itemsToRemoveIds = new Set(items.map((item) => item.id));
+
+    const updated = currentSelected.filter(
+      (item) => !itemsToRemoveIds.has(item.id)
+    );
+
     if (updated.length === currentSelected.length) {
       return; // No items were removed
     }
-    
+
     this.currentSelectedItems.set(updated);
   }
 
