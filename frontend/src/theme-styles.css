@@ -21,6 +21,10 @@
   --menu-item-hover-bg-color: var(--secondary-background);
   --menu-item-active-text-color: var(--accent-color-hover);
   --menu-item-active-indicator-color: var(--accent-color);
+
+
+  --success-background: #c8e6c9;
+  --error-background: #ffcdd2;
 }
 
 /* Dark Theme */
@@ -46,6 +50,10 @@
   --menu-item-hover-bg-color: var(--secondary-background);
   --menu-item-active-text-color: var(--accent-color-hover);
   --menu-item-active-indicator-color: var(--accent-color);
+
+
+  --success-background: #2e7d32;
+  --error-background: #c62828;
 }
 
 

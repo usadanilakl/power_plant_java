@@ -14,6 +14,8 @@ export class LotoPointMapperService {
   isoPosOptions = signal<Option[]> ([]);
   normPosOptions = signal<Option[]> ([]);
 
+
+
   /**
    * Maps LotoPointDto fields to table columns
    * @param fields - Array of field names to include in columns
@@ -35,17 +37,19 @@ export class LotoPointMapperService {
         accessorKey: 'id',
         width: 80,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       isVerified: {
         id: 'isVerified',
         header: 'Verified',
-        accessorFn: (item: LotoPointDto) => item.isVerified ? 'Yes' : 'No',
-        width: 40,
+        accessorFn: (item: LotoPointDto) => (item.isVerified ? 'Yes' : 'No'),
+        width: 80,
         filterable: true,
         sortable: true,
         conditionalStyling: (item: any, column: Column) =>
-          item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
+          item.isVerified
+            ? { 'background-color': 'var(--success-background, #c8e6c9)' }
+            : { 'background-color': 'var(--error-background, #ffcdd2)' },
       },
       tagNumber: {
         id: 'tagNumber',
@@ -54,8 +58,10 @@ export class LotoPointMapperService {
         width: 200,
         filterable: true,
         sortable: true,
-        conditionalStyling: (item: any, column: Column) =>
-          !item.tagNumber ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+        // conditionalStyling: (item: any, column: Column) =>
+        //   !item.tagNumber
+        //     ? { 'background-color': 'var(--error-background, #c8e6c9)' }
+        //     : { 'background-color': 'var(--success-background, #ffcdd2)' },
       },
       description: {
         id: 'description',
@@ -63,7 +69,7 @@ export class LotoPointMapperService {
         accessorKey: 'description',
         width: 250,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       specificLocation: {
         id: 'specificLocation',
@@ -71,7 +77,7 @@ export class LotoPointMapperService {
         accessorKey: 'specificLocation',
         width: 180,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       unit: {
         id: 'unit',
@@ -79,7 +85,7 @@ export class LotoPointMapperService {
         accessorKey: 'unit',
         width: 100,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       tagged: {
         id: 'tagged',
@@ -87,7 +93,7 @@ export class LotoPointMapperService {
         accessorKey: 'tagged',
         width: 130,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       lotos: {
         id: 'lotos',
@@ -95,7 +101,7 @@ export class LotoPointMapperService {
         accessorFn: (item: LotoPointDto) => this.formatLotosList(item.lotos),
         width: 200,
         filterable: false,
-        sortable: false
+        sortable: false,
       },
       isoPos: {
         id: 'isoPos',
@@ -104,7 +110,7 @@ export class LotoPointMapperService {
         accessorFn: (item: LotoPointDto) => item.isoPos?.name || 'N/A',
         width: 150,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       normPos: {
         id: 'normPos',
@@ -113,7 +119,7 @@ export class LotoPointMapperService {
         accessorFn: (item: LotoPointDto) => item.normPos?.name || 'N/A',
         width: 150,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       zeroEnergyMethod: {
         id: 'zeroEnergyMethod',
@@ -121,7 +127,7 @@ export class LotoPointMapperService {
         accessorKey: 'zeroEnergyMethod',
         width: 180,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       standard: {
         id: 'standard',
@@ -129,7 +135,7 @@ export class LotoPointMapperService {
         accessorKey: 'standard',
         width: 120,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       generalLocation: {
         id: 'generalLocation',
@@ -137,23 +143,25 @@ export class LotoPointMapperService {
         accessorKey: 'generalLocation',
         width: 180,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       equipmentIdList: {
         id: 'equipmentIdList',
         header: 'Equipment IDs',
-        accessorFn: (item: LotoPointDto) => this.formatEquipmentList(item.equipmentList),
+        accessorFn: (item: LotoPointDto) =>
+          this.formatEquipmentList(item.equipmentList),
         width: 200,
         filterable: false,
-        sortable: false
+        sortable: false,
       },
       equipmentList: {
         id: 'equipmentList',
         header: 'Equipment',
-        accessorFn: (item: LotoPointDto) => this.formatEquipmentList(item.equipmentList),
+        accessorFn: (item: LotoPointDto) =>
+          this.formatEquipmentList(item.equipmentList),
         width: 200,
         filterable: false,
-        sortable: false
+        sortable: false,
       },
       normalPosition: {
         id: 'normalPosition',
@@ -161,7 +169,7 @@ export class LotoPointMapperService {
         accessorKey: 'normalPosition',
         width: 150,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       isolatedPosition: {
         id: 'isolatedPosition',
@@ -169,7 +177,7 @@ export class LotoPointMapperService {
         accessorKey: 'isolatedPosition',
         width: 150,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       oldId: {
         id: 'oldId',
@@ -177,7 +185,7 @@ export class LotoPointMapperService {
         accessorKey: 'oldId',
         width: 100,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       objectType: {
         id: 'objectType',
@@ -185,17 +193,19 @@ export class LotoPointMapperService {
         accessorKey: 'objectType',
         width: 130,
         filterable: true,
-        sortable: true
+        sortable: true,
       },
       isUpdated: {
         id: 'isUpdated',
         header: 'Updated',
-        accessorFn: (item: LotoPointDto) => item.isUpdated ? 'Yes' : 'No',
+        accessorFn: (item: LotoPointDto) => (item.isUpdated ? 'Yes' : 'No'),
         width: 100,
         filterable: true,
         sortable: true,
         conditionalStyling: (item: any, column: Column) =>
-          item.isUpdated ? { 'background-color': '#fff3cd' } : { 'background-color': '' }
+          item.isUpdated
+            ? { 'background-color': '#fff3cd' }
+            : { 'background-color': '' },
       },
       conflictStatus: {
         id: 'conflictStatus',
@@ -205,7 +215,9 @@ export class LotoPointMapperService {
         filterable: true,
         sortable: true,
         conditionalStyling: (item: any, column: Column) =>
-          item.conflictStatus ? { 'background-color': '#ffcccc' } : { 'background-color': '' }
+          item.conflictStatus
+            ? { 'background-color': '#ffcccc' }
+            : { 'background-color': '' },
       },
       fileIds: {
         id: 'fileIds',
@@ -213,7 +225,7 @@ export class LotoPointMapperService {
         accessorFn: (item: LotoPointDto) => this.formatFileIds(item.fileIds),
         width: 100,
         filterable: false,
-        sortable: false
+        sortable: false,
       },
       name: {
         id: 'name',
@@ -221,8 +233,8 @@ export class LotoPointMapperService {
         accessorKey: 'name',
         width: 150,
         filterable: true,
-        sortable: true
-      }
+        sortable: true,
+      },
     };
 
     return fields

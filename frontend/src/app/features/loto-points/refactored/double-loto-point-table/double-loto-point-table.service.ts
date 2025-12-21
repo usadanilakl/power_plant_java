@@ -2,7 +2,6 @@ import { Injectable, inject, signal } from '@angular/core';
 import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-point-context-menu.service';
 import { Column } from '../../../../models/column.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
-import { RfLotoPointClickService } from '../services/rf-loto-point-click.service';
 import { FilterOutRules } from '../../../../shared/table/refactored/table.component';
 
 @Injectable({
@@ -21,6 +20,7 @@ export class DoubleLotoPointTableService{
    * Handle adding multiple items to selected items
    */
   onAddItemsToSelected(items: LotoPointDto[]): void {
+    console.log('adding items; ', items)
     const currentSelected = this.currentSelectedItems();
     const currentIds = new Set(currentSelected.map(item => item.id));
     

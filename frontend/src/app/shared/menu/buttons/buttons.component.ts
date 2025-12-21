@@ -28,6 +28,7 @@ export class ButtonsComponent {
 
   onButtonClick(button: ButtonConfig): void {
     if (!button.disabled) {
+      console.log('Button clicked:', button.name);
       button.action();
     }
   }

@@ -3,37 +3,4 @@
   <div class="divider"></div>
   <app-destination-loto-point-table></app-destination-loto-point-table>
 </div>
-<!-- <div class="double-table-container">
-  <div class="table-wrapper available-table">
-    <div class="table-header">
-      <h3>Available LOTO Points</h3>
-    </div>
-    <app-rf-loto-point-table
-      [enableDragDrop]="false"
-      [loadMoreEnabled]="true"
-      [selectionControlButtonsInput]="bulkControlButtonsForSourceTable"
-      (selectedItemsEvent)="availableTableHighlightedItems.set($event)"
-      [filterOutItems]="filterOutRules()"
-      (rowDoubleClickEvent)="onAvailableItemDoubleClick($event)">
-    </app-rf-loto-point-table>
-  </div>
 
-  <div class="divider"></div>
-
-  <div class="table-wrapper selected-table">
-    <div class="table-header">
-      <h3>Selected LOTO Points</h3>
-      <span class="item-count">{{ currentSelectedItems().length }} items</span>
-    </div>
-    <app-rf-loto-point-table
-      [inputItems]="currentSelectedItems()"
-      [enableDragDrop]="enableDragDropOnSelected()"
-      [loadMoreEnabled]="false"
-      [fieldsToDisplay]="fieldsToDisplay()"
-      [selectionControlButtonsInput]="bulkControlButtonsForDestinationTable"
-      (selectedItemsEvent)="selectedTableHighlightedItems.set($event)"
-      (rowDoubleClickEvent)="onSelectedItemDoubleClick($event)"
-      (itemsReorderedEvent)="onSelectedItemsReordered($event)">
-    </app-rf-loto-point-table>
-  </div>
-</div> -->

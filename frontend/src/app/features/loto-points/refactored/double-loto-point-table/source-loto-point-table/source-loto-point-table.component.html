@@ -6,8 +6,6 @@
     <app-rf-loto-point-table
       [enableDragDrop]="false"
       [loadMoreEnabled]="true"
-      [selectionControlButtonsInput]="bulkControlButtonsForSourceTable"
-      (selectedItemsEvent)="availableTableHighlightedItems.set($event)"
       [filterOutItems]="doubleTableService.filterOutRules()">
     </app-rf-loto-point-table>
   </div>

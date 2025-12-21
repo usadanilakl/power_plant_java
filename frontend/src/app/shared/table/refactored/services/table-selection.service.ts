@@ -1,7 +1,6 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { ClipboardService } from '../../../clipboard/clipboard.service';
-import { BaseModel } from '../../../../models/base/base.model';
 import { TableDataService } from './table-data.service';
 
 @Injectable()

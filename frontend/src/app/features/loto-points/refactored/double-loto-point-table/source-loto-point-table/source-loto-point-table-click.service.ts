@@ -1,8 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { RfLotoPointClickService } from '../../services/rf-loto-point-click.service';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { DoubleLotoPointTableService } from '../double-loto-point-table.service';
-import { Column } from '../../../../../models/column.model';
+import { RfLotoPointClickService } from '../../rf-loto-point-table/rf-loto-point-click.service';
 
 
 @Injectable()

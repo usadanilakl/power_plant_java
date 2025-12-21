@@ -72,7 +72,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   protected sortService = inject(TableSortService);
   protected selectionService = inject(TableSelectionService);
   protected resizeService = inject(TableResizeService);
-  private controlsService = inject(TableControlsService);
+  protected controlsService = inject(TableControlsService);
   protected dataService = inject(TableDataService);
   protected utilService = inject(TableUtilService);
 
@@ -89,9 +89,6 @@ export class TableComponent implements OnInit, AfterViewInit {
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],
   });
-
-  tableControlButtonsInput = input<ButtonConfig[] | undefined>();
-  defaultTableControlsEnabled = input<boolean>(true);
 
   // Outputs
   loadMoreItems = output<SearchCriteria>();
@@ -148,13 +145,6 @@ export class TableComponent implements OnInit, AfterViewInit {
       }
     }
     this.searchService.updateFilteredItems();
-  });
-
-  tableControlButtons = computed(() => {
-    return this.controlsService.getTableControlButtons(
-      this.tableControlButtonsInput(),
-      this.defaultTableControlsEnabled()
-    );
   });
 
   columnUniqueValuesMap = computed(() => {

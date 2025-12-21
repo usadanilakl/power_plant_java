@@ -20,8 +20,6 @@ export class TableDataService {
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],
   });
-  tableControlButtonsInput = signal<ButtonConfig[] | undefined>(undefined);
-  defaultTableControlsEnabled = signal<boolean>(true);
 
   //Calculated Values
   filteredItems: any[] = [];

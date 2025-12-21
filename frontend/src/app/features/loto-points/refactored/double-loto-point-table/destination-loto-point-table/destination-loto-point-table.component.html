@@ -7,8 +7,6 @@
     <app-rf-loto-point-table
       [inputItems]="doubleTableService.currentSelectedItems()"
       [enableDragDrop]="true"
-      [loadMoreEnabled]="false"
-      [selectionControlButtonsInput]="bulkControlButtonsForDestinationTable"
-      (selectedItemsEvent)="selectedTableHighlightedItems.set($event)">
+      [loadMoreEnabled]="false">
     </app-rf-loto-point-table>
   </div>

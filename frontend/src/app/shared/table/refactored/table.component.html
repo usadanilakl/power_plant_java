@@ -13,7 +13,7 @@
   
   <div class="table-controls">
     <!-- <ng-content select="[table-controls]"></ng-content> -->
-     <app-buttons [buttons]="tableControlButtons()"></app-buttons>
+     <app-buttons [buttons]="controlsService.tableControlButtons()"></app-buttons>
   </div>
 
   <div #headerContainer class="header-container">
@@ -100,13 +100,6 @@
 
   <div *ngIf="dataService.selectedItems().length > 0" class="selection-info">
     <span>{{ dataService.selectedItems().length }} item(s) selected</span>
-    <ng-container #selectionActions>
-      <ng-content select="[table-selection-actions]" 
-                   [ngTemplateOutletContext]="{ $implicit: selectedItems() }">
-      </ng-content>
-    </ng-container>
-    <button (click)="selectionService.clearSelection()" class="clear-btn">
-      Clear Selection
-    </button>
+     <app-buttons [buttons]="controlsService.tableSelectionControls()"></app-buttons>
   </div>
 </div>

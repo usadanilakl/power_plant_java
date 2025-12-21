@@ -1,44 +1,76 @@
-import { computed, inject, Injectable, signal } from "@angular/core";
-import { TableStateService } from "./table-state.service";
-import { ButtonColor, ButtonConfig } from "../../../menu/buttons/buttons.component";
-import { TableSelectionService } from "./table-selection.service";
-
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { TableStateService } from './table-state.service';
+import {
+  ButtonColor,
+  ButtonConfig,
+} from '../../../menu/buttons/buttons.component';
+import { TableSelectionService } from './table-selection.service';
+import { TableDataService } from './table-data.service';
 
 @Injectable()
 export class TableControlsService {
-  private tableStateService = inject(TableStateService);
-  private selectionService = inject(TableSelectionService);
+  protected tableStateService = inject(TableStateService);
+  protected selectionService = inject(TableSelectionService);
+  protected dataService = inject(TableDataService);
 
-  // ✅ Use a method instead of signals
-  getTableControlButtons(
-    inputButtons?: ButtonConfig[],
-    defaultEnabled: boolean = true
-  ): ButtonConfig[] {
-    if (inputButtons && !defaultEnabled) {
-      return inputButtons;
-    }
-    if (!inputButtons && defaultEnabled) {
-      return this.getDefaultTableControlButtons();
-    }
-    if (inputButtons && defaultEnabled) {
-      return [...this.getDefaultTableControlButtons(), ...inputButtons];
-    }
-    return [];
-  }
+  // ✅ Allow parent services to override with custom buttons
+  customTableControlButtons = signal<ButtonConfig[] | undefined>(undefined);
+  customTableSelectionControls = signal<ButtonConfig[] | undefined>(undefined);
 
-  private getDefaultTableControlButtons(): ButtonConfig[] {
+  // ✅ Use computed signal with fallback to default buttons
+  tableControlButtons = computed<ButtonConfig[]>(() => {
+    const customButtons = this.customTableControlButtons();
+
+    // If custom buttons are provided, use them
+    if (customButtons) {
+      return customButtons;
+    }
+
+    // Otherwise, use default buttons
+    return this.getDefaultTableControlButtons();
+  });
+
+  tableSelectionControls = computed<ButtonConfig[]>(() => {
+    const customButtons = this.customTableSelectionControls();
+
+    // If custom buttons are provided, use them
+    if (customButtons) {
+      return customButtons;
+    }
+
+    // Otherwise, use default buttons
+    return this.getDefaultTableSelectionControls();
+  });
+
+  /**
+   * Default table control buttons
+   */
+  protected getDefaultTableControlButtons(): ButtonConfig[] {
+    const currentMode = this.tableStateService.tableMode();
+
     return [
       {
-        name: 'Row-Mode',
-        action: () => this.tableStateService.setTableMode('row'),
-        color: 'primary' as ButtonColor,
-        icon: 'view_agenda',
+        name: currentMode === 'row' ? 'Cell-Mode' : 'Row-Mode',
+        action: () =>
+          this.tableStateService.setTableMode(
+            currentMode === 'row' ? 'cell' : 'row'
+          ),
+        color: currentMode === 'row' ? 'warn' : ('primary' as ButtonColor),
+        icon: currentMode === 'row' ? 'grid_on' : 'view_agenda',
       },
+    ];
+  }
+
+  /**
+   * Default table selection controls
+   */
+  protected getDefaultTableSelectionControls(): ButtonConfig[] {
+    return [
       {
-        name: 'Cell-Mode',
-        action: () => this.tableStateService.setTableMode('cell'),
-        color: 'warn' as ButtonColor,
-        icon: 'grid_on',
+        name: 'Clear Selection',
+        action: () => this.selectionService.clearSelection(),
+        color: 'accent' as ButtonColor,
+        icon: 'clear_all',
       },
       {
         name: 'Add to Clipboard',
@@ -47,5 +79,52 @@ export class TableControlsService {
         icon: 'content_copy',
       },
     ];
+  }
+
+  /**
+   * Allow parent services to set custom control buttons (fully override)
+   */
+  setCustomTableControlButtons(buttons: ButtonConfig[]): void {
+    this.customTableControlButtons.set(buttons);
+  }
+
+  /**
+   * Allow parent services to set custom selection controls (fully override)
+   */
+  setCustomTableSelectionControls(buttons: ButtonConfig[]): void {
+    this.customTableSelectionControls.set(buttons);
+  }
+
+  /**
+   * Allow parent services to combine custom buttons with defaults
+   */
+  addTableControlButtons(buttons: ButtonConfig[]): void {
+    const current =
+      this.customTableControlButtons() ?? this.getDefaultTableControlButtons();
+    this.customTableControlButtons.set([...current, ...buttons]);
+  }
+
+  /**
+   * Allow parent services to combine custom selection controls with defaults
+   */
+  addTableSelectionControls(buttons: ButtonConfig[]): void {
+    const current =
+      this.customTableSelectionControls() ??
+      this.getDefaultTableSelectionControls();
+    this.customTableSelectionControls.set([...current, ...buttons]);
+  }
+
+  /**
+   * Reset to default buttons
+   */
+  resetTableControlButtons(): void {
+    this.customTableControlButtons.set(undefined);
+  }
+
+  /**
+   * Reset to default selection controls
+   */
+  resetTableSelectionControls(): void {
+    this.customTableSelectionControls.set(undefined);
   }
 }

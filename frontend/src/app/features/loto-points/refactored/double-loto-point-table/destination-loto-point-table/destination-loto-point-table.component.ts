@@ -14,24 +14,28 @@ import { TableSearchService } from '../../../../../shared/table/refactored/servi
 import { TableSortService } from '../../../../../shared/table/refactored/services/table-sort.service';
 import { TableResizeService } from '../../../../../shared/table/refactored/services/table-resize.service';
 import { TableSyncService } from '../../../../../shared/table/refactored/services/table-sync.service';
+import { DestinationLotoPointTableControlService } from './destination-loto-point-table-control.service';
 
 @Component({
   selector: 'app-destination-loto-point-table',
   imports: [RfLotoPointTableComponent],
   providers: [
-      TableSelectionService,
-      TableDragService,
-      TableControlsService,
-      TableStateService,
-      TableDataService,
-      TableSelectionService,
-      TableSearchService,
-      TableSortService,
-      TableResizeService,
-      TableSyncService,
+    TableSelectionService,
+    TableDragService,
+    TableStateService,
+    TableDataService,
+    TableSelectionService,
+    TableSearchService,
+    TableSortService,
+    TableResizeService,
+    TableSyncService,
     {
       provide: TableClickService,
       useClass: DestinationLotoPointTableClickService,
+    },
+    {
+      provide: TableControlsService,
+      useClass: DestinationLotoPointTableControlService,
     },
   ],
   templateUrl: './destination-loto-point-table.component.html',
@@ -40,16 +44,4 @@ import { TableSyncService } from '../../../../../shared/table/refactored/service
 export class DestinationLotoPointTableComponent {
   doubleTableService = inject(DoubleLotoPointTableService);
 
-  selectedTableHighlightedItems = signal<LotoPointDto[]>([]);
-  bulkControlButtonsForDestinationTable = [
-    {
-      name: 'Remove Selected',
-      action: () => {
-        this.doubleTableService.onRemoveItemsFromSelected(
-          this.selectedTableHighlightedItems()
-        );
-      },
-      color: 'primary' as ButtonColor,
-    },
-  ];
 }

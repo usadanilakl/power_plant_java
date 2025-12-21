@@ -1,10 +1,10 @@
 
 import { Injectable, inject } from '@angular/core';
 import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
-import { RfLotoPointStateService } from './rf-loto-point-state.service';
 import { LotoPointContextMenuService } from '../loto-point-context-menu/loto-point-context-menu.service';
 import { Column } from '../../../../models/column.model';
 import { LotoPointDto, LotoPointModel } from '../../../../models/loto/loto-point.model';
+import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 
 @Injectable({
   providedIn: 'root'
