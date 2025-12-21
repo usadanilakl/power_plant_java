@@ -74,7 +74,11 @@ export class ContextMenuService {
   }
 
   private handleClipboard(item: any): void {
-    this.clibpoardService.addItem(item);
+    this.clibpoardService.addItem(item, this.clipboardFormatter);
+  }
+
+  public clipboardFormatter(items: any[]): any[] {
+    return items;
   }
 
   private handleVerify(item: any): void {

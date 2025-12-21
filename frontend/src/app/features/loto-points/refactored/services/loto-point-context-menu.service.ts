@@ -1,7 +1,8 @@
 import { Injectable } from "@angular/core";
 import { ContextMenuService } from "../../../../shared/menu/context-menu/context-menu.service";
 import { ContextMenuAction } from "../../../../shared/menu/context-menu/context-menu.component";
-import { LotoPointDto } from "../../../../models/loto/loto-point.model";
+import { LotoPointDto, LotoPointModel } from "../../../../models/loto/loto-point.model";
+import { LotoPointClipboardItem } from "../../../../models/loto/loto-point-clipboard.model";
 
 @Injectable({
     providedIn: "root"
@@ -46,6 +47,10 @@ export class LotoPointContextMenuService extends ContextMenuService {
     ...this.customMenuActions,
   ]
 
+  override clipboardFormatter(items: LotoPointModel[]): LotoPointClipboardItem[] {
+    return items.map(i=>new LotoPointClipboardItem(i))
+  }
+
     private handleInspect(item: LotoPointDto): void {
       console.log('Inspecting:', item);
       // Implement inspect logic
@@ -60,4 +65,6 @@ export class LotoPointContextMenuService extends ContextMenuService {
       console.log('Releasing:', item);
       // Implement release logic
     }
+
+
 }

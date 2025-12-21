@@ -6,6 +6,24 @@
   (formSubmit)="onSubmit($event)"
 >
   <ng-container extra-buttons>
-
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <label for="itemNumber">Clipboard Item:</label>
+      <input 
+        id="itemNumber"
+        type="number" 
+        [value]="itemNumber()"
+        (change)="itemNumber.set($any($event.target).value)"
+        min="0"
+        [max]="(clipboardItems().length)"
+        [disabled]="clipboardItems().length===0"
+      >
+      <button 
+        type="button"
+        (click)="loadClipboardItem()"
+        [disabled]="!clipboardItem()"
+      >
+        Load
+      </button>
+    </div>
   </ng-container>
 </app-rf-reactive-form>

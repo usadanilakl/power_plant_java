@@ -43,7 +43,10 @@ export class ClipboardService {
    * Add items to clipboard with automatic section management
    * Creates section if it doesn't exist based on objectType
    */
-  addItems(items: any[]): void {
+  addItems(items: any[], formatter = (items:any[]):any[] => items): void {
+    if (!items || items.length === 0) return;
+
+    items = formatter(items);
     if (!items || items.length === 0) return;
 
     // Determine entity type from first item's objectType
@@ -94,8 +97,8 @@ export class ClipboardService {
   /**
    * Add single item to clipboard
    */
-  addItem(item: any): void {
-    this.addItems([item]);
+  addItem(item: any, formatter = (items:any[]):any[] => items): void {
+    this.addItems([item],formatter);
   }
 
   /**
