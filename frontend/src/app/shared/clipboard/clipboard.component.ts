@@ -26,7 +26,7 @@ export class ClipboardComponent {
   });
 
   toggleClipboard(): void {
-    this.isExpanded.update((value) => !value);
+    this.clipboardService.toggleExpanded();
   }
 
   setActiveSection(sectionId: string): void {

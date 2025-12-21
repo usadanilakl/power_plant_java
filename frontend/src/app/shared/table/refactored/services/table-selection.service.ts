@@ -5,7 +5,7 @@ import { TableDataService } from './table-data.service';
 
 @Injectable()
 export class TableSelectionService {
-  private clipboardService = inject(ClipboardService);
+  // private clipboardService = inject(ClipboardService);
   private dataService = inject(TableDataService);
 
   selectedItems = this.dataService.selectedItems;
@@ -81,18 +81,17 @@ export class TableSelectionService {
   /**
    * Add items to specific section
    */
-  addToClipboard(): void {
-    console.log('Adding items to clipboard:', this.selectedItems());
-    if (!this.selectedItems() || this.selectedItems().length === 0) return;
-    const objectType = this.selectedItems()[0].objectType ?? 'Other';
-    const items = this.selectedItems();
-    items.forEach((item) => {
-      if (!item.objectType) {
-        item.objectType = objectType;
-      }
-    });
-    this.clipboardService.addItems(this.selectedItems());
-  }
+  // addToClipboard(): void {
+  //   if (!this.selectedItems() || this.selectedItems().length === 0) return;
+  //   const objectType = this.selectedItems()[0].objectType ?? 'Other';
+  //   const items = this.selectedItems();
+  //   items.forEach((item) => {
+  //     if (!item.objectType) {
+  //       item.objectType = objectType;
+  //     }
+  //   });
+  //   this.clipboardService.addItems(this.selectedItems());
+  // }
 
   isItemSelected(item: any): boolean {
     return this.selectedItems().some((i) => i.id === item.id);

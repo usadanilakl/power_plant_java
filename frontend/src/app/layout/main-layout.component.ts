@@ -46,7 +46,6 @@ export class MainLayoutComponent implements AfterViewInit {
     if (this.footer) {
       this.footerHeight = this.footer.nativeElement.offsetHeight;
     }
-    this.initClipbordDragAndDrop();
   }
 
   toggleMenu() {
@@ -116,47 +115,4 @@ export class MainLayoutComponent implements AfterViewInit {
     });
   };
 
-  //Clipboard drag and drop feature
-
-  @ViewChild('clipboardContainer') clipboardContainer!: ElementRef;
-  private isDragging = false;
-  private dragOffsetX = 0;
-  private dragOffsetY = 0;
-
-  private initClipbordDragAndDrop(): void {
-    if (this.clipboardContainer) {
-      this.clipboardContainer.nativeElement.addEventListener(
-        'mousedown',
-        (e: MouseEvent) => {
-          this.startDrag(e);
-        }
-      );
-      document.addEventListener('mousemove', (e: MouseEvent) => {
-        this.drag(e);
-      });
-      document.addEventListener('mouseup', () => {
-        this.stopDrag();
-      });
-    }
-  }
-  private startDrag(event: MouseEvent): void {
-    this.isDragging = true;
-    const rect = this.clipboardContainer.nativeElement.getBoundingClientRect();
-    this.dragOffsetX = event.clientX - rect.left;
-    this.dragOffsetY = event.clientY - rect.top;
-  }
-
-  private drag(event: MouseEvent): void {
-    if (!this.isDragging) return;
-
-    const element = this.clipboardContainer.nativeElement;
-    element.style.right = 'auto';
-    element.style.bottom = 'auto';
-    element.style.left = event.clientX - this.dragOffsetX + 'px';
-    element.style.top = event.clientY - this.dragOffsetY + 'px';
-  }
-
-  private stopDrag(): void {
-    this.isDragging = false;
-  }
 }

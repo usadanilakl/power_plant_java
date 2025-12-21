@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -8,7 +8,7 @@ export interface ButtonConfig {
   action: () => void;
   color?: 'primary' | 'accent' | 'warn';
   disabled?: boolean;
-  icon?: string;
+  icon?: string | Signal<string>;
   tooltip?: string;
   class?: string;
 }
@@ -31,5 +31,9 @@ export class ButtonsComponent {
       console.log('Button clicked:', button.name);
       button.action();
     }
+  }
+
+  isString(value: any): value is string {
+    return typeof value === 'string';
   }
 }

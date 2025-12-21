@@ -6,12 +6,14 @@ import {
 } from '../../../menu/buttons/buttons.component';
 import { TableSelectionService } from './table-selection.service';
 import { TableDataService } from './table-data.service';
+import { ClipboardService } from '../../../clipboard/clipboard.service';
 
 @Injectable()
 export class TableControlsService {
   protected tableStateService = inject(TableStateService);
   protected selectionService = inject(TableSelectionService);
   protected dataService = inject(TableDataService);
+  private clipboardService = inject(ClipboardService);
 
   // ✅ Allow parent services to override with custom buttons
   customTableControlButtons = signal<ButtonConfig[] | undefined>(undefined);
@@ -74,9 +76,12 @@ export class TableControlsService {
       },
       {
         name: 'Add to Clipboard',
-        action: () => this.selectionService.addToClipboard(),
+        action: () => {
+          this.addToClipboard();
+          this.showFeedbackButton('check_circle', 1500);
+        },
         color: 'accent' as ButtonColor,
-        icon: 'content_copy',
+        icon: computed(() => this.feedbackIcon() ?? 'content_copy'),
       },
     ];
   }
@@ -126,5 +131,52 @@ export class TableControlsService {
    */
   resetTableSelectionControls(): void {
     this.customTableSelectionControls.set(undefined);
+  }
+
+  //======================Clipboard============================
+  itemsToPutInClipboard = computed(() =>
+    this.clipboardFormatter(this.dataService.selectedItems())
+  );
+  clipboardFormatter(items: any[]): any[] {
+    return items;
+  }
+
+  /**
+   * Add items to specific section
+   */
+  addToClipboard(): void {
+    if (
+      !this.itemsToPutInClipboard() ||
+      this.itemsToPutInClipboard().length === 0
+    )
+      return;
+    const objectType = this.itemsToPutInClipboard()[0].objectType ?? 'Other';
+    const items = this.itemsToPutInClipboard();
+    items.forEach((item) => {
+      if (!item.objectType) {
+        item.objectType = objectType;
+      }
+    });
+    this.clipboardService.addItems(this.itemsToPutInClipboard());
+  }
+
+  //=================Button Feedback======================
+
+  private feedbackIcon = signal<string | null>(null);
+  private feedbackTimeout: any;
+
+  /**
+   * Show feedback icon temporarily on button
+   */
+  private showFeedbackButton(icon: string, duration: number): void {
+    this.feedbackIcon.set(icon);
+
+    if (this.feedbackTimeout) {
+      clearTimeout(this.feedbackTimeout);
+    }
+
+    this.feedbackTimeout = setTimeout(() => {
+      this.feedbackIcon.set(null);
+    }, duration);
   }
 }

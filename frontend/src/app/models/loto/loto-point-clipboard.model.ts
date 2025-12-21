@@ -1,0 +1,39 @@
+import { ValueDto } from '../value.model';
+import { LotoPointModel } from './loto-point.model';
+
+export interface ILotoPointClipboard
+  extends Omit<
+    LotoPointModel,
+    | 'lotos'
+    | 'equipmentList'
+    | 'fileIds'
+    | 'conflictStatus'
+    | 'isUpdated'
+    | 'oldId'
+    | 'tagged'
+    | 'standard'
+    | 'normalPosition'
+    | 'isolatedPosition'
+    | 'fileIds'
+    | 'lotos'
+    | 'equipmentIdList'
+    | 'id'
+  > {}
+
+export class LotoPointClipboardItem implements ILotoPointClipboard {
+  name: string = '';
+  objectType: string = '';
+  unit: string | null = null;
+  tagNumber: string | null = null;
+  description: string | null = null;
+  isoPos: ValueDto | null = null;
+  normPos: ValueDto | null = null;
+  specificLocation: string | null = null;
+  generalLocation: string | null = null;
+  zeroEnergyMethod: string | null = null;
+  isVerified: boolean = false;
+
+  constructor(data: Partial<LotoPointModel> = {}) {
+    Object.assign(this, data);
+  }
+}

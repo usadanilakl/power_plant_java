@@ -12,7 +12,7 @@
     [class.has-icon]="button.icon"
   >
     <mat-icon *ngIf="button.icon" class="button-icon">{{
-      button.icon
+      isString(button.icon) ? button.icon : button.icon()
     }}</mat-icon>
     <span>{{ button.name }}</span>
   </button>

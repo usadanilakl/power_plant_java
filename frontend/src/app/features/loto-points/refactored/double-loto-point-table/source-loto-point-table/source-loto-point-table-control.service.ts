@@ -1,11 +1,10 @@
 import { inject, Injectable } from "@angular/core";
-import { TableControlsService } from "../../../../../shared/table/refactored/services/table-controls.service";
-import { ButtonColor, ButtonConfig } from "../../../../../shared/menu/buttons/buttons.component";
+import { ButtonColor } from "../../../../../shared/menu/buttons/buttons.component";
 import { DoubleLotoPointTableService } from "../double-loto-point-table.service";
+import { LotoPointTableControlService } from "../../rf-loto-point-table/rf-loto-point-table-control.service";
 
 @Injectable()
-export class SourceLotoPointTableControlService extends TableControlsService {
-
+export class SourceLotoPointTableControlService extends LotoPointTableControlService {
   doubleTableService = inject(DoubleLotoPointTableService);
 
   constructor() {
