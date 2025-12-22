@@ -326,7 +326,7 @@ export class LotoPointMapperService {
         name: 'isoPos',
         label: 'Isolated Position',
         type: 'select',
-        options: this.isoPosOptions,
+        options: this.isoPosOptions(),
         validators: [Validators.required],
         initialValue: lotoPoint.isoPos?.id || null,
       },

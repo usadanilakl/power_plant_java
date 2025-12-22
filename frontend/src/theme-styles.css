@@ -19,7 +19,7 @@
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);
-  --menu-item-hover-bg-color: var(--secondary-background);
+  --menu-item-hover-bg-color: rgba(0, 123, 255, 0.1);
   --menu-item-active-text-color: var(--accent-color-hover);
   --menu-item-active-indicator-color: var(--accent-color);
 
@@ -50,7 +50,7 @@
 
   /* Menu Variables */
   --menu-item-text-color: var(--primary-text);
-  --menu-item-hover-bg-color: var(--secondary-background);
+  --menu-item-hover-bg-color: rgba(0, 123, 255, 0.1);
   --menu-item-active-text-color: var(--accent-color-hover);
   --menu-item-active-indicator-color: var(--accent-color);
 

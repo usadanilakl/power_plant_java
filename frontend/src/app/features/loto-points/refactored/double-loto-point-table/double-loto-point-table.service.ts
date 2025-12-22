@@ -1,6 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
-import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
-import { Column } from '../../../../models/column.model';
+import { Injectable, signal } from '@angular/core';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { FilterOutRules } from '../../../../shared/table/refactored/table.component';
 
@@ -8,6 +6,7 @@ import { FilterOutRules } from '../../../../shared/table/refactored/table.compon
   providedIn: 'root',
 })
 export class DoubleLotoPointTableService {
+
   selectedItems = signal<LotoPointDto[]>([]);
   currentSelectedItems = signal<LotoPointDto[]>([]);
   filterOutRules = signal<FilterOutRules>({

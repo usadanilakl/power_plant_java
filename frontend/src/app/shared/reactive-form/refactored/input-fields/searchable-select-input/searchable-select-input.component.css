@@ -1,3 +1,11 @@
+::ng-deep .transparent-backdrop {
+  background-color: transparent !important;
+}
+
+::ng-deep .cdk-overlay-pane {
+  z-index: 10000 !important;
+}
+
 .dropdown-container {
   position: relative;
   width: 100%;
@@ -25,7 +33,162 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 38px; /* Match standard input height */
+  min-height: 38px;
+  position: relative;
+  z-index: 1;
+}
+
+.dropdown-input:hover {
+  border-color: var(--accent-color);
+}
+
+.dropdown-input.open,
+.dropdown-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 0.2rem var(--accent-color-shadow);
+}
+
+.dropdown-options {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: var(--card-shadow);
+  min-width: 100%;
+  visibility: visible;
+  opacity: 1;
+  display: block;
+  padding: 0;
+  margin: 0;
+}
+
+.dropdown-options input {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+  background-color: var(--primary-background);
+  color: var(--primary-text);
+}
+
+.dropdown-options input:focus {
+  outline: none;
+  background-color: var(--secondary-background);
+  border-bottom-color: var(--accent-color);
+}
+
+.dropdown-option {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: var(--primary-text);
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+}
+
+.dropdown-option:hover {
+  background-color: var(--menu-item-hover-bg-color);
+}
+
+.dropdown-option.selected {
+  background-color: var(--accent-color);
+  color: var(--header-text);
+}
+
+.no-options {
+  padding: 0.5rem 0.75rem;
+  color: var(--secondary-text);
+  text-align: center;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-new-option {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: var(--primary-text);
+  border-top: 1px solid var(--border-color);
+  line-height: 1.4;
+}
+
+.add-new-option:hover {
+  background-color: var(--menu-item-hover-bg-color);
+}
+
+.dropdown-options::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dropdown-options::-webkit-scrollbar-track {
+  background: var(--secondary-background);
+}
+
+.dropdown-options::-webkit-scrollbar-thumb {
+  background: var(--secondary-text);
+  border-radius: 4px;
+}
+
+.dropdown-options::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-text);
+}
+
+.plus-icon {
+  margin-right: 8px;
+  font-weight: bold;
+  color: var(--accent-color);
+}
+
+.label-container {
+  display: flex;
+  align-items: center;
+}
+
+.question-icon {
+  margin-left: 5px;
+  cursor: pointer;
+  color: var(--accent-color);
+}
+
+.question-icon:hover {
+  color: var(--accent-color-hover);
+}
+
+/* .dropdown-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.dropdown-container label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: var(--primary-text);
+}
+
+.dropdown-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--primary-background);
+  color: var(--primary-text);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 38px;
 }
 
 .dropdown-input:hover {
@@ -133,9 +296,7 @@
 
 .question-icon:hover {
   color: var(--accent-color-hover);
-}
-
-
+} */
 
 /* .dropdown-container {
   font-family: Arial, sans-serif;

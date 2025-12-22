@@ -19,3 +19,13 @@
     <!-- <app-bottom-menu-outlet></app-bottom-menu-outlet> -->
   </ng-container>
 </app-main-layout>
+
+
+
+
+<app-rf-popup-projection
+  [isOpen]="stateService.isLotoPointFormOpen()"
+  (close)="stateService.closeForm()"
+>
+  <app-rf-loto-point-form [fieldsInput]="stateService.formFields()"></app-rf-loto-point-form>
+</app-rf-popup-projection>

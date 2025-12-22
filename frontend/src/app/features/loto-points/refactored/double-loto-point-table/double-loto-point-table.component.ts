@@ -20,7 +20,7 @@ import { DoubleLotoPointTableService } from './double-loto-point-table.service';
   styleUrl: './double-loto-point-table.component.css',
 })
 export class DoubleLotoPointTableComponent implements OnInit {
-  private stateService = inject(RfLotoPointStateService);
+  protected stateService = inject(RfLotoPointStateService);
   private doubleTableService = inject(DoubleLotoPointTableService)
 
   // Inputs
