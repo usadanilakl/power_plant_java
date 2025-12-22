@@ -34,44 +34,33 @@ public interface FlexibleQueryInterface {
         };
     }
 
-    default <T extends BaseIdEntity> Page<T> complexSearchWithPagination(
-            JpaSpecificationExecutor<T> repository,
-            SearchCriteria criteria,
-            Pageable pageable,
-            boolean andLogicIsEnabled,
-            SearchCriteria baseCriteria) {
+    default <T extends BaseIdEntity> Page<T> complexSearchWithPagination(JpaSpecificationExecutor<T> repository, SearchCriteria criteria, Pageable pageable, boolean andLogicIsEnabled, SearchCriteria baseCriteria) {
 
         Specification<T> spec = buildComplexSpecification(criteria, andLogicIsEnabled, baseCriteria);
         return repository.findAll(spec, pageable);
     }
-    
-    default <T extends BaseIdEntity> Page<T> complexSearchWithPagination(
-        JpaSpecificationExecutor<T> repository,
-        SearchCriteria criteria,
-        Pageable pageable,
-        boolean andLogicIsEnabled) {
+
+    default <T extends BaseIdEntity> Page<T> complexSearchWithPagination(JpaSpecificationExecutor<T> repository, SearchCriteria criteria, Pageable pageable, boolean andLogicIsEnabled) {
 
 //    System.out.println("Entering complexSearchWithPagination");
 //    System.out.println("Filters: " + criteria.getFilters());
-    Specification<T> spec = buildComplexSpecification(criteria, andLogicIsEnabled);
+        Specification<T> spec = buildComplexSpecification(criteria, andLogicIsEnabled);
 //    System.out.println("Specification: " + spec);
 //    System.out.println("Repository: " + repository.getClass().getName());
 //    System.out.println("Pageable: " + pageable);
-    try {
-        Page<T> result = repository.findAll(spec, pageable);
+        try {
+            Page<T> result = repository.findAll(spec, pageable);
 //        System.out.println("Result size: " + (result != null ? result.getContent().size() : "null"));
-        return result;
-    } catch (Exception e) {
-        System.err.println("Error in findAll: " + e.getMessage());
-        e.printStackTrace();
-        throw e;
+            return result;
+        } catch (Exception e) {
+            System.err.println("Error in findAll: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
-}
 
 
-    default <T extends BaseIdEntity> List<String> getUniqueValuesOfColumn(
-            JpaSpecificationExecutor<T> repository,
-            String columnName) {
+    default <T extends BaseIdEntity> List<String> getUniqueValuesOfColumn(JpaSpecificationExecutor<T> repository, String columnName) {
 
         // Validate column name to prevent SQL injection
         if (columnName == null || columnName.trim().isEmpty()) {
@@ -97,12 +86,7 @@ public interface FlexibleQueryInterface {
             });
 
             // Extract and convert values to strings
-            return results.stream()
-                    .map(obj -> obj != null ? obj.toString() : null)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .sorted()
-                    .collect(Collectors.toList());
+            return results.stream().map(obj -> obj != null ? obj.toString() : null).filter(Objects::nonNull).distinct().sorted().collect(Collectors.toList());
 
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid column name: " + columnName, e);
@@ -110,11 +94,7 @@ public interface FlexibleQueryInterface {
     }
 
 
-    default <T extends BaseIdEntity> Page<T> getFilteredUniqueValuesOfColumn(
-            JpaSpecificationExecutor<T> repository,
-            String columnName,
-            String filterValue,
-            Pageable pageable) {
+    default <T extends BaseIdEntity> Page<T> getFilteredUniqueValuesOfColumn(JpaSpecificationExecutor<T> repository, String columnName, String filterValue, Pageable pageable) {
 
         if (columnName == null || columnName.trim().isEmpty()) {
             throw new IllegalArgumentException("Column name cannot be null or empty");
@@ -134,10 +114,7 @@ public interface FlexibleQueryInterface {
 
                 // Add filter if provided
                 if (filterValue != null && !filterValue.isEmpty()) {
-                    return criteriaBuilder.like(
-                            criteriaBuilder.lower(path.as(String.class)),
-                            "%" + filterValue.toLowerCase() + "%"
-                    );
+                    return criteriaBuilder.like(criteriaBuilder.lower(path.as(String.class)), "%" + filterValue.toLowerCase() + "%");
                 }
 
                 return criteriaBuilder.conjunction();
@@ -152,143 +129,66 @@ public interface FlexibleQueryInterface {
         }
     }
 
-//    default <T extends BaseIdEntity> Page<T> getFilteredUniqueValuesOfColumn(
-//            JpaSpecificationExecutor<T> repository,
-//            String columnName,
-//            Map<String, String> filters,  // { "name": "john", "city": "NY" }
-//            Pageable pageable,
-//            boolean andLogicIsEnabled) {
-//
-////        System.out.println("Column: "+ columnName);
-////        System.out.println("Filters: "+ filters);
-//
-//        if (columnName == null || columnName.trim().isEmpty()) {
-//            throw new IllegalArgumentException("Column name cannot be null or empty");
-//        }
-//
-//        try {
-//            Specification<T> spec = (root, query, criteriaBuilder) -> {
-//                // Build target column path for SELECT/ORDER
-//                String[] pathParts = columnName.split("\\.");
-//                Path<?> targetPath = root;
-//                for (String part : pathParts) {
-//                    targetPath = targetPath.get(part);
-//                }
-//
-//                query.multiselect(targetPath).distinct(true);
-//                query.orderBy(criteriaBuilder.asc(targetPath));
-//
-//                // Build multi-column filters as OR predicates
-//                List<Predicate> filterPredicates = new ArrayList<>();
-//                for (Map.Entry<String, String> filter : filters.entrySet()) {
-//                    if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
-//                        String[] filterPathParts = filter.getKey().split("\\.");
-//                        Path<?> filterPath = root;
-//                        for (String part : filterPathParts) {
-////                            System.out.println("Part: " + part);
-//                            filterPath = filterPath.get(part);
-//                        }
-//                        filterPredicates.add(criteriaBuilder.like(
-//                                criteriaBuilder.lower(filterPath.as(String.class)),
-//                                "%" + filter.getValue().toLowerCase() + "%"
-//                        ));
-//                    }
-//                }
-//
-//                // Combine filters with AND, require all matches
-//                if(andLogicIsEnabled)return filterPredicates.isEmpty()
-//                        ? criteriaBuilder.conjunction()
-//                        : criteriaBuilder.and(filterPredicates.toArray(new Predicate[0]));
-//
-//                // Combine filters with OR, require at least one match
-//                return filterPredicates.isEmpty()
-//                        ? criteriaBuilder.conjunction()
-//                        : criteriaBuilder.or(filterPredicates.toArray(new Predicate[0]));
-//            };
-//
-//            return repository.findAll(spec, pageable);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            throw new IllegalArgumentException("Invalid column name: " + columnName, e);
-//        }
-//    }
-default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
-        JpaSpecificationExecutor<T> repository,
-        String columnName,
-        Map<String, String> filters,
-        Pageable pageable,
-        boolean andLogicIsEnabled) {
+    default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(JpaSpecificationExecutor<T> repository, String columnName, Map<String, String> filters, Pageable pageable, boolean andLogicIsEnabled) {
 
-    if (columnName == null || columnName.trim().isEmpty()) {
-        throw new IllegalArgumentException("Column name cannot be null or empty");
-    }
+        if (columnName == null || columnName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Column name cannot be null or empty");
+        }
 
-    try {
-        Specification<T> spec = (root, query, criteriaBuilder) -> {
-            String[] pathParts = columnName.split("\\.");
-            Path<?> targetPath = root;
-            for (String part : pathParts) {
-                targetPath = targetPath.get(part);
-            }
-
-            // Select ONLY the column value
-            query.multiselect(targetPath.as(String.class)).distinct(true);
-            query.orderBy(criteriaBuilder.desc(targetPath));
-
-            List<Predicate> filterPredicates = new ArrayList<>();
-            for (Map.Entry<String, String> filter : filters.entrySet()) {
-                if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
-                    String[] filterPathParts = filter.getKey().split("\\.");
-                    Path<?> filterPath = root;
-                    for (String part : filterPathParts) {
-                        filterPath = filterPath.get(part);
-                    }
-                    filterPredicates.add(criteriaBuilder.like(
-                            criteriaBuilder.lower(filterPath.as(String.class)),
-                            "%" + filter.getValue().toLowerCase() + "%"
-                    ));
+        try {
+            Specification<T> spec = (root, query, criteriaBuilder) -> {
+                String[] pathParts = columnName.split("\\.");
+                Path<?> targetPath = root;
+                for (String part : pathParts) {
+                    targetPath = targetPath.get(part);
                 }
-            }
 
-            if(andLogicIsEnabled) {
-                return filterPredicates.isEmpty()
-                        ? criteriaBuilder.conjunction()
-                        : criteriaBuilder.and(filterPredicates.toArray(new Predicate[0]));
-            }
-            return filterPredicates.isEmpty()
-                    ? criteriaBuilder.conjunction()
-                    : criteriaBuilder.or(filterPredicates.toArray(new Predicate[0]));
-        };
+                // Select ONLY the column value
+                query.multiselect(targetPath.as(String.class)).distinct(true);
+                query.orderBy(criteriaBuilder.desc(targetPath));
 
-        Page<T> entityPage = repository.findAll(spec, pageable);
-
-        // Extract actual column value via reflection or entity method
-        List<String> values = entityPage.getContent().stream()
-                .map(entity -> {
-                    try {
-                        // Dynamic property access (your original path logic)
-                        Object value = getNestedProperty(entity, columnName);
-                        return value != null ? value.toString() : null;
-                    } catch (Exception e) {
-                        return null;
+                List<Predicate> filterPredicates = new ArrayList<>();
+                for (Map.Entry<String, String> filter : filters.entrySet()) {
+                    if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+                        String[] filterPathParts = filter.getKey().split("\\.");
+                        Path<?> filterPath = root;
+                        for (String part : filterPathParts) {
+                            filterPath = filterPath.get(part);
+                        }
+                        filterPredicates.add(criteriaBuilder.like(criteriaBuilder.lower(filterPath.as(String.class)), "%" + filter.getValue().toLowerCase() + "%"));
                     }
-                })
-                .filter(Objects::nonNull)
-                .distinct()
-                .sorted()  // Client-side sort since projection ignored ORDER BY
-                .collect(Collectors.toList());
+                }
 
-        System.out.println("Filters: " + filters + " on column " + columnName);
-        System.out.println("Result: " + values);
+                if (andLogicIsEnabled) {
+                    return filterPredicates.isEmpty() ? criteriaBuilder.conjunction() : criteriaBuilder.and(filterPredicates.toArray(new Predicate[0]));
+                }
+                return filterPredicates.isEmpty() ? criteriaBuilder.conjunction() : criteriaBuilder.or(filterPredicates.toArray(new Predicate[0]));
+            };
 
-        return new PageImpl<>(values, pageable, entityPage.getTotalElements());
+            Page<T> entityPage = repository.findAll(spec, pageable);
 
-    } catch (Exception e) {
-        e.printStackTrace();
-        throw new IllegalArgumentException("Invalid column name: " + columnName, e);
+            // Extract actual column value via reflection or entity method
+            List<String> values = entityPage.getContent().stream().map(entity -> {
+                        try {
+                            // Dynamic property access (your original path logic)
+                            Object value = getNestedProperty(entity, columnName);
+                            return value != null ? value.toString() : null;
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    }).filter(Objects::nonNull).distinct().sorted()  // Client-side sort since projection ignored ORDER BY
+                    .collect(Collectors.toList());
+
+            System.out.println("Filters: " + filters + " on column " + columnName);
+            System.out.println("Result: " + values);
+
+            return new PageImpl<>(values, pageable, entityPage.getTotalElements());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new IllegalArgumentException("Invalid column name: " + columnName, e);
+        }
     }
-}
-
 
 
     default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled, SearchCriteria baseCriteria) {
@@ -312,9 +212,7 @@ default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
             }
 
             // Combine base predicates (always with AND logic)
-            Predicate basePredicate = basePredicates.isEmpty()
-                    ? criteriaBuilder.conjunction()
-                    : criteriaBuilder.and(basePredicates.toArray(new Predicate[0]));
+            Predicate basePredicate = basePredicates.isEmpty() ? criteriaBuilder.conjunction() : criteriaBuilder.and(basePredicates.toArray(new Predicate[0]));
 
             // Combine main predicates based on andLogicIsEnabled
             Predicate mainPredicate;
@@ -325,79 +223,35 @@ default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
             } else {
                 mainPredicate = criteriaBuilder.or(predicates.toArray(new Predicate[0]));
             }
+            System.out.println("basePredicates count: " + basePredicates.size());
+            System.out.println("predicates count: " + predicates.size());
+            System.out.println("andLogicIsEnabled: " + andLogicIsEnabled);
 
             // Combine base predicate with main predicate
             return criteriaBuilder.and(basePredicate, mainPredicate);
         };
     }
 
-    // private List<Predicate> buildPredicates(Root<?> root, CriteriaBuilder criteriaBuilder, Map<String, String> filters) {
-    //     List<Predicate> predicates = new ArrayList<>();
 
-    //     filters.forEach((key, value) -> {
-    //         String[] pathParts = key.split("\\.");
-    //         From<?, ?> from = root;
-    //         Path<?> path = root;
-    //         boolean isNullable = false;
-
-    //         for (int i = 0; i < pathParts.length - 1; i++) {
-    //             if (path.get(pathParts[i]).getJavaType().isAssignableFrom(Collection.class)) {
-    //                 from = from.join(pathParts[i], JoinType.LEFT);
-    //                 path = from;
-    //                 isNullable = true;
-    //             } else {
-    //                 path = path.get(pathParts[i]);
-    //                 if (path.getJavaType().isAnnotationPresent(jakarta.persistence.Entity.class)) {
-    //                     from = from.join(pathParts[i], JoinType.LEFT);
-    //                     path = from;
-    //                     isNullable = true;
-    //                 }
-    //             }
-    //         }
-    //         String fieldName = pathParts[pathParts.length - 1];
-
-    //         Class<?> fieldType = path.get(fieldName).getJavaType();
-
-    //         Predicate fieldPredicate;
-    //         if (value == null || value.isEmpty()) {
-    //             fieldPredicate = criteriaBuilder.disjunction();
-    //         } else if (Collection.class.isAssignableFrom(fieldType)) {
-    //             fieldPredicate = handleCollectionField(criteriaBuilder, from, fieldName, value);
-    //         } else {
-    //             fieldPredicate = handleSingleField(criteriaBuilder, path, fieldName, value);
-    //         }
-
-    //         predicates.add(fieldPredicate);
-
-    //         System.out.println(key + ": " + value);
-    //     });
-
-    //     return predicates;
-    // }
-
-    
-    
-    
     private List<Predicate> buildPredicates(Root<?> root, CriteriaBuilder criteriaBuilder, Map<String, String> filters) {
         List<Predicate> predicates = new ArrayList<>();
-    
+
         filters.forEach((key, value) -> {
-            
+
             String[] pathParts = key.split("\\.");
             From<?, ?> from = root;
             Path<?> path = root;
-    
+
             // Navigate through all path parts except the last one
             for (int i = 0; i < pathParts.length - 1; i++) {
                 String part = pathParts[i];
-                
+
                 try {
                     Path<?> nextPath = path.get(part);
                     Class<?> nextType = nextPath.getJavaType();
-    
+
                     // Check if it's a Collection or an Entity that needs joining
-                    if (Collection.class.isAssignableFrom(nextType) || 
-                        nextType.isAnnotationPresent(jakarta.persistence.Entity.class)) {
+                    if (Collection.class.isAssignableFrom(nextType) || nextType.isAnnotationPresent(jakarta.persistence.Entity.class)) {
                         from = from.join(part, JoinType.LEFT);
                         path = from;
                         System.out.println("Joined: " + part + " (type: " + nextType.getSimpleName() + ")");
@@ -411,12 +265,12 @@ default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
                     return;
                 }
             }
-    
+
             String fieldName = pathParts[pathParts.length - 1];
-            
+
             try {
                 Class<?> fieldType = path.get(fieldName).getJavaType();
-    
+
                 Predicate fieldPredicate;
                 if (value == null || value.isEmpty()) {
                     fieldPredicate = criteriaBuilder.disjunction();
@@ -426,21 +280,22 @@ default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
                     // Pass 'from' instead of 'path' to use the correct join context
                     fieldPredicate = handleSingleField(criteriaBuilder, from, fieldName, value);
                 }
-    
+
                 predicates.add(fieldPredicate);
-                System.out.println("✓ Filter applied: " + key + " = '" + value + "'");
+//                System.out.println("✓ Filter applied: " + key + " = '" + value + "'");
             } catch (Exception e) {
                 System.err.println("✗ Error applying filter for '" + key + "': " + e.getMessage());
                 e.printStackTrace();
             }
         });
-    
+
         return predicates;
     }
-    
+
+
     default Predicate handleSingleField(CriteriaBuilder criteriaBuilder, From<?, ?> from, String fieldName, String value) {
         Class<?> fieldType = from.get(fieldName).getJavaType();
-    
+
         if (isStringNumberOrDate(fieldType)) {
             return criteriaBuilder.like(criteriaBuilder.lower(from.get(fieldName).as(String.class)), "%" + value.toLowerCase() + "%");
         } else {
@@ -448,13 +303,12 @@ default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
         }
     }
 
+
     default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled) {
         return buildComplexSpecification(criteria, andLogicIsEnabled, null);
     }
-    
-    
-    
-    
+
+
     default Predicate handleCollectionField(CriteriaBuilder criteriaBuilder, From<?, ?> from, String fieldName, String value) {
         Join<?, ?> join = from.join(fieldName, JoinType.LEFT);
         Class<?> elementType = join.getJavaType();
@@ -477,8 +331,10 @@ default <T extends BaseIdEntity> Page<String> getFilteredUniqueValuesOfColumn(
     }
 
     default boolean isStringNumberOrDate(Class<?> type) {
-        return String.class.isAssignableFrom(type)
-                || Number.class.isAssignableFrom(type)
-                || Temporal.class.isAssignableFrom(type);
+        return String.class.isAssignableFrom(type) || Number.class.isAssignableFrom(type) || Temporal.class.isAssignableFrom(type);
     }
+
+
+
+
 }
