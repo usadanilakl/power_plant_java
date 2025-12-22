@@ -42,11 +42,11 @@
   (closeMenu)="contextMenuService.closeContextMenu()"
 ></app-context-menu>
 
-<app-popup-projection
+<app-rf-popup-projection
   [isOpen]="stateService.isLotoPointFormOpen()"
   (close)="stateService.closeForm()"
 >
   
 <app-rf-loto-point-form [fieldsInput]="stateService.formFields()"></app-rf-loto-point-form>
 
-</app-popup-projection>
+</app-rf-popup-projection>

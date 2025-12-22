@@ -1,3 +1,5 @@
+
+
 <app-rf-reactive-form
   [entity]="entity()"
   [fields]="fields()"
@@ -6,24 +8,36 @@
   (formSubmit)="onSubmit($event)"
 >
   <ng-container extra-buttons>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <label for="itemNumber">Clipboard Item:</label>
-      <input 
+    <app-clipboard-form
+      [entityType]="'LotoPoint'"
+      [initialEntity]="initialEntity()"
+      [hasValidData]="hasValidData"
+      [getItemSummary]="getItemSummary"
+      (itemSelected)="onClipboardItemSelected($event)"
+    ></app-clipboard-form>
+  </ng-container>
+</app-rf-reactive-form>
+
+<!-- <app-rf-reactive-form
+  [entity]="entity()"
+  [fields]="fields()"
+  [title]="'Loto Point Form'"
+  (formValueChange)="onAnyValueChange($event)"
+  (formSubmit)="onSubmit($event)"
+>
+  <ng-container extra-buttons>
+    <div class="clipboard-controls">
+      <label for="itemNumber" class="clipboard-label">Clipboard Item:</label>
+      <input
         id="itemNumber"
-        type="number" 
+        type="number"
+        class="clipboard-input"
         [value]="itemNumber()"
         (change)="itemNumber.set($any($event.target).value)"
         min="0"
-        [max]="(clipboardItems().length)"
-        [disabled]="clipboardItems().length===0"
-      >
-      <button 
-        type="button"
-        (click)="loadClipboardItem()"
-        [disabled]="!clipboardItem()"
-      >
-        Load
-      </button>
+        [max]="clipboardItems().length"
+        [disabled]="clipboardItems().length === 0"
+      />
     </div>
   </ng-container>
-</app-rf-reactive-form>
+</app-rf-reactive-form> -->

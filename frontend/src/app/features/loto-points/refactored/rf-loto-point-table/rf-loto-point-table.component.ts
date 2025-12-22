@@ -27,6 +27,7 @@ import { LotoPointContextMenuService } from '../services/loto-point-context-menu
 import { RfLotoPointFormComponent } from '../rf-loto-point-form/rf-loto-point-form.component';
 import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
 import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
+import { RfPopupProjectionComponent } from "../../../../shared/popup-projection/rf-popup-projection.component";
 
 @Component({
   selector: 'app-rf-loto-point-table',
@@ -37,7 +38,8 @@ import { ContextMenuComponent } from '../../../../shared/menu/context-menu/conte
     RfLotoPointFormComponent,
     PopupProjectionComponent,
     ContextMenuComponent,
-  ],
+    RfPopupProjectionComponent
+],
   providers: [ContextMenuComponent],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',

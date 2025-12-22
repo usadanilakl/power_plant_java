@@ -1,0 +1,68 @@
+<div class="clipboard-form-container">
+  <div class="clipboard-header" (click)="toggleCollapse()">
+    <div class="header-content">
+      <h3>Clipboard Items</h3>
+      <span class="item-count">{{ displayItems().length }} items</span>
+    </div>
+    <button class="collapse-btn" type="button" [class.collapsed]="isCollapsed()">
+      <span class="collapse-icon">{{ isCollapsed() ? '▶' : '▼' }}</span>
+    </button>
+  </div>
+
+  @if (!isCollapsed()) {
+    @if (displayItems().length > 0) {
+      <div class="clipboard-list">
+        @for (item of displayItems(); track $index) {
+          <button
+            class="clipboard-item"
+            (click)="onItemClick(item)"
+            type="button"
+          >
+            {{ getItemLabel(item, $index) }}
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="empty-state">No clipboard items available</div>
+    }
+  }
+</div>
+
+<!-- <div class="clipboard-form-container">
+      <div class="clipboard-header">
+        <h3>Clipboard Items</h3>
+        <span class="item-count">{{ clipboardItems().length }} items</span>
+      </div>
+
+      <div class="clipboard-controls">
+        <div class="input-group">
+          <label for="item-select">Select Item:</label>
+          <input
+            id="item-select"
+            type="number"
+            min="0"
+            [max]="clipboardItems().length"
+            [(ngModel)]="itemNumberValue"
+            (ngModelChange)="onItemNumberChange($event)"
+            placeholder="0 for initial"
+            class="item-input"
+          />
+          <span class="item-info">
+            {{ itemNumberValue() === 0 ? 'Initial' : 'Item ' + itemNumberValue() }}
+          </span>
+        </div>
+
+        <div class="item-preview" *ngIf="currentItem() as item">
+          <strong>Current:</strong>
+          <p>{{ getItemSummary()(item) }}</p>
+        </div>
+
+        <button
+          (click)="loadItem()"
+          class="load-btn"
+          [disabled]="!currentItem()"
+        >
+          Load Item
+        </button>
+      </div>
+    </div> -->

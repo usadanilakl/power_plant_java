@@ -1,13 +1,15 @@
-import { Injectable } from "@angular/core";
+import { inject, Injectable } from "@angular/core";
 import { ContextMenuService } from "../../../../shared/menu/context-menu/context-menu.service";
 import { ContextMenuAction } from "../../../../shared/menu/context-menu/context-menu.component";
 import { LotoPointDto, LotoPointModel } from "../../../../models/loto/loto-point.model";
 import { LotoPointClipboardItem } from "../../../../models/loto/loto-point-clipboard.model";
+import { RfLotoPointStateService } from "./rf-loto-point-state.service";
 
 @Injectable({
     providedIn: "root"
 })
 export class LotoPointContextMenuService extends ContextMenuService {
+  private stateService = inject(RfLotoPointStateService);
 
   customMenuActions: ContextMenuAction[] = [
       {
@@ -49,6 +51,11 @@ export class LotoPointContextMenuService extends ContextMenuService {
 
   override clipboardFormatter(items: LotoPointModel[]): LotoPointClipboardItem[] {
     return items.map(i=>new LotoPointClipboardItem(i))
+  }
+
+  override handleViewDetails(item: any): void {
+    this.stateService.setSelectedItem(new LotoPointDto(item));
+    this.stateService.openForm();
   }
 
     private handleInspect(item: LotoPointDto): void {

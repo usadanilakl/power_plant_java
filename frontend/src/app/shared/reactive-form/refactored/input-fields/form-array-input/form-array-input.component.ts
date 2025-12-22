@@ -2,7 +2,7 @@ import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RfFormInputComponent } from '../form-input/rf-form-input.component';
-import { FormField } from '../../../../../models/ui/form-field.model';
+import { RfFormField } from '../../../../../models/ui/form-field.model';
 
 @Component({
   selector: 'app-form-array-input',
@@ -13,7 +13,7 @@ import { FormField } from '../../../../../models/ui/form-field.model';
 })
 export class FormArrayInputComponent {
   label = input<string>('');
-  fields = input<FormField[]>([]);
+  fields = input<RfFormField[]>([]);
   formArray = input.required<FormArray>();
 
   addItem = output<void>();

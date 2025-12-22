@@ -1,6 +1,19 @@
-import { Component, ElementRef, EventEmitter, HostListener, input, Input, output, Output } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  input,
+  output,
+  Output,
+  effect,
+  signal,
+  DestroyRef,
+  inject,
+} from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Observable, Subscription, take } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Option } from '../../../../../models/option.model';
 
 @Component({
@@ -13,70 +26,56 @@ import { Option } from '../../../../../models/option.model';
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: SearchableSelectInputComponent,
-      multi: true
-    }
-  ]
+      multi: true,
+    },
+  ],
 })
 export class SearchableSelectInputComponent implements ControlValueAccessor {
-
-  @Input() label: string = '';
-  @Input() options: Option[] | Observable<Option[]> = [];
-  @Input() closeOnSelect = true;
+  label = input<string>('');
+  options = input<Option[]>([]);
+  closeOnSelect = input<boolean>(true);
   categoryName = input<string>('');
 
   @Output() valueChange = new EventEmitter<any>();
   addNewOption = output<string>();
   editOption = output<string>();
 
+  private destroyRef = inject(DestroyRef);
   private optionsSubscription: Subscription | null = null;
-  selectedOption: Option | null = null;
 
-  value: any;
-  isOpen = false;
-  filteredOptions: Option[] = [];
+  selectedOption = signal<Option | null>(null);
+  value = signal<any>(null);
+  isOpen = signal<boolean>(false);
+  filteredOptions = signal<Option[]>([]);
 
-
-  constructor(private elementRef: ElementRef) {}
-
-  ngOnInit() {
-    this.setupOptionsObservable();
-    this.updateSelectedOption();
-  }
-
-  ngOnDestroy() {
-    if (this.optionsSubscription) {
-      this.optionsSubscription.unsubscribe();
-    }
+  constructor(private elementRef: ElementRef) {
+    effect(() => {
+      this.setupOptionsObservable();
+      this.updateSelectedOption();
+    });
   }
 
   private setupOptionsObservable() {
-    if (this.options instanceof Observable) {
-      this.optionsSubscription = this.options.subscribe(
-        (newOptions: Option[]) => {
-          this.filteredOptions = newOptions;
-        }
-      );
-    } else {
-      this.filteredOptions = this.options;
+    const opts = this.options();
+    if (opts && Array.isArray(opts)) {
+      this.filteredOptions.set(opts);
     }
   }
-
 
   onChange: (value: any) => void = () => {};
   onTouched: () => void = () => {};
 
   writeValue(value: any): void {
-    this.value = value;
+    this.value.set(value);
     this.updateSelectedOption();
   }
-  
+
   private updateSelectedOption() {
-    if (this.options instanceof Observable) {
-      this.options.pipe(take(1)).subscribe(opts => {
-        this.selectedOption = opts.find(opt => opt.value === this.value) || null;
-      });
-    } else {
-      this.selectedOption = this.options.find(opt => opt.value === this.value) || null;
+    const opts = this.options();
+    const currentValue = this.value();
+    if (opts && Array.isArray(opts)) {
+      const selected = opts.find((opt) => opt.value === currentValue) || null;
+      this.selectedOption.set(selected);
     }
   }
 
@@ -96,45 +95,37 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
   }
 
   closeDropdown() {
-    this.isOpen = false;
+    this.isOpen.set(false);
   }
 
   toggleDropdown(event: Event) {
     event.stopPropagation();
-    this.isOpen = !this.isOpen;
-    if (this.options instanceof Observable) {
-      // The filteredOptions will be updated by the subscription
-    } else {
-      this.filteredOptions = this.options;
+    this.isOpen.update((state) => !state);
+    const opts = this.options();
+    if (opts && Array.isArray(opts)) {
+      this.filteredOptions.set(opts);
     }
   }
 
   selectOption(option: Option, event: Event) {
     event.stopPropagation();
-    this.value = option.value;
-    this.selectedOption = option;
-    this.onChange(this.value);
-    if(this.closeOnSelect)this.isOpen = false;
-    this.valueChange.emit(this.value);
+    this.value.set(option.value);
+    this.selectedOption.set(option);
+    this.onChange(option.value);
+    if (this.closeOnSelect()) {
+      this.isOpen.set(false);
+    }
+    this.valueChange.emit(option.value);
   }
 
   filterOptions(event: any) {
     const filterValue = event.target.value.toLowerCase();
-    if (this.options instanceof Observable) {
-      // If options is an Observable, we need to update the subscription
-      if (this.optionsSubscription) {
-        this.optionsSubscription.unsubscribe();
-      }
-      this.optionsSubscription = this.options.subscribe(options => {
-        this.filteredOptions = options.filter(option =>
-          option.label.toLowerCase().includes(filterValue)
-        );
-      });
-    } else {
-      // If options is an array, we can filter it directly
-      this.filteredOptions = this.options.filter(option =>
+    const opts = this.options();
+    if (opts && Array.isArray(opts)) {
+      const filtered = opts.filter((option) =>
         option.label.toLowerCase().includes(filterValue)
       );
+      this.filteredOptions.set(filtered);
     }
   }
 
@@ -142,12 +133,159 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
     event.stopPropagation();
     this.addNewOption.emit(this.categoryName());
   }
-  
 
   onEditOption(event: Event) {
     event.stopPropagation();
     this.editOption.emit(this.categoryName());
   }
-
-
 }
+
+// import { Component, ElementRef, EventEmitter, HostListener, input, Input, output, Output } from '@angular/core';
+// import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+// import { Observable, Subscription, take } from 'rxjs';
+// import { Option } from '../../../../../models/option.model';
+
+// @Component({
+//   selector: 'app-searchable-select-input',
+//   standalone: true,
+//   imports: [],
+//   templateUrl: './searchable-select-input.component.html',
+//   styleUrl: './searchable-select-input.component.css',
+//   providers: [
+//     {
+//       provide: NG_VALUE_ACCESSOR,
+//       useExisting: SearchableSelectInputComponent,
+//       multi: true
+//     }
+//   ]
+// })
+// export class SearchableSelectInputComponent implements ControlValueAccessor {
+
+//   @Input() label: string = '';
+//   @Input() options: Option[] | Observable<Option[]> = [];
+//   @Input() closeOnSelect = true;
+//   categoryName = input<string>('');
+
+//   @Output() valueChange = new EventEmitter<any>();
+//   addNewOption = output<string>();
+//   editOption = output<string>();
+
+//   private optionsSubscription: Subscription | null = null;
+//   selectedOption: Option | null = null;
+
+//   value: any;
+//   isOpen = false;
+//   filteredOptions: Option[] = [];
+
+//   constructor(private elementRef: ElementRef) {}
+
+//   ngOnInit() {
+//     this.setupOptionsObservable();
+//     this.updateSelectedOption();
+//   }
+
+//   ngOnDestroy() {
+//     if (this.optionsSubscription) {
+//       this.optionsSubscription.unsubscribe();
+//     }
+//   }
+
+//   private setupOptionsObservable() {
+//     if (this.options instanceof Observable) {
+//       this.optionsSubscription = this.options.subscribe(
+//         (newOptions: Option[]) => {
+//           this.filteredOptions = newOptions;
+//         }
+//       );
+//     } else {
+//       this.filteredOptions = this.options;
+//     }
+//   }
+
+//   onChange: (value: any) => void = () => {};
+//   onTouched: () => void = () => {};
+
+//   writeValue(value: any): void {
+//     this.value = value;
+//     this.updateSelectedOption();
+//   }
+
+//   private updateSelectedOption() {
+//     if (this.options instanceof Observable) {
+//       this.options.pipe(take(1)).subscribe(opts => {
+//         this.selectedOption = opts.find(opt => opt.value === this.value) || null;
+//       });
+//     } else {
+//       this.selectedOption = this.options.find(opt => opt.value === this.value) || null;
+//     }
+//   }
+
+//   registerOnChange(fn: any): void {
+//     this.onChange = fn;
+//   }
+
+//   registerOnTouched(fn: any): void {
+//     this.onTouched = fn;
+//   }
+
+//   @HostListener('document:click', ['$event'])
+//   onDocumentClick(event: MouseEvent) {
+//     if (!this.elementRef.nativeElement.contains(event.target)) {
+//       this.closeDropdown();
+//     }
+//   }
+
+//   closeDropdown() {
+//     this.isOpen = false;
+//   }
+
+//   toggleDropdown(event: Event) {
+//     event.stopPropagation();
+//     this.isOpen = !this.isOpen;
+//     if (this.options instanceof Observable) {
+//       // The filteredOptions will be updated by the subscription
+//     } else {
+//       this.filteredOptions = this.options;
+//     }
+//   }
+
+//   selectOption(option: Option, event: Event) {
+//     event.stopPropagation();
+//     this.value = option.value;
+//     this.selectedOption = option;
+//     this.onChange(this.value);
+//     if(this.closeOnSelect)this.isOpen = false;
+//     this.valueChange.emit(this.value);
+//   }
+
+//   filterOptions(event: any) {
+//     const filterValue = event.target.value.toLowerCase();
+//     if (this.options instanceof Observable) {
+//       // If options is an Observable, we need to update the subscription
+//       if (this.optionsSubscription) {
+//         this.optionsSubscription.unsubscribe();
+//       }
+//       this.optionsSubscription = this.options.subscribe(options => {
+//         this.filteredOptions = options.filter(option =>
+//           option.label.toLowerCase().includes(filterValue)
+//         );
+//       });
+//     } else {
+//       // If options is an array, we can filter it directly
+//       this.filteredOptions = this.options.filter(option =>
+//         option.label.toLowerCase().includes(filterValue)
+//       );
+//     }
+//   }
+
+//   onAddNewOption(event: Event) {
+//     event.stopPropagation();
+//     this.addNewOption.emit(this.categoryName());
+//   }
+
+//   onEditOption(event: Event) {
+//     event.stopPropagation();
+//     this.editOption.emit(this.categoryName());
+//   }
+
+// }

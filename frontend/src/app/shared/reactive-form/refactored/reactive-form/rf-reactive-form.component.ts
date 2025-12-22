@@ -2,7 +2,7 @@ import { Component, computed, DestroyRef, effect, inject, Input, input, output, 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
-import { FormField } from '../../../../models/ui/form-field.model';
+import { RfFormField } from '../../../../models/ui/form-field.model';
 import { SearchableSelectInputComponent } from '../input-fields/searchable-select-input/searchable-select-input.component';
 import { ChekcboxGroupComponent } from '../input-fields/chekcbox-group/chekcbox-group.component';
 import { CheckboxLabelOnlyComponent } from '../input-fields/checkbox-label-only/checkbox-label-only.component';
@@ -25,20 +25,19 @@ import { FormArrayInputComponent } from '../input-fields/form-array-input/form-a
     SearchableMultiSelectInputComponent,
     MultiTextInputComponent,
     RfFormInputComponent,
-    FormArrayInputComponent
-],
+    FormArrayInputComponent,
+  ],
   templateUrl: './rf-reactive-form.component.html',
-  styleUrl: './rf-reactive-form.component.css'
+  styleUrl: './rf-reactive-form.component.css',
 })
 export class RfReactiveFormComponent {
-  fields = input<FormField[]>([]);
+  fields = input<RfFormField[]>([]);
   entity = input<any>({});
   layout = input<'row' | 'column' | 'reactive'>('column');
   groupLayout = input<'row' | 'column' | 'reactive' | 'grid'>('grid');
   title = input<string>('');
   submitButtonText = input<string>('Submit');
   deleteButtonText = input<string>('');
-
 
   formSubmit = output<any>();
   formDelete = output<void>();
@@ -50,13 +49,12 @@ export class RfReactiveFormComponent {
   selectedCategoryName = signal<string>('');
   formErrors = signal<{ [key: string]: string }>({});
 
-
   Object = Object;
   groupedFields = computed(() => {
     const allFields = this.fields();
-    const groupsMap: { [key: string]: FormField[] } = {};
+    const groupsMap: { [key: string]: RfFormField[] } = {};
 
-    allFields.forEach(field => {
+    allFields.forEach((field) => {
       const groupLabel = field.group?.label || 'Ungrouped';
       if (!groupsMap[groupLabel]) {
         groupsMap[groupLabel] = [];
@@ -68,7 +66,6 @@ export class RfReactiveFormComponent {
 
     return groupsMap;
   });
-
 
   form: FormGroup;
 
@@ -90,24 +87,34 @@ export class RfReactiveFormComponent {
     const group: { [key: string]: any } = {};
     const formFields = this.fields();
 
-    formFields.forEach(field => {
+    formFields.forEach((field) => {
       if (field && field.name) {
         if (field.type === 'form-array') {
           // Handle FormArray
-          const arrayData = this.getNestedValue(this.entity(), field.name) || [];
+          const arrayData =
+            this.getNestedValue(this.entity(), field.name) || [];
           const formArray = this.fb.array(
-            arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
+            arrayData.map((item: any) =>
+              this.createArrayItem(field.fields ?? [], item)
+            )
           );
           this.setNestedControl(group, field.name, formArray);
-
         } else {
           let value = this.getNestedValue(this.entity(), field.name);
 
           if (field.type === 'file') {
             value = null;
-          } else if (field.type === 'checkbox-group' || field.type === 'multi-select' || field.type === 'multi-input') {
+          } else if (
+            field.type === 'checkbox-group' ||
+            field.type === 'multi-select' ||
+            field.type === 'multi-input'
+          ) {
             value = value || [];
-          } else if (field.type === 'select' && typeof value === 'object' && value !== null) {
+          } else if (
+            field.type === 'select' &&
+            typeof value === 'object' &&
+            value !== null
+          ) {
             value = value.id;
           }
 
@@ -119,30 +126,36 @@ export class RfReactiveFormComponent {
             value = new Date().toTimeString().slice(0, 5);
           }
 
-          this.setNestedControl(group, field.name, new FormControl(value, field.validators || []));
+          this.setNestedControl(
+            group,
+            field.name,
+            new FormControl(value, field.validators || [])
+          );
         }
       }
     });
 
     this.form = this.fb.group(group);
     this.setupConditionalValidators();
-    
-    this.form.valueChanges.pipe(
-      debounceTime(1000),
-      distinctUntilChanged(),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(currentValue => {
-      const originalData = this.entity() || {};
-      const formValue = this.form.value;
-      const mergedData = this.deepMerge(originalData, formValue);
-      this.formValueChange.emit(mergedData);
-      console.log('Form value changed: ', currentValue);
-    });
+
+    this.form.valueChanges
+      .pipe(
+        debounceTime(1000),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((currentValue) => {
+        const originalData = this.entity() || {};
+        const formValue = this.form.value;
+        const mergedData = this.deepMerge(originalData, formValue);
+        this.formValueChange.emit(mergedData);
+        console.log('Form value changed: ', currentValue);
+      });
   }
 
-  private createArrayItem(fields: FormField[], data: any = {}): FormGroup {
+  private createArrayItem(fields: RfFormField[], data: any = {}): FormGroup {
     const group = this.fb.group({});
-    fields.forEach(field => {
+    fields.forEach((field) => {
       const value = data[field.name] ?? field.initialValue ?? '';
       group.addControl(field.name, this.fb.control(value, field.validators));
     });
@@ -153,7 +166,7 @@ export class RfReactiveFormComponent {
     return this.form.get(name) as FormArray;
   }
 
-  addArrayItem(arrayName: string, fields: FormField[]) {
+  addArrayItem(arrayName: string, fields: RfFormField[]) {
     const formArray = this.getFormArray(arrayName);
     if (formArray) {
       formArray.push(this.createArrayItem(fields));
@@ -169,7 +182,7 @@ export class RfReactiveFormComponent {
     }
   }
 
-  shouldShowField(field: FormField): boolean {
+  shouldShowField(field: RfFormField): boolean {
     if (!field.showWhen) {
       return true; // Always show if no condition is set
     }
@@ -178,7 +191,7 @@ export class RfReactiveFormComponent {
   }
 
   private setupConditionalValidators(): void {
-    this.fields().forEach(field => {
+    this.fields().forEach((field) => {
       if (field.showWhen) {
         const controllingField = this.form.get(field.showWhen.field);
         const dependentControl = this.form.get(field.name);
@@ -196,9 +209,9 @@ export class RfReactiveFormComponent {
           };
 
           // Subscribe to changes and automatically unsubscribe on component destruction
-          controllingField.valueChanges.pipe(
-            takeUntilDestroyed(this.destroyRef)
-          ).subscribe(updateValidators);
+          controllingField.valueChanges
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(updateValidators);
 
           // Run the check once initially
           updateValidators(controllingField.value);
@@ -207,7 +220,11 @@ export class RfReactiveFormComponent {
     });
   }
 
-  private setNestedControl(group: { [key: string]: any }, path: string, control: FormControl | FormArray) {
+  private setNestedControl(
+    group: { [key: string]: any },
+    path: string,
+    control: FormControl | FormArray
+  ) {
     const pathParts = path.split('.');
     let currentGroup: any = group;
 
@@ -240,13 +257,17 @@ export class RfReactiveFormComponent {
     const output = { ...target };
 
     if (this.isObject(target) && this.isObject(source)) {
-      Object.keys(source).forEach(key => {
+      Object.keys(source).forEach((key) => {
         const sourceValue = source[key];
         const targetValue = target[key];
 
         if (this.isObject(sourceValue) && targetValue) {
           output[key] = this.deepMerge(targetValue, sourceValue);
-        } else if (targetValue instanceof Date && typeof sourceValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sourceValue)) {
+        } else if (
+          targetValue instanceof Date &&
+          typeof sourceValue === 'string' &&
+          /^\d{4}-\d{2}-\d{2}$/.test(sourceValue)
+        ) {
           // If target is a Date and source is a date-string, convert it back to a Date object.
           // This handles the case where a date picker returns a string.
           const [year, month, day] = sourceValue.split('-').map(Number);
@@ -261,18 +282,22 @@ export class RfReactiveFormComponent {
   }
 
   private isObject(item: any): boolean {
-    return (item && typeof item === 'object' && !Array.isArray(item) && !(item instanceof Date));
+    return (
+      item &&
+      typeof item === 'object' &&
+      !Array.isArray(item) &&
+      !(item instanceof Date)
+    );
   }
-  
 
   private getNestedValue(obj: any, path: string): any {
     if (!obj || !path) {
       return null;
     }
-    return path.split('.').reduce((prev, curr) => (prev ? prev[curr] : null), obj);
+    return path
+      .split('.')
+      .reduce((prev, curr) => (prev ? prev[curr] : null), obj);
   }
-
-
 
   onSubmit() {
     if (this.form.valid) {
@@ -310,19 +335,27 @@ export class RfReactiveFormComponent {
 
   private updateFormErrors() {
     const errors: { [key: string]: string } = {};
-    this.fields().forEach(field => {
+    this.fields().forEach((field) => {
       const control = this.form.get(field.name);
       if (control && control.invalid && (control.dirty || control.touched)) {
         if (control.errors) {
           const errorKey = Object.keys(control.errors)[0];
-          errors[field.name] = this.getErrorMessage(field.label, errorKey, control.errors[errorKey]);
+          errors[field.name] = this.getErrorMessage(
+            field.label,
+            errorKey,
+            control.errors[errorKey]
+          );
         }
       }
     });
     this.formErrors.set(errors);
   }
 
-  private getErrorMessage(fieldName: string, errorKey: string, errorValue: any): string {
+  private getErrorMessage(
+    fieldName: string,
+    errorKey: string,
+    errorValue: any
+  ): string {
     switch (errorKey) {
       case 'required':
         return `${fieldName} is required.`;
@@ -339,4 +372,14 @@ export class RfReactiveFormComponent {
     }
   }
 
+  isSignal(item: any): boolean {
+    return (
+      item &&
+      typeof item.asReadonly === 'function' &&
+      typeof item() === 'function'
+    );
+  }
+  getFieldOptions(options: any): any[] {
+    return this.isSignal(options) ? options() : options;
+  }
 }

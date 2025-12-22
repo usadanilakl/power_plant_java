@@ -1,6 +1,7 @@
 import { ValidatorFn } from "@angular/forms";
 import { Option } from "../option.model";
 import { Question } from "./question.model";
+import { Signal } from "@angular/core";
 
 export interface FormField {
   name: string;
@@ -64,4 +65,64 @@ export interface FormField {
 export interface FormFieldGroup {
   label?: string;
   orientation?: 'horizontal' | 'vertical';
+}
+
+
+export interface RfFormField {
+  name: string;
+  label: string;
+  type:
+    | 'text'
+    | 'textarea'
+    | 'select'
+    | 'multi-select'
+    | 'date'
+    | 'time'
+    | 'checkbox-group'
+    | 'checkbox'
+    | 'radio'
+    | 'file'
+    | 'multi-input'
+    | 'number'
+    | 'radio-group'
+    | 'form-array';
+  validators?: ValidatorFn[];
+  options?: Option[] | Signal<Option[]>;
+  initialValue?: any;
+  currentValue?: any;
+  question?: Question;
+  position?: { x: number; y: number };
+  size?: { width: number; height: number };
+  style?: {
+    backgroundColor?: string;
+    textColor?: string;
+    borderColor?: string;
+    borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
+    borderWidth?: number;
+    fontSize?: number;
+    fontWeight?: 'normal' | 'bold';
+    fontStyle?: 'normal' | 'italic';
+    border?: string;
+    padding?: string;
+  };
+  layout?: {
+    padding?: number;
+    margin?: number;
+    alignment?: 'left' | 'center' | 'right';
+  };
+  lines?: {
+    top?: boolean;
+    right?: boolean;
+    bottom?: boolean;
+    left?: boolean;
+  };
+  group?: FormFieldGroup;
+  fields?: FormField[];
+  nestedForm?: any;
+  arrayIndexRange?: { start: number; end: number };
+  readonly?: boolean;
+  showWhen?: {
+    field: string;
+    value: any;
+  };
 }

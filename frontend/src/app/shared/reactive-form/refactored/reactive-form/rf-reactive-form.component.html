@@ -1,4 +1,115 @@
 @if (title()!== '') {
+<h2 class="form-header">{{ title() }}</h2>
+}
+<form
+  [formGroup]="form"
+  (ngSubmit)="onSubmit()"
+  [class]="'form-layout-' + layout()"
+  (contextmenu)="onContextMenu($event)"
+>
+  <div class="form-content">
+    @for (groupLabel of Object.keys(groupedFields()); track groupLabel) {
+    <fieldset
+      class="form-group"
+      [class]="
+        'form-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())
+      "
+    >
+      @if (groupLabel !== 'Ungrouped') {
+      <legend class="group-title">{{ groupLabel }}</legend>
+      } @for (field of groupedFields()[groupLabel]; track field.name) { @if
+      (shouldShowField(field)) {
+      <div
+        [class]="
+          'form-field-layout-' +
+          (groupLabel === 'Ungrouped' ? layout() : groupLayout())
+        "
+      >
+        @switch (field.type) { @case ('select') {
+        <app-searchable-select-input
+          [label]="field.label"
+          [options]="getFieldOptions(field.options) ?? []"
+          [formControl]="getFormControl(field.name)"
+          [categoryName]="field.name"
+        >
+        </app-searchable-select-input>
+        } @case ('checkbox-group') {
+        <app-chekcbox-group
+          [label]="field.label"
+          [options]="getFieldOptions(field.options) ?? []"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-chekcbox-group>
+        } @case ('checkbox') {
+        <app-checkbox-label-only
+          [label]="field.label"
+          [id]="field.name"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-checkbox-label-only>
+        } @case ('radio-group') {
+        <app-rf-radio-group
+          [label]="field.label"
+          [options]="getFieldOptions(field.options) ?? []"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-rf-radio-group>
+        } @case('multi-select'){
+        <app-searchable-multi-select-input
+          [options]="getFieldOptions(field.options) ?? []"
+          [label]="field.label"
+          [formControl]="getFormControl(field.name)"
+          [categoryName]="field.name"
+        ></app-searchable-multi-select-input>
+        } @case('file'){
+        <app-file-input
+          formControlName="file"
+          label="Upload File"
+          accept=".pdf,.doc,.docx,.img,.jpg,.jpeg"
+        >
+        </app-file-input>
+        } @case('multi-input'){
+        <app-multi-text-input
+          type="text"
+          [label]="field.label"
+          [formControl]="getFormControl(field.name)"
+        ></app-multi-text-input>
+        } @case('form-array'){
+        <app-form-array-input
+          [label]="field.label"
+          [formArray]="getFormArray(field.name)"
+          [fields]="field.fields!"
+          (addItem)="addArrayItem(field.name, field.fields!)"
+          (removeItem)="removeArrayItem(field.name, $event)"
+        >
+        </app-form-array-input>
+        } @default {
+        <app-rf-form-input
+          [label]="field.label"
+          [type]="field.type"
+          [readonly]="field.readonly ?? false"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-rf-form-input>
+        } } @if (formErrors()[field.name]) {
+        <div class="error-message">{{ formErrors()[field.name] }}</div>
+        }
+      </div>
+      } }
+    </fieldset>
+    }
+  </div>
+
+  <div class="form-actions">
+    <button type="submit">{{ submitButtonText() }}</button>
+    @if (deleteButtonText() !== '') {
+    <button type="button" (click)="onDelete()">{{ deleteButtonText() }}</button>
+    }
+    <ng-content select="[extra-buttons]"></ng-content>
+  </div>
+</form>
+
+<!-- @if (title()!== '') {
   <h2 class="form-header">{{ title() }}</h2>
 }
 <form [formGroup]="form" (ngSubmit)="onSubmit()" [class]="'form-layout-' + layout()" (contextmenu)="onContextMenu($event)">
@@ -96,5 +207,4 @@
     }
     <ng-content select="[extra-buttons]"></ng-content>
   </div>
-</form>
-
+</form> -->

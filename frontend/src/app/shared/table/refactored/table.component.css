@@ -209,7 +209,7 @@ th, td {
 }
 
 .viewport::-webkit-scrollbar-thumb {
-  background: var(--border-color, #888);
+  background: var(--scroll-bar-color, #888);
   border-radius: 4px;
 }
 
