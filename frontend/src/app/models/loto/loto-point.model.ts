@@ -6,10 +6,11 @@ import { Option } from '../option.model';
 import { LotoPointIdDto } from './loto-point-id.model';
 import { Column } from '../column.model';
 import { BaseDto, BaseModel } from '../base/base.model';
+import { ZeroEnergyModel } from './refactored/zero-energy.model';
 
 export type LotoPointFieldName = keyof LotoPointModel;
 
-export interface LotoPointModel extends BaseModel{
+export interface LotoPointModel extends BaseModel {
   unit: string | null;
   tagged: string | null;
   tagNumber: string | null;
@@ -62,7 +63,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   zeroEnergyMethod: string | null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
-    super(data);  // This should handle id, name, objectType, and isVerified
+    super(data); // This should handle id, name, objectType, and isVerified
 
     this.unit = data.unit ?? null;
     this.tagged = data.tagged ?? null;
@@ -84,16 +85,15 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.fileIds = data.fileIds ?? null;
     this.conflictStatus = data.conflictStatus ?? null;
     this.lotos = data.lotos ?? null;
-    this.zeroEnergyMethod = data.zeroEnergyMethod?? null;
+    this.zeroEnergyMethod = data.zeroEnergyMethod ?? null;
   }
-
 
   // Serialization method
   override toJson(): any {
     return {
       id: this.id || 0,
       unit: this.unit || '',
-      isVerified :this.isVerified || false,
+      isVerified: this.isVerified || false,
       tagged: this.tagged || '',
       tagNumber: this.tagNumber || '',
       description: this.description || '',
@@ -105,18 +105,18 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       equipmentIdList: this.equipmentIdList || [],
       normalPosition: this.normalPosition || '',
       isolatedPosition: this.isolatedPosition || '',
-      equipmentList: this.equipmentList 
+      equipmentList: this.equipmentList
         ? Array.from(this.equipmentList)
-            .filter(equipment => equipment != null)
-            .map(equipment => equipment.toJson())
+            .filter((equipment) => equipment != null)
+            .map((equipment) => equipment.toJson())
         : [],
       oldId: this.oldId || '',
       objectType: this.objectType || '',
       isUpdated: this.isUpdated || 0,
       fileIds: this.fileIds || '',
       conflictStatus: this.conflictStatus || '',
-      lotos: this.lotos?.map(loto => loto.toJson()),
-      zeroEnergyMethod: this.zeroEnergyMethod || null
+      lotos: this.lotos?.map((loto) => loto.toJson()),
+      zeroEnergyMethod: this.zeroEnergyMethod || null,
     };
   }
 
@@ -126,7 +126,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       console.warn('Received null or undefined json in LotoPointDto.fromJson');
       return new LotoPointDto();
     }
-  
+
     return new LotoPointDto({
       id: json.id || 0,
       unit: json.unit || '',
@@ -139,143 +139,331 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       specificLocation: json.specificLocation || '',
       standard: json.standard || '',
       generalLocation: json.generalLocation || '',
-      equipmentIdList: Array.isArray(json.equipmentIdList) ? json.equipmentIdList : [],
+      equipmentIdList: Array.isArray(json.equipmentIdList)
+        ? json.equipmentIdList
+        : [],
       normalPosition: json.normalPosition || '',
       isolatedPosition: json.isolatedPosition || '',
-      equipmentList: json.equipmentList? json.equipmentList
-              .filter((equipment: any) => equipment != null)
-              .map((equipment: any) => {
-                try {
-                  return EquipmentDto.fromJson(equipment);
-                } catch (error) {
-                  console.warn('Error parsing EquipmentDto:', error);
-                  return null;
-                }
-              })
-              .filter((equipment: EquipmentDto | null) => equipment !== null)
-          : [],
+      equipmentList: json.equipmentList
+        ? json.equipmentList
+            .filter((equipment: any) => equipment != null)
+            .map((equipment: any) => {
+              try {
+                return EquipmentDto.fromJson(equipment);
+              } catch (error) {
+                console.warn('Error parsing EquipmentDto:', error);
+                return null;
+              }
+            })
+            .filter((equipment: EquipmentDto | null) => equipment !== null)
+        : [],
       oldId: json.oldId || '',
       objectType: json.objectType || '',
       isUpdated: json.isUpdated || 0,
       fileIds: json.fileIds || '',
       conflictStatus: json.conflictStatus || '',
-      lotos: Array.isArray(json.lotos)? json.lotos.map((lotoJson: any) => LotoDto.fromJson(lotoJson)): [],
-      zeroEnergyMethod: json.zeroEnergyMethod || null
+      lotos: Array.isArray(json.lotos)
+        ? json.lotos.map((lotoJson: any) => LotoDto.fromJson(lotoJson))
+        : [],
+      zeroEnergyMethod: json.zeroEnergyMethod || null,
     });
   }
 
-  
   static toFormFields(
-    dto: LotoPointDto, 
-    isoPosOptions: Option[], 
+    dto: LotoPointDto,
+    isoPosOptions: Option[],
     normPosOptions: Option[],
-    fields: LotoPointFieldName[] = ['tagNumber', 'description', 'unit', 'tagged', 'isoPos', 'normPos', 'specificLocation', 'standard', 'generalLocation', 'isVerified', 'zeroEnergyMethod']
+    fields: LotoPointFieldName[] = [
+      'tagNumber',
+      'description',
+      'unit',
+      'tagged',
+      'isoPos',
+      'normPos',
+      'specificLocation',
+      'standard',
+      'generalLocation',
+      'isVerified',
+      'zeroEnergyMethod',
+    ]
   ): LotoPointFormField[] {
     const allFields: { [key in LotoPointFieldName]: LotoPointFormField } = {
-      tagNumber: { name: 'tagNumber', label: 'Tag Number', type: 'text', validators: [Validators.required], initialValue: dto.tagNumber },
-      description: { name: 'description', label: 'Description', type: 'text', validators: [Validators.required], initialValue: dto.description },
-      unit: { name: 'unit', label: 'Unit', type: 'text', initialValue: dto.unit },
-      tagged: { name: 'tagged', label: 'Tagged', type: 'text', initialValue: dto.tagged },
+      tagNumber: {
+        name: 'tagNumber',
+        label: 'Tag Number',
+        type: 'text',
+        validators: [Validators.required],
+        initialValue: dto.tagNumber,
+      },
+      description: {
+        name: 'description',
+        label: 'Description',
+        type: 'text',
+        validators: [Validators.required],
+        initialValue: dto.description,
+      },
+      unit: {
+        name: 'unit',
+        label: 'Unit',
+        type: 'text',
+        initialValue: dto.unit,
+      },
+      tagged: {
+        name: 'tagged',
+        label: 'Tagged',
+        type: 'text',
+        initialValue: dto.tagged,
+      },
       isoPos: {
         name: 'isoPos',
         label: 'Isolated Position',
         type: 'select',
         options: isoPosOptions,
-        initialValue: dto.isoPos?.id || null
+        initialValue: dto.isoPos?.id || null,
       },
       normPos: {
         name: 'normPos',
         label: 'Normal Position',
         type: 'select',
         options: normPosOptions,
-        initialValue: dto.normPos?.id || null
+        initialValue: dto.normPos?.id || null,
       },
-      specificLocation: { name: 'specificLocation', label: 'Specific Location', type: 'text', initialValue: dto.specificLocation },
-      standard: { name: 'standard', label: 'Standard', type: 'text', initialValue: dto.standard },
-      generalLocation: { name: 'generalLocation', label: 'General Location', type: 'text', initialValue: dto.generalLocation },
+      specificLocation: {
+        name: 'specificLocation',
+        label: 'Specific Location',
+        type: 'text',
+        initialValue: dto.specificLocation,
+      },
+      standard: {
+        name: 'standard',
+        label: 'Standard',
+        type: 'text',
+        initialValue: dto.standard,
+      },
+      generalLocation: {
+        name: 'generalLocation',
+        label: 'General Location',
+        type: 'text',
+        initialValue: dto.generalLocation,
+      },
       // Add other fields here...
       id: { name: 'id', label: 'ID', type: 'text', initialValue: dto.id },
-      equipmentIdList: { name: 'equipmentIdList', label: 'Equipment IDs', type: 'multi-select', initialValue: dto.equipmentIdList },
-      normalPosition: { name: 'normalPosition', label: 'Normal Position', type: 'text', initialValue: dto.normalPosition },
-      isolatedPosition: { name: 'isolatedPosition', label: 'Isolated Position', type: 'text', initialValue: dto.isolatedPosition },
-      oldId: { name: 'oldId', label: 'Old ID', type: 'text', initialValue: dto.oldId },
-      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
-      isUpdated: { name: 'isUpdated', label: 'Is Updated', type: 'text', initialValue: dto.isUpdated },
-      fileIds: { name: 'fileIds', label: 'File IDs', type: 'text', initialValue: dto.fileIds },
-      conflictStatus: { name: 'conflictStatus', label: 'Conflict Status', type: 'text', initialValue: dto.conflictStatus },
-      equipmentList: { name: 'equipmentList', label: 'Equipment List', type: 'text',   },
-      lotos: { name: 'lotos', label: 'Lotos', type: 'text',   },
-      name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
-      isVerified: { 
-        name: 'isVerified', 
-        label: 'Is Verified', 
-        type: 'select', 
+      equipmentIdList: {
+        name: 'equipmentIdList',
+        label: 'Equipment IDs',
+        type: 'multi-select',
+        initialValue: dto.equipmentIdList,
+      },
+      normalPosition: {
+        name: 'normalPosition',
+        label: 'Normal Position',
+        type: 'text',
+        initialValue: dto.normalPosition,
+      },
+      isolatedPosition: {
+        name: 'isolatedPosition',
+        label: 'Isolated Position',
+        type: 'text',
+        initialValue: dto.isolatedPosition,
+      },
+      oldId: {
+        name: 'oldId',
+        label: 'Old ID',
+        type: 'text',
+        initialValue: dto.oldId,
+      },
+      objectType: {
+        name: 'objectType',
+        label: 'Object Type',
+        type: 'text',
+        initialValue: dto.objectType,
+      },
+      isUpdated: {
+        name: 'isUpdated',
+        label: 'Is Updated',
+        type: 'text',
+        initialValue: dto.isUpdated,
+      },
+      fileIds: {
+        name: 'fileIds',
+        label: 'File IDs',
+        type: 'text',
+        initialValue: dto.fileIds,
+      },
+      conflictStatus: {
+        name: 'conflictStatus',
+        label: 'Conflict Status',
+        type: 'text',
+        initialValue: dto.conflictStatus,
+      },
+      equipmentList: {
+        name: 'equipmentList',
+        label: 'Equipment List',
+        type: 'text',
+      },
+      lotos: { name: 'lotos', label: 'Lotos', type: 'text' },
+      name: {
+        name: 'name',
+        label: 'Name',
+        type: 'text',
+        initialValue: dto.name,
+      },
+      isVerified: {
+        name: 'isVerified',
+        label: 'Is Verified',
+        type: 'select',
         options: [
           { value: 'true', label: 'Yes' },
-          { value: 'false', label: 'No' }
-        ], 
-        initialValue: dto.isVerified?.toString() 
+          { value: 'false', label: 'No' },
+        ],
+        initialValue: dto.isVerified?.toString(),
       },
-      zeroEnergyMethod: { name: 'zeroEnergyMethod', label: 'Zero Energy Method', type: 'text', initialValue: dto.zeroEnergyMethod }
+      zeroEnergyMethod: {
+        name: 'zeroEnergyMethod',
+        label: 'Zero Energy Method',
+        type: 'text',
+        initialValue: dto.zeroEnergyMethod,
+      },
     };
-  
-    return fields.map(fieldName => allFields[fieldName]);
+
+    return fields.map((fieldName) => allFields[fieldName]);
   }
 
-// Add this method to the LotoPointDto class
-static toTableColumns(
-  fields: LotoPointFieldName[] = ['unit', 'tagNumber', 'description', 'specificLocation', 'tagged', 'lotos', 'isoPos', 'normPos']
-): Column[] {
-  const allColumns: { [key in LotoPointFieldName]: Column } = {
-    unit: { id: 'unit', header: 'Unit', accessorKey: 'unit' },
-    tagNumber: { id: 'tagNumber', header: 'Tag Number', accessorKey: 'tagNumber' },
-    description: { id: 'description', header: 'Description', accessorKey: 'description' },
-    specificLocation: { id: 'specificLocation', header: 'Specific Location', accessorKey: 'specificLocation' },
-    tagged: { id: 'tagged', header: 'Tagging Status', accessorKey: 'tagged' },
-    lotos: { 
-      id: 'lotos', 
-      header: 'LOTOs', 
-      accessorFn: (item: any) => {
-        if (Array.isArray(item.lotos)) {
-          return item.lotos.map((loto: any) => loto.workScope).join(', ');
-        }
-        return '';
-      }
-    },
-    isoPos: { id: 'isoPos', header: 'ISO Pos', accessorKey: 'isoPos.name' },
-    normPos: { id: 'normPos', header: 'Norm Pos', accessorKey: 'normPos.name' },
-    id: { id: 'id', header: 'ID', accessorKey: 'id' },
-    standard: { id: 'standard', header: 'Standard', accessorKey: 'standard' },
-    generalLocation: { id: 'generalLocation', header: 'General Location', accessorKey: 'generalLocation' },
-    equipmentIdList: { id: 'equipmentIdList', header: 'Equipment IDs', accessorKey: 'equipmentIdList' },
-    normalPosition: { id: 'normalPosition', header: 'Normal Position', accessorKey: 'normalPosition' },
-    isolatedPosition: { id: 'isolatedPosition', header: 'Isolated Position', accessorKey: 'isolatedPosition' },
-    oldId: { id: 'oldId', header: 'Old ID', accessorKey: 'oldId' },
-    objectType: { id: 'objectType', header: 'Object Type', accessorKey: 'objectType' },
-    isUpdated: { id: 'isUpdated', header: 'Is Updated', accessorKey: 'isUpdated' },
-    fileIds: { id: 'fileIds', header: 'File IDs', accessorKey: 'fileIds' },
-    conflictStatus: { id: 'conflictStatus', header: 'Conflict Status', accessorKey: 'conflictStatus' },
-    equipmentList: { id: 'equipmentList', header: 'Equipment List', accessorKey: 'equipmentList' },
-    name: { id: 'name', header: 'Name', accessorKey: 'name' },
-    isVerified: {
-      id: 'isVerified',
-      header: 'Verified',
-      accessorFn: (item: LotoPointDto) => item.isVerified ? 'Yes' : 'No',
-      conditionalStyling: (item: any, column: Column) => 
-      item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
-    },
-    zeroEnergyMethod: { id: 'zeroEnergyMethod', header: 'Zero Energy Method', accessorKey: 'zeroEnergyMethod' }
-  };
+  // Add this method to the LotoPointDto class
+  static toTableColumns(
+    fields: LotoPointFieldName[] = [
+      'unit',
+      'tagNumber',
+      'description',
+      'specificLocation',
+      'tagged',
+      'lotos',
+      'isoPos',
+      'normPos',
+    ]
+  ): Column[] {
+    const allColumns: { [key in LotoPointFieldName]: Column } = {
+      unit: { id: 'unit', header: 'Unit', accessorKey: 'unit' },
+      tagNumber: {
+        id: 'tagNumber',
+        header: 'Tag Number',
+        accessorKey: 'tagNumber',
+      },
+      description: {
+        id: 'description',
+        header: 'Description',
+        accessorKey: 'description',
+      },
+      specificLocation: {
+        id: 'specificLocation',
+        header: 'Specific Location',
+        accessorKey: 'specificLocation',
+      },
+      tagged: { id: 'tagged', header: 'Tagging Status', accessorKey: 'tagged' },
+      lotos: {
+        id: 'lotos',
+        header: 'LOTOs',
+        accessorFn: (item: any) => {
+          if (Array.isArray(item.lotos)) {
+            return item.lotos.map((loto: any) => loto.workScope).join(', ');
+          }
+          return '';
+        },
+      },
+      isoPos: { id: 'isoPos', header: 'ISO Pos', accessorKey: 'isoPos.name' },
+      normPos: {
+        id: 'normPos',
+        header: 'Norm Pos',
+        accessorKey: 'normPos.name',
+      },
+      id: { id: 'id', header: 'ID', accessorKey: 'id' },
+      standard: { id: 'standard', header: 'Standard', accessorKey: 'standard' },
+      generalLocation: {
+        id: 'generalLocation',
+        header: 'General Location',
+        accessorKey: 'generalLocation',
+      },
+      equipmentIdList: {
+        id: 'equipmentIdList',
+        header: 'Equipment IDs',
+        accessorKey: 'equipmentIdList',
+      },
+      normalPosition: {
+        id: 'normalPosition',
+        header: 'Normal Position',
+        accessorKey: 'normalPosition',
+      },
+      isolatedPosition: {
+        id: 'isolatedPosition',
+        header: 'Isolated Position',
+        accessorKey: 'isolatedPosition',
+      },
+      oldId: { id: 'oldId', header: 'Old ID', accessorKey: 'oldId' },
+      objectType: {
+        id: 'objectType',
+        header: 'Object Type',
+        accessorKey: 'objectType',
+      },
+      isUpdated: {
+        id: 'isUpdated',
+        header: 'Is Updated',
+        accessorKey: 'isUpdated',
+      },
+      fileIds: { id: 'fileIds', header: 'File IDs', accessorKey: 'fileIds' },
+      conflictStatus: {
+        id: 'conflictStatus',
+        header: 'Conflict Status',
+        accessorKey: 'conflictStatus',
+      },
+      equipmentList: {
+        id: 'equipmentList',
+        header: 'Equipment List',
+        accessorKey: 'equipmentList',
+      },
+      name: { id: 'name', header: 'Name', accessorKey: 'name' },
+      isVerified: {
+        id: 'isVerified',
+        header: 'Verified',
+        accessorFn: (item: LotoPointDto) => (item.isVerified ? 'Yes' : 'No'),
+        conditionalStyling: (item: any, column: Column) =>
+          item.isVerified
+            ? { 'background-color': '#90EE90' }
+            : { 'background-color': '#FFCCCB' },
+      },
+      zeroEnergyMethod: {
+        id: 'zeroEnergyMethod',
+        header: 'Zero Energy Method',
+        accessorKey: 'zeroEnergyMethod',
+      },
+    };
 
-  return fields.map(fieldName => allColumns[fieldName]);
-}
+    return fields.map((fieldName) => allColumns[fieldName]);
+  }
 
   static isValidKey(key: string): key is keyof LotoPointModel {
     const validKeys: (keyof LotoPointModel)[] = [
-      'id', 'unit', 'tagged', 'tagNumber', 'description', 'isoPos', 'normPos',
-      'specificLocation', 'standard', 'generalLocation', 'equipmentIdList',
-      'normalPosition', 'isolatedPosition', 'equipmentList', 'oldId',
-      'objectType', 'isUpdated', 'fileIds', 'conflictStatus', 'lotos','isVerified', 'zeroEnergyMethod'
+      'id',
+      'unit',
+      'tagged',
+      'tagNumber',
+      'description',
+      'isoPos',
+      'normPos',
+      'specificLocation',
+      'standard',
+      'generalLocation',
+      'equipmentIdList',
+      'normalPosition',
+      'isolatedPosition',
+      'equipmentList',
+      'oldId',
+      'objectType',
+      'isUpdated',
+      'fileIds',
+      'conflictStatus',
+      'lotos',
+      'isVerified',
+      'zeroEnergyMethod',
     ];
     return validKeys.includes(key as keyof LotoPointModel);
   }
@@ -295,7 +483,7 @@ static toTableColumns(
       specificLocation: this.specificLocation,
       standard: this.standard,
       generalLocation: this.generalLocation,
-      equipmentIdList: this.equipmentList?.map(equipment => equipment.id),
+      equipmentIdList: this.equipmentList?.map((equipment) => equipment.id),
       normalPosition: this.normalPosition,
       isolatedPosition: this.isolatedPosition,
       oldId: this.oldId,
@@ -304,20 +492,23 @@ static toTableColumns(
       // fileIds: this.fileIds.split(',').map(id => id.trim()).filter(id => id !== ''),
       fileIds: this.fileIds,
       conflictStatus: this.conflictStatus,
-      lotoIds: this.lotos?.map(loto => loto.id),
-      zeroEnergyMethod: this.zeroEnergyMethod
+      lotoIds: this.lotos?.map((loto) => loto.id),
+      zeroEnergyMethod: this.zeroEnergyMethod,
     });
   }
   toOption(): Option {
-    const label: string = this.tagNumber && this.description ? `${this.tagNumber} - ${this.description}` : this.tagNumber || this.description || 'No Tag Number or Description';
+    const label: string =
+      this.tagNumber && this.description
+        ? `${this.tagNumber} - ${this.description}`
+        : this.tagNumber || this.description || 'No Tag Number or Description';
     return {
       value: this.id,
-      label: label
+      label: label,
     };
   }
 
   applyPresetValue(equipment: LotoPointDto): LotoPointDto {
-    Object.keys(equipment).forEach(key => {
+    Object.keys(equipment).forEach((key) => {
       if (LotoPointDto.isValidKey(key)) {
         const value = equipment[key];
         if (value !== null && value !== undefined && value !== '') {
@@ -333,7 +524,6 @@ static toTableColumns(
     });
     return this;
   }
-
 
   // You can add methods here for any LOTO point-specific operations
 }
