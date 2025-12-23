@@ -147,31 +147,31 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.searchService.updateFilteredItems();
   });
 
-  columnUniqueValuesMap = computed(() => {
-    const currentItems = this.items();
-    const currentColumns = this.columns();
+  // columnUniqueValuesMap = computed(() => {
+  //   const currentItems = this.items();
+  //   const currentColumns = this.columns();
 
-    if (!currentItems || !currentColumns) return;
+  //   if (!currentItems || !currentColumns) return;
 
-    const uniqueValuesMap: { [columnId: string]: string[] } = {};
+  //   const uniqueValuesMap: { [columnId: string]: string[] } = {};
 
-    currentColumns.forEach((column) => {
-      if (!column.filterable) return;
+  //   currentColumns.forEach((column) => {
+  //     if (!column.filterable) return;
 
-      const uniqueValues = new Set<string>();
+  //     const uniqueValues = new Set<string>();
 
-      currentItems.forEach((item) => {
-        const value = this.utilService.getCellValue(item, column);
-        if (value !== null && value !== undefined && value !== '') {
-          uniqueValues.add(String(value).toLowerCase());
-        }
-      });
+  //     currentItems.forEach((item) => {
+  //       const value = this.utilService.getCellValue(item, column);
+  //       if (value !== null && value !== undefined && value !== '') {
+  //         uniqueValues.add(String(value).toLowerCase());
+  //       }
+  //     });
 
-      uniqueValuesMap[column.id] = Array.from(uniqueValues).sort();
-    });
+  //     uniqueValuesMap[column.id] = Array.from(uniqueValues).sort();
+  //   });
 
-    return uniqueValuesMap;
-  });
+  //   return uniqueValuesMap;
+  // });
 
   private syncDataTableServiceEffect = effect(() => {
     this.dataService.headerContainer.set(this.headerContainer());

@@ -25,15 +25,12 @@ import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
 import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
+import { TableUtilService } from '../../../../shared/table/refactored/services/table-util.service';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
-  imports: [
-    CommonModule,
-    TableComponent,
-    ContextMenuComponent,
-],
+  imports: [CommonModule, TableComponent, ContextMenuComponent],
   providers: [ContextMenuComponent],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',
@@ -43,10 +40,12 @@ export class RfLotoPointTableComponent implements OnInit {
   protected stateService = inject(RfLotoPointStateService);
   private mapperService = inject(LotoPointMapperService);
   protected contextMenuService = inject(LotoPointContextMenuService);
+  private tableUtilService = inject(TableUtilService);
   private destroyRef = inject(DestroyRef);
 
   // Inputs
   inputItems = input<LotoPointDto[] | null>(null);
+  isTableIsolated = input<boolean>(false);
   loadMoreEnabled = input<boolean>(true);
   enableDragDrop = input<boolean>(false);
   filterOutItems = input<FilterOutRules | undefined>();
@@ -69,13 +68,30 @@ export class RfLotoPointTableComponent implements OnInit {
   items$ = toSignal(this.stateService.allLoadedLotoPoints$, {
     initialValue: [],
   });
+  columnInFocus = signal<string | null>(null);
 
   columns = signal<Column[]>([]);
   isLoading = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
 
+  uniqueOptionsMap = computed(() => {
+    if (this.isTableIsolated() && this.inputItems() && this.columns()) {
+      return this.tableUtilService.getUniqueColumnOptionsMap(
+        this.inputItems()!,
+        this.columns()
+      );
+    }
+    return null;
+  });
   items = computed(() => {
     return this.inputItems() ?? this.items$();
+  });
+
+  currentColumnUniqueItems = computed(() => {
+    if(this.uniqueOptionsMap() && this.columnInFocus()) return this.uniqueOptionsMap()!.get(this.columnInFocus()!);
+    else{
+      return this.stateService.currentColumnUniqueItems();
+    }
   });
 
   constructor() {
@@ -127,7 +143,8 @@ export class RfLotoPointTableComponent implements OnInit {
    */
   loadUniqueItems(columnKey: string, searchString: string): void {
     const key = columnKey as keyof LotoPointDto;
-    this.stateService.loadUniqueItems(key, searchString);
+    this.columnInFocus.set(key);
+    if(!this.isTableIsolated())this.stateService.loadUniqueItems(key, searchString);
   }
 
   /**
@@ -135,7 +152,9 @@ export class RfLotoPointTableComponent implements OnInit {
    */
   loadMoreUniqueItems(columnKey: string, searchString: string): void {
     const key = columnKey as keyof LotoPointDto;
-    this.stateService.loadMoreUniqueItems(key, searchString);
+    this.columnInFocus.set(key);
+    if (!this.isTableIsolated())
+      this.stateService.loadMoreUniqueItems(key, searchString);
     // this.onLoadMore()
   }
 

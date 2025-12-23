@@ -1,6 +1,7 @@
-import { Injectable } from "@angular/core";
-import { SearchCriteria } from "../../../../models/api/search-criteria.model";
-import { Column } from "../../../../models/column.model";
+import { Injectable } from '@angular/core';
+import { SearchCriteria } from '../../../../models/api/search-criteria.model';
+import { Column } from '../../../../models/column.model';
+import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 
 @Injectable({
   providedIn: 'root',
@@ -60,5 +61,29 @@ export class TableUtilService {
 
   trackByItemId(index: number, item: any): any {
     return item.id || index;
+  }
+
+  getUniqueColumnOptionsMap(
+    items: any[],
+    columns: Column[]
+  ): Map<string, string[]> {
+    const uniqueValuesMap = new Map<string, string[]>();
+
+    columns.forEach((column) => {
+      if (!column.filterable) return;
+
+      const uniqueValues = new Set<string>();
+
+      items.forEach((item) => {
+        const value = this.getCellValue(item, column);
+        if (value !== null && value !== undefined && value !== '') {
+          uniqueValues.add(String(value).toLowerCase());
+        }
+      });
+
+      uniqueValuesMap.set(column.id, Array.from(uniqueValues).sort());
+    });
+
+    return uniqueValuesMap;
   }
 }
