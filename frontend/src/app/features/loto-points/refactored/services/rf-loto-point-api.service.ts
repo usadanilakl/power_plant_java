@@ -11,62 +11,97 @@ import { FileDto } from '../../../../models/file/file.model';
 
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class RfLotoPointApiService {
   private apiUrl = `${environment.apiUrl}/loto-points`;
 
   constructor(private http: HttpClient) {}
 
-  getLotoPoints(page: number = 1, pageSize: number = 50): Observable<SpringPaginatedResponse<LotoPointDto>> {
+  getLotoPoints(
+    page: number = 1,
+    pageSize: number = 50
+  ): Observable<SpringPaginatedResponse<LotoPointDto>> {
     const params = new HttpParams()
       .set('page', page.toString())
       .set('pageSize', pageSize.toString());
-    return this.http.get<SpringPaginatedResponse<LotoPointDto>>(`${this.apiUrl}/paginated`, { params });
+    return this.http.get<SpringPaginatedResponse<LotoPointDto>>(
+      `${this.apiUrl}/paginated`,
+      { params }
+    );
   }
 
-  searchLotoPoints(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<LotoPointDto>> {
+  searchLotoPoints(
+    criteria: SearchCriteria,
+    pageSize: number
+  ): Observable<SpringPaginatedResponse<LotoPointDto>> {
     const params = new HttpParams()
       .set('page', (criteria.page ?? 1).toString())
       .set('pageSize', pageSize.toString());
 
-    return this.http.post<SpringPaginatedResponse<LotoPointDto>>(`${this.apiUrl}/search`, criteria, { params });
+    return this.http.post<SpringPaginatedResponse<LotoPointDto>>(
+      `${this.apiUrl}/search`,
+      criteria,
+      { params }
+    );
   }
-  searchLpByBaseTagNumber(criteria: SearchCriteria, pageSize: number): Observable<SpringPaginatedResponse<LotoPointDto>> {
+  searchLpByBaseTagNumber(
+    criteria: SearchCriteria,
+    pageSize: number
+  ): Observable<SpringPaginatedResponse<LotoPointDto>> {
     const params = new HttpParams()
       .set('page', (criteria.page ?? 1).toString())
       .set('pageSize', pageSize.toString());
 
-    return this.http.post<SpringPaginatedResponse<LotoPointDto>>(`${this.apiUrl}/search-by-base-tag-number`, criteria, { params });
+    return this.http.post<SpringPaginatedResponse<LotoPointDto>>(
+      `${this.apiUrl}/search-by-base-tag-number`,
+      criteria,
+      { params }
+    );
   }
 
   getLotoPointById(id: string): Observable<SpringApiResponse<LotoPointDto>> {
-    return this.http.get<SpringApiResponse<LotoPointDto>>(`${this.apiUrl}/${id}`);
+    return this.http.get<SpringApiResponse<LotoPointDto>>(
+      `${this.apiUrl}/${id}`
+    );
   }
 
-  createLotoPoint(lotoPoint: LotoPointDto): Observable<SpringApiResponse<LotoPointDto>> {
-    return this.http.post<SpringApiResponse<LotoPointDto>>(this.apiUrl, lotoPoint);
+  createLotoPoint(
+    lotoPoint: LotoPointDto
+  ): Observable<SpringApiResponse<LotoPointDto>> {
+    return this.http.post<SpringApiResponse<LotoPointDto>>(
+      this.apiUrl,
+      lotoPoint
+    );
   }
 
-  updateLotoPoint(lotoPoint: Partial<LotoPointIdDto | LotoPointDto>): Observable<SpringApiResponse<LotoPointDto>> {
+  updateLotoPoint(
+    lotoPoint: Partial<LotoPointIdDto | LotoPointDto>
+  ): Observable<SpringApiResponse<LotoPointDto>> {
     let lotoPointIdDto: LotoPointIdDto;
-  
+
     if (lotoPoint instanceof LotoPointDto) {
       lotoPointIdDto = lotoPoint.toIdModel();
     } else if (this.isLotoPointIdDto(lotoPoint)) {
       lotoPointIdDto = lotoPoint;
     } else {
-      console.error('Invalid parameter type, expected LotoPointDto or LotoPointIdDto');
+      console.error(
+        'Invalid parameter type, expected LotoPointDto or LotoPointIdDto'
+      );
       // If it's neither, create a new LotoPointDto and convert it
       const fullLotoPoint = new LotoPointDto();
       Object.assign(fullLotoPoint, lotoPoint);
       lotoPointIdDto = fullLotoPoint.toIdModel();
     }
-  
+
     const headers = new HttpHeaders().set('Content-Type', 'application/json');
-    return this.http.put<SpringApiResponse<LotoPointDto>>(`${this.apiUrl}`, lotoPointIdDto, { headers });
+    return this.http.put<SpringApiResponse<LotoPointDto>>(
+      `${this.apiUrl}`,
+      lotoPointIdDto,
+      { headers }
+    );
   }
-  
+
   // Type guard function
   private isLotoPointIdDto(object: any): object is LotoPointIdDto {
     // Iterate over all fields
@@ -74,12 +109,16 @@ export class RfLotoPointApiService {
       if (Object.prototype.hasOwnProperty.call(object, key)) {
         const value = object[key];
         // Check if the value is an object, but not an array or null
-        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        if (
+          typeof value === 'object' &&
+          value !== null &&
+          !Array.isArray(value)
+        ) {
           return false; // Found a nested object, so it's not a LotoPointIdDto
         }
       }
     }
-  
+
     return true; // No nested objects found, likely a LotoPointIdDto
   }
 
@@ -87,60 +126,70 @@ export class RfLotoPointApiService {
     return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
 
-  getLotoPointsByFileId(fileId: number): Observable<SpringApiResponse<LotoPointDto[]>> {
-    return this.http.get<SpringApiResponse<LotoPointDto[]>>(`${this.apiUrl}/file/${fileId}`);
+  getLotoPointsByFileId(
+    fileId: number
+  ): Observable<SpringApiResponse<LotoPointDto[]>> {
+    return this.http.get<SpringApiResponse<LotoPointDto[]>>(
+      `${this.apiUrl}/file/${fileId}`
+    );
   }
 
-  
   getRelatedImages(id: number): Observable<SpringApiResponse<string[]>> {
-    return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/${id}/related-images`);
+    return this.http.get<SpringApiResponse<string[]>>(
+      `${this.apiUrl}/${id}/related-images`
+    );
   }
-  getRelatedFiles(lotoPointId: number): Observable<SpringApiResponse<FileDto[]>> {
-    return this.http.get<SpringApiResponse<FileDto[]>>(`${this.apiUrl}/${lotoPointId}/related-files`);
+  getRelatedFiles(
+    lotoPointId: number
+  ): Observable<SpringApiResponse<FileDto[]>> {
+    return this.http.get<SpringApiResponse<FileDto[]>>(
+      `${this.apiUrl}/${lotoPointId}/related-files`
+    );
   }
 
-  getUniqueValuesOfColumn(column: string): Observable<SpringApiResponse<string[]>> {
-    return this.http.get<SpringApiResponse<string[]>>(`${this.apiUrl}/unique-values/${column}`);
+  getUniqueValuesOfColumn(
+    column: string
+  ): Observable<SpringApiResponse<string[]>> {
+    return this.http.get<SpringApiResponse<string[]>>(
+      `${this.apiUrl}/unique-values/${column}`
+    );
   }
 
+  // getFilteredUniqueValuesOfColumn(
+  //   column: string,
+  //   filters: { [key: string]: string },
+  //   page: number = 1,
+  //   pageSize: number = 50,
+  //   andLogicEnabled: boolean = true
+  // ): Observable<SpringPaginatedResponse<LotoPointDto>> {
+  //   const params = new HttpParams()
+  //     .set('page', page.toString())
+  //     .set('pageSize', pageSize.toString())
+  //     .set('andLogicEnabled', andLogicEnabled.toString());
 
-// getFilteredUniqueValuesOfColumn(
-//   column: string,
-//   filters: { [key: string]: string },
-//   page: number = 1,
-//   pageSize: number = 50,
-//   andLogicEnabled: boolean = true
-// ): Observable<SpringPaginatedResponse<LotoPointDto>> {
-//   const params = new HttpParams()
-//     .set('page', page.toString())
-//     .set('pageSize', pageSize.toString())
-//     .set('andLogicEnabled', andLogicEnabled.toString());
+  //   return this.http.post<SpringPaginatedResponse<LotoPointDto>>(
+  //     `${this.apiUrl}/unique-values/${column}/filtered`,
+  //     filters,
+  //     { params }
+  //   );
+  // }
 
-//   return this.http.post<SpringPaginatedResponse<LotoPointDto>>(
-//     `${this.apiUrl}/unique-values/${column}/filtered`,
-//     filters,
-//     { params }
-//   );
-// }
+  getFilteredUniqueValuesOfColumn(
+    column: string,
+    searchCriterica: SearchCriteria,
+    page: number = 1,
+    pageSize: number = 50,
+    andLogicEnabled: boolean = true
+  ): Observable<SpringPaginatedResponse<string>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString())
+      .set('andLogicEnabled', andLogicEnabled.toString());
 
-getFilteredUniqueValuesOfColumn(
-  column: string,
-  filters: { [key: string]: string },
-  page: number = 1,
-  pageSize: number = 50,
-  andLogicEnabled: boolean = true
-): Observable<SpringPaginatedResponse<string>> {
-  const params = new HttpParams()
-    .set('page', page.toString())
-    .set('pageSize', pageSize.toString())
-    .set('andLogicEnabled', andLogicEnabled.toString());
-
-  return this.http.post<SpringPaginatedResponse<string>>(
-    `${this.apiUrl}/unique-values/${column}/filtered`,
-    filters,
-    { params }
-  );
-}
-
-  
+    return this.http.post<SpringPaginatedResponse<string>>(
+      `${this.apiUrl}/unique-values/${column}/filtered`,
+      searchCriterica,
+      { params }
+    );
+  }
 }

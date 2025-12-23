@@ -44,8 +44,8 @@
                 [uniqueValues]="columnUniqueOptions()"
                 [isLoadingMore]="isLoadingMore()"
                 (filterChange)="searchService.onColumnFilterChange(column.accessorKey!, $event)"
-                (loadMoreOptions)="loadMoreOptions.emit({column: column.accessorKey!, filter: $event})"
-                (loadInitialOptions)="loadInitialOptions.emit({column: column.accessorKey!, filter: $event})"
+                (loadMoreOptions)="searchService.onLoadMoreColumnFilterOptions(column.accessorKey!,$event)"
+                (loadInitialOptions)="searchService.onLoadColumnFilterOptions(column.accessorKey!,$event)"
               ></app-column-filter-input>
             </div>
 

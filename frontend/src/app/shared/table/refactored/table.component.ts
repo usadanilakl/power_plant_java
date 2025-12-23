@@ -25,7 +25,7 @@ import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { TableDragService } from './services/table-drag.service';
 import { TableClickService } from './services/table-click.service';
 import { TableSyncService } from './services/table-sync.service';
-import { TableSearchService } from './services/table-search.service';
+import { filterLogic, TableSearchService } from './services/table-search.service';
 import { TableSortService } from './services/table-sort.service';
 import { TableSelectionService } from './services/table-selection.service';
 import { TableResizeService } from './services/table-resize.service';
@@ -101,8 +101,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   selectedItemsEvent = output<any[]>();
   itemsReordered = output<any[]>();
   sortChanged = output<{ column: Column; isAscending: boolean }>();
-  loadMoreOptions = output<{ column: string; filter: string }>();
-  loadInitialOptions = output<{ column: string; filter: string }>();
+  loadMoreOptions = output<{ column: string; filter: string, logic: filterLogic }>();
+  loadInitialOptions = output<{ column: string; filter: string, logic: filterLogic }>();
 
   headerContainer = viewChild<ElementRef<HTMLDivElement>>('headerContainer');
   headerTable = viewChild<ElementRef<HTMLTableElement>>('headerTable');
@@ -163,31 +163,6 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.searchService.updateFilteredItems();
   });
 
-  // columnUniqueValuesMap = computed(() => {
-  //   const currentItems = this.items();
-  //   const currentColumns = this.columns();
-
-  //   if (!currentItems || !currentColumns) return;
-
-  //   const uniqueValuesMap: { [columnId: string]: string[] } = {};
-
-  //   currentColumns.forEach((column) => {
-  //     if (!column.filterable) return;
-
-  //     const uniqueValues = new Set<string>();
-
-  //     currentItems.forEach((item) => {
-  //       const value = this.utilService.getCellValue(item, column);
-  //       if (value !== null && value !== undefined && value !== '') {
-  //         uniqueValues.add(String(value).toLowerCase());
-  //       }
-  //     });
-
-  //     uniqueValuesMap[column.id] = Array.from(uniqueValues).sort();
-  //   });
-
-  //   return uniqueValuesMap;
-  // });
 
   private syncDataTableServiceEffect = effect(() => {
     this.dataService.headerContainer.set(this.headerContainer());
@@ -225,6 +200,16 @@ export class TableComponent implements OnInit, AfterViewInit {
     });
     effect(() => {
       this.rowHoveredEvent.emit(this.dataService.hoveredRow());
+    });
+    effect(() => {
+      if(this.dataService.loadInitialOptions()){
+        this.loadInitialOptions.emit(this.dataService.loadInitialOptions()!);
+      }
+    });
+    effect(() => {
+      if (this.dataService.loadMoreOptions()) {
+        this.loadMoreOptions.emit(this.dataService.loadMoreOptions()!);
+      }
     });
   }
 

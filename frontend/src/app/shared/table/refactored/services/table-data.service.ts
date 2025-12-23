@@ -59,4 +59,7 @@ export class TableDataService {
   search = signal<SearchCriteria>({});
   sortChanged = signal<{ column: Column; isAscending: boolean } | null>(null);
   itemsReordered = signal<any[]>([]);
+  loadMoreOptions = signal<{ column: string; filter: string, logic: filterLogic } | null>(null);
+  loadInitialOptions = signal<{ column: string; filter: string, logic: filterLogic } | null>(null);
+
 }

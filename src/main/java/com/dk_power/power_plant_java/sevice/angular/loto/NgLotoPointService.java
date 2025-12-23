@@ -315,10 +315,9 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
 //    );
 //}
 
-    public Page<String> getFilteredUniqueValuesOfColumn2(String columnName, Map<String, String> filters, int page, int pageSize, boolean andLogic){
+    public Page<String> getFilteredUniqueValuesOfColumn2(String columnName, SearchCriteria searchCriterica, int page, int pageSize, boolean andLogic){
         Pageable pageable = PageRequest.of(page - 1, pageSize);
-        System.out.println("filters = " + filters);
-        return getFilteredUniqueValuesOfColumn(entityManager, lotoPointRepo, LotoPoint.class, columnName, filters, pageable, andLogic);
+        return getFilteredUniqueValuesOfColumn(entityManager, lotoPointRepo, LotoPoint.class, columnName, searchCriterica, pageable, andLogic);
     }
 
 
@@ -621,28 +620,28 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
 
 
         // Test 12: Get unique values with multiple filters
-        System.out.println("\nTEST 12: Get unique 'isoPos.name' values with multiple filters (AND logic)");
-        try {
-            Map<String, String> filterMap = Map.of(
-                    "description", "pmp str",
-                    "tagNumber", "cnd"
-            );
-            Page<String> uniqueIsoPos = getFilteredUniqueValuesOfColumn(
-                    entityManager,
-                    lotoPointRepo,
-                    LotoPoint.class,
-                    "isoPos.name",
-                    filterMap,
-                    PageRequest.of(0, 20),
-                    true
-            );
-            System.out.println("Unique values found: " + uniqueIsoPos.getTotalElements());
-            uniqueIsoPos.getContent().forEach(isoPos ->
-                    System.out.println("  - " + isoPos)
-            );
-        } catch (Exception e) {
-            System.err.println("Error in Test 12: " + e.getMessage());
-        }
+//        System.out.println("\nTEST 12: Get unique 'isoPos.name' values with multiple filters (AND logic)");
+//        try {
+//            Map<String, String> filterMap = Map.of(
+//                    "description", "pmp str",
+//                    "tagNumber", "cnd"
+//            );
+//            Page<String> uniqueIsoPos = getFilteredUniqueValuesOfColumn(
+//                    entityManager,
+//                    lotoPointRepo,
+//                    LotoPoint.class,
+//                    "isoPos.name",
+//                    filterMap,
+//                    PageRequest.of(0, 20),
+//                    true
+//            );
+//            System.out.println("Unique values found: " + uniqueIsoPos.getTotalElements());
+//            uniqueIsoPos.getContent().forEach(isoPos ->
+//                    System.out.println("  - " + isoPos)
+//            );
+//        } catch (Exception e) {
+//            System.err.println("Error in Test 12: " + e.getMessage());
+//        }
 
         System.out.println("\n========== END TESTS ==========\n");
     }

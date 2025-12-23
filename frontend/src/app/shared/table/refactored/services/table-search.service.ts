@@ -235,4 +235,14 @@ export class TableSearchService {
     //Trigger a search to apply the new logic
     this.search();
   }
+
+  onLoadMoreColumnFilterOptions(column: string, filter: string): void {
+    const obj = { column, filter, logic: this.dataService.columnFilterLogic[column] };
+    this.dataService.loadMoreOptions.set(obj);
+  }
+
+  onLoadColumnFilterOptions(column: string, filter: string): void {
+    const obj = { column, filter, logic: this.dataService.columnFilterLogic[column] };
+    this.dataService.loadInitialOptions.set(obj);
+  }
 }

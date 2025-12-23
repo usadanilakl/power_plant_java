@@ -551,13 +551,16 @@ public interface FlexibleQueryInterface {
                 JpaSpecificationExecutor<T> repository,
                 Class<T> entityClass,
                 String columnName,
-                Map<String, String> filters,
+                SearchCriteria searchCriteria,
                 Pageable pageable,
                 boolean andLogicIsEnabled
         ) {
             String entityName = entityClass.getSimpleName();
             String pathExpr = buildPathExpression(columnName);
-        
+
+            Map<String,String> filters = searchCriteria.getFilters();
+            Map<String,String> filterLogic = searchCriteria.getColumnFilterLogic();
+
             // For nested entities, we need to select the ID for ordering
             String selectClause = pathExpr;
             String orderByClause = pathExpr;
@@ -581,12 +584,13 @@ public interface FlexibleQueryInterface {
         
             // Build WHERE clause for each filter field
             for (Map.Entry<String, String> filter : filters.entrySet()) {
+                String logic = getFilterLogicFromMap(filterLogic,filter.getKey());
                 if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
                     String[] tokens = filter.getValue().trim().toLowerCase().split("\\s+");
                     
                     jpql.append(" AND (");
                     for (int i = 0; i < tokens.length; i++) {
-                        if (i > 0) jpql.append(" OR ");
+                        if (i > 0) jpql.append(" "+logic+" ");
                         jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
                         params.add("%" + tokens[i] + "%");
                         paramIndex++;
@@ -621,13 +625,13 @@ public interface FlexibleQueryInterface {
                 }
             }
         
-            long total = getCountForUniqueValues(entityManager, entityName, columnName, filters);
+            long total = getCountForUniqueValues(entityManager, entityName, columnName, filters, filterLogic);
             
             return new PageImpl<>(values, pageable, total);
         }
     
     private long getCountForUniqueValues(EntityManager entityManager, String entityName, 
-                                         String columnName, Map<String, String> filters) {
+                                         String columnName, Map<String, String> filters, Map<String, String> filterLogic) {
         StringBuilder jpql = new StringBuilder("SELECT COUNT(DISTINCT ");
         jpql.append("e.").append(columnName.split("\\.")[0]);
         jpql.append(") FROM ").append(entityName).append(" e WHERE 1=1");
@@ -637,11 +641,12 @@ public interface FlexibleQueryInterface {
         
         for (Map.Entry<String, String> filter : filters.entrySet()) {
             if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+                String logic = getFilterLogicFromMap(filterLogic,filter.getKey());
                 String[] tokens = filter.getValue().trim().toLowerCase().split("\s+");
                 
                 jpql.append(" AND (");
                 for (int i = 0; i < tokens.length; i++) {
-                    if (i > 0) jpql.append(" OR ");
+                    if (i > 0) jpql.append(" "+logic+" ");
                     jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
                     params.add("%" + tokens[i] + "%");
                     paramIndex++;
@@ -656,6 +661,12 @@ public interface FlexibleQueryInterface {
         }
     
         return (Long) query.getSingleResult();
+    }
+
+    private String getFilterLogicFromMap(Map<String,String> filterLogicMap, String column){
+        if(filterLogicMap==null) return "AND";
+        String logic = filterLogicMap.get(column);
+        return logic.equalsIgnoreCase("or") ? "OR" : "AND";
     }
 
 

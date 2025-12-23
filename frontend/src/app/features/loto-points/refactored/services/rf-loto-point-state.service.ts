@@ -177,7 +177,7 @@ export class RfLotoPointStateService {
     //   return;
     // }
 
-    const filters = this.getCurrentSearchCriteria()?.filters ?? {};
+    const filters = this.getCurrentSearchCriteria() ?? { type: 'column', filters: {} };
 
     // Fetch from server with pagination
     this.apiService
@@ -227,7 +227,10 @@ export class RfLotoPointStateService {
     }
 
     const nextPage = cached.page + 1;
-    const filters = this.getCurrentSearchCriteria()?.filters ?? {};
+    const filters = this.getCurrentSearchCriteria() ?? {
+      type: 'column',
+      filters: {},
+    };
 
     this.apiService
       .getFilteredUniqueValuesOfColumn(
@@ -237,26 +240,35 @@ export class RfLotoPointStateService {
         50
       )
       .pipe(
-        tap(response => {
-          if (response.responseData?.content && response.responseData.content.length > 0) {
+        tap((response) => {
+          if (
+            response.responseData?.content &&
+            response.responseData.content.length > 0
+          ) {
             const currentValues = cached.values;
             const uniqueValues = response.responseData.content;
             const newValues = [...currentValues, ...uniqueValues];
-            
+
             this.setUniqueItems(String(columnKey), newValues);
-            this.currentColumnUniqueItems.update(existing => [...existing, ...newValues]);
+            this.currentColumnUniqueItems.update((existing) => [
+              ...existing,
+              ...newValues,
+            ]);
             this.loadingUniqueItems.set(false);
-            
+
             // Update cache with new values and page
             this.uniqueValuesCache.set(cacheKey, {
               values: newValues,
               page: nextPage,
-              hasMore: !response.responseData.last
+              hasMore: !response.responseData.last,
             });
           }
         }),
-        catchError(error => {
-          console.error(`Error loading more unique items for column ${columnKey}:`, error);
+        catchError((error) => {
+          console.error(
+            `Error loading more unique items for column ${columnKey}:`,
+            error
+          );
           this.loadingUniqueItems.set(false);
           return of(null);
         }),

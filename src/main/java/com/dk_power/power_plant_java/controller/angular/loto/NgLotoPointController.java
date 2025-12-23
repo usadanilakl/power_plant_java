@@ -313,7 +313,7 @@ public class NgLotoPointController {
     @PostMapping("/unique-values/{column}/filtered")
     public ResponseEntity<NgApiResponse<Page<String>>> getFilteredUniqueValuesOfColumn(
             @PathVariable String column,
-            @RequestBody Map<String, String> filters,
+            @RequestBody SearchCriteria searchCriterica,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize,
             @RequestParam(defaultValue = "false") boolean andLogicEnabled
@@ -321,7 +321,7 @@ public class NgLotoPointController {
         try {
             Page<String> uniqueValues = ngLotoPointService.getFilteredUniqueValuesOfColumn2(
                     column,
-                    filters,
+                    searchCriterica,
                     page,
                     pageSize,
                     andLogicEnabled
