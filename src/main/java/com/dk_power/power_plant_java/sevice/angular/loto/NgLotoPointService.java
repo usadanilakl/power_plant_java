@@ -318,7 +318,7 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     public Page<String> getFilteredUniqueValuesOfColumn2(String columnName, Map<String, String> filters, int page, int pageSize, boolean andLogic){
         Pageable pageable = PageRequest.of(page - 1, pageSize);
         System.out.println("filters = " + filters);
-        return getFilteredUniqueValuesOfColumn(entityManager, lotoPointRepo, LotoPoint.class, columnName, filters, pageable, true);
+        return getFilteredUniqueValuesOfColumn(entityManager, lotoPointRepo, LotoPoint.class, columnName, filters, pageable, andLogic);
     }
 
 

@@ -74,7 +74,7 @@ public class NgLotoPointController {
                 String sortDirection = criteria.getSortDirection() != null ? criteria.getSortDirection().toLowerCase() : "asc";
 
 
-                searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, true);
+                searchResults = ngLotoPointService.complexSearch(criteria, page - 1, pageSize, sortColumn, sortDirection, false);
             } else if (SearchCriteria.SearchType.GLOBAL.equals(criteria.getType()) && criteria.getQuery() != null && !criteria.getQuery().isEmpty()) {
                 // Use client-provided sort if available, otherwise default to tagNumber/asc
                 String sortColumn = criteria.getSortColumn() != null ? criteria.getSortColumn() : "tagNumber";
@@ -316,7 +316,7 @@ public class NgLotoPointController {
             @RequestBody Map<String, String> filters,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize,
-            @RequestParam(defaultValue = "true") boolean andLogicEnabled
+            @RequestParam(defaultValue = "false") boolean andLogicEnabled
     ) {
         try {
             Page<String> uniqueValues = ngLotoPointService.getFilteredUniqueValuesOfColumn2(

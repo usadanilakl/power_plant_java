@@ -198,12 +198,12 @@ public interface FlexibleQueryInterface {
 
             // Handle base criteria
             if (baseCriteria != null && baseCriteria.getFilters() != null && !baseCriteria.getFilters().isEmpty()) {
-                basePredicates.addAll(buildPredicates(root, criteriaBuilder, baseCriteria.getFilters()));
+                basePredicates.addAll(buildPredicates(root, criteriaBuilder, baseCriteria.getFilters(), andLogicIsEnabled));
             }
 
             // Handle main criteria - only if filters exist and are not empty
             if (criteria.getFilters() != null && !criteria.getFilters().isEmpty()) {
-                predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters()));
+                predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters(), andLogicIsEnabled));
             }
 
             // If no predicates, return all records (empty conjunction)
@@ -221,6 +221,7 @@ public interface FlexibleQueryInterface {
             } else if (andLogicIsEnabled) {
                 mainPredicate = criteriaBuilder.and(predicates.toArray(new Predicate[0]));
             } else {
+                System.out.println("Setting Field Predicates to OR Logic");
                 mainPredicate = criteriaBuilder.or(predicates.toArray(new Predicate[0]));
             }
             System.out.println("basePredicates count: " + basePredicates.size());
@@ -233,7 +234,7 @@ public interface FlexibleQueryInterface {
     }
 
 
-    private List<Predicate> buildPredicates(Root<?> root, CriteriaBuilder criteriaBuilder, Map<String, String> filters) {
+    private List<Predicate> buildPredicates(Root<?> root, CriteriaBuilder criteriaBuilder, Map<String, String> filters, boolean andLogicEnabled) {
         List<Predicate> predicates = new ArrayList<>();
 
         filters.forEach((key, value) -> {
@@ -339,7 +340,8 @@ public interface FlexibleQueryInterface {
         }
 
         // AND between tokens -> all words must match somewhere
-        return cb.and(tokenPredicates.toArray(new Predicate[0]));
+        return cb.or(tokenPredicates.toArray(new Predicate[0]));
+
     }
 
 
@@ -410,32 +412,231 @@ public interface FlexibleQueryInterface {
         }
         return "e." + columnName;
     }
+
+
+
+    default <T> Page<String> getFilteredUniqueValuesOfColumn(
+            EntityManager entityManager,
+            JpaSpecificationExecutor<T> repository,
+            Class<T> entityClass,
+            String columnName,
+            Map<String, String> filters,
+            Pageable pageable,
+            boolean andLogicIsEnabled  // ← You have this parameter
+    ) {
+        String entityName = entityClass.getSimpleName();
+        String pathExpr = buildPathExpression(columnName);
     
-    // default <T> Page<String> getFilteredUniqueValuesOfColumn(
-    //         EntityManager entityManager,
-    //         JpaSpecificationExecutor<T> repository,
-    //         Class<T> entityClass,
-    //         String columnName,
-    //         Map<String, String> filters,
-    //         Pageable pageable,
-    //         boolean andLogicIsEnabled
-    // ) {
-    //     String entityName = entityClass.getSimpleName();
-    //     String pathExpr = buildPathExpression(columnName);
+        String selectClause = pathExpr;
+        String orderByClause = pathExpr;
+        
+        if (columnName.contains(".")) {
+            String[] parts = columnName.split("\\.");
+            String relationName = parts[0];
+            selectClause = pathExpr + ", e." + relationName + ".id";
+            orderByClause = pathExpr;
+        }
     
-    //     StringBuilder jpql = new StringBuilder("SELECT DISTINCT ");
-    //     jpql.append(pathExpr)
-    //             .append(" FROM ")
-    //             .append(entityName)
-    //             .append(" e WHERE 1=1");
+        StringBuilder jpql = new StringBuilder("SELECT DISTINCT ");
+        jpql.append(selectClause)
+                .append(" FROM ")
+                .append(entityName)
+                .append(" e WHERE 1=1");
     
-    //     List<Object> params = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
+        int paramIndex = 1;
+        
+        // Collect all filter conditions
+        List<String> filterConditions = new ArrayList<>();
+    
+        for (Map.Entry<String, String> filter : filters.entrySet()) {
+            if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+                String[] tokens = filter.getValue().trim().toLowerCase().split("\s+");
+                
+                StringBuilder filterClause = new StringBuilder("(");
+                for (int i = 0; i < tokens.length; i++) {
+                    if (i > 0) filterClause.append(" AND ");  // ← Tokens always AND
+                    filterClause.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
+                    params.add("%" + tokens[i] + "%");
+                    paramIndex++;
+                }
+                filterClause.append(")");
+                filterConditions.add(filterClause.toString());
+            }
+        }
+    
+        // Combine filter conditions based on andLogicIsEnabled
+        if (!filterConditions.isEmpty()) {
+            String filterLogic = andLogicIsEnabled ? " AND " : " OR ";
+            System.out.println("Filter Logic: " + filterLogic);
+            jpql.append(" AND (").append(String.join(filterLogic, filterConditions)).append(")");
+        }
+    
+        jpql.append(" ORDER BY ").append(orderByClause).append(" ASC");
+    
+        System.out.println("JPQL Query: " + jpql.toString());
+        System.out.println("Parameters: " + params);
+    
+        Query query = entityManager.createQuery(jpql.toString());
+        for (int i = 0; i < params.size(); i++) {
+            query.setParameter(i + 1, params.get(i));
+        }
+    
+        query.setFirstResult((int) pageable.getOffset());
+        query.setMaxResults(pageable.getPageSize());
+    
+        List<?> results = query.getResultList();
+        
+        List<String> values = new ArrayList<>();
+        for (Object result : results) {
+            if (result instanceof Object[] arr) {
+                values.add(String.valueOf(arr[0]));
+            } else {
+                values.add(String.valueOf(result));
+            }
+        }
+    
+        long total = getCountForUniqueValues(entityManager, entityName, columnName, filters, andLogicIsEnabled);
+        
+        return new PageImpl<>(values, pageable, total);
+    }
+    
+    private long getCountForUniqueValues(EntityManager entityManager, String entityName, 
+                                         String columnName, Map<String, String> filters,
+                                         boolean andLogicIsEnabled) {
+        StringBuilder jpql = new StringBuilder("SELECT COUNT(DISTINCT ");
+        jpql.append("e.").append(columnName.split("\\.")[0]);
+        jpql.append(") FROM ").append(entityName).append(" e WHERE 1=1");
+    
+        int paramIndex = 1;
+        List<Object> params = new ArrayList<>();
+        
+        List<String> filterConditions = new ArrayList<>();
+        
+        for (Map.Entry<String, String> filter : filters.entrySet()) {
+            if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+                String[] tokens = filter.getValue().trim().toLowerCase().split("\s+");
+                
+                StringBuilder filterClause = new StringBuilder("(");
+                for (int i = 0; i < tokens.length; i++) {
+                    if (i > 0) filterClause.append(" AND ");  // ← Tokens always AND
+                    filterClause.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
+                    params.add("%" + tokens[i] + "%");
+                    paramIndex++;
+                }
+                filterClause.append(")");
+                filterConditions.add(filterClause.toString());
+            }
+        }
+    
+        if (!filterConditions.isEmpty()) {
+            String filterLogic = andLogicIsEnabled ? " AND " : " OR ";
+            jpql.append(" AND (").append(String.join(filterLogic, filterConditions)).append(")");
+        }
+    
+        Query query = entityManager.createQuery(jpql.toString());
+        for (int i = 0; i < params.size(); i++) {
+            query.setParameter(i + 1, params.get(i));
+        }
+    
+        return (Long) query.getSingleResult();
+    }
+
+
+
+    
+    //     default <T> Page<String> getFilteredUniqueValuesOfColumn(
+    //             EntityManager entityManager,
+    //             JpaSpecificationExecutor<T> repository,
+    //             Class<T> entityClass,
+    //             String columnName,
+    //             Map<String, String> filters,
+    //             Pageable pageable,
+    //             boolean andLogicIsEnabled
+    //     ) {
+    //         String entityName = entityClass.getSimpleName();
+    //         String pathExpr = buildPathExpression(columnName);
+        
+    //         // For nested entities, we need to select the ID for ordering
+    //         String selectClause = pathExpr;
+    //         String orderByClause = pathExpr;
+            
+    //         if (columnName.contains(".")) {
+    //             // Nested path: include the foreign key in SELECT for DISTINCT + ORDER BY
+    //             String[] parts = columnName.split("\\.");
+    //             String relationName = parts[0];
+    //             selectClause = pathExpr + ", e." + relationName + ".id";
+    //             orderByClause = pathExpr;
+    //         }
+        
+    //         StringBuilder jpql = new StringBuilder("SELECT DISTINCT ");
+    //         jpql.append(selectClause)
+    //                 .append(" FROM ")
+    //                 .append(entityName)
+    //                 .append(" e WHERE 1=1");
+        
+    //         List<Object> params = new ArrayList<>();
+    //         int paramIndex = 1;
+        
+    //         // Build WHERE clause for each filter field
+    //         for (Map.Entry<String, String> filter : filters.entrySet()) {
+    //             if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+    //                 String[] tokens = filter.getValue().trim().toLowerCase().split("\\s+");
+                    
+    //                 jpql.append(" AND (");
+    //                 for (int i = 0; i < tokens.length; i++) {
+    //                     if (i > 0) jpql.append(" AND ");
+    //                     jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
+    //                     params.add("%" + tokens[i] + "%");
+    //                     paramIndex++;
+    //                 }
+    //                 jpql.append(")");
+    //             }
+    //         }
+        
+    //         jpql.append(" ORDER BY ").append(orderByClause).append(" ASC");
+        
+    //         System.out.println("JPQL Query: " + jpql.toString());
+    //         System.out.println("Parameters: " + params);
+        
+    //         Query query = entityManager.createQuery(jpql.toString());
+    //         for (int i = 0; i < params.size(); i++) {
+    //             query.setParameter(i + 1, params.get(i));
+    //         }
+        
+    //         query.setFirstResult((int) pageable.getOffset());
+    //         query.setMaxResults(pageable.getPageSize());
+        
+    //         List<?> results = query.getResultList();
+            
+    //         // Extract just the values (not the IDs used for ordering)
+    //         List<String> values = new ArrayList<>();
+    //         for (Object result : results) {
+    //             if (result instanceof Object[] arr) {
+    //                 // For nested: [value, id], take the first element
+    //                 values.add(String.valueOf(arr[0]));
+    //             } else {
+    //                 values.add(String.valueOf(result));
+    //             }
+    //         }
+        
+    //         long total = getCountForUniqueValues(entityManager, entityName, columnName, filters);
+            
+    //         return new PageImpl<>(values, pageable, total);
+    //     }
+    
+    // private long getCountForUniqueValues(EntityManager entityManager, String entityName, 
+    //                                      String columnName, Map<String, String> filters) {
+    //     StringBuilder jpql = new StringBuilder("SELECT COUNT(DISTINCT ");
+    //     jpql.append("e.").append(columnName.split("\\.")[0]);
+    //     jpql.append(") FROM ").append(entityName).append(" e WHERE 1=1");
+    
     //     int paramIndex = 1;
-    
-    //     // Build WHERE clause for each filter field
+    //     List<Object> params = new ArrayList<>();
+        
     //     for (Map.Entry<String, String> filter : filters.entrySet()) {
     //         if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
-    //             String[] tokens = filter.getValue().trim().toLowerCase().split("\\s+");
+    //             String[] tokens = filter.getValue().trim().toLowerCase().split("\s+");
                 
     //             jpql.append(" AND (");
     //             for (int i = 0; i < tokens.length; i++) {
@@ -448,155 +649,13 @@ public interface FlexibleQueryInterface {
     //         }
     //     }
     
-    //     jpql.append(" ORDER BY ").append(pathExpr).append(" ASC");
-    
-    //     System.out.println("JPQL Query: " + jpql.toString());
-    //     System.out.println("Parameters: " + params);
-    
-    //     try {
-    //         // Main query
-    //         TypedQuery<String> query = entityManager.createQuery(jpql.toString(), String.class);
-    //         for (int i = 0; i < params.size(); i++) {
-    //             query.setParameter(i + 1, params.get(i));
-    //         }
-    //         query.setFirstResult((int) pageable.getOffset());
-    //         query.setMaxResults(pageable.getPageSize());
-    
-    //         List<String> content = query.getResultList();
-            
-    //         // Count query
-    //         String countJpql = jpql.toString()
-    //                 .replaceFirst("SELECT DISTINCT " + Pattern.quote(pathExpr), "SELECT COUNT(DISTINCT " + pathExpr + ")")
-    //                 .replaceAll(" ORDER BY .*", "");
-            
-    //         TypedQuery<Long> countQuery = entityManager.createQuery(countJpql, Long.class);
-    //         for (int i = 0; i < params.size(); i++) {
-    //             countQuery.setParameter(i + 1, params.get(i));
-    //         }
-    //         long total = countQuery.getSingleResult();
-    
-    //         return new PageImpl<>(content, pageable, total);
-    //     } catch (Exception e) {
-    //         System.err.println("Error executing query: " + e.getMessage());
-    //         e.printStackTrace();
-    //         throw new IllegalArgumentException("Failed to retrieve unique values for column: " + columnName, e);
+    //     Query query = entityManager.createQuery(jpql.toString());
+    //     for (int i = 0; i < params.size(); i++) {
+    //         query.setParameter(i + 1, params.get(i));
     //     }
+    
+    //     return (Long) query.getSingleResult();
     // }
-
-
-
-    
-        default <T> Page<String> getFilteredUniqueValuesOfColumn(
-                EntityManager entityManager,
-                JpaSpecificationExecutor<T> repository,
-                Class<T> entityClass,
-                String columnName,
-                Map<String, String> filters,
-                Pageable pageable,
-                boolean andLogicIsEnabled
-        ) {
-            String entityName = entityClass.getSimpleName();
-            String pathExpr = buildPathExpression(columnName);
-        
-            // For nested entities, we need to select the ID for ordering
-            String selectClause = pathExpr;
-            String orderByClause = pathExpr;
-            
-            if (columnName.contains(".")) {
-                // Nested path: include the foreign key in SELECT for DISTINCT + ORDER BY
-                String[] parts = columnName.split("\\.");
-                String relationName = parts[0];
-                selectClause = pathExpr + ", e." + relationName + ".id";
-                orderByClause = pathExpr;
-            }
-        
-            StringBuilder jpql = new StringBuilder("SELECT DISTINCT ");
-            jpql.append(selectClause)
-                    .append(" FROM ")
-                    .append(entityName)
-                    .append(" e WHERE 1=1");
-        
-            List<Object> params = new ArrayList<>();
-            int paramIndex = 1;
-        
-            // Build WHERE clause for each filter field
-            for (Map.Entry<String, String> filter : filters.entrySet()) {
-                if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
-                    String[] tokens = filter.getValue().trim().toLowerCase().split("\\s+");
-                    
-                    jpql.append(" AND (");
-                    for (int i = 0; i < tokens.length; i++) {
-                        if (i > 0) jpql.append(" AND ");
-                        jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
-                        params.add("%" + tokens[i] + "%");
-                        paramIndex++;
-                    }
-                    jpql.append(")");
-                }
-            }
-        
-            jpql.append(" ORDER BY ").append(orderByClause).append(" ASC");
-        
-            System.out.println("JPQL Query: " + jpql.toString());
-            System.out.println("Parameters: " + params);
-        
-            Query query = entityManager.createQuery(jpql.toString());
-            for (int i = 0; i < params.size(); i++) {
-                query.setParameter(i + 1, params.get(i));
-            }
-        
-            query.setFirstResult((int) pageable.getOffset());
-            query.setMaxResults(pageable.getPageSize());
-        
-            List<?> results = query.getResultList();
-            
-            // Extract just the values (not the IDs used for ordering)
-            List<String> values = new ArrayList<>();
-            for (Object result : results) {
-                if (result instanceof Object[] arr) {
-                    // For nested: [value, id], take the first element
-                    values.add(String.valueOf(arr[0]));
-                } else {
-                    values.add(String.valueOf(result));
-                }
-            }
-        
-            long total = getCountForUniqueValues(entityManager, entityName, columnName, filters);
-            
-            return new PageImpl<>(values, pageable, total);
-        }
-    
-    private long getCountForUniqueValues(EntityManager entityManager, String entityName, 
-                                         String columnName, Map<String, String> filters) {
-        StringBuilder jpql = new StringBuilder("SELECT COUNT(DISTINCT ");
-        jpql.append("e.").append(columnName.split("\\.")[0]);
-        jpql.append(") FROM ").append(entityName).append(" e WHERE 1=1");
-    
-        int paramIndex = 1;
-        List<Object> params = new ArrayList<>();
-        
-        for (Map.Entry<String, String> filter : filters.entrySet()) {
-            if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
-                String[] tokens = filter.getValue().trim().toLowerCase().split("\s+");
-                
-                jpql.append(" AND (");
-                for (int i = 0; i < tokens.length; i++) {
-                    if (i > 0) jpql.append(" AND ");
-                    jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
-                    params.add("%" + tokens[i] + "%");
-                    paramIndex++;
-                }
-                jpql.append(")");
-            }
-        }
-    
-        Query query = entityManager.createQuery(jpql.toString());
-        for (int i = 0; i < params.size(); i++) {
-            query.setParameter(i + 1, params.get(i));
-        }
-    
-        return (Long) query.getSingleResult();
-    }
 
 
 

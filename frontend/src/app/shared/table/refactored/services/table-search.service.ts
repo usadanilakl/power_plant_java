@@ -1,4 +1,3 @@
-
 import { inject, Injectable } from '@angular/core';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { TableDataService } from './table-data.service';
@@ -41,16 +40,37 @@ export class TableSearchService {
   // }
 
   //============FUZZY MATCHING SEARCH============================
-  // private matchesGlobalSearch(item: any, query: string): boolean {
-  //   if (!query) return true;
+  private matchesGlobalSearch(item: any, query: string): boolean {
+    if (!query) return true;
 
-  //   const tokens = query.toLowerCase().trim().split(/\s+/);
-  //   return tokens.every((token) =>
-  //     Object.values(item).some((value) =>
-  //       String(value).toLowerCase().includes(token)
-  //     )
-  //   );
-  // }
+    const tokens = query.toLowerCase().trim().split(/\s+/);
+    return tokens.every((token) =>
+      Object.values(item).some((value) =>
+        String(value).toLowerCase().includes(token)
+      )
+    );
+  }
+
+  private matchesColumnFilters(
+    item: any,
+    filters: { [key: string]: string }
+  ): boolean {
+    const useAndLogic = false; // Toggle this to switch between AND/OR logic
+
+    return Object.entries(filters).every(([key, value]) => {
+      if (!value) return true;
+
+      const tokens = value.toLowerCase().trim().split(/\s+/);
+      const itemValue = this.utilService.getNestedProperty(item, key);
+      const fieldValue = String(itemValue).toLowerCase();
+
+      // Word-bucket: ALL tokens must be present in field (AND logic)
+      // OR: At least ONE token must be present in field (OR logic)
+      return useAndLogic
+        ? tokens.every((token) => fieldValue.includes(token))
+        : tokens.some((token) => fieldValue.includes(token));
+    });
+  }
 
   // private matchesColumnFilters(
   //   item: any,
@@ -70,53 +90,53 @@ export class TableSearchService {
   // }
 
   //============FUZZY MATCHING SEARCH (using fuzzy-search library)============================
-  private matchesGlobalSearch(item: any, query: string): boolean {
-    if (!query) return true;
+  // private matchesGlobalSearch(item: any, query: string): boolean {
+  //   if (!query) return true;
 
-    const tokens = query.toLowerCase().trim().split(/\s+/);
-    return tokens.every((token) =>
-      this.fuzzyMatchTokenAcrossFields(item, token)
-    );
-  }
+  //   const tokens = query.toLowerCase().trim().split(/\s+/);
+  //   return tokens.every((token) =>
+  //     this.fuzzyMatchTokenAcrossFields(item, token)
+  //   );
+  // }
 
-  private fuzzyMatchTokenAcrossFields(item: any, token: string): boolean {
-    return Object.values(item).some((value) => {
-      const fieldValue = String(value).toLowerCase();
-      return this.fuzzyIncludes(fieldValue, token);
-    });
-  }
+  // private fuzzyMatchTokenAcrossFields(item: any, token: string): boolean {
+  //   return Object.values(item).some((value) => {
+  //     const fieldValue = String(value).toLowerCase();
+  //     return this.fuzzyIncludes(fieldValue, token);
+  //   });
+  // }
 
-  private matchesColumnFilters(
-    item: any,
-    filters: { [key: string]: string }
-  ): boolean {
-    return Object.entries(filters).every(([key, value]) => {
-      if (!value) return true;
+  // private matchesColumnFilters(
+  //   item: any,
+  //   filters: { [key: string]: string }
+  // ): boolean {
+  //   return Object.entries(filters).every(([key, value]) => {
+  //     if (!value) return true;
 
-      const tokens = value.toLowerCase().trim().split(/\s+/);
-      const itemValue = this.utilService.getNestedProperty(item, key);
-      const fieldValue = String(itemValue).toLowerCase();
+  //     const tokens = value.toLowerCase().trim().split(/\s+/);
+  //     const itemValue = this.utilService.getNestedProperty(item, key);
+  //     const fieldValue = String(itemValue).toLowerCase();
 
-      // Word-bucket: ALL tokens must fuzzy-match field
-      return tokens.every((token) => this.fuzzyIncludes(fieldValue, token));
-    });
-  }
+  //     // Word-bucket: ALL tokens must fuzzy-match field
+  //     return tokens.every((token) => this.fuzzyIncludes(fieldValue, token));
+  //   });
+  // }
 
-  private fuzzyIncludes(fieldValue: string, token: string): boolean {
-    const t = token.toLowerCase();
+  // private fuzzyIncludes(fieldValue: string, token: string): boolean {
+  //   const t = token.toLowerCase();
 
-    return [
-      fieldValue.includes(t), // exact: "pmp"
-      fieldValue.startsWith(t), // prefix: "pmp-station"
-      fieldValue.endsWith(t), // suffix: "superpmp"
-      fieldValue.includes(t), // contains: "power-pmp"
-      fieldValue.startsWith(t + 's'), // plural: "pmps"
-      fieldValue.startsWith(t + 'es'), // plural: "pmpes"
-      fieldValue.startsWith(t + 'ed'), // past: "pumped"
-      fieldValue.startsWith(t + 'ing'), // gerund: "pumping"
-    ].some((match) => match);
-  }
-
+  //   return [
+  //     fieldValue.includes(t), // exact: "pmp"
+  //     fieldValue.startsWith(t), // prefix: "pmp-station"
+  //     fieldValue.endsWith(t), // suffix: "superpmp"
+  //     fieldValue.includes(t), // contains: "power-pmp"
+  //     fieldValue.startsWith(t + 's'), // plural: "pmps"
+  //     fieldValue.startsWith(t + 'es'), // plural: "pmpes"
+  //     fieldValue.startsWith(t + 'ed'), // past: "pumped"
+  //     fieldValue.startsWith(t + 'ing'), // gerund: "pumping"
+  //   ].some((match) => match);
+  // }
+  //======================================================================
   updateFilteredItems(): void {
     // Start with all items, but filter out any that are in the exclusion set.
     const itemsToFilter = this.dataService
