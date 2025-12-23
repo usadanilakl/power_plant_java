@@ -31,14 +31,24 @@
               </span>
             </div>
             
-            <app-column-filter-input
-              *ngIf="column.filterable"
-              [uniqueValues]="columnUniqueOptions()"
-              [isLoadingMore]="isLoadingMore()"
-              (filterChange)="searchService.onColumnFilterChange(column.accessorKey!, $event)"
-              (loadMoreOptions)="loadMoreOptions.emit({column: column.accessorKey!, filter: $event})"
-              (loadInitialOptions)="loadInitialOptions.emit({column: column.accessorKey!, filter: $event})"
-            ></app-column-filter-input>
+            <div class="filter-wrapper" *ngIf="column.filterable">
+              <button 
+                class="filter-logic-toggle"
+                [class.active]="searchService.getColumnFilterLogic(column.id) === 'OR'"
+                (click)="searchService.toggleColumnFilterLogic(column.id)"
+                [title]="'Filter logic: ' + searchService.getColumnFilterLogic(column.id)">
+                {{ searchService.getColumnFilterLogic(column.id) }}
+              </button>
+              
+              <app-column-filter-input
+                [uniqueValues]="columnUniqueOptions()"
+                [isLoadingMore]="isLoadingMore()"
+                (filterChange)="searchService.onColumnFilterChange(column.accessorKey!, $event)"
+                (loadMoreOptions)="loadMoreOptions.emit({column: column.accessorKey!, filter: $event})"
+                (loadInitialOptions)="loadInitialOptions.emit({column: column.accessorKey!, filter: $event})"
+              ></app-column-filter-input>
+            </div>
+
             <div class="resize-handle"
                  (mousedown)="resizeService.onResizeStart($event, column.id, resizeService.getColumnWidth(column.id))"
                  [class.resizing]="resizeService.getResizingColumnId() === column.id">

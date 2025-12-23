@@ -21,6 +21,7 @@ public class SearchCriteria {
     private SearchType type;
     private String query;
     private Map<String, String> filters;
+    private Map<String,String> columnFilterLogic;
     private int page;
     private String sortColumn;
     private String sortDirection;

@@ -16,8 +16,10 @@
   <!-- Table component -->
   <app-table
     #tableComponent
+    [tableId]="tableId()"
     [items]="items()"
     [columns]="columns()"
+    [isTableIsolated]="isTableIsolated()"
     [columnUniqueOptions]="currentColumnUniqueItems()!"
     [isLoadingMore]="stateService.loadingUniqueItems()"
     [isDragAndDropEnabled]="enableDragDrop()"

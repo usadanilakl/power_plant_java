@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { Column } from '../../../../models/column.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { filterLogic } from './table-search.service';
 
 @Injectable({
   providedIn: 'root',
@@ -9,7 +10,8 @@ import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 export class TableUtilService {
   buildSearchCriteria(
     globalQuery: string,
-    columnFilters: { [key: string]: string }
+    columnFilters: { [key: string]: string },
+    columnFilterLogic: { [key: string]: filterLogic } = {},
   ): SearchCriteria {
     const filters = Object.entries(columnFilters)
       .filter(([_, value]) => value !== '')
@@ -19,6 +21,7 @@ export class TableUtilService {
       type: globalQuery ? 'global' : 'column',
       query: globalQuery,
       filters: filters,
+      columnFilterLogic: columnFilterLogic,
       page: 1,
     };
   }

@@ -37,6 +37,7 @@ import {
 import { TableControlsService } from './services/table-controls.service';
 import { TableDataService } from './services/table-data.service';
 import { TableUtilService } from './services/table-util.service';
+import { TableLocalStorageService } from './services/table-local-storage.service';
 
 export interface ClickSetup {
   applyTo: 'row' | 'cell';
@@ -75,10 +76,13 @@ export class TableComponent implements OnInit, AfterViewInit {
   protected controlsService = inject(TableControlsService);
   protected dataService = inject(TableDataService);
   protected utilService = inject(TableUtilService);
+  protected localStorageService = inject(TableLocalStorageService);
 
   // Inputs
+  tableId = input<string>('');
   items = input.required<any[]>();
   columns = input<Column[]>([]);
+  isTableIsolated = input<boolean>(false);
   columnUniqueOptions = input<string[]>([]);
   isLoadingMore = input<boolean>(false);
   deleteItem = input<string | undefined>();
@@ -114,7 +118,18 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   private columnsEffect = effect(() => {
     const columns = this.columns();
+    const tableId = this.tableId();
     this.dataService.columns.set(columns);
+    this.dataService.tableId = tableId;
+    // const searchCriteria = this.localStorageService.getTableFilters(tableId);
+    // console.log('Setting search criteria:', searchCriteria);
+    // if(searchCriteria){
+    //   this.dataService.currentSearchCriteria = searchCriteria;
+    //   if(searchCriteria.filters)this.dataService.columnFilters.set(searchCriteria.filters);
+    //   if(searchCriteria.columnFilterLogic) this.dataService.columnFilterLogic = searchCriteria.columnFilterLogic;
+    //   // if(!this.isTableIsolated()) this.searchService.search();
+    // }
+
   });
   
   private itemsEffect = effect(() => {
@@ -127,6 +142,7 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   private flagEffects = effect(() => {
     this.dataService.isDragAndDropEnabled.set(this.isDragAndDropEnabled());
+    this.dataService.isTableIsolated.set(this.isTableIsolated());
   });
 
   private filterOutEffect = effect(() => {

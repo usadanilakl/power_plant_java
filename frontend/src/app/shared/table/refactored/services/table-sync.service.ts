@@ -66,7 +66,8 @@ export class TableSyncService {
       // Trigger load more when within 5 items of the end
       const searchCriteria = this.utilServce.buildSearchCriteria(
         this.dataService.globalSearchQuery,
-        this.dataService.columnFilters()
+        this.dataService.columnFilters(),
+        this.dataService.columnFilterLogic
       );
       this.dataService.loadMoreItems.set({ ...searchCriteria });
     }

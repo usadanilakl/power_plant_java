@@ -4,6 +4,7 @@
       <!-- <span class="item-count">{{ availableItems().length }} items</span> -->
     </div>
     <app-rf-loto-point-table
+      [tableId]="'double-table-source'"
       [enableDragDrop]="false"
       [loadMoreEnabled]="true"
       [filterOutItems]="doubleTableService.filterOutRules()">

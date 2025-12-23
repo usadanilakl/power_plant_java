@@ -1,14 +1,18 @@
-import { inject, Injectable } from '@angular/core';
+import { computed, effect, inject, Injectable } from '@angular/core';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { TableDataService } from './table-data.service';
 import { TableSyncService } from './table-sync.service';
 import { TableUtilService } from './table-util.service';
+import { TableLocalStorageService } from './table-local-storage.service';
+
+export type filterLogic = 'AND' | 'OR';
 
 @Injectable()
 export class TableSearchService {
   private dataService = inject(TableDataService);
   private syncService = inject(TableSyncService);
   private utilService = inject(TableUtilService);
+  private localStorageService = inject(TableLocalStorageService);
   performSearch(
     items: any[],
     globalQuery: string,
@@ -144,11 +148,15 @@ export class TableSearchService {
       .filter((item) => !this.dataService.excludedItemIds.has(item.id));
 
     // Apply global and column-specific search queries.
-    this.dataService.filteredItems = this.performSearch(
-      itemsToFilter,
-      this.dataService.globalSearchQuery,
-      this.dataService.columnFilters()
-    );
+    if (this.dataService.isTableIsolated()) {
+      this.dataService.filteredItems = this.performSearch(
+        itemsToFilter,
+        this.dataService.globalSearchQuery,
+        this.dataService.columnFilters()
+      );
+    } else {
+      this.dataService.filteredItems = itemsToFilter;
+    }
 
     // Re-apply the current sort order to the newly filtered list.
     if (this.dataService.currentSortColumn) {
@@ -183,9 +191,15 @@ export class TableSearchService {
   search(): void {
     const searchCriteria = this.utilService.buildSearchCriteria(
       this.dataService.globalSearchQuery,
-      this.dataService.columnFilters()
+      this.dataService.columnFilters(),
+      this.dataService.columnFilterLogic
     );
 
+    this.dataService.currentSearchCriteria = searchCriteria;
+    this.localStorageService.saveTableFilters(
+      this.dataService.currentSearchCriteria,
+      this.dataService.tableId
+    );
     this.updateFilteredItems();
     this.dataService.search.set({ ...searchCriteria });
   }
@@ -200,6 +214,25 @@ export class TableSearchService {
       ...currentFilters,
       [columnId]: filterValue,
     });
+    this.search();
+  }
+
+  private columnFilterLogic = this.dataService.columnFilterLogic
+
+  onFilterLogicChange():void{
+    this.search();
+  }
+
+  getColumnFilterLogic(columnId: string): filterLogic {
+    return this.columnFilterLogic[columnId] || 'AND';
+  }
+
+  toggleColumnFilterLogic(columnId: string): void {
+    const currentLogic = this.getColumnFilterLogic(columnId);
+    const newLogic = currentLogic === 'AND' ? 'OR' : 'AND';
+    this.columnFilterLogic[columnId] = newLogic;
+
+    //Trigger a search to apply the new logic
     this.search();
   }
 }

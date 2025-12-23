@@ -4,10 +4,12 @@ import { ButtonConfig } from "../../../menu/buttons/buttons.component";
 import { ClickSetup, FilterOutRules } from "../table.component";
 import { CdkVirtualScrollViewport } from "@angular/cdk/scrolling";
 import { SearchCriteria } from "../../../../models/api/search-criteria.model";
+import { filterLogic } from "./table-search.service";
 
 @Injectable()
 export class TableDataService {
   //Input Signals
+  tableId: string = '';
   items = signal<any[]>([]);
   columns = signal<Column[]>([]);
   columnUniqueOptions = signal<string[]>([]);
@@ -25,6 +27,9 @@ export class TableDataService {
   filteredItems: any[] = [];
   globalSearchQuery: string = '';
   columnFilters = signal<{ [key: string]: string }>({});
+  columnFilterLogic: { [key: string]: filterLogic } = {};
+  isTableIsolated = signal<boolean>(false);
+  currentSearchCriteria: SearchCriteria = { type: 'column', query: '', filters: {}, columnFilterLogic: {} };
 
   excludedItemIds = new Set<any>();
   highlightedItemIds = new Set<any>();
@@ -37,7 +42,9 @@ export class TableDataService {
   hoveredRow = signal<any | undefined>(undefined);
 
   rowHeight = 50;
-  totalTableWidth = computed(() => this.columns().reduce((sum, col) => sum + (col.width || 120), 0))
+  totalTableWidth = computed(() =>
+    this.columns().reduce((sum, col) => sum + (col.width || 120), 0)
+  );
 
   // ViewChild signals - set from component
   headerContainer = signal<ElementRef<HTMLDivElement> | undefined>(undefined);

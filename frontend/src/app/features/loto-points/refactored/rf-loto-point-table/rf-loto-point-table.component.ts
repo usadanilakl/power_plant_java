@@ -44,6 +44,7 @@ export class RfLotoPointTableComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   // Inputs
+  tableId = input<string>('rf-loto-point-table');
   inputItems = input<LotoPointDto[] | null>(null);
   isTableIsolated = input<boolean>(false);
   loadMoreEnabled = input<boolean>(true);

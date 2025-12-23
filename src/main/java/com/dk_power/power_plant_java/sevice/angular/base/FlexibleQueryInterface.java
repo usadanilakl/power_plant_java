@@ -198,12 +198,12 @@ public interface FlexibleQueryInterface {
 
             // Handle base criteria
             if (baseCriteria != null && baseCriteria.getFilters() != null && !baseCriteria.getFilters().isEmpty()) {
-                basePredicates.addAll(buildPredicates(root, criteriaBuilder, baseCriteria.getFilters(), andLogicIsEnabled));
+                basePredicates.addAll(buildPredicates(root, criteriaBuilder, baseCriteria.getFilters(), criteria.getColumnFilterLogic()));
             }
 
             // Handle main criteria - only if filters exist and are not empty
             if (criteria.getFilters() != null && !criteria.getFilters().isEmpty()) {
-                predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters(), andLogicIsEnabled));
+                predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters(), criteria.getColumnFilterLogic()));
             }
 
             // If no predicates, return all records (empty conjunction)
@@ -221,7 +221,6 @@ public interface FlexibleQueryInterface {
             } else if (andLogicIsEnabled) {
                 mainPredicate = criteriaBuilder.and(predicates.toArray(new Predicate[0]));
             } else {
-                System.out.println("Setting Field Predicates to OR Logic");
                 mainPredicate = criteriaBuilder.or(predicates.toArray(new Predicate[0]));
             }
             System.out.println("basePredicates count: " + basePredicates.size());
@@ -234,7 +233,7 @@ public interface FlexibleQueryInterface {
     }
 
 
-    private List<Predicate> buildPredicates(Root<?> root, CriteriaBuilder criteriaBuilder, Map<String, String> filters, boolean andLogicEnabled) {
+    private List<Predicate> buildPredicates(Root<?> root, CriteriaBuilder criteriaBuilder, Map<String, String> filters, Map<String,String> filterLogic) {
         List<Predicate> predicates = new ArrayList<>();
 
         filters.forEach((key, value) -> {
@@ -242,6 +241,7 @@ public interface FlexibleQueryInterface {
             String[] pathParts = key.split("\\.");
             From<?, ?> from = root;
             Path<?> path = root;
+            String logic = filterLogic!=null && filterLogic.get(key) != null && filterLogic.get(key).equals("OR") ? "OR" : "AND" ;
 
             // Navigate through all path parts except the last one
             for (int i = 0; i < pathParts.length - 1; i++) {
@@ -276,10 +276,10 @@ public interface FlexibleQueryInterface {
                 if (value == null || value.isEmpty()) {
                     fieldPredicate = criteriaBuilder.disjunction();
                 } else if (Collection.class.isAssignableFrom(fieldType)) {
-                    fieldPredicate = handleCollectionField(criteriaBuilder, from, fieldName, value);
+                    fieldPredicate = handleCollectionField(criteriaBuilder, from, fieldName, value, logic);
                 } else {
                     // Pass 'from' instead of 'path' to use the correct join context
-                    fieldPredicate = handleSingleField(criteriaBuilder, from, fieldName, value);
+                    fieldPredicate = handleSingleField(criteriaBuilder, from, fieldName, value, logic);
                 }
 
                 predicates.add(fieldPredicate);
@@ -304,7 +304,7 @@ public interface FlexibleQueryInterface {
 //        }
 //    }
 
-    default Predicate handleSingleField(CriteriaBuilder cb, From<?, ?> from, String fieldName, String value) {
+    default Predicate handleSingleField(CriteriaBuilder cb, From<?, ?> from, String fieldName, String value, String logic) {
         Class<?> fieldType = from.get(fieldName).getJavaType();
 
         // Non-string: keep existing behavior
@@ -340,7 +340,8 @@ public interface FlexibleQueryInterface {
         }
 
         // AND between tokens -> all words must match somewhere
-        return cb.or(tokenPredicates.toArray(new Predicate[0]));
+        if(logic.equals("OR"))return cb.or(tokenPredicates.toArray(new Predicate[0]));
+        return cb.and(tokenPredicates.toArray(new Predicate[0]));
 
     }
 
@@ -374,7 +375,7 @@ public interface FlexibleQueryInterface {
     }
 
 
-    default Predicate handleCollectionField(CriteriaBuilder criteriaBuilder, From<?, ?> from, String fieldName, String value) {
+    default Predicate handleCollectionField(CriteriaBuilder criteriaBuilder, From<?, ?> from, String fieldName, String value, String logic) {
         Join<?, ?> join = from.join(fieldName, JoinType.LEFT);
         Class<?> elementType = join.getJavaType();
 

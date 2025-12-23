@@ -5,6 +5,7 @@
       <span class="item-count">{{ doubleTableService.currentSelectedItems().length }} items</span>
     </div>
     <app-rf-loto-point-table
+      [tableId]="'double-table-destination'"
       [inputItems]="doubleTableService.currentSelectedItems()"
       [isTableIsolated]="true"
       [enableDragDrop]="true"

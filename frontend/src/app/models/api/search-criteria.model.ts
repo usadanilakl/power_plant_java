@@ -1,8 +1,10 @@
+import { filterLogic } from "../../shared/table/refactored/services/table-search.service";
 
 export interface SearchCriteria {
   type?: 'global' | 'column' | 'sort';
   query?: string;
   filters?: { [key: string]: string };
+  columnFilterLogic?: { [key: string]: filterLogic };
   sortColumn?: string;
   sortDirection?: 'ASC' | 'DESC';
   page?: number;
