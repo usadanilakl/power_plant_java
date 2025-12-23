@@ -4,7 +4,9 @@ package com.dk_power.power_plant_java.sevice.angular.base;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.Temporal;
+import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -13,6 +15,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.beanutils.BeanUtils.getNestedProperty;
@@ -293,15 +296,78 @@ public interface FlexibleQueryInterface {
     }
 
 
-    default Predicate handleSingleField(CriteriaBuilder criteriaBuilder, From<?, ?> from, String fieldName, String value) {
+//    default Predicate handleSingleField(CriteriaBuilder criteriaBuilder, From<?, ?> from, String fieldName, String value) {
+//        Class<?> fieldType = from.get(fieldName).getJavaType();
+//
+//        if (isStringNumberOrDate(fieldType)) {
+//            return criteriaBuilder.like(criteriaBuilder.lower(from.get(fieldName).as(String.class)), "%" + value.toLowerCase() + "%");
+//        } else {
+//            return criteriaBuilder.equal(from.get(fieldName), value);
+//        }
+//    }
+
+    default Predicate handleSingleField(CriteriaBuilder cb, From<?, ?> from, String fieldName, String value) {
         Class<?> fieldType = from.get(fieldName).getJavaType();
 
-        if (isStringNumberOrDate(fieldType)) {
-            return criteriaBuilder.like(criteriaBuilder.lower(from.get(fieldName).as(String.class)), "%" + value.toLowerCase() + "%");
-        } else {
-            return criteriaBuilder.equal(from.get(fieldName), value);
+        // Non-string: keep existing behavior
+        if (!isStringNumberOrDate(fieldType)) {
+            return cb.equal(from.get(fieldName), value);
         }
+
+        // String: multi-word fuzzy/contains
+        String trimmed = value == null ? "" : value.trim();
+        if (trimmed.isEmpty()) {
+            return cb.disjunction(); // nothing to filter on
+        }
+
+        String[] tokens = trimmed.toLowerCase().split("\\s+"); // e.g. "pm cn" -> ["pm","cn"]
+
+        List<Predicate> tokenPredicates = new ArrayList<>();
+
+        for (String token : tokens) {
+            if (token.isEmpty()) continue;
+
+            Expression<String> fieldExpr = cb.lower(from.get(fieldName).as(String.class));
+
+            // LIKE for partial/contains
+            Predicate likePred = cb.like(fieldExpr, "%" + token + "%");
+
+            Predicate perToken = likePred;
+
+            tokenPredicates.add(perToken);
+        }
+
+        if (tokenPredicates.isEmpty()) {
+            return cb.disjunction();
+        }
+
+        // AND between tokens -> all words must match somewhere
+        return cb.and(tokenPredicates.toArray(new Predicate[0]));
     }
+
+
+        
+// default Predicate handleSingleField(CriteriaBuilder cb, From<?, ?> from, String fieldName, String value) {
+//     String[] tokens = value.trim().toLowerCase().split("\\s+");
+//     Expression<String> fieldLower = cb.lower(from.get(fieldName).as(String.class));
+    
+//     List<Predicate> patterns = new ArrayList<>();
+    
+//     for (String token : tokens) {
+//         if (token.isEmpty()) continue;
+        
+//         String cleanToken = token.replaceAll("[aeiou]", "");
+        
+//         // 6 vowel-tolerant patterns (covers 98% cases)
+//         patterns.add(cb.like(fieldLower, "%" + token + "%"));           // exact: "pmp"
+//         patterns.add(cb.like(fieldLower, "%" + cleanToken + "%"));      // vowel-free: "pmp"
+//     }
+    
+//     return cb.and(patterns.toArray(new Predicate[0]));
+// }
+
+
+
 
 
     default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled) {
@@ -334,6 +400,91 @@ public interface FlexibleQueryInterface {
         return String.class.isAssignableFrom(type) || Number.class.isAssignableFrom(type) || Temporal.class.isAssignableFrom(type);
     }
 
+
+
+
+
+    //==========================UNIQUE QUERY METHODS=================================
+    
+    private String buildPathExpression(String columnName) {
+        if (columnName.contains(".")) {
+            // Nested: "location.city" → "e.location.city"
+            return "e." + columnName;
+        }
+        return "e." + columnName;
+    }
+    
+    default <T> Page<String> getFilteredUniqueValuesOfColumn(
+            EntityManager entityManager,
+            JpaSpecificationExecutor<T> repository,
+            Class<T> entityClass,
+            String columnName,
+            Map<String, String> filters,
+            Pageable pageable,
+            boolean andLogicIsEnabled
+    ) {
+        String entityName = entityClass.getSimpleName();
+        String pathExpr = buildPathExpression(columnName);
+    
+        StringBuilder jpql = new StringBuilder("SELECT DISTINCT ");
+        jpql.append(pathExpr)
+                .append(" FROM ")
+                .append(entityName)
+                .append(" e WHERE 1=1");
+    
+        List<Object> params = new ArrayList<>();
+        int paramIndex = 1;
+    
+        // Build WHERE clause for each filter field
+        for (Map.Entry<String, String> filter : filters.entrySet()) {
+            if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+                String[] tokens = filter.getValue().trim().toLowerCase().split("\\s+");
+                
+                jpql.append(" AND (");
+                for (int i = 0; i < tokens.length; i++) {
+                    if (i > 0) jpql.append(" AND ");
+                    jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
+                    params.add("%" + tokens[i] + "%");
+                    paramIndex++;
+                }
+                jpql.append(")");
+            }
+        }
+    
+        jpql.append(" ORDER BY ").append(pathExpr).append(" ASC");
+    
+        System.out.println("JPQL Query: " + jpql.toString());
+        System.out.println("Parameters: " + params);
+    
+        try {
+            // Main query
+            TypedQuery<String> query = entityManager.createQuery(jpql.toString(), String.class);
+            for (int i = 0; i < params.size(); i++) {
+                query.setParameter(i + 1, params.get(i));
+            }
+            query.setFirstResult((int) pageable.getOffset());
+            query.setMaxResults(pageable.getPageSize());
+    
+            List<String> content = query.getResultList();
+            
+            // Count query
+            String countJpql = jpql.toString()
+                    .replaceFirst("SELECT DISTINCT " + Pattern.quote(pathExpr), "SELECT COUNT(DISTINCT " + pathExpr + ")")
+                    .replaceAll(" ORDER BY .*", "");
+            
+            TypedQuery<Long> countQuery = entityManager.createQuery(countJpql, Long.class);
+            for (int i = 0; i < params.size(); i++) {
+                countQuery.setParameter(i + 1, params.get(i));
+            }
+            long total = countQuery.getSingleResult();
+    
+            return new PageImpl<>(content, pageable, total);
+        } catch (Exception e) {
+            System.err.println("Error executing query: " + e.getMessage());
+            e.printStackTrace();
+            throw new IllegalArgumentException("Failed to retrieve unique values for column: " + columnName, e);
+        }
+    }
 
 
 

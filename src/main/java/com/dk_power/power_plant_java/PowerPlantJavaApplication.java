@@ -1,8 +1,7 @@
 package com.dk_power.power_plant_java;
 
 
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
-import com.dk_power.power_plant_java.sevice.angular.base.UniversalFuzzySearchService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
 import com.dk_power.power_plant_java.sevice.EtaProService;
 import com.dk_power.power_plant_java.sevice.angular.DefaultValueGeneratorService;
@@ -35,7 +34,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     private final NgFileService fileService;
     private final ReferenceObjectService referenceObjectService;
     private final LotoService lotoService;
-    private final UniversalFuzzySearchService searchService;
+    private final NgLotoPointService lotoPointService;
 
     @Value("${files.root.path}")
     private String filesRoot;
@@ -116,7 +115,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
         // all.forEach(e->{
         //     System.out.println(e.getDescription());
         // });
-        searchService.testSearchWithFieldFilters();
+
+       lotoPointService.testFlexibleQueryInterface();
 
 
     }

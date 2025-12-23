@@ -20,12 +20,70 @@ export class TableSearchService {
       .filter((item) => this.matchesColumnFilters(item, columnFilters));
   }
 
+  //============EXACT MATCHING SEARCH============================
+  // private matchesGlobalSearch(item: any, query: string): boolean {
+  //   if (!query) return true;
+  //   const lowerQuery = query.toLowerCase();
+  //   return Object.values(item).some((value) =>
+  //     String(value).toLowerCase().includes(lowerQuery)
+  //   );
+  // }
+
+  // private matchesColumnFilters(
+  //   item: any,
+  //   filters: { [key: string]: string }
+  // ): boolean {
+  //   return Object.entries(filters).every(([key, value]) => {
+  //     if (!value) return true;
+  //     const itemValue = this.utilService.getNestedProperty(item, key);
+  //     return String(itemValue).toLowerCase().includes(value.toLowerCase());
+  //   });
+  // }
+
+  //============FUZZY MATCHING SEARCH============================
+  // private matchesGlobalSearch(item: any, query: string): boolean {
+  //   if (!query) return true;
+
+  //   const tokens = query.toLowerCase().trim().split(/\s+/);
+  //   return tokens.every((token) =>
+  //     Object.values(item).some((value) =>
+  //       String(value).toLowerCase().includes(token)
+  //     )
+  //   );
+  // }
+
+  // private matchesColumnFilters(
+  //   item: any,
+  //   filters: { [key: string]: string }
+  // ): boolean {
+  //   return Object.entries(filters).every(([key, value]) => {
+  //     if (!value) return true;
+
+  //     const tokens = value.toLowerCase().trim().split(/\s+/);
+  //     const itemValue = this.utilService.getNestedProperty(item, key);
+
+  //     // Word-bucket: ALL tokens must be present in field
+  //     return tokens.every((token) =>
+  //       String(itemValue).toLowerCase().includes(token)
+  //     );
+  //   });
+  // }
+
+  //============FUZZY MATCHING SEARCH (using fuzzy-search library)============================
   private matchesGlobalSearch(item: any, query: string): boolean {
     if (!query) return true;
-    const lowerQuery = query.toLowerCase();
-    return Object.values(item).some((value) =>
-      String(value).toLowerCase().includes(lowerQuery)
+
+    const tokens = query.toLowerCase().trim().split(/\s+/);
+    return tokens.every((token) =>
+      this.fuzzyMatchTokenAcrossFields(item, token)
     );
+  }
+
+  private fuzzyMatchTokenAcrossFields(item: any, token: string): boolean {
+    return Object.values(item).some((value) => {
+      const fieldValue = String(value).toLowerCase();
+      return this.fuzzyIncludes(fieldValue, token);
+    });
   }
 
   private matchesColumnFilters(
@@ -34,9 +92,29 @@ export class TableSearchService {
   ): boolean {
     return Object.entries(filters).every(([key, value]) => {
       if (!value) return true;
+
+      const tokens = value.toLowerCase().trim().split(/\s+/);
       const itemValue = this.utilService.getNestedProperty(item, key);
-      return String(itemValue).toLowerCase().includes(value.toLowerCase());
+      const fieldValue = String(itemValue).toLowerCase();
+
+      // Word-bucket: ALL tokens must fuzzy-match field
+      return tokens.every((token) => this.fuzzyIncludes(fieldValue, token));
     });
+  }
+
+  private fuzzyIncludes(fieldValue: string, token: string): boolean {
+    const t = token.toLowerCase();
+
+    return [
+      fieldValue.includes(t), // exact: "pmp"
+      fieldValue.startsWith(t), // prefix: "pmp-station"
+      fieldValue.endsWith(t), // suffix: "superpmp"
+      fieldValue.includes(t), // contains: "power-pmp"
+      fieldValue.startsWith(t + 's'), // plural: "pmps"
+      fieldValue.startsWith(t + 'es'), // plural: "pmpes"
+      fieldValue.startsWith(t + 'ed'), // past: "pumped"
+      fieldValue.startsWith(t + 'ing'), // gerund: "pumping"
+    ].some((match) => match);
   }
 
   updateFilteredItems(): void {
@@ -73,35 +151,35 @@ export class TableSearchService {
       // this.cdr.detectChanges();
     }, 50);
   }
-  
-    onGlobalSearchChange(): void {
-      this.search();
-    }
-  
-    onColumnSearchChange(): void {
-      this.search();
-    }
-  
-    search(): void {
-      const searchCriteria = this.utilService.buildSearchCriteria(
-        this.dataService.globalSearchQuery,
-        this.dataService.columnFilters()
-      );
-  
-      this.updateFilteredItems();
-      this.dataService.search.set({...searchCriteria});
-    }
-  
-    /**
-     * Handle column filter change
-     */
-  
-    onColumnFilterChange(columnId: string, filterValue: string): void {
-      const currentFilters = this.dataService.columnFilters();
-      this.dataService.columnFilters.set({
-        ...currentFilters,
-        [columnId]: filterValue,
-      });
-      this.search();
-    }
+
+  onGlobalSearchChange(): void {
+    this.search();
+  }
+
+  onColumnSearchChange(): void {
+    this.search();
+  }
+
+  search(): void {
+    const searchCriteria = this.utilService.buildSearchCriteria(
+      this.dataService.globalSearchQuery,
+      this.dataService.columnFilters()
+    );
+
+    this.updateFilteredItems();
+    this.dataService.search.set({ ...searchCriteria });
+  }
+
+  /**
+   * Handle column filter change
+   */
+
+  onColumnFilterChange(columnId: string, filterValue: string): void {
+    const currentFilters = this.dataService.columnFilters();
+    this.dataService.columnFilters.set({
+      ...currentFilters,
+      [columnId]: filterValue,
+    });
+    this.search();
+  }
 }
