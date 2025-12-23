@@ -3,10 +3,7 @@ package com.dk_power.power_plant_java.sevice.angular.base;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.*;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -414,31 +411,173 @@ public interface FlexibleQueryInterface {
         return "e." + columnName;
     }
     
-    default <T> Page<String> getFilteredUniqueValuesOfColumn(
-            EntityManager entityManager,
-            JpaSpecificationExecutor<T> repository,
-            Class<T> entityClass,
-            String columnName,
-            Map<String, String> filters,
-            Pageable pageable,
-            boolean andLogicIsEnabled
-    ) {
-        String entityName = entityClass.getSimpleName();
-        String pathExpr = buildPathExpression(columnName);
+    // default <T> Page<String> getFilteredUniqueValuesOfColumn(
+    //         EntityManager entityManager,
+    //         JpaSpecificationExecutor<T> repository,
+    //         Class<T> entityClass,
+    //         String columnName,
+    //         Map<String, String> filters,
+    //         Pageable pageable,
+    //         boolean andLogicIsEnabled
+    // ) {
+    //     String entityName = entityClass.getSimpleName();
+    //     String pathExpr = buildPathExpression(columnName);
     
-        StringBuilder jpql = new StringBuilder("SELECT DISTINCT ");
-        jpql.append(pathExpr)
-                .append(" FROM ")
-                .append(entityName)
-                .append(" e WHERE 1=1");
+    //     StringBuilder jpql = new StringBuilder("SELECT DISTINCT ");
+    //     jpql.append(pathExpr)
+    //             .append(" FROM ")
+    //             .append(entityName)
+    //             .append(" e WHERE 1=1");
     
-        List<Object> params = new ArrayList<>();
+    //     List<Object> params = new ArrayList<>();
+    //     int paramIndex = 1;
+    
+    //     // Build WHERE clause for each filter field
+    //     for (Map.Entry<String, String> filter : filters.entrySet()) {
+    //         if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+    //             String[] tokens = filter.getValue().trim().toLowerCase().split("\\s+");
+                
+    //             jpql.append(" AND (");
+    //             for (int i = 0; i < tokens.length; i++) {
+    //                 if (i > 0) jpql.append(" AND ");
+    //                 jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
+    //                 params.add("%" + tokens[i] + "%");
+    //                 paramIndex++;
+    //             }
+    //             jpql.append(")");
+    //         }
+    //     }
+    
+    //     jpql.append(" ORDER BY ").append(pathExpr).append(" ASC");
+    
+    //     System.out.println("JPQL Query: " + jpql.toString());
+    //     System.out.println("Parameters: " + params);
+    
+    //     try {
+    //         // Main query
+    //         TypedQuery<String> query = entityManager.createQuery(jpql.toString(), String.class);
+    //         for (int i = 0; i < params.size(); i++) {
+    //             query.setParameter(i + 1, params.get(i));
+    //         }
+    //         query.setFirstResult((int) pageable.getOffset());
+    //         query.setMaxResults(pageable.getPageSize());
+    
+    //         List<String> content = query.getResultList();
+            
+    //         // Count query
+    //         String countJpql = jpql.toString()
+    //                 .replaceFirst("SELECT DISTINCT " + Pattern.quote(pathExpr), "SELECT COUNT(DISTINCT " + pathExpr + ")")
+    //                 .replaceAll(" ORDER BY .*", "");
+            
+    //         TypedQuery<Long> countQuery = entityManager.createQuery(countJpql, Long.class);
+    //         for (int i = 0; i < params.size(); i++) {
+    //             countQuery.setParameter(i + 1, params.get(i));
+    //         }
+    //         long total = countQuery.getSingleResult();
+    
+    //         return new PageImpl<>(content, pageable, total);
+    //     } catch (Exception e) {
+    //         System.err.println("Error executing query: " + e.getMessage());
+    //         e.printStackTrace();
+    //         throw new IllegalArgumentException("Failed to retrieve unique values for column: " + columnName, e);
+    //     }
+    // }
+
+
+
+    
+        default <T> Page<String> getFilteredUniqueValuesOfColumn(
+                EntityManager entityManager,
+                JpaSpecificationExecutor<T> repository,
+                Class<T> entityClass,
+                String columnName,
+                Map<String, String> filters,
+                Pageable pageable,
+                boolean andLogicIsEnabled
+        ) {
+            String entityName = entityClass.getSimpleName();
+            String pathExpr = buildPathExpression(columnName);
+        
+            // For nested entities, we need to select the ID for ordering
+            String selectClause = pathExpr;
+            String orderByClause = pathExpr;
+            
+            if (columnName.contains(".")) {
+                // Nested path: include the foreign key in SELECT for DISTINCT + ORDER BY
+                String[] parts = columnName.split("\\.");
+                String relationName = parts[0];
+                selectClause = pathExpr + ", e." + relationName + ".id";
+                orderByClause = pathExpr;
+            }
+        
+            StringBuilder jpql = new StringBuilder("SELECT DISTINCT ");
+            jpql.append(selectClause)
+                    .append(" FROM ")
+                    .append(entityName)
+                    .append(" e WHERE 1=1");
+        
+            List<Object> params = new ArrayList<>();
+            int paramIndex = 1;
+        
+            // Build WHERE clause for each filter field
+            for (Map.Entry<String, String> filter : filters.entrySet()) {
+                if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
+                    String[] tokens = filter.getValue().trim().toLowerCase().split("\\s+");
+                    
+                    jpql.append(" AND (");
+                    for (int i = 0; i < tokens.length; i++) {
+                        if (i > 0) jpql.append(" AND ");
+                        jpql.append("LOWER(e.").append(filter.getKey()).append(") LIKE ?").append(paramIndex);
+                        params.add("%" + tokens[i] + "%");
+                        paramIndex++;
+                    }
+                    jpql.append(")");
+                }
+            }
+        
+            jpql.append(" ORDER BY ").append(orderByClause).append(" ASC");
+        
+            System.out.println("JPQL Query: " + jpql.toString());
+            System.out.println("Parameters: " + params);
+        
+            Query query = entityManager.createQuery(jpql.toString());
+            for (int i = 0; i < params.size(); i++) {
+                query.setParameter(i + 1, params.get(i));
+            }
+        
+            query.setFirstResult((int) pageable.getOffset());
+            query.setMaxResults(pageable.getPageSize());
+        
+            List<?> results = query.getResultList();
+            
+            // Extract just the values (not the IDs used for ordering)
+            List<String> values = new ArrayList<>();
+            for (Object result : results) {
+                if (result instanceof Object[] arr) {
+                    // For nested: [value, id], take the first element
+                    values.add(String.valueOf(arr[0]));
+                } else {
+                    values.add(String.valueOf(result));
+                }
+            }
+        
+            long total = getCountForUniqueValues(entityManager, entityName, columnName, filters);
+            
+            return new PageImpl<>(values, pageable, total);
+        }
+    
+    private long getCountForUniqueValues(EntityManager entityManager, String entityName, 
+                                         String columnName, Map<String, String> filters) {
+        StringBuilder jpql = new StringBuilder("SELECT COUNT(DISTINCT ");
+        jpql.append("e.").append(columnName.split("\\.")[0]);
+        jpql.append(") FROM ").append(entityName).append(" e WHERE 1=1");
+    
         int paramIndex = 1;
-    
-        // Build WHERE clause for each filter field
+        List<Object> params = new ArrayList<>();
+        
         for (Map.Entry<String, String> filter : filters.entrySet()) {
             if (filter.getValue() != null && !filter.getValue().trim().isEmpty()) {
-                String[] tokens = filter.getValue().trim().toLowerCase().split("\\s+");
+                String[] tokens = filter.getValue().trim().toLowerCase().split("\s+");
                 
                 jpql.append(" AND (");
                 for (int i = 0; i < tokens.length; i++) {
@@ -451,39 +590,12 @@ public interface FlexibleQueryInterface {
             }
         }
     
-        jpql.append(" ORDER BY ").append(pathExpr).append(" ASC");
-    
-        System.out.println("JPQL Query: " + jpql.toString());
-        System.out.println("Parameters: " + params);
-    
-        try {
-            // Main query
-            TypedQuery<String> query = entityManager.createQuery(jpql.toString(), String.class);
-            for (int i = 0; i < params.size(); i++) {
-                query.setParameter(i + 1, params.get(i));
-            }
-            query.setFirstResult((int) pageable.getOffset());
-            query.setMaxResults(pageable.getPageSize());
-    
-            List<String> content = query.getResultList();
-            
-            // Count query
-            String countJpql = jpql.toString()
-                    .replaceFirst("SELECT DISTINCT " + Pattern.quote(pathExpr), "SELECT COUNT(DISTINCT " + pathExpr + ")")
-                    .replaceAll(" ORDER BY .*", "");
-            
-            TypedQuery<Long> countQuery = entityManager.createQuery(countJpql, Long.class);
-            for (int i = 0; i < params.size(); i++) {
-                countQuery.setParameter(i + 1, params.get(i));
-            }
-            long total = countQuery.getSingleResult();
-    
-            return new PageImpl<>(content, pageable, total);
-        } catch (Exception e) {
-            System.err.println("Error executing query: " + e.getMessage());
-            e.printStackTrace();
-            throw new IllegalArgumentException("Failed to retrieve unique values for column: " + columnName, e);
+        Query query = entityManager.createQuery(jpql.toString());
+        for (int i = 0; i < params.size(); i++) {
+            query.setParameter(i + 1, params.get(i));
         }
+    
+        return (Long) query.getSingleResult();
     }
 
 

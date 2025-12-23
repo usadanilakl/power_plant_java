@@ -36,8 +36,8 @@
               [uniqueValues]="columnUniqueOptions()"
               [isLoadingMore]="isLoadingMore()"
               (filterChange)="searchService.onColumnFilterChange(column.accessorKey!, $event)"
-              (loadMoreOptions)="loadMoreOptions.emit({column: column.id, filter: $event})"
-              (loadInitialOptions)="loadInitialOptions.emit({column: column.id, filter: $event})"
+              (loadMoreOptions)="loadMoreOptions.emit({column: column.accessorKey!, filter: $event})"
+              (loadInitialOptions)="loadInitialOptions.emit({column: column.accessorKey!, filter: $event})"
             ></app-column-filter-input>
             <div class="resize-handle"
                  (mousedown)="resizeService.onResizeStart($event, column.id, resizeService.getColumnWidth(column.id))"
