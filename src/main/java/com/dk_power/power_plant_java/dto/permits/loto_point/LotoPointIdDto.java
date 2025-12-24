@@ -1,4 +1,4 @@
-package com.dk_power.power_plant_java.dto.permits;
+package com.dk_power.power_plant_java.dto.permits.loto_point;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import lombok.Getter;
@@ -32,4 +32,8 @@ public class LotoPointIdDto extends BaseDto {
     private String fileIds ;
     private String conflictStatus;
     private String zeroEnergyMethod;
+    private Long zeroEnergyId;
+    private Long locationId;
+    private Long eqTypeId;
+    private Set<Long> relatedLotoPointIds;
 }

@@ -2,8 +2,8 @@ package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;

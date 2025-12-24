@@ -1,14 +1,13 @@
 package com.dk_power.power_plant_java.mappers;
 
-import com.dk_power.power_plant_java.dto.permits.LotoDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
-import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgZeroEnergyService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
@@ -17,7 +16,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -32,6 +30,7 @@ public class LotoPointMapper implements BaseMapper{
     private final LotoPointService lotoPointService;
     private final EquipmentService equipmentService;
     private final NgLotoService lotoService;
+    private final NgZeroEnergyService zeroEnergyService;
 
     public LotoPointMapper(ModelMapper modelMapper,
                            @Lazy EquipmentMapper equipmentMapper,
@@ -39,7 +38,8 @@ public class LotoPointMapper implements BaseMapper{
                            ValueService valueService,
                            @Lazy LotoPointService lotoPointService,
                            @Lazy EquipmentService equipmentService,
-                           @Lazy NgLotoService lotoService) {
+                           @Lazy NgLotoService lotoService,
+                           NgZeroEnergyService zeroEnergyService) {
         this.modelMapper = modelMapper;
         this.equipmentMapper = equipmentMapper;
         this.lotoMapper = lotoMapper;
@@ -47,6 +47,7 @@ public class LotoPointMapper implements BaseMapper{
         this.lotoPointService = lotoPointService;
         this.equipmentService = equipmentService;
         this.lotoService = lotoService;
+        this.zeroEnergyService = zeroEnergyService;
     }
 
     public LotoPointDto convertToDto(LotoPoint entity) {
@@ -86,6 +87,10 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getConflictStatus()!=null) dto.setConflictStatus(entity.getConflictStatus());
 
         if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
+        if(entity.getZeroEnergy()!=null) dto.setZeroEnergy(zeroEnergyService.toDto(entity.getZeroEnergy()));
+        if(entity.getLocation()!=null) dto.setLocation(valueService.convertToDto(entity.getLocation()));
+        if(entity.getEqType()!=null) dto.setEqType(valueService.convertToDto(entity.getEqType()));
+        if(entity.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(entity.getRelatedLotoPointIds());
         return dto;
     }
 
@@ -126,6 +131,10 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getConflictStatus()!=null) dto.setConflictStatus(entity.getConflictStatus());
 
         if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
+        if(entity.getZeroEnergyId()!=null) dto.setZeroEnergy(zeroEnergyService.getDtoById(entity.getZeroEnergyId()));
+        if(entity.getLocationId()!=null) dto.setLocation(valueService.getDtoById(entity.getLocationId()));
+        if(entity.getEqTypeId()!=null) dto.setEqType(valueService.getDtoById(entity.getEqTypeId()));
+        if(entity.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(entity.getRelatedLotoPointIds());
         return dto;
     }
 
@@ -165,6 +174,10 @@ public class LotoPointMapper implements BaseMapper{
         if(dto.getFileIds()!=null) entity.setFileIds(dto.getFileIds());
         if(dto.getConflictStatus()!=null) entity.setConflictStatus(dto.getConflictStatus());
         if(dto.getZeroEnergyMethod()!=null) entity.setZeroEnergyMethod(dto.getZeroEnergyMethod());
+        if(dto.getZeroEnergy()!=null && dto.getZeroEnergy().getId()!=null) entity.setZeroEnergy(zeroEnergyService.getEntityById(dto.getZeroEnergy().getId()));
+        if(dto.getLocation()!=null) entity.setLocation(valueService.convertToEntity(dto.getLocation()));
+        if(dto.getEqType()!=null) entity.setEqType(valueService.convertToEntity(dto.getEqType()));
+        if(dto.getRelatedLotoPointIds()!=null) entity.setRelatedLotoPointIds(dto.getRelatedLotoPointIds());
         return entity;
     }
 
@@ -223,6 +236,10 @@ public class LotoPointMapper implements BaseMapper{
                     .collect(Collectors.toSet());
             lotoPoint.setEquipmentList(equipment);
         }
+        if(dto.getZeroEnergyId()!=null) lotoPoint.setZeroEnergy(zeroEnergyService.getEntityById(dto.getZeroEnergyId()));
+        if(dto.getLocationId()!=null) lotoPoint.setLocation(valueService.getEntityById(dto.getLocationId()));
+        if(dto.getEqTypeId()!=null) lotoPoint.setEqType(valueService.getEntityById(dto.getEqTypeId()));
+        if(dto.getRelatedLotoPointIds()!=null) lotoPoint.setRelatedLotoPointIds(dto.getRelatedLotoPointIds());
 
 
         return lotoPoint;
@@ -251,6 +268,13 @@ public class LotoPointMapper implements BaseMapper{
         dto.setZeroEnergyMethod(lotoPoint.getZeroEnergyMethod());
         dto.setEquipmentList(lotoPoint.getEquipmentList().stream().map(Equipment::getId).collect(Collectors.toSet()));
         dto.setEquipmentIdList(lotoPoint.getEquipmentList().stream().map(Equipment::getId).toList());
+
+        if(lotoPoint.getZeroEnergy()!=null) dto.setZeroEnergyId(lotoPoint.getZeroEnergy().getId());
+        if(lotoPoint.getLocation()!=null) dto.setLocationId(lotoPoint.getLocation().getId());
+        if(lotoPoint.getEqType()!=null) dto.setEqTypeId(lotoPoint.getEqType().getId());
+        if(lotoPoint.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(lotoPoint.getRelatedLotoPointIds());
+
+
 
 
         return dto;

@@ -115,21 +115,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
         System.err.println("=====================================================");
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
-        // List<LotoPoint> all = searchService.searchMultipleFields(LotoPoint.class,
-        //         Arrays.asList("description"), "pmp st");
-        // System.out.println(all.size());
-        // all.forEach(e->{
-        //     System.out.println(e.getDescription());
-        // });
 
-//       lotoPointService.testFlexibleQueryInterface();
-
-        List<Equipment> allWithMultipleLotoPoints = equipmentService.getAllWithMultipleLotoPoints();
-        System.out.println("All multi-loto-point: " + allWithMultipleLotoPoints.size());
-//        allWithMultipleLotoPoints.forEach(e->{
-//            System.out.println(e.getTagNumber() + " - " + e.getDescription());
-//        });
-//
+//        equipmentRefactorService.assignEquipmentLocationAndTypeToLotoPoints();
 
 
 

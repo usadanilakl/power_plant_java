@@ -1,14 +1,9 @@
-package com.dk_power.power_plant_java.dto.permits;
+package com.dk_power.power_plant_java.dto.permits.loto_point;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
-import com.dk_power.power_plant_java.dto.categories.ValueDto;
-import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.List;
-import java.util.Set;
 
 @NoArgsConstructor
 @Getter

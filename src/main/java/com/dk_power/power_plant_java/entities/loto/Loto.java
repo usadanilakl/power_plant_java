@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.entities.loto;
 
-import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
-import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.base_entities.BasePermitEntity;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

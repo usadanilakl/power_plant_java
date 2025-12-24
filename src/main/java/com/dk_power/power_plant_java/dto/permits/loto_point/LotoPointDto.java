@@ -1,10 +1,10 @@
-package com.dk_power.power_plant_java.dto.permits;
+package com.dk_power.power_plant_java.dto.permits.loto_point;
 
-import com.dk_power.power_plant_java.annotations.DeserializeEntityOrId;
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
-import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.dto.permits.LotoDto;
+import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyDto;
 import com.fasterxml.jackson.annotation.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -51,5 +51,9 @@ public class LotoPointDto extends BaseDto {
     private String fileIds ;
     private String conflictStatus;
     private String zeroEnergyMethod;
+    private ZeroEnergyDto zeroEnergy;
+    private Set<Long> relatedLotoPointIds;
+    private ValueDto location;
+    private ValueDto eqType;
 
 }

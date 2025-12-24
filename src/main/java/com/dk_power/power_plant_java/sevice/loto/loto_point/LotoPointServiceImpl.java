@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.sevice.loto.loto_point;
 
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDtoLight;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;

@@ -1,10 +1,8 @@
 package com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment;
 
-import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.base.DS_ConnectableDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.categories.DS_ValueDto;
 import com.dk_power.power_plant_java.dto.data_service_project_dtos.files.DS_FileElementDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Getter;

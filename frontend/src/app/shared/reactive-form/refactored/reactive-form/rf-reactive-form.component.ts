@@ -69,16 +69,39 @@ export class RfReactiveFormComponent {
 
   form: FormGroup;
 
+  // constructor(private fb: FormBuilder) {
+  //   this.form = this.fb.group({});
+  //   effect(() => {
+  //     this.createForm();
+  //   });
+
+  //   effect(() => {
+  //     const data = this.entity();
+  //     if (data && this.form) {
+  //       this.form.patchValue(data, { emitEvent: false });
+  //     }
+  //   });
+  // }
+
   constructor(private fb: FormBuilder) {
     this.form = this.fb.group({});
+
+    // Create form when fields change
     effect(() => {
-      this.createForm();
+      const fields = this.fields();
+      if (fields && fields.length > 0) {
+        this.createForm();
+      }
     });
 
+    // Patch ONLY when entity changes AND form exists
     effect(() => {
       const data = this.entity();
-      if (data && this.form) {
-        this.form.patchValue(data, { emitEvent: false });
+      console.log('Entity changed:', data);
+      if (data && this.form && Object.keys(this.form.controls).length > 0) {
+        console.log('Patching with:', data);
+        // CRITICAL: Use {onlySelf: true, emitEvent: true}
+        this.form.patchValue(data, { emitEvent: true, onlySelf: true });
       }
     });
   }
@@ -136,6 +159,13 @@ export class RfReactiveFormComponent {
     });
 
     this.form = this.fb.group(group);
+
+    // ADD THIS LINE - immediately patch after form creation
+    const data = this.entity();
+    if (data) {
+      setTimeout(() => this.form.patchValue(data, { emitEvent: true }), 0);
+    }
+
     this.setupConditionalValidators();
 
     this.form.valueChanges

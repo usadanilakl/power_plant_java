@@ -14,10 +14,8 @@ import lombok.Setter;
 import org.hibernate.annotations.Where;
 import org.hibernate.envers.Audited;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Entity
 @NoArgsConstructor
@@ -48,10 +46,10 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private Long isUpdated;
     private Boolean isProcessed;
     private String fileIds;
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne()
     @JoinColumn(name = "isoPos_id")
     private Value isoPos;
-    @ManyToOne
+    @ManyToOne()
     @JoinColumn(name = "normPos_id")
     private Value normPos;
 
@@ -66,10 +64,66 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private String conflictId;
     @Column(columnDefinition = "TEXT")
     private String zeroEnergyMethod;
+    @ManyToOne
+    @JoinColumn(name = "zero_energy_id")
+    private ZeroEnergy zeroEnergy;
+    @ManyToOne()
+    @JoinColumn(name = "location_id")
+    private Value location;
+    @ManyToOne()
+    @JoinColumn(name = "eq_type_id")
+    private Value eqType;
+    @Column(columnDefinition = "TEXT")
+    private String relatedLotoPointIds; // e.g., "123,456,789"
 
 //    public void addLoto(Loto entity) {
 //        lotos.add(entity);
 //    }
+
+    /**
+     * Gets IDs of related LOTO points that always go together.
+     */
+    @Transient
+    public Set<Long> getRelatedLotoPointIds() {
+        if (relatedLotoPointIds == null || relatedLotoPointIds.isEmpty()) {
+            return new HashSet<>();
+        }
+        return Arrays.stream(relatedLotoPointIds.split(","))
+                .map(String::trim)
+                .map(Long::parseLong)
+                .collect(Collectors.toSet());
+    }
+    
+        /**
+     * Sets related LOTO point IDs from a Set.
+     */
+    public void setRelatedLotoPointIds(Set<Long> pointIds) {
+        if (pointIds == null || pointIds.isEmpty()) {
+            this.relatedLotoPointIds = null;
+        } else {
+            this.relatedLotoPointIds = String.join(",", pointIds.stream().map(String::valueOf).toArray(String[]::new));
+        }
+    }
+
+    /**
+     * Adds a related LOTO point ID.
+     */
+    public void addRelatedLotoPointId(Long pointId) {
+        if (pointId == null) return;
+        Set<Long> ids = getRelatedLotoPointIds();
+        ids.add(pointId);
+        this.relatedLotoPointIds = String.join(",", ids.stream().map(String::valueOf).toArray(String[]::new));
+    }
+
+    /**
+     * Removes a related LOTO point ID.
+     */
+    public void removeRelatedLotoPointId(Long pointId) {
+        if (pointId == null) return;
+        Set<Long> ids = getRelatedLotoPointIds();
+        ids.remove(pointId);
+        this.relatedLotoPointIds = ids.isEmpty() ? null : String.join(",", ids.stream().map(String::valueOf).toArray(String[]::new));
+    }
 
     public void addEquipment(Equipment equipment) {
         if (equipmentList == null) equipmentList = new HashSet<>();

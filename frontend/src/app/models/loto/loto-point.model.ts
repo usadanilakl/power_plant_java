@@ -6,7 +6,7 @@ import { Option } from '../option.model';
 import { LotoPointIdDto } from './loto-point-id.model';
 import { Column } from '../column.model';
 import { BaseDto, BaseModel } from '../base/base.model';
-import { ZeroEnergyModel } from './refactored/zero-energy.model';
+import { ZeroEnergyModel } from './zero-energy.model';
 
 export type LotoPointFieldName = keyof LotoPointModel;
 
@@ -30,6 +30,11 @@ export interface LotoPointModel extends BaseModel {
   conflictStatus: string | null;
   lotos: LotoDto[] | null;
   zeroEnergyMethod: string | null;
+
+  zeroEnergy: ZeroEnergyModel | null;
+  relatedLotoPointIds: number[] | null;
+  location: ValueDto | null;
+  eqType: ValueDto | null;
 }
 
 export interface LotoPointFormField {
@@ -62,6 +67,11 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   lotos: LotoDto[] | null;
   zeroEnergyMethod: string | null;
 
+  zeroEnergy: ZeroEnergyModel | null;
+  relatedLotoPointIds: number[] | null;
+  location: ValueDto | null;
+  eqType: ValueDto | null;
+
   constructor(data: Partial<LotoPointModel> = {}) {
     super(data); // This should handle id, name, objectType, and isVerified
 
@@ -86,6 +96,11 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.conflictStatus = data.conflictStatus ?? null;
     this.lotos = data.lotos ?? null;
     this.zeroEnergyMethod = data.zeroEnergyMethod ?? null;
+
+    this.zeroEnergy = data.zeroEnergy ?? null;
+    this.relatedLotoPointIds = data.relatedLotoPointIds ?? null;
+    this.location = super.setNestedObjectById(data.location, new ValueDto());
+    this.eqType = super.setNestedObjectById(data.eqType, new ValueDto());
   }
 
   // Serialization method
@@ -117,6 +132,11 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       conflictStatus: this.conflictStatus || '',
       lotos: this.lotos?.map((loto) => loto.toJson()),
       zeroEnergyMethod: this.zeroEnergyMethod || null,
+
+      zeroEnergy: this.zeroEnergy || null,
+      relatedLotoPointIds: this.relatedLotoPointIds || [],
+      location: this.location?.toJson() || null,
+      eqType: this.eqType?.toJson() || null,
     };
   }
 
@@ -166,6 +186,15 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         ? json.lotos.map((lotoJson: any) => LotoDto.fromJson(lotoJson))
         : [],
       zeroEnergyMethod: json.zeroEnergyMethod || null,
+
+      zeroEnergy: json.zeroEnergy || null,
+      relatedLotoPointIds: Array.isArray(json.relatedLotoPointIds)
+        ? json.relatedLotoPointIds
+        : [],
+      location: json.location
+        ? ValueDto.fromJson(json.location)
+        : new ValueDto(),
+      eqType: json.eqType ? ValueDto.fromJson(json.eqType) : new ValueDto(),
     });
   }
 
@@ -324,6 +353,33 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         type: 'text',
         initialValue: dto.zeroEnergyMethod,
       },
+
+      zeroEnergy: {
+        name: 'zeroEnergy',
+        label: 'Zero Energy',
+        type: 'text',
+        initialValue: dto.zeroEnergy,
+      },
+      relatedLotoPointIds: {
+        name: 'relatedLotoPointIds',
+        label: 'Related LOTO Point IDs',
+        type: 'multi-select',
+        initialValue: dto.relatedLotoPointIds,
+      },
+      location: {
+        name: 'location',
+        label: 'Location',
+        type: 'select',
+        options: [],
+        initialValue: dto.location?.id || null,
+      },
+      eqType: {
+        name: 'eqType',
+        label: 'Equipment Type',
+        type: 'select',
+        options: [],
+        initialValue: dto.eqType?.id || null,
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -434,6 +490,27 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         id: 'zeroEnergyMethod',
         header: 'Zero Energy Method',
         accessorKey: 'zeroEnergyMethod',
+      },
+
+      zeroEnergy: {
+        id: 'zeroEnergy',
+        header: 'Zero Energy',
+        accessorKey: 'zeroEnergy.method',
+      },
+      relatedLotoPointIds: {
+        id: 'relatedLotoPointIds',
+        header: 'Related LOTO Point IDs',
+        accessorKey: 'relatedLotoPointIds',
+      },
+      location: {
+        id: 'location',
+        header: 'Location',
+        accessorKey: 'location.name',
+      },
+      eqType: {
+        id: 'eqType',
+        header: 'Equipment Type',
+        accessorKey: 'eqType.name',
       },
     };
 

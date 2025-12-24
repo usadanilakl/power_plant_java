@@ -1,7 +1,5 @@
 package com.dk_power.power_plant_java.dto.data_service_project_dtos.equipment;
 
-import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Getter;

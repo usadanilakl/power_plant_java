@@ -1,7 +1,7 @@
 package com.dk_power.power_plant_java.controller.automation;
 
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import org.sikuli.script.FindFailed;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -9,8 +9,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-
-import java.io.IOException;
 
 @Controller
 @RequestMapping("/red-tag-automation")

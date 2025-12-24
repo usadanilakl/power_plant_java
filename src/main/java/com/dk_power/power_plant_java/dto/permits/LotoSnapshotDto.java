@@ -1,10 +1,8 @@
 package com.dk_power.power_plant_java.dto.permits;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.enums.Status;
-import jakarta.persistence.Column;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

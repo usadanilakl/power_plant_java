@@ -229,6 +229,8 @@ export class CurrentValueService {
   }
 
   getOptionsByCategory(category: string): Observable<Option[]> {
+    console.log('Getting options for', category);
+    this.getValuesByCategory(category).subscribe(values => console.log('Received options:', values));
     return this.getValuesByCategory(category).pipe(
       map(values => values.map(v => ({ value: v.id, label: v.name })))
     );

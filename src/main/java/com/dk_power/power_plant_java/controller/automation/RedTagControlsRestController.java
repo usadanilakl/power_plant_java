@@ -2,6 +2,8 @@ package com.dk_power.power_plant_java.controller.automation;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.permits.*;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.permits.ConfinedSpace;
 import com.dk_power.power_plant_java.entities.permits.HotWork;
@@ -19,7 +21,6 @@ import org.sikuli.script.FindFailed;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 

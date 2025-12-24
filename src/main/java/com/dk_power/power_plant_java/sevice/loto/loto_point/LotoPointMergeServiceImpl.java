@@ -1,7 +1,6 @@
 package com.dk_power.power_plant_java.sevice.loto.loto_point;
 
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
-import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.entities.equipment.ElectricalPanel;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.equipment.HtPanel;
@@ -9,7 +8,6 @@ import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.LotoPointMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
-import com.dk_power.power_plant_java.sevice.data_transfer.excel.ExcelService;
 import com.dk_power.power_plant_java.sevice.equipment.ElectricalPanelService;
 import com.dk_power.power_plant_java.sevice.equipment.HtPanelService;
 import com.dk_power.power_plant_java.sevice.file.FileService;

@@ -2,10 +2,9 @@ package com.dk_power.power_plant_java.controller.transfer_data.transfer_to_data_
 
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.ConflictService;
 import com.dk_power.power_plant_java.sevice.data_transfer.transfer_to_data_service_project.LotoPointTransferService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;

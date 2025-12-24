@@ -62,4 +62,7 @@ List<EquipmentDtoLight> getAllLight();
 
     @Query("SELECT e FROM Equipment e WHERE SIZE(e.lotoPoints) > 1")
     List<Equipment> findAllWithMultipleLotoPoints();
+
+    @Query("SELECT e FROM Equipment e WHERE SIZE(e.lotoPoints) > 0")
+    List<Equipment> findAllWithLotoPoints();
 }

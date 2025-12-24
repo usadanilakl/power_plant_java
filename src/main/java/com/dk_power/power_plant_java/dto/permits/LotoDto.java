@@ -1,10 +1,8 @@
 package com.dk_power.power_plant_java.dto.permits;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BasePermitDto;
-import com.dk_power.power_plant_java.entities.loto.LotoSnapshot;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
-import com.fasterxml.jackson.annotation.JsonIdentityReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

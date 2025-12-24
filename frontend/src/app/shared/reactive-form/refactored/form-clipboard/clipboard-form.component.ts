@@ -29,7 +29,7 @@ export class ClipboardFormComponent<T> {
 
   itemSelected = output<T>();
 
-  isCollapsed = signal<boolean>(false);
+  isCollapsed = signal<boolean>(true);
 
   private capturedInitialEntity = signal<T | null>(null);
 

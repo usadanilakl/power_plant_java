@@ -2,9 +2,8 @@ package com.dk_power.power_plant_java.sevice.categories;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.entities.categories.Value;
-import com.dk_power.power_plant_java.mappers.UniversalMapper;
 import com.dk_power.power_plant_java.mappers.ValueMapper;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.sevice.base_services.RefactorService;

@@ -1,14 +1,9 @@
 package com.dk_power.power_plant_java.dto.browser;
 
 
-import com.dk_power.power_plant_java.dto.categories.ValueDto;
-import com.dk_power.power_plant_java.dto.equipment.HeatTraceDto;
-import com.dk_power.power_plant_java.dto.equipment.HighlightDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
 import java.util.Set;
 
 @Getter

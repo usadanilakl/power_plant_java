@@ -3,7 +3,7 @@ package com.dk_power.power_plant_java.dto.equipment;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseEquipmentDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.fasterxml.jackson.annotation.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

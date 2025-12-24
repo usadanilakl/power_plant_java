@@ -664,7 +664,7 @@ public interface FlexibleQueryInterface {
     }
 
     private String getFilterLogicFromMap(Map<String,String> filterLogicMap, String column){
-        if(filterLogicMap==null) return "AND";
+        if(filterLogicMap==null || filterLogicMap.get(column)==null) return "AND";
         String logic = filterLogicMap.get(column);
         return logic.equalsIgnoreCase("or") ? "OR" : "AND";
     }

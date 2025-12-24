@@ -1,6 +1,6 @@
 package com.dk_power.power_plant_java.repository.loto;
 
-import com.dk_power.power_plant_java.dto.permits.LotoPointDtoLight;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDtoLight;
 import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository;
@@ -24,7 +24,7 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     List<LotoPoint> findByIsoPos(Value oldVal);
 
     List<LotoPoint> findByTagNumber(String tag);
-    @Query("SELECT new com.dk_power.power_plant_java.dto.permits.LotoPointDtoLight(e.id,e.unit,e.tagged,e.tagNumber,e.description,e.specificLocation,e.normalPosition, e.isolatedPosition,e.oldId,e.objectType)FROM LotoPoint e")
+    @Query("SELECT new com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDtoLight(e.id,e.unit,e.tagged,e.tagNumber,e.description,e.specificLocation,e.normalPosition, e.isolatedPosition,e.oldId,e.objectType)FROM LotoPoint e")
     List<LotoPointDtoLight> getAllLight();
 
     List<LotoPoint> findByEquipmentListNotNull();

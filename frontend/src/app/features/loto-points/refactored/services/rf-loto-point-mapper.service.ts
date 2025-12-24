@@ -1,5 +1,4 @@
-
-import { DestroyRef, inject, Injectable, signal } from '@angular/core';  
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { Validators } from '@angular/forms';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
@@ -12,12 +11,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   providedIn: 'root',
 })
 export class LotoPointMapperService {
-
   valueService = inject(CurrentValueService);
   destroyRef = inject(DestroyRef);
 
   isoPosOptions = signal<Option[]>([]);
   normPosOptions = signal<Option[]>([]);
+  locationOptions = signal<Option[]>([]);
+  eqTypeOptions = signal<Option[]>([]);
 
   constructor() {
     this.loadAllOptions();
@@ -26,9 +26,8 @@ export class LotoPointMapperService {
   private loadAllOptions() {
     this.loadOptions('isoPos', this.isoPosOptions);
     this.loadOptions('normPos', this.normPosOptions);
-    console.log('Options loaded');
-    console.log(this.isoPosOptions());
-    console.log(this.normPosOptions());
+    this.loadOptions('location', this.locationOptions);
+    this.loadOptions('eqType', this.eqTypeOptions);
   }
 
   private loadOptions(
@@ -55,9 +54,12 @@ export class LotoPointMapperService {
       'tagNumber',
       'description',
       'specificLocation',
+      'location',
+      'eqType',
       'isoPos',
       'normPos',
-      'zeroEnergyMethod',
+      'zeroEnergy',
+      'relatedLotoPointIds',
     ]
   ): Column[] {
     const allColumns: { [key in keyof LotoPointDto]?: Column } = {
@@ -265,6 +267,27 @@ export class LotoPointMapperService {
         filterable: true,
         sortable: true,
       },
+
+      zeroEnergy: {
+        id: 'zeroEnergy',
+        header: 'Zero Energy',
+        accessorKey: 'zeroEnergy.method',
+      },
+      relatedLotoPointIds: {
+        id: 'relatedLotoPointIds',
+        header: 'Related LOTO Point IDs',
+        accessorKey: 'relatedLotoPointIds',
+      },
+      location: {
+        id: 'location',
+        header: 'Location',
+        accessorKey: 'location.name',
+      },
+      eqType: {
+        id: 'eqType',
+        header: 'Equipment Type',
+        accessorKey: 'eqType.name',
+      },
     };
 
     return fields
@@ -286,13 +309,16 @@ export class LotoPointMapperService {
       'unit',
       'tagNumber',
       'description',
+      'eqType',
       'tagged',
       'isoPos',
       'normPos',
       'specificLocation',
+      'location',
       'standard',
       'generalLocation',
-      'zeroEnergyMethod',
+      'zeroEnergy',
+      'relatedLotoPointIds'
     ]
   ): RfFormField[] {
     const allFields: { [key in keyof LotoPointDto]?: RfFormField } = {
@@ -409,6 +435,33 @@ export class LotoPointMapperService {
         type: 'textarea',
         validators: [Validators.required],
         initialValue: lotoPoint.zeroEnergyMethod || '',
+      },
+
+      zeroEnergy: {
+        name: 'zeroEnergy',
+        label: 'Zero Energy',
+        type: 'textarea',
+        initialValue: lotoPoint.zeroEnergy,
+      },
+      relatedLotoPointIds: {
+        name: 'relatedLotoPointIds',
+        label: 'Related LOTO Point IDs',
+        type: 'multi-select',
+        initialValue: lotoPoint.relatedLotoPointIds,
+      },
+      location: {
+        name: 'location',
+        label: 'Location',
+        type: 'select',
+        options: this.locationOptions() ?? [],
+        initialValue: lotoPoint.location?.id || null,
+      },
+      eqType: {
+        name: 'eqType',
+        label: 'Equipment Type',
+        type: 'select',
+        options: this.eqTypeOptions() ?? [],
+        initialValue: lotoPoint.eqType?.id || null,
       },
     };
 

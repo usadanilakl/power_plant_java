@@ -300,4 +300,8 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
     public List<Equipment> getAllWithMultipleLotoPoints() {
         return this.equipmentRepo.findAllWithMultipleLotoPoints();
     }
+
+    public List<Equipment> getAllWithLotoPoints() {
+        return this.equipmentRepo.findAllWithLotoPoints();
+    }
 }

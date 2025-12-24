@@ -1,9 +1,7 @@
 package com.dk_power.power_plant_java.controller.permits;
 
-import com.dk_power.power_plant_java.dto.browser.BrLotoPoint;
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.entities.loto.Loto;
-import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.loto.LotoBuilderService;
 import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;

@@ -3,7 +3,45 @@
     <label>{{ label() }}</label>
   </div>
   <div class="dropdown-input" (click)="toggleDropdown($event)">
-    {{ selectedOption()?.label || "Select an option" }}
+    {{ selectedDisplay() }}
+  </div>
+</div>
+
+<ng-template #dropdownTemplate>
+  <div class="dropdown-options">
+    <input
+      type="text"
+      [value]="searchTerm()"
+      (input)="filterOptions($event)"
+      placeholder="Search..."
+      (click)="$event.stopPropagation()"
+    />
+    @for (option of filteredOptions(); track option.value || $index) {
+    <div (click)="selectOption(option, $event)" class="dropdown-option">
+      {{ option.label || option.name }}
+    </div>
+    } @if (filteredOptions().length === 0) {
+    <div class="no-options">No options found</div>
+    }
+    @if (categoryName()) {
+    <div class="option-divider"><hr></div>
+    <div class="add-new-option" (click)="onAddNewOption($event)">
+      <span class="plus-icon">+</span> Add New {{ categoryName() }}
+    </div>
+    <div class="add-new-option" (click)="onEditOption($event)">
+      <span class="plus-icon">✏️</span> Edit {{ categoryName() }}s
+    </div>
+    }
+  </div>
+</ng-template>
+
+
+<!-- <div class="dropdown-container">
+  <div class="label-container">
+    <label>{{ label() }}</label>
+  </div>
+  <div class="dropdown-input" (click)="toggleDropdown($event)">
+    {{ selectedDisplay() }}
   </div>
 </div>
 
@@ -29,19 +67,19 @@
       <span class="plus-icon">+</span> Edit
     </div>
   </div>
-</ng-template>
+</ng-template> -->
 
 <!-- <div class="dropdown-container">
   <div class="label-container">
-    <label>{{ label() }}</label>
+    <label>{{ label }}</label>
   </div>
     <div class="dropdown-input" (click)="toggleDropdown($event)">
-      {{ selectedOption()?.label || 'Select an option' }}
+      {{ selectedOption?.label || 'Select an option' }}
     </div>
-    @if (isOpen()) {
+    @if (isOpen) {
       <div class="dropdown-options">
         <input appCopyPaste type="text" (input)="filterOptions($event)" placeholder="Search...">
-        @for (option of filteredOptions(); track option.value) {
+        @for (option of filteredOptions; track option.value) {
           <div (click)="selectOption(option,$event)">
             {{ option.label }}
           </div>

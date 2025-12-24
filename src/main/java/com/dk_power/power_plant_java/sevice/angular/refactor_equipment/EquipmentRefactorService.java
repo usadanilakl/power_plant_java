@@ -120,4 +120,28 @@ public class EquipmentRefactorService {
         
         return allSplitEquipment;
     }
+    
+        @Transactional
+    public void assignEquipmentLocationAndTypeToLotoPoints() {
+        List<Equipment> allEquipmentWithLotoPoints = equipmentService.getAllWithLotoPoints();
+        int updatedCount = 0;
+        
+        for (Equipment equipment : allEquipmentWithLotoPoints) {
+            Set<LotoPoint> lotoPoints = equipment.getLotoPoints();
+            
+            if (lotoPoints != null && !lotoPoints.isEmpty()) {
+                for (LotoPoint lotoPoint : lotoPoints) {
+                    if (equipment.getLocation() != null && lotoPoint.getLocation() == null) {
+                        lotoPoint.setLocation(equipment.getLocation());
+                    }
+                    if (equipment.getEqType() != null && lotoPoint.getEqType() == null) {
+                        lotoPoint.setEqType(equipment.getEqType());
+                    }
+                    updatedCount++;
+                }
+            }
+        }
+        
+        System.out.println("Assigned location and eqType to " + updatedCount + " loto points");
+    }
 }

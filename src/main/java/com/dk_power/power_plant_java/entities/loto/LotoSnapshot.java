@@ -1,12 +1,9 @@
 package com.dk_power.power_plant_java.entities.loto;
 
 
-import com.dk_power.power_plant_java.dto.permits.LotoPointDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.enums.Status;
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;

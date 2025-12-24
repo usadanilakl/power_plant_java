@@ -2,7 +2,7 @@ package com.dk_power.power_plant_java.mappers;
 
 import com.dk_power.power_plant_java.dto.permits.LotoDto;
 import com.dk_power.power_plant_java.dto.permits.LotoIdDto;
-import com.dk_power.power_plant_java.dto.permits.LotoPointIdDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
