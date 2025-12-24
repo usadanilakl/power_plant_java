@@ -296,4 +296,8 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
                 .map(fileService::toDto)
                 .collect(Collectors.toList());
     }
+
+    public List<Equipment> getAllWithMultipleLotoPoints() {
+        return this.equipmentRepo.findAllWithMultipleLotoPoints();
+    }
 }

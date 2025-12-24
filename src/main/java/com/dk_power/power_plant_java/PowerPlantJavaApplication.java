@@ -1,7 +1,11 @@
 package com.dk_power.power_plant_java;
 
 
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
+import com.dk_power.power_plant_java.sevice.angular.refactor_equipment.EquipmentRefactorService;
 import com.dk_power.power_plant_java.sevice.automation.RedTagAutomationService;
 import com.dk_power.power_plant_java.sevice.EtaProService;
 import com.dk_power.power_plant_java.sevice.angular.DefaultValueGeneratorService;
@@ -35,6 +39,8 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     private final ReferenceObjectService referenceObjectService;
     private final LotoService lotoService;
     private final NgLotoPointService lotoPointService;
+    private final NgEquipmentService equipmentService;
+    private final EquipmentRefactorService equipmentRefactorService;
 
     @Value("${files.root.path}")
     private String filesRoot;
@@ -116,7 +122,17 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
         //     System.out.println(e.getDescription());
         // });
 
-       lotoPointService.testFlexibleQueryInterface();
+//       lotoPointService.testFlexibleQueryInterface();
+
+        List<Equipment> allWithMultipleLotoPoints = equipmentService.getAllWithMultipleLotoPoints();
+        System.out.println("All multi-loto-point: " + allWithMultipleLotoPoints.size());
+//        allWithMultipleLotoPoints.forEach(e->{
+//            System.out.println(e.getTagNumber() + " - " + e.getDescription());
+//        });
+//
+
+
+
 
 
     }

@@ -59,4 +59,7 @@ List<EquipmentDtoLight> getAllLight();
     List<Equipment> getBySystem_name(String systemName);
 
     List<Equipment> getByLocation_name(String locationName);
+
+    @Query("SELECT e FROM Equipment e WHERE SIZE(e.lotoPoints) > 1")
+    List<Equipment> findAllWithMultipleLotoPoints();
 }

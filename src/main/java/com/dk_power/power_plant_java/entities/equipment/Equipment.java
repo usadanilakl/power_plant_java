@@ -59,7 +59,6 @@ public class Equipment extends BaseEquipment implements Referenceable {
     private FileObject mainFile;
     @ManyToMany(cascade = CascadeType.ALL)
     @JoinTable(name = "eq_loto_point", joinColumns = @JoinColumn(name = "eq_id", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "loto_point_id", referencedColumnName = "id"))
-
     private Set<LotoPoint> lotoPoints;
     @ManyToMany(mappedBy = "equipmentList")
     @JsonBackReference
@@ -74,6 +73,8 @@ public class Equipment extends BaseEquipment implements Referenceable {
     private String conflictStatus;
     private Boolean isVerified = false;
     private String conflictId;
+
+    private String separationNote;
 
 
     @Transient
