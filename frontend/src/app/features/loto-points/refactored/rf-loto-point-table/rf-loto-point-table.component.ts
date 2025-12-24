@@ -9,12 +9,9 @@ import {
   signal,
   effect,
   computed,
-  ViewChild,
   Injector,
   EffectRef,
-  runInInjectionContext,
-  OnDestroy,
-  InjectFlags
+  OnDestroy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
@@ -24,7 +21,7 @@ import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { FilterOutRules, TableComponent } from '../../../../shared/table/refactored/table.component';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
-import { LotoPointDto, LotoPointFieldName, LotoPointModel } from '../../../../models/loto/loto-point.model';
+import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { ButtonColor, ButtonConfig, ButtonsComponent } from '../../../../shared/menu/buttons/buttons.component';
@@ -33,9 +30,6 @@ import { RfLotoPointFormComponent } from "../rf-loto-point-form/rf-loto-point-fo
 import { PopupProjectionComponent } from "../../../../shared/popup-projection/popup-projection.component";
 import { ContextMenuComponent } from "../../../../shared/menu/context-menu/context-menu.component";
 import { TableMode } from '../../../../shared/table/refactored/services/table-state.service';
-import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
-import { RfLotoPointClickService } from '../services/rf-loto-point-click.service';
-import { TableSelectionService } from '../../../../shared/table/refactored/services/table-selection.service';
 
 @Component({
   selector: 'app-rf-loto-point-table',
@@ -56,16 +50,11 @@ import { TableSelectionService } from '../../../../shared/table/refactored/servi
 })
 export class RfLotoPointTableComponent implements OnInit, AfterViewInit, OnDestroy {
   
-  // @ViewChild(TableComponent) tableComponent!: TableComponent;
-  
   private apiService = inject(RfLotoPointApiService);
   protected stateService = inject(RfLotoPointStateService);
   private mapperService = inject(LotoPointMapperService);
   protected contextMenuService = inject(LotoPointContextMenuService);
-  // clickService = inject(RfLotoPointClickService);
   private destroyRef = inject(DestroyRef);
-
-  // tableClickService!: TableClickService;
 
   // Inputs
   inputItems = input<LotoPointDto[] | null>(null);
@@ -157,22 +146,22 @@ export class RfLotoPointTableComponent implements OnInit, AfterViewInit, OnDestr
 
   private getDefaultTableControlButtons(): ButtonConfig[] {
     return [
-      {
-        name: 'LP-Table default1',
-        action: () => {
-          // Implement selection logic
-          console.log('Select is not implemented yet.');
-        },
-        color: 'primary' as ButtonColor,
-      },
-      {
-        name: 'LP-Table default2',
-        action: () => {
-          // Implement delete logic
-          console.log('Delete is not implemented yet.');
-        },
-        color: 'warn' as ButtonColor,
-      },
+      // {
+      //   name: 'LP-Table default1',
+      //   action: () => {
+      //     // Implement selection logic
+      //     console.log('Select is not implemented yet.');
+      //   },
+      //   color: 'primary' as ButtonColor,
+      // },
+      // {
+      //   name: 'LP-Table default2',
+      //   action: () => {
+      //     // Implement delete logic
+      //     console.log('Delete is not implemented yet.');
+      //   },
+      //   color: 'warn' as ButtonColor,
+      // },
     ];
   }
 
