@@ -50,11 +50,24 @@ export default {
   },
   {
     "renderMode": 2,
+    "route": "/angular/browser/loto/loto-boxes-grid"
+  },
+  {
+    "renderMode": 2,
     "route": "/angular/browser/loto/locks"
   },
   {
     "renderMode": 2,
+    "redirectTo": "/angular/browser/loto-points/table",
     "route": "/angular/browser/loto-points"
+  },
+  {
+    "renderMode": 1,
+    "route": "/angular/browser/loto-points/table"
+  },
+  {
+    "renderMode": 1,
+    "route": "/angular/browser/loto-points/*"
   },
   {
     "renderMode": 2,
@@ -138,31 +151,31 @@ export default {
 ],
   entryPointToBrowserMapping: undefined,
   assets: {
-    'index.csr.html': {size: 23793, hash: '3d340a88731779abbd7341c863d03368abf67fe65598e406ae628aaea3ea9594', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
-    'index.server.html': {size: 17152, hash: '2a549416d304276c892592a40e23786f0bdbc881798c3ec49d004e6dbdd8f8b3', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
-    'loto/loto/index.html': {size: 82498, hash: 'f50cfb8fc222e99592ade85e0369d2b19ab761cd2288bc9a5fe405ac405d8cbd', text: () => import('./assets-chunks/loto_loto_index_html.mjs').then(m => m.default)},
-    'loto/loto-standard/index.html': {size: 86333, hash: 'a04d0eb08926f487952d34e4ccc2bc4454616ef9aadb80c3d2553a49df313571', text: () => import('./assets-chunks/loto_loto-standard_index_html.mjs').then(m => m.default)},
-    'file/table/index.html': {size: 767336, hash: '9eb04063c24a4e9b996c5c1f1cc61cc268a4cb172e8ec6a0b2067bd01a6918e2', text: () => import('./assets-chunks/file_table_index_html.mjs').then(m => m.default)},
-    'loto/loto-boxes/index.html': {size: 40176, hash: 'f230586fcf5d2b7d134eae1a974df318b2da2f4e5e61f94d0355070da397cebe', text: () => import('./assets-chunks/loto_loto-boxes_index_html.mjs').then(m => m.default)},
-    'loto/locks/index.html': {size: 39611, hash: 'bd35056aa93f57fb34d2b325d18c5160e4059fe49325af86c5d2ebc586c2dcf9', text: () => import('./assets-chunks/loto_locks_index_html.mjs').then(m => m.default)},
-    'loto/loto-points/index.html': {size: 461565, hash: 'a7182b9bb502aecbfd175dd4ebc17954827f6c37fccbee80bcbdb10a1c940eeb', text: () => import('./assets-chunks/loto_loto-points_index_html.mjs').then(m => m.default)},
-    'file/edit/index.html': {size: 3442562, hash: 'daf41a5c84dafb4aa2e913fe640edc0dab3153bc913d62499223691c7e3cefbc', text: () => import('./assets-chunks/file_edit_index_html.mjs').then(m => m.default)},
-    'print/index.html': {size: 24636, hash: '74bc5e14184e778465cda222c26d50395663a32a9ba7550bb666e1ab1af56fb4', text: () => import('./assets-chunks/print_index_html.mjs').then(m => m.default)},
-    'loto/loto-points-active/index.html': {size: 445092, hash: '08551d624959cbef54b84e469ca33b8a96f8ec80dff6265a9a3961fbd8a10758', text: () => import('./assets-chunks/loto_loto-points-active_index_html.mjs').then(m => m.default)},
-    'permit-builder/jobs/index.html': {size: 32971, hash: 'ea8122aaef7a4a1e438676a1e2ec65ddac31da24e792ab1ebd714c48182f89ea', text: () => import('./assets-chunks/permit-builder_jobs_index_html.mjs').then(m => m.default)},
-    'backup/index.html': {size: 32666, hash: 'd6d78daa32018266f307f35be86664e5dc89bbee336fa72b31f5917ab8a409b0', text: () => import('./assets-chunks/backup_index_html.mjs').then(m => m.default)},
-    'permit-builder/daily-packages/index.html': {size: 77043, hash: '9674a16530ee75b6893f09f7dafb38cd84cff4f57644127bd9ec9030e086adb7', text: () => import('./assets-chunks/permit-builder_daily-packages_index_html.mjs').then(m => m.default)},
-    'loto-points/index.html': {size: 463000, hash: '70c1e81e4479f25d2fd2b66d924390301ef632f42039565795eb182dcc06c64b', text: () => import('./assets-chunks/loto-points_index_html.mjs').then(m => m.default)},
-    'tag-number/index.html': {size: 450977, hash: '47e7444a6bd0197a260997bdbcaf9bceba1a1afeb93494084e0adff9ed59cb4e', text: () => import('./assets-chunks/tag-number_index_html.mjs').then(m => m.default)},
-    'permit-builder/work-requests/index.html': {size: 868918, hash: 'e3a6f6dda8046e979491850522c4339a134b71e7448bb2d70702659e283643a4', text: () => import('./assets-chunks/permit-builder_work-requests_index_html.mjs').then(m => m.default)},
-    'scheduler/flow/index.html': {size: 35722, hash: 'e5b98cca86a00158140e12b2c0e7893279765f910aee810b7177ffac5d5199fe', text: () => import('./assets-chunks/scheduler_flow_index_html.mjs').then(m => m.default)},
-    'permit-builder/safe-works/index.html': {size: 634813, hash: 'bfc37bbd08f6b8239c365f2b4d4527999dd3f85dfcb1d97340a8ea2038d91e55', text: () => import('./assets-chunks/permit-builder_safe-works_index_html.mjs').then(m => m.default)},
-    'form-designer/forms/index.html': {size: 556932, hash: '2ea2833f8eac790dc6ad15730b8a4ac0d00b56f3824ea15043bb68ea4509af71', text: () => import('./assets-chunks/form-designer_forms_index_html.mjs').then(m => m.default)},
-    'form-designer/perview/index.html': {size: 926791, hash: '521e0707073a116bb1e87d73c174d0f960cb6483af62aa9bb8f0ea6f5872b4cd', text: () => import('./assets-chunks/form-designer_perview_index_html.mjs').then(m => m.default)},
-    'form-designer/design/index.html': {size: 572953, hash: '19a4c50d11a2f5f5f8f66c4a2b48bd1d6ef574f50d255e41f9cca8bae9e1969b', text: () => import('./assets-chunks/form-designer_design_index_html.mjs').then(m => m.default)},
-    'permit-builder/hot-works/index.html': {size: 481408, hash: 'ac063c4a6d7a80b45d2dde09dd8327e27aa733e5320d91a4229ba0bf812d0ed0', text: () => import('./assets-chunks/permit-builder_hot-works_index_html.mjs').then(m => m.default)},
-    'permit-builder/confined-spaces/index.html': {size: 584114, hash: 'c1fe7bc4521c01181a34e1e121085dfd16732bc30d906af2f53d9bb112e13198', text: () => import('./assets-chunks/permit-builder_confined-spaces_index_html.mjs').then(m => m.default)},
-    'scheduler/table/index.html': {size: 441939, hash: '2744d1361a232d06690c51997fb1c15fbd594cbd9726e72738734f34e45a70be', text: () => import('./assets-chunks/scheduler_table_index_html.mjs').then(m => m.default)},
-    'styles-TNAVY2DP.css': {size: 10047, hash: 'OPTPw42CT58', text: () => import('./assets-chunks/styles-TNAVY2DP_css.mjs').then(m => m.default)}
+    'index.csr.html': {size: 24527, hash: '53094e2a561bd0defdfccd4daa6872c5551310afc5bca4088e219943e1973ef0', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
+    'index.server.html': {size: 17152, hash: '8c208ee09e5f8f2adc2cfd338423fcf9a0181b9c50c59450ee3b5bb0da8bd808', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
+    'loto/loto/index.html': {size: 60557, hash: 'ca63d62186f40bfe4f7322029363b7024ae0d6b208d652e0a768f4c4dd84ae1a', text: () => import('./assets-chunks/loto_loto_index_html.mjs').then(m => m.default)},
+    'loto/loto-standard/index.html': {size: 60097, hash: '84f27db4e2309ac6bdb450ce2a3bd08a5592061298ee3c9c6b82914e03ea8bd9', text: () => import('./assets-chunks/loto_loto-standard_index_html.mjs').then(m => m.default)},
+    'loto/loto-points/index.html': {size: 59306, hash: 'adbb69870d6838115ba6e963da3e78f652fe3fe54126d94c5131cd98d2d8a35f', text: () => import('./assets-chunks/loto_loto-points_index_html.mjs').then(m => m.default)},
+    'loto/loto-points-active/index.html': {size: 59888, hash: '84031891f9466d90dcebb2f383ef3899113bd135ba57bd8947fb5e82684031e8', text: () => import('./assets-chunks/loto_loto-points-active_index_html.mjs').then(m => m.default)},
+    'loto/loto-boxes/index.html': {size: 55446, hash: '369280ecc339787dbfe2d711c65c45e80ed5bdfd192a3e05f56f7a73fdf5385b', text: () => import('./assets-chunks/loto_loto-boxes_index_html.mjs').then(m => m.default)},
+    'loto/loto-boxes-grid/index.html': {size: 67688, hash: 'de5b3bb208497144f6eb811b4f61fd831a54c4ec64c3b37fc550f49a7b2306fc', text: () => import('./assets-chunks/loto_loto-boxes-grid_index_html.mjs').then(m => m.default)},
+    'loto/locks/index.html': {size: 55413, hash: 'f2948e0cbfaac48bfaa5b015589649b27ac42c437bafcbdbe5512c954fe29314', text: () => import('./assets-chunks/loto_locks_index_html.mjs').then(m => m.default)},
+    'print/index.html': {size: 26309, hash: '5ebba081d3c4dcd8b6e911b84e01ca9a486a6f93451b39949376586560f72cc4', text: () => import('./assets-chunks/print_index_html.mjs').then(m => m.default)},
+    'tag-number/index.html': {size: 36298, hash: 'c9b075ec28398359f91222fecfab357b43dd05357f8846bb61d5ad9465687e5f', text: () => import('./assets-chunks/tag-number_index_html.mjs').then(m => m.default)},
+    'permit-builder/jobs/index.html': {size: 42920, hash: '3951f7c313fed441629b17f94ed346374383471655b872b214ef07739be72ef7', text: () => import('./assets-chunks/permit-builder_jobs_index_html.mjs').then(m => m.default)},
+    'backup/index.html': {size: 33327, hash: 'd6ce0693c672105c21b1db516e11085c15e801918527113cffa8ea556273a5b2', text: () => import('./assets-chunks/backup_index_html.mjs').then(m => m.default)},
+    'permit-builder/work-requests/index.html': {size: 59743, hash: 'f063dc7d2868575132a338033a1c47aabeed573bd6244a32766fadb24104a85b', text: () => import('./assets-chunks/permit-builder_work-requests_index_html.mjs').then(m => m.default)},
+    'permit-builder/safe-works/index.html': {size: 52433, hash: '6eb194a80f884a7ad5225cc58611e4f633d3751c9f6fab485223b806e24594ff', text: () => import('./assets-chunks/permit-builder_safe-works_index_html.mjs').then(m => m.default)},
+    'permit-builder/daily-packages/index.html': {size: 62199, hash: 'e886007b532286a9763c380e2b9afdee7c8e10f661b293e4aacfab99a49bd8f8', text: () => import('./assets-chunks/permit-builder_daily-packages_index_html.mjs').then(m => m.default)},
+    'permit-builder/confined-spaces/index.html': {size: 52469, hash: 'f710e470bd40ca29bc9a6a5f1c9af746f69d1c129ff87d810e8f2f4c11279588', text: () => import('./assets-chunks/permit-builder_confined-spaces_index_html.mjs').then(m => m.default)},
+    'permit-builder/hot-works/index.html': {size: 52042, hash: '46e5b062751e91f5aa017a2ea19537d6f67068ee7566c91325ef141620f42207', text: () => import('./assets-chunks/permit-builder_hot-works_index_html.mjs').then(m => m.default)},
+    'scheduler/flow/index.html': {size: 45668, hash: 'ef3d2ea3b9155213282ec76a5168481874e82bba0ebf6c18869debc058804991', text: () => import('./assets-chunks/scheduler_flow_index_html.mjs').then(m => m.default)},
+    'scheduler/table/index.html': {size: 52630, hash: '7227c4d4718cf7c010c8fc7544260939b6ab062fba5f81da5ee329223724a678', text: () => import('./assets-chunks/scheduler_table_index_html.mjs').then(m => m.default)},
+    'form-designer/forms/index.html': {size: 49283, hash: '10aed35a2c40c57c77713a8529d3e6b3aac1454047af49bfbc19d4becef0bd04', text: () => import('./assets-chunks/form-designer_forms_index_html.mjs').then(m => m.default)},
+    'form-designer/perview/index.html': {size: 51258, hash: '35f9235f9eaeaa472422e805270e77ff887aa9c8a92212f2765a745c77516733', text: () => import('./assets-chunks/form-designer_perview_index_html.mjs').then(m => m.default)},
+    'form-designer/design/index.html': {size: 65327, hash: '7d7f1693159e916f991a8ff1f9391be97ea419e3d7e232fa91615a91947c75a0', text: () => import('./assets-chunks/form-designer_design_index_html.mjs').then(m => m.default)},
+    'file/table/index.html': {size: 75104, hash: 'd41cc393e165ad16027f2b7f97f559f4b33f53cef3e06f2e7eeb1d412df8a537', text: () => import('./assets-chunks/file_table_index_html.mjs').then(m => m.default)},
+    'file/edit/index.html': {size: 81678, hash: '7babf70fc27ab2f735658e3bfd4746c096fabe66c8769c5556a8d81f8059870c', text: () => import('./assets-chunks/file_edit_index_html.mjs').then(m => m.default)},
+    'styles-GW2G6IRD.css': {size: 12481, hash: 'yOYDpS0q7Rc', text: () => import('./assets-chunks/styles-GW2G6IRD_css.mjs').then(m => m.default)}
   },
 };

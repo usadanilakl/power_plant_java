@@ -10,6 +10,10 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client
   },
   {
+    path: 'loto-points/:lotoPointId',
+    renderMode: RenderMode.Client
+  },
+  {
     path: '**',
     renderMode: RenderMode.Prerender
   }
