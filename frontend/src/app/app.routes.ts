@@ -38,6 +38,7 @@ import { DoubleLotoPointTableComponent } from './features/loto-points/refactored
 import { PrintableFormDesignerRefactoredComponent } from './features/form-designer/refactored/printable-form-designer-refactored/printable-form-designer-refactored.component';
 import { RfFilePageComponent } from './features/files/refactored/rf-file-page/rf-file-page.component';
 import { RfFileEditroComponent } from './features/files/refactored/rf-file-editor.component';
+import { EspDeviceListComponent } from './features/esp/esp-device-list/esp-device-list.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -66,7 +67,8 @@ export const routes: Routes = [
         { path: 'loto-points-active', component: ActiveLotoPointsComponent },
         { path: 'loto-boxes', component: LotoBoxTableComponent },
         { path: 'loto-boxes-grid', component: LotoBoxGridComponent },
-        { path: 'locks', component: LockTableComponent }
+        { path: 'locks', component: LockTableComponent },
+        { path: 'esp-devices', component: EspDeviceListComponent }
       ]
     },
 

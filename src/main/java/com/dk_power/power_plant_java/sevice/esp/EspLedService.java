@@ -6,9 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * Service for managing ESP WLED devices
  * Handles both initialization (pins, ranges, regions) and ongoing LED updates
@@ -69,33 +66,32 @@ public class EspLedService {
 
     /**
      * Initialize a single LED strip on an ESP device
+     * Calls custom ESP firmware initialization endpoint
      */
     private void initializeLedStrip(String baseUrl, LedStrip strip) {
         try {
-            // WLED JSON API configuration
-            Map<String, Object> config = new HashMap<>();
+            // Call custom ESP firmware initialization endpoint
+            // Format: /led/initStrip?strip={stripNumber}&pin={gpioPin}&count={totalLeds}
+            String initUrl = String.format(
+                "%s/led/initStrip?strip=%d&pin=%d&count=%d",
+                baseUrl,
+                strip.getStripNumber(),
+                strip.getGpioPin(),
+                strip.getTotalLeds()
+            );
 
-            // Configure LED strip settings
-            Map<String, Object> ledSettings = new HashMap<>();
-            ledSettings.put("pin", strip.getGpioPin());
-            ledSettings.put("count", strip.getTotalLeds());
-            ledSettings.put("order", 1); // RGB order (default)
-            ledSettings.put("rev", false); // Not reversed
-            ledSettings.put("skip", 1); // No LED skipping
-            ledSettings.put("type", 22); // WS2812B LED type
-            ledSettings.put("rgbw", false); // Not RGBW
-
-            config.put("led", ledSettings);
-
-            // Send configuration to WLED device
-            String configUrl = baseUrl + "/json/cfg";
-
-            System.out.println("Configuring LED strip " + strip.getStripNumber() +
+            System.out.println("Initializing LED strip " + strip.getStripNumber() +
                              " on GPIO " + strip.getGpioPin() +
-                             " with " + strip.getTotalLeds() + " LEDs");
+                             " with " + strip.getTotalLeds() + " LEDs at " + baseUrl);
 
-            // Note: This is a simplified initialization
-            // WLED configuration API may require different format based on version
+            try {
+                String response = restTemplate.getForObject(initUrl, String.class);
+                System.out.println("Strip initialization response: " + response);
+            } catch (Exception e) {
+                System.err.println("ESP may not have /led/initStrip endpoint. Skipping pin configuration.");
+                System.err.println("Note: Make sure ESP firmware is configured with correct pins:");
+                System.err.println("  Strip " + strip.getStripNumber() + " -> GPIO " + strip.getGpioPin() + " -> " + strip.getTotalLeds() + " LEDs");
+            }
 
         } catch (Exception e) {
             System.err.println("Failed to initialize LED strip " + strip.getStripNumber() + ": " + e.getMessage());

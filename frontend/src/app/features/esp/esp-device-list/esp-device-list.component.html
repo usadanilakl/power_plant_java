@@ -1,0 +1,99 @@
+<div class="container">
+  <h1>ESP Device Management</h1>
+
+  <div class="header-controls">
+    <button
+      class="btn-primary"
+      (click)="initializeAllDevices()"
+      [disabled]="isLoading()">
+      Initialize All Devices
+    </button>
+    <button
+      class="btn-secondary"
+      (click)="loadDevices()"
+      [disabled]="isLoading()">
+      Refresh
+    </button>
+  </div>
+
+  <div class="device-grid">
+    @for (device of devices(); track device.id) {
+      <div class="device-card">
+        <div class="device-header">
+          <h3 class="device-name">{{ device.name }}</h3>
+          <div class="device-status">
+            @if (getDeviceStatus(device.id).checking) {
+              <span class="status-badge checking">Checking...</span>
+            } @else if (getDeviceStatus(device.id).reachable) {
+              <span class="status-badge online">Online</span>
+            } @else {
+              <span class="status-badge offline">Offline</span>
+            }
+          </div>
+        </div>
+
+        <div class="device-info">
+          <div class="info-row">
+            <span class="info-label">IP Address:</span>
+            <span class="info-value">{{ device.ipAddress }}</span>
+          </div>
+          @if (device.description) {
+            <div class="info-row">
+              <span class="info-label">Description:</span>
+              <span class="info-value">{{ device.description }}</span>
+            </div>
+          }
+          <div class="info-row">
+            <span class="info-label">Status:</span>
+            <span class="info-value">
+              <label class="toggle-switch">
+                <input
+                  type="checkbox"
+                  [checked]="device.isActive"
+                  (change)="toggleActive(device)">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">{{ device.isActive ? 'Active' : 'Inactive' }}</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="device-actions">
+          <button
+            class="btn-action btn-initialize"
+            (click)="initializeDevice(device)"
+            [disabled]="isLoading() || !device.isActive">
+            Initialize
+          </button>
+          <button
+            class="btn-action btn-turn-off"
+            (click)="turnOffLeds(device)"
+            [disabled]="isLoading() || !device.isActive">
+            Turn Off LEDs
+          </button>
+          <button
+            class="btn-action btn-check"
+            (click)="checkDeviceConnection(device)"
+            [disabled]="isLoading()">
+            Check Connection
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (devices().length === 0 && !isLoading()) {
+      <div class="empty-state">
+        <p>No ESP devices found</p>
+        <p class="empty-hint">Add ESP devices to the database to get started</p>
+      </div>
+    }
+  </div>
+
+  @if (statusMessage()) {
+    <div class="status-message">{{ statusMessage() }}</div>
+  }
+
+  @if (isLoading()) {
+    <div class="loading">Loading...</div>
+  }
+</div>
