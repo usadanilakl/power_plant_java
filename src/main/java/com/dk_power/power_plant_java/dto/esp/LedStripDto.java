@@ -17,4 +17,13 @@ public class LedStripDto extends BaseDto {
     private Integer gpioPin;
     private Integer totalLeds = 260;
     private String description;
+
+    // WLED Configuration Settings
+    private String ledType = "WS281x";
+    private Integer milliampsPerLed = 55;
+    private String colorOrder = "GRB";
+    private Integer startLed = 0;
+    private Boolean reversed = false;
+    private Integer skipFirstLeds = 0;
+    private Integer offRefreshRate = 100;
 }

@@ -50,6 +50,29 @@ public class LedStripMapper implements BaseMapper {
             dto.setDescription(entity.getDescription());
         }
 
+        // Map WLED Configuration Settings
+        if (entity.getLedType() != null) {
+            dto.setLedType(entity.getLedType());
+        }
+        if (entity.getMilliampsPerLed() != null) {
+            dto.setMilliampsPerLed(entity.getMilliampsPerLed());
+        }
+        if (entity.getColorOrder() != null) {
+            dto.setColorOrder(entity.getColorOrder());
+        }
+        if (entity.getStartLed() != null) {
+            dto.setStartLed(entity.getStartLed());
+        }
+        if (entity.getReversed() != null) {
+            dto.setReversed(entity.getReversed());
+        }
+        if (entity.getSkipFirstLeds() != null) {
+            dto.setSkipFirstLeds(entity.getSkipFirstLeds());
+        }
+        if (entity.getOffRefreshRate() != null) {
+            dto.setOffRefreshRate(entity.getOffRefreshRate());
+        }
+
         // Map ESP Device with full object
         if (entity.getEspDevice() != null) {
             dto.setEspDeviceId(entity.getEspDevice().getId());
@@ -130,6 +153,29 @@ public class LedStripMapper implements BaseMapper {
 
         if (source.getDescription() != null) {
             entity.setDescription(source.getDescription());
+        }
+
+        // Map WLED Configuration Settings
+        if (source.getLedType() != null) {
+            entity.setLedType(source.getLedType());
+        }
+        if (source.getMilliampsPerLed() != null) {
+            entity.setMilliampsPerLed(source.getMilliampsPerLed());
+        }
+        if (source.getColorOrder() != null) {
+            entity.setColorOrder(source.getColorOrder());
+        }
+        if (source.getStartLed() != null) {
+            entity.setStartLed(source.getStartLed());
+        }
+        if (source.getReversed() != null) {
+            entity.setReversed(source.getReversed());
+        }
+        if (source.getSkipFirstLeds() != null) {
+            entity.setSkipFirstLeds(source.getSkipFirstLeds());
+        }
+        if (source.getOffRefreshRate() != null) {
+            entity.setOffRefreshRate(source.getOffRefreshRate());
         }
 
         // Map ESP Device from DTO object

@@ -14,4 +14,7 @@ public interface LotoBoxRepo extends BaseRepository<LotoBox> {
     Integer getMaxNumber();
     LotoBox findByNumber(Integer number);
 
+    @Query("SELECT b FROM LotoBox b WHERE b.ledStrip.espDevice.id = :espDeviceId ORDER BY b.rangeStart")
+    List<LotoBox> findByEspDeviceId(Long espDeviceId);
+
 }

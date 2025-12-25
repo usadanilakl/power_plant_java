@@ -211,4 +211,23 @@ public class NgEspDeviceController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
+    /**
+     * Get WLED hardware configuration instructions for manual setup
+     */
+    @GetMapping("/{id}/config-instructions")
+    public ResponseEntity<NgApiResponse<String>> getConfigInstructions(@PathVariable Long id) {
+        try {
+            var device = espDeviceService.getEntityById(id);
+            if (device == null) {
+                return ResponseEntity.notFound().build();
+            }
+            String instructions = espLedService.generateWledConfigInstructions(device);
+            NgApiResponse<String> response = new NgApiResponse<>(instructions, "Configuration instructions generated");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }
