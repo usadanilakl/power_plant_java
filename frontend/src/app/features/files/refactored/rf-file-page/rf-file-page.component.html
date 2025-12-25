@@ -1,0 +1,32 @@
+
+<app-main-layout
+  [isBottomMenuEnabled]="true"
+  [isSideMenuEnabled]="true"
+>
+  <ng-container header>
+    <div class="header-menus">
+      <div class="menu-container">
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-container left-menu>
+    <app-rf-file-left-menu></app-rf-file-left-menu>
+  </ng-container>
+
+  <ng-container main-content>
+    <router-outlet></router-outlet>
+  </ng-container>
+
+  <ng-container bottom-menu>
+    <!-- <app-bottom-menu-outlet></app-bottom-menu-outlet> -->
+  </ng-container>
+</app-main-layout>
+
+<app-rf-popup-projection
+  [isOpen]="stateService.isFileFormOpen()"
+  (close)="stateService.closeForm()"
+>
+  <app-rf-file-form ></app-rf-file-form>
+</app-rf-popup-projection>

@@ -1,15 +1,16 @@
 
 <div class="interactive-image-container">
-  <!-- Symbol Palette Sidebar -->
-  <div class="symbol-palette-sidebar" *ngIf="showSymbolPalette()">
-    <app-symbol-palette 
+  <!-- Symbol Palette Sidebar (only in edit mode) -->
+  <div class="symbol-palette-sidebar" *ngIf="mode() === 'edit' && showSymbolPalette()">
+    <app-symbol-palette
       (symbolSelected)="onSymbolSelected($event)">
     </app-symbol-palette>
   </div>
 
   <!-- Main Image Area -->
   <div class="image-workspace">
-  <app-toolbar [items]="toolbarItems"></app-toolbar>
+  <!-- Toolbar (only in edit mode) -->
+  <app-toolbar *ngIf="mode() === 'edit'" [items]="toolbarItems()"></app-toolbar>
     <!-- Image Container -->
     <div #imageContainer class="image-container">
       <div #zoomOuter class="zoom-outer">
@@ -36,14 +37,14 @@
     </div>
   </div>
 
-  @if (contextMenu.visible) {
-    <app-context-menu
-      [items]="contextMenu.items"
-      [position]="{ x: contextMenu.x, y: contextMenu.y }"
-      (closeMenu)="closeContextMenu()"
-      (itemClick)="handleContextMenuAction($event)">
-    </app-context-menu>
-  }
+  <app-context-menu
+    [isVisible]="contextMenu.visible"
+    [position]="{ x: contextMenu.x, y: contextMenu.y }"
+    [actions]="contextMenu.actions"
+    [selectedItem]="contextMenu.selectedItem"
+    (closeMenu)="closeContextMenu()"
+    (actionSelected)="handleContextMenuAction($event)">
+  </app-context-menu>
 
   <!-- Hidden file input for image conversion -->
   <input 

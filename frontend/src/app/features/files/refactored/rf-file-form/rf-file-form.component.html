@@ -1,0 +1,18 @@
+
+<app-rf-reactive-form
+  [entity]="entity()"
+  [fields]="fields()"
+  [title]="'File Form'"
+  (formValueChange)="onAnyValueChange($event)"
+  (formSubmit)="onSubmit($event)"
+>
+  <ng-container extra-buttons>
+    <app-clipboard-form
+      [entityType]="'File'"
+      [initialEntity]="initialEntity()"
+      [hasValidData]="hasValidData"
+      [getItemSummary]="getItemSummary"
+      (itemSelected)="onClipboardItemSelected($event)"
+    ></app-clipboard-form>
+  </ng-container>
+</app-rf-reactive-form>

@@ -1,5 +1,11 @@
+/**
+ * Base shape interface for all drawable elements on the image.
+ * NOTE: Equipment entity is NO LONGER used for shape identification.
+ * Equipment entity only holds coordinates and connects LotoPoint with File.
+ * Shapes are managed independently with their own IDs.
+ */
 export interface RfBaseShape {
-  id: number;
+  id: number; // Independent shape ID, NOT linked to Equipment ID
   type: string;
   color: string;
   originalPictureWidth: number;
