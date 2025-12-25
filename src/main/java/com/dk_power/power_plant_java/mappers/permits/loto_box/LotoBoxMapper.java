@@ -1,0 +1,157 @@
+package com.dk_power.power_plant_java.mappers.permits.loto_box;
+
+import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.dto.esp.LedStripDto;
+import com.dk_power.power_plant_java.dto.permits.loto_box.LotoBoxDto;
+import com.dk_power.power_plant_java.entities.categories.Value;
+import com.dk_power.power_plant_java.entities.loto.LotoBox;
+import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.sevice.angular.NgValueService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoBoxService;
+import com.dk_power.power_plant_java.sevice.esp.LedStripService;
+import com.dk_power.power_plant_java.sevice.loto.LotoService;
+import org.modelmapper.ModelMapper;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
+
+@Component
+public class LotoBoxMapper implements BaseMapper {
+    private final ModelMapper modelMapper;
+    private final NgValueService valueService;
+    private final LotoService lotoService;
+    private final NgLotoBoxService lotoBoxService;
+    private final LedStripService ledStripService;
+
+    public LotoBoxMapper(ModelMapper modelMapper, 
+                         @Lazy NgValueService valueService,
+                         @Lazy LotoService lotoService, 
+                         @Lazy NgLotoBoxService lotoBoxService,
+                         @Lazy LedStripService ledStripService) {
+        this.modelMapper = modelMapper;
+        this.valueService = valueService;
+        this.lotoService = lotoService;
+        this.lotoBoxService = lotoBoxService;
+        this.ledStripService = ledStripService;
+    }
+
+    public LotoBoxDto convertToDto(LotoBox entity) {
+        LotoBoxDto dto = new LotoBoxDto();
+        
+        dto.setId(entity.getId());
+
+        if (entity.getNumber() != null) {
+            dto.setNumber(entity.getNumber());
+        }
+
+        // Map LED Strip
+        if (entity.getLedStrip() != null) {
+            LedStripDto ledStripDto = new LedStripDto();
+            ledStripDto.setId(entity.getLedStrip().getId());
+            ledStripDto.setStripNumber(entity.getLedStrip().getStripNumber());
+            ledStripDto.setGpioPin(entity.getLedStrip().getGpioPin());
+            ledStripDto.setTotalLeds(entity.getLedStrip().getTotalLeds());
+            dto.setLedStrip(ledStripDto);
+            dto.setLedStripId(entity.getLedStrip().getId());
+        }
+
+        // Map LED range
+        if (entity.getRangeStart() != null) {
+            dto.setRangeStart(entity.getRangeStart());
+        }
+
+        if (entity.getRangeEnd() != null) {
+            dto.setRangeEnd(entity.getRangeEnd());
+        }
+
+        // Map Loto Status (determines LED color)
+        if (entity.getLotoAccessoryStatus() != null) {
+            dto.setLotoAccessoryStatus(valueService.valueToDto(entity.getLotoAccessoryStatus()));
+        }
+
+        if (entity.getDescription() != null) {
+            dto.setDescription(entity.getDescription());
+        }
+
+        return dto;
+    }
+
+    public LotoBoxDto convertToDtoLight(LotoBox entity) {
+        LotoBoxDto dto = new LotoBoxDto();
+        
+        dto.setId(entity.getId());
+
+        if (entity.getNumber() != null) {
+            dto.setNumber(entity.getNumber());
+        }
+
+        // Map LED range for light version
+        if (entity.getRangeStart() != null) {
+            dto.setRangeStart(entity.getRangeStart());
+        }
+
+        if (entity.getRangeEnd() != null) {
+            dto.setRangeEnd(entity.getRangeEnd());
+        }
+
+        // Map Loto Status for light version
+        if (entity.getLotoAccessoryStatus() != null) {
+            dto.setLotoAccessoryStatus(valueService.valueToDto(entity.getLotoAccessoryStatus()));
+        }
+
+        return dto;
+    }
+
+    public LotoBox convertToEntity(LotoBoxDto source) {
+        LotoBox entity = null;
+        if (source.getId() != null) {
+            entity = lotoBoxService.getEntityById(source.getId());
+        }
+        if (entity == null) {
+            entity = new LotoBox();
+        }
+
+        if (source.getNumber() != null) {
+            entity.setNumber(source.getNumber());
+        }
+
+        // Map LED Strip
+        if (source.getLedStripId() != null) {
+            entity.setLedStrip(ledStripService.getEntityById(source.getLedStripId()));
+        } else if (source.getLedStrip() != null && source.getLedStrip().getId() != null) {
+            entity.setLedStrip(ledStripService.getEntityById(source.getLedStrip().getId()));
+        }
+
+        // Map LED range
+        if (source.getRangeStart() != null) {
+            entity.setRangeStart(source.getRangeStart());
+        }
+
+        if (source.getRangeEnd() != null) {
+            entity.setRangeEnd(source.getRangeEnd());
+        }
+
+        // Map Loto Status (determines LED color)
+        if (source.getLotoAccessoryStatus() != null) {
+            if (source.getLotoAccessoryStatus().getId() == null) {
+                Value lotoStatus = valueService.getValuesByCategory("LotoStatus").stream()
+                        .filter(value -> value.getName().equals(source.getLotoAccessoryStatus().getName()))
+                       .findFirst()
+                        .orElse(null);
+                entity.setLotoAccessoryStatus(lotoStatus);
+            } else {
+                entity.setLotoAccessoryStatus(valueService.getValueById(source.getLotoAccessoryStatus().getId()).orElseThrow(() -> new RuntimeException("Loto Status not found")));
+            }
+        }
+
+        if (source.getDescription() != null) {
+            entity.setDescription(source.getDescription());
+        }
+
+        return entity;
+    }
+
+    @Override
+    public ModelMapper getMapper() {
+        return modelMapper;
+    }
+}

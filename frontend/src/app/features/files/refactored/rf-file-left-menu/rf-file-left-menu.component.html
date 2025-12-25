@@ -1,62 +1,22 @@
-
-<div class="file-left-menu">
-  <div class="menu-header">
-    <h3>Files</h3>
-    <div class="type-selector">
-      <button
-        [class.active]="selectedType() === 'pid'"
-        (click)="onTypeChange('pid')"
-        class="type-btn"
-      >
-        PID
-      </button>
-      <button
-        [class.active]="selectedType() === 'other'"
-        (click)="onTypeChange('other')"
-        class="type-btn"
-      >
-        Other
-      </button>
-    </div>
+<div class="file-menu-container">
+  <h2>File Menu</h2>
+  <div class="file-menu-controls">
+    <button class="file-menu-button" (click)="loadFiles('pid')">PID</button>
+    <button class="file-menu-button" (click)="loadFiles('elect')">Electrical</button>
+    <button class="file-menu-button" (click)="loadFiles('ht panel')">Heat Trace</button>
+    <button class="file-menu-button" (click)="loadFiles('iso')">Isometrics</button>
   </div>
+  
+  @if (isLoading()) {
+    <div>Loading...</div>
+  } @else if (error()) {
+    <div>Error: {{ error() }}</div>
+  } @else {
+    <app-rf-toggle-menu
+      [menuItems]="menuItems()"
+      (itemDblClick)="onItemDoubleClick($event)"
+      (itemClick)="onItemClick($event)"
+    ></app-rf-toggle-menu>
 
-  <div class="menu-content">
-    <div *ngIf="isLoading()" class="loading">Loading files...</div>
-    <div *ngIf="error()" class="error">{{ error() }}</div>
-
-    <div *ngIf="!isLoading() && menuItems().length === 0" class="empty-state">
-      No files found
-    </div>
-
-    <div *ngIf="!isLoading() && menuItems().length > 0" class="menu-items">
-      <div *ngFor="let item of menuItems()" class="menu-group">
-        <div
-          class="group-header"
-          (click)="onItemClick(item)"
-          [class.expanded]="isItemExpanded(item.id+'')"
-        >
-          <span class="expand-icon">
-            {{ isItemExpanded(item.id+'') ? '▼' : '▶' }}
-          </span>
-          <span class="group-name">{{ item.name }}</span>
-          <span class="item-count">{{ item.values?.length || 0 }}</span>
-        </div>
-
-        <div
-          *ngIf="isItemExpanded(item.id+'') && item.values"
-          class="group-items"
-        >
-          <div
-            *ngFor="let subItem of item.values"
-            class="menu-item"
-            [style.border-left]="'4px solid ' + (subItem.color || '#ccc')"
-            (click)="onItemClick(subItem)"
-            (dblclick)="onItemDoubleClick(subItem)"
-          >
-            <span class="item-name">{{ subItem.name }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  }
 </div>

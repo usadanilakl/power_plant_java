@@ -1,0 +1,64 @@
+<div class="rf-toggle-menu">
+  <!-- Search Section -->
+  @if (enableSearch()) {
+    <div class="search-section">
+      <div class="search-input-wrapper">
+        <input
+          type="text"
+          class="search-input"
+          [placeholder]="searchPlaceholder()"
+          [value]="searchQuery()"
+          (input)="onSearchChange($any($event.target).value)"
+        />
+        @if (searchQuery()) {
+          <button
+            class="clear-search-btn"
+            (click)="clearSearch()"
+            title="Clear search"
+          >
+            ×
+          </button>
+        }
+      </div>
+
+      <button
+        class="search-mode-toggle"
+        (click)="toggleSearchMode()"
+        [attr.data-mode]="searchMode()"
+        [title]="searchMode() === 'AND' ? 'Match all words' : 'Match any word'"
+      >
+        <span class="mode-label">{{ searchMode() }}</span>
+      </button>
+    </div>
+  }
+
+  <!-- Menu Items List -->
+  <div class="menu-list-container">
+    @if (hasResults()) {
+      <app-toggle-list-virtual-scroll
+        [items]="filteredItems()"
+        [trackLastClicked]="true"
+        [trackAllClicked]="true"
+        [highlightOnHover]="false"
+        (itemClicked)="onItemClick($event)"
+        (itemDoubleClicked)="onItemDoubleClicked($event)"
+        (itemRightClicked)="onItemRightClicked($event)"
+        (itemMiddleClicked)="onItemMiddleClicked($event)"
+      >
+      </app-toggle-list-virtual-scroll>
+    } @else if (searchQuery()) {
+      <div class="no-results">
+        <div class="no-results-icon">🔍</div>
+        <div class="no-results-text">No items match your search</div>
+        <div class="no-results-hint">
+          Try using {{ searchMode() === 'AND' ? 'OR' : 'AND' }} mode or different keywords
+        </div>
+      </div>
+    } @else {
+      <div class="empty-state">
+        <div class="empty-state-icon">📂</div>
+        <div class="empty-state-text">No items to display</div>
+      </div>
+    }
+  </div>
+</div>

@@ -1,6 +1,6 @@
-package com.dk_power.power_plant_java.sevice.loto;
+package com.dk_power.power_plant_java.sevice.loto.loto_box;
 
-import com.dk_power.power_plant_java.dto.permits.LotoBoxDto;
+import com.dk_power.power_plant_java.dto.permits.loto_box.LotoBoxDto;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.mappers.UniversalMapper;

@@ -1,0 +1,55 @@
+<div class="image-container">
+  @if (currentFile()) {
+    @if(currentFile()?.fileLink?.endsWith('.jpg')){
+      <app-interactive-image
+        [imageUrl]="fileLink()"
+        [shapesInput]="shapes()"
+        [mode]="'edit'"
+        (shapeRightClicked)="onShapeRightClicked($event)"
+        (shapeUpdated)="onShapeUpdated($event)">
+      </app-interactive-image>
+    } @else if(currentFile()?.fileLink?.endsWith('.pdf')){
+      <app-pdf-display-iframe [pdfSrc]="currentFile()?.fileLink"></app-pdf-display-iframe>
+    }
+  } @else {
+    <div class="no-file-selected">
+      <p>No file selected. Please select a file to view and edit.</p>
+      <!-- You can add a button or other UI elements here to guide the user -->
+      <!-- <button (click)="onSelectFile()" class="select-file-button">Select a File</button> -->
+    </div>
+  }
+
+  <!-- Control buttons -->
+  <div class="control-section">
+    <div class="button-row">
+      <button (click)="openLotoPointTable()" class="control-button">View LOTO Points</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOTO Point Table Popup -->
+<app-popup-projection
+  [isOpen]="isLotoPointTableOpen()"
+  [title]="'LOTO Points Table'"
+  [size]="'large'"
+  (close)="closeLotoPointTable()">
+  <app-loto-point-display-table
+    [inputItems]="allLotoPoints()"
+    [isTableIsolated]="true"
+    [loadMoreEnabled]="false"
+    (selectedItemsEvent)="onLotoPointSelected($event)">
+  </app-loto-point-display-table>
+</app-popup-projection>
+
+<!-- LOTO Point Edit Form Popup -->
+<app-popup-projection
+  [isOpen]="isLotoPointFormOpen()"
+  [title]="'Edit LOTO Point'"
+  [size]="'large'"
+  (close)="onLotoPointFormClose()">
+  <app-loto-point-detail-form
+    [values]="selectedLotoPoint()"
+    (formSubmit)="onLotoPointFormSubmit($event)"
+    (formDelete)="onLotoPointFormDelete()">
+  </app-loto-point-detail-form>
+</app-popup-projection>

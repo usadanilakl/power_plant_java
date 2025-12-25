@@ -1,5 +1,5 @@
 
-import { Component, DestroyRef, effect, ElementRef, inject, input, signal, ViewChild } from "@angular/core";
+import { Component, DestroyRef, effect, ElementRef, inject, input, output, signal, ViewChild } from "@angular/core";
 import { fromEvent } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { SymbolPaletteComponent } from "../symbol-palette/symbol-palette.component";
@@ -54,6 +54,10 @@ export class InteractiveImageComponent {
   shapesInput = input<RfShape[]>([]);
   mode = input<'view' | 'edit'>('view'); // New mode input
 
+  // Outputs
+  shapeRightClicked = output<RfShape>();
+  shapeUpdated = output<RfShape>();
+
   shapes = this.shapeManager.shapes;
   selectedShapeIds = this.shapeManager.selectedShapeIds;
   singleSelectedShapeId = this.shapeManager.singleSelectedShapeId;
@@ -97,6 +101,9 @@ export class InteractiveImageComponent {
   imageScale: number = 1;
   cursor: string = 'default';
 
+  // ResizeObserver to monitor image size changes
+  private imageResizeObserver: ResizeObserver | null = null;
+
   //Shape Dragging state
   private isDraggingShape: boolean = false;
   private dragStartPos: { x: number; y: number } = { x: 0, y: 0 };
@@ -139,6 +146,14 @@ export class InteractiveImageComponent {
   toolbarItems = signal<ToolbarItem[]>([]);
 
   constructor() {
+    // Effect to load shapes from input when they change
+    effect(() => {
+      const inputShapes = this.shapesInput();
+      if (inputShapes && inputShapes.length > 0) {
+        this.shapeManager.setShapes(inputShapes);
+      }
+    });
+
     // Effect to redraw canvas when shapes change
     effect(() => {
       const shapes = this.shapes();
@@ -190,6 +205,12 @@ export class InteractiveImageComponent {
   ngOnDestroy() {
     this.drawingService.cleanup();
     this.canvasRenderService.clearImageCache();
+
+    // Cleanup ResizeObserver
+    if (this.imageResizeObserver) {
+      this.imageResizeObserver.disconnect();
+      this.imageResizeObserver = null;
+    }
   }
 
   ngAfterViewInit() {
@@ -210,6 +231,9 @@ export class InteractiveImageComponent {
       this.updateCanvasAndRedraw();
       this.updateTempCanvasSize();
     };
+
+    // Set up ResizeObserver to monitor image size changes
+    this.setupImageResizeObserver();
 
     this.setupMouseEvents();
     this.setupKeyboardShortcuts();
@@ -481,13 +505,20 @@ export class InteractiveImageComponent {
     event.preventDefault();
     const isEditMode = this.mode() === 'edit';
 
-    // Only show context menu in edit mode
-    if (!isEditMode) return;
-
     // First check if we clicked on a shape
     const clickedShapeId = this.isOverShape(event);
 
     if (clickedShapeId !== null) {
+      const clickedShape = this.shapeManager.getShapeById(clickedShapeId);
+
+      // Emit the shape right-click event for parent component to handle
+      if (clickedShape) {
+        this.shapeRightClicked.emit(clickedShape);
+      }
+
+      // Only show context menu in edit mode
+      if (!isEditMode) return;
+
       // Select the shape if not already selected
       if (!this.selectedShapeIds().includes(clickedShapeId)) {
         this.shapeManager.selectShape(clickedShapeId, true);
@@ -762,6 +793,12 @@ export class InteractiveImageComponent {
       return;
     }
 
+    // Check for rotation handle (second priority)
+    if (this.isPointInRotationHandle(event)) {
+      this.cursor = 'grab';
+      return;
+    }
+
     const imgRect = this.img.getBoundingClientRect();
     const hoverX =
       (event.clientX - imgRect.left) /
@@ -844,6 +881,38 @@ export class InteractiveImageComponent {
           }
         }
       });
+  }
+
+  /**
+   * Setup ResizeObserver to monitor image size changes and recalculate baseImageScale
+   */
+  private setupImageResizeObserver(): void {
+    this.imageResizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Only recalculate if the image has loaded and has natural dimensions
+        if (this.img.naturalWidth > 0 && this.img.naturalHeight > 0) {
+          const newBaseScale = this.canvasRenderService.calculateBaseScale(this.img);
+
+          // Only update if scale actually changed (avoid unnecessary redraws)
+          if (Math.abs(newBaseScale - this.baseImageScale) > 0.0001) {
+            console.log('Image resized - updating baseImageScale from', this.baseImageScale, 'to', newBaseScale);
+            this.baseImageScale = newBaseScale;
+
+            // Update imageScale which depends on baseImageScale
+            this.updateImageScale();
+
+            // Redraw canvas with updated scale
+            this.updateCanvasAndRedraw();
+
+            // Update temp canvas size as well
+            this.updateTempCanvasSize();
+          }
+        }
+      }
+    });
+
+    // Start observing the image element
+    this.imageResizeObserver.observe(this.img);
   }
 
   private isOverShape(event: MouseEvent) {
@@ -1049,6 +1118,15 @@ export class InteractiveImageComponent {
 
   private stopDraggingShape(): void {
     this.isDraggingShape = false;
+
+    // Emit updated event for all dragged shapes
+    this.draggedShapeIds.forEach((shapeId) => {
+      const shape = this.shapeManager.getShapeById(shapeId);
+      if (shape) {
+        this.shapeUpdated.emit(shape);
+      }
+    });
+
     this.draggedShapeIds = [];
     this.initialShapePositions.clear();
     this.cursor = 'default';
@@ -1167,6 +1245,15 @@ export class InteractiveImageComponent {
 
   private stopResizingShape(): void {
     this.isResizingShape = false;
+
+    // Emit the updated shape
+    if (this.resizingShapeId !== null) {
+      const shape = this.shapeManager.getShapeById(this.resizingShapeId);
+      if (shape) {
+        this.shapeUpdated.emit(shape);
+      }
+    }
+
     this.resizeHandle = null;
     this.resizingShapeId = null;
     this.initialShapeBounds = null;
@@ -1352,9 +1439,14 @@ export class InteractiveImageComponent {
       this.baseImageScale;
 
     const handlePos = this.getRotationHandlePosition(shape);
-    const handleSize = 8 / this.transformState.scale / this.baseImageScale;
+    const handleRadius = 8 / this.transformState.scale / this.baseImageScale;
 
-    return this.isPointInHandle(mouseX, mouseY, handlePos, handleSize);
+    // Use circular hit detection for rotation handle
+    const dx = mouseX - handlePos.x;
+    const dy = mouseY - handlePos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    return distance <= handleRadius;
   }
 
   private startRotatingShape(event: MouseEvent): void {
@@ -1413,6 +1505,15 @@ export class InteractiveImageComponent {
 
   private stopRotatingShape(): void {
     this.isRotatingShape = false;
+
+    // Emit the updated shape
+    if (this.rotatingShapeId !== null) {
+      const shape = this.shapeManager.getShapeById(this.rotatingShapeId);
+      if (shape) {
+        this.shapeUpdated.emit(shape);
+      }
+    }
+
     this.rotatingShapeId = null;
     this.cursor = 'default';
   }

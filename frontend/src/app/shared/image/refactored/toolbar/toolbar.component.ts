@@ -1,6 +1,7 @@
-import { ToolbarItem } from '../../../models/ui/toolbar.model';
+
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToolbarItem } from '../toolbar.model';
 @Component({
   selector: 'app-toolbar',
   standalone: true,

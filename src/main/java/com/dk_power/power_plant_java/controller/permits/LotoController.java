@@ -7,7 +7,7 @@ import com.dk_power.power_plant_java.entities.loto.Loto;
 import com.dk_power.power_plant_java.enums.Status;
 import com.dk_power.power_plant_java.sevice.categories.CategoryService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
-import com.dk_power.power_plant_java.sevice.loto.BoxService;
+import com.dk_power.power_plant_java.sevice.loto.loto_box.BoxService;
 import com.dk_power.power_plant_java.sevice.loto.LotoService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;

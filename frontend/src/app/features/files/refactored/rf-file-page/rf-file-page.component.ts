@@ -20,8 +20,8 @@ import { RfFileLeftMenuComponent } from '../rf-file-left-menu/rf-file-left-menu.
     RouterMenuComponent,
     RfFileLeftMenuComponent,
     RfPopupProjectionComponent,
-    RfFileFormComponent,
-  ],
+    RfFileFormComponent
+],
   templateUrl: './rf-file-page.component.html',
   styleUrl: './rf-file-page.component.css',
 })

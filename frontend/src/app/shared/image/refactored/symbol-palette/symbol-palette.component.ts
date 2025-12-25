@@ -1,7 +1,7 @@
 
 import { Component, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PIDSymbol, PIDSymbolsService } from '../../../services/ui/pid-symbols.service';
+import { PIDSymbol, PIDSymbolsService } from '../services/pid-symbols.service';
 
 @Component({
   selector: 'app-symbol-palette',

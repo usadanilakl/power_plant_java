@@ -112,8 +112,23 @@ export class CanvasRenderService {
     originalShape: RfShape,
     scale: number
   ): void {
+    ctx.save();
+
+    // Apply rotation if specified
+    if (rect.rotation) {
+      // Translate to center, rotate, translate back
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+      ctx.translate(centerX, centerY);
+      ctx.rotate((rect.rotation * Math.PI) / 180);
+      ctx.translate(-centerX, -centerY);
+    }
+
     ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
 
+    ctx.restore();
+
+    // Draw selection handles outside the rotation transform
     if (originalShape.isBulkSelected) {
       this.drawSelectionHandles(ctx, rect, 'orange');
     }
@@ -143,6 +158,17 @@ export class CanvasRenderService {
 
     // Draw image if loaded
     if (img.complete && img.naturalWidth > 0) {
+      ctx.save();
+
+      // Apply rotation if specified
+      if (imageShape.rotation) {
+        const centerX = imageShape.x + imageShape.width / 2;
+        const centerY = imageShape.y + imageShape.height / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate((imageShape.rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
+      }
+
       ctx.drawImage(
         img,
         imageShape.x,
@@ -161,7 +187,9 @@ export class CanvasRenderService {
         imageShape.height
       );
 
-      // Draw selection handles
+      ctx.restore();
+
+      // Draw selection handles outside rotation transform
       if (originalShape.isBulkSelected) {
         this.drawSelectionHandles(ctx, imageShape, 'orange');
       }
@@ -175,6 +203,17 @@ export class CanvasRenderService {
 
       // Redraw when image loads
       img.onload = () => {
+        ctx.save();
+
+        // Apply rotation if specified
+        if (imageShape.rotation) {
+          const centerX = imageShape.x + imageShape.width / 2;
+          const centerY = imageShape.y + imageShape.height / 2;
+          ctx.translate(centerX, centerY);
+          ctx.rotate((imageShape.rotation * Math.PI) / 180);
+          ctx.translate(-centerX, -centerY);
+        }
+
         ctx.drawImage(
           img!,
           imageShape.x,
@@ -193,7 +232,9 @@ export class CanvasRenderService {
           imageShape.height
         );
 
-        // Draw selection handles if needed
+        ctx.restore();
+
+        // Draw selection handles if needed outside rotation transform
         if (originalShape.isBulkSelected) {
           this.drawSelectionHandles(ctx, imageShape, 'orange');
         }

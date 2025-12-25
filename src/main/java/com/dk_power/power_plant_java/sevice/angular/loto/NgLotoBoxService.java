@@ -1,9 +1,9 @@
 package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
-import com.dk_power.power_plant_java.dto.permits.LotoBoxDto;
+import com.dk_power.power_plant_java.dto.permits.loto_box.LotoBoxDto;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
-import com.dk_power.power_plant_java.mappers.permits.LotoBoxMapper;
+import com.dk_power.power_plant_java.mappers.permits.loto_box.LotoBoxMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import jakarta.persistence.EntityManager;

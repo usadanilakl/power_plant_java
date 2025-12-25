@@ -25,6 +25,7 @@ export interface RfRectangleShape extends RfBaseShape {
   y: number;
   width: number;
   height: number;
+  rotation?: number;
 }
 
 export interface RfCircleShape extends RfBaseShape {
@@ -57,6 +58,7 @@ export interface RfImageShape extends RfBaseShape {
   type: 'image';
   imageUrl: string;
   imageData?: string; // Base64 encoded image data
+  rotation?: number;
   // aspectRatio: number; // width/height ratio to maintain proportions
 }
 export interface SVGSymbolShape extends RfBaseShape {

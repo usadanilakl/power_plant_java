@@ -35,16 +35,20 @@ import { RfLotoPointPageComponent } from './features/loto-points/refactored/rf-l
 import { RfLotoPointTableComponent } from './features/loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
 import { DoubleLotoPointTableComponent } from './features/loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
 import { PrintableFormDesignerRefactoredComponent } from './features/form-designer/refactored/printable-form-designer-refactored/printable-form-designer-refactored.component';
+import { RfFilePageComponent } from './features/files/refactored/rf-file-page/rf-file-page.component';
+import { RfFileEditroComponent } from './features/files/refactored/rf-file-editor.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
     { path: '', redirectTo: '/file/edit', pathMatch: 'full' },
     {
       path: 'file',
-      component: FilePageComponent,
+      component: RfFilePageComponent,
+      // component: FilePageComponent,
       children: [
         { path: '', redirectTo: 'table', pathMatch: 'full' },
-        { path: 'edit', component: FileEditorComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
+        { path: 'edit', component: RfFileEditroComponent },
+        // { path: 'edit', component: FileEditorComponent, data: {bottomMenu: FileEditorBottomMenuComponent} },
         { path: 'table', component: FileTableComponent }
       ]
     },
