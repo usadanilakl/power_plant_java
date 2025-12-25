@@ -115,6 +115,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
         System.err.println("=====================================================");
         System.out.println("App is Ready: open browser and type: http://localhost:8082");
 
+//        equipmentRefactorService.splitAllEquipmentWithMultipleLotoPoints();
 
 //        equipmentRefactorService.assignEquipmentLocationAndTypeToLotoPoints();
 

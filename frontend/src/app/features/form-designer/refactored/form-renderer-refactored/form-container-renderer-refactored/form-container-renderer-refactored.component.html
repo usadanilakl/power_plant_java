@@ -1,0 +1,80 @@
+<div class="form-container" [ngStyle]="getContainerStyles(container())">
+  @if (isFormField(container().content)) {
+    @switch (asFormField(container().content).type) {
+      @case ('text') {
+        <app-invisible-input-field
+          type="text"
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          [style]="asFormField(container().content).style">
+        </app-invisible-input-field>
+      }
+      @case ('textarea') {
+        <app-invisible-input-field
+          type="textarea"
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          [style]="asFormField(container().content).style">
+        </app-invisible-input-field>
+      }
+      @case ('number') {
+        <app-invisible-input-field
+          type="number"
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          [style]="asFormField(container().content).style">
+        </app-invisible-input-field>
+      }
+      @case ('date') {
+        <app-invisible-input-field
+          type="date"
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          [style]="asFormField(container().content).style">
+        </app-invisible-input-field>
+      }
+      @case ('select') {
+        <app-invisible-searchable-select
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          [options]="asFormField(container().content).options || []"
+          [style]="asFormField(container().content).style">
+        </app-invisible-searchable-select>
+      }
+      @case ('multi-select') {
+        <app-invisible-searchable-multi-select
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          [options]="asFormField(container().content).options || []"
+          [style]="asFormField(container().content).style">
+        </app-invisible-searchable-multi-select>
+      }
+      @case ('checkbox') {
+        <app-chekcbox-x
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          [id]="asFormField(container().content).name! + (formData()?.id || '')"
+          [style]="asFormField(container().content).style">
+        </app-chekcbox-x>
+      }
+      @case ('radio') {
+        <app-radio-checkboxes
+          [formControl]="getFormControl(asFormField(container().content).name!)"
+          [name]="asFormField(container().content).name!"
+          [options]="[true, false]">
+        </app-radio-checkboxes>
+      }
+
+      @case ('form-array') {
+        <app-nested-form-input
+          [formField]="asFormField(container().content)"
+          [formArray]="getFormArray(asFormField(container().content).name!)"
+          [fieldName]="asFormField(container().content).name!"
+          (itemAdded)="onAddArrayItem($event)"
+          (itemRemoved)="onRemoveArrayItem($event)">
+        </app-nested-form-input>
+      }
+    }
+  } @else if(container().contentType === 'text') {
+    <div class="content-display" [ngStyle]="getContentStyles(container())">
+      {{ container().content }}
+    </div>
+  } @else if(container().contentType === 'variable') {
+    <div class="content-display" [ngStyle]="getContentStyles(container())">
+      {{ getNestedValue(form()!.value, $any(container().content)) }}
+    </div>
+  }
+</div>

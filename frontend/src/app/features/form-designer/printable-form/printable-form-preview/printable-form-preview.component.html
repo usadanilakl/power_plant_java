@@ -1,11 +1,17 @@
 
 
 <div class="printable-content">
-  <app-form-renderer
+  <!-- <app-form-renderer
     [formDefinitionInput]="form()"
     (addItem)="onAddStep()"
     [formData]="data"
-></app-form-renderer>
+></app-form-renderer> -->
+
+  <app-form-renderer-refactored
+    [formDefinition]="form()"
+    (addItem)="onAddStep()"
+    [formData]="data"
+></app-form-renderer-refactored>
 </div>
 
 <!-- Other components like sidebars, menus, etc. would be outside this div -->

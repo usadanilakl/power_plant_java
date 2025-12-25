@@ -7,10 +7,11 @@ import { CurrentSafeWorkService } from '../../../../services/current-items-servi
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 import { map } from 'rxjs';
 import { Jha, JobStep } from '../../../../models/permits/jha.model';
+import { FormRendererRefactoredComponent } from "../../refactored/form-renderer-refactored/form-renderer-refactored.component";
 
 @Component({
   selector: 'app-printable-form-preview',
-  imports: [FormRendererComponent],
+  imports: [FormRendererComponent, FormRendererRefactoredComponent],
   templateUrl: './printable-form-preview.component.html',
   styleUrl: './printable-form-preview.component.css'
 })
