@@ -155,10 +155,11 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     private void updateEspDevice(LotoBox box) {
         try {
             if (box.getLedStrip() != null && box.getLedStrip().getEspDevice() != null) {
-                espLedService.updateBoxLeds(
+                espLedService.updateLedRange(
                     box.getLedStrip().getEspDevice(),
-                    box.getLedStrip().getStripNumber(),
-                    box.getNumber(),
+                    null,  // stripNumber not used in standard WLED API
+                    box.getRangeStart(),
+                    box.getRangeEnd(),
                     box.getR(),
                     box.getG(),
                     box.getB(),
