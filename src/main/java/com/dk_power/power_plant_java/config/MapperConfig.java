@@ -5,6 +5,7 @@ import org.modelmapper.ModelMapper;
 import org.modelmapper.spi.MappingContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class MapperConfig {
@@ -14,4 +15,9 @@ public class MapperConfig {
         modelMapper.getConfiguration().setSkipNullEnabled(true);
         return modelMapper;
     }
+
+//    @Bean
+//    public RestTemplate restTemplate() {
+//        return new RestTemplate();
+//    }
 }

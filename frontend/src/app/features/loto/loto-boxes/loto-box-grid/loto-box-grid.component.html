@@ -1,0 +1,59 @@
+<div class="container">
+  <h1>LOTO Boxes Control Panel</h1>
+
+  <div class="grid-container">
+    @for (box of boxes(); track box.number) {
+      <div
+        class="box"
+        [class.manual-override]="isManualOverride(box)"
+        [style.background-color]="getBoxColor(box)"
+        (click)="toggleDropdown(box.number, $event)">
+        <span class="box-number">{{ box.number }}</span>
+        @if (isManualOverride(box)) {
+          <span class="override-indicator" title="Manual Override Active">M</span>
+        }
+
+        @if (activeDropdown() === box.number) {
+          <div class="dropdown" (click)="$event.stopPropagation()">
+            @for (status of statuses; track status) {
+              <div
+                class="dropdown-item"
+                (click)="setBoxStatus(box, status, $event)">
+                {{ getStatusLabel(status) }}
+              </div>
+            }
+            <div class="dropdown-divider"></div>
+            <div
+              class="dropdown-item override-toggle"
+              (click)="toggleManualOverride(box, $event)">
+              {{ isManualOverride(box) ? '✓ Manual Override' : 'Enable Manual Override' }}
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  @if (statusMessage()) {
+    <pre class="status">{{ statusMessage() }}</pre>
+  }
+
+  <div class="controls">
+    <button
+      class="btn-primary"
+      (click)="updateAllBoxes()"
+      [disabled]="isLoading()">
+      Update All Boxes
+    </button>
+    <button
+      class="btn-secondary"
+      (click)="loadBoxes()"
+      [disabled]="isLoading()">
+      Refresh
+    </button>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading">Loading...</div>
+  }
+</div>

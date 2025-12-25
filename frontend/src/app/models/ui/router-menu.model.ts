@@ -35,6 +35,7 @@ export const LOTO_NAV_MENU_ITEMS: RouterMenuItems = [
     { label: 'Active LOTO Points', route: './loto-points-active' },
     { label: 'All LOTO Points', route: './loto-points' },
     { label: 'LOTO Boxes', route: './loto-boxes' },
+    { label: 'LOTO Grid', route: './loto-boxes-grid' },
     { label: 'Locks', route: './locks' }
 
 ];

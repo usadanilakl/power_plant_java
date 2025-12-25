@@ -31,7 +31,13 @@ public class LotoBoxDto extends BaseDto {
     
     private Integer rangeStart;
     private Integer rangeEnd;
-    
+
     private String description;
+
+    // Current LED color state (from database)
+    private Integer r;
+    private Integer g;
+    private Integer b;
+    private Integer brightness;
 
 }

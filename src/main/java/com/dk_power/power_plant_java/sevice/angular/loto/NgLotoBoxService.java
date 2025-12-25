@@ -6,8 +6,8 @@ import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.mappers.permits.loto_box.LotoBoxMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.esp.EspLedService;
 import jakarta.persistence.EntityManager;
-import lombok.RequiredArgsConstructor;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -16,13 +16,23 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, LotoBoxRepo, LotoBoxMapper> {
     private final LotoBoxRepo lotoBoxRepo;
     private final SessionFactory sessionFactory;
     private final EntityManager entityManager;
     private final LotoBoxMapper lotoBoxMapper;
+    private final EspLedService espLedService;
+
+    public NgLotoBoxService(LotoBoxRepo lotoBoxRepo, SessionFactory sessionFactory,
+                           EntityManager entityManager, LotoBoxMapper lotoBoxMapper,
+                           EspLedService espLedService) {
+        this.lotoBoxRepo = lotoBoxRepo;
+        this.sessionFactory = sessionFactory;
+        this.entityManager = entityManager;
+        this.lotoBoxMapper = lotoBoxMapper;
+        this.espLedService = espLedService;
+    }
 
     @Override
     public LotoBoxRepo getRepo() {
@@ -86,6 +96,86 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
         return this.lotoBoxMapper.convertToEntity(dto);
     }
 
+    /**
+     * Get all LOTO boxes with their current LED color state
+     */
+    public List<LotoBoxDto> getAllBoxes() {
+        List<LotoBox> boxes = lotoBoxRepo.findAll();
+        return boxes.stream()
+                .map(lotoBoxMapper::convertToDto)
+                .toList();
+    }
 
-    // Add any additional methods specific to LotoBox here
+    /**
+     * Update LED color for a specific box
+     * Saves to database and updates ESP device
+     */
+    public LotoBoxDto updateBoxLedColor(Long boxId, Integer r, Integer g, Integer b, Integer brightness) {
+        LotoBox box = lotoBoxRepo.findById(boxId)
+                .orElseThrow(() -> new RuntimeException("LotoBox not found with id: " + boxId));
+
+        // Update database
+        box.setR(r);
+        box.setG(g);
+        box.setB(b);
+        box.setBrightness(brightness);
+        lotoBoxRepo.save(box);
+
+        // Update ESP device
+        updateEspDevice(box);
+
+        return lotoBoxMapper.convertToDto(box);
+    }
+
+    /**
+     * Update LED color for a specific box by box number
+     */
+    public LotoBoxDto updateBoxLedColorByNumber(Integer boxNumber, Integer r, Integer g, Integer b, Integer brightness) {
+        LotoBox box = lotoBoxRepo.findByNumber(boxNumber);
+        if (box == null) {
+            throw new RuntimeException("LotoBox not found with number: " + boxNumber);
+        }
+
+        // Update database
+        box.setR(r);
+        box.setG(g);
+        box.setB(b);
+        box.setBrightness(brightness);
+        lotoBoxRepo.save(box);
+
+        // Update ESP device
+        updateEspDevice(box);
+
+        return lotoBoxMapper.convertToDto(box);
+    }
+
+    /**
+     * Update ESP device with box LED color using EspLedService
+     */
+    private void updateEspDevice(LotoBox box) {
+        try {
+            if (box.getLedStrip() != null && box.getLedStrip().getEspDevice() != null) {
+                espLedService.updateBoxLeds(
+                    box.getLedStrip().getEspDevice(),
+                    box.getLedStrip().getStripNumber(),
+                    box.getNumber(),
+                    box.getR(),
+                    box.getG(),
+                    box.getB(),
+                    box.getBrightness()
+                );
+            }
+        } catch (Exception e) {
+            // Log error but don't fail the database save
+            System.err.println("Failed to update ESP device for box " + box.getNumber() + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Sync all boxes to ESP device using current database state
+     */
+    public void syncAllBoxesToEsp() {
+        List<LotoBox> boxes = lotoBoxRepo.findAll();
+        boxes.forEach(this::updateEspDevice);
+    }
 }

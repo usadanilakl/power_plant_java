@@ -12,6 +12,7 @@ import com.dk_power.power_plant_java.sevice.angular.DefaultValueGeneratorService
 import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
 import com.dk_power.power_plant_java.sevice.angular.file.ReferenceObjectService;
 import com.dk_power.power_plant_java.sevice.loto.LotoService;
+import com.dk_power.power_plant_java.sevice.loto.loto_box.LotoBoxInitializationService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
     private final RedTagAutomationService redTagAutomationService;
     private final EtaProService etaProService;
     private final DefaultValueGeneratorService defaultValueGeneratorService;
+    private final LotoBoxInitializationService lotoBoxInitializationService;
     private final NgFileService fileService;
     private final ReferenceObjectService referenceObjectService;
     private final LotoService lotoService;
@@ -63,6 +65,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        redTagAutomationService.openApp();
 
         defaultValueGeneratorService.generateAllValues();
+        lotoBoxInitializationService.initializeLotoBoxesWithEspDevices();
 
         String currentUser = System.getProperty("user.name");
         System.out.println("Current User: " + currentUser);

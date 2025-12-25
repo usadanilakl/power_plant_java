@@ -72,6 +72,12 @@ public class LotoBoxMapper implements BaseMapper {
             dto.setDescription(entity.getDescription());
         }
 
+        // Map LED color state
+        dto.setR(entity.getR());
+        dto.setG(entity.getG());
+        dto.setB(entity.getB());
+        dto.setBrightness(entity.getBrightness());
+
         return dto;
     }
 
@@ -145,6 +151,20 @@ public class LotoBoxMapper implements BaseMapper {
 
         if (source.getDescription() != null) {
             entity.setDescription(source.getDescription());
+        }
+
+        // Map LED color state
+        if (source.getR() != null) {
+            entity.setR(source.getR());
+        }
+        if (source.getG() != null) {
+            entity.setG(source.getG());
+        }
+        if (source.getB() != null) {
+            entity.setB(source.getB());
+        }
+        if (source.getBrightness() != null) {
+            entity.setBrightness(source.getBrightness());
         }
 
         return entity;

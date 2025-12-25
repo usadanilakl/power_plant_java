@@ -72,4 +72,74 @@ public class NgLotoBoxController {
         }
     }
 
+    /**
+     * Get all LOTO boxes with their LED color state
+     */
+    @GetMapping("/all")
+    public ResponseEntity<NgApiResponse<java.util.List<LotoBoxDto>>> getAllBoxes() {
+        try {
+            java.util.List<LotoBoxDto> boxes = ngLotoBoxService.getAllBoxes();
+            NgApiResponse<java.util.List<LotoBoxDto>> response = new NgApiResponse<>(boxes, "All boxes retrieved successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Update LED color for a box by ID
+     */
+    @PutMapping("/{id}/led-color")
+    public ResponseEntity<NgApiResponse<LotoBoxDto>> updateBoxLedColor(
+            @PathVariable Long id,
+            @RequestParam Integer r,
+            @RequestParam Integer g,
+            @RequestParam Integer b,
+            @RequestParam(defaultValue = "255") Integer brightness) {
+        try {
+            LotoBoxDto updated = ngLotoBoxService.updateBoxLedColor(id, r, g, b, brightness);
+            NgApiResponse<LotoBoxDto> response = new NgApiResponse<>(updated, "Box LED color updated successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Update LED color for a box by box number
+     */
+    @PutMapping("/number/{boxNumber}/led-color")
+    public ResponseEntity<NgApiResponse<LotoBoxDto>> updateBoxLedColorByNumber(
+            @PathVariable Integer boxNumber,
+            @RequestParam Integer r,
+            @RequestParam Integer g,
+            @RequestParam Integer b,
+            @RequestParam(defaultValue = "255") Integer brightness) {
+        try {
+            LotoBoxDto updated = ngLotoBoxService.updateBoxLedColorByNumber(boxNumber, r, g, b, brightness);
+            NgApiResponse<LotoBoxDto> response = new NgApiResponse<>(updated, "Box LED color updated successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Sync all boxes to ESP device
+     */
+    @PostMapping("/sync-to-esp")
+    public ResponseEntity<NgApiResponse<String>> syncAllBoxesToEsp() {
+        try {
+            ngLotoBoxService.syncAllBoxesToEsp();
+            NgApiResponse<String> response = new NgApiResponse<>("OK", "All boxes synced to ESP successfully");
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
 }

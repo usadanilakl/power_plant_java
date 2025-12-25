@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.repository.esp.EspDeviceRepo;
 import com.dk_power.power_plant_java.repository.esp.LedStripRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
+import com.dk_power.power_plant_java.sevice.esp.EspLedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,32 +20,38 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class LotoBoxInitializationService {
-    
+
     private final LotoBoxRepo lotoBoxRepo;
     private final EspDeviceRepo espDeviceRepo;
     private final LedStripRepo ledStripRepo;
-    
+    private final EspLedService espLedService;
+
     private static final List<LedConfigDto> LED_CONFIGURATIONS = initializeLedConfigurations();
-    
+
     /**
      * Initialize ESP devices, LED strips, and 72 loto boxes if they don't already exist
+     * Also initializes ESP WLED settings (pins, ranges, regions)
      */
     @Transactional
     public void initializeLotoBoxesWithEspDevices() {
         // Initialize ESP devices
         Map<Integer, EspDevice> espDevices = initializeEspDevices();
-        
+
         // Initialize LED strips
         Map<String, LedStrip> ledStrips = initializeLedStrips(espDevices);
-        
+
+        // Initialize WLED settings on ESP devices
+        System.out.println("Initializing WLED settings on ESP devices...");
+        espLedService.initializeAllEspDevices();
+
         // Initialize Loto boxes
         if (lotoBoxRepo.count() == 0) {
             List<LotoBox> boxesToSave = new ArrayList<>();
-            
+
             for (LedConfigDto config : LED_CONFIGURATIONS) {
                 LotoBox lotoBox = new LotoBox();
                 lotoBox.setNumber(config.getNumber());
-                
+
                 // Get the appropriate LED strip based on strip number and ESP device
                 String stripKey = config.getStrip() + "_" + (config.getStrip() < 3 ? 0 : 1);
                 LedStrip ledStrip = ledStrips.get(stripKey);

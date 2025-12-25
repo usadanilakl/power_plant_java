@@ -7,7 +7,8 @@ import { PrintComponent } from './pages/print/print.component';
 import { LotoTableComponent } from './features/loto/loto-table/loto-table.component';
 import { LotoPointTableComponent } from './features/loto-points/loto-point-table/loto-point-table.component';
 import { LockTableComponent } from './features/loto/lock-table/lock-table.component';
-import { LotoBoxTableComponent } from './features/loto/loto-box-table/loto-box-table.component';
+import { LotoBoxTableComponent } from './features/loto/loto-boxes/loto-box-table/loto-box-table.component';
+import { LotoBoxGridComponent } from './features/loto/loto-boxes/loto-box-grid/loto-box-grid.component';
 import { ActiveLotoPointsComponent } from './features/loto/active-loto-points/active-loto-points.component';
 import { FileEditorComponent } from './features/files/file-editor/file-editor.component';
 import { FilePageComponent } from './pages/file-page/file-page.component';
@@ -64,6 +65,7 @@ export const routes: Routes = [
         { path: 'loto-points', component: LotoPointTableComponent },
         { path: 'loto-points-active', component: ActiveLotoPointsComponent },
         { path: 'loto-boxes', component: LotoBoxTableComponent },
+        { path: 'loto-boxes-grid', component: LotoBoxGridComponent },
         { path: 'locks', component: LockTableComponent }
       ]
     },

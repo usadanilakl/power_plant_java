@@ -1,15 +1,15 @@
 import { Component, Output, EventEmitter, Input, OnInit, DestroyRef} from '@angular/core';
-import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
-import { SharedDataService } from '../../../services/shared-data.service';
+import { DetailsFormComponent } from '../../../../shared/details-form/details-form.component';
+import { SharedDataService } from '../../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, catchError, finalize, forkJoin, map, Observable, of, tap } from 'rxjs';
-import { ValueDto } from '../../../models/value.model';
-import { Option } from '../../../models/option.model';
+import { ValueDto } from '../../../../models/value.model';
+import { Option } from '../../../../models/option.model';
 import { Validators } from '@angular/forms';
-import { ImageCarouselComponent } from "../../../shared/image/image-carusel/image-carousel.component";
+import { ImageCarouselComponent } from "../../../../shared/image/image-carusel/image-carousel.component";
 import { CommonModule  } from '@angular/common';
-import { LotoBoxDto } from '../../../models/loto/loto-box.model';
-import { NonNullablePipe } from "../../../pipes/nonNullable.pipe";
+import { LotoBoxDto } from '../../../../models/loto/loto-box.model';
+import { NonNullablePipe } from "../../../../pipes/nonNullable.pipe";
 
 @Component({
   selector: 'app-loto-lotoBox-detail-form',

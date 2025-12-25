@@ -1,13 +1,13 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TableComponent } from '../../../shared/table/table.component';
-import { Column } from '../../../models/column.model';
-import { PopupComponent } from "../../../shared/popup/popup.component";
+import { TableComponent } from '../../../../shared/table/table.component';
+import { Column } from '../../../../models/column.model';
+import { PopupComponent } from "../../../../shared/popup/popup.component";
 import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
-import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
-import { SearchCriteria } from '../../../models/api/search-criteria.model';
-import { LotoBoxService } from '../../../services/loto/loto-box.service';
-import { LotoBoxDto } from '../../../models/loto/loto-box.model';
+import { SpringPaginatedResponse } from '../../../../models/api/spring-pagenated.response.model';
+import { SearchCriteria } from '../../../../models/api/search-criteria.model';
+import { LotoBoxService } from '../loto-box-grid/loto-box.service';
+import { LotoBoxDto } from '../../../../models/loto/loto-box.model';
 import { LotoBoxDetailFormComponent } from '../loto-box-detail-form/loto-box-detail-form.component';
 
 @Component({
