@@ -1,0 +1,378 @@
+import { Component, DestroyRef, ElementRef, inject, input, ViewChild } from "@angular/core";
+import { fromEvent, Observable } from "rxjs";
+import { MouseEventsService } from "../../../services/ui/mouse-events.service";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from "../../../models/ui/shape.model";
+
+
+@Component({
+  selector: 'app-interactive-image',
+  standalone: true,
+  imports: [],
+  templateUrl: './interactive-image.component.html',
+  styleUrl: './interactive-image.component.css'
+})
+export class InteractiveImageComponent  {
+
+  @ViewChild('imageContainer') imageContainer!: ElementRef<HTMLDivElement>;  
+  @ViewChild('zoomElement') private zoomElementRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('zoomOuter') private zoomOuterRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('imageElement') private imgRef!: ElementRef<HTMLImageElement>;
+  @ViewChild('canvasElement') private canvasRef!: ElementRef<HTMLCanvasElement>;
+
+  mouseEventService = inject(MouseEventsService);
+  destroyRef = inject(DestroyRef);
+
+  imageUrl = input<string>();
+  imageName = input<string>();
+  shapes = input<Shape[]>([]);
+  selectedShapeIds = input<number[]>([]);
+  singleSelectedShapeId = input<number | null>();
+  isEditEnabled = input<boolean>(false);
+
+
+  
+
+  private _zoomElement!: HTMLDivElement;
+  private _zoomOuter!: HTMLDivElement;
+  private _img!: HTMLImageElement;
+  private _canvas!: HTMLCanvasElement;
+
+  // Getters for the elements
+  get zoomElement(): HTMLDivElement {
+    return this._zoomElement;
+  }
+
+  get zoomOuter(): HTMLDivElement {
+    return this._zoomOuter;
+  }
+
+  get img(): HTMLImageElement {
+    return this._img;
+  }
+
+  get canvas(): HTMLCanvasElement {
+    return this._canvas;
+  }
+
+//Zooming and panning functionality variables
+  private scale: number = 1;
+  private panning: boolean = false;
+  private pointX: number = 0;
+  private pointY: number = 0;
+  private start: { x: number, y: number } = { x: 0, y: 0 };
+  imageScale: number = 1;
+
+  private lastX: number = 0;
+  private lastY: number = 0;
+  cursor: string = 'default';
+  
+
+  ngAfterViewInit() {
+    const mousedown$ = fromEvent<MouseEvent>(this.imageContainer.nativeElement, 'mousedown');
+
+    this.mouseEventService.classifyClicks(mousedown$)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(classifiedEvent => {
+        classifiedEvent.event.preventDefault();
+        switch (classifiedEvent.type) {
+          case 'single':
+            this.onLeftClick(classifiedEvent.event);
+            break;
+          case 'double':
+            this.onDoubleClick(classifiedEvent.event);
+            break;
+          case 'middle':
+            this.onMiddleClick(classifiedEvent.event);
+            break;
+          case 'right':
+            this.onRightClick(classifiedEvent.event);
+            break;
+        }
+      });
+    
+    // Prevent context menu on right-click
+    fromEvent<MouseEvent>(this.imageContainer.nativeElement, 'contextmenu')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(event => event.preventDefault());
+  }
+
+
+
+  //Zooming Events:
+  
+
+  onWheel(event: WheelEvent) {
+    event.preventDefault();
+    const zoomOuterRect = this.zoomOuter.getBoundingClientRect();
+    const mouseX = event.clientX - zoomOuterRect.left;
+    const mouseY = event.clientY - zoomOuterRect.top;
+
+    const delta = event.deltaY > 0 ? 0.8 : 1.2;
+    const newScale = Math.min(Math.max(0.1, this.scale * delta), 10);
+
+    // Calculate the new position
+    const newPosition = this.positioner(mouseX, mouseY, this.scale, newScale);
+
+    // Set transition for smooth zooming
+    this.setTransition('0.1s');
+
+    // Update the scale and position
+    this.scale = newScale;
+    this.pointX = newPosition.left;
+    this.pointY = newPosition.top;
+
+    this.transform();
+
+    // Remove transition after zooming
+    setTimeout(() => this.setTransition('0s'), 100);
+  }
+
+  private positioner(mouseX: number, mouseY: number, oldScale: number, newScale: number): { left: number, top: number } {
+    const containerRect = this.zoomOuter.getBoundingClientRect();
+    const imageRect = this.zoomElement.getBoundingClientRect();
+
+    // Calculate the position of the mouse relative to the image's current position
+    const relativeX = (mouseX - this.pointX) / imageRect.width;
+    const relativeY = (mouseY - this.pointY) / imageRect.height;
+
+    // Calculate the new dimensions of the image
+    const newWidth = imageRect.width * newScale / oldScale;
+    const newHeight = imageRect.height * newScale / oldScale;
+
+    // Calculate the new position to keep the mouse at the same relative point on the image
+    let newLeft = mouseX - relativeX * newWidth;
+    let newTop = mouseY - relativeY * newHeight;
+
+    // Calculate the bounds for the image position
+    const minLeft = Math.min(0, containerRect.width - newWidth);
+    const maxLeft = Math.max(0, containerRect.width - newWidth);
+    const minTop = Math.min(0, containerRect.height - newHeight);
+    const maxTop = Math.max(0, containerRect.height - newHeight);
+
+    // // Adjust the position to keep the image within the container bounds
+    // newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
+    // newTop = Math.max(minTop, Math.min(newTop, maxTop));
+
+    return { left: newLeft, top: newTop };
+  }
+
+  private setTransition(duration: string, timingFunction: string = 'ease-out') {
+      if (this.zoomElement && this.zoomElement) {
+          this.zoomElement.style.setProperty('--transition-duration', duration);
+          this.zoomElement.style.setProperty('--transition-timing-function', timingFunction);
+      }
+  }
+  transform() {
+    if (this.zoomElement && this.zoomElement) {
+      this.zoomElement.style.transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
+      this.updateImageScale();
+      // Call onZoomEnd after the transition is complete
+      setTimeout(() => this.onZoomEnd(), 100);
+    }
+  }
+
+  updateImageScale(){
+    this.imageScale = this.calculateCurrentScale();
+  }
+
+  private onZoomEnd() {
+    this.setTransition('0s');
+    this.updateCanvasSize();
+    // const visibleShapes = this.getShapesInContainerBounds();
+    // this.visibleShapes.emit(visibleShapes);
+  }
+
+  calculateCurrentScale(): number {
+    const imgRec = this.img.getBoundingClientRect();
+    return imgRec.width / this.img.naturalWidth;
+  }
+
+  updateCanvasSize() {
+    if (this.canvas) {
+      const imgRect = this.img.getBoundingClientRect();
+      this.canvas.width = imgRect.width;
+      this.canvas.height = imgRect.height;
+      this.drawShapes('this.updateCanvasSize');
+    } else {
+      console.error('Canvas not available for size update');
+    }
+  }
+  drawShapes(source: string | null = null) {
+    // if(source) console.log(`Drawing shapes from ${source}`);
+    // else console.log('Drawing shapes with no source');
+    if (!this._canvas) {
+      console.warn('Canvas is not initialized yet');
+      return;
+    }
+
+    const ctx = this._canvas.getContext('2d');
+    if (!ctx) {
+      console.error('Unable to get 2D context from canvas');
+      return;
+    }
+
+    ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+    this.shapes().forEach(shape => {
+      this.drawShape(ctx, shape);
+    });
+  }
+
+  drawShape(ctx: CanvasRenderingContext2D, shape: Shape) {
+    const scale = this.calculateCurrentScale();
+    ctx.strokeStyle = shape.color;
+    ctx.fillStyle = shape.color;
+    ctx.lineWidth = (shape.isSelected? 3 : 1);
+
+    const scaledShape = this.scaleShape(shape);
+
+            switch (scaledShape.type) {
+              case 'rectangle':
+                const rect = scaledShape as RectangleShape;
+                ctx.strokeRect(
+                  rect.x * scale,
+                  rect.y * scale,
+                  rect.width,
+                  rect.height
+                );
+
+                if (shape.isBulkSelected) {
+                  // Draw selection handles
+                  this.drawSelectionHandles(ctx, shape, "orange");
+                }
+
+                if (shape.isSelected) {
+                  // Draw selection handles
+                  this.drawSelectionHandles(ctx, shape);
+                }
+                break;
+              case 'circle':
+                const circle = scaledShape as CircleShape;
+                ctx.beginPath();
+                ctx.arc(
+                  circle.x * scale,
+                  circle.y * scale,
+                  circle.radius,
+                  0,
+                  2 * Math.PI
+                );
+                ctx.stroke();
+                break;
+              case 'line':
+                const line = scaledShape as LineShape;
+                ctx.beginPath();
+                ctx.moveTo(line.startX * scale, line.startY * scale);
+                ctx.lineTo(line.endX * scale, line.endY * scale);
+                ctx.stroke();
+                break;
+              case 'text':
+                const text = scaledShape as TextShape;
+                ctx.font = `${16 * scale}px Arial`;
+                ctx.fillText(text.text, text.x * scale, text.y * scale);
+                break;
+            }
+  }
+
+  scaleShape(shape: Shape): Shape {
+    const calculatedScale = this.calculateCurrentScale();
+    // const calculatedScale = this.calculateShapeScale(shape);
+    switch (shape.type) {
+      case 'rectangle':
+        return {
+          ...shape,
+          width: shape.width * calculatedScale,
+          height: shape.height * calculatedScale,
+        };
+      case 'circle':
+        return {
+          ...shape,
+          radius: shape.radius * calculatedScale,
+        };
+      case 'line':
+      case 'text':
+        return { ...shape };
+      default:
+        return shape;
+    }
+  }
+
+  private drawSelectionHandles(ctx: CanvasRenderingContext2D, shape: Shape, color: string = 'blue') {
+    const scale = this.calculateCurrentScale();
+    const handleSize = 8;
+    ctx.fillStyle = color;
+
+    let corners: [number, number][] = [];
+
+    switch (shape.type) {
+      case 'rectangle':
+        const rect = shape as RectangleShape;
+        corners = [
+          [rect.x, rect.y],
+          [rect.x + rect.width, rect.y],
+          [rect.x, rect.y + rect.height],
+          [rect.x + rect.width, rect.y + rect.height]
+        ];
+        break;
+      case 'circle':
+        const circle = shape as CircleShape;
+        corners = [
+          [circle.x - circle.radius, circle.y - circle.radius],
+          [circle.x + circle.radius, circle.y - circle.radius],
+          [circle.x - circle.radius, circle.y + circle.radius],
+          [circle.x + circle.radius, circle.y + circle.radius]
+        ];
+        break;
+      case 'line':
+        const line = shape as LineShape;
+        corners = [
+          [line.startX, line.startY],
+          [line.endX, line.endY]
+        ];
+        break;
+      // case 'text':
+      //   const text = shape as TextShape;
+      //   // Assuming text has width and height properties, adjust if not
+      //   corners = [
+      //     [text.x, text.y],
+      //     [text.x + text.width, text.y],
+      //     [text.x, text.y + text.height],
+      //     [text.x + text.width, text.y + text.height]
+      //   ];
+      //   break;
+    }
+  }
+
+
+    //Click Events
+
+  onMouseLeave(event: MouseEvent) {
+    
+  }
+
+  onMouseMove(event: MouseEvent) {
+    
+  }
+
+  onMouseDown(event: MouseEvent){}
+
+  onLeftClick(event: MouseEvent) {
+    console.log('left click');
+  }
+
+  onMiddleClick(event: MouseEvent) {
+    console.log('middleclick');
+  }
+
+  onRightClick(event: MouseEvent) {
+    console.log('right click');
+  }
+
+  onDoubleClick(event: MouseEvent) {
+    console.log('double click');
+  }
+
+  onMouseUp(event: MouseEvent) {
+    console.log('mouse up');
+  }
+
+}

@@ -1,0 +1,56 @@
+
+<div class="interactive-image-container">
+  <!-- Symbol Palette Sidebar -->
+  <div class="symbol-palette-sidebar" *ngIf="showSymbolPalette()">
+    <app-symbol-palette 
+      (symbolSelected)="onSymbolSelected($event)">
+    </app-symbol-palette>
+  </div>
+
+  <!-- Main Image Area -->
+  <div class="image-workspace">
+  <app-toolbar [items]="toolbarItems"></app-toolbar>
+    <!-- Image Container -->
+    <div #imageContainer class="image-container">
+      <div #zoomOuter class="zoom-outer">
+        <div #zoomElement class="zoom-element">
+          <img 
+            #imageElement
+            [src]="imageUrl()"
+            [alt]="imageName()"
+            class="main-image"
+            (wheel)="onWheel($event)"
+            (mouseleave)="onMouseLeave($event)"
+            (mousedown)="onMouseDown($event)"
+            (mousemove)="onMouseMove($event)"
+            (mouseup)="onMouseUp($event)"
+
+            [style.cursor]="cursor"
+          />
+          <canvas 
+            #canvasElement
+            class="shape-canvas">
+          </canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (contextMenu.visible) {
+    <app-context-menu
+      [items]="contextMenu.items"
+      [position]="{ x: contextMenu.x, y: contextMenu.y }"
+      (closeMenu)="closeContextMenu()"
+      (itemClick)="handleContextMenuAction($event)">
+    </app-context-menu>
+  }
+
+  <!-- Hidden file input for image conversion -->
+  <input 
+    #shapeImageInput
+    type="file"
+    accept="image/*"
+    (change)="onShapeImageSelected($event)"
+    style="display: none"
+  />
+</div>

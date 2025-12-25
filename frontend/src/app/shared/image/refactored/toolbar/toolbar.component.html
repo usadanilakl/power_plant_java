@@ -1,0 +1,12 @@
+<div class="toolbar">
+  <button
+    *ngFor="let item of items"
+    (click)="onItemClick(item)"
+    [class.active]="item.isActive ? item.isActive() : false"
+    class="toolbar-btn"
+    [title]="item.tooltip || item.label"
+  >
+    <!-- Add icon logic here if you use icons -->
+    <span>{{ item.label }}</span>
+  </button>
+</div>

@@ -1,0 +1,53 @@
+
+    .symbol-palette {
+      padding: 10px;
+      background: var(--background-color);
+      border: 1px solid var(--border-color);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    
+    .symbol-category {
+      margin-bottom: 20px;
+    }
+    
+    .symbol-category h4 {
+      margin: 10px 0;
+      color: var(--primary-text);
+      font-size: 1em;
+      font-weight: 600;
+    }
+    
+    .symbol-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 10px;
+    }
+    
+    .symbol-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .symbol-item:hover {
+      background: var(--hover-background);
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .symbol-item svg {
+      margin-bottom: 5px;
+    }
+    
+    .symbol-item span {
+      font-size: 0.75em;
+      text-align: center;
+      color: var(--secondary-text);
+    }
