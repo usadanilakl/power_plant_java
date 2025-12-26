@@ -1,10 +1,11 @@
-import { Component, Input, forwardRef, signal } from '@angular/core';
+import { Component, Input, forwardRef, signal, inject } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RfPopupProjectionComponent } from '../../../../popup-projection/rf-popup-projection.component';
 import { EquipmentShapeDrawerDialogComponent } from '../equipment-shape-drawer-dialog/equipment-shape-drawer-dialog.component';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { FileDto } from '../../../../../models/file/file.model';
+import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
 
 @Component({
   selector: 'app-equipment-shape-drawer-input',
@@ -23,6 +24,9 @@ import { FileDto } from '../../../../../models/file/file.model';
 export class EquipmentShapeDrawerInputComponent implements ControlValueAccessor {
   @Input() label: string = 'Draw Equipment Shape';
   @Input() placeholder: string = 'No shape drawn';
+
+  // Services
+  private equipmentMapper = inject(EquipmentMapperService);
 
   // State
   isDialogOpen = signal(false);
@@ -66,9 +70,12 @@ export class EquipmentShapeDrawerInputComponent implements ControlValueAccessor 
 
     // Extract shape data to store in form
     this.value = {
-      coordinates: data.shape.coordinates || '',
+      coordinates: this.equipmentMapper.mapRfShapeToCoordinates(data.shape),
       fileId: data.file.id ?? 0,
-      originalPictureSize: data.file.originalSize || ''
+      originalPictureSize: this.equipmentMapper.formatPictureSize(
+        data.shape.originalPictureWidth,
+        data.shape.originalPictureHeight
+      )
     };
 
     this.onChange(this.value);

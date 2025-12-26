@@ -1,4 +1,4 @@
-import { Component, Input, forwardRef, signal } from '@angular/core';
+import { Component, Input, forwardRef, signal, inject } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RfPopupProjectionComponent } from '../../../../popup-projection/rf-popup-projection.component';
@@ -7,6 +7,7 @@ import { EquipmentShapeDrawerDialogComponent } from '../equipment-shape-drawer-d
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { FileDto } from '../../../../../models/file/file.model';
+import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
 
 interface EquipmentListItem {
   id?: number;
@@ -40,6 +41,9 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   @Input() label: string = 'Equipment List';
   @Input() allowBrowse: boolean = true;  // Allow selecting existing equipment
   @Input() allowDraw: boolean = true;    // Allow drawing new shapes
+
+  // Services
+  private equipmentMapper = inject(EquipmentMapperService);
 
   // State
   isBrowserOpen = signal(false);
@@ -115,9 +119,12 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
 
   onShapeDrawn(data: { shape: RfShape; file: FileDto }) {
     const newItem: EquipmentListItem = {
-      coordinates: data.shape.coordinates || '',
+      coordinates: this.equipmentMapper.mapRfShapeToCoordinates(data.shape),
       fileId: data.file.id ?? undefined,
-      originalPictureSize: data.file.originalSize || '',
+      originalPictureSize: this.equipmentMapper.formatPictureSize(
+        data.shape.originalPictureWidth,
+        data.shape.originalPictureHeight
+      ),
       tagNumber: `New Equipment`, // Placeholder
       isExisting: false
     };

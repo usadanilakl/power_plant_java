@@ -452,15 +452,14 @@ export class LotoPointMapperService {
         {
           name: 'templateLotoPoint',
           label: 'Template LOTO Point',
-          type: 'select',
-          options: [], // Add your options here if needed
+          type: 'equipment-browser',
           initialValue: lotoPoint.zeroEnergy?.templateLotoPoint?.id || null,
         },
         {
           name: 'zeroEnergyTemplate',
           label: 'Zero Energy Template',
           type: 'select',
-          options: [], // Add your options here if needed
+          options: [], // TODO: Add zeroEnergyTemplate options
           initialValue: lotoPoint.zeroEnergy?.zeroEnergyTemplate?.id || null,
         },
       ],
@@ -486,10 +485,10 @@ export class LotoPointMapperService {
         initialValue: lotoPoint.eqType?.id || null,
       },
       equipmentList: {
-        name: 'equipmentShape[0]',
-        label: 'Equipment Location on P&ID',
-        type: 'equipment-shape-drawer',
-        initialValue: null,
+        name: 'equipmentList',
+        label: 'Equipment List',
+        type: 'equipment-list-manager',
+        initialValue: lotoPoint.equipmentList || [],
       }
 
     };

@@ -137,4 +137,38 @@ export class EquipmentMapperService{
         }
         return '#0000FF'; // Blue as default
     }
+
+    /**
+     * Converts RfShape to coordinates string format
+     * Returns string like: {startX:10,startY:20,endX:100,endY:80,width:90,height:60}
+     */
+    mapRfShapeToCoordinates(shape: RfShape): string {
+        if (shape.type === 'rectangle') {
+            const rect = shape as RfRectangleShape;
+            const startX = rect.x;
+            const startY = rect.y;
+            const endX = rect.x + rect.width;
+            const endY = rect.y + rect.height;
+
+            return JSON.stringify({
+                startX,
+                startY,
+                endX,
+                endY,
+                width: rect.width,
+                height: rect.height
+            });
+        }
+        // For other shape types, we'll need to add support as needed
+        // For now, return empty object
+        return '{}';
+    }
+
+    /**
+     * Formats picture size from shape dimensions
+     * Returns string like: width:1920,height:1080
+     */
+    formatPictureSize(width: number, height: number): string {
+        return `width:${width},height:${height}`;
+    }
 }
