@@ -1,0 +1,116 @@
+<div class="equipment-list-manager">
+  <div class="header">
+    <label class="input-label">{{ label }}</label>
+    <div class="action-buttons">
+      @if (allowBrowse) {
+        <button
+          type="button"
+          class="btn-browse"
+          (click)="openBrowser()"
+          [disabled]="disabled"
+          title="Select existing equipment">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+          </svg>
+          Browse Existing
+        </button>
+      }
+      @if (allowDraw) {
+        <button
+          type="button"
+          class="btn-draw"
+          (click)="openDrawer()"
+          [disabled]="disabled"
+          title="Draw new equipment shape">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+          </svg>
+          Draw New
+        </button>
+      }
+      @if (hasItems() && !disabled) {
+        <button
+          type="button"
+          class="btn-clear"
+          (click)="clearAll()"
+          title="Clear all equipment">
+          Clear All
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Equipment List -->
+  <div class="equipment-list">
+    @if (equipmentList().length === 0) {
+      <div class="empty-state">
+        <p>No equipment added yet</p>
+        <small>Use the buttons above to add equipment</small>
+      </div>
+    } @else {
+      @for (item of equipmentList(); track $index) {
+        <div class="equipment-item" [class.disabled]="disabled">
+          <div class="item-icon" [class]="'icon-' + getItemIcon(item)">
+            @if (item.isExisting) {
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+              </svg>
+            } @else {
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+              </svg>
+            }
+          </div>
+          <div class="item-content">
+            <span class="item-label">{{ getItemDisplay(item) }}</span>
+            <small class="item-meta">
+              @if (item.isExisting) {
+                <span class="badge badge-existing">Existing</span>
+              } @else {
+                <span class="badge badge-new">New</span>
+              }
+              @if (item.fileId) {
+                <span class="file-ref">File #{{ item.fileId }}</span>
+              }
+            </small>
+          </div>
+          @if (!disabled) {
+            <button
+              type="button"
+              class="btn-remove"
+              (click)="removeItem($index)"
+              title="Remove this equipment">
+              &times;
+            </button>
+          }
+        </div>
+      }
+    }
+  </div>
+</div>
+
+<!-- Browser Dialog -->
+<app-rf-popup-projection
+  [isOpen]="isBrowserOpen()"
+  [title]="'Select Existing Equipment'"
+  [size]="'large'"
+  (close)="closeBrowser()">
+  <app-equipment-browser-dialog
+    (equipmentSelected)="onEquipmentSelected($event)"
+    (close)="closeBrowser()"
+  />
+</app-rf-popup-projection>
+
+<!-- Drawer Dialog -->
+<app-rf-popup-projection
+  [isOpen]="isDrawerOpen()"
+  [title]="'Draw New Equipment Shape'"
+  [size]="'large'"
+  (close)="closeDrawer()">
+  <app-equipment-shape-drawer-dialog
+    (shapeDrawn)="onShapeDrawn($event)"
+    (close)="closeDrawer()"
+  />
+</app-rf-popup-projection>

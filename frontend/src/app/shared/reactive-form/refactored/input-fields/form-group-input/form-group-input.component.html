@@ -1,0 +1,46 @@
+<div class="form-group-container" [formGroup]="formGroup()">
+  <label class="form-group-label">{{ label() }}</label>
+  <div class="form-group-fields" [class]="'form-group-layout-' + layout()">
+    <ng-container *ngFor="let field of fields()">
+      <div class="form-field">
+        @switch (field.type) {
+          @case ('select') {
+            <label class="field-label">{{ field.label }}</label>
+            <select [formControlName]="field.name" class="form-control">
+              <option [value]="null">Select...</option>
+              @for (option of getFieldOptions()(field.options); track option.id) {
+                <option [value]="option.id">{{ option.name }}</option>
+              }
+            </select>
+          }
+          @case ('checkbox') {
+            <div class="checkbox-field">
+              <input type="checkbox" [formControlName]="field.name" [id]="field.name" />
+              <label [for]="field.name">{{ field.label }}</label>
+            </div>
+          }
+          @case ('textarea') {
+            <label class="field-label">{{ field.label }}</label>
+            <textarea [formControlName]="field.name" class="form-control"></textarea>
+          }
+          @case ('number') {
+            <label class="field-label">{{ field.label }}</label>
+            <input type="number" [formControlName]="field.name" class="form-control" />
+          }
+          @case ('date') {
+            <label class="field-label">{{ field.label }}</label>
+            <input type="date" [formControlName]="field.name" class="form-control" />
+          }
+          @case ('time') {
+            <label class="field-label">{{ field.label }}</label>
+            <input type="time" [formControlName]="field.name" class="form-control" />
+          }
+          @default {
+            <label class="field-label">{{ field.label }}</label>
+            <input type="text" [formControlName]="field.name" class="form-control" />
+          }
+        }
+      </div>
+    </ng-container>
+  </div>
+</div>

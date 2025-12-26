@@ -1,0 +1,229 @@
+.equipment-list-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.input-label {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-browse,
+.btn-draw,
+.btn-clear {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-browse {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-browse:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.btn-draw {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-draw:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.btn-clear {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-clear:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+
+.btn-browse:disabled,
+.btn-draw:disabled,
+.btn-clear:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-browse svg,
+.btn-draw svg {
+  flex-shrink: 0;
+}
+
+/* Equipment List */
+.equipment-list {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-height: 100px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #999;
+  text-align: center;
+}
+
+.empty-state p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+}
+
+.empty-state small {
+  font-size: 0.85rem;
+  color: #bbb;
+}
+
+/* Equipment Item */
+.equipment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
+}
+
+.equipment-item:last-child {
+  border-bottom: none;
+}
+
+.equipment-item:hover:not(.disabled) {
+  background-color: #f8f9fa;
+}
+
+.equipment-item.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Item Icon */
+.item-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: #f0f0f0;
+}
+
+.item-icon.icon-existing {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.item-icon.icon-new {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+/* Item Content */
+.item-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.item-label {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.badge-existing {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.badge-new {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.file-ref {
+  color: #6c757d;
+  font-size: 0.75rem;
+}
+
+/* Remove Button */
+.btn-remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-remove:hover {
+  background-color: #f0f0f0;
+  color: #dc3545;
+}

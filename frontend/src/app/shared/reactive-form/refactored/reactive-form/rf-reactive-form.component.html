@@ -83,6 +83,32 @@
           (removeItem)="removeArrayItem(field.name, $event)"
         >
         </app-form-array-input>
+        } @case('group'){
+        <app-form-group-input
+          [label]="field.label"
+          [formGroup]="getFormGroup(field.name)"
+          [fields]="field.fields!"
+          [layout]="getGroupInputLayout()"
+        >
+        </app-form-group-input>
+        } @case('equipment-browser'){
+        <app-equipment-browser-input
+          [label]="field.label"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-equipment-browser-input>
+        } @case('equipment-shape-drawer'){
+        <app-equipment-shape-drawer-input
+          [label]="field.label"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-equipment-shape-drawer-input>
+        } @case('equipment-list-manager'){
+        <app-equipment-list-manager
+          [label]="field.label"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-equipment-list-manager>
         } @default {
         <app-rf-form-input
           [label]="field.label"

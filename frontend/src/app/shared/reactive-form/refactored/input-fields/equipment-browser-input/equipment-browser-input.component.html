@@ -1,0 +1,34 @@
+<div class="equipment-browser-input">
+  <label class="input-label">{{ label }}</label>
+
+  <div class="input-container">
+    <div class="selected-display" [class.disabled]="disabled">
+      <span class="display-text">{{ getDisplayText() }}</span>
+      @if (selectedEquipment() && !disabled) {
+        <button type="button" class="clear-btn" (click)="clearSelection()" title="Clear selection">
+          &times;
+        </button>
+      }
+    </div>
+
+    <button
+      type="button"
+      class="browse-btn"
+      (click)="openDialog()"
+      [disabled]="disabled">
+      Browse P&ID
+    </button>
+  </div>
+</div>
+
+<!-- Equipment Browser Dialog -->
+<app-rf-popup-projection
+  [isOpen]="isDialogOpen()"
+  [title]="'Select Equipment from P&ID'"
+  [size]="'large'"
+  (close)="closeDialog()">
+  <app-equipment-browser-dialog
+    (equipmentSelected)="onEquipmentSelected($event)"
+    (close)="closeDialog()"
+  />
+</app-rf-popup-projection>

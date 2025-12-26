@@ -1,0 +1,63 @@
+<div class="dialog-container">
+  <div class="dialog-content">
+    <!-- Left Panel: File List -->
+    <div class="file-list-panel">
+      <h3>P&ID Files</h3>
+      <div class="file-list">
+        @if (files().length === 0) {
+          <p class="no-files">No files available</p>
+        }
+        @for (file of files(); track file.id) {
+          <div
+            class="file-item"
+            [class.selected]="isFileSelected(file)"
+            (click)="onFileSelect(file)">
+            <span class="file-name">{{ file.name }}</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Right Panel: P&ID Viewer -->
+    <div class="viewer-panel">
+      @if (selectedFile()) {
+        <div class="viewer-header">
+          <h3>{{ selectedFile()?.name }}</h3>
+          @if (selectedEquipment()) {
+            <div class="selected-equipment-info">
+              <strong>Selected:</strong> {{ selectedEquipment()?.tagNumber }}
+            </div>
+          }
+        </div>
+        <div class="viewer-content">
+          <app-interactive-image
+            [imageUrl]="currentFileLink()"
+            [shapesInput]="equipmentShapes()"
+            [mode]="'view'"
+          />
+        </div>
+      } @else {
+        <div class="no-selection">
+          <p>Select a P&ID file from the list to view equipment</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Dialog Actions -->
+  <div class="dialog-actions">
+    <button
+      type="button"
+      class="btn-cancel"
+      (click)="onCancel()">
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="btn-select"
+      [disabled]="!selectedEquipment()"
+      (click)="onConfirmSelection()">
+      Select Equipment
+    </button>
+  </div>
+</div>

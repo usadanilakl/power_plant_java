@@ -20,7 +20,11 @@ export interface FormField {
     | 'multi-input'
     | 'number'
     | 'radio-group'
-    | 'form-array';
+    | 'form-array'
+    | 'group'
+    | 'equipment-browser'
+    | 'equipment-shape-drawer'
+    | 'equipment-list-manager';
   validators?: ValidatorFn[];
   options?: Option[];
   initialValue?: any;
@@ -85,7 +89,11 @@ export interface RfFormField {
     | 'multi-input'
     | 'number'
     | 'radio-group'
-    | 'form-array';
+    | 'form-array'
+    | 'group'
+    | 'equipment-browser'
+    | 'equipment-shape-drawer'
+    | 'equipment-list-manager';
   validators?: ValidatorFn[];
   options?: Option[] | Signal<Option[]>;
   initialValue?: any;

@@ -11,6 +11,10 @@ import { SearchableMultiSelectInputComponent } from '../input-fields/searchable-
 import { MultiTextInputComponent } from '../input-fields/multi-text-input/multi-text-input.component';
 import { RfFormInputComponent } from '../input-fields/form-input/rf-form-input.component';
 import { FormArrayInputComponent } from '../input-fields/form-array-input/form-array-input.component';
+import { FormGroupInputComponent } from '../input-fields/form-group-input/form-group-input.component';
+import { EquipmentBrowserInputComponent } from '../input-fields/equipment-browser-input/equipment-browser-input.component';
+import { EquipmentShapeDrawerInputComponent } from '../input-fields/equipment-shape-drawer-input/equipment-shape-drawer-input.component';
+import { EquipmentListManagerComponent } from '../input-fields/equipment-list-manager/equipment-list-manager.component';
 import { FormBuilderService } from '../services/form-builder.service';
 import { FormValidationService } from '../services/form-validation.service';
 import { FormDataService } from '../services/form-data.service';
@@ -28,6 +32,10 @@ import { FormDataService } from '../services/form-data.service';
     MultiTextInputComponent,
     RfFormInputComponent,
     FormArrayInputComponent,
+    FormGroupInputComponent,
+    EquipmentBrowserInputComponent,
+    EquipmentShapeDrawerInputComponent,
+    EquipmentListManagerComponent,
   ],
   templateUrl: './rf-reactive-form.component.html',
   styleUrl: './rf-reactive-form.component.css',
@@ -153,6 +161,15 @@ export class RfReactiveFormComponent {
     return this.form.get(name) as FormArray;
   }
 
+  // Form group management
+  getFormGroup(name: string): FormGroup {
+    const control = this.form.get(name);
+    if (!control || !(control instanceof FormGroup)) {
+      return new FormGroup({});
+    }
+    return control as FormGroup;
+  }
+
   addArrayItem(arrayName: string, fields: RfFormField[]): void {
     const formArray = this.getFormArray(arrayName);
     if (formArray) {
@@ -217,5 +234,11 @@ export class RfReactiveFormComponent {
 
   getFieldOptions(options: any): any[] {
     return this.dataService.getFieldOptions(options);
+  }
+
+  // Helper to convert groupLayout to form-group-input compatible layout
+  getGroupInputLayout(): 'row' | 'column' | 'grid' {
+    const layout = this.groupLayout();
+    return layout === 'reactive' ? 'column' : layout;
   }
 }

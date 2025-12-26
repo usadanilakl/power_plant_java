@@ -18,6 +18,8 @@ export class FormBuilderService {
       if (field && field.name) {
         if (field.type === 'form-array') {
           this.addFormArrayControl(group, field, entity);
+        } else if (field.type === 'group') {
+          this.addFormGroupControl(group, field, entity);
         } else {
           this.addFormControl(group, field, entity);
         }
@@ -36,6 +38,15 @@ export class FormBuilderService {
       arrayData.map((item: any) => this.createArrayItem(field.fields ?? [], item))
     );
     this.setNestedControl(group, field.name, formArray);
+  }
+
+  /**
+   * Creates a FormGroup control for nested objects
+   */
+  private addFormGroupControl(group: { [key: string]: any }, field: RfFormField, entity: any): void {
+    const nestedData = this.getNestedValue(entity, field.name) || {};
+    const nestedGroup = this.createNestedGroup(field.fields ?? [], nestedData);
+    this.setNestedControl(group, field.name, nestedGroup);
   }
 
   /**
@@ -94,12 +105,28 @@ export class FormBuilderService {
   }
 
   /**
+   * Creates a nested FormGroup for group fields
+   */
+  private createNestedGroup(fields: RfFormField[], data: any = {}): FormGroup {
+    const group = this.fb.group({});
+    fields.forEach((field) => {
+      let value = data[field.name] ?? field.initialValue;
+
+      // Handle special field types
+      value = this.normalizeValueByType(field.type, value);
+
+      group.addControl(field.name, this.fb.control(value, field.validators));
+    });
+    return group;
+  }
+
+  /**
    * Sets a nested control in the form group
    */
   private setNestedControl(
     group: { [key: string]: any },
     path: string,
-    control: FormControl | FormArray
+    control: FormControl | FormArray | FormGroup
   ): void {
     const pathParts = path.split('.');
     let currentGroup: any = group;

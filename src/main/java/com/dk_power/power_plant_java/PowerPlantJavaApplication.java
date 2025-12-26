@@ -65,7 +65,7 @@ public class PowerPlantJavaApplication implements CommandLineRunner {
 //        redTagAutomationService.openApp();
 
         defaultValueGeneratorService.generateAllValues();
-        lotoBoxInitializationService.initializeLotoBoxesWithEspDevices();
+//        lotoBoxInitializationService.initializeLotoBoxesWithEspDevices();
 
         String currentUser = System.getProperty("user.name");
         System.out.println("Current User: " + currentUser);

@@ -1,0 +1,88 @@
+.equipment-browser-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-label {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.selected-display {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  min-height: 38px;
+}
+
+.selected-display.disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.display-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.selected-display.disabled .display-text {
+  color: #999;
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.clear-btn:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.browse-btn {
+  padding: 0.5rem 1.5rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+
+.browse-btn:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.browse-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}

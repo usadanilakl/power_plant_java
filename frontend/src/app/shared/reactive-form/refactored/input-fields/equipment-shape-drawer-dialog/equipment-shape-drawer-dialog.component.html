@@ -1,0 +1,75 @@
+<div class="dialog-container">
+  <div class="dialog-content">
+    <!-- Left Panel: File List -->
+    <div class="file-list-panel">
+      <h3>Select P&ID</h3>
+      <div class="file-list">
+        @if (files().length === 0) {
+          <p class="no-files">No files available</p>
+        }
+        @for (file of files(); track file.id) {
+          <div
+            class="file-item"
+            [class.selected]="isFileSelected(file)"
+            (click)="onFileSelect(file)">
+            <span class="file-name">{{ file.name }}</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Right Panel: P&ID Drawing Canvas -->
+    <div class="viewer-panel">
+      @if (selectedFile()) {
+        <div class="viewer-header">
+          <h3>{{ selectedFile()?.name }}</h3>
+          <div class="drawing-controls">
+            @if (!isDrawingMode()) {
+              <button
+                type="button"
+                class="btn-start-drawing"
+                (click)="startDrawing()">
+                Start Drawing
+              </button>
+            } @else {
+              <div class="drawing-status">
+                <span class="status-text">Draw a rectangle on the P&ID</span>
+                @if (drawnShape()) {
+                  <span class="shape-info">Shape created!</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+        <div class="viewer-content">
+          <app-interactive-image
+            [imageUrl]="currentFileLink()"
+            [shapesInput]="equipmentShapes()"
+            [mode]="isDrawingMode() ? 'edit' : 'view'"
+          />
+        </div>
+      } @else {
+        <div class="no-selection">
+          <p>Select a P&ID file to draw equipment shape</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Dialog Actions -->
+  <div class="dialog-actions">
+    <button
+      type="button"
+      class="btn-cancel"
+      (click)="onCancel()">
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="btn-confirm"
+      [disabled]="!canConfirm()"
+      (click)="onConfirmShape()">
+      Confirm Shape
+    </button>
+  </div>
+</div>
