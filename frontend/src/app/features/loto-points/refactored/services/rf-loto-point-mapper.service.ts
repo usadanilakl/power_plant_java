@@ -317,6 +317,7 @@ export class LotoPointMapperService {
       'location',
       'standard',
       'generalLocation',
+      'equipmentList',
       'zeroEnergy',
       'relatedLotoPointIds'
     ]

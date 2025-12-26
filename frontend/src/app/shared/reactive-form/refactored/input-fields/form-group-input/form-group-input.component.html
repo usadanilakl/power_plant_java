@@ -5,13 +5,20 @@
       <div class="form-field">
         @switch (field.type) {
           @case ('select') {
-            <label class="field-label">{{ field.label }}</label>
-            <select [formControlName]="field.name" class="form-control">
-              <option [value]="null">Select...</option>
-              @for (option of getFieldOptions()(field.options); track option.id) {
-                <option [value]="option.id">{{ option.name }}</option>
-              }
-            </select>
+            <app-searchable-select-input
+              [label]="field.label"
+              [options]="getFieldOptions()(field.options) ?? []"
+              [formControl]="getFormControl(field.name)"
+              [categoryName]="field.name"
+            >
+            </app-searchable-select-input>
+          }
+          @case ('equipment-browser') {
+            <app-equipment-browser-input
+              [label]="field.label"
+              [formControl]="getFormControl(field.name)"
+            >
+            </app-equipment-browser-input>
           }
           @case ('checkbox') {
             <div class="checkbox-field">
