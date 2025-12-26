@@ -1,378 +1,308 @@
-import { Component, DestroyRef, ElementRef, inject, input, ViewChild } from "@angular/core";
-import { fromEvent, Observable } from "rxjs";
-import { MouseEventsService } from "../../../services/ui/mouse-events.service";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { CircleShape, LineShape, RectangleShape, Shape, TextShape } from "../../../models/ui/shape.model";
+# InteractiveImageComponent - Logic Overview
 
+## Component Purpose
+The `InteractiveImageComponent` is a sophisticated image editor that allows users to interact with shapes overlaid on an image. It supports both **view mode** (read-only) and **edit mode** (interactive manipulation).
+
+## Key Features
+
+### 1. **Image Display & Zoom/Pan**
+- Displays an image with optional shape overlays
+- **Zoom functionality**: Mouse wheel zooms in/out around the cursor position
+- **Pan functionality**: Middle-click or left-click drag to pan the image
+- **Transform state**: Maintains scale, pointX, and pointY for viewport transformations
+- **ResizeObserver**: Monitors image size changes and recalculates base scale automatically
+
+### 2. **Shape Management**
+Shapes are managed through the `ShapeManagerService` and can be of three types:
+- **Rectangle**: Basic rectangular shapes
+- **Image**: Shapes with embedded images
+- **SVG Symbol**: PID (Process & Instrumentation Diagram) symbols
+
+**Shape Properties**:
+- Position (x, y)
+- Dimensions (width, height)
+- Rotation angle
+- Selection state (isSelected, isBulkSelected)
+- Unique ID for identification
+
+### 3. **Drawing Mode** (Edit Mode Only)
+Users can create new shapes:
+- **Rectangle Drawing**: Right-click drag to draw rectangles
+- **Symbol Placement**: Right-click to place pre-selected symbols from the palette
+- **Drawing Service**: Handles temporary canvas rendering during drawing
+
+### 4. **Shape Selection & Multi-Select**
+- **Single Click**: Selects a shape (deselects others)
+- **Ctrl/Cmd + Click**: Multi-select or toggle selection
+- **Visual Feedback**: Selected shapes are highlighted on the canvas
+- **Selection State**: Tracked via `selectedShapeIds` and `singleSelectedShapeId` signals
+
+### 5. **Shape Manipulation** (Edit Mode Only)
+
+#### **Dragging**
+- Click and drag selected shapes to move them
+- Multiple shapes can be dragged simultaneously
+- Maintains relative positions between shapes
+- Emits `shapeUpdated` event when drag completes
+
+#### **Resizing**
+- 8 resize handles (corners and edges): nw, n, ne, e, se, s, sw, w
+- Drag handles to resize shapes
+- **Aspect Ratio Enforcement**: Optional for SVG symbols
+- **Minimum Size Constraint**: Prevents shapes from becoming too small (10px minimum)
+- Boundary constraints can be enabled to keep shapes within image bounds
+
+#### **Rotation**
+- Rotation handle appears above the selected shape
+- Drag to rotate around the shape's center
+- **Shift + Drag**: Snaps to 15-degree increments for precise rotation
+- Angle normalized to 0-360 degree range
+
+### 6. **Shape Conversion**
+- **Rectangle → Image**: Convert a rectangle to an image shape by uploading an image file
+- **Image → Rectangle**: Convert an image shape back to a rectangle
+- **File Input**: Hidden file input element handles image file selection
+
+### 7. **Context Menu** (Edit Mode Only)
+Right-click on a shape to open context menu with actions:
+- **Rectangle-specific**: Convert to Image
+- **Image-specific**: Change Image, Convert to Rectangle
+- **General**: Bring to Front, Send to Back, Duplicate, Delete
+
+### 8. **Symbol Palette**
+- Toggle visibility of the symbol palette
+- Select a PID symbol to place on the image
+- Symbols are sized based on their aspect ratio
+- Auto-deselects after placement
+
+### 9. **Keyboard Shortcuts** (Edit Mode Only)
+| Shortcut | Action |
+|----------|--------|
+| Delete / Backspace | Delete selected shapes |
+| Ctrl/Cmd + A | Select all shapes |
+| Ctrl/Cmd + C | Copy selected shapes (logged to console) |
+| Escape | Deselect all, exit draw mode, reset cursor |
+
+### 10. **Cursor Feedback**
+Dynamic cursor changes based on interaction context:
+- `default`: Normal state
+- `crosshair`: Drawing mode (rectangle or symbol)
+- `pointer`: Hovering over a shape
+- `grab` / `grabbing`: Rotation handle or panning
+- `move`: Dragging shapes
+- `nw-resize`, `n-resize`, etc.: Resize handles
+
+### 11. **Canvas Rendering**
+- **Main Canvas**: Displays all shapes with proper scaling
+- **Temp Canvas**: Used for real-time drawing preview (rectangle/symbol)
+- **Automatic Redraw**: Triggered by shape changes via Angular effects
+- **Scaling**: Accounts for zoom level and base image scale
+
+## Input/Output
+
+### Inputs
+- `imageUrl`: URL of the image to display
+- `imageName`: Name of the image (metadata)
+- `shapesInput`: Array of shapes to render on the image
+- `mode`: 'view' or 'edit' - controls available interactions
+
+### Outputs
+- `shapeRightClicked`: Emitted when a shape is right-clicked (for parent component handling)
+- `shapeUpdated`: Emitted when a shape is modified (drag, resize, rotate)
+
+## State Management
+
+### Signals (Reactive State)
+- `shapes`: Current shapes on the canvas
+- `selectedShapeIds`: Array of currently selected shape IDs
+- `singleSelectedShapeId`: The primary selected shape (for resize/rotate)
+- `showSymbolPalette`: Visibility toggle for symbol palette
+- `currentDrawMode`: Current drawing mode ('none', 'rectangle', 'symbol')
+- `selectedSymbol`: Currently selected symbol for placement
+- `toolbarItems`: Toolbar buttons (varies by mode)
+
+### Private State
+- `transformState`: Zoom/pan transformation (scale, pointX, pointY)
+- `isDraggingShape`, `isResizingShape`, `isRotatingShape`: Interaction flags
+- `isPanning`: Pan mode flag
+- `draggedShapeIds`, `initialShapePositions`: Drag operation data
+- `resizeHandle`, `resizingShapeId`, `initialShapeBounds`: Resize operation data
+- `rotatingShapeId`: Shape being rotated
+
+## Mode Behavior
+
+### View Mode
+- Display image and shapes
+- Zoom and pan enabled
+- No shape manipulation
+- No drawing
+- Minimal toolbar
+- Right-click emits event but no context menu
+
+### Edit Mode
+- All view mode features
+- Shape selection and multi-select
+- Drawing (rectangles and symbols)
+- Shape manipulation (drag, resize, rotate)
+- Context menu
+- Keyboard shortcuts
+- Full toolbar with drawing tools
+
+## Event Flow
+
+### Mouse Events
+1. **Mouse Down**: Classify click type (single, double, middle, right)
+2. **Mouse Move**: Update drawing, dragging, resizing, or panning
+3. **Mouse Up**: Finalize operations and emit update events
+4. **Wheel**: Zoom in/out
+
+### Drawing Flow
+1. Right-click in rectangle mode → `startDrawing()`
+2. Drag → `updateDrawing()` (temp canvas shows preview)
+3. Release → `finishDrawing()` (shape added to manager)
+
+### Dragging Flow
+1. Click on selected shape → `startDraggingShape()`
+2. Drag → `updateDraggingShape()` (shapes move in real-time)
+3. Release → `stopDraggingShape()` (emit `shapeUpdated`)
+
+### Resizing Flow
+1. Click resize handle → `startResizingShape()`
+2. Drag → `updateResizingShape()` (bounds calculated with constraints)
+3. Release → `stopResizingShape()` (emit `shapeUpdated`)
+
+### Rotation Flow
+1. Click rotation handle → `startRotatingShape()`
+2. Drag → `updateRotatingShape()` (angle calculated from center)
+3. Release → `stopRotatingShape()` (emit `shapeUpdated`)
+
+## Service Dependencies
+
+- **MouseEventsService**: Classifies mouse clicks (single, double, middle, right)
+- **ZoomPanService**: Calculates zoom and pan transformations
+- **CanvasRenderService**: Renders shapes on canvas with proper scaling
+- **DrawingService**: Handles temporary canvas for drawing previews
+- **ShapeConversionService**: Converts between shape types
+- **ShapeManagerService**: Centralized shape state management
+
+## Performance Considerations
+
+1. **ResizeObserver**: Monitors image size changes efficiently
+2. **Effects**: Automatically redraw canvas only when shapes change
+3. **Debounced Zoom**: 150ms debounce before final canvas redraw
+4. **Lazy Rendering**: Only redraws affected areas
+5. **Transform Caching**: Stores transform state to avoid recalculation
+
+## Accessibility & UX
+
+- **Keyboard Navigation**: Full keyboard shortcut support
+- **Visual Feedback**: Cursor changes, selection highlighting
+- **Snap-to-Grid**: Rotation snaps to 15-degree increments with Shift
+- **Aspect Ratio**: Preservable for symbols
+- **Undo/Redo**: Not implemented (can be added via service)
+
+## USAGE EXAMPLE
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { InteractiveImageComponent } from './interactive-image.component';
+import { RfShape } from './models/fr-shape.model';
+import { EquipmentService } from '../../../../services/equipment.service';
 
 @Component({
-  selector: 'app-interactive-image',
+  selector: 'app-equipment-editor',
   standalone: true,
-  imports: [],
-  templateUrl: './interactive-image.component.html',
-  styleUrl: './interactive-image.component.css'
+  imports: [InteractiveImageComponent],
+  template: `
+    <div class="equipment-editor">
+      <div *ngIf="loading()" class="loading">Loading equipment...</div>
+
+      <app-interactive-image
+        *ngIf="!loading()"
+        [imageUrl]="imageUrl()"
+        [imageName]="imageName()"
+        [shapesInput]="shapes()"
+        mode="edit"
+        (shapeUpdated)="onShapeUpdated($event)"
+        (shapeRightClicked)="onShapeRightClicked($event)"
+      />
+    </div>
+  `,
+  styles: [`
+    .equipment-editor {
+      width: 100%;
+      height: 100vh;
+    }
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      font-size: 18px;
+    }
+  `]
 })
-export class InteractiveImageComponent  {
+export class EquipmentEditorComponent implements OnInit {
+  private equipmentService = inject(EquipmentService);
 
-  @ViewChild('imageContainer') imageContainer!: ElementRef<HTMLDivElement>;  
-  @ViewChild('zoomElement') private zoomElementRef!: ElementRef<HTMLDivElement>;
-  @ViewChild('zoomOuter') private zoomOuterRef!: ElementRef<HTMLDivElement>;
-  @ViewChild('imageElement') private imgRef!: ElementRef<HTMLImageElement>;
-  @ViewChild('canvasElement') private canvasRef!: ElementRef<HTMLCanvasElement>;
+  imageUrl = signal<string>('');
+  imageName = signal<string>('');
+  shapes = signal<RfShape[]>([]);
+  loading = signal(true);
 
-  mouseEventService = inject(MouseEventsService);
-  destroyRef = inject(DestroyRef);
-
-  imageUrl = input<string>();
-  imageName = input<string>();
-  shapes = input<Shape[]>([]);
-  selectedShapeIds = input<number[]>([]);
-  singleSelectedShapeId = input<number | null>();
-  isEditEnabled = input<boolean>(false);
-
-
-  
-
-  private _zoomElement!: HTMLDivElement;
-  private _zoomOuter!: HTMLDivElement;
-  private _img!: HTMLImageElement;
-  private _canvas!: HTMLCanvasElement;
-
-  // Getters for the elements
-  get zoomElement(): HTMLDivElement {
-    return this._zoomElement;
+  ngOnInit() {
+    this.loadEquipment();
   }
 
-  get zoomOuter(): HTMLDivElement {
-    return this._zoomOuter;
-  }
+  private loadEquipment() {
+    this.equipmentService.getEquipmentWithShapes(123).subscribe({
+      next: (data) => {
+        this.imageUrl.set(data.imageUrl);
+        this.imageName.set(data.imageName);
 
-  get img(): HTMLImageElement {
-    return this._img;
-  }
+        // Convert equipment to shapes
+        const shapes = data.equipment.map((eq, index) => ({
+          id: eq.id,
+          type: 'rectangle' as const,
+          x: eq.coordinates.startX,
+          y: eq.coordinates.startY,
+          width: eq.coordinates.endX - eq.coordinates.startX,
+          height: eq.coordinates.endY - eq.coordinates.startY,
+          rotation: eq.coordinates.rotation || 0,
+          isSelected: false,
+          isBulkSelected: false,
+          metadata: { equipmentId: eq.id, tagNumber: eq.tagNumber }
+        }));
 
-  get canvas(): HTMLCanvasElement {
-    return this._canvas;
-  }
-
-//Zooming and panning functionality variables
-  private scale: number = 1;
-  private panning: boolean = false;
-  private pointX: number = 0;
-  private pointY: number = 0;
-  private start: { x: number, y: number } = { x: 0, y: 0 };
-  imageScale: number = 1;
-
-  private lastX: number = 0;
-  private lastY: number = 0;
-  cursor: string = 'default';
-  
-
-  ngAfterViewInit() {
-    const mousedown$ = fromEvent<MouseEvent>(this.imageContainer.nativeElement, 'mousedown');
-
-    this.mouseEventService.classifyClicks(mousedown$)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(classifiedEvent => {
-        classifiedEvent.event.preventDefault();
-        switch (classifiedEvent.type) {
-          case 'single':
-            this.onLeftClick(classifiedEvent.event);
-            break;
-          case 'double':
-            this.onDoubleClick(classifiedEvent.event);
-            break;
-          case 'middle':
-            this.onMiddleClick(classifiedEvent.event);
-            break;
-          case 'right':
-            this.onRightClick(classifiedEvent.event);
-            break;
-        }
-      });
-    
-    // Prevent context menu on right-click
-    fromEvent<MouseEvent>(this.imageContainer.nativeElement, 'contextmenu')
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(event => event.preventDefault());
-  }
-
-
-
-  //Zooming Events:
-  
-
-  onWheel(event: WheelEvent) {
-    event.preventDefault();
-    const zoomOuterRect = this.zoomOuter.getBoundingClientRect();
-    const mouseX = event.clientX - zoomOuterRect.left;
-    const mouseY = event.clientY - zoomOuterRect.top;
-
-    const delta = event.deltaY > 0 ? 0.8 : 1.2;
-    const newScale = Math.min(Math.max(0.1, this.scale * delta), 10);
-
-    // Calculate the new position
-    const newPosition = this.positioner(mouseX, mouseY, this.scale, newScale);
-
-    // Set transition for smooth zooming
-    this.setTransition('0.1s');
-
-    // Update the scale and position
-    this.scale = newScale;
-    this.pointX = newPosition.left;
-    this.pointY = newPosition.top;
-
-    this.transform();
-
-    // Remove transition after zooming
-    setTimeout(() => this.setTransition('0s'), 100);
-  }
-
-  private positioner(mouseX: number, mouseY: number, oldScale: number, newScale: number): { left: number, top: number } {
-    const containerRect = this.zoomOuter.getBoundingClientRect();
-    const imageRect = this.zoomElement.getBoundingClientRect();
-
-    // Calculate the position of the mouse relative to the image's current position
-    const relativeX = (mouseX - this.pointX) / imageRect.width;
-    const relativeY = (mouseY - this.pointY) / imageRect.height;
-
-    // Calculate the new dimensions of the image
-    const newWidth = imageRect.width * newScale / oldScale;
-    const newHeight = imageRect.height * newScale / oldScale;
-
-    // Calculate the new position to keep the mouse at the same relative point on the image
-    let newLeft = mouseX - relativeX * newWidth;
-    let newTop = mouseY - relativeY * newHeight;
-
-    // Calculate the bounds for the image position
-    const minLeft = Math.min(0, containerRect.width - newWidth);
-    const maxLeft = Math.max(0, containerRect.width - newWidth);
-    const minTop = Math.min(0, containerRect.height - newHeight);
-    const maxTop = Math.max(0, containerRect.height - newHeight);
-
-    // // Adjust the position to keep the image within the container bounds
-    // newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
-    // newTop = Math.max(minTop, Math.min(newTop, maxTop));
-
-    return { left: newLeft, top: newTop };
-  }
-
-  private setTransition(duration: string, timingFunction: string = 'ease-out') {
-      if (this.zoomElement && this.zoomElement) {
-          this.zoomElement.style.setProperty('--transition-duration', duration);
-          this.zoomElement.style.setProperty('--transition-timing-function', timingFunction);
+        this.shapes.set(shapes);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load equipment:', err);
+        this.loading.set(false);
       }
-  }
-  transform() {
-    if (this.zoomElement && this.zoomElement) {
-      this.zoomElement.style.transform = `translate(${this.pointX}px, ${this.pointY}px) scale(${this.scale})`;
-      this.updateImageScale();
-      // Call onZoomEnd after the transition is complete
-      setTimeout(() => this.onZoomEnd(), 100);
-    }
-  }
-
-  updateImageScale(){
-    this.imageScale = this.calculateCurrentScale();
-  }
-
-  private onZoomEnd() {
-    this.setTransition('0s');
-    this.updateCanvasSize();
-    // const visibleShapes = this.getShapesInContainerBounds();
-    // this.visibleShapes.emit(visibleShapes);
-  }
-
-  calculateCurrentScale(): number {
-    const imgRec = this.img.getBoundingClientRect();
-    return imgRec.width / this.img.naturalWidth;
-  }
-
-  updateCanvasSize() {
-    if (this.canvas) {
-      const imgRect = this.img.getBoundingClientRect();
-      this.canvas.width = imgRect.width;
-      this.canvas.height = imgRect.height;
-      this.drawShapes('this.updateCanvasSize');
-    } else {
-      console.error('Canvas not available for size update');
-    }
-  }
-  drawShapes(source: string | null = null) {
-    // if(source) console.log(`Drawing shapes from ${source}`);
-    // else console.log('Drawing shapes with no source');
-    if (!this._canvas) {
-      console.warn('Canvas is not initialized yet');
-      return;
-    }
-
-    const ctx = this._canvas.getContext('2d');
-    if (!ctx) {
-      console.error('Unable to get 2D context from canvas');
-      return;
-    }
-
-    ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-    this.shapes().forEach(shape => {
-      this.drawShape(ctx, shape);
     });
   }
 
-  drawShape(ctx: CanvasRenderingContext2D, shape: Shape) {
-    const scale = this.calculateCurrentScale();
-    ctx.strokeStyle = shape.color;
-    ctx.fillStyle = shape.color;
-    ctx.lineWidth = (shape.isSelected? 3 : 1);
+  onShapeUpdated(shape: RfShape) {
+    console.log('Saving shape:', shape);
 
-    const scaledShape = this.scaleShape(shape);
-
-            switch (scaledShape.type) {
-              case 'rectangle':
-                const rect = scaledShape as RectangleShape;
-                ctx.strokeRect(
-                  rect.x * scale,
-                  rect.y * scale,
-                  rect.width,
-                  rect.height
-                );
-
-                if (shape.isBulkSelected) {
-                  // Draw selection handles
-                  this.drawSelectionHandles(ctx, shape, "orange");
-                }
-
-                if (shape.isSelected) {
-                  // Draw selection handles
-                  this.drawSelectionHandles(ctx, shape);
-                }
-                break;
-              case 'circle':
-                const circle = scaledShape as CircleShape;
-                ctx.beginPath();
-                ctx.arc(
-                  circle.x * scale,
-                  circle.y * scale,
-                  circle.radius,
-                  0,
-                  2 * Math.PI
-                );
-                ctx.stroke();
-                break;
-              case 'line':
-                const line = scaledShape as LineShape;
-                ctx.beginPath();
-                ctx.moveTo(line.startX * scale, line.startY * scale);
-                ctx.lineTo(line.endX * scale, line.endY * scale);
-                ctx.stroke();
-                break;
-              case 'text':
-                const text = scaledShape as TextShape;
-                ctx.font = `${16 * scale}px Arial`;
-                ctx.fillText(text.text, text.x * scale, text.y * scale);
-                break;
-            }
+    // Update backend with new shape coordinates
+    this.equipmentService.updateEquipmentCoordinates(
+      shape.metadata?.equipmentId,
+      {
+        startX: shape.x,
+        startY: shape.y,
+        endX: shape.x + shape.width,
+        endY: shape.y + shape.height,
+        rotation: shape.rotation
+      }
+    ).subscribe({
+      next: () => console.log('Shape saved successfully'),
+      error: (err) => console.error('Failed to save shape:', err)
+    });
   }
 
-  scaleShape(shape: Shape): Shape {
-    const calculatedScale = this.calculateCurrentScale();
-    // const calculatedScale = this.calculateShapeScale(shape);
-    switch (shape.type) {
-      case 'rectangle':
-        return {
-          ...shape,
-          width: shape.width * calculatedScale,
-          height: shape.height * calculatedScale,
-        };
-      case 'circle':
-        return {
-          ...shape,
-          radius: shape.radius * calculatedScale,
-        };
-      case 'line':
-      case 'text':
-        return { ...shape };
-      default:
-        return shape;
-    }
+  onShapeRightClicked(shape: RfShape) {
+    console.log('Context menu for shape:', shape);
+    // Show custom context menu or perform actions
   }
-
-  private drawSelectionHandles(ctx: CanvasRenderingContext2D, shape: Shape, color: string = 'blue') {
-    const scale = this.calculateCurrentScale();
-    const handleSize = 8;
-    ctx.fillStyle = color;
-
-    let corners: [number, number][] = [];
-
-    switch (shape.type) {
-      case 'rectangle':
-        const rect = shape as RectangleShape;
-        corners = [
-          [rect.x, rect.y],
-          [rect.x + rect.width, rect.y],
-          [rect.x, rect.y + rect.height],
-          [rect.x + rect.width, rect.y + rect.height]
-        ];
-        break;
-      case 'circle':
-        const circle = shape as CircleShape;
-        corners = [
-          [circle.x - circle.radius, circle.y - circle.radius],
-          [circle.x + circle.radius, circle.y - circle.radius],
-          [circle.x - circle.radius, circle.y + circle.radius],
-          [circle.x + circle.radius, circle.y + circle.radius]
-        ];
-        break;
-      case 'line':
-        const line = shape as LineShape;
-        corners = [
-          [line.startX, line.startY],
-          [line.endX, line.endY]
-        ];
-        break;
-      // case 'text':
-      //   const text = shape as TextShape;
-      //   // Assuming text has width and height properties, adjust if not
-      //   corners = [
-      //     [text.x, text.y],
-      //     [text.x + text.width, text.y],
-      //     [text.x, text.y + text.height],
-      //     [text.x + text.width, text.y + text.height]
-      //   ];
-      //   break;
-    }
-  }
-
-
-    //Click Events
-
-  onMouseLeave(event: MouseEvent) {
-    
-  }
-
-  onMouseMove(event: MouseEvent) {
-    
-  }
-
-  onMouseDown(event: MouseEvent){}
-
-  onLeftClick(event: MouseEvent) {
-    console.log('left click');
-  }
-
-  onMiddleClick(event: MouseEvent) {
-    console.log('middleclick');
-  }
-
-  onRightClick(event: MouseEvent) {
-    console.log('right click');
-  }
-
-  onDoubleClick(event: MouseEvent) {
-    console.log('double click');
-  }
-
-  onMouseUp(event: MouseEvent) {
-    console.log('mouse up');
-  }
-
 }

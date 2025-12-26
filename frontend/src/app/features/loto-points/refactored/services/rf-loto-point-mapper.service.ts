@@ -319,7 +319,8 @@ export class LotoPointMapperService {
       'generalLocation',
       'equipmentList',
       'zeroEnergy',
-      'relatedLotoPointIds'
+      'relatedLotoPointIds',
+      'equipmentIdList'
     ]
   ): RfFormField[] {
     const allFields: { [key in keyof LotoPointDto]?: RfFormField } = {
