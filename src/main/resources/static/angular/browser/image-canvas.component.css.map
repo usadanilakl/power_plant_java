@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/shared/image/image-canvas/image-canvas.component.css"],
-  "sourcesContent": ["\r\n:host {\r\n    position: absolute;\r\n    top: 0;\r\n    left: 0;\r\n    width: 100%;\r\n    height: 100%;\r\n    /* pointer-events: none; */\r\n  }\r\n  .interactive-image-canvas {\r\n    position: absolute;\r\n    top: 0;\r\n    left: 0;\r\n    width: 100%;\r\n    height: 100%;\r\n    pointer-events: auto;\r\n  }\r\n  \r\n  :host .interactive-image-canvas {\r\n    cursor: inherit !important;\r\n  }"],
-  "mappings": ";AACA;AACI,YAAU;AACV,OAAK;AACL,QAAM;AACN,SAAO;AACP,UAAQ;AAEV;AACA,CAAC;AACC,YAAU;AACV,OAAK;AACL,QAAM;AACN,SAAO;AACP,UAAQ;AACR,kBAAgB;AAClB;AAEA,MAAM,CATL;AAUC,UAAQ;AACV;",
-  "names": []
-}

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/shared/menu/router-menu/router-menu.component.css"],
-  "sourcesContent": [":host {\r\n  --router-menu-text-color: inherit;\r\n  --router-menu-text-hover-color: inherit;\r\n}\r\n\r\n.router-menu ul {\r\n  list-style-type: none;\r\n  padding: 0;\r\n  margin: 0;\r\n}\r\n\r\n.router-menu.column ul {\r\n  display: flex;\r\n  flex-direction: column;\r\n}\r\n\r\n.router-menu.row ul {\r\n  display: flex;\r\n  flex-direction: row;\r\n}\r\n\r\n.router-menu.row li {\r\n  margin-right: 15px;\r\n}\r\n\r\n.router-menu.column li {\r\n  margin-bottom: 10px;\r\n}\r\n\r\n.router-menu a {\r\n  text-decoration: none;\r\n  color: var(--router-menu-text-color);\r\n}\r\n\r\n.router-menu a:hover {\r\n  color: var(--router-menu-text-hover-color);\r\n}"],
-  "mappings": ";AAAA;AACE,4BAA0B;AAC1B,kCAAgC;AAClC;AAEA,CAAC,YAAY;AACX,mBAAiB;AACjB,WAAS;AACT,UAAQ;AACV;AAEA,CANC,WAMW,CAAC,OAAO;AAClB,WAAS;AACT,kBAAgB;AAClB;AAEA,CAXC,WAWW,CAAC,IAAI;AACf,WAAS;AACT,kBAAgB;AAClB;AAEA,CAhBC,WAgBW,CALC,IAKI;AACf,gBAAc;AAChB;AAEA,CApBC,WAoBW,CAdC,OAcO;AAClB,iBAAe;AACjB;AAEA,CAxBC,YAwBY;AACX,mBAAiB;AACjB,SAAO,IAAI;AACb;AAEA,CA7BC,YA6BY,CAAC;AACZ,SAAO,IAAI;AACb;",
-  "names": []
-}

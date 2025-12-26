@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component.css"],
-  "sourcesContent": [".loto-point-table-container {\r\n  width: 100%;\r\n  height: 100%;\r\n  display: flex;\r\n  flex-direction: column;\r\n  position: relative;\r\n}\r\n\r\n.error-message {\r\n  padding: 12px;\r\n  margin-bottom: 12px;\r\n  background-color: #ffebee;\r\n  color: #c62828;\r\n  border: 1px solid #ef5350;\r\n  border-radius: 4px;\r\n}\r\n\r\n.loading-indicator {\r\n  padding: 12px;\r\n  text-align: center;\r\n  color: var(--secondary-text);\r\n  font-size: 14px;\r\n}\r\n\r\napp-table {\r\n  flex: 1;\r\n  overflow: hidden;\r\n}\r\n"],
-  "mappings": ";AAAA,CAAC;AACC,SAAO;AACP,UAAQ;AACR,WAAS;AACT,kBAAgB;AAChB,YAAU;AACZ;AAEA,CAAC;AACC,WAAS;AACT,iBAAe;AACf,oBAAkB;AAClB,SAAO;AACP,UAAQ,IAAI,MAAM;AAClB,iBAAe;AACjB;AAEA,CAAC;AACC,WAAS;AACT,cAAY;AACZ,SAAO,IAAI;AACX,aAAW;AACb;AAEA;AACE,QAAM;AACN,YAAU;AACZ;",
-  "names": []
-}

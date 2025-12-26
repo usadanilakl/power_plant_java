@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/loto-standard/loto-standard-table/loto-standard-table.component.css"],
-  "sourcesContent": [":host {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n  overflow: auto;\n}\n\n.table-wrapper {\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  min-height: 0;\n  height: 100%; /* Add this line */\n  overflow: auto;\n}"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,cAAY;AACZ,YAAU;AACZ;AAEA,CAAC;AACC,QAAM,EAAE,EAAE;AACV,WAAS;AACT,kBAAgB;AAChB,cAAY;AACZ,UAAQ;AACR,YAAU;AACZ;",
-  "names": []
-}

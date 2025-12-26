@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/files/file-editor/file-bulk-editor-menu/file-bulk-editor-menu.component.css"],
-  "sourcesContent": [".scroll-container{\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-height: 0;\n  overflow: auto;\n  padding: 1rem;\n  gap: 1rem;\n  box-sizing: border-box;\n}\n\n.buttons {\n  display: flex;\n  gap: 1rem;\n  margin-bottom: 1rem;\n  padding-top: 1rem;\n  overflow: visible;\n}\n\n.table {\n  display: flex;\n  flex-direction: column;\n  flex: 1 0 auto;\n  min-height: 0;\n  overflow: visible;\n}"],
-  "mappings": ";AAAA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,cAAY;AACZ,YAAU;AACV,WAAS;AACT,OAAK;AACL,cAAY;AACd;AAEA,CAAC;AACC,WAAS;AACT,OAAK;AACL,iBAAe;AACf,eAAa;AACb,YAAU;AACZ;AAEA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,QAAM,EAAE,EAAE;AACV,cAAY;AACZ,YAAU;AACZ;",
-  "names": []
-}

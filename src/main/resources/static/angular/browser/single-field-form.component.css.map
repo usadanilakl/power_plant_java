@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/shared/reactive-form/single-field-form/single-field-form.component.css"],
-  "sourcesContent": [".single-field-form {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 15px;\r\n  padding: 10px;\r\n}\r\n\r\n.form-group {\r\n  display: flex;\r\n  flex-direction: column;\r\n}\r\n\r\nlabel {\r\n  margin-bottom: 5px;\r\n  font-weight: bold;\r\n}\r\n\r\ninput {\r\n  padding: 8px;\r\n  border: 1px solid #ccc;\r\n  border-radius: 4px;\r\n  font-size: 1rem;\r\n}\r\n\r\nbutton {\r\n  padding: 10px 15px;\r\n  border: none;\r\n  border-radius: 4px;\r\n  background-color: #007bff;\r\n  color: white;\r\n  cursor: pointer;\r\n  font-size: 1rem;\r\n}\r\n\r\nbutton:disabled {\r\n  background-color: #ccc;\r\n  cursor: not-allowed;\r\n}"],
-  "mappings": ";AAAA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,OAAK;AACL,WAAS;AACX;AAEA,CAAC;AACC,WAAS;AACT,kBAAgB;AAClB;AAEA;AACE,iBAAe;AACf,eAAa;AACf;AAEA;AACE,WAAS;AACT,UAAQ,IAAI,MAAM;AAClB,iBAAe;AACf,aAAW;AACb;AAEA;AACE,WAAS,KAAK;AACd,UAAQ;AACR,iBAAe;AACf,oBAAkB;AAClB,SAAO;AACP,UAAQ;AACR,aAAW;AACb;AAEA,MAAM;AACJ,oBAAkB;AAClB,UAAQ;AACV;",
-  "names": []
-}

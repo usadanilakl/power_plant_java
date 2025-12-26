@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/loto/print-tag-form/print-tag-form.component.css"],
-  "sourcesContent": ["form {\n  display: flex;\n  flex-direction: column;\n  gap: 1rem;\n}\n\ndiv {\n  display: flex;\n  flex-direction: column;\n}\n\nlabel {\n  margin-bottom: 0.5rem;\n}\n\ninput, textarea {\n  padding: 0.5rem;\n  border: 1px solid #ccc;\n  border-radius: 4px;\n}\n\nbutton {\n  padding: 0.5rem 1rem;\n  background-color: #007bff;\n  color: white;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n}\n\nbutton:hover {\n  background-color: #0056b3;\n}"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,OAAK;AACP;AAEA;AACE,WAAS;AACT,kBAAgB;AAClB;AAEA;AACE,iBAAe;AACjB;AAEA;AAAO;AACL,WAAS;AACT,UAAQ,IAAI,MAAM;AAClB,iBAAe;AACjB;AAEA;AACE,WAAS,OAAO;AAChB,oBAAkB;AAClB,SAAO;AACP,UAAQ;AACR,iBAAe;AACf,UAAQ;AACV;AAEA,MAAM;AACJ,oBAAkB;AACpB;",
-  "names": []
-}

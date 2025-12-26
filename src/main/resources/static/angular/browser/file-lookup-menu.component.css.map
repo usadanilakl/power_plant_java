@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/features/files/file-editor/file-lookup-menu/file-lookup-menu.component.css"],
-  "sourcesContent": [":host {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-height: 100vh;\n}\n\n.tables-container {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  gap: 1rem;\n  padding: 1rem;\n}\n\n.table-wrapper {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  min-height: 300px;\n  border: 1px solid #ccc;\n  padding: 1rem;\n  overflow: hidden;\n}\n\nh3 {\n  margin-top: 0;\n  margin-bottom: 1rem;\n}\n\n.search-controls {\n  display: flex;\n  gap: 1rem;\n  margin-bottom: 1rem;\n}\n\napp-equipment-table {\n  flex: 1;\n  overflow: auto;\n  display: block;\n  min-height: 200px;\n}\n"],
-  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACd;AAEA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,OAAK;AACL,WAAS;AACX;AAEA,CAAC;AACC,QAAM;AACN,WAAS;AACT,kBAAgB;AAChB,cAAY;AACZ,UAAQ,IAAI,MAAM;AAClB,WAAS;AACT,YAAU;AACZ;AAEA;AACE,cAAY;AACZ,iBAAe;AACjB;AAEA,CAAC;AACC,WAAS;AACT,OAAK;AACL,iBAAe;AACjB;AAEA;AACE,QAAM;AACN,YAAU;AACV,WAAS;AACT,cAAY;AACd;",
-  "names": []
-}

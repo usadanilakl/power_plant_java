@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/shared/image/refactored/toolbar/toolbar.component.css"],
-  "sourcesContent": [".toolbar {\r\n  display: flex;\r\n  gap: 8px;\r\n  padding: 8px;\r\n  background-color: var(--secondary-background);\r\n  border-bottom: 1px solid var(--border-color);\r\n}\r\n\r\n.toolbar-btn {\r\n  padding: 8px 12px;\r\n  border: 1px solid var(--border-color);\r\n  background-color: var(--card-background);\r\n  color: var(--primary-text);\r\n  cursor: pointer;\r\n  border-radius: 4px;\r\n  font-size: 14px;\r\n  transition: background-color 0.2s, border-color 0.2s;\r\n}\r\n\r\n.toolbar-btn:hover {\r\n  background-color: var(--menu-item-hover-bg-color);\r\n}\r\n\r\n.toolbar-btn.active {\r\n  background-color: var(--accent-color-shadow);\r\n  border-color: var(--accent-color);\r\n  color: var(--menu-item-active-text-color);\r\n}"],
-  "mappings": ";AAAA,CAAC;AACC,WAAS;AACT,OAAK;AACL,WAAS;AACT,oBAAkB,IAAI;AACtB,iBAAe,IAAI,MAAM,IAAI;AAC/B;AAEA,CAAC;AACC,WAAS,IAAI;AACb,UAAQ,IAAI,MAAM,IAAI;AACtB,oBAAkB,IAAI;AACtB,SAAO,IAAI;AACX,UAAQ;AACR,iBAAe;AACf,aAAW;AACX,cAAY,iBAAiB,IAAI,EAAE,aAAa;AAClD;AAEA,CAXC,WAWW;AACV,oBAAkB,IAAI;AACxB;AAEA,CAfC,WAeW,CAAC;AACX,oBAAkB,IAAI;AACtB,gBAAc,IAAI;AAClB,SAAO,IAAI;AACb;",
-  "names": []
-}
