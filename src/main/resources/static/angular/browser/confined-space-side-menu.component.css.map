@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/permit-builder/confined-space/confined-space-side-menu/confined-space-side-menu.component.css"],
+  "sourcesContent": [":host {\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: 100%;\r\n  min-height: 500px;\r\n  width: 100%;\r\n  overflow: hidden;\r\n  flex:1;\r\n}\r\napp-confined-space-table {\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: 100%;\r\n  min-height: 500px;\r\n  width: 100%;\r\n  overflow: hidden;\r\n  flex:1;\r\n}"],
+  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACZ,SAAO;AACP,YAAU;AACV,QAAK;AACP;AACA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACZ,SAAO;AACP,YAAU;AACV,QAAK;AACP;",
+  "names": []
+}

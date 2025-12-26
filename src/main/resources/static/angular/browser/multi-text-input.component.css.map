@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/reactive-form/refactored/input-fields/multi-text-input/multi-text-input.component.css"],
+  "sourcesContent": ["\r\n\r\n.label-container {\r\n  display: flex;\r\n  align-items: center;\r\n}\r\n\r\n.question-icon {\r\n  margin-left: 5px;\r\n  cursor: pointer;\r\n  color: #007bff;\r\n}\r\n\r\n.question-icon:hover {\r\n  color: #0056b3;\r\n}"],
+  "mappings": ";AAEA,CAAC;AACC,WAAS;AACT,eAAa;AACf;AAEA,CAAC;AACC,eAAa;AACb,UAAQ;AACR,SAAO;AACT;AAEA,CANC,aAMa;AACZ,SAAO;AACT;",
+  "names": []
+}

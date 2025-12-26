@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/files/file-table/file-table.component.css"],
+  "sourcesContent": [".side-by-side-container {\n  display: flex;\n  height: 100%;\n  width: 100%;\n}\n\n.form-container {\n  flex: 1;\n  overflow-y: auto;\n  padding-right: 20px;\n}\n\n.image-container {\n  flex: 1;\n  overflow: hidden;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}\n\napp-image-zoom-interactive {\n  max-width: 100%;\n  max-height: 100%;\n  object-fit: contain;\n}\n\n/* For smaller screens, stack the components vertically */\n@media (max-width: 768px) {\n  .side-by-side-container {\n    flex-direction: column;\n  }\n\n  .form-container {\n    padding-right: 0;\n    padding-bottom: 20px;\n  }\n\n  .image-container {\n    height: 300px; /* Set a fixed height for mobile */\n  }\n}"],
+  "mappings": ";AAAA,CAAC;AACC,WAAS;AACT,UAAQ;AACR,SAAO;AACT;AAEA,CAAC;AACC,QAAM;AACN,cAAY;AACZ,iBAAe;AACjB;AAEA,CAAC;AACC,QAAM;AACN,YAAU;AACV,WAAS;AACT,mBAAiB;AACjB,eAAa;AACf;AAEA;AACE,aAAW;AACX,cAAY;AACZ,cAAY;AACd;AAGA,OAAO,CAAC,SAAS,EAAE;AACjB,GA5BD;AA6BG,oBAAgB;AAClB;AAEA,GA1BD;AA2BG,mBAAe;AACf,oBAAgB;AAClB;AAEA,GAzBD;AA0BG,YAAQ;AACV;AACF;",
+  "names": []
+}

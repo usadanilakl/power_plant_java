@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/tag-number/tag-number-generator/tag-number-generator.component.css"],
+  "sourcesContent": ["\nform {\n  display: flex;\n  flex-direction: column;\n  max-width: 300px;\n  margin: 0 auto;\n}\n\ndiv {\n  margin-bottom: 15px;\n}\n\nlabel {\n  display: block;\n  margin-bottom: 5px;\n}\n\ninput {\n  width: 100%;\n  padding: 5px;\n}\n\nbutton {\n  padding: 10px;\n  background-color: #4CAF50;\n  color: white;\n  border: none;\n  cursor: pointer;\n}\n\nbutton:hover {\n  background-color: #45a049;\n}\n\n.error-message {\n  color: red;\n  margin-top: 15px;\n}"],
+  "mappings": ";AACA;AACE,WAAS;AACT,kBAAgB;AAChB,aAAW;AACX,UAAQ,EAAE;AACZ;AAEA;AACE,iBAAe;AACjB;AAEA;AACE,WAAS;AACT,iBAAe;AACjB;AAEA;AACE,SAAO;AACP,WAAS;AACX;AAEA;AACE,WAAS;AACT,oBAAkB;AAClB,SAAO;AACP,UAAQ;AACR,UAAQ;AACV;AAEA,MAAM;AACJ,oBAAkB;AACpB;AAEA,CAAC;AACC,SAAO;AACP,cAAY;AACd;",
+  "names": []
+}

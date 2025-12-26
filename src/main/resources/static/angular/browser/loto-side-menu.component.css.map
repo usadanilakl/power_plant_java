@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/loto/loto-side-menu/loto-side-menu.component.css"],
+  "sourcesContent": [":host {\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: 100%;\r\n  overflow: hidden;\r\n}\r\n\r\n.container {\r\n  display: flex;\r\n  flex-direction: column;\r\n  flex: 1;\r\n  overflow-y: hidden;\r\n  height: 100%;\r\n  padding: 20px;\r\n}\r\n\r\napp-loto-table{\r\n    display: flex;\r\n    flex: 1;\r\n    flex-direction: column;\r\n    overflow: visible\r\n}\r\n\r\n.button-container {\r\n  display: flex;\r\n  justify-content: center;\r\n  width: 100%;\r\n  margin-top: 10px;\r\n  margin-bottom: 10px;\r\n}\r\n\r\n.action-button {\r\n  width: 100%;\r\n  padding: 10px 20px;\r\n  font-size: 16px;\r\n  font-weight: bold;\r\n  color: #ffffff;\r\n  background-color: #007bff;\r\n  border: none;\r\n  border-radius: 5px;\r\n  cursor: pointer;\r\n  transition: background-color 0.3s ease;\r\n}\r\n\r\n.action-button:hover {\r\n  background-color: #0056b3;\r\n}\r\n\r\n.action-button:active {\r\n  background-color: #004085;\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,YAAU;AACZ;AAEA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,cAAY;AACZ,UAAQ;AACR,WAAS;AACX;AAEA;AACI,WAAS;AACT,QAAM;AACN,kBAAgB;AAChB,YAAU;AACd;AAEA,CAAC;AACC,WAAS;AACT,mBAAiB;AACjB,SAAO;AACP,cAAY;AACZ,iBAAe;AACjB;AAEA,CAAC;AACC,SAAO;AACP,WAAS,KAAK;AACd,aAAW;AACX,eAAa;AACb,SAAO;AACP,oBAAkB;AAClB,UAAQ;AACR,iBAAe;AACf,UAAQ;AACR,cAAY,iBAAiB,KAAK;AACpC;AAEA,CAbC,aAaa;AACZ,oBAAkB;AACpB;AAEA,CAjBC,aAiBa;AACZ,oBAAkB;AACpB;",
+  "names": []
+}

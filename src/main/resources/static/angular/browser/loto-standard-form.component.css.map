@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/loto-standard/loto-standard-form/loto-standard-form.component.css"],
+  "sourcesContent": [":host {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-height: 100vh;\n}\n\n.loto-standard-form {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  height: 100%;\n  gap: 1rem;\n  padding: 1rem;\n}\n\n.form-fields {\n  display: flex;\n  flex-direction: column;\n  gap: 1rem;\n}\n\n.form-field-row {\n  display: flex;\n  gap: 20px;\n}\n\n.form-field {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  gap: 0.5rem;\n}\n\n.form-field input {\n  width: 100%;\n}\n\n.table-wrapper {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  min-height: 300px;\n  border: 1px solid #ccc;\n  padding: 1rem;\n  overflow: hidden;\n}\n\napp-loto-point-simple-table {\n  flex: 1;\n  overflow: auto;\n}\n\n"],
+  "mappings": ";AAAA;AACE,WAAS;AACT,kBAAgB;AAChB,UAAQ;AACR,cAAY;AACd;AAEA,CAAC;AACC,WAAS;AACT,QAAM;AACN,kBAAgB;AAChB,UAAQ;AACR,OAAK;AACL,WAAS;AACX;AAEA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,OAAK;AACP;AAEA,CAAC;AACC,WAAS;AACT,OAAK;AACP;AAEA,CAAC;AACC,WAAS;AACT,kBAAgB;AAChB,QAAM;AACN,OAAK;AACP;AAEA,CAPC,WAOW;AACV,SAAO;AACT;AAEA,CAAC;AACC,QAAM;AACN,WAAS;AACT,kBAAgB;AAChB,cAAY;AACZ,UAAQ,IAAI,MAAM;AAClB,WAAS;AACT,YAAU;AACZ;AAEA;AACE,QAAM;AACN,YAAU;AACZ;",
+  "names": []
+}

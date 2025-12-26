@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/form-designer/field-properties/field-properties.component.css"],
+  "sourcesContent": ["\r\n    :host {\r\n      display: block;\r\n      padding: 10px;\r\n      border: 1px solid #ccc;\r\n      margin-top: 10px;\r\n    }\r\n    div {\r\n      margin-bottom: 10px;\r\n    }\r\n    label {\r\n      display: inline-block;\r\n      width: 120px;\r\n    }"],
+  "mappings": ";AACI;AACE,WAAS;AACT,WAAS;AACT,UAAQ,IAAI,MAAM;AAClB,cAAY;AACd;AACA;AACE,iBAAe;AACjB;AACA;AACE,WAAS;AACT,SAAO;AACT;",
+  "names": []
+}
