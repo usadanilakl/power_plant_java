@@ -259,6 +259,7 @@ Hardware:
 WLED API to use: 
 GET  /json/info          → Device info (name, version, LED count, etc.)
 GET  /json/state         → Current state (on/off, brightness, segments, colors)
+GET  /json/cfg           → Current config
 POST /json/state         → Update state (colors, brightness, effects)
 POST /json               → Hardware config (pins, LED counts, save to flash)
 
