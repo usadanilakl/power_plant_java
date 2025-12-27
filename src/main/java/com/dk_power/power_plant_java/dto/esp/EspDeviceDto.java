@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Set;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
@@ -15,4 +17,5 @@ public class EspDeviceDto extends BaseDto {
     private String name;
     private Boolean isActive = true;
     private String description;
+    private Set<String> pinSequence;
 }

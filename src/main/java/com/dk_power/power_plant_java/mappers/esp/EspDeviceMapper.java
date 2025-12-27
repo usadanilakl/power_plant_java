@@ -8,6 +8,8 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import java.util.stream.Collectors;
+
 @Component
 public class EspDeviceMapper implements BaseMapper {
     private final ModelMapper modelMapper;
@@ -49,6 +51,10 @@ public class EspDeviceMapper implements BaseMapper {
             dto.setDescription(entity.getDescription());
         }
 
+        if (entity.getPinSequence()!=null) {
+            dto.setPinSequence(entity.getPinSequence().stream().map(String::trim).collect(Collectors.toSet()));
+        }
+
         return dto;
     }
 
@@ -84,6 +90,10 @@ public class EspDeviceMapper implements BaseMapper {
 
         if (source.getDescription() != null) {
             entity.setDescription(source.getDescription());
+        }
+
+        if (source.getPinSequence()!=null) {
+            entity.setPinSequence(source.getPinSequence().stream().map(String::trim).collect(Collectors.toSet()));
         }
 
         return entity;

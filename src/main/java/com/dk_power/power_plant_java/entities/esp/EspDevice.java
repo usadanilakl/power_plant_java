@@ -5,6 +5,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.envers.Audited;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Setter
 @Getter
@@ -24,4 +28,14 @@ public class EspDevice extends BaseAuditEntity {
     private Boolean isActive = true;
     
     private String description;
+
+    private String pinSequence;
+
+    public Set<String> getPinSequence() {
+        return new HashSet<>(Arrays.asList(pinSequence.split(",")));
+    }
+
+    public void setPinSequence(Set<String> pinSequence) {
+        this.pinSequence = String.join(",", pinSequence);
+    }
 }

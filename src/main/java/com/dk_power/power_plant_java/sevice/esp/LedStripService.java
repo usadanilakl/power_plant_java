@@ -1,14 +1,17 @@
 package com.dk_power.power_plant_java.sevice.esp;
 
 import com.dk_power.power_plant_java.dto.esp.LedStripDto;
+import com.dk_power.power_plant_java.entities.esp.EspDevice;
 import com.dk_power.power_plant_java.entities.esp.LedStrip;
 import com.dk_power.power_plant_java.mappers.esp.LedStripMapper;
 import com.dk_power.power_plant_java.repository.esp.LedStripRepo;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -147,4 +150,6 @@ public class LedStripService {
     public boolean existsByGpioPin(Integer gpioPin) {
         return ledStripRepo.findByGpioPin(gpioPin).isPresent();
     }
+
+
 }

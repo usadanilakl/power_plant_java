@@ -2,11 +2,15 @@ package com.dk_power.power_plant_java.sevice.angular.loto;
 
 import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.permits.loto_box.LotoBoxDto;
+import com.dk_power.power_plant_java.entities.esp.EspDevice;
+import com.dk_power.power_plant_java.entities.esp.LedStrip;
 import com.dk_power.power_plant_java.entities.loto.LotoBox;
 import com.dk_power.power_plant_java.mappers.permits.loto_box.LotoBoxMapper;
 import com.dk_power.power_plant_java.repository.loto.LotoBoxRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
 import com.dk_power.power_plant_java.sevice.esp.EspLedService;
+import com.dk_power.power_plant_java.sevice.esp.LedStripService;
+
 import jakarta.persistence.EntityManager;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Page;
@@ -23,15 +27,17 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     private final EntityManager entityManager;
     private final LotoBoxMapper lotoBoxMapper;
     private final EspLedService espLedService;
+    private final LedStripService ledStripService;
 
     public NgLotoBoxService(LotoBoxRepo lotoBoxRepo, SessionFactory sessionFactory,
                            EntityManager entityManager, LotoBoxMapper lotoBoxMapper,
-                           EspLedService espLedService) {
+                           EspLedService espLedService, LedStripService ledStripService) {
         this.lotoBoxRepo = lotoBoxRepo;
         this.sessionFactory = sessionFactory;
         this.entityManager = entityManager;
         this.lotoBoxMapper = lotoBoxMapper;
         this.espLedService = espLedService;
+        this.ledStripService = ledStripService;
     }
 
     @Override
@@ -178,5 +184,45 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
     public void syncAllBoxesToEsp() {
         List<LotoBox> boxes = lotoBoxRepo.findAll();
         boxes.forEach(this::updateEspDevice);
+    }
+    /**
+     * Calculates the absolute starting LED index for a given strip on an ESP device.
+     * The calculation is based on the sequence of strips ordered by their GPIO pin number.
+     * @param box The LotoBox for which to calculate the absolute range.
+     * @return A map containing the absolute 'start' and 'end' of the LED range, or null if calculation is not possible.
+     */
+    public Map<String,Integer> getAbsoluteLedRange(LotoBox box) {
+        if (box == null || box.getLedStrip() == null) return null;
+
+        LedStrip currentStrip = box.getLedStrip();
+        EspDevice esp = currentStrip.getEspDevice();
+        Integer currentPin = currentStrip.getGpioPin();
+
+        if (esp == null || currentPin == null) return null;
+
+        List<Integer> pinOrder = esp.getPinSequence().stream()
+                .map(Integer::parseInt)
+                .sorted()
+                .toList();
+        
+        List<LedStrip> ledStrips = ledStripService.getByEspDeviceId(esp.getId());
+
+        int offset = 0;
+        for (Integer pin : pinOrder) {
+            if (pin.equals(currentPin)) {
+                break;
+            }
+            offset += ledStrips.stream()
+                    .filter(s -> pin.equals(s.getGpioPin()))
+                    .mapToInt(LedStrip::getTotalLeds)
+                    .findFirst()
+                    .orElse(0);
+        }
+
+        Map<String, Integer> absoluteRange = new HashMap<>();
+        absoluteRange.put("start", offset + box.getRangeStart());
+        absoluteRange.put("end", offset + box.getRangeEnd());
+
+        return absoluteRange;
     }
 }
