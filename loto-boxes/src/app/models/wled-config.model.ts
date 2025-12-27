@@ -27,7 +27,15 @@ export interface WLEDStateUpdate {
   on?: boolean;                 // Power on/off
   bri?: number;                 // Brightness (0-255)
   transition?: number;          // Transition time in ms
-  seg?: WLEDSegment[];          // Segments
+  seg?: WLEDSegment[] | WLEDIndividualLEDControl;  // Segments or individual LED control
+}
+
+/**
+ * WLED Individual LED Control
+ * Used to bypass segment limit by controlling individual LEDs
+ */
+export interface WLEDIndividualLEDControl {
+  i: (number | string)[];       // Array of [index, "RRGGBB", index, "RRGGBB", ...]
 }
 
 /**

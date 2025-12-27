@@ -5,6 +5,15 @@ import { LotoBox, LotoBoxStatus, STATUS_COLORS, BoxUpdateRequest, BulkUpdateRequ
 import { WLEDService } from './wled.service';
 import { LoggerService } from './logger.service';
 import { SyncQueueService } from './sync-queue.service';
+import { WledLedArrayService } from './wled-led-array.service';
+
+/**
+ * WLED Update Strategy
+ */
+export enum WLEDStrategy {
+  SEGMENTS = 'segments',      // Use WLED segments (limited to 31)
+  LED_ARRAY = 'led_array'     // Use individual LED control (no segment limit)
+}
 
 @Injectable({
   providedIn: 'root'
@@ -12,6 +21,9 @@ import { SyncQueueService } from './sync-queue.service';
 export class LotoBoxService {
   // Signal for reactive state
   boxes = signal<LotoBox[]>([]);
+
+  // Current WLED strategy (use LED_ARRAY to bypass 31 segment limit)
+  private wledStrategy = signal<WLEDStrategy>(WLEDStrategy.LED_ARRAY);
 
   // Initial box configuration from hardware specs
   private readonly INITIAL_BOXES: LotoBox[] = [
@@ -103,9 +115,32 @@ export class LotoBoxService {
   constructor(
     private wledService: WLEDService,
     private logger: LoggerService,
-    private syncQueue: SyncQueueService
+    private syncQueue: SyncQueueService,
+    private ledArrayService: WledLedArrayService
   ) {
     this.loadBoxes();
+    // Initialize LED array service with current boxes
+    this.ledArrayService.initializeFromBoxes(this.getBoxesWithChainedRanges());
+  }
+
+  /**
+   * Get current WLED strategy
+   */
+  getStrategy(): WLEDStrategy {
+    return this.wledStrategy();
+  }
+
+  /**
+   * Set WLED strategy (segments vs LED array)
+   */
+  setStrategy(strategy: WLEDStrategy): void {
+    this.wledStrategy.set(strategy);
+    this.logger.info(`WLED strategy changed to: ${strategy}`);
+
+    // Re-sync all boxes with new strategy
+    if (strategy === WLEDStrategy.LED_ARRAY) {
+      this.ledArrayService.initializeFromBoxes(this.getBoxesWithChainedRanges());
+    }
   }
 
   /**
@@ -200,17 +235,12 @@ export class LotoBoxService {
       return of(null);
     }
 
-    // Update WLED
-    return this.wledService.setSegmentColor(
-      controller.id,
-      box.number,
-      box.rangeStart,
-      box.rangeEnd + 1, // WLED uses exclusive end
-      request.r,
-      request.g,
-      request.b,
-      request.brightness
-    ).pipe(
+    // Choose update strategy based on current mode
+    const updateObservable = this.wledStrategy() === WLEDStrategy.LED_ARRAY
+      ? this.updateBoxWithLEDArray(controller.id, box, request)
+      : this.updateBoxWithSegments(controller.id, box, request);
+
+    return updateObservable.pipe(
       tap(() => {
         // Update local state
         const boxes = this.boxes();
@@ -230,7 +260,7 @@ export class LotoBoxService {
           this.boxes.set([...boxes]);
           this.saveBoxes();
 
-          this.logger.success(`Updated box ${request.boxNumber}`, {
+          this.logger.success(`Updated box ${request.boxNumber} using ${this.wledStrategy()}`, {
             boxNumber: request.boxNumber,
             r: request.r,
             g: request.g,
@@ -258,6 +288,47 @@ export class LotoBoxService {
 
         return of(null);
       })
+    );
+  }
+
+  /**
+   * Update box using LED array strategy (no segment limit)
+   */
+  private updateBoxWithLEDArray(
+    controllerId: number,
+    box: LotoBox,
+    request: BoxUpdateRequest
+  ): Observable<any> {
+    // Update LED array and sync controller
+    this.ledArrayService.updateBoxLEDs(
+      controllerId,
+      box.rangeStart,
+      box.rangeEnd,
+      request.r,
+      request.g,
+      request.b
+    );
+
+    return this.ledArrayService.syncController(controllerId);
+  }
+
+  /**
+   * Update box using segment strategy (limited to 31 segments)
+   */
+  private updateBoxWithSegments(
+    controllerId: number,
+    box: LotoBox,
+    request: BoxUpdateRequest
+  ): Observable<any> {
+    return this.wledService.setSegmentColor(
+      controllerId,
+      box.number,
+      box.rangeStart,
+      box.rangeEnd + 1, // WLED uses exclusive end
+      request.r,
+      request.g,
+      request.b,
+      request.brightness
     );
   }
 
