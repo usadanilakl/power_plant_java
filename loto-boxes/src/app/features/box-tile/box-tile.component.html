@@ -1,0 +1,24 @@
+<div class="box-tile"
+         [class.offline]="!box.online"
+         [class.pending]="box.pendingSync"
+         [style.background-color]="getColor()"
+         (click)="onBoxClick()">
+      <span class="box-number">{{ box.number }}</span>
+      @if (box.pendingSync) {
+        <span class="sync-indicator">⏱</span>
+      }
+      @if (!box.online) {
+        <span class="offline-indicator">⚠</span>
+      }
+
+      @if (showDropdown) {
+        <div class="dropdown" (click)="$event.stopPropagation()">
+          @for (status of statuses; track status) {
+            <div class="dropdown-item"
+                 (click)="selectStatus(status)">
+              {{ getStatusLabel(status) }}
+            </div>
+          }
+        </div>
+      }
+    </div>

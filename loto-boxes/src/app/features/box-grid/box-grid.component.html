@@ -1,0 +1,11 @@
+
+    <div class="box-grid">
+      @for (box of lotoBoxService.boxes(); track box.number) {
+        <app-box-tile
+          [box]="box"
+          [showDropdown]="activeDropdown() === box.number"
+          (boxClick)="toggleDropdown(box)"
+          (statusChange)="updateBoxStatus(box, $event)">
+        </app-box-tile>
+      }
+    </div>

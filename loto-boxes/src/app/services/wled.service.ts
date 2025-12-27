@@ -19,14 +19,14 @@ export class WLEDService {
   private readonly CONTROLLERS: WLEDControllerInfo[] = [
     {
       id: 1,
-      ip: '10.10.190.147',  // Update with actual IP
+      ip: '192.168.190.145',  // Update with actual IP
       name: 'Controller 1',
       strips: [0, 1, 2],
       online: false
     },
     {
       id: 2,
-      ip: '10.10.190.148',  // Update with actual IP
+      ip: '192.168.190.146',  // Update with actual IP
       name: 'Controller 2',
       strips: [3, 4, 5],
       online: false

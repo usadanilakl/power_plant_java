@@ -38,6 +38,9 @@ export interface LogContext {
   bulkCount?: number;
   successCount?: number;
   failureCount?: number;
+  count?: number;           // Generic count field
+  retryCount?: number;      // Retry attempt count
+  [key: string]: any;       // Allow any additional properties
 }
 
 /**

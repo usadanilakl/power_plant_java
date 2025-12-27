@@ -1,0 +1,63 @@
+    .box-tile {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      border: 2px solid #333;
+      border-radius: 4px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+      transition: transform 0.2s;
+      z-index: 1;
+    }
+
+    .box-tile:hover {
+      transform: scale(1.05);
+      border-color: #0af;
+      z-index: 100;
+    }
+
+    /* When dropdown is open, keep the tile on top */
+    .box-tile:has(.dropdown) {
+      z-index: 1000;
+    }
+
+    .box-tile.offline {
+      opacity: 0.5;
+      border-color: #f00;
+    }
+
+    .box-tile.pending {
+      border-style: dashed;
+    }
+
+    .sync-indicator,
+    .offline-indicator {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      font-size: 12px;
+    }
+
+    .dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 4px;
+      z-index: 1000;
+      min-width: 150px;
+    }
+
+    .dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      color: white;
+    }
+
+    .dropdown-item:hover {
+      background: #333;
+    }

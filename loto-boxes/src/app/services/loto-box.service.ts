@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { Observable, forkJoin, of } from 'rxjs';
+import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { map, tap, catchError } from 'rxjs/operators';
 import { LotoBox, LotoBoxStatus, STATUS_COLORS, BoxUpdateRequest, BulkUpdateRequest } from '../models/loto-box.model';
 import { WLEDService } from './wled.service';
@@ -132,7 +132,7 @@ export class LotoBoxService {
    * Initialize boxes with default configuration
    */
   private initializeBoxes(): void {
-    const boxes = this.INITIAL_BOXES.map(box => ({
+    const boxes = this.getBoxesWithChainedRanges().map(box => ({
       ...box,
       status: this.getStatusFromColor(box.r, box.g, box.b),
       online: true,
@@ -333,8 +333,92 @@ export class LotoBoxService {
   getBoxesByStatus(status: LotoBoxStatus): LotoBox[] {
     return this.boxes().filter(b => b.status === status);
   }
-}
 
-function throwError(arg0: () => Error): Observable<any> {
-  throw new Error('Function not implemented.');
+
+  //====================Range Mapper for WLED===========================
+
+    /**
+     * Get boxes with chained ranges for WLED controller segments
+     * Converts individual strip ranges to continuous ranges across all strips on a controller
+     * 
+     * Example:
+     * Strip 0 (240 LEDs): boxes 1-12 → ranges 0-240
+     * Strip 1 (237 LEDs): boxes 13-24 → ranges 240-477 (240 + 237)
+     * Strip 2 (237 LEDs): boxes 25-36 → ranges 477-714 (240 + 237 + 237)
+     */
+    getBoxesWithChainedRanges(): LotoBox[] {
+      const stripLengths = [240, 237, 237, 245, 245, 260]; // LED counts per strip
+      const controllerStrips = [
+        [0, 1, 2], // Controller 1: strips 0, 1, 2
+        [3, 4, 5]  // Controller 2: strips 3, 4, 5
+      ];
+  
+      const chainedBoxes = this.INITIAL_BOXES.map(box => {
+        // Find which controller this strip belongs to
+        const controllerIndex = controllerStrips.findIndex(strips => 
+          strips.includes(box.strip)
+        );
+  
+        if (controllerIndex === -1) {
+          return box; // Return unchanged if strip not found
+        }
+  
+        // Calculate offset: sum of all strip lengths before this strip within the controller
+        const stripsInController = controllerStrips[controllerIndex];
+        const stripIndexInController = stripsInController.indexOf(box.strip);
+        
+        let offset = 0;
+        for (let i = 0; i < stripIndexInController; i++) {
+          offset += stripLengths[stripsInController[i]];
+        }
+  
+        // Chain the ranges
+        return {
+          ...box,
+          rangeStart: offset + box.rangeStart,
+          rangeEnd: offset + box.rangeEnd
+        };
+      });
+  
+      return chainedBoxes;
+    }
+  
+    /**
+     * Get total LED count for a controller
+     */
+    getControllerLedCount(controllerIndex: number): number {
+      const controllerStrips = [
+        [0, 1, 2], // Controller 1
+        [3, 4, 5]  // Controller 2
+      ];
+      const stripLengths = [240, 237, 237, 245, 245, 260];
+  
+      if (controllerIndex < 0 || controllerIndex >= controllerStrips.length) {
+        return 0;
+      }
+  
+      return controllerStrips[controllerIndex].reduce((sum, stripIndex) => {
+        return sum + stripLengths[stripIndex];
+      }, 0);
+    }
+  
+    /**
+     * Get chained ranges for a specific controller
+     */
+    getControllerBoxes(controllerIndex: number): LotoBox[] {
+      const controllerStrips = [
+        [0, 1, 2], // Controller 1
+        [3, 4, 5]  // Controller 2
+      ];
+  
+      if (controllerIndex < 0 || controllerIndex >= controllerStrips.length) {
+        return [];
+      }
+  
+      const stripsInController = controllerStrips[controllerIndex];
+      const chainedBoxes = this.getBoxesWithChainedRanges();
+  
+      return chainedBoxes.filter(box => stripsInController.includes(box.strip));
+    }
+
 }
