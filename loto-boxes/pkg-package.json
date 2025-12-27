@@ -1,0 +1,13 @@
+
+{
+  "name": "loto-boxes-app",
+  "version": "1.0.0",
+  "description": "LOTO Boxes Application",
+  "main": "server.js",
+  "bin": "server.js",
+  "pkg": {
+    "assets": ["browser/**/*"],
+    "targets": ["node18-win-x64"],
+    "outputPath": "loto-boxes-app"
+  }
+}

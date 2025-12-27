@@ -1,0 +1,11 @@
+
+dist/
+node_modules/
+.angular/
+browser/
+*.log
+.git/
+.gitignore
+README.md
+build.bat
+start.bat

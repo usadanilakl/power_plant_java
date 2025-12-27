@@ -151,3 +151,5 @@ token.properties
 /points.xlsx
 /browser/ng-ui/docs/**
 /sikulix_captures/**
+/loto-boxes/build_log.txt
+/loto-boxes/test-output/test.exe

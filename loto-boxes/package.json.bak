@@ -1,20 +1,26 @@
 {
   "name": "loto-boxes",
-  "version": "1.0.0",
-  "main": "server.js",
-  "bin": "server.js",
-  "pkg": {
-    "assets": [],
-    "targets": [
-      "node18-win-x64"
-    ],
-    "outputPath": "loto-boxes-app"
-  },
+  "version": "0.0.0",
   "scripts": {
-    "start": "node server.js",
-    "build": "ng build --configuration production --base-href ./",
-    "package": "pkg server.js --compress Brotli --target node18-win-x64 --output loto-boxes-app/start.exe"
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test"
   },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true,
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "private": true,
   "dependencies": {
     "@angular/common": "^20.3.0",
     "@angular/compiler": "^20.3.0",
@@ -23,7 +29,6 @@
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
     "@angular/service-worker": "^20.3.0",
-    "express": "^4.22.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
