@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { map, tap, catchError } from 'rxjs/operators';
 import { LotoBox, LotoBoxStatus, STATUS_COLORS, BoxUpdateRequest, BulkUpdateRequest } from '../models/loto-box.model';
@@ -6,6 +6,7 @@ import { WLEDService } from './wled.service';
 import { LoggerService } from './logger.service';
 import { SyncQueueService } from './sync-queue.service';
 import { WledLedArrayService } from './wled-led-array.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 /**
  * WLED Update Strategy
@@ -15,15 +16,26 @@ export enum WLEDStrategy {
   LED_ARRAY = 'led_array'     // Use individual LED control (no segment limit)
 }
 
+export enum NetworkMode{
+  ONLINE = 'online',
+  OFFLINE = 'offline'
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class LotoBoxService {
+
+  destroyRef = inject(DestroyRef);
+
   // Signal for reactive state
   boxes = signal<LotoBox[]>([]);
 
   // Current WLED strategy (use LED_ARRAY to bypass 31 segment limit)
   private wledStrategy = signal<WLEDStrategy>(WLEDStrategy.LED_ARRAY);
+
+  // Current network mode
+  private networkMode = signal<NetworkMode>(NetworkMode.OFFLINE);
 
   // Initial box configuration from hardware specs
   private readonly INITIAL_BOXES: LotoBox[] = [
@@ -141,6 +153,21 @@ export class LotoBoxService {
     if (strategy === WLEDStrategy.LED_ARRAY) {
       this.ledArrayService.initializeFromBoxes(this.getBoxesWithChainedRanges());
     }
+  }
+
+  /**
+   * GET CURRENT NETWORK MODE
+   */
+  getNetworkMode(): NetworkMode {
+    return this.networkMode();
+  }
+
+  /**
+   * Set network mode (standalone vs. multi-controller)
+   */
+  setNetworkMode(mode: NetworkMode): void {
+    this.networkMode.set(mode);
+    this.logger.info(`Network mode changed to: ${mode}`);
   }
 
   /**
@@ -332,32 +359,170 @@ export class LotoBoxService {
     );
   }
 
-  /**
-   * Bulk update multiple boxes
-   */
-  bulkUpdateBoxes(boxNumbers: number[], status: LotoBoxStatus): Observable<any[]> {
-    const color = STATUS_COLORS[status];
-    const updates = boxNumbers.map(boxNumber => {
-      const box = this.boxes().find(b => b.number === boxNumber);
-      return this.updateBox({
-        boxNumber,
-        r: color.r,
-        g: color.g,
-        b: color.b,
-        brightness: box?.brightness || 255,
-        status
+  
+    /**
+     * Bulk update multiple boxes
+     */
+    bulkUpdateBoxes(boxNumbers: number[], status: LotoBoxStatus): Observable<any[]> {
+      const color = STATUS_COLORS[status];
+      const boxes = this.boxes().filter(b => boxNumbers.includes(b.number));
+      if (!boxes.length) {
+        return of([]);
+      }
+  
+      if (this.wledStrategy() === WLEDStrategy.LED_ARRAY) {
+        return this.bulkUpdateWithLEDArray(boxNumbers, status, color);
+      }
+  
+      return this.bulkUpdateWithSegments(boxNumbers, status, color);
+    }
+  
+    /**
+     * Bulk update using LED array strategy
+     * Groups ranges by controller and sends one request per controller
+     */
+    private bulkUpdateWithLEDArray(
+      boxNumbers: number[],
+      status: LotoBoxStatus,
+      color: { r: number; g: number; b: number }
+    ): Observable<any[]> {
+      // Build ranges for all boxes
+      const ranges = boxNumbers.map(boxNumber => {
+        const box = this.boxes().find(b => b.number === boxNumber);
+        if (!box) {
+          this.logger.error(`No box found for number ${boxNumber}`, { boxNumber });
+          return null;
+        }
+        return {
+          rangeStart: box.rangeStart,
+          rangeEnd: box.rangeEnd,
+          r: color.r,
+          g: color.g,
+          b: color.b,
+          strip: box.strip
+        };
+      }).filter(r => r !== null);
+  
+      // Group ranges by controller
+      const rangesByController = new Map<number, Array<{
+        rangeStart: number;
+        rangeEnd: number;
+        r: number;
+        g: number;
+        b: number;
+      }>>();
+  
+      ranges.forEach(range => {
+        const controller = this.wledService.getControllerByStrip(range!.strip);
+        if (controller) {
+          if (!rangesByController.has(controller.id)) {
+            rangesByController.set(controller.id, []);
+          }
+          rangesByController.get(controller.id)!.push({
+            rangeStart: range!.rangeStart,
+            rangeEnd: range!.rangeEnd,
+            r: range!.r,
+            g: range!.g,
+            b: range!.b
+          });
+        }
       });
-    });
-
-    return forkJoin(updates).pipe(
-      tap(() => {
-        this.logger.success(`Bulk updated ${boxNumbers.length} boxes`, {
-          bulkCount: boxNumbers.length,
-          successCount: boxNumbers.length
+  
+      // Send one request per controller
+      const controllerUpdates = Array.from(rangesByController.entries()).map(
+        ([controllerId, boxRanges]) => {
+          return this.ledArrayService.updateMultipleRangesAndSync(controllerId, boxRanges.map(r => ({
+            start: r.rangeStart,
+            end: r.rangeEnd,
+            r: r.r,
+            g: r.g,
+            b: r.b
+          })));
+        }
+      );
+  
+      return forkJoin(controllerUpdates).pipe(
+        tap(() => {
+          // Update local state for all boxes
+          const updatedBoxes = this.boxes().map(box => {
+            if (boxNumbers.includes(box.number)) {
+              return {
+                ...box,
+                r: color.r,
+                g: color.g,
+                b: color.b,
+                status,
+                lastUpdated: new Date(),
+                online: true,
+                pendingSync: false
+              };
+            }
+            return box;
+          });
+          this.boxes.set(updatedBoxes);
+          this.saveBoxes();
+  
+          this.logger.success(`Bulk updated ${boxNumbers.length} boxes across ${rangesByController.size} controller(s)`, {
+            bulkCount: boxNumbers.length,
+            controllerCount: rangesByController.size
+          });
+        }),
+        catchError(error => {
+          this.logger.error(`Failed to bulk update boxes`, {
+            bulkCount: boxNumbers.length,
+            errorMessage: error.message
+          });
+  
+          // Queue failed updates for retry
+          boxNumbers.forEach(boxNumber => {
+            const box = this.boxes().find(b => b.number === boxNumber);
+            if (box) {
+              this.syncQueue.queueUpdate({
+                boxNumber,
+                r: color.r,
+                g: color.g,
+                b: color.b,
+                brightness: box.brightness,
+                status
+              });
+            }
+          });
+  
+          return of([]);
+        })
+      );
+    }
+  
+    /**
+     * Bulk update using segment strategy
+     * Updates each box individually (limited to 31 segments)
+     */
+    private bulkUpdateWithSegments(
+      boxNumbers: number[],
+      status: LotoBoxStatus,
+      color: { r: number; g: number; b: number }
+    ): Observable<any[]> {
+      const updates = boxNumbers.map(boxNumber => {
+        const box = this.boxes().find(b => b.number === boxNumber);
+        return this.updateBox({
+          boxNumber,
+          r: color.r,
+          g: color.g,
+          b: color.b,
+          brightness: box?.brightness || 255,
+          status
         });
-      })
-    );
-  }
+      });
+  
+      return forkJoin(updates).pipe(
+        tap(() => {
+          this.logger.success(`Bulk updated ${boxNumbers.length} boxes`, {
+            bulkCount: boxNumbers.length,
+            successCount: boxNumbers.length
+          });
+        })
+      );
+    }
 
   /**
    * Clear all boxes (set to CLOSED/dark blue)
@@ -491,5 +656,20 @@ export class LotoBoxService {
   
       return chainedBoxes.filter(box => stripsInController.includes(box.strip));
     }
+
+
+    //====================SYNC FROM CONTROLLERS===========================
+  loadFromEsp() {
+    this.ledArrayService.getStateFromAllControllers().pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: state => {
+        console.log('Loaded LED state from controllers:', state);
+      },
+      error: error => {
+        this.logger.error('Failed to load LED state from controllers', { error });
+      }
+    })
+  }
 
 }

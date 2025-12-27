@@ -98,6 +98,26 @@ export class WLEDService {
     );
   }
 
+
+    /**
+     * Get individual LED states from controller
+     * Requests the full LED array state from WLED
+     */
+    getIndividualLEDs(controllerId: number): Observable<any> {
+      const controller = this.CONTROLLERS.find(c => c.id === controllerId);
+      if (!controller) {
+        return throwError(() => new Error(`Controller ${controllerId} not found`));
+      }
+  
+      // Request with 'leds' parameter to get individual LED data
+      // const url = `http://${controller.ip}/json?leds=true`;
+      const url = `http://${controller.ip}/json/live`;
+      return this.http.get(url).pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(this.handleError)
+      );
+    }
+
   /**
    * Get device info
    */

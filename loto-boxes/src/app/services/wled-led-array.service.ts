@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
-import { Observable } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
+import { Observable, of, throwError } from 'rxjs';
+import { tap, catchError, map } from 'rxjs/operators';
 import { WLEDService } from './wled.service';
 import { LoggerService } from './logger.service';
 import { LotoBox } from '../models/loto-box.model';
@@ -9,6 +9,14 @@ import { LotoBox } from '../models/loto-box.model';
  * LED state for individual LED control
  */
 interface LEDState {
+  r: number;
+  g: number;
+  b: number;
+}
+
+export interface LEDRange{
+  start: number;
+  end: number;
   r: number;
   g: number;
   b: number;
@@ -100,6 +108,50 @@ export class WledLedArrayService {
     states.set(controllerId, newState);
     this.controllerStates.set(states);
   }
+
+  
+    updateMultipleRanges(controllerId: number, ranges: LEDRange[]): void {
+      const state = this.controllerStates().get(controllerId);
+      if (!state) {
+        this.logger.error(`Controller ${controllerId} not found`);
+        return;
+      }
+  
+      // Update LED array for all ranges
+      const newLeds = [...state.leds];
+      ranges.forEach(range => {
+        for (let i = range.start; i <= range.end && i < newLeds.length; i++) {
+          newLeds[i] = { r: range.r, g: range.g, b: range.b };
+        }
+      });
+  
+      // Update state
+      const newState: ControllerLEDState = {
+        ...state,
+        leds: newLeds,
+        dirty: true
+      };
+  
+      const states = new Map(this.controllerStates());
+      states.set(controllerId, newState);
+      this.controllerStates.set(states);
+  
+      this.logger.info(`Updated ${ranges.length} ranges for controller ${controllerId}`);
+    }
+  
+    /**
+     * Update multiple ranges and sync to controller
+     */
+    updateMultipleRangesAndSync(
+      controllerId: number,
+      ranges: LEDRange[]
+    ): Observable<any> {
+      // Apply all range updates to LED array
+      this.updateMultipleRanges(controllerId, ranges);
+  
+      // Sync once with all changes
+      return this.syncController(controllerId);
+    }
 
   /**
    * Send LED state to WLED controller
@@ -342,4 +394,173 @@ export class WledLedArrayService {
       });
     });
   }
+
+
+
+  //=========================================SYNC FROM CONTROLLERS=========================================
+  
+  
+    /**
+     * Fetch current state from controller and update local cache
+     */
+    getStateFromController(controllerId: number): Observable<ControllerLEDState> {
+      return this.getAllIndividualLEDStates(controllerId).pipe(
+        map((leds: LEDState[]) => {
+          const currentState = this.controllerStates().get(controllerId);
+          if (!currentState) {
+            throw new Error(`Controller ${controllerId} not found`);
+          }
+  
+          // Update local state with fetched LED data
+          const updatedState: ControllerLEDState = {
+            controllerId,
+            ledCount: currentState.ledCount,
+            leds,
+            dirty: false
+          };
+  
+          const states = new Map(this.controllerStates());
+          states.set(controllerId, updatedState);
+          this.controllerStates.set(states);
+  
+          this.logger.success(`Fetched state from controller ${controllerId}`, {
+            controllerId,
+            ledCount: leds.length
+          });
+  
+          return updatedState;
+        }),
+        catchError(error => {
+          this.logger.error(`Failed to fetch state from controller ${controllerId}`, {
+            controllerId,
+            errorMessage: error.message
+          });
+          throw error;
+        })
+      );
+    }
+  
+    /**
+     * Fetch current state from all controllers and update local cache
+     */
+    getStateFromAllControllers(): Observable<Map<number, ControllerLEDState>> {
+      const controllers = this.wledService.getControllers();
+      
+      if (controllers.length === 0) {
+        this.logger.warn('No WLED controllers configured');
+        return of(new Map(this.controllerStates()));
+      }
+  
+      const stateRequests = controllers.map(controller =>
+        this.getStateFromController(controller.id).pipe(
+          catchError(error => {
+            this.logger.error(`Failed to get state from controller ${controller.id}`, error);
+            return of(null);
+          })
+        )
+      );
+  
+      return new Observable(observer => {
+        let completed = 0;
+        
+        stateRequests.forEach((request) => {
+          request.subscribe({
+            next: () => {
+              completed++;
+              if (completed === stateRequests.length) {
+                observer.next(new Map(this.controllerStates()));
+                observer.complete();
+              }
+            },
+            error: () => {
+              completed++;
+              if (completed === stateRequests.length) {
+                observer.next(new Map(this.controllerStates()));
+                observer.complete();
+              }
+            }
+          });
+        });
+      });
+    }
+  
+    /**
+     * Get state of individual LED from controller
+     */
+    getIndividualLEDState(controllerId: number, ledIndex: number): Observable<LEDState> {
+      return this.wledService.getIndividualLEDs(controllerId).pipe(
+        map((response: any) => {
+          // WLED returns leds array with [R, G, B] for each LED
+          if (response.leds && Array.isArray(response.leds) && response.leds[ledIndex]) {
+            const [r, g, b] = response.leds[ledIndex];
+            return { r, g, b };
+          }
+          throw new Error(`LED index ${ledIndex} not found in response`);
+        }),
+        catchError(error => {
+          this.logger.error(`Failed to get individual LED state`, {
+            controllerId,
+            ledIndex,
+            errorMessage: error.message
+          });
+          throw error;
+        })
+      );
+    }
+  
+    /**
+     * Get state of multiple individual LEDs from controller
+     */
+    getMultipleLEDStates(controllerId: number, ledIndices: number[]): Observable<LEDState[]> {
+      return this.wledService.getIndividualLEDs(controllerId).pipe(
+        map((response: any) => {
+          if (!response.leds || !Array.isArray(response.leds)) {
+            throw new Error('No LED data in response');
+          }
+          return ledIndices.map(index => {
+            if (response.leds[index]) {
+              const [r, g, b] = response.leds[index];
+              return { r, g, b };
+            }
+            this.logger.warn(`LED index ${index} out of range for controller ${controllerId}`);
+            return { r: 0, g: 0, b: 32 };
+          });
+        }),
+        catchError(error => {
+          this.logger.error(`Failed to get multiple LED states`, {
+            controllerId,
+            ledCount: ledIndices.length,
+            errorMessage: error.message
+          });
+          throw error;
+        })
+      );
+    }
+  
+    /**
+     * Get state of all individual LEDs from controller
+     */
+    getAllIndividualLEDStates(controllerId: number): Observable<LEDState[]> {
+      return this.wledService.getIndividualLEDs(controllerId).pipe(
+        map((response: any) => {
+          if (!response.leds || !Array.isArray(response.leds)) {
+            throw new Error('No LED data in response');
+          }
+          return response.leds.map((ledData: any) => {
+            const [r, g, b] = ledData;
+            return { r, g, b };
+          });
+        }),
+        catchError(error => {
+          this.logger.error(`Failed to get all individual LED states`, {
+            controllerId,
+            errorMessage: error.message
+          });
+          throw error;
+        })
+      );
+    }
+  
+    
+
 }

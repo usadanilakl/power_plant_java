@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { LotoBoxService } from '../../services/loto-box.service';
+import { SpellingService } from '../../services/spelling.service';
 
 @Component({
   selector: 'app-control-panel',
@@ -8,7 +9,8 @@ import { LotoBoxService } from '../../services/loto-box.service';
   styleUrl: './control-panel.component.css',
 })
 export class ControlPanelComponent {
-  constructor(private lotoBoxService: LotoBoxService) {}
+  private lotoBoxService = inject(LotoBoxService);
+  private spellService = inject(SpellingService);
 
   syncAll(): void {
     this.lotoBoxService.syncAllToControllers().subscribe();
@@ -23,11 +25,17 @@ export class ControlPanelComponent {
   refresh(): void {
     this.lotoBoxService.loadBoxes();
   }
+  loadFromEsp() {
+    this.lotoBoxService.loadFromEsp();
+  }
 
   getStatusCount(status: string): number {
     return this.lotoBoxService.boxes().filter(b =>
       b.status === status
     ).length;
+  }
+  spell() {
+    this.spellService.spellString("AB");
   }
 }
 
