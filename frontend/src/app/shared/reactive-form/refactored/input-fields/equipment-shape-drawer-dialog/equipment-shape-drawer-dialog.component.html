@@ -3,19 +3,10 @@
     <!-- Left Panel: File List -->
     <div class="file-list-panel">
       <h3>Select P&ID</h3>
-      <div class="file-list">
-        @if (files().length === 0) {
-          <p class="no-files">No files available</p>
-        }
-        @for (file of files(); track file.id) {
-          <div
-            class="file-item"
-            [class.selected]="isFileSelected(file)"
-            (click)="onFileSelect(file)">
-            <span class="file-name">{{ file.name }}</span>
-          </div>
-        }
-      </div>
+      <app-rf-toggle-menu
+        [menuItems]="menuItems()"
+        (itemClick)="onFileSelect($event)"
+      ></app-rf-toggle-menu>
     </div>
 
     <!-- Right Panel: P&ID Drawing Canvas -->
@@ -46,6 +37,7 @@
             [imageUrl]="currentFileLink()"
             [shapesInput]="equipmentShapes()"
             [mode]="isDrawingMode() ? 'edit' : 'view'"
+            (shapeDrawn)="onShapeDrawn($event)"
           />
         </div>
       } @else {

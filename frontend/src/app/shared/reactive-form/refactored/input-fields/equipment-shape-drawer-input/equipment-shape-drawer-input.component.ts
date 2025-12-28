@@ -1,4 +1,4 @@
-import { Component, Input, forwardRef, signal, inject } from '@angular/core';
+import { Component, Input, forwardRef, signal, inject, computed } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RfPopupProjectionComponent } from '../../../../popup-projection/rf-popup-projection.component';
@@ -6,6 +6,8 @@ import { EquipmentShapeDrawerDialogComponent } from '../equipment-shape-drawer-d
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { FileDto } from '../../../../../models/file/file.model';
 import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
+import { FileMenuService } from '../../../../../features/files/refactored/rf-file-left-menu/rf-file-menu.service';
+import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 
 @Component({
   selector: 'app-equipment-shape-drawer-input',
@@ -27,13 +29,23 @@ export class EquipmentShapeDrawerInputComponent implements ControlValueAccessor 
 
   // Services
   private equipmentMapper = inject(EquipmentMapperService);
+  protected fileMenuService = inject(FileMenuService);
 
   // State
   isDialogOpen = signal(false);
   drawnShapeInfo = signal<{ shape: RfShape; file: FileDto } | null>(null);
+  displayText = computed(() => {
+    const shapeInfo = this.drawnShapeInfo();
+      console.log('Shape info:', shapeInfo);
+    if (shapeInfo) {
+      return `Shape on ${shapeInfo.file.name}`;
+    }
+    return this.coordValue() ? `Shape (File ID: ${this.coordValue()!.fileId})` : this.placeholder;
+  });
 
   // ControlValueAccessor
-  value: { coordinates: string; fileId: number; originalPictureSize: string } | null = null;
+  coordValue = signal<{ coordinates: string; fileId: number; originalPictureSize: string } | null>(null);
+  value = signal <EquipmentDto | null>(null);
   onChange: any = () => {};
   onTouched: any = () => {};
   disabled: boolean = false;
@@ -69,14 +81,21 @@ export class EquipmentShapeDrawerInputComponent implements ControlValueAccessor 
     this.drawnShapeInfo.set(data);
 
     // Extract shape data to store in form
-    this.value = {
+    this.coordValue.set({
       coordinates: this.equipmentMapper.mapRfShapeToCoordinates(data.shape),
       fileId: data.file.id ?? 0,
       originalPictureSize: this.equipmentMapper.formatPictureSize(
         data.shape.originalPictureWidth,
         data.shape.originalPictureHeight
       )
-    };
+    });
+
+    this.onChange(this.value);
+    this.onTouched();
+    this.closeDialog();
+  }
+  onSaveSuccess(data: EquipmentDto | null) {
+    this.value.set(data);
 
     this.onChange(this.value);
     this.onTouched();
@@ -86,7 +105,7 @@ export class EquipmentShapeDrawerInputComponent implements ControlValueAccessor 
   clearShape() {
     if (!this.disabled) {
       this.drawnShapeInfo.set(null);
-      this.value = null;
+      this.value.set(null);
       this.onChange(this.value);
       this.onTouched();
     }
@@ -95,9 +114,10 @@ export class EquipmentShapeDrawerInputComponent implements ControlValueAccessor 
   getDisplayText(): string {
     const shapeInfo = this.drawnShapeInfo();
     if (shapeInfo) {
+      console.log('Shape info:', shapeInfo);
       return `Shape on ${shapeInfo.file.name}`;
     }
-    return this.value ? `Shape (File ID: ${this.value.fileId})` : this.placeholder;
+    return this.coordValue() ? `Shape (File ID: ${this.coordValue()!.fileId})` : this.placeholder;
   }
 
   hasShape(): boolean {

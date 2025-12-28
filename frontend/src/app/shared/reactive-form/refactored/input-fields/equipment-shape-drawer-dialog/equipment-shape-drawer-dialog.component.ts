@@ -7,11 +7,17 @@ import { FileDto } from '../../../../../models/file/file.model';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { NestedItem } from '../../../../../models/ui/nested-item.model';
+import { RfFileLeftMenuComponent } from "../../../../../features/files/refactored/rf-file-left-menu/rf-file-left-menu.component";
+import { RfToggleMenuComponent } from "../../../../menu/refactored/rf-toggle-menu/rf-toggle-menu.component";
+import { FileMenuService } from '../../../../../features/files/refactored/rf-file-left-menu/rf-file-menu.service';
+import { RfEquipmentService } from '../../../../../features/equipment/refactored/services/rf-equipment.service';
+import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
+import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
 
 @Component({
   selector: 'app-equipment-shape-drawer-dialog',
   standalone: true,
-  imports: [CommonModule, InteractiveImageComponent],
+  imports: [CommonModule, InteractiveImageComponent, RfFileLeftMenuComponent, RfToggleMenuComponent],
   templateUrl: './equipment-shape-drawer-dialog.component.html',
   styleUrl: './equipment-shape-drawer-dialog.component.css'
 })
@@ -21,10 +27,14 @@ export class EquipmentShapeDrawerDialogComponent {
   // Services
   fileStateService = inject(RfFileStateService);
   currentFileService = inject(CurrentFileService);
+  menuService = inject(FileMenuService);
+  equipmentService = inject(RfEquipmentService);
+  equipmentMapper = inject(EquipmentMapperService);
   destroyRef = inject(DestroyRef);
 
   // Outputs
   shapeDrawn = output<{ shape: RfShape; file: FileDto }>();
+  saveSuccess = output<EquipmentDto | null>();
   close = output<void>();
 
   // State
@@ -32,13 +42,23 @@ export class EquipmentShapeDrawerDialogComponent {
   drawnShape = signal<RfShape | null>(null);
   isDrawingMode = signal(false);
 
-  menuItems = signal<NestedItem[]>([]);
+  menuItems = this.menuService.menuItems;
   isLoading = signal(false);
   error = signal<string | null>(null);
 
   // Data
   filesMap = toSignal(this.currentFileService.fileMapByType$);
-  equipment = toSignal(this.currentFileService.elementsToRender$, { initialValue: null });
+  // equipment = toSignal(this.currentFileService.elementsToRender$, { initialValue: null });
+  equipment = computed(() => {
+    const file = this.selectedFile();
+    if (!file) return [];
+    return file.points;
+  });
+  equipmentShapes = computed(() => {
+    const equipment = this.equipment();
+    if (!equipment) return [];
+    return this.equipmentMapper.mapAllToRfShapes(equipment);
+  });
 
   files = computed(() =>{
     if(!this.filesMap() ||!this.filesMap()!.get('pid')) return [];
@@ -51,14 +71,6 @@ export class EquipmentShapeDrawerDialogComponent {
     return file ? file.fileLink : '';
   });
 
-  // Existing equipment shapes for display only
-  equipmentShapes = computed(() => {
-    const eq = this.equipment();
-    if (!eq) return [];
-    // For shape drawer, we might want to show existing equipment as reference
-    return []; // Or load existing shapes if needed
-  });
-
   constructor() {
     // Watch for selected file changes
     effect(() => {
@@ -67,49 +79,18 @@ export class EquipmentShapeDrawerDialogComponent {
         this.currentFileService.setCurrentFile(file);
       }
     });
-
-    // Watch for newly created shapes from InteractiveImageComponent
-    effect(() => {
-      const imageComponent = this.interactiveImage;
-      if (imageComponent && this.isDrawingMode()) {
-        // Get the last added shape from the shapes signal
-        const shapes = imageComponent.shapes();
-        if (shapes.length > 0) {
-          const lastShape = shapes[shapes.length - 1];
-          this.drawnShape.set(lastShape);
-        }
-      }
-    });
-        
-    this.currentFileService.filesLoaded$.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (loaded) => {
-        if(loaded){
-          this.loadFiles();
-          this.isLoading.set(false);
-        }
-        else{
-          this.isLoading.set(true);
-        } 
-      },
-      error: (error) => {
-        console.error('Error loading files:', error);
-        this.error.set(error.message);
-      }
-    })
   }
+  onFileSelect(fileItem: NestedItem) {
 
-  loadFiles(type: string = 'pid'): void {
-        const criteria = type==='pid' ? 'vendor' : 'fileType';
-        const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
-        this.menuItems.set(nestedItems);
-  }
-  onFileSelect(file: FileDto) {
-    this.selectedFile.set(file);
+    this.menuService.getFileFromNestedItem(fileItem, this.selectedFile)
     this.drawnShape.set(null);
     this.isDrawingMode.set(false);
   }
+  // onFileSelect(file: FileDto) {
+  //   this.selectedFile.set(file);
+  //   this.drawnShape.set(null);
+  //   this.isDrawingMode.set(false);
+  // }
 
   startDrawing() {
     this.isDrawingMode.set(true);
@@ -121,7 +102,32 @@ export class EquipmentShapeDrawerDialogComponent {
     const file = this.selectedFile();
 
     if (shape && file) {
-      this.shapeDrawn.emit({ shape, file });
+      this.isLoading.set(true);
+      this.error.set(null);
+      
+      // The shape needs to be associated with the file it was drawn on.
+      // We'll add the fileId to the shape before sending it to the service.
+      const shapeWithFileContext: RfShape = { ...shape, fileId: file.id };
+
+      this.equipmentService.saveEquipmentFromShape(shapeWithFileContext)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (savedEquipment) => {
+            this.isLoading.set(false);
+            if (savedEquipment) {
+              this.saveSuccess.emit(savedEquipment);
+              this.close.emit(); // Close dialog on success
+            } else {
+              this.error.set('Failed to save the equipment. The operation returned no data.');
+            }
+          },
+          error: (err) => {
+            this.isLoading.set(false);
+            this.error.set('An error occurred while saving the equipment.');
+            console.error(err);
+            this.saveSuccess.emit(null);
+          }
+        });
     }
   }
 
@@ -135,5 +141,10 @@ export class EquipmentShapeDrawerDialogComponent {
 
   canConfirm(): boolean {
     return this.drawnShape() !== null && this.selectedFile() !== null;
+  }
+  onShapeDrawn($event: RfShape) {
+    this.drawnShape.set($event);
+    this.isDrawingMode.set(false);
+    if(this.selectedFile())this.shapeDrawn.emit({ shape: $event, file: this.selectedFile()! });
   }
 }

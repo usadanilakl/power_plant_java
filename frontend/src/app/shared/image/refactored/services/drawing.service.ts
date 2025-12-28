@@ -177,6 +177,7 @@ export class DrawingService {
 
     const newShape: RfRectangleShape = {
       id: nextId,
+      fileId: 0,
       type: 'rectangle',
       x,
       y,

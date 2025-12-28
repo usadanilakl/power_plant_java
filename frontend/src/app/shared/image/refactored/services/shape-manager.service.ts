@@ -16,6 +16,7 @@ export class ShapeManagerService {
   testShapes: RfShape[] = [
     {
       id: 1,
+      fileId: 1,
       type: 'rectangle',
       x: 50,
       y: 50,
@@ -34,6 +35,7 @@ export class ShapeManagerService {
     },
     {
       id: 2,
+      fileId: 1,
       type: 'rectangle',
       x: 300,
       y: 200,
@@ -52,6 +54,7 @@ export class ShapeManagerService {
     },
     {
       id: 3,
+      fileId: 1,
       type: 'rectangle',
       x: 500,
       y: 100,
@@ -70,6 +73,7 @@ export class ShapeManagerService {
     },
     {
       id: 4,
+      fileId: 1,
       type: 'rectangle',
       x: 100,
       y: 300,
@@ -259,6 +263,7 @@ export class ShapeManagerService {
   ): RfRectangleShape {
     return {
       id: this.getNextShapeId(),
+      fileId: 0,
       type: 'rectangle',
       x,
       y,
@@ -286,6 +291,7 @@ export class ShapeManagerService {
   ): SVGSymbolShape {
     return {
       id: this.getNextShapeId(),
+      fileId: 0,
       type: 'svg-symbol',
       symbolId: symbol.id,
       svgPath: symbol.svgPath,

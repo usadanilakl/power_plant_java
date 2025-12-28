@@ -8,6 +8,7 @@ import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { SearchCriteria } from '../models/api/search-criteria.model';
 import { SpringPaginatedResponse } from '../models/api/spring-pagenated.response.model';
 import { FileDto } from '../models/file/file.model';
+import { RfShape } from '../shared/image/refactored/models/fr-shape.model';
 
 @Injectable({
   providedIn: 'root'

@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { EquipmentModel } from "../../../../models/equipment/equipment.model";
+import { EquipmentDto, EquipmentModel } from "../../../../models/equipment/equipment.model";
 import { RfShape, RfRectangleShape } from "../../../../shared/image/refactored/models/fr-shape.model";
 
 @Injectable({
@@ -28,6 +28,7 @@ export class EquipmentMapperService{
 
             const shape: RfRectangleShape = {
                 id: equipment.id || 0,
+                fileId: equipment.mainFileId || 0,
                 type: 'rectangle',
                 color: this.getShapeColor(equipment),
                 originalPictureWidth: pictureSize.width,
@@ -170,5 +171,18 @@ export class EquipmentMapperService{
      */
     formatPictureSize(width: number, height: number): string {
         return `width:${width},height:${height}`;
+    }
+
+    shapeToEquipment(shape: RfShape): EquipmentDto | null {
+        if(shape.type !== 'rectangle') return null;
+        const coordinates = this.mapRfShapeToCoordinates(shape);
+        if(!coordinates) return null;
+        const pictureSize = this.formatPictureSize(shape.originalWidth, shape.originalHeight);
+        const equipment: EquipmentDto = new EquipmentDto({
+            coordinates: coordinates,
+            originalPictureSize: pictureSize,
+            mainFileId: shape.fileId
+        })
+        return equipment;
     }
 }

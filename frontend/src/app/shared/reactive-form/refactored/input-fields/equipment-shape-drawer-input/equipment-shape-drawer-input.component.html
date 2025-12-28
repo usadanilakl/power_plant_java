@@ -3,7 +3,7 @@
 
   <div class="input-container">
     <div class="selected-display" [class.disabled]="disabled">
-      <span class="display-text">{{ getDisplayText() }}</span>
+      <span class="display-text">{{ displayText() }}</span>
       @if (hasShape() && !disabled) {
         <button type="button" class="clear-btn" (click)="clearShape()" title="Clear shape">
           &times;
@@ -32,6 +32,7 @@
   [size]="'large'"
   (close)="closeDialog()">
   <app-equipment-shape-drawer-dialog
+    (saveSuccess)="onSaveSuccess($event)"
     (shapeDrawn)="onShapeDrawn($event)"
     (close)="closeDialog()"
   />

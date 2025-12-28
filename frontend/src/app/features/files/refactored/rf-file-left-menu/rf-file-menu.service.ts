@@ -1,0 +1,141 @@
+import { DestroyRef, inject, Injectable, Signal, signal, WritableSignal } from "@angular/core";
+import { CurrentFileService } from "../../../../services/current-file.service";
+import { FileDto } from "../../../../models/file/file.model";
+import { NestedItem, NestedItemImpl } from "../../../../models/ui/nested-item.model";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { FileService } from "../../../../services/file.service";
+import { tap } from "rxjs";
+
+@Injectable({
+    providedIn: 'root'
+})
+export class FileMenuService{
+    currentFileService = inject(CurrentFileService);
+    fileService = inject(FileService);
+    destroyRef = inject(DestroyRef);
+
+    menuItems = signal<NestedItem[]>([]);
+    isLoading = signal(false);
+    error = signal<string | null>(null);
+    currentFile = signal<FileDto | null>(null);
+    selectedType = signal<string>("pid");
+
+    constructor(){
+    this.currentFileService.filesLoaded$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (loaded) => {
+        if(loaded){
+          this.loadFiles();
+          this.isLoading.set(false);
+        }
+        else{
+          this.isLoading.set(true);
+        } 
+      },
+      error: (error) => {
+        console.error('Error loading files:', error);
+        this.error.set(error.message);
+      }
+    })
+
+    this.currentFileService.filesUpdated$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        this.loadFiles(this.selectedType());
+      },
+      error: (error) => {
+        console.error('Error fetching current file:', error);
+      }
+    });
+
+    }
+    
+    
+    loadFiles(type: string = 'pid'): void {
+        const criteria = type==='pid' ? 'vendor' : 'fileType';
+        const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
+        this.menuItems.set(nestedItems);
+    }
+
+    private createListOfNestedItems(data: FileDto[], groupBy: 'vendor' | 'system' | 'fileType'): NestedItem[] {
+    const groupFiles = (files: FileDto[], key: 'vendor' | 'system' | 'fileType'): Record<string, FileDto[]> => {
+    
+        return files.reduce((acc, file, index) => {
+        
+        const groupValue = file[key];
+    
+        if (groupValue && typeof groupValue === 'object' && 'name' in groupValue) {
+            const groupName = groupValue.name;    
+            if (!acc[groupName]) {
+            acc[groupName] = [];
+            }
+            acc[groupName].push(file);
+        } else {
+            console.warn(`File ${index} has invalid or missing ${key}:`, groupValue);
+        }
+    
+        return acc;
+        }, {} as Record<string, FileDto[]>);
+    };
+    
+    const groupedFiles = groupFiles(data, groupBy);
+    
+    return Object.entries(groupedFiles).map(([groupName, files]) => {
+        const parentItem = new NestedItemImpl({
+        id: groupBy + '_' + groupName,
+        name: groupName,
+        isExpanded: false,
+        objectType: groupBy
+        });
+    
+        parentItem.values = files.map(file => new NestedItemImpl({
+        id: file.id.toString(),
+        name: file.name && file.name.trim() !== '' ? file.name : file.fileNumber.join(',') || 'Unnamed File',
+        isExpanded: false,
+        objectType: file.objectType,
+        color: this.setFileItemColor(file)
+        }));
+    
+        return parentItem;
+    });
+    }
+
+  private setFileItemColor(item: FileDto): string{
+    if(!item.name || item.name === ''){
+      return 'red';
+    }
+    if(!item.isVerified){
+      return 'yellow';
+    }
+    return 'green';
+  }  
+  
+  getFileFromNestedItem(item: NestedItem, fileSignal: WritableSignal<FileDto | null>): void {
+      if (item.values && item.values.length > 0) return;
+    
+      const startTime = performance.now();
+    
+      this.fileService.getFileById(item.id.toString()).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap(() => {
+          const endTime = performance.now();
+          console.log(`File fetch time: ${endTime - startTime}ms`);
+        })
+      ).subscribe({
+        next: (response) => {
+          const file = FileDto.fromJson(response.responseData);
+          file.fileLink = file.fileLink.replaceAll('pdf','jpg');
+          fileSignal.set(file);
+    
+          const totalTime = performance.now() - startTime;
+          console.log(`Total operation time: ${totalTime}ms`);
+        },
+        error: (error) => {
+          console.error('Error getting file for edit:', error);
+        }
+      });
+    }
+
+}

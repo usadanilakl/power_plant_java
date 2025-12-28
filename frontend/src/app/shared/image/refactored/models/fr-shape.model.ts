@@ -6,6 +6,7 @@
  */
 export interface RfBaseShape {
   id: number; // Independent shape ID, NOT linked to Equipment ID
+  fileId: number; // ID of the file this shape belongs to
   type: string;
   color: string;
   originalPictureWidth: number;

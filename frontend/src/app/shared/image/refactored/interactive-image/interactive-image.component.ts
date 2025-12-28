@@ -57,6 +57,7 @@ export class InteractiveImageComponent {
   // Outputs
   shapeRightClicked = output<RfShape>();
   shapeUpdated = output<RfShape>();
+  shapeDrawn = output<RfShape>();
 
   shapes = this.shapeManager.shapes;
   selectedShapeIds = this.shapeManager.selectedShapeIds;
@@ -608,12 +609,12 @@ export class InteractiveImageComponent {
       this.transformState,
       this.img.naturalWidth,
       this.img.naturalHeight,
-      this.shapeManager.getNextShapeId() // Changed from this.shapes().length + 1
+      this.shapeManager.getNextShapeId()
     );
 
     if (newShape) {
-      this.shapeManager.addShape(newShape); // Changed from this.shapes().push(newShape)
-      // updateCanvasAndRedraw() will be called automatically by the effect
+      this.shapeManager.addShape(newShape);
+      this.shapeDrawn.emit(newShape);
     }
 
     this.cursor = 'default';
