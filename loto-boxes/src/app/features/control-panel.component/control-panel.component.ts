@@ -37,5 +37,8 @@ export class ControlPanelComponent {
   spell() {
     this.spellService.spellString("AB");
   }
+checkMate() {
+  this.spellService.checkMate();
+}
 }
 

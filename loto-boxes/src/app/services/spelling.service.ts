@@ -75,54 +75,123 @@ export class SpellingService{
     }
 
     
-        setBoxesForB(): void {
-            /**
-             * Letter B pattern on 6x12 grid (72 boxes)
-             * Boxes 1-72 arranged as:
-             * Row 1: 1-12
-             * Row 2: 13-24
-             * Row 3: 25-36
-             * Row 4: 37-48
-             * Row 5: 49-60
-             * Row 6: 61-72
-             * 
-             * Pattern:
-             * #####
-             * #   #
-             * ####
-             * #   #
-             * #   #
-             * #####
-             */
+    setBoxesForB(): void {
+        /**
+         * Letter B pattern on 6x12 grid (72 boxes)
+         * Boxes 1-72 arranged as:
+         * Row 1: 1-12
+         * Row 2: 13-24
+         * Row 3: 25-36
+         * Row 4: 37-48
+         * Row 5: 49-60
+         * Row 6: 61-72
+         * 
+         * Pattern:
+         * #####
+         * #   #
+         * ####
+         * #   #
+         * #   #
+         * #####
+         */
+
+        const litBoxes = [
+            // Top row
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+            // Left column
+            13, 25, 37, 49, 61,
+            // Right column (top section)
+            24, 36,
+            // Middle horizontal bar
+            37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+            // Right column (bottom section)
+            50, 60,
+            // Bottom row
+            61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72
+        ];
+
+        const darkBoxes = Array.from({ length: 72 }, (_, i) => i + 1)
+            .filter(box => !litBoxes.includes(box));
+
+        // Update lit boxes
+        this.boxService.bulkUpdateBoxes(litBoxes, LotoBoxStatus.BUILDING).subscribe({
+            next: () => console.log('Letter B lit boxes updated'),
+            error: (err) => console.error('Failed to update lit boxes:', err)
+        });
+
+        // Update dark boxes
+        this.boxService.bulkUpdateBoxes(darkBoxes, LotoBoxStatus.CLOSED).subscribe({
+            next: () => console.log('Letter B dark boxes updated'),
+            error: (err) => console.error('Failed to update dark boxes:', err)
+        });
+    }
+
     
-            const litBoxes = [
-                // Top row
-                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-                // Left column
-                13, 25, 37, 49, 61,
-                // Right column (top section)
-                24, 36,
-                // Middle horizontal bar
-                37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
-                // Right column (bottom section)
-                50, 60,
-                // Bottom row
-                61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72
-            ];
+    checkMate(delay = 3000, repeat = 20): void {
+        let currentIteration = 0;
+        let isPattern1 = true;
     
-            const darkBoxes = Array.from({ length: 72 }, (_, i) => i + 1)
-                .filter(box => !litBoxes.includes(box));
+        const displayPattern = () => {
+            if (currentIteration >= repeat) {
+                console.log('Checkmate pattern finished');
+                return;
+            }
     
-            // Update lit boxes
-            this.boxService.bulkUpdateBoxes(litBoxes, LotoBoxStatus.BUILDING).subscribe({
-                next: () => console.log('Letter B lit boxes updated'),
-                error: (err) => console.error('Failed to update lit boxes:', err)
-            });
+            if (isPattern1) {
+                // Pattern 1: Checkerboard starting with lit on odd positions
+                const litBoxes: number[] = [];
+                for (let row = 0; row < 6; row++) {
+                    for (let col = 0; col < 12; col++) {
+                        const boxNumber = row * 12 + col + 1;
+                        // Alternate pattern: lit if (row + col) is even
+                        if ((row + col) % 2 === 0) {
+                            litBoxes.push(boxNumber);
+                        }
+                    }
+                }
     
-            // Update dark boxes
-            this.boxService.bulkUpdateBoxes(darkBoxes, LotoBoxStatus.CLOSED).subscribe({
-                next: () => console.log('Letter B dark boxes updated'),
-                error: (err) => console.error('Failed to update dark boxes:', err)
-            });
-        }
+                const darkBoxes = Array.from({ length: 72 }, (_, i) => i + 1)
+                    .filter(box => !litBoxes.includes(box));
+    
+                this.boxService.bulkUpdateBoxes(litBoxes, LotoBoxStatus.ACTIVE).subscribe({
+                    next: () => console.log(`Checkmate pattern 1 (iteration ${currentIteration + 1})`),
+                    error: (err) => console.error('Failed to update pattern 1:', err)
+                });
+    
+                this.boxService.bulkUpdateBoxes(darkBoxes, LotoBoxStatus.CLOSED).subscribe({
+                    error: (err) => console.error('Failed to update dark boxes:', err)
+                });
+            } else {
+                // Pattern 2: Inverted checkerboard (lit on even positions)
+                const litBoxes: number[] = [];
+                for (let row = 0; row < 6; row++) {
+                    for (let col = 0; col < 12; col++) {
+                        const boxNumber = row * 12 + col + 1;
+                        // Alternate pattern: lit if (row + col) is odd
+                        if ((row + col) % 2 === 1) {
+                            litBoxes.push(boxNumber);
+                        }
+                    }
+                }
+    
+                const darkBoxes = Array.from({ length: 72 }, (_, i) => i + 1)
+                    .filter(box => !litBoxes.includes(box));
+    
+                this.boxService.bulkUpdateBoxes(litBoxes, LotoBoxStatus.BUILDING).subscribe({
+                    next: () => console.log(`Checkmate pattern 2 (iteration ${currentIteration + 1})`),
+                    error: (err) => console.error('Failed to update pattern 2:', err)
+                });
+    
+                this.boxService.bulkUpdateBoxes(darkBoxes, LotoBoxStatus.CLOSED).subscribe({
+                    error: (err) => console.error('Failed to update dark boxes:', err)
+                });
+            }
+    
+            isPattern1 = !isPattern1;
+            currentIteration++;
+            setTimeout(displayPattern, delay);
+        };
+    
+        displayPattern();
+    }
 }
