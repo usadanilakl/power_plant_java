@@ -1,0 +1,84 @@
+<div class="equipment-editor-container">
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <div class="loading-overlay">
+      <div class="spinner"></div>
+      <p>Loading equipment...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error()) {
+    <div class="error-message">
+      <i class="error-icon">⚠️</i>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Main Content -->
+  @if (!isLoading() && !error()) {
+    <div class="editor-content">
+      <!-- Header with Equipment Info -->
+      <div class="editor-header">
+        @if (selectedEquipment(); as equipment) {
+          <div class="equipment-info">
+            <h2>{{ equipment.tagNumber || 'Equipment Editor' }}</h2>
+            @if (equipment.description) {
+              <p class="equipment-name">{{ equipment.description }}</p>
+            }
+          </div>
+        }
+        
+        <div class="header-actions">
+          <button 
+            class="btn btn-primary" 
+            (click)="openLotoPointTable()"
+            [disabled]="allLotoPoints().length === 0">
+            View LOTO Points ({{ allLotoPoints().length }})
+          </button>
+        </div>
+      </div>
+
+      <!-- Interactive Image Display -->
+      <div class="image-container">
+        @if (fileLink()) {
+            <app-interactive-image
+              [imageUrl]="fileLink()"
+              [shapesInput]="shapes()"
+              [inputMode]="'edit'"
+              (shapeClicked)="onShapeSelected($event)"
+              (shapeRightClicked)="onShapeRightClicked($event)"
+              (shapeUpdated)="onShapeUpdated($event)">
+            </app-interactive-image>
+        } @else {
+          <div class="no-file-message">
+            <p>No file available for this equipment</p>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- LOTO Point Table Popup -->
+  @if (isLotoPointTableOpen()) {
+    <app-popup-projection (closePopup)="closeLotoPointTable()">
+      <app-loto-point-display-table
+        [lotoPoints]="allLotoPoints()"
+        [selectionMode]="'single'"
+        (lotoPointsSelected)="onLotoPointSelected($event)">
+      </app-loto-point-display-table>
+    </app-popup-projection>
+  }
+
+  <!-- LOTO Point Form Popup -->
+  @if (isLotoPointFormOpen() && selectedLotoPoint()) {
+    <app-popup-projection (closePopup)="onLotoPointFormClose()">
+      <app-loto-point-detail-form
+        [lotoPoint]="selectedLotoPoint()!"
+        (formSubmit)="onLotoPointFormSubmit($event)"
+        (formCancel)="onLotoPointFormClose()"
+        (formDelete)="onLotoPointFormDelete()">
+      </app-loto-point-detail-form>
+    </app-popup-projection>
+  }
+</div>

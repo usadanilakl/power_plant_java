@@ -56,6 +56,8 @@ export class InteractiveImageComponent {
 
   // Outputs
   shapeRightClicked = output<RfShape>();
+  shapeDoubleClicked = output<RfShape>();
+  shapeClicked = output<RfShape>();
   shapeUpdated = output<RfShape>();
   shapeDrawn = output<RfShape>();
 
@@ -494,6 +496,11 @@ export class InteractiveImageComponent {
       } else {
         console.log('Ctrl/Cmd key is NOT held');
         // Handle normal click behavior
+        const clickedShapeId = this.isOverShape(event);
+        if (clickedShapeId!== null) {
+          const shape = this.shapeManager.getShapeById(clickedShapeId);
+          if(shape)this.shapeClicked.emit(shape);
+        }
       }
     }
   }

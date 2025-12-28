@@ -49,7 +49,7 @@
       </div>
     } @else {
       @for (item of equipmentList(); track $index) {
-        <div class="equipment-item" [class.disabled]="disabled">
+        <div class="equipment-item" [class.disabled]="disabled" (click)="openViewer(item)">
           <div class="item-icon" [class]="'icon-' + getItemIcon(item)">
             @if (item.isExisting) {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -113,4 +113,16 @@
     (shapeDrawn)="onShapeDrawn($event)"
     (close)="closeDrawer()"
   />
+</app-rf-popup-projection>
+
+<!-- Viewer Dialog -->
+<app-rf-popup-projection
+  [isOpen]="isVeiewerOpen()"
+  [title]="'Viewing File'"
+  [size]="'large'"
+  (close)="closeViewer()">
+  <!-- <app-equipment-shape-drawer-dialog
+    (shapeDrawn)="onShapeDrawn($event)"
+    (close)="closeDrawer()"
+  /> -->
 </app-rf-popup-projection>

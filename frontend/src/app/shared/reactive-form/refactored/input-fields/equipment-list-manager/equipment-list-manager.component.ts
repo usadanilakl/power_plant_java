@@ -8,6 +8,7 @@ import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { FileDto } from '../../../../../models/file/file.model';
 import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
+import { sign } from 'crypto';
 
 interface EquipmentListItem {
   id?: number;
@@ -49,10 +50,11 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   // State
   isBrowserOpen = signal(false);
   isDrawerOpen = signal(false);
+  isVeiewerOpen = signal(false);
   equipmentList = signal<EquipmentListItem[]>([]);
 
   // ControlValueAccessor
-  value: EquipmentListItem[] = [];
+  value = signal<EquipmentListItem[]>([]);
   onChange: any = () => {};
   onTouched: any = () => {};
   disabled: boolean = false;
@@ -61,13 +63,14 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     if (Array.isArray(value)) {
       this.equipmentList.set(value.map(item => ({
         ...item,
+        fileId: item.mainFileId,
         fileName: item.mainFileObject?.name,
         isExisting: !!item.id // If has ID, it's existing equipment
       })));
-      this.value = value;
+      this.value.set(value);
     } else {
       this.equipmentList.set([]);
-      this.value = [];
+      this.value.set([]);
     }
   }
 
@@ -92,6 +95,15 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
 
   closeBrowser() {
     this.isBrowserOpen.set(false);
+  }
+
+  openViewer(item: EquipmentListItem) {
+    console.log('Open viewer for equipment with ID:', item);
+    if(!item || !item.fileId) return;
+    this.isVeiewerOpen.set(true);
+  }
+  closeViewer() {
+    this.isVeiewerOpen.set(false);
   }
 
   onEquipmentSelected(equipment: EquipmentDto) {
@@ -142,8 +154,8 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     const currentList = this.equipmentList();
     const updatedList = [...currentList, item];
     this.equipmentList.set(updatedList);
-    this.value = updatedList;
-    this.onChange(this.value);
+    this.value.set(updatedList);
+    this.onChange(this.value());
     this.onTouched();
   }
 
@@ -152,8 +164,8 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
       const currentList = this.equipmentList();
       const updatedList = currentList.filter((_, i) => i !== index);
       this.equipmentList.set(updatedList);
-      this.value = updatedList;
-      this.onChange(this.value);
+      this.value.set(updatedList);
+      this.onChange(this.value());
       this.onTouched();
     }
   }
@@ -161,8 +173,8 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   clearAll() {
     if (!this.disabled) {
       this.equipmentList.set([]);
-      this.value = [];
-      this.onChange(this.value);
+      this.value.set([]);
+      this.onChange(this.value());
       this.onTouched();
     }
   }
