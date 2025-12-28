@@ -73,6 +73,8 @@ public class LedStripMapper implements BaseMapper {
             dto.setOffRefreshRate(entity.getOffRefreshRate());
         }
 
+        dto.setSequence(entity.getSequence());
+
         // Map ESP Device with full object
         if (entity.getEspDevice() != null) {
             dto.setEspDeviceId(entity.getEspDevice().getId());
@@ -121,6 +123,8 @@ public class LedStripMapper implements BaseMapper {
         if (entity.getEspDevice() != null) {
             dto.setEspDeviceId(entity.getEspDevice().getId());
         }
+
+        dto.setSequence(entity.getSequence());
 
         return dto;
     }
@@ -184,6 +188,8 @@ public class LedStripMapper implements BaseMapper {
         } else if (source.getEspDeviceId() != null) {
             entity.setEspDevice(espDeviceService.getEntityById(source.getEspDeviceId()));
         }
+
+        entity.setSequence(source.getSequence() == null? 0 : source.getSequence());
 
         return entity;
     }

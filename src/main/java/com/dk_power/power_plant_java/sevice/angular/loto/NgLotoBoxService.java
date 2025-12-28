@@ -191,32 +191,23 @@ public class NgLotoBoxService implements NgCrudService<LotoBox, LotoBoxDto, Loto
      * @param box The LotoBox for which to calculate the absolute range.
      * @return A map containing the absolute 'start' and 'end' of the LED range, or null if calculation is not possible.
      */
-    public Map<String,Integer> getAbsoluteLedRange(LotoBox box) {
+        public Map<String,Integer> getAbsoluteLedRange(LotoBox box) {
         if (box == null || box.getLedStrip() == null) return null;
 
         LedStrip currentStrip = box.getLedStrip();
         EspDevice esp = currentStrip.getEspDevice();
-        Integer currentPin = currentStrip.getGpioPin();
 
-        if (esp == null || currentPin == null) return null;
+        if (esp == null) return null;
 
-        List<Integer> pinOrder = esp.getPinSequence().stream()
-                .map(Integer::parseInt)
-                .sorted()
-                .toList();
-        
         List<LedStrip> ledStrips = ledStripService.getByEspDeviceId(esp.getId());
+        ledStrips.sort(Comparator.comparing(LedStrip::getSequence));
 
         int offset = 0;
-        for (Integer pin : pinOrder) {
-            if (pin.equals(currentPin)) {
+        for (LedStrip strip : ledStrips) {
+            if (strip.getId().equals(currentStrip.getId())) {
                 break;
             }
-            offset += ledStrips.stream()
-                    .filter(s -> pin.equals(s.getGpioPin()))
-                    .mapToInt(LedStrip::getTotalLeds)
-                    .findFirst()
-                    .orElse(0);
+            offset += strip.getTotalLeds();
         }
 
         Map<String, Integer> absoluteRange = new HashMap<>();

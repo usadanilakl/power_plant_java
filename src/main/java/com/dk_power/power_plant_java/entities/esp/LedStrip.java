@@ -24,6 +24,8 @@ public class LedStrip extends BaseAuditEntity {
     @Column(nullable = false)
     private Integer gpioPin; // GPIO pin number (e.g., 2, 4, 16)
 
+    private Integer sequence;
+
     @Column(nullable = false)
     private Integer totalLeds = 260; // Total LEDs on this strip (Length in WLED)
 

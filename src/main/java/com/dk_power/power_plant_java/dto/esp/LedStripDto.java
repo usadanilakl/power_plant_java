@@ -15,6 +15,7 @@ public class LedStripDto extends BaseDto {
     private EspDeviceDto espDevice;
     private Integer stripNumber;
     private Integer gpioPin;
+    private Integer sequence;
     private Integer totalLeds = 260;
     private String description;
 
