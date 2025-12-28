@@ -59,8 +59,7 @@
     </div>
   }
 
-  <!-- LOTO Point Table Popup -->
-  @if (isLotoPointTableOpen()) {
+  <!-- @if (isLotoPointTableOpen()) {
     <app-popup-projection (closePopup)="closeLotoPointTable()">
       <app-loto-point-display-table
         [lotoPoints]="allLotoPoints()"
@@ -70,7 +69,6 @@
     </app-popup-projection>
   }
 
-  <!-- LOTO Point Form Popup -->
   @if (isLotoPointFormOpen() && selectedLotoPoint()) {
     <app-popup-projection (closePopup)="onLotoPointFormClose()">
       <app-loto-point-detail-form
@@ -80,5 +78,5 @@
         (formDelete)="onLotoPointFormDelete()">
       </app-loto-point-detail-form>
     </app-popup-projection>
-  }
+  } -->
 </div>

@@ -1,5 +1,5 @@
 
-import { Component, DestroyRef, effect, ElementRef, inject, input, output, signal, ViewChild } from "@angular/core";
+import { Component, computed, DestroyRef, effect, ElementRef, inject, input, output, signal, ViewChild } from "@angular/core";
 import { fromEvent } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { SymbolPaletteComponent } from "../symbol-palette/symbol-palette.component";
@@ -60,6 +60,8 @@ export class InteractiveImageComponent {
   shapeClicked = output<RfShape>();
   shapeUpdated = output<RfShape>();
   shapeDrawn = output<RfShape>();
+
+  pngUrl = computed(()=>this.imageUrl()?.replaceAll('pdf', 'jpg'));
 
   shapes = this.shapeManager.shapes;
   selectedShapeIds = this.shapeManager.selectedShapeIds;
@@ -217,6 +219,7 @@ export class InteractiveImageComponent {
   }
 
   ngAfterViewInit() {
+    console.log('File URL:', this.imageUrl());
     this._zoomElement = this.zoomElementRef.nativeElement;
     this._zoomOuter = this.zoomOuterRef.nativeElement;
     this._img = this.imgRef.nativeElement;

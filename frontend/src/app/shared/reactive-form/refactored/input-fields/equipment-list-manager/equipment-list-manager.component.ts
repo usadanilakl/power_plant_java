@@ -9,6 +9,7 @@ import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { FileDto } from '../../../../../models/file/file.model';
 import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
 import { sign } from 'crypto';
+import { RfEquipmentEditorComponent } from "../../../../../features/equipment/refactored/rf-equipment-editor/rf-equipment-editor.component";
 
 interface EquipmentListItem {
   id?: number;
@@ -27,8 +28,9 @@ interface EquipmentListItem {
     CommonModule,
     RfPopupProjectionComponent,
     EquipmentBrowserDialogComponent,
-    EquipmentShapeDrawerDialogComponent
-  ],
+    EquipmentShapeDrawerDialogComponent,
+    RfEquipmentEditorComponent
+],
   templateUrl: './equipment-list-manager.component.html',
   styleUrl: './equipment-list-manager.component.css',
   providers: [
@@ -52,6 +54,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   isDrawerOpen = signal(false);
   isVeiewerOpen = signal(false);
   equipmentList = signal<EquipmentListItem[]>([]);
+  selectedEquipment = signal<EquipmentListItem | null>(null);
 
   // ControlValueAccessor
   value = signal<EquipmentListItem[]>([]);
@@ -98,11 +101,12 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   }
 
   openViewer(item: EquipmentListItem) {
-    console.log('Open viewer for equipment with ID:', item);
     if(!item || !item.fileId) return;
+    this.selectedEquipment.set(item);
     this.isVeiewerOpen.set(true);
   }
   closeViewer() {
+    this.selectedEquipment.set(null);
     this.isVeiewerOpen.set(false);
   }
 

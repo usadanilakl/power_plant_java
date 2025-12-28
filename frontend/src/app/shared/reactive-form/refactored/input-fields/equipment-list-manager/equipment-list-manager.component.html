@@ -121,8 +121,7 @@
   [title]="'Viewing File'"
   [size]="'large'"
   (close)="closeViewer()">
-  <!-- <app-equipment-shape-drawer-dialog
-    (shapeDrawn)="onShapeDrawn($event)"
-    (close)="closeDrawer()"
-  /> -->
+  <app-rf-equipment-editor
+    [selectedEquipmentId]="selectedEquipment()?.id!"
+  ></app-rf-equipment-editor>
 </app-rf-popup-projection>

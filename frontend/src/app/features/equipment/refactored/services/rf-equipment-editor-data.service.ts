@@ -1,7 +1,8 @@
 
+
 import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, of, throwError } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { EquipmentService } from '../../../../services/equipment.service';
 import { FileService } from '../../../../services/file.service';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
@@ -25,23 +26,30 @@ export class RfEquipmentEditorDataService {
     this.stateService.setError(null);
 
     return this.equipmentService.getEquipmentById(equipmentId).pipe(
-      tap(equipment => {
-        this.stateService.setSelectedEquipment(equipment);
+      tap(response => {
+        const equipment = response?.responseData ? new EquipmentDto(response.responseData) : null;
+        if (equipment) {
+          this.stateService.setSelectedEquipment(equipment);
+        }
       }),
-      map(equipment => this.getPrimaryFile(equipment)),
+      switchMap(response => {
+        const equipment = response?.responseData ? new EquipmentDto(response.responseData) : null;
+        if (!equipment) {
+          throw new Error('Equipment not found');
+        }
+        return this.getPrimaryFile(equipment);
+      }),
       tap(file => {
         if (!file || !file.id) {
           throw new Error('No file associated with this equipment');
         }
       }),
-      map(file => file!.id!),
+      switchMap(file => this.loadFileAndEquipment(file!.id!)),
       catchError(error => {
         this.stateService.setError(error.message || 'Failed to load equipment');
         this.stateService.setLoading(false);
         return throwError(() => error);
-      }),
-      // Load file and all equipment on that file
-      tap(fileId => this.loadFileAndEquipment(fileId).subscribe())
+      })
     );
   }
 
@@ -50,11 +58,26 @@ export class RfEquipmentEditorDataService {
    */
   private loadFileAndEquipment(fileId: number): Observable<void> {
     return forkJoin({
-      file: this.fileService.getFileById(fileId),
-      equipment: this.fileService.getEquipmentByFileId(fileId)
+      file: this.fileService.getFileById(fileId.toString()).pipe(
+        map(response => response?.responseData ? new FileDto(response.responseData) : null)
+      ),
+      equipment: this.fileService.getEquipmentByFileId(fileId).pipe(
+        map(response => {
+          if (response?.responseData) {
+            // Handle both array and paginated response
+            const data = Array.isArray(response.responseData) 
+              ? response.responseData 
+              : response.responseData || [];
+            return data.map((eq: any) => new EquipmentDto(eq));
+          }
+          return [];
+        })
+      )
     }).pipe(
       tap(result => {
-        this.stateService.setCurrentFile(result.file);
+        if (result.file) {
+          this.stateService.setCurrentFile(result.file);
+        }
         this.stateService.setAllEquipment(result.equipment || []);
         this.stateService.setLoading(false);
       }),
@@ -68,22 +91,28 @@ export class RfEquipmentEditorDataService {
   }
 
   /**
-   * Get the primary file for an equipment (PID > HT ISO > Parent's file)
+   * Get the primary file for an equipment
+   * Returns an Observable that resolves to FileDto or null
    */
-  private getPrimaryFile(equipment: EquipmentDto): FileDto | null {
-    if (equipment.pid && equipment.pid.length > 0) {
-      return equipment.pid[0];
+  private getPrimaryFile(equipment: EquipmentDto): Observable<FileDto | null> {
+    // If mainFileObject exists, return it immediately
+    if (equipment.mainFileObject) {
+      return of(new FileDto(equipment.mainFileObject));
     }
     
-    if (equipment.htIso) {
-      return equipment.htIso;
+    // If mainFileId exists, fetch the file from the server
+    if (equipment.mainFileId) {
+      return this.fileService.getFileById(equipment.mainFileId.toString()).pipe(
+        map(response => response?.responseData ? new FileDto(response.responseData) : null),
+        catchError(error => {
+          console.error('Error fetching file by mainFileId:', error);
+          return of(null);
+        })
+      );
     }
 
-    if (equipment.parentEquipment) {
-      return this.getPrimaryFile(equipment.parentEquipment);
-    }
-
-    return null;
+    // No file found
+    return of(null);
   }
 
   /**
@@ -119,11 +148,12 @@ export class RfEquipmentEditorDataService {
       })
     );
   }
+
   /**
    * Delete a loto point
    */
   deleteLotoPoint(lotoPointId: number): Observable<any> {
-    return this.lotoPointService.deleteLotoPoint(lotoPointId+"").pipe(
+    return this.lotoPointService.deleteLotoPoint(lotoPointId.toString()).pipe(
       tap(response => {
         if (response) {
           this.stateService.removeLotoPointFromEquipment(lotoPointId);
