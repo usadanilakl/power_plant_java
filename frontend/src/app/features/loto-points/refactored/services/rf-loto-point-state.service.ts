@@ -74,6 +74,9 @@ export class RfLotoPointStateService {
   }
 
   setSelectedItem(item: LotoPointDto | null): void {
+    // if(item && !item.equipmentList){
+    //   this.fetchEquipmentList(item);
+    // }
     this.selectedItem.set(item);
   }
   submitForm(item: LotoPointDto) {

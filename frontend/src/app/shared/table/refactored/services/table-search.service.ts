@@ -13,6 +13,7 @@ export class TableSearchService {
   private syncService = inject(TableSyncService);
   private utilService = inject(TableUtilService);
   private localStorageService = inject(TableLocalStorageService);
+  private searchDebounceTimer: any;
   performSearch(
     items: any[],
     globalQuery: string,
@@ -187,6 +188,26 @@ export class TableSearchService {
   onColumnSearchChange(): void {
     this.search();
   }
+
+  // search(): void {
+  //   clearTimeout(this.searchDebounceTimer);
+
+  //   this.searchDebounceTimer = setTimeout(() => {
+  //     const searchCriteria = this.utilService.buildSearchCriteria(
+  //       this.dataService.globalSearchQuery,
+  //       this.dataService.columnFilters(),
+  //       this.dataService.columnFilterLogic
+  //     );
+
+  //     this.dataService.currentSearchCriteria = searchCriteria;
+  //     this.localStorageService.saveTableFilters(
+  //       this.dataService.currentSearchCriteria,
+  //       this.dataService.tableId
+  //     );
+  //     this.updateFilteredItems();
+  //     this.dataService.search.set({ ...searchCriteria });
+  //   }, 600);
+  // }
 
   search(): void {
     const searchCriteria = this.utilService.buildSearchCriteria(

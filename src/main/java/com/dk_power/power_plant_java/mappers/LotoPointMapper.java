@@ -1,9 +1,12 @@
 package com.dk_power.power_plant_java.mappers;
 
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
@@ -15,9 +18,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -79,7 +80,31 @@ public class LotoPointMapper implements BaseMapper{
 //        if (entity.getElectricalCheckStatus() != null) dto.setElectricalCheckStatus(entity.getElectricalCheckStatus());
 //        if (entity.getRedTagId() != null) dto.setRedTagId(entity.getRedTagId());
 //        if (entity.getInUse() != null) dto.setInUse(entity.getInUse());
-        //if(entity.getEquipmentList()!=null) dto.setEquipmentList(entity.getEquipmentList().stream().map(equipmentMapper::convertToDto).collect(Collectors.toSet()));
+        if(entity.getEquipmentList()!=null){
+            Set<EquipmentDto> eqList = new HashSet<>();
+            for (Equipment e : entity.getEquipmentList()) {
+                EquipmentDto newEq = new EquipmentDto();
+
+                FileObject file = e.getMainFile();
+                FileDto fileDto = new FileDto();
+
+                if(file!=null){
+                    fileDto.setId(file.getId());
+                    fileDto.setFileLink(file.getFileLink());
+                    fileDto.setName(file.getName());
+                }
+
+                newEq.setId(e.getId());
+                newEq.setCoordinates(e.getCoordinates());
+                newEq.setOriginalPictureSize(e.getOriginalPictureSize());
+                newEq.setMainFile(fileDto.getFileLink());
+                newEq.setMainFileId(fileDto.getId());
+                newEq.setMainFileObject(fileDto);
+
+                eqList.add(newEq);
+            }
+            dto.setEquipmentList(eqList);
+        }
 //        if(entity.getLotos()!=null) dto.setLotos(entity.getLotos().stream().map(lotoMapper::convertToDto).toList());
         if (entity.getOldId() != null) dto.setOldId(entity.getOldId());
         if(entity.getObjectType()!=null) dto.setObjectType(entity.getObjectType());

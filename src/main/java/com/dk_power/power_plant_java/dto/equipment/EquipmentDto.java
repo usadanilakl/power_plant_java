@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.dto.equipment;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseEquipmentDto;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.fasterxml.jackson.annotation.*;
 import lombok.Getter;
@@ -29,6 +30,7 @@ public class EquipmentDto extends BaseEquipmentDto {
     private String coordinates;
     private String originalPictureSize;
     private String mainFile;
+    private FileDto mainFileObject;
     private Long mainFileId;
     private Set<LotoPointDto> lotoPoints;
     private List<HeatTraceDto> heatTraceList;

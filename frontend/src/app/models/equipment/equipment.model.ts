@@ -5,6 +5,7 @@ import { BaseDto, BaseModel } from '../base/base.model';
 import { ValidatorFn, Validators } from '@angular/forms';
 import { Option } from '../option.model';
 import { EquipmentIdDto } from './equipment-id.model';
+import { FileDto, FileModel } from '../file/file.model';
 
 export type EquipmentFieldName = keyof EquipmentModel;
 
@@ -33,6 +34,7 @@ export interface EquipmentModel extends BaseModel  {
   lotoPoints: LotoPointDto[] | null | undefined;
   isUpdated: string | null | undefined;
   conflictStatus: string | null | undefined;
+  mainFileObject: FileModel | null | undefined;
 }
 
 export class EquipmentDto extends BaseDto implements EquipmentModel {
@@ -51,6 +53,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   lotoPoints: LotoPointDto[] | null | undefined;
   isUpdated: string | null | undefined;
   conflictStatus: string | null | undefined;
+  mainFileObject: FileModel | null | undefined;
 
   constructor(data: Partial<EquipmentModel> = {}) {
     super(data);
@@ -71,6 +74,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     this.lotoPoints = data.lotoPoints ?? [];
     this.isUpdated = data.isUpdated ?? null;
     this.conflictStatus = data.conflictStatus ?? null;
+    this.mainFileObject = data.mainFileObject?? null;
   }
 
   // Serialization method
@@ -117,6 +121,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       lotoPoints: json.lotoPoints ? json.lotoPoints.map((point: any) => LotoPointDto.fromJson(point)) : null,
       isUpdated: json.isUpdated || null,
       conflictStatus: json.conflictStatus || null,
+      mainFileObject: json.mainFileObject? FileDto.fromJson(json.mainFileObject) : null,
     });
   }
 
@@ -376,7 +381,8 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
         initialValue: dto.isVerified?.toString() 
       },
       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
-      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType }
+      objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
+      mainFileObject: { name:'mainFileObject', label: 'Main File', type: 'text', initialValue: dto.mainFile },
     };
   
     return fields.map(fieldName => allFields[fieldName]);

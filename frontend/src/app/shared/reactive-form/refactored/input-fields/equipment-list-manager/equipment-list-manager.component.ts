@@ -13,6 +13,7 @@ interface EquipmentListItem {
   id?: number;
   coordinates?: string;
   fileId?: number;
+  fileName?: string;
   originalPictureSize?: string;
   tagNumber?: string;
   isExisting: boolean; // true = browsed existing, false = newly drawn
@@ -60,6 +61,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     if (Array.isArray(value)) {
       this.equipmentList.set(value.map(item => ({
         ...item,
+        fileName: item.mainFileObject?.name,
         isExisting: !!item.id // If has ID, it's existing equipment
       })));
       this.value = value;
@@ -97,6 +99,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
       id: equipment.id,
       coordinates: equipment.coordinates || '',
       fileId: equipment.files?.[0] ? parseInt(equipment.files[0]) : undefined,
+      fileName: equipment.files?.[0] || '',
       originalPictureSize: equipment.originalPictureSize || '',
       tagNumber: equipment.tagNumber || '',
       isExisting: true
@@ -121,6 +124,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     const newItem: EquipmentListItem = {
       coordinates: this.equipmentMapper.mapRfShapeToCoordinates(data.shape),
       fileId: data.file.id ?? undefined,
+      fileName: data.file.name,
       originalPictureSize: this.equipmentMapper.formatPictureSize(
         data.shape.originalPictureWidth,
         data.shape.originalPictureHeight
@@ -165,10 +169,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
 
   // Display helpers
   getItemDisplay(item: EquipmentListItem): string {
-    if (item.isExisting && item.tagNumber) {
-      return item.tagNumber;
-    }
-    return `Shape on File #${item.fileId || 'Unknown'}`;
+    return `Shape on File #${item.fileName || item.fileId || 'Unknown'}`;
   }
 
   getItemIcon(item: EquipmentListItem): string {

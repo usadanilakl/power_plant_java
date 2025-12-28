@@ -54,7 +54,7 @@ export class FormBuilderService {
    */
   private addFormControl(group: { [key: string]: any }, field: RfFormField, entity: any): void {
     let value = this.getNestedValue(entity, field.name);
-
+    
     // Handle special field types
     value = this.normalizeValueByType(field.type, value);
 
