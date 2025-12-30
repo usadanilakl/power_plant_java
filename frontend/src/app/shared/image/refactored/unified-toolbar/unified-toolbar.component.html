@@ -1,0 +1,74 @@
+<div class="unified-toolbar" [class]="'toolbar-' + position()">
+  <div class="toolbar-content">
+    <!-- Drawing Tools Group -->
+    @if (toolGroups().drawing.length > 0) {
+      <div class="tool-group">
+        @for (tool of toolGroups().drawing; track tool.id) {
+          <button
+            type="button"
+            class="tool-button"
+            [class.active]="isToolActive(tool.id)"
+            [title]="tool.tooltip"
+            (click)="onToolClick(tool.id)">
+            <span class="tool-icon">{{ tool.icon }}</span>
+            <span class="tool-label">{{ tool.label }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Shape Operations Group -->
+    @if (toolGroups().shapeOps.length > 0) {
+      <div class="tool-separator"></div>
+      <div class="tool-group">
+        @for (tool of toolGroups().shapeOps; track tool.id) {
+          <button
+            type="button"
+            class="tool-button"
+            [class.active]="isToolActive(tool.id)"
+            [title]="tool.tooltip"
+            (click)="onToolClick(tool.id)">
+            <span class="tool-icon">{{ tool.icon }}</span>
+            <span class="tool-label">{{ tool.label }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- View Tools Group -->
+    @if (toolGroups().view.length > 0) {
+      <div class="tool-separator"></div>
+      <div class="tool-group">
+        @for (tool of toolGroups().view; track tool.id) {
+          <button
+            type="button"
+            class="tool-button"
+            [class.active]="isToolActive(tool.id)"
+            [title]="tool.tooltip"
+            (click)="onToolClick(tool.id)">
+            <span class="tool-icon">{{ tool.icon }}</span>
+            <span class="tool-label">{{ tool.label }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Editing Tools Group (Symbol Palette Toggle) -->
+    @if (toolGroups().editing.length > 0) {
+      <div class="tool-separator"></div>
+      <div class="tool-group">
+        @for (tool of toolGroups().editing; track tool.id) {
+          <button
+            type="button"
+            class="tool-button"
+            [class.active]="tool.id === 'toggle-symbols' && showSymbolPalette()"
+            [title]="tool.tooltip"
+            (click)="onToolClick(tool.id)">
+            <span class="tool-icon">{{ tool.icon }}</span>
+            <span class="tool-label">{{ tool.label }}</span>
+          </button>
+        }
+      </div>
+    }
+  </div>
+</div>

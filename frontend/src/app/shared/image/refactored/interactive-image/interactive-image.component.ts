@@ -4,7 +4,7 @@ import { fromEvent } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { SymbolPaletteComponent } from "../symbol-palette/symbol-palette.component";
 import { CommonModule } from "@angular/common";
-import { ToolbarComponent } from "../toolbar/toolbar.component";
+import { UnifiedToolbarComponent } from "../unified-toolbar/unified-toolbar.component";
 import { ContextMenuComponent, ContextMenuAction } from "../../../menu/context-menu/context-menu.component";
 import { MouseEventsService } from "../services/mouse-events.service";
 import { TransformState, ZoomPanService } from "../services/zoom-pan.service";
@@ -14,7 +14,14 @@ import { ShapeConversionService } from "../services/shape-conversion.service";
 import { ShapeManagerService } from "../services/shape-manager.service";
 import { RfImageShape, RfRectangleShape, RfShape } from "../models/fr-shape.model";
 import { PIDSymbol } from "../services/pid-symbols.service";
-import { ToolbarItem } from "../toolbar.model";
+import {
+  InteractiveImageConfig,
+  INTERACTIVE_IMAGE_PRESETS,
+  getPreset,
+  mergeConfig,
+  ToolbarTool,
+  ContextMenuActionType
+} from "../models/interactive-image-config.model";
 
 
 
@@ -28,7 +35,7 @@ type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
     CommonModule,
     SymbolPaletteComponent,
     ContextMenuComponent,
-    ToolbarComponent,
+    UnifiedToolbarComponent,
   ],
   templateUrl: './interactive-image.component.html',
   styleUrl: './interactive-image.component.css',
@@ -52,7 +59,27 @@ export class InteractiveImageComponent {
   imageUrl = input<string>();
   imageName = input<string>();
   shapesInput = input<RfShape[]>([]);
-  mode = input<'view' | 'edit'>('view'); // New mode input
+
+  // Configuration-based approach (replaces simple 'mode')
+  config = input<InteractiveImageConfig>();
+  preset = input<keyof typeof INTERACTIVE_IMAGE_PRESETS>();
+
+  // Computed configuration: use preset if provided, otherwise use config, otherwise default to VIEW_ONLY
+  activeConfig = computed(() => {
+    const presetName = this.preset();
+    const customConfig = this.config();
+
+    if (presetName) {
+      return customConfig ? mergeConfig(getPreset(presetName), customConfig) : getPreset(presetName);
+    }
+
+    if (customConfig) {
+      return customConfig;
+    }
+
+    // Default fallback
+    return INTERACTIVE_IMAGE_PRESETS['VIEW_ONLY'];
+  });
 
   // Outputs
   shapeRightClicked = output<RfShape>();
@@ -143,12 +170,21 @@ export class InteractiveImageComponent {
 
   private shapeIdToConvert: number | null = null;
 
+  // Clipboard for copy/paste
+  private clipboard: RfShape[] = [];
+
   //Symbol palette
-  showSymbolPalette = signal<boolean>(true);
+  private _symbolPaletteVisible = signal<boolean>(true);
+  showSymbolPalette = computed(() => {
+    const config = this.activeConfig();
+    return config.showSymbolPalette && this._symbolPaletteVisible();
+  });
   currentDrawMode = signal<DrawMode>('none');
   selectedSymbol = signal<PIDSymbol | null>(null);
+  currentTool = signal<ToolbarTool | null>('select');
 
-  toolbarItems = signal<ToolbarItem[]>([]);
+  // Toolbar configuration based on active config
+  enabledTools = computed(() => this.activeConfig().enabledTools || []);
 
   constructor() {
     // Effect to load shapes from input when they change
@@ -167,42 +203,12 @@ export class InteractiveImageComponent {
       }
     });
 
-    // Effect to update toolbar based on mode
+    // Effect to handle single-draw mode (auto-close after drawing one shape)
     effect(() => {
-      const currentMode = this.mode();
-      if (currentMode === 'edit') {
-        this.toolbarItems.set([
-          {
-            id: 'toggle-symbols',
-            label: this.showSymbolPalette() ? 'Hide Symbols' : 'Show Symbols',
-            tooltip: 'Show/Hide the symbol palette',
-            action: () => this.toggleSymbolPalette(),
-          },
-          {
-            id: 'draw-rectangle',
-            label: 'Rectangle',
-            tooltip: 'Draw a rectangle',
-            isActive: () => this.currentDrawMode() === 'rectangle',
-            action: () => this.setDrawMode('rectangle'),
-          },
-          {
-            id: 'place-symbol',
-            label: 'Place Symbol',
-            tooltip: 'Place a symbol from the palette',
-            isActive: () => this.currentDrawMode() === 'symbol',
-            action: () => this.setDrawMode('symbol'),
-          },
-          {
-            id: 'select',
-            label: 'Select',
-            tooltip: 'Select and move shapes',
-            isActive: () => this.currentDrawMode() === 'none',
-            action: () => this.setDrawMode('none'),
-          },
-        ]);
-      } else {
-        // View mode - minimal toolbar
-        this.toolbarItems.set([]);
+      const cfg = this.activeConfig();
+      if (cfg.drawingMode === 'single' && this.shapes().length > this.shapesInput().length) {
+        // A new shape was drawn in single-draw mode, emit and reset
+        this.currentDrawMode.set('none');
       }
     });
   }
@@ -349,10 +355,10 @@ export class InteractiveImageComponent {
   }
 
   onMouseDown(event: MouseEvent): void {
-    const isEditMode = this.mode() === 'edit';
+    const config = this.activeConfig();
 
-    // Right mouse button for drawing (only in edit mode)
-    if (event.button === 2 && isEditMode) {
+    // Right mouse button for drawing (only if drawing is allowed)
+    if (event.button === 2 && config.canDrawShapes) {
       if (this.currentDrawMode() === 'symbol') {
         this.placeSymbol(event);
         console.log('Placing Symbol');
@@ -366,23 +372,24 @@ export class InteractiveImageComponent {
 
     // Left mouse button for panning and shape manipulation
     if (event.button === 0) {
-      // Only allow shape manipulation in edit mode
-      if (isEditMode) {
-        // First check if clicking on a resize handle
+      // Check if clicking on a resize handle (only if resizing is allowed)
+      if (config.canResizeShapes) {
         const handle = this.getResizeHandleAtPoint(event);
         if (handle) {
           event.preventDefault();
           this.startResizingShape(event, handle);
           return;
         }
+      }
 
-        // 2. Check for rotation handle click
-        if (this.isPointInRotationHandle(event)) {
-          this.startRotatingShape(event);
-          return;
-        }
+      // Check for rotation handle click (only if rotation is allowed)
+      if (config.canRotateShapes && this.isPointInRotationHandle(event)) {
+        this.startRotatingShape(event);
+        return;
+      }
 
-        // Then check if clicking on a shape
+      // Then check if clicking on a shape (for dragging)
+      if (config.canDragShapes) {
         const clickedShapeId = this.isOverSelectedShape(event);
         if (clickedShapeId !== null) {
           // If Ctrl/Cmd is held, don't start dragging - just handle selection
@@ -397,8 +404,12 @@ export class InteractiveImageComponent {
           return;
         }
       }
-      event.preventDefault();
-      this.startPanning(event);
+
+      // Default: start panning (if allowed)
+      if (config.canPan) {
+        event.preventDefault();
+        this.startPanning(event);
+      }
       return;
     }
   }
@@ -489,20 +500,20 @@ export class InteractiveImageComponent {
   }
 
   onLeftClick(event: MouseEvent): void {
-    const isEditMode = this.mode() === 'edit';
+    const config = this.activeConfig();
 
-    // Only allow selection in edit mode
-    if (isEditMode) {
-      // Check if Ctrl (Windows/Linux) or Cmd (Mac) is held
-      if (event.ctrlKey || event.metaKey) {
+    // Only allow selection if configured
+    if (config.canSelectShapes) {
+      // Check if Ctrl (Windows/Linux) or Cmd (Mac) is held for multi-select
+      if ((event.ctrlKey || event.metaKey) && config.canMultiSelect) {
         this.handleShapeSelection(event);
       } else {
         console.log('Ctrl/Cmd key is NOT held');
         // Handle normal click behavior
         const clickedShapeId = this.isOverShape(event);
-        if (clickedShapeId!== null) {
+        if (clickedShapeId !== null) {
           const shape = this.shapeManager.getShapeById(clickedShapeId);
-          if(shape)this.shapeClicked.emit(shape);
+          if(shape) this.shapeClicked.emit(shape);
         }
       }
     }
@@ -514,7 +525,7 @@ export class InteractiveImageComponent {
 
   onRightClick(event: MouseEvent): void {
     event.preventDefault();
-    const isEditMode = this.mode() === 'edit';
+    const config = this.activeConfig();
 
     // First check if we clicked on a shape
     const clickedShapeId = this.isOverShape(event);
@@ -527,11 +538,11 @@ export class InteractiveImageComponent {
         this.shapeRightClicked.emit(clickedShape);
       }
 
-      // Only show context menu in edit mode
-      if (!isEditMode) return;
+      // Only show context menu if configured
+      if (!config.showContextMenu) return;
 
-      // Select the shape if not already selected
-      if (!this.selectedShapeIds().includes(clickedShapeId)) {
+      // Select the shape if not already selected (and selection is allowed)
+      if (config.canSelectShapes && !this.selectedShapeIds().includes(clickedShapeId)) {
         this.shapeManager.selectShape(clickedShapeId, true);
       }
 
@@ -542,10 +553,10 @@ export class InteractiveImageComponent {
 
   onDoubleClick(event: MouseEvent): void {
     console.log('double click');
-    const isEditMode = this.mode() === 'edit';
+    const config = this.activeConfig();
 
-    // Only handle shape selection in edit mode
-    if (isEditMode) {
+    // Only handle shape selection if allowed
+    if (config.canSelectShapes) {
       this.handleShapeSelection(event);
     }
   }
@@ -582,6 +593,100 @@ export class InteractiveImageComponent {
     this.zoomPanService.applyTransform(this.zoomElement, this.transformState);
     this.updateImageScale();
     setTimeout(() => this.updateCanvasAndRedraw(), 300);
+  }
+
+  // Zoom in by 25%
+  private zoomIn(): void {
+    const zoomOuterRect = this.zoomOuter.getBoundingClientRect();
+
+    // Calculate center point for zoom
+    const centerX = zoomOuterRect.width / 2;
+    const centerY = zoomOuterRect.height / 2;
+
+    const newScale = Math.min(this.transformState.scale * 1.25, 10); // Max zoom 10x
+    const scaleDiff = newScale / this.transformState.scale;
+
+    // Adjust position to zoom towards center
+    const newPointX = centerX - (centerX - this.transformState.pointX) * scaleDiff;
+    const newPointY = centerY - (centerY - this.transformState.pointY) * scaleDiff;
+
+    this.transformState = {
+      scale: newScale,
+      pointX: newPointX,
+      pointY: newPointY,
+    };
+
+    this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0.2s');
+    this.updateImageScale();
+    setTimeout(() => {
+      this.updateCanvasAndRedraw();
+      this.updateTempCanvasSize();
+    }, 200);
+  }
+
+  // Zoom out by 25%
+  private zoomOut(): void {
+    const zoomOuterRect = this.zoomOuter.getBoundingClientRect();
+
+    // Calculate center point for zoom
+    const centerX = zoomOuterRect.width / 2;
+    const centerY = zoomOuterRect.height / 2;
+
+    const newScale = Math.max(this.transformState.scale * 0.8, 0.1); // Min zoom 0.1x
+    const scaleDiff = newScale / this.transformState.scale;
+
+    // Adjust position to zoom towards center
+    const newPointX = centerX - (centerX - this.transformState.pointX) * scaleDiff;
+    const newPointY = centerY - (centerY - this.transformState.pointY) * scaleDiff;
+
+    this.transformState = {
+      scale: newScale,
+      pointX: newPointX,
+      pointY: newPointY,
+    };
+
+    this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0.2s');
+    this.updateImageScale();
+    setTimeout(() => {
+      this.updateCanvasAndRedraw();
+      this.updateTempCanvasSize();
+    }, 200);
+  }
+
+  // Fit image to screen
+  private fitToScreen(): void {
+    if (!this.img || !this.zoomOuter) return;
+
+    const containerRect = this.zoomOuter.getBoundingClientRect();
+    const imgNaturalWidth = this.img.naturalWidth;
+    const imgNaturalHeight = this.img.naturalHeight;
+
+    if (!imgNaturalWidth || !imgNaturalHeight) return;
+
+    // Calculate scale to fit image in container with some padding
+    const padding = 40; // 20px padding on each side
+    const scaleX = (containerRect.width - padding) / imgNaturalWidth;
+    const scaleY = (containerRect.height - padding) / imgNaturalHeight;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't zoom in beyond 100%
+
+    // Center the image
+    const scaledWidth = imgNaturalWidth * scale;
+    const scaledHeight = imgNaturalHeight * scale;
+    const pointX = (containerRect.width - scaledWidth) / 2;
+    const pointY = (containerRect.height - scaledHeight) / 2;
+
+    this.transformState = {
+      scale: scale / this.baseImageScale,
+      pointX: pointX,
+      pointY: pointY,
+    };
+
+    this.zoomPanService.applyTransform(this.zoomElement, this.transformState, '0.3s');
+    this.updateImageScale();
+    setTimeout(() => {
+      this.updateCanvasAndRedraw();
+      this.updateTempCanvasSize();
+    }, 300);
   }
 
   // ==================================================Drawing Methods==================================================
@@ -709,7 +814,49 @@ export class InteractiveImageComponent {
 
   // ==================================================Symbol Palette Methods==================================================
   toggleSymbolPalette(): void {
-    this.showSymbolPalette.update((show) => !show);
+    this._symbolPaletteVisible.update((show) => !show);
+  }
+
+  // Handle toolbar tool clicks
+  onToolbarToolClick(tool: ToolbarTool): void {
+    switch (tool) {
+      case 'select':
+        this.setDrawMode('none');
+        this.currentTool.set('select');
+        break;
+      case 'draw-rectangle':
+        this.setDrawMode('rectangle');
+        this.currentTool.set('draw-rectangle');
+        break;
+      case 'place-symbol':
+        this.setDrawMode('symbol');
+        this.currentTool.set('place-symbol');
+        break;
+      case 'delete':
+        const selectedIds = this.selectedShapeIds();
+        if (selectedIds.length > 0 && this.activeConfig().canDeleteShapes) {
+          this.shapeManager.deleteShapes(selectedIds);
+        }
+        break;
+      case 'duplicate':
+        const selectedIds2 = this.selectedShapeIds();
+        selectedIds2.forEach(id => this.duplicateShape(id));
+        break;
+      case 'zoom-in':
+        this.zoomIn();
+        break;
+      case 'zoom-out':
+        this.zoomOut();
+        break;
+      case 'zoom-fit':
+        this.fitToScreen();
+        break;
+      case 'reset-view':
+        this.resetTransform();
+        break;
+      default:
+        console.warn('Unknown toolbar tool:', tool);
+    }
   }
 
   setDrawMode(mode: DrawMode): void {
@@ -846,18 +993,83 @@ export class InteractiveImageComponent {
     this.cursor = isOverShape ? 'pointer' : 'default';
   }
 
-  // Add keyboard shortcuts for shape operations (add in ngAfterViewInit):
+  // Enhanced keyboard shortcuts for all operations
   private setupKeyboardShortcuts(): void {
     fromEvent<KeyboardEvent>(document, 'keydown')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => {
-        const isEditMode = this.mode() === 'edit';
+        const config = this.activeConfig();
 
-        // Only allow keyboard shortcuts in edit mode
-        if (!isEditMode) return;
+        // Drawing mode shortcuts
+        if (config.canDrawShapes) {
+          // V or Esc - Select mode
+          if (event.key === 'v' || event.key === 'V' || event.key === 'Escape') {
+            event.preventDefault();
+            this.setDrawMode('none');
+            this.currentTool.set('select');
+            this.shapeManager.clearSelections();
+            this.selectedSymbol.set(null);
+            this.cursor = 'default';
+            return;
+          }
+
+          // R - Rectangle mode
+          if (event.key === 'r' || event.key === 'R') {
+            event.preventDefault();
+            this.setDrawMode('rectangle');
+            this.currentTool.set('draw-rectangle');
+            return;
+          }
+
+          // S - Symbol mode
+          if ((event.key === 's' || event.key === 'S') && !event.ctrlKey && !event.metaKey) {
+            event.preventDefault();
+            this.setDrawMode('symbol');
+            this.currentTool.set('place-symbol');
+            return;
+          }
+
+          // P - Toggle symbol palette
+          if (event.key === 'p' || event.key === 'P') {
+            event.preventDefault();
+            this.toggleSymbolPalette();
+            return;
+          }
+        }
+
+        // Zoom shortcuts
+        if (config.canZoom) {
+          // + or = - Zoom in
+          if (event.key === '+' || event.key === '=') {
+            event.preventDefault();
+            this.zoomIn();
+            return;
+          }
+
+          // - or _ - Zoom out
+          if (event.key === '-' || event.key === '_') {
+            event.preventDefault();
+            this.zoomOut();
+            return;
+          }
+
+          // F or 0 - Fit to screen
+          if ((event.key === 'f' || event.key === 'F' || event.key === '0') && !event.ctrlKey && !event.metaKey) {
+            event.preventDefault();
+            this.fitToScreen();
+            return;
+          }
+
+          // Ctrl+0 - Reset view
+          if ((event.ctrlKey || event.metaKey) && event.key === '0') {
+            event.preventDefault();
+            this.resetTransform();
+            return;
+          }
+        }
 
         // Delete selected shapes with Delete or Backspace
-        if (event.key === 'Delete' || event.key === 'Backspace') {
+        if (config.canDeleteShapes && (event.key === 'Delete' || event.key === 'Backspace')) {
           const selectedIds = this.selectedShapeIds();
           if (selectedIds.length > 0) {
             event.preventDefault();
@@ -866,30 +1078,35 @@ export class InteractiveImageComponent {
           }
         }
 
+        // Ctrl+D - Duplicate
+        if (config.canEditShapes && (event.ctrlKey || event.metaKey) && event.key === 'd') {
+          event.preventDefault();
+          const selectedIds = this.selectedShapeIds();
+          selectedIds.forEach(id => this.duplicateShape(id));
+          return;
+        }
+
         // Select all with Ctrl+A
-        if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+        if (config.canSelectShapes && config.canMultiSelect && (event.ctrlKey || event.metaKey) && event.key === 'a') {
           event.preventDefault();
           const allShapeIds = this.shapes().map((s) => s.id);
           this.shapeManager.selectMultipleShapes(allShapeIds);
           console.log('Selected all shapes');
         }
 
-        // Deselect all with Escape
-        if (event.key === 'Escape') {
-          this.shapeManager.clearSelections();
-          this.currentDrawMode.set('none');
-          this.selectedSymbol.set(null);
-          this.cursor = 'default';
-        }
-
         // Copy selected shapes with Ctrl+C
-        if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+        if (config.canSelectShapes && (event.ctrlKey || event.metaKey) && event.key === 'c') {
           const selectedShapes = this.shapeManager.getSelectedShapes();
           if (selectedShapes.length > 0) {
             event.preventDefault();
-            // Store in clipboard or component state
-            console.log('Copied shapes:', selectedShapes);
+            this.copyShapes(selectedShapes);
           }
+        }
+
+        // Paste shapes with Ctrl+V
+        if (config.canEditShapes && (event.ctrlKey || event.metaKey) && event.key === 'v') {
+          event.preventDefault();
+          this.pasteShapes();
         }
       });
   }
@@ -1046,6 +1263,64 @@ export class InteractiveImageComponent {
     }
 
     this.shapeManager.addShape(newShape);
+  }
+
+  // Copy selected shapes to clipboard
+  private copyShapes(shapes: RfShape[]): void {
+    // Deep copy shapes to clipboard
+    this.clipboard = shapes.map(shape => ({ ...shape }));
+    console.log(`Copied ${this.clipboard.length} shape(s) to clipboard`);
+  }
+
+  // Paste shapes from clipboard
+  private pasteShapes(): void {
+    if (this.clipboard.length === 0) {
+      console.log('Clipboard is empty');
+      return;
+    }
+
+    const config = this.activeConfig();
+    if (!config.canEditShapes) {
+      console.warn('Pasting not allowed in current mode');
+      return;
+    }
+
+    // Clear current selection
+    this.shapeManager.clearSelections();
+
+    // Paste each shape from clipboard with offset
+    const pastedShapeIds: number[] = [];
+    this.clipboard.forEach((clipboardShape) => {
+      let newShape: RfShape;
+
+      if (clipboardShape.type === 'rectangle' || clipboardShape.type === 'image' || clipboardShape.type === 'svg-symbol') {
+        newShape = {
+          ...clipboardShape,
+          id: this.shapeManager.getNextShapeId(),
+          x: clipboardShape.x + 20,
+          y: clipboardShape.y + 20,
+          isSelected: false,
+          isBulkSelected: false,
+        } as RfShape;
+      } else {
+        newShape = {
+          ...clipboardShape,
+          id: this.shapeManager.getNextShapeId(),
+          isSelected: false,
+          isBulkSelected: false,
+        } as RfShape;
+      }
+
+      this.shapeManager.addShape(newShape);
+      pastedShapeIds.push(newShape.id);
+    });
+
+    // Select the newly pasted shapes
+    if (config.canSelectShapes && pastedShapeIds.length > 0) {
+      this.shapeManager.selectMultipleShapes(pastedShapeIds);
+    }
+
+    console.log(`Pasted ${pastedShapeIds.length} shape(s)`);
   }
 
   // ========================================Shape Draggign================================

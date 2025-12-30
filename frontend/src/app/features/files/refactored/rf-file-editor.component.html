@@ -4,7 +4,7 @@
       <app-interactive-image
         [imageUrl]="fileLink()"
         [shapesInput]="shapes()"
-        [mode]="'edit'"
+        [preset]="'FILE_EDITOR'"
         (shapeRightClicked)="onShapeRightClicked($event)"
         (shapeUpdated)="onShapeUpdated($event)">
       </app-interactive-image>

@@ -1,0 +1,166 @@
+/* Unified Toolbar - Modern, Theme-Consistent Design */
+
+.unified-toolbar {
+  display: flex;
+  background: var(--surface-color, #ffffff);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  user-select: none;
+}
+
+/* Position variants */
+.toolbar-top,
+.toolbar-bottom {
+  flex-direction: row;
+}
+
+.toolbar-left,
+.toolbar-right {
+  flex-direction: column;
+}
+
+.toolbar-content {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Tool Groups */
+.tool-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* Tool Separator */
+.tool-separator {
+  width: 1px;
+  height: 32px;
+  background: var(--border-color, #e0e0e0);
+  margin: 0 4px;
+}
+
+/* Tool Buttons */
+.tool-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 10px;
+  min-width: 60px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  color: var(--text-color, #333);
+}
+
+.tool-button:hover {
+  background: var(--hover-bg, #f5f5f5);
+  border-color: var(--hover-border, #d0d0d0);
+}
+
+.tool-button:active {
+  background: var(--active-bg, #e8e8e8);
+  transform: translateY(1px);
+}
+
+.tool-button.active {
+  background: var(--primary-color, #007bff);
+  color: white;
+  border-color: var(--primary-color, #007bff);
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.tool-button.active:hover {
+  background: var(--primary-hover, #0056b3);
+  border-color: var(--primary-hover, #0056b3);
+}
+
+.tool-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.tool-button:disabled:hover {
+  background: transparent;
+  border-color: transparent;
+  transform: none;
+}
+
+/* Tool Icon */
+.tool-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Tool Label */
+.tool-label {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Responsive: Hide labels on small screens */
+@media (max-width: 768px) {
+  .tool-button {
+    min-width: 44px;
+    padding: 8px;
+  }
+
+  .tool-label {
+    display: none;
+  }
+
+  .tool-icon {
+    font-size: 20px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .unified-toolbar {
+    background: var(--surface-color, #2a2a2a);
+    border-color: var(--border-color, #444);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .tool-button {
+    color: var(--text-color, #e0e0e0);
+  }
+
+  .tool-button:hover {
+    background: var(--hover-bg, #3a3a3a);
+    border-color: var(--hover-border, #555);
+  }
+
+  .tool-button:active {
+    background: var(--active-bg, #444);
+  }
+
+  .tool-separator {
+    background: var(--border-color, #555);
+  }
+}
+
+/* Compact mode for small toolbars */
+.unified-toolbar.compact .tool-button {
+  min-width: 40px;
+  padding: 6px;
+}
+
+.unified-toolbar.compact .tool-label {
+  display: none;
+}
+
+.unified-toolbar.compact .tool-icon {
+  font-size: 20px;
+}
