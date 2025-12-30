@@ -24,6 +24,7 @@
     [isLoadingMore]="stateService.loadingUniqueItems()"
     [isDragAndDropEnabled]="enableDragDrop()"
     [hoverDebounceTime]="hoverDebounceTime()"
+    [hoveredItemId]="hoveredItemId()"
     [filterOutItems]="filterOutItems()"
 
     (search)="onSearch($event)"
@@ -31,6 +32,9 @@
     (loadMoreItems)="onLoadMore($event)"
     (loadInitialOptions)="loadUniqueItems($event.column, $event.filter)"
     (loadMoreOptions)="loadMoreUniqueItems($event.column, $event.filter)"
+    (selectedItemsEvent)="selectedItemsEvent.emit($event)"
+    (itemsReordered)="itemsReorderedEvent.emit($event)"
+    (rowHoveredEvent)="rowHoveredEvent.emit($event)"
     >
 
   </app-table>

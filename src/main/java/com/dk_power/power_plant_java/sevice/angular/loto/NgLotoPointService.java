@@ -143,23 +143,71 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         System.out.println("entity.getIsoPos().getName() = " + entity.getIsoPos().getName());
         Long savedLpId = entity.getId();
 
-        if (lotoPointDto.getEquipmentIdList() != null && !lotoPointDto.getEquipmentIdList().isEmpty()) {
-            Set<Long> ids = new HashSet<>(lotoPointDto.getEquipmentIdList());
-            System.out.println("Equipment IDs: " + ids);
+        // Get the new equipment IDs from the DTO
+        Set<Long> newEquipmentIds = (lotoPointDto.getEquipmentIdList() != null)
+                ? new HashSet<>(lotoPointDto.getEquipmentIdList())
+                : new HashSet<>();
 
-            for (Long id : ids) {
-                Equipment equipment = equipmentService.getEntityById(id);
-                if (equipment != null) {
-                    // Update both sides of the relationship
-                    LotoPoint lotoPoint = lotoPointRepo.findById(savedLpId).orElse(null);
-                    System.out.println("equipment.getLotoPoints().size() = " + equipment.getLotoPoints().size());
-                    equipment.addLotoPoint(lotoPoint);
-                    System.out.println("equipment.getLotoPoints().size() = " + equipment.getLotoPoints().size());
-                    equipmentService.save(equipment);
-                    lotoPoint.addEquipment(equipment);
-                    lotoPointRepo.save(lotoPoint);
-                }
+        System.out.println("New Equipment IDs: " + newEquipmentIds);
+
+        // Get the currently associated equipment
+        LotoPoint lotoPoint = lotoPointRepo.findById(savedLpId).orElse(null);
+        if (lotoPoint == null) {
+            throw new RuntimeException("LotoPoint not found with id: " + savedLpId);
+        }
+
+        Set<Equipment> currentEquipment = (lotoPoint.getEquipmentList() != null)
+                ? new HashSet<>(lotoPoint.getEquipmentList())
+                : new HashSet<>();
+
+        Set<Long> currentEquipmentIds = currentEquipment.stream()
+                .map(Equipment::getId)
+                .collect(Collectors.toSet());
+
+        System.out.println("Current Equipment IDs: " + currentEquipmentIds);
+
+        // Find equipment to remove (in current but not in new)
+        Set<Long> toRemove = new HashSet<>(currentEquipmentIds);
+        toRemove.removeAll(newEquipmentIds);
+
+        // Find equipment to add (in new but not in current)
+        Set<Long> toAdd = new HashSet<>(newEquipmentIds);
+        toAdd.removeAll(currentEquipmentIds);
+
+        System.out.println("Equipment to remove: " + toRemove);
+        System.out.println("Equipment to add: " + toAdd);
+
+        // Remove old equipment associations
+        for (Long equipmentId : toRemove) {
+            Equipment equipment = equipmentService.getEntityById(equipmentId);
+            if (equipment != null) {
+                equipment.getLotoPoints().remove(lotoPoint);
+                equipmentService.save(equipment);
+                System.out.println("Removed LotoPoint from Equipment ID: " + equipmentId);
             }
+        }
+
+        // Add new equipment associations
+        for (Long equipmentId : toAdd) {
+            Equipment equipment = equipmentService.getEntityById(equipmentId);
+            if (equipment != null) {
+                // Refresh lotoPoint to ensure we have the latest state
+                lotoPoint = lotoPointRepo.findById(savedLpId).orElse(lotoPoint);
+
+                // Update both sides of the relationship
+                equipment.addLotoPoint(lotoPoint);
+                equipmentService.save(equipment);
+
+                // Update the non-owning side for consistency
+                lotoPoint.addEquipment(equipment);
+
+                System.out.println("Added LotoPoint to Equipment ID: " + equipmentId);
+            }
+        }
+
+        // Save the lotoPoint one final time to ensure consistency
+        if (!toRemove.isEmpty() || !toAdd.isEmpty()) {
+            lotoPoint = lotoPointRepo.save(lotoPoint);
         }
 
         return getEntityById(savedLpId);

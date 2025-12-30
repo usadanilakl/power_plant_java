@@ -1,15 +1,41 @@
-/* .image-container {
-  width: 100vw;
-  height: 100vh;
+/* Split View Layout */
+.split-view-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
-} */
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.image-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: flex 0.3s ease;
+  min-width: 0; /* Allow flex item to shrink below content size */
+}
+
+.split-view-container.table-open .image-section {
+  flex: 1;
+}
 
 .image-container {
   position: relative;
   width: 100%;
-  height: 100%; /* Adjust as needed */
+  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.no-file-selected {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #666;
+  font-size: 1.1rem;
 }
 
 .control-section {
@@ -17,8 +43,10 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: rgba(240, 240, 240, 0.8); /* Semi-transparent background */
+  background-color: rgba(240, 240, 240, 0.9);
   padding: 10px;
+  border-top: 1px solid #ccc;
+  z-index: 10;
 }
 
 .button-row {
@@ -35,10 +63,98 @@
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s;
+  font-size: 0.95rem;
 }
 
 .control-button:hover {
   background-color: #0056b3;
+}
+
+/* Side Menu Styles */
+.side-menu {
+  width: 0;
+  height: 100%;
+  background-color: #f8f9fa;
+  border-left: 1px solid #dee2e6;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.3s ease;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.side-menu.open {
+  width: 600px;
+  min-width: 400px;
+}
+
+.side-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #fff;
+  border-bottom: 2px solid #dee2e6;
+  flex-shrink: 0;
+}
+
+.side-menu-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.close-button:hover {
+  background-color: #e9ecef;
+  color: #333;
+}
+
+.side-menu-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Critical for flexbox scrolling */
+}
+
+.side-menu-content app-loto-point-display-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .side-menu.open {
+    width: 500px;
+    min-width: 350px;
+  }
+}
+
+@media (max-width: 900px) {
+  .side-menu.open {
+    width: 400px;
+    min-width: 300px;
+  }
 }
 
 .checkbox-row {

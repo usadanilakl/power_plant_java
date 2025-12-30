@@ -15,7 +15,8 @@ export class CanvasRenderService {
   drawShapes(
     canvas: HTMLCanvasElement,
     shapes: RfShape[],
-    scale: number
+    scale: number,
+    hoveredShapeId?: number | null
   ): void {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -24,18 +25,23 @@ export class CanvasRenderService {
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    shapes.forEach((shape) => this.drawShape(ctx, shape, scale));
+    shapes.forEach((shape) => this.drawShape(ctx, shape, scale, hoveredShapeId));
   }
 
   private drawShape(
     ctx: CanvasRenderingContext2D,
     shape: RfShape,
-    scale: number
+    scale: number,
+    hoveredShapeId?: number | null
   ): void {
-    ctx.strokeStyle = shape.color;
+    const isHovered = hoveredShapeId !== null && hoveredShapeId !== undefined && shape.id === hoveredShapeId;
+
+    ctx.strokeStyle = isHovered ? '#ffa500' : shape.color; // Orange for hover
     ctx.fillStyle = shape.color;
     ctx.lineWidth = shape.isSelected
       ? this.SELECTED_LINE_WIDTH
+      : isHovered
+      ? 2
       : this.DEFAULT_LINE_WIDTH;
 
     const scaledShape = this.scaleShape(shape, scale);

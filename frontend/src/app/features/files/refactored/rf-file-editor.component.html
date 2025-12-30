@@ -1,45 +1,59 @@
-<div class="image-container">
-  @if (currentFile()) {
-    @if(currentFile()?.fileLink?.endsWith('.jpg')){
-      <app-interactive-image
-        [imageUrl]="fileLink()"
-        [shapesInput]="shapes()"
-        [preset]="'FILE_EDITOR'"
-        (shapeRightClicked)="onShapeRightClicked($event)"
-        (shapeUpdated)="onShapeUpdated($event)">
-      </app-interactive-image>
-    } @else if(currentFile()?.fileLink?.endsWith('.pdf')){
-      <app-pdf-display-iframe [pdfSrc]="currentFile()?.fileLink"></app-pdf-display-iframe>
-    }
-  } @else {
-    <div class="no-file-selected">
-      <p>No file selected. Please select a file to view and edit.</p>
-      <!-- You can add a button or other UI elements here to guide the user -->
-      <!-- <button (click)="onSelectFile()" class="select-file-button">Select a File</button> -->
-    </div>
-  }
+<div class="split-view-container" [class.table-open]="isLotoPointTableOpen()">
+  <!-- Image Section -->
+  <div class="image-section">
+    <div class="image-container">
+      @if (currentFile()) {
+        @if(currentFile()?.fileLink?.endsWith('.jpg')){
+          <app-interactive-image
+            [imageUrl]="fileLink()"
+            [shapesInput]="shapes()"
+            [preset]="'FILE_EDITOR'"
+            [hoveredShapeId]="hoveredEquipmentId()"
+            (shapeRightClicked)="onShapeRightClicked($event)"
+            (shapeUpdated)="onShapeUpdated($event)"
+            (shapeHovered)="onShapeHovered($event)">
+          </app-interactive-image>
+        } @else if(currentFile()?.fileLink?.endsWith('.pdf')){
+          <app-pdf-display-iframe [pdfSrc]="currentFile()?.fileLink"></app-pdf-display-iframe>
+        }
+      } @else {
+        <div class="no-file-selected">
+          <p>No file selected. Please select a file to view and edit.</p>
+        </div>
+      }
 
-  <!-- Control buttons -->
-  <div class="control-section">
-    <div class="button-row">
-      <button (click)="openLotoPointTable()" class="control-button">View LOTO Points</button>
+      <!-- Control buttons -->
+      <div class="control-section">
+        <div class="button-row">
+          <button (click)="toggleLotoPointTable()" class="control-button">
+            {{ isLotoPointTableOpen() ? 'Hide' : 'Show' }} LOTO Points
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side Menu - LOTO Point Table -->
+  <div class="side-menu" [class.open]="isLotoPointTableOpen()">
+    <div class="side-menu-header">
+      <h3>LOTO Points ({{ allLotoPoints().length }})</h3>
+      <button class="close-button" (click)="closeLotoPointTable()" title="Close">
+        ✕
+      </button>
+    </div>
+    <div class="side-menu-content">
+      <app-loto-point-display-table
+        [inputItems]="allLotoPoints()"
+        [isTableIsolated]="true"
+        [loadMoreEnabled]="false"
+        [hoverDebounceTime]="100"
+        [hoveredItemId]="hoveredLotoPoint()?.id ?? null"
+        (selectedItemsEvent)="onLotoPointSelected($event)"
+        (rowHoveredEvent)="onLotoPointHovered($event)">
+      </app-loto-point-display-table>
     </div>
   </div>
 </div>
-
-<!-- LOTO Point Table Popup -->
-<app-popup-projection
-  [isOpen]="isLotoPointTableOpen()"
-  [title]="'LOTO Points Table'"
-  [size]="'large'"
-  (close)="closeLotoPointTable()">
-  <app-loto-point-display-table
-    [inputItems]="allLotoPoints()"
-    [isTableIsolated]="true"
-    [loadMoreEnabled]="false"
-    (selectedItemsEvent)="onLotoPointSelected($event)">
-  </app-loto-point-display-table>
-</app-popup-projection>
 
 <!-- LOTO Point Edit Form Popup -->
 <app-popup-projection

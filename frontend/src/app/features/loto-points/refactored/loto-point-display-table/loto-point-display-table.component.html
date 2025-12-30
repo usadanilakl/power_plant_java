@@ -3,5 +3,8 @@
   [inputItems]="inputItems()"
   [isTableIsolated]="isTableIsolated()"
   [loadMoreEnabled]="loadMoreEnabled()"
-  (selectedItemsEvent)="selectedItemsEvent.emit($event)">
+  [hoverDebounceTime]="hoverDebounceTime()"
+  [hoveredItemId]="hoveredItemId()"
+  (selectedItemsEvent)="selectedItemsEvent.emit($event)"
+  (rowHoveredEvent)="rowHoveredEvent.emit($event)">
 </app-rf-loto-point-table>

@@ -239,9 +239,10 @@ public class NgLotoPointController {
 
 //            LotoPoint lp = ngLotoPointService.convertIdDtoToEntity(lotoPoint);
 
+            // processLotoPoint already handles saving the LotoPoint and all equipment relationships
             LotoPoint lp = ngLotoPointService.processLotoPoint(lotoPoint);
 
-            LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(lp));
+            LotoPointDto updatedLotoPoint = ngLotoPointService.toDto(lp);
 
             NgApiResponse<LotoPointDto> response = new NgApiResponse<>(updatedLotoPoint, "LotoPoint updated successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
@@ -256,8 +257,9 @@ public class NgLotoPointController {
     @PostMapping
     public ResponseEntity<NgApiResponse<LotoPointDto>> createLotoPoint(@RequestBody LotoPointIdDto lotoPoint) {
         try {
+            // processLotoPoint already handles saving the LotoPoint and all equipment relationships
             LotoPoint lp = ngLotoPointService.processLotoPoint(lotoPoint);
-            LotoPointDto createdLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(lp));
+            LotoPointDto createdLotoPoint = ngLotoPointService.toDto(lp);
 
             NgApiResponse<LotoPointDto> response = new NgApiResponse<>(createdLotoPoint, "LotoPoint created successfully", LocalDateTime.now());
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);

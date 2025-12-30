@@ -59,6 +59,7 @@ export class InteractiveImageComponent {
   imageUrl = input<string>();
   imageName = input<string>();
   shapesInput = input<RfShape[]>([]);
+  hoveredShapeId = input<number | null>(null);
 
   // Configuration-based approach (replaces simple 'mode')
   config = input<InteractiveImageConfig>();
@@ -87,6 +88,7 @@ export class InteractiveImageComponent {
   shapeClicked = output<RfShape>();
   shapeUpdated = output<RfShape>();
   shapeDrawn = output<RfShape>();
+  shapeHovered = output<RfShape | null>();
 
   pngUrl = computed(()=>this.imageUrl()?.replaceAll('pdf', 'jpg'));
 
@@ -198,6 +200,14 @@ export class InteractiveImageComponent {
     // Effect to redraw canvas when shapes change
     effect(() => {
       const shapes = this.shapes();
+      if (this.canvas && this.img) {
+        this.updateCanvasAndRedraw();
+      }
+    });
+
+    // Effect to redraw canvas when hoveredShapeId changes
+    effect(() => {
+      const hoveredId = this.hoveredShapeId();
       if (this.canvas && this.img) {
         this.updateCanvasAndRedraw();
       }
@@ -334,7 +344,8 @@ export class InteractiveImageComponent {
     this.canvasRenderService.drawShapes(
       this.canvas,
       this.shapes(),
-      this.imageScale
+      this.imageScale,
+      this.hoveredShapeId()
     );
   }
 
@@ -352,6 +363,8 @@ export class InteractiveImageComponent {
     if (this.isPanning) {
       this.stopPanning();
     }
+    // Clear hover state when mouse leaves the image
+    this.shapeHovered.emit(null);
   }
 
   onMouseDown(event: MouseEvent): void {
@@ -969,6 +982,7 @@ export class InteractiveImageComponent {
 
     const shapes = this.shapes();
     let isOverShape = false;
+    let hoveredShape: RfShape | null = null;
 
     for (let i = shapes.length - 1; i >= 0; i--) {
       const shape = shapes[i];
@@ -985,12 +999,16 @@ export class InteractiveImageComponent {
           hoverY <= shape.y + shape.height
         ) {
           isOverShape = true;
+          hoveredShape = shape;
           break;
         }
       }
     }
 
     this.cursor = isOverShape ? 'pointer' : 'default';
+
+    // Emit hovered shape for external listeners
+    this.shapeHovered.emit(hoveredShape);
   }
 
   // Enhanced keyboard shortcuts for all operations

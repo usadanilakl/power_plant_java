@@ -44,6 +44,9 @@ export class LotoPointDisplayTableComponent {
   inputItems = input<LotoPointDto[]>([]);
   isTableIsolated = input<boolean>(false);
   loadMoreEnabled = input<boolean>(false);
-  
+  hoverDebounceTime = input<number>(0);
+  hoveredItemId = input<number | null>(null);
+
   selectedItemsEvent = output<LotoPointDto[]>();
+  rowHoveredEvent = output<LotoPointDto | null>();
 }

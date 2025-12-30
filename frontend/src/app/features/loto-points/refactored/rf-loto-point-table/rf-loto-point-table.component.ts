@@ -51,6 +51,7 @@ export class RfLotoPointTableComponent implements OnInit {
   enableDragDrop = input<boolean>(false);
   filterOutItems = input<FilterOutRules | undefined>();
   hoverDebounceTime = input<number>(0);
+  hoveredItemId = input<number | null>(null);
   fieldsToDisplay = input<(keyof LotoPointDto)[]>([
     'isVerified',
     'tagNumber',
@@ -64,6 +65,7 @@ export class RfLotoPointTableComponent implements OnInit {
   // Outputs
   selectedItemsEvent = output<LotoPointDto[]>();
   itemsReorderedEvent = output<LotoPointDto[]>();
+  rowHoveredEvent = output<LotoPointDto | null>();
 
   // State
   items$ = toSignal(this.stateService.allLoadedLotoPoints$, {

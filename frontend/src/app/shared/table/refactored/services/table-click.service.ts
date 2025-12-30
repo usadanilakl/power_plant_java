@@ -316,4 +316,11 @@ export class TableClickService {
   onRowHover(item: any): void {
     this.hoverSubject.next(item);
   }
+
+  /**
+   * Handle row leave
+   */
+  onRowLeave(): void {
+    this.hoverSubject.next(null);
+  }
 }

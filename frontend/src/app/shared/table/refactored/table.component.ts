@@ -89,6 +89,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   hoverDebounceTime = input<number>(0);
   isDragAndDropEnabled = input<boolean>(false);
   filterOutItems = input<FilterOutRules | undefined>();
+  hoveredItemId = input<number | null>(null);
   clickSetupInput = input<ClickSetup>({
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],

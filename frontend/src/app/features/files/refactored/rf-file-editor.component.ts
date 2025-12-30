@@ -61,6 +61,10 @@ export class RfFileEditroComponent {
   isLotoPointFormOpen = signal<boolean>(false);
   selectedLotoPoint = signal<LotoPointDto | null>(null);
 
+  // Hover state for synchronized highlighting
+  hoveredEquipmentId = signal<number | null>(null);
+  hoveredLotoPoint = signal<LotoPointDto | null>(null);
+
   // Compute all loto points from current file's equipment
   allLotoPoints = computed(() => {
     const equipment = this.equipment();
@@ -83,6 +87,14 @@ export class RfFileEditroComponent {
 
   closeLotoPointTable() {
     this.isLotoPointTableOpen.set(false);
+    this.hoveredEquipmentId.set(null);
+  }
+
+  toggleLotoPointTable() {
+    this.isLotoPointTableOpen.set(!this.isLotoPointTableOpen());
+    if (!this.isLotoPointTableOpen()) {
+      this.hoveredEquipmentId.set(null);
+    }
   }
 
   onLotoPointSelected(lotoPoints: LotoPointDto[]) {
@@ -100,6 +112,54 @@ export class RfFileEditroComponent {
       if (matchingEquipment) {
         // Highlight the shape on the image
         this.shapeManager.selectShape(matchingEquipment.id!, true);
+      }
+    }
+  }
+
+  onLotoPointHovered(lotoPoint: LotoPointDto | null) {
+    // Store the hovered LOTO point (for potential future use)
+    this.hoveredLotoPoint.set(lotoPoint);
+
+    if (!lotoPoint) {
+      this.hoveredEquipmentId.set(null);
+      return;
+    }
+
+    // Find equipment that contains this loto point
+    const equipment = this.equipment();
+    if (equipment) {
+      const matchingEquipment = equipment.find(eq =>
+        eq.lotoPoints?.some(lp => lp.id === lotoPoint.id)
+      );
+
+      if (matchingEquipment) {
+        // Set the hovered equipment ID to highlight on the image
+        this.hoveredEquipmentId.set(matchingEquipment.id!);
+      } else {
+        this.hoveredEquipmentId.set(null);
+      }
+    }
+  }
+
+  onShapeHovered(shape: RfShape | null) {
+    if (!shape) {
+      this.hoveredEquipmentId.set(null);
+      this.hoveredLotoPoint.set(null);
+      return;
+    }
+
+    // The shape ID corresponds to the equipment ID
+    this.hoveredEquipmentId.set(shape.id);
+
+    // Find the equipment and get its first LOTO point to highlight in the table
+    const equipment = this.equipment();
+    if (equipment) {
+      const matchingEquipment = equipment.find(eq => eq.id === shape.id);
+      if (matchingEquipment && matchingEquipment.lotoPoints && matchingEquipment.lotoPoints.length > 0) {
+        // Highlight the first LOTO point in the table
+        this.hoveredLotoPoint.set(matchingEquipment.lotoPoints[0]);
+      } else {
+        this.hoveredLotoPoint.set(null);
       }
     }
   }

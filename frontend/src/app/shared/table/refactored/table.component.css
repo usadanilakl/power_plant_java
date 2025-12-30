@@ -265,6 +265,11 @@ td {
   background-color: var(--accent-color-shadow, #e3f2fd) !important;
 }
 
+.table-body tbody tr.external-hover {
+  background-color: #fff3cd;
+  border-left: 3px solid #ffa500;
+}
+
 .table-body tbody tr.dragged {
   opacity: 0.6;
   background-color: var(--accent-color-shadow, #fff3cd);
