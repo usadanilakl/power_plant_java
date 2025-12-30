@@ -4,7 +4,7 @@
     <app-searchable-select-input
       [label]="label()"
       [options]="options()"
-      [categoryName]="canManageValues() ? label() : ''"
+      [categoryName]="canManageValues() ? categoryAlias() : ''"
       (addNewOption)="onAddNew()"
       (editOption)="onEdit()"
       #selectInput

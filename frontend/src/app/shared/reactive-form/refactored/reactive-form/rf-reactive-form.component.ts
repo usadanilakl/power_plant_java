@@ -200,11 +200,19 @@ export class RfReactiveFormComponent {
     const fields = this.fields();
 
     fields.forEach((field) => {
-      if (field.type === 'select') {
+      if (field.type === 'select' || field.type === 'value-select') {
         const value = this.formBuilderService.getNestedValue(entity, field.name);
         if (value && typeof value === 'object' && value !== null && value.id) {
           // Extract ID from nested object for select fields
           this.setNestedValue(normalized, field.name, value.id);
+        }
+      }
+      // Handle multi-select and multi-value-select (arrays of objects with IDs)
+      else if (field.type === 'multi-select' || field.type === 'multi-value-select') {
+        const value = this.formBuilderService.getNestedValue(entity, field.name);
+        if (Array.isArray(value) && value.length > 0 && value[0]?.id) {
+          // Extract IDs from array of objects
+          this.setNestedValue(normalized, field.name, value.map(item => item.id));
         }
       }
     });
