@@ -1,0 +1,56 @@
+<div class="rf-multi-value-select">
+  <!-- Use searchable-multi-select-input component -->
+  <div>
+    <app-searchable-multi-select-input
+      [label]="label()"
+      [options]="options()"
+      [categoryName]="canManageValues() ? label() : ''"
+      (addNewOption)="onAddNew()"
+      (editOption)="onEdit()"
+      #multiSelectInput
+    >
+    </app-searchable-multi-select-input>
+  </div>
+
+  <!-- Add Dialog -->
+  @if (showDialog()) {
+    <div class="dialog-overlay" (click)="closeDialog()">
+      <div class="dialog-content" (click)="$event.stopPropagation()">
+        <h3>Add {{ label() }}</h3>
+
+        <div class="form-group">
+          <label>Name:</label>
+          <input
+            type="text"
+            [(ngModel)]="dialogValueName"
+            placeholder="Enter name"
+            class="input-field"
+            (keyup.enter)="saveValue()">
+        </div>
+
+        <div class="form-group">
+          <label>Alias (optional):</label>
+          <input
+            type="text"
+            [(ngModel)]="dialogValueAlias"
+            placeholder="Enter alias"
+            class="input-field"
+            (keyup.enter)="saveValue()">
+        </div>
+
+        @if (errorMessage()) {
+          <div class="error-message">{{ errorMessage() }}</div>
+        }
+
+        <div class="dialog-actions">
+          <button (click)="saveValue()" [disabled]="!dialogValueName" class="save-btn">
+            Save
+          </button>
+          <button (click)="closeDialog()" class="cancel-btn">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

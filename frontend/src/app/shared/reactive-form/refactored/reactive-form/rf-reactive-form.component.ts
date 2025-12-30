@@ -15,6 +15,8 @@ import { FormGroupInputComponent } from '../input-fields/form-group-input/form-g
 import { EquipmentBrowserInputComponent } from '../input-fields/equipment-browser-input/equipment-browser-input.component';
 import { EquipmentShapeDrawerInputComponent } from '../input-fields/equipment-shape-drawer-input/equipment-shape-drawer-input.component';
 import { EquipmentListManagerComponent } from '../input-fields/equipment-list-manager/equipment-list-manager.component';
+import { RfValueSelectComponent } from '../../../../features/values/refactored/components/rf-value-select/rf-value-select.component';
+import { RfMultiValueSelectComponent } from '../../../../features/values/refactored/components/rf-multi-value-select/rf-multi-value-select.component';
 import { FormBuilderService } from '../services/form-builder.service';
 import { FormValidationService } from '../services/form-validation.service';
 import { FormDataService } from '../services/form-data.service';
@@ -36,6 +38,8 @@ import { FormDataService } from '../services/form-data.service';
     EquipmentBrowserInputComponent,
     EquipmentShapeDrawerInputComponent,
     EquipmentListManagerComponent,
+    RfValueSelectComponent,
+    RfMultiValueSelectComponent,
   ],
   templateUrl: './rf-reactive-form.component.html',
   styleUrl: './rf-reactive-form.component.css',

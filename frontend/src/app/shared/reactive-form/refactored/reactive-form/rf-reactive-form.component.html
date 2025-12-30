@@ -109,6 +109,22 @@
           [formControl]="getFormControl(field.name)"
         >
         </app-equipment-list-manager>
+        } @case('value-select'){
+        <app-rf-value-select
+          [categoryAlias]="field.categoryAlias!"
+          [label]="field.label"
+          [canManageValues]="field.canManageValues ?? true"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-rf-value-select>
+        } @case('multi-value-select'){
+        <app-rf-multi-value-select
+          [categoryAlias]="field.categoryAlias!"
+          [label]="field.label"
+          [canManageValues]="field.canManageValues ?? true"
+          [formControl]="getFormControl(field.name)"
+        >
+        </app-rf-multi-value-select>
         } @default {
         <app-rf-form-input
           [label]="field.label"

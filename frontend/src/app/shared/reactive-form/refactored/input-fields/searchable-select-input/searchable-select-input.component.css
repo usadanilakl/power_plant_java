@@ -42,6 +42,16 @@
   border-color: var(--accent-color);
 }
 
+.dropdown-input.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--secondary-background);
+}
+
+.dropdown-input.disabled:hover {
+  border-color: var(--border-color);
+}
+
 .dropdown-input.open,
 .dropdown-input:focus {
   outline: none;

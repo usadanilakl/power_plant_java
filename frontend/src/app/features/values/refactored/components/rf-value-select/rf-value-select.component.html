@@ -1,0 +1,103 @@
+<div class="rf-value-select">
+  <!-- Use searchable-select-input component -->
+  <div>
+    <app-searchable-select-input
+      [label]="label()"
+      [options]="options()"
+      [categoryName]="canManageValues() ? label() : ''"
+      (addNewOption)="onAddNew()"
+      (editOption)="onEdit()"
+      #selectInput
+    >
+    </app-searchable-select-input>
+  </div>
+
+  <!-- Delete button (only shown when value is selected and can manage) -->
+  @if (canManageValues() && value()) {
+    <button
+      type="button"
+      (click)="openDeleteDialog()"
+      class="delete-btn"
+      title="Delete {{ label() }}">
+      🗑 Delete
+    </button>
+  }
+
+  <!-- Add/Edit Dialog -->
+  @if (showDialog()) {
+    <div class="dialog-overlay" (click)="closeDialog()">
+      <div class="dialog-content" (click)="$event.stopPropagation()">
+        <h3>{{ dialogMode() === 'add' ? 'Add' : 'Edit' }} {{ label() }}</h3>
+
+        <div class="form-group">
+          <label>Name:</label>
+          <input
+            type="text"
+            [(ngModel)]="dialogValueName"
+            placeholder="Enter name"
+            class="input-field"
+            (keyup.enter)="saveValue()">
+        </div>
+
+        <div class="form-group">
+          <label>Alias (optional):</label>
+          <input
+            type="text"
+            [(ngModel)]="dialogValueAlias"
+            placeholder="Enter alias"
+            class="input-field"
+            (keyup.enter)="saveValue()">
+        </div>
+
+        @if (errorMessage()) {
+          <div class="error-message">{{ errorMessage() }}</div>
+        }
+
+        <div class="dialog-actions">
+          <button (click)="saveValue()" [disabled]="!dialogValueName" class="save-btn">
+            Save
+          </button>
+          <button (click)="closeDialog()" class="cancel-btn">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Delete Confirmation Dialog -->
+  @if (showDeleteConfirm()) {
+    <div class="dialog-overlay" (click)="closeDeleteDialog()">
+      <div class="dialog-content" (click)="$event.stopPropagation()">
+        <h3>Delete {{ label() }}?</h3>
+
+        <p>Are you sure you want to delete "{{ selectedValueName() }}"?</p>
+
+        @if (transferOptions().length > 0) {
+          <div class="form-group">
+            <label>Transfer references to:</label>
+            <select [(ngModel)]="transferToValueId" class="input-field">
+              <option [value]="null">-- Select replacement --</option>
+              @for (option of transferOptions(); track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        @if (errorMessage()) {
+          <div class="error-message">{{ errorMessage() }}</div>
+        }
+
+        <div class="dialog-actions">
+          <button (click)="confirmDelete()" class="delete-btn-confirm">
+            Delete
+          </button>
+          <button (click)="closeDeleteDialog()" class="cancel-btn">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -69,9 +69,10 @@ export class RfLotoPointApiService {
   createLotoPoint(
     lotoPoint: LotoPointDto
   ): Observable<SpringApiResponse<LotoPointDto>> {
+    const lotoPointIdDto = lotoPoint.toIdModel();
     return this.http.post<SpringApiResponse<LotoPointDto>>(
       this.apiUrl,
-      lotoPoint
+      lotoPointIdDto
     );
   }
 
@@ -80,19 +81,25 @@ export class RfLotoPointApiService {
   ): Observable<SpringApiResponse<LotoPointDto>> {
     let lotoPointIdDto: LotoPointIdDto;
 
-    if (lotoPoint instanceof LotoPointDto) {
-      lotoPointIdDto = lotoPoint.toIdModel();
+    console.log('updateLotoPoint received:', lotoPoint);
+    console.log('Has toIdModel?', typeof (lotoPoint as any).toIdModel === 'function');
+
+    // Check if it has the toIdModel method (duck typing)
+    if (typeof (lotoPoint as any).toIdModel === 'function') {
+      console.log('Converting using toIdModel');
+      lotoPointIdDto = (lotoPoint as LotoPointDto).toIdModel();
     } else if (this.isLotoPointIdDto(lotoPoint)) {
-      lotoPointIdDto = lotoPoint;
+      console.log('Already an IdDto');
+      lotoPointIdDto = lotoPoint as LotoPointIdDto;
     } else {
-      console.error(
-        'Invalid parameter type, expected LotoPointDto or LotoPointIdDto'
-      );
-      // If it's neither, create a new LotoPointDto and convert it
-      const fullLotoPoint = new LotoPointDto();
-      Object.assign(fullLotoPoint, lotoPoint);
-      lotoPointIdDto = fullLotoPoint.toIdModel();
+      console.log('Creating new LotoPointDto and converting');
+      // Create a proper LotoPointDto instance and convert it
+      // Use 'as any' to bypass type checking since we're handling the conversion
+      const dto = new LotoPointDto(lotoPoint as any);
+      lotoPointIdDto = dto.toIdModel();
     }
+
+    console.log('Sending to backend:', lotoPointIdDto);
 
     const headers = new HttpHeaders().set('Content-Type', 'application/json');
     return this.http.put<SpringApiResponse<LotoPointDto>>(
@@ -100,6 +107,17 @@ export class RfLotoPointApiService {
       lotoPointIdDto,
       { headers }
     );
+  }
+
+  /**
+   * Save LOTO point - creates if new, updates if existing
+   */
+  saveLotoPoint(lotoPoint: LotoPointDto): Observable<SpringApiResponse<LotoPointDto>> {
+    if (lotoPoint.id) {
+      return this.updateLotoPoint(lotoPoint);
+    } else {
+      return this.createLotoPoint(lotoPoint);
+    }
   }
 
   // Type guard function

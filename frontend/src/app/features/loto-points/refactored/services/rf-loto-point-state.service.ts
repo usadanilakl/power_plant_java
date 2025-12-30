@@ -81,7 +81,31 @@ export class RfLotoPointStateService {
   }
 
   submitForm(item: LotoPointDto) {
-    throw new Error('Method not implemented.');
+    console.log('Submitting LOTO Point:', item);
+    console.log('Item has toIdModel?', typeof (item as any).toIdModel === 'function');
+    if (typeof (item as any).toIdModel === 'function') {
+      console.log('Converted to IdModel:', item.toIdModel());
+    }
+
+    this.apiService.saveLotoPoint(item)
+      .pipe(
+        tap(response => {
+          console.log('LOTO Point saved successfully:', response.responseData);
+          // Update the selected item with the saved data
+          this.setSelectedItem(new LotoPointDto(response.responseData));
+          // Optionally close the form
+          // this.closeForm();
+        }),
+        catchError(error => {
+          console.error('Error saving LOTO Point:', error);
+          console.error('Error details:', error.error);
+          console.error('Error message:', error.message);
+          // Handle error (could emit to a global error service)
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   saveDraft(item: LotoPointDto) {

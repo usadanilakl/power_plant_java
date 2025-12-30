@@ -2,7 +2,7 @@
   <div class="label-container">
     <label>{{ label() }}</label>
   </div>
-  <div class="dropdown-input" (click)="toggleDropdown($event)">
+  <div class="dropdown-input" (click)="!isDisabled() && toggleDropdown($event)" [class.disabled]="isDisabled()">
     {{ selectedDisplay() }}
   </div>
 </div>
@@ -40,7 +40,7 @@
   <div class="label-container">
     <label>{{ label() }}</label>
   </div>
-  <div class="dropdown-input" (click)="toggleDropdown($event)">
+  <div class="dropdown-input" (click)="!isDisabled() && toggleDropdown($event)" [class.disabled]="isDisabled()">
     {{ selectedDisplay() }}
   </div>
 </div>

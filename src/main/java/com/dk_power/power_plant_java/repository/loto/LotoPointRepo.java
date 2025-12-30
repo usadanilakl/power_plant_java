@@ -657,5 +657,17 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
             Pageable pageable
         );
 
+    // Count methods for Value dependency checking
+    @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE lp.isoPos.id = :valueId")
+    long countByIsoPosId(@org.springframework.data.repository.query.Param("valueId") Long valueId);
+
+    @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE lp.normPos.id = :valueId")
+    long countByNormPosId(@org.springframework.data.repository.query.Param("valueId") Long valueId);
+
+    @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE lp.location.id = :valueId")
+    long countByLocationId(@org.springframework.data.repository.query.Param("valueId") Long valueId);
+
+    @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE lp.eqType.id = :valueId")
+    long countByEqTypeId(@org.springframework.data.repository.query.Param("valueId") Long valueId);
 
 }

@@ -53,6 +53,7 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
   filteredOptions = signal<any[]>([]);
   searchTerm = signal<string>('');
   private internalValue = signal<any>(null);
+  isDisabled = signal<boolean>(false);
   private optionsSubscription: Subscription | null = null;
 
   // Outputs
@@ -103,6 +104,10 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
 
   registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.isDisabled.set(isDisabled);
   }
 
   // ---- Options handling ----

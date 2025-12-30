@@ -546,6 +546,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   }
 
   toIdModel(): LotoPointIdDto {
+    const equipmentIds = this.equipmentList?.map((equipment) => equipment.id) || null;
+
     return new LotoPointIdDto({
       id: this.id,
       unit: this.unit,
@@ -560,7 +562,8 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       specificLocation: this.specificLocation,
       standard: this.standard,
       generalLocation: this.generalLocation,
-      equipmentIdList: this.equipmentList?.map((equipment) => equipment.id),
+      equipmentIdList: equipmentIds,
+      equipmentList: equipmentIds, // Both fields should have the same IDs
       normalPosition: this.normalPosition,
       isolatedPosition: this.isolatedPosition,
       oldId: this.oldId,
@@ -569,8 +572,11 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       // fileIds: this.fileIds.split(',').map(id => id.trim()).filter(id => id !== ''),
       fileIds: this.fileIds,
       conflictStatus: this.conflictStatus,
-      lotoIds: this.lotos?.map((loto) => loto.id),
+      lotos: this.lotos?.map((loto) => loto.id) || null,
+      lotoIds: this.lotos?.map((loto) => loto.id) || null, // Both fields should have the same IDs
       zeroEnergyMethod: this.zeroEnergyMethod,
+      location: this.location?.id || null,
+      eqType: this.eqType?.id || null,
     });
   }
   toOption(): Option {

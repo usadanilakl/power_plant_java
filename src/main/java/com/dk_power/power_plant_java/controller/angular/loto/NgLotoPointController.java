@@ -253,6 +253,20 @@ public class NgLotoPointController {
         }
     }
 
+    @PostMapping
+    public ResponseEntity<NgApiResponse<LotoPointDto>> createLotoPoint(@RequestBody LotoPointIdDto lotoPoint) {
+        try {
+            LotoPoint lp = ngLotoPointService.processLotoPoint(lotoPoint);
+            LotoPointDto createdLotoPoint = ngLotoPointService.toDto(ngLotoPointService.save(lp));
+
+            NgApiResponse<LotoPointDto> response = new NgApiResponse<>(createdLotoPoint, "LotoPoint created successfully", LocalDateTime.now());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
     @GetMapping("/tag-number/{system}")
     public ResponseEntity<NgApiResponse<String>> createNewTagNumber(@PathVariable String system) {
         try {

@@ -80,6 +80,8 @@ export interface RfFormField {
     | 'textarea'
     | 'select'
     | 'multi-select'
+    | 'value-select'
+    | 'multi-value-select'
     | 'date'
     | 'time'
     | 'checkbox-group'
@@ -96,6 +98,8 @@ export interface RfFormField {
     | 'equipment-list-manager';
   validators?: ValidatorFn[];
   options?: Option[] | Signal<Option[]>;
+  categoryAlias?: string; // For value-select and multi-value-select types
+  canManageValues?: boolean; // For value-select and multi-value-select types
   initialValue?: any;
   currentValue?: any;
   question?: Question;
