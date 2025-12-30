@@ -43,7 +43,10 @@ export class EquipmentMapperService{
                 x: Math.min(coordinates.startX, coordinates.endX),
                 y: Math.min(coordinates.startY, coordinates.endY),
                 width: coordinates.width,
-                height: coordinates.height
+                height: coordinates.height,
+                rotation: equipment.rotation !== undefined && equipment.rotation !== null
+                    ? equipment.rotation
+                    : (coordinates.rotation !== undefined ? coordinates.rotation : 0)
             };
 
             return shape;
@@ -53,7 +56,7 @@ export class EquipmentMapperService{
         }
     }
 
-    private parseCoordinates(coordinatesStr: string): { startX: number; startY: number; endX: number; endY: number; width: number; height: number } | null {
+    private parseCoordinates(coordinatesStr: string): { startX: number; startY: number; endX: number; endY: number; width: number; height: number; rotation?: number } | null {
         try {
             const cleanedCoords = coordinatesStr.replace(/\\/g, '').replace(/^"(.*)"$/, '$1');
 
@@ -68,7 +71,8 @@ export class EquipmentMapperService{
                     endX: parseFloat(parts[2].split(':')[1]),
                     endY: parseFloat(parts[3].split(':')[1]),
                     width: parseFloat(parts[4].split(':')[1]),
-                    height: parseFloat(parts[5].split(':')[1])
+                    height: parseFloat(parts[5].split(':')[1]),
+                    rotation: parts[6] ? parseFloat(parts[6].split(':')[1]) : undefined
                 };
             }
 
@@ -90,7 +94,8 @@ export class EquipmentMapperService{
                 endX,
                 endY,
                 width,
-                height
+                height,
+                rotation: coordsObj.rotation !== undefined ? Number(coordsObj.rotation) : undefined
             };
         } catch (error) {
             console.error('Error parsing coordinates:', error);
@@ -157,7 +162,8 @@ export class EquipmentMapperService{
                 endX,
                 endY,
                 width: rect.width,
-                height: rect.height
+                height: rect.height,
+                rotation: rect.rotation || 0
             });
         }
         // For other shape types, we'll need to add support as needed
@@ -178,9 +184,11 @@ export class EquipmentMapperService{
         const coordinates = this.mapRfShapeToCoordinates(shape);
         if(!coordinates) return null;
         const pictureSize = this.formatPictureSize(shape.originalWidth, shape.originalHeight);
+        const rect = shape as RfRectangleShape;
         const equipment: EquipmentDto = new EquipmentDto({
             coordinates: coordinates,
             originalPictureSize: pictureSize,
+            rotation: rect.rotation || 0,
             mainFileId: shape.fileId
         })
         return equipment;

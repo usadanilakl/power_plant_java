@@ -52,6 +52,7 @@ public class Equipment extends BaseEquipment implements Referenceable {
     private Value system;
     private String coordinates;
     private String originalPictureSize;
+    private Double rotation;
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "pid_id")
     @JsonBackReference

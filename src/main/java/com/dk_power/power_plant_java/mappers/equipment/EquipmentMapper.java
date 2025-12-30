@@ -75,6 +75,10 @@ public class EquipmentMapper implements BaseMapper {
             dto.setOriginalPictureSize(entity.getOriginalPictureSize());
         }
 
+        if (entity.getRotation() != null) {
+            dto.setRotation(entity.getRotation());
+        }
+
         if (entity.getObjectType() != null) {
             dto.setObjectType(entity.getObjectType());
         }
@@ -227,6 +231,10 @@ public class EquipmentMapper implements BaseMapper {
             entity.setOriginalPictureSize(source.getOriginalPictureSize());
         }
 
+        if (source.getRotation() != null) {
+            entity.setRotation(source.getRotation());
+        }
+
         if (source.getVendor() != null) {
             if (source.getVendor().getId() == null) {
                 ValueDto v = valueService.getValueFromCategory("Vendor", source.getVendor().getName());
@@ -337,6 +345,7 @@ public class EquipmentMapper implements BaseMapper {
             equipment.setSystem(valueService.findById(dto.getSystemId()).orElse(null));
         if (dto.getCoordinates() != null) equipment.setCoordinates(dto.getCoordinates());
         if (dto.getOriginalPictureSize() != null) equipment.setOriginalPictureSize(dto.getOriginalPictureSize());
+        if (dto.getRotation() != null) equipment.setRotation(dto.getRotation());
         if (dto.getMainFile() != null && !dto.getMainFile().isEmpty() && equipment.getMainFile()==null)
             equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
         if(dto.getMainFileId()!=null && equipment.getMainFile()==null) equipment.setMainFile(fileService.getEntityById(dto.getMainFileId()));

@@ -29,6 +29,7 @@ public class EquipmentDto extends BaseEquipmentDto {
     private ValueDto system;
     private String coordinates;
     private String originalPictureSize;
+    private Double rotation;
     private String mainFile;
     private FileDto mainFileObject;
     private Long mainFileId;

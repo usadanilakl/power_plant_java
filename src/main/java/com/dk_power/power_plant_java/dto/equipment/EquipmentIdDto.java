@@ -24,6 +24,7 @@ public class EquipmentIdDto extends BaseEquipmentDto {
     private Long systemId;
     private String coordinates;
     private String originalPictureSize;
+    private Double rotation;
     private String mainFile;
     private Long mainFileId;
     private Set<Long> lotoPointIds;

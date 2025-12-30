@@ -29,6 +29,7 @@ export interface EquipmentModel extends BaseModel  {
   system: ValueDto | null | undefined;
   coordinates: string | null | undefined;
   originalPictureSize: string | null | undefined;
+  rotation: number | null | undefined;
   mainFile: string | null | undefined;
   mainFileId: number | null | undefined;
   lotoPoints: LotoPointDto[] | null | undefined;
@@ -48,6 +49,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   system: ValueDto | null | undefined;
   coordinates: string | null | undefined;
   originalPictureSize: string | null | undefined;
+  rotation: number | null | undefined;
   mainFile: string | null | undefined;
   mainFileId: number | null | undefined;
   lotoPoints: LotoPointDto[] | null | undefined;
@@ -69,6 +71,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     this.system = super.setNestedObjectById(data.system,new ValueDto());
     this.coordinates = data.coordinates ?? null;
     this.originalPictureSize = data.originalPictureSize ?? null;
+    this.rotation = data.rotation ?? null;
     this.mainFile = data.mainFile ?? null;
     this.mainFileId = data.mainFileId ?? null;
     this.lotoPoints = data.lotoPoints ?? [];
@@ -90,6 +93,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       system: this.system ? this.system.toJson() : null,
       coordinates: this.coordinates || null,
       originalPictureSize: this.originalPictureSize || null,
+      rotation: this.rotation || null,
       mainFile: this.mainFile || null,
       mainFileId: this.mainFileId || null,
       lotoPoints: this.lotoPoints?.map(point => point ? point.toJson() : null).filter(Boolean),
@@ -116,6 +120,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       system: json.system ? ValueDto.fromJson(json.system) : null,
       coordinates: json.coordinates || null,
       originalPictureSize: json.originalPictureSize || null,
+      rotation: json.rotation || null,
       mainFile: json.mainFile || null,
       mainFileId: json.mainFileId || null,
       lotoPoints: json.lotoPoints ? json.lotoPoints.map((point: any) => LotoPointDto.fromJson(point)) : null,
@@ -140,6 +145,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       systemId: this.system?.id || 0,
       coordinates: this.coordinates,
       originalPictureSize: this.originalPictureSize,
+      rotation: this.rotation,
       mainFile: this.mainFile,
       mainFileId: this.mainFileId,
       lotoPointIds: this.lotoPoints?.map(point => point.id) || null,
@@ -365,6 +371,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       },
       coordinates: { name: 'coordinates', label: 'Coordinates', type: 'text', initialValue: dto.coordinates },
       originalPictureSize: { name: 'originalPictureSize', label: 'Original Picture Size', type: 'text', initialValue: dto.originalPictureSize },
+      rotation: { name: 'rotation', label: 'Rotation', type: 'text', initialValue: dto.rotation },
       mainFile: { name: 'mainFile', label: 'Main File', type: 'text', initialValue: dto.mainFile },
       mainFileId: { name: 'mainFileId', label: 'Main File ID', type: 'text', initialValue: dto.mainFileId },
       lotoPoints: { name: 'lotoPoints', label: 'LOTO Points', type: 'multi-select', initialValue: dto.lotoPoints?.map(point => point.id) || null },

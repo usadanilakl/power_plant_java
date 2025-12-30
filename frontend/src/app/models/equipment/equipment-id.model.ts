@@ -12,6 +12,7 @@ export class EquipmentIdDto extends BaseDto {
   systemId: number | null;
   coordinates: string | null;
   originalPictureSize: string | null;
+  rotation: number | null;
   mainFile: string | null;
   mainFileId: number | null;
   lotoPointIds: number[] | null;
@@ -30,6 +31,7 @@ export class EquipmentIdDto extends BaseDto {
     this.systemId = data.systemId || null;
     this.coordinates = data.coordinates || null;
     this.originalPictureSize = data.originalPictureSize || null;
+    this.rotation = data.rotation || null;
     this.mainFile = data.mainFile || null;
     this.mainFileId = data.mainFileId || null;
     this.lotoPointIds = data.lotoPointIds || null;
@@ -50,6 +52,7 @@ export class EquipmentIdDto extends BaseDto {
       systemId: this.systemId || null,
       coordinates: this.coordinates || null,
       originalPictureSize: this.originalPictureSize || null,
+      rotation: this.rotation || null,
       mainFile: this.mainFile || null,
       mainFileId: this.mainFileId || null,
       lotoPointIds: this.lotoPointIds || null,
@@ -76,6 +79,7 @@ export class EquipmentIdDto extends BaseDto {
       systemId: json.systemId || null,
       coordinates: json.coordinates || null,
       originalPictureSize: json.originalPictureSize || null,
+      rotation: json.rotation || null,
       mainFile: json.mainFile || null,
       mainFileId: json.mainFileId || null,
       lotoPointIds: json.lotoPointIds || null,
