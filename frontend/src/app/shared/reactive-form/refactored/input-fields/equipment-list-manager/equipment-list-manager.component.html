@@ -80,7 +80,7 @@
             <button
               type="button"
               class="btn-remove"
-              (click)="removeItem($index)"
+              (click)="$event.stopPropagation(); removeItem($index)"
               title="Remove this equipment">
               &times;
             </button>
@@ -110,7 +110,7 @@
   [size]="'large'"
   (close)="closeDrawer()">
   <app-equipment-shape-drawer-dialog
-    (shapeDrawn)="onShapeDrawn($event)"
+    (saveSuccess)="onEquipmentSaved($event)"
     (close)="closeDrawer()"
   />
 </app-rf-popup-projection>

@@ -87,7 +87,7 @@ export class RfFileStateService {
   loadFromLocalStorage(): void {
     const draft = this.localStorage.loadDraft();
     if (draft) {
-      this.selectedItem.set(new FileDto(draft));
+      this.selectedItem.set(new FileDto({...draft, id: +draft.id }));
     }
   }
 

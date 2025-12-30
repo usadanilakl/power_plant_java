@@ -66,8 +66,9 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     if (Array.isArray(value)) {
       this.equipmentList.set(value.map(item => ({
         ...item,
-        fileId: item.mainFileId,
-        fileName: item.mainFileObject?.name,
+        fileId: item.mainFileId ?? item.fileId,
+        // Fix: Use mainFileObject name, fallback to fileName if available
+        fileName: item.mainFileObject?.name ?? item.fileName ?? (item.mainFileId ? `File #${item.mainFileId}` : undefined),
         isExisting: !!item.id // If has ID, it's existing equipment
       })));
       this.value.set(value);
@@ -101,7 +102,11 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   }
 
   openViewer(item: EquipmentListItem) {
-    if(!item || !item.fileId) return;
+    // Only open viewer for existing equipment with IDs
+    if (!item || !item.id) {
+      console.warn('Cannot open viewer: equipment has no ID', item);
+      return;
+    }
     this.selectedEquipment.set(item);
     this.isVeiewerOpen.set(true);
   }
@@ -114,8 +119,8 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     const newItem: EquipmentListItem = {
       id: equipment.id,
       coordinates: equipment.coordinates || '',
-      fileId: equipment.files?.[0] ? parseInt(equipment.files[0]) : undefined,
-      fileName: equipment.files?.[0] || '',
+      fileId: equipment.mainFileId ?? undefined,
+      fileName: equipment.mainFileObject?.name ?? (equipment.mainFileId ? `File #${equipment.mainFileId}` : ''),
       originalPictureSize: equipment.originalPictureSize || '',
       tagNumber: equipment.tagNumber || '',
       isExisting: true
@@ -136,17 +141,21 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     this.isDrawerOpen.set(false);
   }
 
-  onShapeDrawn(data: { shape: RfShape; file: FileDto }) {
+  onEquipmentSaved(equipment: EquipmentDto | null) {
+    if (!equipment) {
+      console.error('No equipment saved');
+      this.closeDrawer();
+      return;
+    }
+
     const newItem: EquipmentListItem = {
-      coordinates: this.equipmentMapper.mapRfShapeToCoordinates(data.shape),
-      fileId: data.file.id ?? undefined,
-      fileName: data.file.name,
-      originalPictureSize: this.equipmentMapper.formatPictureSize(
-        data.shape.originalPictureWidth,
-        data.shape.originalPictureHeight
-      ),
-      tagNumber: `New Equipment`, // Placeholder
-      isExisting: false
+      id: equipment.id,
+      coordinates: equipment.coordinates || '',
+      fileId: equipment.mainFileId ?? undefined,
+      fileName: equipment.mainFileObject?.name ?? (equipment.mainFileId ? `File #${equipment.mainFileId}` : ''),
+      originalPictureSize: equipment.originalPictureSize || '',
+      tagNumber: equipment.tagNumber || `Equipment #${equipment.id}`,
+      isExisting: true // Now it's saved, so it's existing
     };
 
     this.addItem(newItem);

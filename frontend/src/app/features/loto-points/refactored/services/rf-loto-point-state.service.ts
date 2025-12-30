@@ -79,17 +79,45 @@ export class RfLotoPointStateService {
     // }
     this.selectedItem.set(item);
   }
+
   submitForm(item: LotoPointDto) {
     throw new Error('Method not implemented.');
   }
+
   saveDraft(item: LotoPointDto) {
     this.localStorage.saveDraft(item);
   }
 
+  /**
+   * Load draft for a specific loto point or new item
+   * Returns the draft metadata if found
+   */
+  loadDraftForItem(lotoPointId: number | null = null) {
+    return this.localStorage.loadDraft(lotoPointId);
+  }
+
+  /**
+   * Check if draft exists for specific loto point
+   */
+  hasDraftForItem(lotoPointId: number | null = null): boolean {
+    return this.localStorage.hasDraft(lotoPointId);
+  }
+
+  /**
+   * Clear draft for specific loto point
+   */
+  clearDraftForItem(lotoPointId: number | null = null): void {
+    this.localStorage.clearDraft(lotoPointId);
+  }
+
+  /**
+   * Load from localStorage on service initialization
+   * This loads draft for new items only
+   */
   loadFromLocalStorage() {
-    const draft = this.localStorage.loadDraft();
+    const draft = this.localStorage.loadDraft(null); // null = new items
     if (draft) {
-      this.selectedItem.set(new LotoPointDto(draft));
+      this.selectedItem.set(new LotoPointDto(draft.formData));
     }
   }
 

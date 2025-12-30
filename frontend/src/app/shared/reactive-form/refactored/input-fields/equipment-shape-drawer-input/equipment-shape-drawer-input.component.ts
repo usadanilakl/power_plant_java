@@ -90,9 +90,9 @@ export class EquipmentShapeDrawerInputComponent implements ControlValueAccessor 
       )
     });
 
-    this.onChange(this.value);
-    this.onTouched();
-    this.closeDialog();
+    // this.onChange(this.value);
+    // this.onTouched();
+    // this.closeDialog();
   }
   onSaveSuccess(data: EquipmentDto | null) {
     this.value.set(data);

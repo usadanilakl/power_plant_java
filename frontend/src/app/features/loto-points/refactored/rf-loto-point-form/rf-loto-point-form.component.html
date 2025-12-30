@@ -1,4 +1,14 @@
-
+<!-- Draft Comparison Dialog -->
+@if (showDraftDialog() && currentServerVersion() && pendingDraft()) {
+  <app-draft-comparison-dialog
+    [currentVersion]="currentServerVersion()!"
+    [draft]="pendingDraft()!"
+    [fields]="fields()"
+    (useCurrent)="onUseCurrent()"
+    (useDraft)="onUseDraft()"
+    (cancel)="onCancelDraftDialog()"
+  ></app-draft-comparison-dialog>
+}
 
 <app-rf-reactive-form
   [entity]="entity()"

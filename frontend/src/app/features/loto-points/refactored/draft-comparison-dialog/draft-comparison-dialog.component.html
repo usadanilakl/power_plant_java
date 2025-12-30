@@ -1,0 +1,52 @@
+<div class="dialog-overlay" (click)="onCancel()">
+  <div class="dialog-content" (click)="$event.stopPropagation()">
+    <div class="dialog-header">
+      <h2>Unsaved Draft Found</h2>
+      <button class="close-button" (click)="onCancel()">&times;</button>
+    </div>
+
+    <div class="dialog-body">
+      <p class="draft-info">
+        You have an unsaved draft from <strong>{{ draftAge() }}</strong>.
+        Choose which version you want to work with:
+      </p>
+
+      <div class="comparison-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Current (Saved)</th>
+              <th>Draft (Unsaved)</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (field of fieldsToCompare(); track field.key) {
+              <tr [class.different]="isDifferent(field.key)">
+                <td class="field-label">{{ field.label }}</td>
+                <td class="current-value">
+                  {{ formatValue(getCurrentValue(field.key)) }}
+                </td>
+                <td class="draft-value">
+                  {{ formatValue(getDraftValue(field.key)) }}
+                  @if (isDifferent(field.key)) {
+                    <span class="modified-badge">Modified</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dialog-footer">
+      <button class="btn btn-secondary" (click)="onUseCurrent()">
+        Use Current (Discard Draft)
+      </button>
+      <button class="btn btn-primary" (click)="onUseDraft()">
+        Continue with Draft
+      </button>
+    </div>
+  </div>
+</div>

@@ -2,20 +2,11 @@
   <div class="dialog-content">
     <!-- Left Panel: File List -->
     <div class="file-list-panel">
-      <h3>P&ID Files</h3>
-      <div class="file-list">
-        @if (files().length === 0) {
-          <p class="no-files">No files available</p>
-        }
-        @for (file of files(); track file.id) {
-          <div
-            class="file-item"
-            [class.selected]="isFileSelected(file)"
-            (click)="onFileSelect(file)">
-            <span class="file-name">{{ file.name }}</span>
-          </div>
-        }
-      </div>
+      <h3>Select P&ID</h3>
+      <app-rf-toggle-menu
+        [menuItems]="menuItems()"
+        (itemClick)="onFileSelect($event)"
+      ></app-rf-toggle-menu>
     </div>
 
     <!-- Right Panel: P&ID Viewer -->
@@ -33,12 +24,13 @@
           <app-interactive-image
             [imageUrl]="currentFileLink()"
             [shapesInput]="equipmentShapes()"
-            [mode]="'view'"
+            [mode]="'edit'"
+            (shapeClicked)="onEquipmentSelected($event)"
           />
         </div>
       } @else {
         <div class="no-selection">
-          <p>Select a P&ID file from the list to view equipment</p>
+          <p>Select a P&ID file to view equipment</p>
         </div>
       }
     </div>

@@ -12,12 +12,15 @@ import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { ClipboardFormComponent } from '../../../../shared/reactive-form/refactored/form-clipboard/clipboard-form.component';
 import { ClipboardService } from '../../../../shared/clipboard/clipboard.service';
+import { DraftComparisonDialogComponent } from '../draft-comparison-dialog/draft-comparison-dialog.component';
+import { DraftMetadata } from '../../../../shared/draft/base-draft.service';
+import { LotoPointModel } from '../../../../models/loto/loto-point.model';
 
 type LotoPointFieldName = keyof LotoPointDto;
 
 @Component({
   selector: 'app-rf-loto-point-form',
-  imports: [RfReactiveFormComponent, ClipboardFormComponent],
+  imports: [RfReactiveFormComponent, ClipboardFormComponent, DraftComparisonDialogComponent],
   templateUrl: './rf-loto-point-form.component.html',
   styleUrl: './rf-loto-point-form.component.css',
 })
@@ -31,9 +34,40 @@ export class RfLotoPointFormComponent {
 
   private entityFromState = this.stateService.selectedItem;
 
+  // Draft management
+  showDraftDialog = signal<boolean>(false);
+  pendingDraft = signal<DraftMetadata<LotoPointModel> | null>(null);
+  currentServerVersion = signal<LotoPointDto | null>(null);
+
   entity = computed(
     () => this.entityInput() ?? this.entityFromState() ?? new LotoPointDto()
   );
+
+  // Check for drafts when entity changes
+  private checkForDrafts = effect(() => {
+    const currentEntity = this.entity();
+
+    if (currentEntity && (currentEntity.id || this.isNewItem(currentEntity))) {
+      const lotoPointId = currentEntity.id || null;
+      const draft = this.stateService.loadDraftForItem(lotoPointId);
+
+      if (draft) {
+        // For existing items, show comparison dialog
+        if (lotoPointId !== null) {
+          this.currentServerVersion.set(currentEntity);
+          this.pendingDraft.set(draft);
+          this.showDraftDialog.set(true);
+        } else {
+          // For new items, auto-load draft
+          this.stateService.setSelectedItem(new LotoPointDto(draft.formData));
+        }
+      }
+    }
+  }, { allowSignalWrites: true });
+
+  private isNewItem(entity: LotoPointDto): boolean {
+    return !entity.id && (!!entity.tagNumber || !!entity.description);
+  }
 
   fields = computed(() => {
     const customFields = this.fieldsInput();
@@ -57,7 +91,49 @@ export class RfLotoPointFormComponent {
   }
 
   onSubmit(item: LotoPointDto) {
+    // Clear draft on successful submit
+    const lotoPointId = item.id || null;
+    this.stateService.clearDraftForItem(lotoPointId);
     this.stateService.submitForm(item);
+  }
+
+  // Draft dialog handlers
+  onUseCurrent(): void {
+    const lotoPointId = this.currentServerVersion()?.id || null;
+
+    // Discard draft and use current server version
+    this.stateService.clearDraftForItem(lotoPointId);
+    this.stateService.setSelectedItem(this.currentServerVersion());
+
+    // Close dialog
+    this.showDraftDialog.set(false);
+    this.pendingDraft.set(null);
+    this.currentServerVersion.set(null);
+  }
+
+  onUseDraft(): void {
+    const draft = this.pendingDraft();
+    const lotoPointId = draft?.entityId || null;
+
+    if (draft) {
+      // IMPORTANT: Clear the draft FIRST to prevent effect from detecting it again
+      this.stateService.clearDraftForItem(lotoPointId);
+
+      // Close dialog BEFORE setting item to prevent race condition
+      this.showDraftDialog.set(false);
+      this.pendingDraft.set(null);
+      this.currentServerVersion.set(null);
+
+      // Now load draft version
+      this.stateService.setSelectedItem(new LotoPointDto(draft.formData));
+    }
+  }
+
+  onCancelDraftDialog(): void {
+    // Close dialog without making changes (keeps draft in localStorage)
+    this.showDraftDialog.set(false);
+    this.pendingDraft.set(null);
+    this.currentServerVersion.set(null);
   }
 
   //===========================CLIPBOARD===========================
