@@ -28,8 +28,12 @@ export class RfLotoPointClickService extends TableClickService {
     console.log('🟢 LOTO: Double click -', normalizedItem);
     console.log(`🆔 [${this.debugInstanceId}] LOTO double click:`, item);
 
-    this.lotoStateService.setSelectedItem(normalizedItem);
-    // Emit event or trigger form opening
+    // Fetch full entity from server instead of using incomplete table data
+    if (normalizedItem?.id) {
+      this.lotoStateService.loadItemById(normalizedItem.id);
+    } else {
+      console.warn('Cannot load item: no ID found', normalizedItem);
+    }
   }
 
   /**
@@ -50,10 +54,14 @@ export class RfLotoPointClickService extends TableClickService {
     const normalizedItem = this.normalizeItem(item) as LotoPointDto;
     console.log('LOTO: Cell double click -', normalizedItem, column);
 
-    this.lotoStateService.setSelectedItem(normalizedItem);
-    const field = column.accessorKey as keyof LotoPointModel;
-    this.lotoStateService.openForm([field]);
-    // Open form with specific field
+    // Fetch full entity from server instead of using incomplete table data
+    if (normalizedItem?.id) {
+      this.lotoStateService.loadItemById(normalizedItem.id);
+      const field = column.accessorKey as keyof LotoPointModel;
+      this.lotoStateService.openForm([field]);
+    } else {
+      console.warn('Cannot load item: no ID found', normalizedItem);
+    }
   }
 
   /**

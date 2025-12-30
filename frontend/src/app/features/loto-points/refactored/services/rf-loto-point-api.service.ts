@@ -69,7 +69,24 @@ export class RfLotoPointApiService {
   createLotoPoint(
     lotoPoint: LotoPointDto
   ): Observable<SpringApiResponse<LotoPointDto>> {
-    const lotoPointIdDto = lotoPoint.toIdModel();
+    console.log('createLotoPoint received:', lotoPoint);
+    console.log('Has toIdModel?', typeof (lotoPoint as any).toIdModel === 'function');
+
+    let lotoPointIdDto: LotoPointIdDto;
+
+    // Check if it has the toIdModel method (duck typing)
+    if (typeof (lotoPoint as any).toIdModel === 'function') {
+      console.log('Converting using toIdModel');
+      lotoPointIdDto = lotoPoint.toIdModel();
+    } else {
+      console.log('Creating new LotoPointDto and converting');
+      // Create a proper LotoPointDto instance and convert it
+      const dto = new LotoPointDto(lotoPoint as any);
+      lotoPointIdDto = dto.toIdModel();
+    }
+
+    console.log('Sending to backend:', lotoPointIdDto);
+
     return this.http.post<SpringApiResponse<LotoPointDto>>(
       this.apiUrl,
       lotoPointIdDto

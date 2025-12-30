@@ -113,7 +113,7 @@ export class RfReactiveFormComponent {
     this.form.valueChanges
       .pipe(
         debounceTime(1000),
-        distinctUntilChanged(),
+        distinctUntilChanged((prev, curr) => this.deepCompareByIds(prev, curr)),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe((formValue) => {
@@ -121,6 +121,73 @@ export class RfReactiveFormComponent {
         const mergedData = this.dataService.deepMerge(originalData, formValue);
         this.formValueChange.emit(mergedData);
       });
+  }
+
+  /**
+   * Deep comparison that compares arrays and objects by IDs
+   * This prevents false positives when object references change but IDs remain the same
+   */
+  private deepCompareByIds(obj1: any, obj2: any): boolean {
+    // If both are null/undefined, they're equal
+    if (obj1 == null && obj2 == null) return true;
+
+    // If one is null/undefined and the other isn't, they're not equal
+    if (obj1 == null || obj2 == null) return false;
+
+    // If both are primitives, compare directly
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') {
+      return obj1 === obj2;
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj1) && Array.isArray(obj2)) {
+      if (obj1.length !== obj2.length) return false;
+
+      // Compare array elements by IDs if they have them
+      for (let i = 0; i < obj1.length; i++) {
+        const item1 = obj1[i];
+        const item2 = obj2[i];
+
+        // If items have IDs, compare by ID only
+        if (this.hasComparableId(item1) && this.hasComparableId(item2)) {
+          if (item1.id !== item2.id) return false;
+        } else {
+          // Otherwise deep compare the items
+          if (!this.deepCompareByIds(item1, item2)) return false;
+        }
+      }
+      return true;
+    }
+
+    // Handle objects with ID property
+    // If both objects have valid IDs (not null/undefined), compare by ID only
+    if (this.hasComparableId(obj1) && this.hasComparableId(obj2)) {
+      return obj1.id === obj2.id;
+    }
+
+    // For plain objects without comparable IDs, do deep property comparison
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) return false;
+
+    for (const key of keys1) {
+      if (!keys2.includes(key)) return false;
+      if (!this.deepCompareByIds(obj1[key], obj2[key])) return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if an object has a valid ID that can be used for comparison
+   * Returns true if the object has an 'id' property that is not null/undefined
+   */
+  private hasComparableId(obj: any): boolean {
+    return obj != null &&
+           typeof obj === 'object' &&
+           'id' in obj &&
+           obj.id != null;
   }
 
   /**

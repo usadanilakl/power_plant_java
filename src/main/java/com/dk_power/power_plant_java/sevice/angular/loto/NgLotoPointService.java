@@ -72,9 +72,18 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         return LotoPoint.class;
     }
 
+    /**
+     * Override to use eager loading for equipment list
+     */
+    @Override
+    public LotoPoint getEntityById(Long id) {
+        return lotoPointRepo.findByIdWithEquipment(id);
+    }
 
     public Optional<LotoPoint> findById(Long id) {
-        return lotoPointRepo.findById(id);
+        // Use eager loading to fetch equipment list
+        LotoPoint lotoPoint = lotoPointRepo.findByIdWithEquipment(id);
+        return Optional.ofNullable(lotoPoint);
     }
 
     public Optional<LotoPointDto> findDtoById(Long id) {
@@ -181,6 +190,7 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         for (Long equipmentId : toRemove) {
             Equipment equipment = equipmentService.getEntityById(equipmentId);
             if (equipment != null) {
+                // Equipment is the owning side, so remove from its collection
                 equipment.getLotoPoints().remove(lotoPoint);
                 equipmentService.save(equipment);
                 System.out.println("Removed LotoPoint from Equipment ID: " + equipmentId);
@@ -191,26 +201,22 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         for (Long equipmentId : toAdd) {
             Equipment equipment = equipmentService.getEntityById(equipmentId);
             if (equipment != null) {
-                // Refresh lotoPoint to ensure we have the latest state
-                lotoPoint = lotoPointRepo.findById(savedLpId).orElse(lotoPoint);
-
-                // Update both sides of the relationship
+                // Equipment is the owning side with @JoinTable
+                // Only need to update this side for persistence
                 equipment.addLotoPoint(lotoPoint);
                 equipmentService.save(equipment);
-
-                // Update the non-owning side for consistency
-                lotoPoint.addEquipment(equipment);
-
                 System.out.println("Added LotoPoint to Equipment ID: " + equipmentId);
             }
         }
 
-        // Save the lotoPoint one final time to ensure consistency
+        // Flush changes to database and clear persistence context
         if (!toRemove.isEmpty() || !toAdd.isEmpty()) {
-            lotoPoint = lotoPointRepo.save(lotoPoint);
+            entityManager.flush();
+            entityManager.clear();
         }
 
-        return getEntityById(savedLpId);
+        // Fetch with equipment list eagerly loaded (will reflect database state)
+        return lotoPointRepo.findByIdWithEquipment(savedLpId);
     }
 
     public LotoPoint copyPointFromOtherUnit(Long id) {

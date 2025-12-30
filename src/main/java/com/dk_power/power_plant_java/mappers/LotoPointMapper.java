@@ -157,8 +157,8 @@ public class LotoPointMapper implements BaseMapper{
 
         if(entity.getZeroEnergyMethod()!=null) dto.setZeroEnergyMethod(entity.getZeroEnergyMethod());
         if(entity.getZeroEnergyId()!=null) dto.setZeroEnergy(zeroEnergyService.getDtoById(entity.getZeroEnergyId()));
-        if(entity.getLocationId()!=null) dto.setLocation(valueService.getDtoById(entity.getLocationId()));
-        if(entity.getEqTypeId()!=null) dto.setEqType(valueService.getDtoById(entity.getEqTypeId()));
+        if(entity.getLocation()!=null) dto.setLocation(valueService.getDtoById(entity.getLocation()));
+        if(entity.getEqType()!=null) dto.setEqType(valueService.getDtoById(entity.getEqType()));
         if(entity.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(entity.getRelatedLotoPointIds());
         return dto;
     }
@@ -252,18 +252,12 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getConflictStatus() != null) lotoPoint.setConflictStatus(dto.getConflictStatus());
         if(dto.getZeroEnergyMethod()!=null) lotoPoint.setZeroEnergyMethod(dto.getZeroEnergyMethod());
 
+        // DO NOT set equipmentList here - it's the non-owning side
+        // Equipment relationships are managed in processLotoPoint via the owning side (Equipment)
 
-        // Handle equipmentList
-        if (dto.getEquipmentIdList() != null && !dto.getEquipmentIdList().isEmpty()) {
-            Set<Equipment> equipment = dto.getEquipmentIdList().stream()
-                    .map(id -> equipmentService.findById(id).orElse(null))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            lotoPoint.setEquipmentList(equipment);
-        }
         if(dto.getZeroEnergyId()!=null) lotoPoint.setZeroEnergy(zeroEnergyService.getEntityById(dto.getZeroEnergyId()));
-        if(dto.getLocationId()!=null) lotoPoint.setLocation(valueService.getEntityById(dto.getLocationId()));
-        if(dto.getEqTypeId()!=null) lotoPoint.setEqType(valueService.getEntityById(dto.getEqTypeId()));
+        if(dto.getLocation()!=null) lotoPoint.setLocation(valueService.getEntityById(dto.getLocation()));
+        if(dto.getEqType()!=null) lotoPoint.setEqType(valueService.getEntityById(dto.getEqType()));
         if(dto.getRelatedLotoPointIds()!=null) lotoPoint.setRelatedLotoPointIds(dto.getRelatedLotoPointIds());
 
 
@@ -295,8 +289,8 @@ public class LotoPointMapper implements BaseMapper{
         dto.setEquipmentIdList(lotoPoint.getEquipmentList().stream().map(Equipment::getId).toList());
 
         if(lotoPoint.getZeroEnergy()!=null) dto.setZeroEnergyId(lotoPoint.getZeroEnergy().getId());
-        if(lotoPoint.getLocation()!=null) dto.setLocationId(lotoPoint.getLocation().getId());
-        if(lotoPoint.getEqType()!=null) dto.setEqTypeId(lotoPoint.getEqType().getId());
+        if(lotoPoint.getLocation()!=null) dto.setLocation(lotoPoint.getLocation().getId());
+        if(lotoPoint.getEqType()!=null) dto.setEqType(lotoPoint.getEqType().getId());
         if(lotoPoint.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(lotoPoint.getRelatedLotoPointIds());
 
 

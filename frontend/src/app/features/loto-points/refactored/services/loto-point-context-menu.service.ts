@@ -54,8 +54,13 @@ export class LotoPointContextMenuService extends ContextMenuService {
   }
 
   override handleViewDetails(item: any): void {
-    this.stateService.setSelectedItem(new LotoPointDto(item));
-    this.stateService.openForm();
+    // Fetch full entity from server instead of using incomplete table data
+    if (item?.id) {
+      this.stateService.loadItemById(item.id);
+      this.stateService.openForm();
+    } else {
+      console.warn('Cannot view details: item has no ID', item);
+    }
   }
 
     private handleInspect(item: LotoPointDto): void {

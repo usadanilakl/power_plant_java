@@ -1,54 +1,60 @@
-
-import { Injectable, inject, DestroyRef, signal } from "@angular/core";
-import { LotoPointDto, LotoPointFieldName } from "../../../../models/loto/loto-point.model";
-import { BehaviorSubject, Observable } from "rxjs";
-import { SearchCriteria } from "../../../../models/api/search-criteria.model";
-import { RfLotoPointApiService } from "./rf-loto-point-api.service";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { tap, catchError } from "rxjs/operators";
-import { of } from "rxjs";
-import { LotoPointLocalStorageService } from "./rf-loto-point-local-storage.service";
+import { Injectable, inject, DestroyRef, signal } from '@angular/core';
+import {
+  LotoPointDto,
+  LotoPointFieldName,
+} from '../../../../models/loto/loto-point.model';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { SearchCriteria } from '../../../../models/api/search-criteria.model';
+import { RfLotoPointApiService } from './rf-loto-point-api.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { tap, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { LotoPointLocalStorageService } from './rf-loto-point-local-storage.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class RfLotoPointStateService {
   private apiService = inject(RfLotoPointApiService);
-  private localStorage = inject(LotoPointLocalStorageService)
+  private localStorage = inject(LotoPointLocalStorageService);
   private destroyRef = inject(DestroyRef);
 
   private pageSize = 50;
   private currentPage = 1;
-  
+
   private allLoadedLotoPointsSubject = new BehaviorSubject<LotoPointDto[]>([]);
   allLoadedLotoPoints$ = this.allLoadedLotoPointsSubject.asObservable();
 
-  
   filterOutItems = signal<LotoPointDto[]>([]);
   selectedItems = signal<LotoPointDto[]>([]);
   selectedItem = signal<LotoPointDto | null>(null);
-  
+
   private currentSortColumnSubject = new BehaviorSubject<string | null>(null);
   currentSortColumn$ = this.currentSortColumnSubject.asObservable();
 
-  private currentSortDirectionSubject = new BehaviorSubject<'ASC' | 'DESC'>('ASC');
+  private currentSortDirectionSubject = new BehaviorSubject<'ASC' | 'DESC'>(
+    'ASC'
+  );
   currentSortDirection$ = this.currentSortDirectionSubject.asObservable();
 
-  private currentSearchCriteriaSubject = new BehaviorSubject<SearchCriteria | null>(null);
+  private currentSearchCriteriaSubject =
+    new BehaviorSubject<SearchCriteria | null>(null);
   currentSearchCriteria$ = this.currentSearchCriteriaSubject.asObservable();
 
   // Unique items cache for column filters
   private uniqueItemsCache = new Map<string, BehaviorSubject<any[]>>();
-  
+
   // Unique values cache with pagination metadata
-  private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
+  private uniqueValuesCache = new Map<
+    string,
+    { values: string[]; page: number; hasMore: boolean }
+  >();
   currentColumnUniqueItems = signal<string[]>([]);
   loadingUniqueItems = signal<boolean>(false);
 
   constructor() {
     this.loadFromLocalStorage();
   }
-  
 
   addLotoPoints(items: LotoPointDto[]): void {
     const current = this.allLoadedLotoPointsSubject.value;
@@ -80,23 +86,52 @@ export class RfLotoPointStateService {
     this.selectedItem.set(item);
   }
 
+  /**
+   * Load full entity from server by ID
+   * This is used when clicking on table items to get complete data
+   */
+  loadItemById(id: number): void {
+    this.apiService
+      .getLotoPointById(id+'')
+      .pipe(
+        tap((response) => {
+          console.log('Loaded full LOTO Point from server:', response.responseData);
+          this.setSelectedItem(new LotoPointDto(response.responseData));
+        }),
+        catchError((error) => {
+          console.error('Error loading LOTO Point:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
   submitForm(item: LotoPointDto) {
     console.log('Submitting LOTO Point:', item);
-    console.log('Item has toIdModel?', typeof (item as any).toIdModel === 'function');
+    console.log(
+      'Item has toIdModel?',
+      typeof (item as any).toIdModel === 'function'
+    );
     if (typeof (item as any).toIdModel === 'function') {
       console.log('Converted to IdModel:', item.toIdModel());
     }
 
-    this.apiService.saveLotoPoint(item)
+    const lotoPointId = item.id;
+
+    this.apiService
+      .saveLotoPoint(item)
       .pipe(
-        tap(response => {
+        tap((response) => {
           console.log('LOTO Point saved successfully:', response.responseData);
+          // Clear the draft after successful save
+          this.clearDraftForItem(lotoPointId);
           // Update the selected item with the saved data
           this.setSelectedItem(new LotoPointDto(response.responseData));
           // Optionally close the form
           // this.closeForm();
         }),
-        catchError(error => {
+        catchError((error) => {
           console.error('Error saving LOTO Point:', error);
           console.error('Error details:', error.error);
           console.error('Error message:', error.message);
@@ -106,6 +141,14 @@ export class RfLotoPointStateService {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+  }
+
+  openNewLotoForm() {
+    const draft = this.loadDraftForItem();
+    const formData = draft?.formData;
+    this.setSelectedItem(
+      formData ? new LotoPointDto(formData) : new LotoPointDto()
+    );
   }
 
   saveDraft(item: LotoPointDto) {
@@ -213,10 +256,9 @@ export class RfLotoPointStateService {
    * Clear all unique items cache
    */
   clearAllUniqueItems(): void {
-    this.uniqueItemsCache.forEach(subject => subject.next([]));
+    this.uniqueItemsCache.forEach((subject) => subject.next([]));
     this.uniqueItemsCache.clear();
   }
-
 
   /**
    * Load unique items for a column with server-side filtering and pagination
@@ -224,7 +266,7 @@ export class RfLotoPointStateService {
   loadUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
     const cacheKey = `${columnKey}:${searchString}`;
     this.loadingUniqueItems.set(true);
-    
+
     // Check if we have cached results for this column and search term
     const cached = this.uniqueValuesCache.get(cacheKey);
     // if (cached) {
@@ -232,34 +274,38 @@ export class RfLotoPointStateService {
     //   return;
     // }
 
-    const filters = this.getCurrentSearchCriteria() ?? { type: 'column', filters: {} };
+    const filters = this.getCurrentSearchCriteria() ?? {
+      type: 'column',
+      filters: {},
+    };
 
     // Fetch from server with pagination
     this.apiService
-      .getFilteredUniqueValuesOfColumn(
-        String(columnKey),
-        filters,
-        1,
-        50
-      )
+      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, 1, 50)
       .pipe(
-        tap(response => {
-          if (response.responseData?.content && response.responseData.content.length > 0) {
+        tap((response) => {
+          if (
+            response.responseData?.content &&
+            response.responseData.content.length > 0
+          ) {
             const uniqueValues = response.responseData.content;
             this.setUniqueItems(String(columnKey), uniqueValues);
             this.currentColumnUniqueItems.set(uniqueValues);
             this.loadingUniqueItems.set(false);
-            
+
             // Cache the results
             this.uniqueValuesCache.set(cacheKey, {
               values: uniqueValues,
               page: 1,
-              hasMore: !response.responseData.last
+              hasMore: !response.responseData.last,
             });
           }
         }),
-        catchError(error => {
-          console.error(`Error loading unique items for column ${columnKey}:`, error);
+        catchError((error) => {
+          console.error(
+            `Error loading unique items for column ${columnKey}:`,
+            error
+          );
           this.loadingUniqueItems.set(false);
           return of(null);
         }),
@@ -271,11 +317,14 @@ export class RfLotoPointStateService {
   /**
    * Load more unique items for a column (pagination)
    */
-  loadMoreUniqueItems(columnKey: keyof LotoPointDto, searchString: string): void {
+  loadMoreUniqueItems(
+    columnKey: keyof LotoPointDto,
+    searchString: string
+  ): void {
     const cacheKey = `${columnKey}:${searchString}`;
     const cached = this.uniqueValuesCache.get(cacheKey);
     this.loadingUniqueItems.set(true);
-    
+
     if (!cached || !cached.hasMore) {
       this.loadingUniqueItems.set(false);
       return; // No more items to load
@@ -288,12 +337,7 @@ export class RfLotoPointStateService {
     };
 
     this.apiService
-      .getFilteredUniqueValuesOfColumn(
-        String(columnKey),
-        filters,
-        nextPage,
-        50
-      )
+      .getFilteredUniqueValuesOfColumn(String(columnKey), filters, nextPage, 50)
       .pipe(
         tap((response) => {
           if (
@@ -342,7 +386,7 @@ export class RfLotoPointStateService {
   /**
    * Handle form
    */
-  
+
   formFields = signal<LotoPointFieldName[]>([]);
   isLotoPointFormOpen = signal<boolean>(false);
   openForm(fields: LotoPointFieldName[] = []): void {

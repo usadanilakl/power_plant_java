@@ -1,10 +1,11 @@
 <!-- Draft Comparison Dialog -->
-@if (showDraftDialog() && currentServerVersion() && pendingDraft()) {
+@if (showDraftDialog() && serverEntity() && draftEntity()) {
   <app-draft-comparison-dialog
-    [currentVersion]="currentServerVersion()!"
-    [draft]="pendingDraft()!"
+    [serverVersion]="serverEntity()!"
+    [draftVersion]="draftEntity()!"
+    [draftTimestamp]="draftTimestamp()"
     [fields]="fields()"
-    (useCurrent)="onUseCurrent()"
+    (useServer)="onUseServer()"
     (useDraft)="onUseDraft()"
     (cancel)="onCancelDraftDialog()"
   ></app-draft-comparison-dialog>

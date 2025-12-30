@@ -13,8 +13,6 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
 import { ClipboardFormComponent } from '../../../../shared/reactive-form/refactored/form-clipboard/clipboard-form.component';
 import { ClipboardService } from '../../../../shared/clipboard/clipboard.service';
 import { DraftComparisonDialogComponent } from '../draft-comparison-dialog/draft-comparison-dialog.component';
-import { DraftMetadata } from '../../../../shared/draft/base-draft.service';
-import { LotoPointModel } from '../../../../models/loto/loto-point.model';
 
 type LotoPointFieldName = keyof LotoPointDto;
 
@@ -34,10 +32,14 @@ export class RfLotoPointFormComponent {
 
   private entityFromState = this.stateService.selectedItem;
 
-  // Draft management
+  // Draft management - now using actual entities
   showDraftDialog = signal<boolean>(false);
-  pendingDraft = signal<DraftMetadata<LotoPointModel> | null>(null);
-  currentServerVersion = signal<LotoPointDto | null>(null);
+  draftEntity = signal<LotoPointDto | null>(null);
+  serverEntity = signal<LotoPointDto | null>(null);
+  draftTimestamp = signal<string>('');
+
+  // Track the original server version to detect real changes
+  private originalServerVersion = signal<LotoPointDto | null>(null);
 
   entity = computed(
     () => this.entityInput() ?? this.entityFromState() ?? new LotoPointDto()
@@ -52,18 +54,110 @@ export class RfLotoPointFormComponent {
       const draft = this.stateService.loadDraftForItem(lotoPointId);
 
       if (draft) {
-        // For existing items, show comparison dialog
+        const draftData = new LotoPointDto(draft.formData);
+
+        // For existing items, check if draft is actually different from server version
         if (lotoPointId !== null) {
-          this.currentServerVersion.set(currentEntity);
-          this.pendingDraft.set(draft);
-          this.showDraftDialog.set(true);
+          // Check if there are meaningful differences
+          if (this.hasRealDifferences(currentEntity, draftData)) {
+            // Store original server version for comparison
+            this.originalServerVersion.set(currentEntity);
+
+            // Store both versions as actual entities
+            this.serverEntity.set(currentEntity);
+            this.draftEntity.set(draftData);
+            this.draftTimestamp.set(draft.timestamp);
+            this.showDraftDialog.set(true);
+          } else {
+            // No real differences - just clear the draft silently
+            console.log('Draft has no real differences from server version, clearing silently');
+            this.stateService.clearDraftForItem(lotoPointId);
+          }
         } else {
           // For new items, auto-load draft
-          this.stateService.setSelectedItem(new LotoPointDto(draft.formData));
+          this.stateService.setSelectedItem(draftData);
         }
+      } else {
+        // No draft - store the original server version
+        this.originalServerVersion.set(currentEntity);
       }
     }
   }, { allowSignalWrites: true });
+
+  /**
+   * Check if there are real differences between server and draft versions
+   * Only compares fields that are actually in the form
+   */
+  private hasRealDifferences(server: LotoPointDto, draft: LotoPointDto): boolean {
+    const formFields = this.fields();
+
+    for (const field of formFields) {
+      const serverValue = (server as any)[field.name];
+      const draftValue = (draft as any)[field.name];
+
+      if (this.isDifferent(serverValue, draftValue)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Deep comparison for any value type
+   */
+  private isDifferent(val1: any, val2: any): boolean {
+    // Helper to check if value is effectively empty
+    const isEffectivelyEmpty = (val: any): boolean => {
+      if (val == null) return true;
+      if (typeof val === 'object' && !Array.isArray(val)) {
+        const keys = Object.keys(val).filter(k => {
+          const v = val[k];
+          if (v == null || v === '') return false;
+          if (k === 'id' && (v === 0 || v === null)) return false;
+          return true;
+        });
+        return keys.length === 0;
+      }
+      if (Array.isArray(val) && val.length === 0) return true;
+      return false;
+    };
+
+    // Both effectively empty = same
+    if (isEffectivelyEmpty(val1) && isEffectivelyEmpty(val2)) return false;
+
+    // One empty, one not = different
+    if (isEffectivelyEmpty(val1) || isEffectivelyEmpty(val2)) return true;
+
+    // Both null = same
+    if (val1 == null && val2 == null) return false;
+
+    // Arrays
+    if (Array.isArray(val1) && Array.isArray(val2)) {
+      if (val1.length !== val2.length) return true;
+
+      // Compare by IDs if objects have them
+      if (val1[0] && typeof val1[0] === 'object' && val1[0].id) {
+        const ids1 = val1.map(item => item.id).sort();
+        const ids2 = val2.map(item => item.id).sort();
+        return JSON.stringify(ids1) !== JSON.stringify(ids2);
+      }
+
+      return JSON.stringify(val1.sort()) !== JSON.stringify(val2.sort());
+    }
+
+    // Objects
+    if (typeof val1 === 'object' && typeof val2 === 'object') {
+      // Compare by ID if available
+      if (val1.id !== undefined && val2.id !== undefined) {
+        return val1.id !== val2.id;
+      }
+      return JSON.stringify(val1) !== JSON.stringify(val2);
+    }
+
+    // Primitives
+    return val1 !== val2;
+  }
 
   private isNewItem(entity: LotoPointDto): boolean {
     return !entity.id && (!!entity.tagNumber || !!entity.description);
@@ -87,53 +181,68 @@ export class RfLotoPointFormComponent {
   });
 
   onAnyValueChange(item: LotoPointDto) {
-    this.stateService.saveDraft(item);
+    const originalVersion = this.originalServerVersion();
+
+    // Only save draft if there are real differences from the original server version
+    if (originalVersion && this.hasRealDifferences(originalVersion, item)) {
+      console.log('Saving draft - changes detected');
+      this.stateService.saveDraft(item);
+    } else {
+      // No real changes - clear any existing draft
+      const lotoPointId = item.id || null;
+      if (this.stateService.hasDraftForItem(lotoPointId)) {
+        console.log('Clearing draft - no real changes detected');
+        this.stateService.clearDraftForItem(lotoPointId);
+      }
+    }
   }
 
   onSubmit(item: LotoPointDto) {
-    // Clear draft on successful submit
-    const lotoPointId = item.id || null;
-    this.stateService.clearDraftForItem(lotoPointId);
+    // Draft will be cleared by submitForm after successful save
     this.stateService.submitForm(item);
   }
 
   // Draft dialog handlers
-  onUseCurrent(): void {
-    const lotoPointId = this.currentServerVersion()?.id || null;
+  onUseServer(): void {
+    const serverVersion = this.serverEntity();
+    const lotoPointId = serverVersion?.id || null;
 
-    // Discard draft and use current server version
+    // Discard draft and use server version
     this.stateService.clearDraftForItem(lotoPointId);
-    this.stateService.setSelectedItem(this.currentServerVersion());
+    this.stateService.setSelectedItem(serverVersion);
 
     // Close dialog
     this.showDraftDialog.set(false);
-    this.pendingDraft.set(null);
-    this.currentServerVersion.set(null);
+    this.draftEntity.set(null);
+    this.serverEntity.set(null);
+    this.draftTimestamp.set('');
   }
 
   onUseDraft(): void {
-    const draft = this.pendingDraft();
-    const lotoPointId = draft?.entityId || null;
+    const draftVersion = this.draftEntity();
+    const lotoPointId = draftVersion?.id || null;
 
-    if (draft) {
+    if (draftVersion) {
       // IMPORTANT: Clear the draft FIRST to prevent effect from detecting it again
       this.stateService.clearDraftForItem(lotoPointId);
 
       // Close dialog BEFORE setting item to prevent race condition
       this.showDraftDialog.set(false);
-      this.pendingDraft.set(null);
-      this.currentServerVersion.set(null);
+      this.draftEntity.set(null);
+      this.serverEntity.set(null);
+      this.draftTimestamp.set('');
 
       // Now load draft version
-      this.stateService.setSelectedItem(new LotoPointDto(draft.formData));
+      this.stateService.setSelectedItem(draftVersion);
     }
   }
 
   onCancelDraftDialog(): void {
     // Close dialog without making changes (keeps draft in localStorage)
     this.showDraftDialog.set(false);
-    this.pendingDraft.set(null);
-    this.currentServerVersion.set(null);
+    this.draftEntity.set(null);
+    this.serverEntity.set(null);
+    this.draftTimestamp.set('');
   }
 
   //===========================CLIPBOARD===========================

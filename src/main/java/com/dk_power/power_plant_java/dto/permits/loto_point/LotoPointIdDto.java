@@ -33,7 +33,7 @@ public class LotoPointIdDto extends BaseDto {
     private String conflictStatus;
     private String zeroEnergyMethod;
     private Long zeroEnergyId;
-    private Long locationId;
-    private Long eqTypeId;
+    private Long location;
+    private Long eqType;
     private Set<Long> relatedLotoPointIds;
 }

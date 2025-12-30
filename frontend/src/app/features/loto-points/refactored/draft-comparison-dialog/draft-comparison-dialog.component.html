@@ -16,16 +16,16 @@
           <thead>
             <tr>
               <th>Field</th>
-              <th>Current (Saved)</th>
-              <th>Draft (Unsaved)</th>
+              <th>Server Version</th>
+              <th>Draft Version</th>
             </tr>
           </thead>
           <tbody>
             @for (field of fieldsToCompare(); track field.key) {
               <tr [class.different]="isDifferent(field.key)">
                 <td class="field-label">{{ field.label }}</td>
-                <td class="current-value">
-                  {{ formatValue(getCurrentValue(field.key)) }}
+                <td class="server-value">
+                  {{ formatValue(getServerValue(field.key)) }}
                 </td>
                 <td class="draft-value">
                   {{ formatValue(getDraftValue(field.key)) }}
@@ -41,8 +41,8 @@
     </div>
 
     <div class="dialog-footer">
-      <button class="btn btn-secondary" (click)="onUseCurrent()">
-        Use Current (Discard Draft)
+      <button class="btn btn-secondary" (click)="onUseServer()">
+        Use Server Version (Discard Draft)
       </button>
       <button class="btn btn-primary" (click)="onUseDraft()">
         Continue with Draft

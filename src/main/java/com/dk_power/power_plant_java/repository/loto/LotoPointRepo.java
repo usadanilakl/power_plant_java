@@ -670,4 +670,14 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
     @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE lp.eqType.id = :valueId")
     long countByEqTypeId(@org.springframework.data.repository.query.Param("valueId") Long valueId);
 
+    @Query("SELECT DISTINCT lp FROM LotoPoint lp " +
+           "LEFT JOIN FETCH lp.equipmentList " +
+           "LEFT JOIN FETCH lp.location " +
+           "LEFT JOIN FETCH lp.eqType " +
+           "LEFT JOIN FETCH lp.isoPos " +
+           "LEFT JOIN FETCH lp.normPos " +
+           "LEFT JOIN FETCH lp.zeroEnergy " +
+           "WHERE lp.id = :id")
+    LotoPoint findByIdWithEquipment(@Param("id") Long id);
+
 }
