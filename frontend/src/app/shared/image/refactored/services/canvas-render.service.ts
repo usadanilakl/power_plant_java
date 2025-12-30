@@ -396,9 +396,29 @@ export class CanvasRenderService {
     shape: RfShape,
     color: string = 'blue'
   ): void {
+    ctx.save();
+
+    // Apply rotation transform if shape is rotated (only for shapes that support rotation)
+    if (
+      shape.type === 'rectangle' ||
+      shape.type === 'image' ||
+      shape.type === 'svg-symbol'
+    ) {
+      const rotatableShape = shape as RfRectangleShape | RfImageShape | SVGSymbolShape;
+      const rotation = rotatableShape.rotation || 0;
+      if (rotation !== 0) {
+        const centerX = rotatableShape.x + rotatableShape.width / 2;
+        const centerY = rotatableShape.y + rotatableShape.height / 2;
+        ctx.translate(centerX, centerY);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
+      }
+    }
+
     ctx.fillStyle = color;
     const corners = this.getShapeCorners(shape);
 
+    // Draw corner handles
     corners.forEach(([x, y]) => {
       ctx.fillRect(
         x - this.HANDLE_SIZE / 2,
@@ -408,6 +428,23 @@ export class CanvasRenderService {
       );
     });
 
+    // Draw edge handles (for 8-point resize)
+    if (
+      shape.type === 'rectangle' ||
+      shape.type === 'image' ||
+      shape.type === 'svg-symbol'
+    ) {
+      const edgeMidpoints = this.getEdgeMidpoints(shape);
+      edgeMidpoints.forEach(([x, y]) => {
+        ctx.fillRect(
+          x - this.HANDLE_SIZE / 2,
+          y - this.HANDLE_SIZE / 2,
+          this.HANDLE_SIZE,
+          this.HANDLE_SIZE
+        );
+      });
+    }
+
     // Draw rotation handle only for single-selected, rotatable shapes
     if (
       shape.isSelected &&
@@ -416,14 +453,15 @@ export class CanvasRenderService {
         shape.type === 'image' ||
         shape.type === 'svg-symbol')
     ) {
+      const rotatableShape = shape as RfRectangleShape | RfImageShape | SVGSymbolShape;
       const handleOffset = 20; // Offset in pixels, independent of zoom
-      const centerX = shape.x + shape.width / 2;
+      const centerX = rotatableShape.x + rotatableShape.width / 2;
       const handleX = centerX;
-      const handleY = shape.y - handleOffset;
+      const handleY = rotatableShape.y - handleOffset;
 
       // Draw line to rotation handle
       ctx.beginPath();
-      ctx.moveTo(centerX, shape.y);
+      ctx.moveTo(centerX, rotatableShape.y);
       ctx.lineTo(handleX, handleY);
       ctx.strokeStyle = color;
       ctx.lineWidth = 1;
@@ -435,6 +473,8 @@ export class CanvasRenderService {
       ctx.fillStyle = color;
       ctx.fill();
     }
+
+    ctx.restore();
   }
 
   private getShapeCorners(shape: RfShape): [number, number][] {
@@ -476,6 +516,25 @@ export class CanvasRenderService {
           [symbol.x + symbol.width, symbol.y],
           [symbol.x, symbol.y + symbol.height],
           [symbol.x + symbol.width, symbol.y + symbol.height],
+        ];
+      default:
+        return [];
+    }
+  }
+
+  private getEdgeMidpoints(shape: RfShape): [number, number][] {
+    switch (shape.type) {
+      case 'rectangle':
+      case 'image':
+      case 'svg-symbol':
+        const s = shape as RfRectangleShape | RfImageShape | SVGSymbolShape;
+        const midX = s.x + s.width / 2;
+        const midY = s.y + s.height / 2;
+        return [
+          [midX, s.y], // top
+          [s.x + s.width, midY], // right
+          [midX, s.y + s.height], // bottom
+          [s.x, midY], // left
         ];
       default:
         return [];

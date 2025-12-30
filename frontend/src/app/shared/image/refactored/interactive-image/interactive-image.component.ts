@@ -1609,14 +1609,33 @@ export class InteractiveImageComponent {
     }
 
     const imgRect = this.img.getBoundingClientRect();
-    const mouseX =
+    let mouseX =
       (event.clientX - imgRect.left) /
       this.transformState.scale /
       this.baseImageScale;
-    const mouseY =
+    let mouseY =
       (event.clientY - imgRect.top) /
       this.transformState.scale /
       this.baseImageScale;
+
+    // If shape is rotated, transform mouse coordinates to shape's local space
+    const rotation = (shape as any).rotation || 0;
+    if (rotation !== 0) {
+      const centerX = shape.x + shape.width / 2;
+      const centerY = shape.y + shape.height / 2;
+
+      // Translate mouse to origin
+      const translatedX = mouseX - centerX;
+      const translatedY = mouseY - centerY;
+
+      // Rotate back by negative angle
+      const angle = (-rotation * Math.PI) / 180;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+
+      mouseX = translatedX * cos - translatedY * sin + centerX;
+      mouseY = translatedX * sin + translatedY * cos + centerY;
+    }
 
     // Handle size in image coordinates (adjust based on zoom)
     const handleSize = 8 / this.transformState.scale / this.baseImageScale;
@@ -1715,14 +1734,33 @@ export class InteractiveImageComponent {
     }
 
     const imgRect = this.img.getBoundingClientRect();
-    const mouseX =
+    let mouseX =
       (event.clientX - imgRect.left) /
       this.transformState.scale /
       this.baseImageScale;
-    const mouseY =
+    let mouseY =
       (event.clientY - imgRect.top) /
       this.transformState.scale /
       this.baseImageScale;
+
+    // If shape is rotated, transform mouse coordinates to shape's local space
+    const rotation = (shape as any).rotation || 0;
+    if (rotation !== 0) {
+      const centerX = shape.x + shape.width / 2;
+      const centerY = shape.y + shape.height / 2;
+
+      // Translate mouse to origin
+      const translatedX = mouseX - centerX;
+      const translatedY = mouseY - centerY;
+
+      // Rotate back by negative angle
+      const angle = (-rotation * Math.PI) / 180;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+
+      mouseX = translatedX * cos - translatedY * sin + centerX;
+      mouseY = translatedX * sin + translatedY * cos + centerY;
+    }
 
     const handlePos = this.getRotationHandlePosition(shape);
     const handleRadius = 8 / this.transformState.scale / this.baseImageScale;
