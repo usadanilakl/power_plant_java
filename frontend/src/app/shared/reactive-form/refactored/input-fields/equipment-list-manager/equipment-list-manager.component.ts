@@ -18,7 +18,7 @@ interface EquipmentListItem {
   fileName?: string;
   originalPictureSize?: string;
   tagNumber?: string;
-  isExisting: boolean; // true = browsed existing, false = newly drawn
+  source: 'browsed' | 'drawn'; // Track how equipment was added
 }
 
 @Component({
@@ -69,7 +69,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
         fileId: item.mainFileId ?? item.fileId,
         // Fix: Use mainFileObject name, fallback to fileName if available
         fileName: item.mainFileObject?.name ?? item.fileName ?? (item.mainFileId ? `File #${item.mainFileId}` : undefined),
-        isExisting: !!item.id // If has ID, it's existing equipment
+        source: item.source ?? 'browsed' // Default to browsed for draft-loaded items
       })));
       this.value.set(value);
     } else {
@@ -123,7 +123,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
       fileName: equipment.mainFileObject?.name ?? (equipment.mainFileId ? `File #${equipment.mainFileId}` : ''),
       originalPictureSize: equipment.originalPictureSize || '',
       tagNumber: equipment.tagNumber || '',
-      isExisting: true
+      source: 'browsed'
     };
 
     this.addItem(newItem);
@@ -155,7 +155,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
       fileName: equipment.mainFileObject?.name ?? (equipment.mainFileId ? `File #${equipment.mainFileId}` : ''),
       originalPictureSize: equipment.originalPictureSize || '',
       tagNumber: equipment.tagNumber || `Equipment #${equipment.id}`,
-      isExisting: true // Now it's saved, so it's existing
+      source: 'drawn'
     };
 
     this.addItem(newItem);
@@ -198,7 +198,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   }
 
   getItemIcon(item: EquipmentListItem): string {
-    return item.isExisting ? 'existing' : 'new';
+    return item.source === 'browsed' ? 'existing' : 'new';
   }
 
   hasItems(): boolean {

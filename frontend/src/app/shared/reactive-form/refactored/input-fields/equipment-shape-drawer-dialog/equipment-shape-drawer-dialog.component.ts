@@ -87,8 +87,14 @@ export class EquipmentShapeDrawerDialogComponent {
           next: (savedEquipment) => {
             this.isLoading.set(false);
             if (savedEquipment) {
-              // Emit the saved equipment with ID
-              this.saveSuccess.emit(savedEquipment);
+              // Enrich saved equipment with file context (same as browser)
+              const enrichedEquipment = new EquipmentDto({
+                ...savedEquipment,
+                mainFileId: file.id,
+                mainFileObject: file
+              });
+
+              this.saveSuccess.emit(enrichedEquipment);
               this.close.emit();
             } else {
               this.error.set('Failed to save the equipment.');

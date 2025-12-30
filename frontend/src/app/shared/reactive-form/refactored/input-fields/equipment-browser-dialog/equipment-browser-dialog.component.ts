@@ -57,8 +57,17 @@ export class EquipmentBrowserDialogComponent {
 
   onConfirmSelection() {
     const equipment = this.selectedEquipment();
-    if (equipment) {
-      this.equipmentSelected.emit(equipment);
+    const file = this.selectedFile();
+
+    if (equipment && file) {
+      // Ensure mainFileObject and mainFileId are populated from the current file context
+      const enrichedEquipment = new EquipmentDto({
+        ...equipment,
+        mainFileId: file.id,
+        mainFileObject: file
+      });
+
+      this.equipmentSelected.emit(enrichedEquipment);
       this.fileService.reset();
     }
   }
