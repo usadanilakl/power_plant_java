@@ -354,4 +354,22 @@ public class NgLotoPointController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
+    @GetMapping("/grouped")
+    public ResponseEntity<NgApiResponse<Map<String, List<LotoPointDto>>>> getGroupedLotoPoints(
+            @RequestParam String groupBy) {
+        try {
+            Map<String, List<LotoPointDto>> grouped = ngLotoPointService.getGroupedLotoPoints(groupBy);
+            NgApiResponse<Map<String, List<LotoPointDto>>> response = new NgApiResponse<>(
+                    grouped,
+                    "Successfully retrieved grouped LOTO points"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }

@@ -34,7 +34,7 @@ public class LotoPointDto extends BaseDto {
 //    private String equipment;
 //    private String extraInfo;
 //    private String type;
-//    private String system;
+    private String system;
     private String normalPosition;
     private String isolatedPosition;
 //    private String fluid;

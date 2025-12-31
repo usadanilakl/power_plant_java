@@ -700,5 +700,97 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         System.out.println("\n========== END TESTS ==========\n");
     }
 
+    /**
+     * Get LOTO points grouped by specified criteria for left menu navigation
+     * @param groupBy The grouping criteria: equipmentType, location, file, system, unit, zeroEnergyMethod
+     * @return Map of group names to list of LOTO points
+     */
+    public Map<String, List<LotoPointDto>> getGroupedLotoPoints(String groupBy) {
+        // Get all non-deleted LOTO points
+        List<LotoPoint> allPoints = lotoPointRepo.findAll();
+
+        // Convert to DTOs
+        List<LotoPointDto> allDtos = allPoints.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+
+        // Group by the specified criterion
+        return switch (groupBy.toLowerCase()) {
+            case "equipmenttype" -> groupByEquipmentType(allDtos);
+            case "location" -> groupByLocation(allDtos);
+            case "file" -> groupByFile(allDtos);
+            case "system" -> groupBySystem(allDtos);
+            case "unit" -> groupByUnit(allDtos);
+            case "zeroenergymethod" -> groupByZeroEnergyMethod(allDtos);
+            default -> throw new IllegalArgumentException("Invalid groupBy parameter: " + groupBy +
+                    ". Valid values: equipmentType, location, file, system, unit, zeroEnergyMethod");
+        };
+    }
+
+    private Map<String, List<LotoPointDto>> groupByEquipmentType(List<LotoPointDto> lotoPoints) {
+        return lotoPoints.stream()
+                .collect(Collectors.groupingBy(lp ->
+                    Optional.ofNullable(lp.getEqType())
+                            .map(type -> type.getName())
+                            .orElse("Uncategorized")
+                ));
+    }
+
+    private Map<String, List<LotoPointDto>> groupByLocation(List<LotoPointDto> lotoPoints) {
+        return lotoPoints.stream()
+                .collect(Collectors.groupingBy(lp ->
+                    Optional.ofNullable(lp.getLocation())
+                            .map(loc -> loc.getName())
+                            .orElse("Uncategorized")
+                ));
+    }
+
+    private Map<String, List<LotoPointDto>> groupByFile(List<LotoPointDto> lotoPoints) {
+        return lotoPoints.stream()
+                .collect(Collectors.groupingBy(lp -> {
+                    // Get main file from equipment list
+                    if (lp.getEquipmentList() != null && !lp.getEquipmentList().isEmpty()) {
+                        return lp.getEquipmentList().stream()
+                                .findFirst()
+                                .map(eq -> Optional.ofNullable(eq.getMainFileObject())
+                                        .map(file -> file.getName() != null && !file.getName().isEmpty()
+                                                ? file.getName()
+                                                : "File #" + file.getId())
+                                        .orElse("No File"))
+                                .orElse("No File");
+                    }
+                    return "No File";
+                }));
+    }
+
+    private Map<String, List<LotoPointDto>> groupBySystem(List<LotoPointDto> lotoPoints) {
+        return lotoPoints.stream()
+                .collect(Collectors.groupingBy(lp ->
+                    Optional.ofNullable(lp.getSystem())
+                            .filter(s -> !s.isEmpty())
+                            .orElse("Uncategorized")
+                ));
+    }
+
+    private Map<String, List<LotoPointDto>> groupByUnit(List<LotoPointDto> lotoPoints) {
+        return lotoPoints.stream()
+                .collect(Collectors.groupingBy(lp ->
+                    Optional.ofNullable(lp.getUnit())
+                            .filter(u -> !u.isEmpty())
+                            .orElse("Uncategorized")
+                ));
+    }
+
+    private Map<String, List<LotoPointDto>> groupByZeroEnergyMethod(List<LotoPointDto> lotoPoints) {
+        return lotoPoints.stream()
+                .collect(Collectors.groupingBy(lp ->
+                    Optional.ofNullable(lp.getZeroEnergy())
+                            .map(ze -> Optional.ofNullable(ze.getMethod())
+                                    .filter(m -> !m.isEmpty())
+                                    .orElse("No Method"))
+                            .orElse("No Zero Energy")
+                ));
+    }
+
 }
 

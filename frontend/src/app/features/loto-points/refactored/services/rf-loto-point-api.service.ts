@@ -227,4 +227,18 @@ export class RfLotoPointApiService {
       { params }
     );
   }
+
+  /**
+   * Get LOTO points grouped by specified criteria for left menu
+   * @param groupBy The grouping criteria: equipmentType, location, file, system, unit, zeroEnergyMethod
+   * @returns Map of group names to arrays of LOTO points
+   */
+  getGroupedLotoPoints(groupBy: string): Observable<SpringApiResponse<{ [key: string]: LotoPointDto[] }>> {
+    const params = new HttpParams().set('groupBy', groupBy);
+
+    return this.http.get<SpringApiResponse<{ [key: string]: LotoPointDto[] }>>(
+      `${this.apiUrl}/grouped`,
+      { params }
+    );
+  }
 }
