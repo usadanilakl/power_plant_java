@@ -22,11 +22,11 @@ public class ZeroEnergy extends BaseAuditEntity {
     @JoinColumn(name = "zero_energy_template_id")
     private Value zeroEnergyTemplate;
 
-    @Column(columnDefinition = "TEXT")
-    private String templateLotoPointIds; // Comma-separated IDs: "123,456,789"
+    @Column(name = "template_loto_point_ids", columnDefinition = "TEXT")
+    private String templateEquipmentIds; // Comma-separated equipment IDs: "123,456,789"
 
     /**
-     * Builds the resolved zero energy method from template and loto point references.
+     * Builds the resolved zero energy method from template and equipment references.
      * Template placeholders like [tag1], [tag2], etc. are replaced with actual tag numbers.
      */
     @Transient
@@ -48,14 +48,14 @@ public class ZeroEnergy extends BaseAuditEntity {
     }
 
     /**
-     * Gets template LOTO point IDs as a Set.
+     * Gets template equipment IDs as a Set.
      */
     @Transient
-    public java.util.Set<Long> getTemplateLotoPointIds() {
-        if (templateLotoPointIds == null || templateLotoPointIds.isEmpty()) {
+    public java.util.Set<Long> getTemplateEquipmentIds() {
+        if (templateEquipmentIds == null || templateEquipmentIds.isEmpty()) {
             return new java.util.HashSet<>();
         }
-        return java.util.Arrays.stream(templateLotoPointIds.split(","))
+        return java.util.Arrays.stream(templateEquipmentIds.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .map(Long::parseLong)
@@ -63,26 +63,26 @@ public class ZeroEnergy extends BaseAuditEntity {
     }
 
     /**
-     * Sets template LOTO point IDs from a Set.
+     * Sets template equipment IDs from a Set.
      */
-    public void setTemplateLotoPointIds(java.util.Set<Long> pointIds) {
-        if (pointIds == null || pointIds.isEmpty()) {
-            this.templateLotoPointIds = null;
+    public void setTemplateEquipmentIds(java.util.Set<Long> equipmentIds) {
+        if (equipmentIds == null || equipmentIds.isEmpty()) {
+            this.templateEquipmentIds = null;
         } else {
-            this.templateLotoPointIds = pointIds.stream()
+            this.templateEquipmentIds = equipmentIds.stream()
                     .map(String::valueOf)
                     .collect(java.util.stream.Collectors.joining(","));
         }
     }
 
     /**
-     * Sets template LOTO point IDs from a List.
+     * Sets template equipment IDs from a List.
      */
-    public void setTemplateLotoPointIdsList(java.util.List<Long> pointIds) {
-        if (pointIds == null || pointIds.isEmpty()) {
-            this.templateLotoPointIds = null;
+    public void setTemplateEquipmentIdsList(java.util.List<Long> equipmentIds) {
+        if (equipmentIds == null || equipmentIds.isEmpty()) {
+            this.templateEquipmentIds = null;
         } else {
-            this.templateLotoPointIds = pointIds.stream()
+            this.templateEquipmentIds = equipmentIds.stream()
                     .map(String::valueOf)
                     .collect(java.util.stream.Collectors.joining(","));
         }

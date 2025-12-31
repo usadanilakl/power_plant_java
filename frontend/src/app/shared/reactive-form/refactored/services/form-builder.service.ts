@@ -110,7 +110,16 @@ export class FormBuilderService {
   private createNestedGroup(fields: RfFormField[], data: any = {}): FormGroup {
     const group = this.fb.group({});
     fields.forEach((field) => {
-      let value = data[field.name] ?? field.initialValue;
+      // Prefer explicitly set initialValue over data[field.name]
+      // This allows field configs to transform data (e.g., extract ID from object)
+      let value = field.initialValue !== undefined ? field.initialValue : data[field.name];
+
+      console.log(`Creating nested field "${field.name}":`, {
+        hasInitialValue: field.initialValue !== undefined,
+        initialValue: field.initialValue,
+        dataValue: data[field.name],
+        chosenValue: value
+      });
 
       // Handle special field types
       value = this.normalizeValueByType(field.type, value);

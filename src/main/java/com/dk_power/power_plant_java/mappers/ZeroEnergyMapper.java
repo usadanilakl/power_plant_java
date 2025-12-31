@@ -1,11 +1,14 @@
 
 package com.dk_power.power_plant_java.mappers;
 
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyDto;
 import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyIdDto;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
+import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgZeroEnergyService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
@@ -13,21 +16,29 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 @Component
 public class ZeroEnergyMapper implements BaseMapper {
     private final ModelMapper modelMapper;
     private final ValueService valueService;
-    private final LotoPointService lotoPointService;
     private final NgZeroEnergyService zeroEnergyService;
+    private final LotoPointService lotoPointService;
+    private final NgEquipmentService equipmentService;
 
     public ZeroEnergyMapper(ModelMapper modelMapper,
                             ValueService valueService,
+                            @Lazy NgZeroEnergyService zeroEnergyService,
                             @Lazy LotoPointService lotoPointService,
-                            @Lazy NgZeroEnergyService zeroEnergyService) {
+                            @Lazy NgEquipmentService equipmentService) {
         this.modelMapper = modelMapper;
         this.valueService = valueService;
-        this.lotoPointService = lotoPointService;
         this.zeroEnergyService = zeroEnergyService;
+        this.lotoPointService = lotoPointService;
+        this.equipmentService = equipmentService;
     }
 
     /**
@@ -39,7 +50,7 @@ public class ZeroEnergyMapper implements BaseMapper {
         }
 
         ZeroEnergyDto dto = new ZeroEnergyDto();
-        
+
         // Base fields
         if (entity.getId() != null) dto.setId(entity.getId());
         if (entity.getName() != null) dto.setName(entity.getName());
@@ -57,20 +68,19 @@ public class ZeroEnergyMapper implements BaseMapper {
             dto.setZeroEnergyTemplate(valueService.convertToDto(entity.getZeroEnergyTemplate()));
         }
 
-        // Convert template LOTO point IDs to full DTOs
-        if (entity.getTemplateLotoPointIds() != null && !entity.getTemplateLotoPointIds().isEmpty()) {
-            java.util.List<LotoPointDto> templateLotoPoints = new java.util.ArrayList<>();
-            for (Long lpId : entity.getTemplateLotoPointIds()) {
-                LotoPoint lp = lotoPointService.getEntityById(lpId);
-                if (lp != null) {
-                    LotoPointDto lpDto = new LotoPointDto();
-                    lpDto.setId(lp.getId());
-                    lpDto.setTagNumber(lp.getTagNumber());
-                    lpDto.setDescription(lp.getDescription());
-                    templateLotoPoints.add(lpDto);
-                }
+        // Set template equipment IDs
+        if (entity.getTemplateEquipmentIds() != null && !entity.getTemplateEquipmentIds().isEmpty()) {
+            dto.setTemplateEquipmentIds(new ArrayList<>(entity.getTemplateEquipmentIds()));
+
+            // Load equipment by IDs
+            List<EquipmentDto> equipmentDtos = new ArrayList<>();
+            for (Long equipmentId : entity.getTemplateEquipmentIds()) {
+                equipmentService.findById(equipmentId).ifPresent(equipment -> {
+                    equipmentDtos.add(equipmentService.toDto(equipment));
+                });
             }
-            dto.setTemplateLotoPoints(templateLotoPoints);
+
+            dto.setTemplateEquipment(equipmentDtos);
         }
 
         // Resolved method from @Transient getter
@@ -108,15 +118,14 @@ public class ZeroEnergyMapper implements BaseMapper {
             dto.setZeroEnergyTemplateId(entity.getZeroEnergyTemplate().getId());
         }
 
-        // Set template LOTO point IDs
-        if (entity.getTemplateLotoPointIds() != null && !entity.getTemplateLotoPointIds().isEmpty()) {
-            dto.setTemplateLotoPointIds(new java.util.ArrayList<>(entity.getTemplateLotoPointIds()));
+        // Set template equipment IDs
+        if (entity.getTemplateEquipmentIds() != null && !entity.getTemplateEquipmentIds().isEmpty()) {
+            dto.setTemplateEquipmentIds(new ArrayList<>(entity.getTemplateEquipmentIds()));
         }
 
         // Resolved method from @Transient getter
         if (entity.getMethod() != null) {
             dto.setMethod(entity.getMethod());
-            dto.setResolvedMethod(entity.getMethod());
         }
 
         return dto;
@@ -153,13 +162,9 @@ public class ZeroEnergyMapper implements BaseMapper {
             entity.setZeroEnergyTemplate(valueService.convertToEntity(dto.getZeroEnergyTemplate()));
         }
 
-        // Convert template LOTO point DTOs to IDs
-        if (dto.getTemplateLotoPoints() != null && !dto.getTemplateLotoPoints().isEmpty()) {
-            java.util.List<Long> lpIds = dto.getTemplateLotoPoints().stream()
-                    .map(LotoPointDto::getId)
-                    .filter(id -> id != null)
-                    .collect(java.util.stream.Collectors.toList());
-            entity.setTemplateLotoPointIdsList(lpIds);
+        // Set template equipment IDs directly if provided
+        if (dto.getTemplateEquipmentIds() != null && !dto.getTemplateEquipmentIds().isEmpty()) {
+            entity.setTemplateEquipmentIdsList(dto.getTemplateEquipmentIds());
         }
 
         return entity;
@@ -198,9 +203,9 @@ public class ZeroEnergyMapper implements BaseMapper {
             entity.setZeroEnergyTemplate(valueService.findById(dto.getZeroEnergyTemplateId()).orElse(null));
         }
 
-        // Set template LOTO point IDs
-        if (dto.getTemplateLotoPointIds() != null && !dto.getTemplateLotoPointIds().isEmpty()) {
-            entity.setTemplateLotoPointIdsList(dto.getTemplateLotoPointIds());
+        // Set template equipment IDs
+        if (dto.getTemplateEquipmentIds() != null && !dto.getTemplateEquipmentIds().isEmpty()) {
+            entity.setTemplateEquipmentIdsList(dto.getTemplateEquipmentIds());
         }
 
         return entity;

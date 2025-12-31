@@ -143,8 +143,22 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
       if (segment.type === 'placeholder' && segment.placeholderIndex !== undefined) {
         const equipmentItem = equipment[segment.placeholderIndex];
         if (equipmentItem) {
-          // Try to get tag number from equipment item
-          const tagNumber = equipmentItem.tagNumber || equipmentItem.tag || `Equipment ${segment.placeholderIndex + 1}`;
+          // Extract loto point tag number from equipment's lotoPoints array
+          let tagNumber = `Equipment ${segment.placeholderIndex + 1}`;
+
+          // First, try to get from lotoPoints array (equipment contains loto points)
+          if (equipmentItem.lotoPoints && Array.isArray(equipmentItem.lotoPoints) && equipmentItem.lotoPoints.length > 0) {
+            tagNumber = equipmentItem.lotoPoints[0].tagNumber || tagNumber;
+          }
+          // Fallback: if this is a loto point object directly
+          else if (equipmentItem.tagNumber) {
+            tagNumber = equipmentItem.tagNumber;
+          }
+          // Another fallback for older data
+          else if (equipmentItem.tag) {
+            tagNumber = equipmentItem.tag;
+          }
+
           return {
             ...segment,
             substitutedText: tagNumber,
@@ -249,10 +263,13 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
   // ==================== ControlValueAccessor Methods ====================
 
   writeValue(value: any): void {
+    console.log('ZeroEnergyPhraseBuilder.writeValue called with:', value, 'selectInput exists:', !!this.selectInput);
     this.selectedPhraseId.set(value);
     if (this.selectInput) {
+      console.log('Calling selectInput.writeValue with:', value);
       this.selectInput.writeValue(value);
     } else {
+      console.log('selectInput not ready, storing as pending value');
       this.pendingValue = value;
       this.hasPendingValue = true;
     }

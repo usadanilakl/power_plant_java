@@ -304,4 +304,22 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
     public List<Equipment> getAllWithLotoPoints() {
         return this.equipmentRepo.findAllWithLotoPoints();
     }
+
+    /**
+     * Finds equipment that contains any of the specified loto points.
+     * Returns equipment with lotoPoints eagerly loaded.
+     */
+    public List<EquipmentDto> findByLotoPointIds(List<Long> lotoPointIds) {
+        if (lotoPointIds == null || lotoPointIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Query equipment that contains these loto points
+        List<Equipment> equipmentList = equipmentRepo.findByLotoPointIdsIn(lotoPointIds);
+
+        // Convert to DTOs (will include embedded lotoPoints)
+        return equipmentList.stream()
+                .map(equipmentMapper::convertToDto)
+                .collect(Collectors.toList());
+    }
 }

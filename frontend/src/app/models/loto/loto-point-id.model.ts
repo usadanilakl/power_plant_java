@@ -26,7 +26,7 @@ export class LotoPointIdDto extends BaseDto {
   zeroEnergy: {
     id: number | null;
     zeroEnergyTemplateId: number | null;
-    templateLotoPointIds: number[];
+    templateEquipmentIds: number[];
   } | null;
   location: number | null;
   eqType: number | null;

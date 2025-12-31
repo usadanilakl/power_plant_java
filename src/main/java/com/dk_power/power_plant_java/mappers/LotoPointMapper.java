@@ -260,7 +260,7 @@ public class LotoPointMapper implements BaseMapper{
         if (dto.getZeroEnergy() != null) {
             System.out.println("Processing nested ZeroEnergy object: templateId=" +
                 dto.getZeroEnergy().getZeroEnergyTemplateId() +
-                ", pointIds=" + dto.getZeroEnergy().getTemplateLotoPointIds());
+                ", pointIds=" + dto.getZeroEnergy().getTemplateEquipmentIds());
             // Process the nested ZeroEnergy object
             com.dk_power.power_plant_java.entities.loto.ZeroEnergy zeroEnergy =
                 zeroEnergyService.processZeroEnergy(dto.getZeroEnergy());

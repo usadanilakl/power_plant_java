@@ -66,6 +66,9 @@ List<EquipmentDtoLight> getAllLight();
     @Query("SELECT e FROM Equipment e WHERE SIZE(e.lotoPoints) > 0")
     List<Equipment> findAllWithLotoPoints();
 
+    @Query("SELECT DISTINCT e FROM Equipment e LEFT JOIN FETCH e.lotoPoints lp WHERE lp.id IN :lotoPointIds")
+    List<Equipment> findByLotoPointIdsIn(@org.springframework.data.repository.query.Param("lotoPointIds") List<Long> lotoPointIds);
+
     // Count methods for Value dependency checking
     @Query("SELECT COUNT(e) FROM Equipment e WHERE e.vendor.id = :valueId")
     long countByVendorId(@org.springframework.data.repository.query.Param("valueId") Long valueId);

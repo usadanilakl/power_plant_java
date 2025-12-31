@@ -64,13 +64,19 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
 
   writeValue(value: any): void {
     if (Array.isArray(value)) {
-      this.equipmentList.set(value.map(item => ({
-        ...item,
-        fileId: item.mainFileId ?? item.fileId,
-        // Fix: Use mainFileObject name, fallback to fileName if available
-        fileName: item.mainFileObject?.name ?? item.fileName ?? (item.mainFileId ? `File #${item.mainFileId}` : undefined),
-        source: item.source ?? 'browsed' // Default to browsed for draft-loaded items
-      })));
+      this.equipmentList.set(
+        value.map((item) => ({
+          ...item,
+          fileId: item.mainFileId ?? item.fileId,
+          // Use mainFile (string field), fallback to mainFileObject.name, then fileName
+          fileName:
+            item.mainFileObject?.name ??
+            item.mainFile ??
+            item.fileName ??
+            (item.mainFileId ? `File #${item.mainFileId}` : undefined),
+          source: item.source ?? 'browsed', // Default to browsed for draft-loaded items
+        }))
+      );
       this.value.set(value);
     } else {
       this.equipmentList.set([]);

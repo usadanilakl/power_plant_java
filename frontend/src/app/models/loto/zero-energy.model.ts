@@ -1,13 +1,15 @@
 import { BaseModel } from '../base/base.model';
 import { ValueModel } from '../value.model';
-import { LotoPointModel } from './loto-point.model';
+import { EquipmentModel } from '../equipment/equipment.model';
 
 export interface ZeroEnergyModel extends BaseModel {
   method: string;
-  templateLotoPoints: LotoPointModel[]; // Array of LOTO points to fill placeholders
-  zeroEnergyTemplate: ValueModel; // The phrase template with placeholders
+  zeroEnergyTemplate: ValueModel;
+  templateEquipment: EquipmentModel[];
+  templateEquipmentIds: number[];
 }
 
-export interface ZeroEnergyIdModel extends Omit<ZeroEnergyModel, 'reference'> {
-  referenceId: number;
+export interface ZeroEnergyIdModel extends Omit<ZeroEnergyModel, 'zeroEnergyTemplate' | 'templateEquipment'> {
+  zeroEnergyTemplateId: number | null;
+  templateEquipmentIds: number[];
 }

@@ -48,7 +48,7 @@ export class FormGroupInputComponent {
     return control as FormControl;
   }
 
-  // Helper to get value from a sibling field (for zero-energy-phrase-builder to access templateLotoPoints)
+  // Helper to get value from a sibling field (for zero-energy-phrase-builder to access templateEquipment)
   getFieldValue(name: string): any {
     const control = this.formGroup().get(name);
     return control?.value || [];

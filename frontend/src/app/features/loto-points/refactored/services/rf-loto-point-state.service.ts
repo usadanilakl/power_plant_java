@@ -53,7 +53,8 @@ export class RfLotoPointStateService {
   loadingUniqueItems = signal<boolean>(false);
 
   constructor() {
-    this.loadFromLocalStorage();
+    // Don't auto-load drafts on service initialization
+    // Drafts will be loaded by the form component's effect when appropriate
   }
 
   addLotoPoints(items: LotoPointDto[]): void {
@@ -96,7 +97,7 @@ export class RfLotoPointStateService {
       .pipe(
         tap((response) => {
           console.log('Loaded full LOTO Point from server:', response.responseData);
-          this.setSelectedItem(new LotoPointDto(response.responseData));
+          this.setSelectedItem(LotoPointDto.fromJson(response.responseData));
         }),
         catchError((error) => {
           console.error('Error loading LOTO Point:', error);
@@ -127,7 +128,7 @@ export class RfLotoPointStateService {
           // Clear the draft after successful save
           this.clearDraftForItem(lotoPointId);
           // Update the selected item with the saved data
-          this.setSelectedItem(new LotoPointDto(response.responseData));
+          this.setSelectedItem(LotoPointDto.fromJson(response.responseData));
           // Optionally close the form
           // this.closeForm();
         }),
@@ -144,11 +145,9 @@ export class RfLotoPointStateService {
   }
 
   openNewLotoForm() {
-    const draft = this.loadDraftForItem();
-    const formData = draft?.formData;
-    this.setSelectedItem(
-      formData ? new LotoPointDto(formData) : new LotoPointDto()
-    );
+    // Set a new blank item - the form component's effect will check for drafts
+    console.log('openNewLotoForm: Setting new blank LotoPointDto');
+    this.setSelectedItem(new LotoPointDto());
   }
 
   saveDraft(item: LotoPointDto) {
@@ -175,17 +174,6 @@ export class RfLotoPointStateService {
    */
   clearDraftForItem(lotoPointId: number | null = null): void {
     this.localStorage.clearDraft(lotoPointId);
-  }
-
-  /**
-   * Load from localStorage on service initialization
-   * This loads draft for new items only
-   */
-  loadFromLocalStorage() {
-    const draft = this.localStorage.loadDraft(null); // null = new items
-    if (draft) {
-      this.selectedItem.set(new LotoPointDto(draft.formData));
-    }
   }
 
   resetPage() {

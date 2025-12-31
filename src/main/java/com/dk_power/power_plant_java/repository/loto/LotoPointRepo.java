@@ -676,7 +676,8 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
            "LEFT JOIN FETCH lp.eqType " +
            "LEFT JOIN FETCH lp.isoPos " +
            "LEFT JOIN FETCH lp.normPos " +
-           "LEFT JOIN FETCH lp.zeroEnergy " +
+           "LEFT JOIN FETCH lp.zeroEnergy ze " +
+           "LEFT JOIN FETCH ze.zeroEnergyTemplate " +
            "WHERE lp.id = :id")
     LotoPoint findByIdWithEquipment(@Param("id") Long id);
 

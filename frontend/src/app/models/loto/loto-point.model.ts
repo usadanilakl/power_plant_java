@@ -97,7 +97,31 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.lotos = data.lotos ?? null;
     this.zeroEnergyMethod = data.zeroEnergyMethod ?? null;
 
-    this.zeroEnergy = data.zeroEnergy ?? null;
+    // Deserialize zeroEnergy with its nested objects
+    if (data.zeroEnergy) {
+      this.zeroEnergy = {
+        id: data.zeroEnergy.id || 0,
+        name: data.zeroEnergy.name || '',
+        objectType: data.zeroEnergy.objectType || '',
+        isVerified: data.zeroEnergy.isVerified || false,
+        method: data.zeroEnergy.method || '',
+        zeroEnergyTemplate: data.zeroEnergy.zeroEnergyTemplate
+          ? (data.zeroEnergy.zeroEnergyTemplate instanceof ValueDto
+              ? data.zeroEnergy.zeroEnergyTemplate
+              : new ValueDto(data.zeroEnergy.zeroEnergyTemplate))
+          : new ValueDto(),
+        templateEquipment: Array.isArray(data.zeroEnergy.templateEquipment)
+          ? data.zeroEnergy.templateEquipment.map(eq =>
+              eq instanceof EquipmentDto ? eq : new EquipmentDto(eq)
+            )
+          : [],
+        templateEquipmentIds: Array.isArray(data.zeroEnergy.templateEquipmentIds)
+          ? data.zeroEnergy.templateEquipmentIds
+          : [],
+      };
+    } else {
+      this.zeroEnergy = null;
+    }
     this.relatedLotoPointIds = data.relatedLotoPointIds ?? null;
     this.location = super.setNestedObjectById(data.location, new ValueDto());
     this.eqType = super.setNestedObjectById(data.eqType, new ValueDto());
@@ -187,7 +211,32 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         : [],
       zeroEnergyMethod: json.zeroEnergyMethod || null,
 
-      zeroEnergy: json.zeroEnergy || null,
+      zeroEnergy: json.zeroEnergy ? {
+        id: json.zeroEnergy.id || 0,
+        name: json.zeroEnergy.name || '',
+        objectType: json.zeroEnergy.objectType || '',
+        isVerified: json.zeroEnergy.isVerified || false,
+        method: json.zeroEnergy.method || '',
+        zeroEnergyTemplate: json.zeroEnergy.zeroEnergyTemplate
+          ? ValueDto.fromJson(json.zeroEnergy.zeroEnergyTemplate)
+          : new ValueDto(),
+        templateEquipment: Array.isArray(json.zeroEnergy.templateEquipment)
+          ? json.zeroEnergy.templateEquipment
+              .filter((equipment: any) => equipment != null)
+              .map((equipment: any) => {
+                try {
+                  return EquipmentDto.fromJson(equipment);
+                } catch (error) {
+                  console.warn('Error parsing ZeroEnergy EquipmentDto:', error);
+                  return null;
+                }
+              })
+              .filter((equipment: EquipmentDto | null) => equipment !== null)
+          : [],
+        templateEquipmentIds: Array.isArray(json.zeroEnergy.templateEquipmentIds)
+          ? json.zeroEnergy.templateEquipmentIds
+          : [],
+      } : null,
       relatedLotoPointIds: Array.isArray(json.relatedLotoPointIds)
         ? json.relatedLotoPointIds
         : [],
@@ -580,9 +629,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         zeroEnergyTemplateId: typeof this.zeroEnergy.zeroEnergyTemplate === 'number'
           ? this.zeroEnergy.zeroEnergyTemplate
           : this.zeroEnergy.zeroEnergyTemplate?.id || null,
-        templateLotoPointIds: this.zeroEnergy.templateLotoPoints?.map(lp =>
-          typeof lp === 'number' ? lp : lp.id
-        ).filter(id => id != null) || []
+        templateEquipmentIds: this.zeroEnergy.templateEquipment?.map((eq: any) => eq.id).filter((id: any) => id != null) || []
       } : null,
       location: this.location?.id || null,
       eqType: this.eqType?.id || null,

@@ -323,7 +323,12 @@ export class LotoPointMapperService {
       'equipmentIdList'
     ]
   ): RfFormField[] {
-    const allFields: { [key in keyof LotoPointDto]?: RfFormField } = {
+    console.log('toFormFields called with lotoPoint:', {
+      hasZeroEnergy: !!lotoPoint.zeroEnergy,
+      zeroEnergy: lotoPoint.zeroEnergy,
+      lotoPointId: lotoPoint.id
+    });
+    const allFields: { [key in keyof LotoPointDto]?: RfFormField} = {
       tagNumber: {
         name: 'tagNumber',
         label: 'Tag Number',
@@ -459,13 +464,23 @@ export class LotoPointMapperService {
           type: 'zero-energy-phrase-builder',
           categoryAlias: 'zeroEnergyTemplate',
           canManageValues: true,
-          initialValue: lotoPoint.zeroEnergy?.zeroEnergyTemplate?.id || null,
+          initialValue: (() => {
+            const templateId = lotoPoint.zeroEnergy?.zeroEnergyTemplate?.id || null;
+            console.log('Zero Energy Template Initial Value:', {
+              hasZeroEnergy: !!lotoPoint.zeroEnergy,
+              zeroEnergy: lotoPoint.zeroEnergy,
+              hasTemplate: !!lotoPoint.zeroEnergy?.zeroEnergyTemplate,
+              template: lotoPoint.zeroEnergy?.zeroEnergyTemplate,
+              templateId: templateId
+            });
+            return templateId;
+          })(),
         },
         {
-          name: 'templateLotoPoints',
-          label: 'Template LOTO Points (for placeholders)',
+          name: 'templateEquipment',
+          label: 'Equipment (select on P&ID)',
           type: 'equipment-list-manager',
-          initialValue: lotoPoint.zeroEnergy?.templateLotoPoints?.map((lp) => lp.id) || [],
+          initialValue: lotoPoint.zeroEnergy?.templateEquipment || [],
         },
       ],
     },
@@ -572,14 +587,25 @@ export class LotoPointMapperService {
     // Add zeroEnergy if it exists and has valid data
     if (lotoPoint.zeroEnergy) {
       const templateId = lotoPoint.zeroEnergy.zeroEnergyTemplate?.id || null;
-      const pointIds = lotoPoint.zeroEnergy.templateLotoPoints?.map(lp => lp.id).filter(id => id != null) || [];
 
-      // Only send zeroEnergy if there's actual data (template selected or points selected)
-      if (templateId || pointIds.length > 0 || lotoPoint.zeroEnergy.id) {
+      // Extract equipment IDs from equipment selections
+      // templateEquipment contains equipment objects from equipment-list-manager
+      // Send equipment IDs directly (backend expects equipment IDs in templateEquipmentIds field)
+      const equipmentIds: number[] = [];
+      if (lotoPoint.zeroEnergy.templateEquipment) {
+        equipmentIds.push(
+          ...lotoPoint.zeroEnergy.templateEquipment
+            .map(eq => eq.id)
+            .filter(id => id != null) as number[]
+        );
+      }
+
+      // Only send zeroEnergy if there's actual data (template selected or equipment selected)
+      if (templateId || equipmentIds.length > 0 || lotoPoint.zeroEnergy.id) {
         apiModel.zeroEnergy = {
           id: lotoPoint.zeroEnergy.id || null,
           zeroEnergyTemplateId: templateId,
-          templateLotoPointIds: pointIds
+          templateEquipmentIds: equipmentIds
         };
       }
     }
