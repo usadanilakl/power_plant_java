@@ -56,17 +56,23 @@ public class ZeroEnergyMapper implements BaseMapper {
         if (entity.getZeroEnergyTemplate() != null) {
             dto.setZeroEnergyTemplate(valueService.convertToDto(entity.getZeroEnergyTemplate()));
         }
-        
-        if (entity.getTemplateLotoPoint() != null) {
-            LotoPoint lp = entity.getTemplateLotoPoint();
-            LotoPointDto lpDto = new LotoPointDto();
-            lpDto.setId(lp.getId());
-            lpDto.setTagNumber(lp.getTagNumber());
-            lpDto.setDescription(lp.getDescription());
 
-            dto.setTemplateLotoPoint(lpDto);
+        // Convert template LOTO point IDs to full DTOs
+        if (entity.getTemplateLotoPointIds() != null && !entity.getTemplateLotoPointIds().isEmpty()) {
+            java.util.List<LotoPointDto> templateLotoPoints = new java.util.ArrayList<>();
+            for (Long lpId : entity.getTemplateLotoPointIds()) {
+                LotoPoint lp = lotoPointService.getEntityById(lpId);
+                if (lp != null) {
+                    LotoPointDto lpDto = new LotoPointDto();
+                    lpDto.setId(lp.getId());
+                    lpDto.setTagNumber(lp.getTagNumber());
+                    lpDto.setDescription(lp.getDescription());
+                    templateLotoPoints.add(lpDto);
+                }
+            }
+            dto.setTemplateLotoPoints(templateLotoPoints);
         }
-        
+
         // Resolved method from @Transient getter
         if (entity.getMethod() != null) {
             dto.setMethod(entity.getMethod());
@@ -101,11 +107,12 @@ public class ZeroEnergyMapper implements BaseMapper {
         if (entity.getZeroEnergyTemplate() != null) {
             dto.setZeroEnergyTemplateId(entity.getZeroEnergyTemplate().getId());
         }
-        
-        if (entity.getTemplateLotoPoint() != null) {
-            dto.setTemplateLotoPoint(lotoPointService.convertToDto(entity.getTemplateLotoPoint()));
+
+        // Set template LOTO point IDs
+        if (entity.getTemplateLotoPointIds() != null && !entity.getTemplateLotoPointIds().isEmpty()) {
+            dto.setTemplateLotoPointIds(new java.util.ArrayList<>(entity.getTemplateLotoPointIds()));
         }
-        
+
         // Resolved method from @Transient getter
         if (entity.getMethod() != null) {
             dto.setMethod(entity.getMethod());
@@ -145,9 +152,14 @@ public class ZeroEnergyMapper implements BaseMapper {
         if (dto.getZeroEnergyTemplate() != null) {
             entity.setZeroEnergyTemplate(valueService.convertToEntity(dto.getZeroEnergyTemplate()));
         }
-        
-        if (dto.getTemplateLotoPoint() != null) {
-            entity.setTemplateLotoPoint(lotoPointService.convertToEntity(dto.getTemplateLotoPoint()));
+
+        // Convert template LOTO point DTOs to IDs
+        if (dto.getTemplateLotoPoints() != null && !dto.getTemplateLotoPoints().isEmpty()) {
+            java.util.List<Long> lpIds = dto.getTemplateLotoPoints().stream()
+                    .map(LotoPointDto::getId)
+                    .filter(id -> id != null)
+                    .collect(java.util.stream.Collectors.toList());
+            entity.setTemplateLotoPointIdsList(lpIds);
         }
 
         return entity;
@@ -185,9 +197,10 @@ public class ZeroEnergyMapper implements BaseMapper {
         if (dto.getZeroEnergyTemplateId() != null) {
             entity.setZeroEnergyTemplate(valueService.findById(dto.getZeroEnergyTemplateId()).orElse(null));
         }
-        
-        if (dto.getTemplateLotoPoint() != null) {
-            entity.setTemplateLotoPoint(lotoPointService.convertToEntity(dto.getTemplateLotoPoint()));
+
+        // Set template LOTO point IDs
+        if (dto.getTemplateLotoPointIds() != null && !dto.getTemplateLotoPointIds().isEmpty()) {
+            entity.setTemplateLotoPointIdsList(dto.getTemplateLotoPointIds());
         }
 
         return entity;

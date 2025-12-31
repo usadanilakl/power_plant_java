@@ -1,75 +1,195 @@
-<div class="tag-generator-container" style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
-  <h2 style="text-align: center; color: #333;">Tag Number Generator</h2>
-  
-  <form (ngSubmit)="onSubmit()" style="margin-bottom: 20px;">
-    <div style="margin-bottom: 10px;">
-      <label for="unit" style="display: block; margin-bottom: 5px;">Unit:</label>
-      <input type="text" id="unit" name="unit" [(ngModel)]="unit" required 
-             style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+<div class="tag-generator-wrapper">
+  <div class="tag-generator-content">
+    <!-- Header Section -->
+    <div class="generator-header">
+      <div class="header-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7"/>
+        </svg>
+      </div>
+      <h2 class="generator-title">Tag Number Generator</h2>
+      <p class="generator-subtitle">Create standardized equipment tag numbers</p>
     </div>
-    <div style="margin-bottom: 10px;">
-      <label for="equipmentType" style="display: block; margin-bottom: 5px;">Equipment Type:</label>
-      <input type="text" id="equipmentType" name="equipmentType" [(ngModel)]="equipmentType" required 
-             style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-    </div>
-    <div style="margin-bottom: 10px;">
-      <label for="system" style="display: block; margin-bottom: 5px;">System:</label>
-      <input type="text" id="system" name="system" [(ngModel)]="system" required 
-             style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-    </div>
-    <button type="submit" style="width: 100%; padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Generate Tag Number</button>
-  </form>
 
-  <div *ngIf="generatedTagNumber" style="text-align: center; margin: 20px 0; padding: 20px; background-color: #f0f0f0; border-radius: 4px;">
-    <h3 style="margin-bottom: 10px; color: #333;">Generated Tag Number:</h3>
-    <p style="font-size: 24px; font-weight: bold; color: #4CAF50;">{{ generatedTagNumber }}</p>
+    <!-- Error Message -->
+    @if (errorMessage()) {
+      <div class="alert alert-error">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+
+    <!-- Success Message -->
+    @if (generatedTagNumber()) {
+      <div class="success-container">
+        <div class="success-header">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <h3>Tag Number Generated!</h3>
+        </div>
+        <div class="generated-tag">
+          {{ generatedTagNumber() }}
+        </div>
+        <p class="success-message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copied to clipboard
+        </p>
+      </div>
+    }
+
+    <!-- Form Section -->
+    <form (ngSubmit)="onSubmit()" class="generator-form">
+      <div class="form-grid">
+        <!-- Unit Selection -->
+        <div class="form-group">
+          <div class="form-label-row">
+            <label class="form-label">Unit</label>
+            <span class="step-indicator">Step 1</span>
+          </div>
+          <app-rf-value-select
+            [categoryAlias]="'unit'"
+            [label]="'Select Unit'"
+            [canManageValues]="true"
+            [(ngModel)]="unitId"
+            name="unit">
+          </app-rf-value-select>
+          @if (unitId()) {
+            <span class="field-checkmark">✓</span>
+          }
+        </div>
+
+        <!-- Equipment Type Selection -->
+        <div class="form-group">
+          <div class="form-label-row">
+            <label class="form-label">Equipment Type</label>
+            <span class="step-indicator">Step 2</span>
+          </div>
+          <app-rf-value-select
+            [categoryAlias]="'eqType'"
+            [label]="'Select Equipment Type'"
+            [canManageValues]="true"
+            [(ngModel)]="equipmentTypeId"
+            name="equipmentType">
+          </app-rf-value-select>
+          @if (equipmentTypeId()) {
+            <span class="field-checkmark">✓</span>
+          }
+        </div>
+
+        <!-- System Selection -->
+        <div class="form-group">
+          <div class="form-label-row">
+            <label class="form-label">System</label>
+            <span class="step-indicator">Step 3</span>
+          </div>
+          <app-rf-value-select
+            [categoryAlias]="'system'"
+            [label]="'Select System'"
+            [canManageValues]="true"
+            [(ngModel)]="systemId"
+            name="system">
+          </app-rf-value-select>
+          @if (systemId()) {
+            <span class="field-checkmark">✓</span>
+          }
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="form-actions">
+        <button
+          type="submit"
+          [disabled]="!canGenerate() || isLoading()"
+          class="btn btn-primary">
+          @if (isLoading()) {
+            <span class="spinner"></span>
+            <span>Generating...</span>
+          } @else {
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+              <line x1="7" y1="7" x2="7.01" y2="7"/>
+            </svg>
+            <span>Generate Tag Number</span>
+          }
+        </button>
+        <button
+          type="button"
+          (click)="toggleLotoPointsTable()"
+          class="btn btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span>View All Tagged Points</span>
+        </button>
+      </div>
+    </form>
+
+    <!-- LOTO Points with Tag Numbers Table -->
+    @if (showLotoPointsTable()) {
+      <div class="tag-numbers-section">
+        <div class="tag-numbers-header">
+          <div class="tag-numbers-title-row">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+              <line x1="7" y1="7" x2="7.01" y2="7"/>
+            </svg>
+            <h3>LOTO Points with Generated Tag Numbers</h3>
+          </div>
+          <button
+            type="button"
+            (click)="toggleLotoPointsTable()"
+            class="toggle-table-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            Hide
+          </button>
+        </div>
+
+        @if (isLoadingLotoPoints()) {
+          <div style="text-align: center; padding: 20px; color: var(--secondary-text);">
+            Loading LOTO points...
+          </div>
+        } @else if (lotoPointsWithTags().length === 0) {
+          <div style="text-align: center; padding: 20px; color: var(--secondary-text);">
+            No LOTO points with tag numbers found.
+          </div>
+        } @else {
+          <div class="tag-numbers-table-wrapper">
+            <app-rf-loto-point-table
+              [inputItems]="lotoPointsWithTags()"
+              [isTableIsolated]="true"
+              [loadMoreEnabled]="false"
+              [fieldsToDisplay]="['isVerified', 'tagNumber', 'description', 'specificLocation', 'isoPos', 'normPos']">
+            </app-rf-loto-point-table>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Naming Convention Reference -->
+    <div class="reference-section">
+      <div class="reference-header">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 16v-4"/>
+          <path d="M12 8h.01"/>
+        </svg>
+        <h3>Naming Convention Reference</h3>
+      </div>
+      <app-naming-convention></app-naming-convention>
+    </div>
   </div>
-
-  <div *ngIf="errorMessage" class="error-message" style="color: red; text-align: center; margin-bottom: 20px;">
-    {{ errorMessage }}
-  </div>
-
-  <app-naming-convention></app-naming-convention>
-
-  <!-- <div class="naming-convention" style="background-color: #f9f9f9; padding: 15px; border-radius: 4px;">
-    <h3 style="color: #333; margin-bottom: 10px;">Naming Convention:</h3>
-    <p style="margin-bottom: 10px;">Tag Number Format: [Unit]-[Equipment Type]-[System]-[Sequential Number]</p>
-    <ul style="padding-left: 20px;">
-      <li>Unit: 01, 02, 03</li>
-      <li>Equipment Type: 
-        <ul style="padding-left: 20px; list-style-type: none;">
-          <li><strong>V</strong> - Manual valve</li>
-          <li><strong>MOV</strong> - Motor Operated Valve</li>
-          <li><strong>AOV</strong> - Air Operated Valve</li>
-          <li><strong>PCV</strong> - Pressure Control Valve</li>
-          <li><strong>TCV</strong> - Temperature Control Valve</li>
-          <li><strong>FCV</strong> - Flow Control Valve</li>
-          <li><strong>PMP</strong> - Pump</li>
-          <li><strong>CMP</strong> - Compressor</li>
-          <li><strong>XRF</strong> - Transformer</li>
-          <li><strong>PIT</strong> - Pressure Transmitter</li>
-          <li><strong>TIT</strong> - Temperature Transmitter</li>
-          <li><strong>FIT</strong> - Flow Transmitter</li>
-          <li>If equipment is not in the list, come up with 3 letter name for it</li>
-        </ul>
-      </li>
-      <li>System:</li>
-      <ul style="padding-left: 20px; list-style-type: none;">
-        <li><strong>SWS</strong> - Service Water System</li>
-        <li><strong>DWS</strong> - Demin Water System</li>
-        <li><strong>DWT</strong> - Demin Water Treatment System</li>
-        <li><strong>CND</strong> - Condensate System</li>
-        <li><strong>BFW</strong> - Feed Water System</li>
-        <li><strong>LPS</strong> - LP Steam System</li>
-        <li><strong>IPS</strong> - IP Steam System</li>
-        <li><strong>HPS</strong> - HP Steam System</li>
-        <li><strong>CTP</strong> - CT System</li>
-        <li><strong>STP</strong> - ST System</li>
-        <li><strong>FGS</strong> - Fuel Gas System</li>
-        <li><strong>CCW</strong> - Closde Cooling Water System</li>
-        <li>If system is not in the list, come up with 3 letter name for it</li>
-
-      </ul>
-    </ul>
-  </div> -->
 </div>

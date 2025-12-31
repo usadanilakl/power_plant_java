@@ -4,6 +4,9 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RfFormField } from '../../../../../models/ui/form-field.model';
 import { SearchableSelectInputComponent } from '../searchable-select-input/searchable-select-input.component';
 import { EquipmentBrowserInputComponent } from '../equipment-browser-input/equipment-browser-input.component';
+import { EquipmentListManagerComponent } from '../equipment-list-manager/equipment-list-manager.component';
+import { RfValueSelectComponent } from '../../../../../features/values/refactored/components/rf-value-select/rf-value-select.component';
+import { ZeroEnergyPhraseBuilderComponent } from '../zero-energy-phrase-builder/zero-energy-phrase-builder.component';
 
 @Component({
   selector: 'app-form-group-input',
@@ -12,7 +15,10 @@ import { EquipmentBrowserInputComponent } from '../equipment-browser-input/equip
     CommonModule,
     ReactiveFormsModule,
     SearchableSelectInputComponent,
-    EquipmentBrowserInputComponent
+    EquipmentBrowserInputComponent,
+    EquipmentListManagerComponent,
+    RfValueSelectComponent,
+    ZeroEnergyPhraseBuilderComponent
   ],
   templateUrl: './form-group-input.component.html',
   styleUrl: './form-group-input.component.css',
@@ -40,5 +46,11 @@ export class FormGroupInputComponent {
       return new FormControl();
     }
     return control as FormControl;
+  }
+
+  // Helper to get value from a sibling field (for zero-energy-phrase-builder to access templateLotoPoints)
+  getFieldValue(name: string): any {
+    const control = this.formGroup().get(name);
+    return control?.value || [];
   }
 }

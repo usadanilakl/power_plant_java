@@ -24,9 +24,14 @@ export interface FormField {
     | 'group'
     | 'equipment-browser'
     | 'equipment-shape-drawer'
-    | 'equipment-list-manager';
+    | 'equipment-list-manager'
+    | 'value-select'
+    | 'multi-value-select'
+    | 'zero-energy-phrase-builder';
   validators?: ValidatorFn[];
   options?: Option[];
+  categoryAlias?: string; // For value-select and multi-value-select types
+  canManageValues?: boolean; // For value-select and multi-value-select types
   initialValue?: any;
   currentValue?: any;
   question?: Question;
@@ -95,7 +100,8 @@ export interface RfFormField {
     | 'group'
     | 'equipment-browser'
     | 'equipment-shape-drawer'
-    | 'equipment-list-manager';
+    | 'equipment-list-manager'
+    | 'zero-energy-phrase-builder';
   validators?: ValidatorFn[];
   options?: Option[] | Signal<Option[]>;
   categoryAlias?: string; // For value-select and multi-value-select types

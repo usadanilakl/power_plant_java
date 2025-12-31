@@ -13,12 +13,38 @@
             >
             </app-searchable-select-input>
           }
+          @case ('value-select') {
+            <app-rf-value-select
+              [categoryAlias]="field.categoryAlias || field.name"
+              [label]="field.label"
+              [canManageValues]="field.canManageValues ?? true"
+              [formControl]="getFormControl(field.name)"
+            >
+            </app-rf-value-select>
+          }
           @case ('equipment-browser') {
             <app-equipment-browser-input
               [label]="field.label"
               [formControl]="getFormControl(field.name)"
             >
             </app-equipment-browser-input>
+          }
+          @case ('equipment-list-manager') {
+            <app-equipment-list-manager
+              [label]="field.label"
+              [formControl]="getFormControl(field.name)"
+            >
+            </app-equipment-list-manager>
+          }
+          @case ('zero-energy-phrase-builder') {
+            <app-zero-energy-phrase-builder
+              [label]="field.label"
+              [categoryAlias]="field.categoryAlias || field.name"
+              [canManageValues]="field.canManageValues ?? true"
+              [selectedEquipment]="getFieldValue('templateLotoPoints')"
+              [formControl]="getFormControl(field.name)"
+            >
+            </app-zero-energy-phrase-builder>
           }
           @case ('checkbox') {
             <div class="checkbox-field">

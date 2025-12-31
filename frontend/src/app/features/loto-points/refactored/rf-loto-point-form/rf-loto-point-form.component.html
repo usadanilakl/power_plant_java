@@ -19,6 +19,13 @@
   (formSubmit)="onSubmit($event)"
 >
   <ng-container extra-buttons>
+    <button
+      type="button"
+      class="tag-generator-button"
+      (click)="openTagGenerator()"
+      title="Generate New Tag Number">
+      Generate Tag Number
+    </button>
     <app-clipboard-form
       [entityType]="'LotoPoint'"
       [initialEntity]="initialEntity()"
@@ -28,6 +35,18 @@
     ></app-clipboard-form>
   </ng-container>
 </app-rf-reactive-form>
+
+<!-- Tag Number Generator Popup -->
+<app-popup-projection
+  [isOpen]="isTagGeneratorOpen()"
+  [title]="'Generate New Tag Number'"
+  [size]="'medium'"
+  (close)="closeTagGenerator()">
+  <app-tag-number-generator
+    (tagGenerated)="onTagGenerated($event)"
+    (cancelled)="closeTagGenerator()">
+  </app-tag-number-generator>
+</app-popup-projection>
 
 <!-- <app-rf-reactive-form
   [entity]="entity()"

@@ -13,6 +13,6 @@ import lombok.Setter;
 @Setter
 public class ZeroEnergyDto extends BaseDto {
     private String method;
-    private LotoPointDto templateLotoPoint;
+    private java.util.List<LotoPointDto> templateLotoPoints;
     private ValueDto zeroEnergyTemplate;
 }

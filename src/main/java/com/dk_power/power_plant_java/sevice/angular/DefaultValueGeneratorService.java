@@ -14,6 +14,8 @@ public class DefaultValueGeneratorService {
         generateSystems();
         generateEquipmentTypes();
         generatePermitStatuses();
+        generateUnitValues();
+        zeroEnergyTemplate();
     }
 
     private void generateSystems() {
@@ -75,5 +77,16 @@ public class DefaultValueGeneratorService {
         ngValueService.createValue("Permit Status", "Active", "ACT");
         ngValueService.createValue("Permit Status", "Inactive", "INA");
         ngValueService.createValue("Permit Status", "Closed", "CLS");
+    }
+
+    private void generateUnitValues(){
+        ngValueService.createValue("Unit", "Unit 1", "01");
+        ngValueService.createValue("Unit", "Unit 2", "02");
+        ngValueService.createValue("Unit", "BOP", "00");
+    }
+
+    private void zeroEnergyTemplate(){
+        ngValueService.createValue("Zero Energy Template", "No", "NO");
+        ngValueService.createValue("Zero Energy Template", "Yes", "YES");
     }
 }

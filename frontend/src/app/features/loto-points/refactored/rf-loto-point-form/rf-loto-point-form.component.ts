@@ -5,6 +5,7 @@ import {
   inject,
   input,
   signal,
+  ViewChild,
 } from '@angular/core';
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
@@ -13,19 +14,32 @@ import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refact
 import { ClipboardFormComponent } from '../../../../shared/reactive-form/refactored/form-clipboard/clipboard-form.component';
 import { ClipboardService } from '../../../../shared/clipboard/clipboard.service';
 import { DraftComparisonDialogComponent } from '../draft-comparison-dialog/draft-comparison-dialog.component';
+import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-generator/tag-number-generator.component';
+import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
 
 type LotoPointFieldName = keyof LotoPointDto;
 
 @Component({
   selector: 'app-rf-loto-point-form',
-  imports: [RfReactiveFormComponent, ClipboardFormComponent, DraftComparisonDialogComponent],
+  imports: [
+    RfReactiveFormComponent,
+    ClipboardFormComponent,
+    DraftComparisonDialogComponent,
+    TagNumberGeneratorComponent,
+    PopupProjectionComponent
+  ],
   templateUrl: './rf-loto-point-form.component.html',
   styleUrl: './rf-loto-point-form.component.css',
 })
 export class RfLotoPointFormComponent {
+  @ViewChild(RfReactiveFormComponent) reactiveForm!: RfReactiveFormComponent;
+
   protected stateService = inject(RfLotoPointStateService);
   protected mapperService = inject(LotoPointMapperService);
   protected clipboardService = inject(ClipboardService);
+
+  // Tag number generator state
+  isTagGeneratorOpen = signal<boolean>(false);
 
   entityInput = input<LotoPointDto>();
   fieldsInput = input<LotoPointFieldName[]>([]);
@@ -280,6 +294,31 @@ export class RfLotoPointFormComponent {
     if (item) {
       console.log('Loading item from clipboard:', item);
       this.stateService.setSelectedItem(new LotoPointDto(item));
+    }
+  }
+
+  //===========================TAG NUMBER GENERATOR===========================
+  openTagGenerator(): void {
+    this.isTagGeneratorOpen.set(true);
+  }
+
+  closeTagGenerator(): void {
+    this.isTagGeneratorOpen.set(false);
+  }
+
+  onTagGenerated(tagNumber: string): void {
+    console.log('Tag number generated:', tagNumber);
+
+    // Update the form with the new tag number
+    if (this.reactiveForm) {
+      const currentEntity = this.entity();
+      const updatedEntity = new LotoPointDto({
+        ...currentEntity,
+        tagNumber: tagNumber
+      });
+
+      this.stateService.setSelectedItem(updatedEntity);
+      this.closeTagGenerator();
     }
   }
 }

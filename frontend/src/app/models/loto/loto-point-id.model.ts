@@ -23,6 +23,11 @@ export class LotoPointIdDto extends BaseDto {
   lotos: number[] | null;
   lotoIds: number[] | null;
   zeroEnergyMethod: string | null;
+  zeroEnergy: {
+    id: number | null;
+    zeroEnergyTemplateId: number | null;
+    templateLotoPointIds: number[];
+  } | null;
   location: number | null;
   eqType: number | null;
 
@@ -52,6 +57,7 @@ export class LotoPointIdDto extends BaseDto {
     this.lotos = data.lotos ?? null;
     this.lotoIds = data.lotoIds ?? null;
     this.zeroEnergyMethod = data.zeroEnergyMethod?? null;
+    this.zeroEnergy = data.zeroEnergy ?? null;
     this.location = data.location ?? null;
     this.eqType = data.eqType ?? null;
   }
@@ -125,6 +131,7 @@ export class LotoPointIdDto extends BaseDto {
       lotos: this.lotos,
       lotoIds: this.lotoIds,
       zeroEnergyMethod: this.zeroEnergyMethod,
+      zeroEnergy: this.zeroEnergy,
       location: this.location,
       eqType: this.eqType,
     };
@@ -160,6 +167,7 @@ export class LotoPointIdDto extends BaseDto {
       lotos: json.lotos || [],
       lotoIds: json.lotoIds || [],
       zeroEnergyMethod: json.zeroEnergyMethod,
+      zeroEnergy: json.zeroEnergy,
       location: json.location,
       eqType: json.eqType,
     });

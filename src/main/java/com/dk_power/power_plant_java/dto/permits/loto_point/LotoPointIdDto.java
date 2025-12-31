@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.dto.permits.loto_point;
 
 import com.dk_power.power_plant_java.dto.base_dtos.BaseDto;
+import com.dk_power.power_plant_java.dto.permits.zero_energy.ZeroEnergyIdDto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -33,6 +34,7 @@ public class LotoPointIdDto extends BaseDto {
     private String conflictStatus;
     private String zeroEnergyMethod;
     private Long zeroEnergyId;
+    private ZeroEnergyIdDto zeroEnergy; // Nested object for creating/updating ZeroEnergy inline
     private Long location;
     private Long eqType;
     private Set<Long> relatedLotoPointIds;

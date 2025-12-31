@@ -1,4 +1,4 @@
-import { Component, input, inject, signal, effect, ViewChild, AfterViewInit, computed } from '@angular/core';
+import { Component, input, inject, signal, effect, ViewChild, AfterViewInit, computed, Injector } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RfValueService } from '../../services/rf-value.service';
@@ -18,6 +18,7 @@ import { SearchableSelectInputComponent } from '../../../../../shared/reactive-f
 })
 export class RfValueSelectComponent implements ControlValueAccessor, AfterViewInit {
   private valueService = inject(RfValueService);
+  private injector = inject(Injector);
 
   @ViewChild('selectInput') selectInput!: SearchableSelectInputComponent;
 
@@ -76,6 +77,7 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
       }
 
       // Re-apply value when options load to ensure display updates
+      // Use injector to run effect in proper context
       effect(() => {
         const opts = this.options();
         const val = this.value();
@@ -87,7 +89,7 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
             }
           }, 0);
         }
-      }, { allowSignalWrites: true });
+      }, { allowSignalWrites: true, injector: this.injector });
     }
   }
 

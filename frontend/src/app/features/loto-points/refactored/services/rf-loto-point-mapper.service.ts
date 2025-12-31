@@ -454,17 +454,18 @@ export class LotoPointMapperService {
       type: 'group',
       fields: [
         {
-          name: 'templateLotoPoint',
-          label: 'Template LOTO Point',
-          type: 'equipment-browser',
-          initialValue: lotoPoint.zeroEnergy?.templateLotoPoint?.id || null,
+          name: 'zeroEnergyTemplate',
+          label: 'Zero Energy Verification Phrase',
+          type: 'zero-energy-phrase-builder',
+          categoryAlias: 'zeroEnergyTemplate',
+          canManageValues: true,
+          initialValue: lotoPoint.zeroEnergy?.zeroEnergyTemplate?.id || null,
         },
         {
-          name: 'zeroEnergyTemplate',
-          label: 'Zero Energy Template',
-          type: 'select',
-          options: [], // TODO: Add zeroEnergyTemplate options
-          initialValue: lotoPoint.zeroEnergy?.zeroEnergyTemplate?.id || null,
+          name: 'templateLotoPoints',
+          label: 'Template LOTO Points (for placeholders)',
+          type: 'equipment-list-manager',
+          initialValue: lotoPoint.zeroEnergy?.templateLotoPoints?.map((lp) => lp.id) || [],
         },
       ],
     },
@@ -550,7 +551,7 @@ export class LotoPointMapperService {
    * Transforms a single LotoPointDto for API submission
    */
   toApiModel(lotoPoint: LotoPointDto): any {
-    return {
+    const apiModel: any = {
       id: lotoPoint.id,
       unit: lotoPoint.unit,
       tagNumber: lotoPoint.tagNumber,
@@ -567,6 +568,23 @@ export class LotoPointMapperService {
       isVerified: lotoPoint.isVerified,
       fileIds: this.parseFileIds(lotoPoint.fileIds),
     };
+
+    // Add zeroEnergy if it exists and has valid data
+    if (lotoPoint.zeroEnergy) {
+      const templateId = lotoPoint.zeroEnergy.zeroEnergyTemplate?.id || null;
+      const pointIds = lotoPoint.zeroEnergy.templateLotoPoints?.map(lp => lp.id).filter(id => id != null) || [];
+
+      // Only send zeroEnergy if there's actual data (template selected or points selected)
+      if (templateId || pointIds.length > 0 || lotoPoint.zeroEnergy.id) {
+        apiModel.zeroEnergy = {
+          id: lotoPoint.zeroEnergy.id || null,
+          zeroEnergyTemplateId: templateId,
+          templateLotoPointIds: pointIds
+        };
+      }
+    }
+
+    return apiModel;
   }
 
   /**

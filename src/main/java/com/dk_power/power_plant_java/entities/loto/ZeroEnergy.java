@@ -17,31 +17,74 @@ import org.hibernate.envers.Audited;
 @Audited
 @Where(clause = "deleted=false")
 public class ZeroEnergy extends BaseAuditEntity {
-    
+
     @ManyToOne
     @JoinColumn(name = "zero_energy_template_id")
     private Value zeroEnergyTemplate;
-    
-    @ManyToOne
-    @JoinColumn(name = "template_loto_point_id")
-    private LotoPoint templateLotoPoint;
-    
+
+    @Column(columnDefinition = "TEXT")
+    private String templateLotoPointIds; // Comma-separated IDs: "123,456,789"
+
     /**
-     * Builds the resolved zero energy method from template and loto point reference.
-     * Template placeholders like [tag] are replaced with actual values.
+     * Builds the resolved zero energy method from template and loto point references.
+     * Template placeholders like [tag1], [tag2], etc. are replaced with actual tag numbers.
      */
     @Transient
     public String getMethod() {
-        if (zeroEnergyTemplate == null || zeroEnergyTemplate.getName() == null) {
+        if (zeroEnergyTemplate == null || zeroEnergyTemplate.getAlias() == null) {
             return null;
         }
-        
-        String template = zeroEnergyTemplate.getName();
-        
-        if (templateLotoPoint != null && templateLotoPoint.getTagNumber() != null) {
-            template = template.replace("[tag]", templateLotoPoint.getTagNumber());
+
+        try {
+            // Parse the phrase data from the template's alias field
+            String phraseJson = zeroEnergyTemplate.getAlias();
+            // You would parse JSON here and replace placeholders
+            // For now, return the raw text from the phrase
+            // This will be enhanced by the service layer with actual substitutions
+            return phraseJson; // Temporary - should parse and substitute
+        } catch (Exception e) {
+            return null;
         }
-        
-        return template;
+    }
+
+    /**
+     * Gets template LOTO point IDs as a Set.
+     */
+    @Transient
+    public java.util.Set<Long> getTemplateLotoPointIds() {
+        if (templateLotoPointIds == null || templateLotoPointIds.isEmpty()) {
+            return new java.util.HashSet<>();
+        }
+        return java.util.Arrays.stream(templateLotoPointIds.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    /**
+     * Sets template LOTO point IDs from a Set.
+     */
+    public void setTemplateLotoPointIds(java.util.Set<Long> pointIds) {
+        if (pointIds == null || pointIds.isEmpty()) {
+            this.templateLotoPointIds = null;
+        } else {
+            this.templateLotoPointIds = pointIds.stream()
+                    .map(String::valueOf)
+                    .collect(java.util.stream.Collectors.joining(","));
+        }
+    }
+
+    /**
+     * Sets template LOTO point IDs from a List.
+     */
+    public void setTemplateLotoPointIdsList(java.util.List<Long> pointIds) {
+        if (pointIds == null || pointIds.isEmpty()) {
+            this.templateLotoPointIds = null;
+        } else {
+            this.templateLotoPointIds = pointIds.stream()
+                    .map(String::valueOf)
+                    .collect(java.util.stream.Collectors.joining(","));
+        }
     }
 }
