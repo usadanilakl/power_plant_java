@@ -9,6 +9,11 @@ CREATE SEQUENCE IF NOT EXISTS id_seq
       ALTER TABLE IF EXISTS work_request ALTER COLUMN work_scope VARCHAR(5000);
       ALTER TABLE IF EXISTS work_request_aud ALTER COLUMN work_scope VARCHAR(5000);
 
+-- Migrate ZeroEnergy from single templateLotoPoint to multiple templateLotoPointIds
+-- Note: Hibernate ddl-auto=update will handle column changes automatically
+-- This migration is only needed if you have existing data with the old schema
+-- If the table doesn't exist or columns don't exist, this will be safely ignored by Hibernate
+
 --CREATE TABLE IF NOT EXISTS reference_object (
 --    id BIGINT AUTO_INCREMENT PRIMARY KEY,
 --    description VARCHAR(255),
