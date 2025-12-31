@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointSummaryDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
@@ -790,6 +791,52 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                                     .orElse("No Method"))
                             .orElse("No Zero Energy")
                 ));
+    }
+
+    /**
+     * Get lightweight summaries of all LOTO points for menu/cache
+     * Returns only essential fields needed for grouping and display
+     * Much faster than loading full DTOs with all relations
+     */
+    public List<LotoPointSummaryDto> getAllSummaries() {
+        List<LotoPoint> allLotoPoints = lotoPointRepo.findAll();
+
+        return allLotoPoints.stream()
+                .map(this::convertToSummaryDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert LotoPoint entity to lightweight SummaryDto
+     */
+    private LotoPointSummaryDto convertToSummaryDto(LotoPoint lp) {
+        // Get first equipment for grouping fields
+        Equipment firstEquipment = lp.getEquipmentList() != null && !lp.getEquipmentList().isEmpty()
+                ? lp.getEquipmentList().iterator().next()
+                : null;
+
+        return LotoPointSummaryDto.builder()
+                .id(lp.getId())
+                .tagNumber(lp.getTagNumber())
+                .description(lp.getDescription())
+                .isVerified(lp.getIsVerified())
+                .equipmentType(firstEquipment != null && firstEquipment.getEqType() != null
+                        ? firstEquipment.getEqType().getName()
+                        : "Unknown")
+                .location(firstEquipment != null && firstEquipment.getLocation() != null
+                        ? firstEquipment.getLocation().getName()
+                        : "Unknown")
+                .system(lp.getSystem() != null && !lp.getSystem().isEmpty()
+                        ? lp.getSystem()
+                        : "Unknown")
+                .unit(lp.getUnit())
+                .zeroEnergyMethod(lp.getZeroEnergy() != null
+                        ? lp.getZeroEnergy().getMethod()
+                        : null)
+                .fileName(firstEquipment != null && firstEquipment.getMainFile() != null
+                        ? firstEquipment.getMainFile().getName()
+                        : "Unknown")
+                .build();
     }
 
 }

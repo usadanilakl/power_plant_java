@@ -4,7 +4,8 @@
       "Bash(npm run build:*)",
       "Bash(./mvnw compile:*)",
       "Bash(ls:*)",
-      "Bash(mvn compile:*)"
+      "Bash(mvn compile:*)",
+      "Bash(find:*)"
     ]
   }
 }

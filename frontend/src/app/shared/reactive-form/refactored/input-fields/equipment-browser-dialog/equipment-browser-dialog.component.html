@@ -1,28 +1,86 @@
 <div class="dialog-container">
   <div class="dialog-content">
-    <!-- Left Panel: File List -->
-    <div class="file-list-panel">
-      <h3>Select P&ID</h3>
-      <app-rf-toggle-menu
-        [menuItems]="menuItems()"
-        (itemClick)="onFileSelect($event)"
-      ></app-rf-toggle-menu>
+    <!-- Left Panel: Navigation -->
+    <div class="navigation-panel">
+      <!-- Mode Toggle -->
+      <div class="mode-toggle">
+        <button
+          type="button"
+          class="mode-btn"
+          [class.active]="browseMode() === 'file'"
+          (click)="onBrowseModeChange('file')">
+          <span class="icon">📁</span>
+          By File
+        </button>
+        <button
+          type="button"
+          class="mode-btn"
+          [class.active]="browseMode() === 'lotoPoint'"
+          (click)="onBrowseModeChange('lotoPoint')">
+          <span class="icon">🔒</span>
+          By LOTO Point
+        </button>
+      </div>
+
+      <!-- File Browser -->
+      @if (browseMode() === 'file') {
+        <div class="menu-container">
+          <h3>Select P&ID</h3>
+          <app-rf-toggle-menu
+            [menuItems]="fileMenuItems()"
+            (itemClick)="onFileSelect($event)"
+          ></app-rf-toggle-menu>
+        </div>
+      }
+
+      <!-- LOTO Point Browser -->
+      @if (browseMode() === 'lotoPoint') {
+        <div class="menu-container">
+          <div class="menu-header">
+            <h3>Select LOTO Point</h3>
+            <select
+              class="grouping-select"
+              [value]="lotoPointGrouping()"
+              (change)="onGroupingChange($event)">
+              @for (option of groupingOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+
+          @if (isLoadingLotoPoints()) {
+            <div class="loading">
+              <p>Loading LOTO points...</p>
+            </div>
+          } @else {
+            <app-rf-toggle-menu
+              [menuItems]="lotoPointMenuItems()"
+              (itemClick)="onLotoPointSelect($event)"
+            ></app-rf-toggle-menu>
+          }
+        </div>
+      }
     </div>
 
     <!-- Right Panel: P&ID Viewer -->
     <div class="viewer-panel">
-      @if (selectedFile()) {
+      @if (activeFile()) {
         <div class="viewer-header">
-          <h3>{{ selectedFile()?.name }}</h3>
+          <h3>{{ activeFile()?.name }}</h3>
           @if (selectedEquipment()) {
             <div class="selected-equipment-info">
               <strong>Selected:</strong> {{ selectedEquipment()?.tagNumber }}
+              @if (selectedLotoPoint()) {
+                <span class="loto-point-badge">
+                  LOTO: {{ selectedLotoPoint()?.tagNumber }}
+                </span>
+              }
             </div>
           }
         </div>
         <div class="viewer-content">
           <app-interactive-image
-            [imageUrl]="currentFileLink()"
+            [imageUrl]="activeFileLink()"
             [shapesInput]="equipmentShapes()"
             [preset]="'EQUIPMENT_BROWSER'"
             (shapeClicked)="onEquipmentSelected($event)"
@@ -30,7 +88,11 @@
         </div>
       } @else {
         <div class="no-selection">
-          <p>Select a P&ID file to view equipment</p>
+          @if (browseMode() === 'file') {
+            <p>Select a P&ID file to view equipment</p>
+          } @else {
+            <p>Select a LOTO point to view its location on the P&ID</p>
+          }
         </div>
       }
     </div>

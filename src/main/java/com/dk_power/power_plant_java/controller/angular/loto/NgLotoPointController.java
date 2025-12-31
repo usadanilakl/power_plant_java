@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.dto.SearchCriteria;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
+import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointSummaryDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
@@ -367,6 +368,21 @@ public class NgLotoPointController {
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<NgApiResponse<List<LotoPointSummaryDto>>> getLotoPointSummaries() {
+        try {
+            List<LotoPointSummaryDto> summaries = ngLotoPointService.getAllSummaries();
+            NgApiResponse<List<LotoPointSummaryDto>> response = new NgApiResponse<>(
+                    summaries,
+                    "Successfully retrieved LOTO point summaries"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));

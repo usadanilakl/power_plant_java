@@ -16,6 +16,7 @@ import { TableResizeService } from '../../../../../shared/table/refactored/servi
 import { TableSyncService } from '../../../../../shared/table/refactored/services/table-sync.service';
 import { RfLotoPointTableDataService } from '../../rf-loto-point-table/rf-loto-point-table-data.service';
 import { SourceLotoPointTableControlService } from './source-loto-point-table-control.service';
+import { LotoPointBulkEditService } from '../../services/loto-point-bulk-edit.service';
 
 @Component({
   selector: 'app-source-loto-point-table',
@@ -29,6 +30,7 @@ import { SourceLotoPointTableControlService } from './source-loto-point-table-co
     TableDragService,
     TableResizeService,
     TableSyncService,
+    LotoPointBulkEditService,
     { provide: TableClickService, useClass: SourceLotoPointTableClickService },
     { provide: TableControlsService, useClass: SourceLotoPointTableControlService },
     { provide: TableDataService, useClass: RfLotoPointTableDataService },

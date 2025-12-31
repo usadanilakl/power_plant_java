@@ -1,106 +1,186 @@
 import { Injectable, inject, DestroyRef } from '@angular/core';
-import { BehaviorSubject, Observable, map, tap, catchError, of } from 'rxjs';
+import { BehaviorSubject, Observable, map, tap, catchError, of, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NestedItem, NestedItemImpl } from '../../../../models/ui/nested-item.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { LotoPointSummaryDto } from '../../../../models/loto/loto-point-summary.model';
 import { RfLotoPointApiService } from './rf-loto-point-api.service';
+import { LotoPointCacheService } from '../../../../services/loto-point-cache.service';
+import { EquipmentDto } from '../../../../models/equipment/equipment.model';
+import { FileDto } from '../../../../models/file/file.model';
 
 export type GroupingCriteria = 'equipmentType' | 'location' | 'file' | 'system' | 'unit' | 'zeroEnergyMethod';
 
 /**
  * Service for managing the LOTO Point left menu
  * Handles grouping, filtering, and virtual scrolling of large LOTO point datasets
+ * Also manages LOTO point selection and associated equipment/file navigation
  */
 @Injectable({
   providedIn: 'root'
 })
 export class RfLotoPointLeftMenuService {
   private apiService = inject(RfLotoPointApiService);
+  private cacheService = inject(LotoPointCacheService);
   private destroyRef = inject(DestroyRef);
 
-  // State management
+  // State management for menu
   private menuDataSubject = new BehaviorSubject<NestedItem[]>([]);
   private isLoadingSubject = new BehaviorSubject<boolean>(false);
   private errorSubject = new BehaviorSubject<string | null>(null);
 
-  // Public observables
+  // State management for selection
+  private selectedLotoPointSubject = new BehaviorSubject<LotoPointDto | null>(null);
+  private selectedEquipmentSubject = new BehaviorSubject<EquipmentDto | null>(null);
+  private selectedFileSubject = new BehaviorSubject<FileDto | null>(null);
+
+  // Public observables for menu
   menuData$ = this.menuDataSubject.asObservable();
   isLoading$ = this.isLoadingSubject.asObservable();
   error$ = this.errorSubject.asObservable();
 
-  // Cache for loaded data
+  // Public observables for selection
+  selectedLotoPoint$ = this.selectedLotoPointSubject.asObservable();
+  selectedEquipment$ = this.selectedEquipmentSubject.asObservable();
+  selectedFile$ = this.selectedFileSubject.asObservable();
+
+  // Cache for grouped menu data
   private groupedDataCache = new Map<GroupingCriteria, NestedItem[]>();
+
+  // Track the last requested grouping to load it once cache is ready
+  private pendingGrouping: GroupingCriteria | null = null;
+
+  constructor() {
+    // Subscribe to cache service loaded state
+    this.cacheService.summariesLoaded$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (loaded) => {
+        if (loaded) {
+          this.isLoadingSubject.next(false);
+
+          // If there's a pending grouping request, load it now that cache is ready
+          if (this.pendingGrouping) {
+            console.log(`Cache is ready, loading pending grouping: ${this.pendingGrouping}`);
+            const grouping = this.pendingGrouping;
+            this.pendingGrouping = null;
+            this.loadGroupedLotoPoints(grouping);
+          }
+        } else {
+          this.isLoadingSubject.next(true);
+        }
+      },
+      error: (error) => {
+        console.error('Error loading LOTO point summaries:', error);
+        this.errorSubject.next(error.message);
+      }
+    });
+
+    // Subscribe to cache updates to invalidate grouped cache
+    this.cacheService.summariesUpdated$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => {
+        console.log('LOTO point summaries updated, clearing grouped cache');
+        this.groupedDataCache.clear();
+      }
+    });
+  }
 
   /**
    * Load LOTO points grouped by specified criteria
-   * Uses cache if available, otherwise fetches from server
+   * Uses cached summaries and groups them client-side for instant performance
    */
   loadGroupedLotoPoints(groupBy: GroupingCriteria): void {
-    // Check cache first
-    const cachedData = this.groupedDataCache.get(groupBy);
-    if (cachedData) {
-      console.log(`Loading ${groupBy} from cache`);
-      this.menuDataSubject.next(cachedData);
+    const startTime = performance.now();
+
+    // Check grouped cache first
+    const cachedGroupedData = this.groupedDataCache.get(groupBy);
+    if (cachedGroupedData) {
+      console.log(`Loading ${groupBy} from grouped cache`);
+      this.menuDataSubject.next(cachedGroupedData);
       return;
     }
 
-    // Load from server
-    this.isLoadingSubject.next(true);
-    this.errorSubject.next(null);
+    // Get all summaries from cache service
+    const summaries = this.cacheService.getAllSummaries();
 
-    // TODO: Replace with actual server endpoint when backend is ready
-    // For now, load all and group client-side
-    this.loadAllAndGroup(groupBy);
+    if (summaries.length === 0) {
+      console.warn('No LOTO point summaries available yet - cache may still be loading');
+      // Store this grouping request to execute when cache is ready
+      this.pendingGrouping = groupBy;
+      this.isLoadingSubject.next(true);
+      return;
+    }
+
+    // Group summaries client-side
+    const nestedItems = this.groupSummaries(summaries, groupBy);
+
+    // Cache the grouped result
+    this.groupedDataCache.set(groupBy, nestedItems);
+    this.menuDataSubject.next(nestedItems);
+
+    const endTime = performance.now();
+    console.log(`Grouped ${summaries.length} LOTO points by ${groupBy} in ${endTime - startTime}ms`);
   }
 
   /**
-   * Load LOTO points from server grouped by the specified criteria
+   * Group LOTO point summaries by specified criteria (client-side)
    */
-  private loadAllAndGroup(groupBy: GroupingCriteria): void {
-    this.apiService.getGroupedLotoPoints(groupBy).pipe(
-      takeUntilDestroyed(this.destroyRef),
-      tap((response) => {
-        const nestedItems = this.transformToNestedItems(response.responseData, groupBy);
-        this.groupedDataCache.set(groupBy, nestedItems);
-        this.menuDataSubject.next(nestedItems);
-        this.isLoadingSubject.next(false);
-      }),
-      catchError((error) => {
-        console.error('Error loading grouped LOTO points:', error);
-        this.errorSubject.next(error.message || 'Failed to load LOTO points');
-        this.isLoadingSubject.next(false);
-        return of(null);
-      })
-    ).subscribe();
-  }
+  private groupSummaries(summaries: LotoPointSummaryDto[], groupBy: GroupingCriteria): NestedItem[] {
+    // Create a map to group summaries
+    const grouped = new Map<string, LotoPointSummaryDto[]>();
 
-  /**
-   * Transform server response to NestedItem structure for the toggle menu
-   */
-  private transformToNestedItems(groupedData: { [key: string]: LotoPointDto[] }, groupBy: GroupingCriteria): NestedItem[] {
-    // groupedData structure expected from server:
-    // {
-    //   "Equipment Type": [LotoPointDto, LotoPointDto, ...],
-    //   "Valve": [LotoPointDto, LotoPointDto, ...],
-    //   ...
-    // }
+    summaries.forEach(summary => {
+      let groupKey: string;
 
-    return Object.entries(groupedData).map(([groupName, lotoPoints]: [string, any]) => {
+      // Determine group key based on criteria
+      switch (groupBy) {
+        case 'equipmentType':
+          groupKey = summary.equipmentType || 'Unknown';
+          break;
+        case 'location':
+          groupKey = summary.location || 'Unknown';
+          break;
+        case 'file':
+          groupKey = summary.fileName || 'Unknown';
+          break;
+        case 'system':
+          groupKey = summary.system || 'Unknown';
+          break;
+        case 'unit':
+          groupKey = summary.unit || 'Unknown';
+          break;
+        case 'zeroEnergyMethod':
+          groupKey = summary.zeroEnergyMethod || 'Unknown';
+          break;
+        default:
+          groupKey = 'Unknown';
+      }
+
+      if (!grouped.has(groupKey)) {
+        grouped.set(groupKey, []);
+      }
+      grouped.get(groupKey)!.push(summary);
+    });
+
+    // Convert to NestedItem structure
+    return Array.from(grouped.entries()).map(([groupName, summariesInGroup]) => {
       const parentItem = new NestedItemImpl({
         id: `${groupBy}_${groupName}`,
-        name: `${groupName} (${lotoPoints.length})`,
+        name: `${groupName} (${summariesInGroup.length})`,
         isExpanded: false,
         objectType: groupBy,
         color: this.getGroupColor(groupBy)
       });
 
-      parentItem.values = (lotoPoints as LotoPointDto[]).map(lotoPoint =>
+      parentItem.values = summariesInGroup.map(summary =>
         new NestedItemImpl({
-          id: lotoPoint.id.toString(),
-          name: this.getLotoPointDisplayName(lotoPoint),
+          id: summary.id.toString(),
+          name: this.getSummaryDisplayName(summary),
           isExpanded: false,
           objectType: 'LotoPoint',
-          color: this.getLotoPointColor(lotoPoint)
+          color: this.getSummaryColor(summary)
         })
       );
 
@@ -109,33 +189,33 @@ export class RfLotoPointLeftMenuService {
   }
 
   /**
-   * Get display name for a LOTO point in the menu
+   * Get display name for a LOTO point summary in the menu
    */
-  private getLotoPointDisplayName(lotoPoint: LotoPointDto): string {
+  private getSummaryDisplayName(summary: LotoPointSummaryDto): string {
     const parts: string[] = [];
 
-    if (lotoPoint.tagNumber) {
-      parts.push(lotoPoint.tagNumber);
+    if (summary.tagNumber) {
+      parts.push(summary.tagNumber);
     }
 
-    if (lotoPoint.description) {
-      parts.push(lotoPoint.description);
+    if (summary.description) {
+      parts.push(summary.description);
     }
 
-    return parts.length > 0 ? parts.join(' - ') : `LOTO Point #${lotoPoint.id}`;
+    return parts.length > 0 ? parts.join(' - ') : `LOTO Point #${summary.id}`;
   }
 
   /**
-   * Get color for LOTO point based on status
+   * Get color for LOTO point summary based on status
    */
-  private getLotoPointColor(lotoPoint: LotoPointDto): string {
+  private getSummaryColor(summary: LotoPointSummaryDto): string {
     // Red: Missing critical information
-    if (!lotoPoint.tagNumber || !lotoPoint.description) {
+    if (!summary.tagNumber || !summary.description) {
       return 'red';
     }
 
     // Yellow: Not verified
-    if (!lotoPoint.isVerified) {
+    if (!summary.isVerified) {
       return 'yellow';
     }
 
@@ -171,10 +251,112 @@ export class RfLotoPointLeftMenuService {
   }
 
   /**
-   * Refresh data by clearing cache and reloading
+   * Refresh data by clearing cache and reloading from server
    */
-  refresh(groupBy: GroupingCriteria): void {
-    this.clearCache(groupBy);
-    this.loadGroupedLotoPoints(groupBy);
+  refresh(groupBy?: GroupingCriteria): void {
+    if (groupBy) {
+      this.clearCache(groupBy);
+    } else {
+      this.clearCache();
+    }
+    // Refresh summaries from server
+    this.cacheService.refresh();
+  }
+
+  /**
+   * Select a LOTO point from NestedItem (toggle menu)
+   * Fetches the full LOTO point data and navigates to associated equipment and file
+   */
+  selectLotoPointFromNestedItem(lotoPointItem: NestedItem): void {
+    // Only handle leaf items (actual LOTO points, not group headers)
+    if (lotoPointItem.objectType !== 'LotoPoint') {
+      console.warn('Attempted to select non-LOTO point item:', lotoPointItem);
+      return;
+    }
+
+    const lotoPointId = typeof lotoPointItem.id === 'number'
+      ? lotoPointItem.id.toString()
+      : lotoPointItem.id;
+
+    console.log('Selecting LOTO point with ID:', lotoPointId);
+
+    // Fetch the full LOTO point data to get equipment references
+    this.apiService.getLotoPointById(lotoPointId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      tap((response: any) => {
+        const lotoPoint = response.responseData;
+        console.log('LOTO point loaded:', lotoPoint);
+        this.selectedLotoPointSubject.next(lotoPoint);
+
+        // Get the first equipment from the LOTO point
+        const equipmentList = lotoPoint.equipmentList;
+        if (equipmentList && equipmentList.length > 0) {
+          const firstEquipment = equipmentList[0];
+          console.log('First equipment from LOTO point:', firstEquipment);
+          this.selectedEquipmentSubject.next(firstEquipment);
+
+          // Get the file from the equipment's mainFileObject
+          if (firstEquipment.mainFileObject) {
+            console.log('Setting file from equipment.mainFileObject:', firstEquipment.mainFileObject);
+            this.selectedFileSubject.next(firstEquipment.mainFileObject);
+          } else if (firstEquipment.mainFileId) {
+            console.warn('Equipment has mainFileId but no mainFileObject. File will need to be fetched via CurrentFileService.setCurrentFile()');
+            // Create a minimal FileDto with just the ID - CurrentFileService will fetch complete data
+            const minimalFile = new FileDto({ id: firstEquipment.mainFileId });
+            this.selectedFileSubject.next(minimalFile);
+          } else {
+            console.error('Equipment has no file reference (no mainFileObject or mainFileId)');
+            this.selectedFileSubject.next(null);
+          }
+        } else {
+          console.warn('LOTO point has no equipment:', lotoPoint);
+          this.selectedEquipmentSubject.next(null);
+          this.selectedFileSubject.next(null);
+        }
+      }),
+      catchError((error) => {
+        console.error('Error loading LOTO point:', error);
+        this.errorSubject.next(error.message || 'Failed to load LOTO point');
+        return of(null);
+      })
+    ).subscribe();
+  }
+
+  /**
+   * Get the currently selected LOTO point
+   */
+  getSelectedLotoPoint(): LotoPointDto | null {
+    return this.selectedLotoPointSubject.getValue();
+  }
+
+  /**
+   * Get the currently selected equipment (from selected LOTO point)
+   */
+  getSelectedEquipment(): EquipmentDto | null {
+    return this.selectedEquipmentSubject.getValue();
+  }
+
+  /**
+   * Get the currently selected file (from selected equipment)
+   */
+  getSelectedFile(): FileDto | null {
+    return this.selectedFileSubject.getValue();
+  }
+
+  /**
+   * Clear all selections
+   */
+  clearSelections(): void {
+    this.selectedLotoPointSubject.next(null);
+    this.selectedEquipmentSubject.next(null);
+    this.selectedFileSubject.next(null);
+  }
+
+  /**
+   * Reset service state (call when closing dialog or switching modes)
+   */
+  reset(): void {
+    this.clearSelections();
+    // Note: We keep the menu data cache for performance
   }
 }

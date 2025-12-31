@@ -1,0 +1,77 @@
+<div class="field-selector-container">
+  <!-- Header with Select All/Deselect All -->
+  <div class="field-selector-header">
+    <div class="header-actions">
+      <button
+        class="action-btn"
+        (click)="selectAll()"
+        [disabled]="allSelected()"
+        title="Select All"
+      >
+        Select All
+      </button>
+      <button
+        class="action-btn"
+        (click)="deselectAll()"
+        [disabled]="selectedFields().length === 0"
+        title="Deselect All"
+      >
+        Deselect All
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="search-wrapper">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search fields..."
+        [value]="searchTerm()"
+        (input)="onSearchChange($event)"
+      />
+      @if (searchTerm()) {
+        <button class="clear-search-btn" (click)="clearSearch()" title="Clear search">
+          ×
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Field List -->
+  <div class="field-list">
+    @if (filteredGroupedFields().length === 0) {
+      <div class="no-results">
+        <p>No fields found</p>
+      </div>
+    } @else {
+      @for (group of filteredGroupedFields(); track group.category) {
+        <div class="field-group">
+          <div class="group-header">{{ group.category }}</div>
+          <div class="group-fields">
+            @for (field of group.fields; track field.name) {
+              <label class="field-item" [class.disabled]="field.readonly">
+                <input
+                  type="checkbox"
+                  [checked]="isFieldSelected(field.name)"
+                  [disabled]="field.readonly"
+                  (change)="toggleField(field.name)"
+                />
+                <span class="field-label">{{ field.label }}</span>
+                @if (field.readonly) {
+                  <span class="readonly-badge">Read-only</span>
+                }
+              </label>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- Footer with selection count -->
+  <div class="field-selector-footer">
+    <span class="selection-count">
+      {{ selectedFields().length }} of {{ fields().length }} fields selected
+    </span>
+  </div>
+</div>

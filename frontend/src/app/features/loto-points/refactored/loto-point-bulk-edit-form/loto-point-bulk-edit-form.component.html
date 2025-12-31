@@ -1,1 +1,8 @@
-<p>loto-point-bulk-edit-form works!</p>
+<app-bulk-edit-menu
+  [items]="selectedItems()"
+  [service]="bulkEditService"
+  [open]="isBulkEditOpen()"
+  [title]="'Bulk Edit LOTO Points'"
+  (applied)="onBulkEditApplied($event)"
+  (close)="onClose()"
+></app-bulk-edit-menu>

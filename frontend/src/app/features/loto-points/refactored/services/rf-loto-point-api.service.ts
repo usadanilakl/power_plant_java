@@ -8,6 +8,7 @@ import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { SpringApiResponse } from '../../../../models/api/spring-api-response.model';
 import { LotoPointIdDto } from '../../../../models/loto/loto-point-id.model';
 import { FileDto } from '../../../../models/file/file.model';
+import { LotoPointSummaryDto } from '../../../../models/loto/loto-point-summary.model';
 
 
 @Injectable({
@@ -239,6 +240,17 @@ export class RfLotoPointApiService {
     return this.http.get<SpringApiResponse<{ [key: string]: LotoPointDto[] }>>(
       `${this.apiUrl}/grouped`,
       { params }
+    );
+  }
+
+  /**
+   * Get lightweight summaries of all LOTO points for caching
+   * Returns only essential fields needed for grouping and display
+   * Much faster and smaller payload than full DTOs
+   */
+  getSummaries(): Observable<SpringApiResponse<LotoPointSummaryDto[]>> {
+    return this.http.get<SpringApiResponse<LotoPointSummaryDto[]>>(
+      `${this.apiUrl}/summary`
     );
   }
 }

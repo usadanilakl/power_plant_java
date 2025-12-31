@@ -64,6 +64,12 @@ h2 {
   transform: translateY(0);
 }
 
+.file-menu-container app-rf-toggle-menu {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
 @media (max-width: 600px) {
   .file-menu-controls {
     flex-direction: column;

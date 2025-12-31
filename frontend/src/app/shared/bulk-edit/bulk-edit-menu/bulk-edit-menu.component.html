@@ -1,0 +1,103 @@
+<app-floating-menu
+  [title]="menuTitle()"
+  [width]="70"
+  [height]="80"
+  [position]="MenuPosition.Center"
+  [open]="open()"
+  (close)="onClose()"
+>
+  <div class="bulk-edit-content">
+    <!-- Left Panel: Field Selector -->
+    <div class="field-selector-panel" [class.collapsed]="!showFieldSelector()">
+      @if (showFieldSelector()) {
+        <app-field-selector
+          [fields]="availableFields()"
+          [selectedFields]="selectedFieldNames()"
+          (selectionChange)="onFieldSelectionChange($event)"
+        ></app-field-selector>
+      }
+
+      <!-- Toggle Button -->
+      <button
+        class="toggle-selector-btn"
+        (click)="toggleFieldSelector()"
+        [title]="showFieldSelector() ? 'Hide field selector' : 'Show field selector'"
+      >
+        <span class="toggle-icon">{{ showFieldSelector() ? '◀' : '▶' }}</span>
+      </button>
+    </div>
+
+    <!-- Right Panel: Form -->
+    <div class="form-panel">
+      @if (selectedFieldNames().length === 0) {
+        <div class="empty-state">
+          <div class="empty-state-icon">📝</div>
+          <h3>No Fields Selected</h3>
+          <p>Select fields from the left panel to begin bulk editing.</p>
+        </div>
+      } @else {
+        <!-- Form Header -->
+        <div class="form-header">
+          <h3>Edit Values</h3>
+          <p class="form-description">
+            Changes will be applied to all {{ itemCount() }} selected item{{ itemCount() !== 1 ? 's' : '' }}.
+          </p>
+        </div>
+
+        <!-- Form -->
+        <div class="form-container">
+          <app-rf-reactive-form
+            [fields]="formFields()"
+            [entity]="templateValues()"
+            [layout]="'column'"
+            (formValueChange)="onFormValueChange($event)"
+          ></app-rf-reactive-form>
+        </div>
+
+        <!-- Error Message -->
+        @if (errorMessage()) {
+          <div class="error-message">
+            <span class="error-icon">⚠️</span>
+            <span class="error-text">{{ errorMessage() }}</span>
+          </div>
+        }
+
+        <!-- Progress Bar -->
+        @if (isUpdating()) {
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div
+                class="progress-fill"
+                [style.width.%]="progress()"
+              ></div>
+            </div>
+            <div class="progress-text">Updating... {{ progress() }}%</div>
+          </div>
+        }
+
+        <!-- Action Buttons -->
+        <div class="form-actions">
+          <button
+            class="btn-cancel"
+            (click)="onClose()"
+            [disabled]="isUpdating()"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn-apply"
+            (click)="onApply()"
+            [disabled]="!canApply() || isUpdating()"
+          >
+            @if (isUpdating()) {
+              <span class="spinner"></span>
+              Applying...
+            } @else {
+              Apply to {{ itemCount() }} item{{ itemCount() !== 1 ? 's' : '' }}
+            }
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</app-floating-menu>

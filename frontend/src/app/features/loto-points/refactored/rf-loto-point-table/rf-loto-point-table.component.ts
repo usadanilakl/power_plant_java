@@ -26,12 +26,14 @@ import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
 import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
 import { TableUtilService } from '../../../../shared/table/refactored/services/table-util.service';
+import { LotoPointBulkEditFormComponent } from '../loto-point-bulk-edit-form/loto-point-bulk-edit-form.component';
+import { LotoPointBulkEditService } from '../services/loto-point-bulk-edit.service';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, ContextMenuComponent],
-  providers: [ContextMenuComponent],
+  imports: [CommonModule, TableComponent, ContextMenuComponent, LotoPointBulkEditFormComponent],
+  providers: [ContextMenuComponent, LotoPointBulkEditService],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',
 })
@@ -347,5 +349,35 @@ export class RfLotoPointTableComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+  }
+
+  /**
+   * Handle bulk edit applied event
+   * Refresh the table to show updated items
+   */
+  onBulkEditApplied(updatedItems: LotoPointDto[]): void {
+    console.log(`Bulk edit applied to ${updatedItems.length} items`);
+
+    // If using input items, we can't refresh from API
+    // The parent component should handle the update
+    const isUsingInputItems = this.inputItems();
+
+    if (!isUsingInputItems) {
+      // Refresh from database to get updated data
+      const currentCriteria = this.stateService.getCurrentSearchCriteria();
+
+      if (currentCriteria) {
+        // Re-run the current search to refresh data
+        this.onSearch(currentCriteria);
+      } else {
+        // No active search, just reload all items
+        this.stateService.clearLotoPoints();
+        this.stateService.resetPage();
+        this.loadInitialData();
+      }
+    }
+
+    // Clear selection after bulk edit
+    // The selection service should be available through the table
   }
 }

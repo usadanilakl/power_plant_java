@@ -4,10 +4,13 @@ import { LotoPointClipboardItem } from "../../../../models/loto/loto-point-clipb
 import { ButtonColor } from "../../../../shared/menu/buttons/buttons.component";
 import { RfLotoPointStateService } from "../services/rf-loto-point-state.service";
 import { LotoPointDto } from "../../../../models/loto/loto-point.model";
+import { LotoPointBulkEditService } from "../services/loto-point-bulk-edit.service";
 
 @Injectable()
 export class LotoPointTableControlService extends TableControlsService  {
     private stateService = inject(RfLotoPointStateService);
+    private bulkEditService = inject(LotoPointBulkEditService);
+
     constructor(){
         super();
         this.addTableControlButtons([
@@ -21,7 +24,21 @@ export class LotoPointTableControlService extends TableControlsService  {
             icon: 'add_box',
           },
         ]);
+
+        // Add bulk edit button to selection controls
+        this.addTableSelectionControls([
+          {
+            name: 'Bulk Edit',
+            action: () => {
+              this.bulkEditService.openBulkEdit();
+            },
+            color: 'accent' as ButtonColor,
+            icon: 'edit_note',
+            tooltip: 'Edit multiple LOTO points at once'
+          }
+        ]);
     }
+
     override clipboardFormatter(items: LotoPointClipboardItem[]): LotoPointClipboardItem[] {
         return items.map(i=>new LotoPointClipboardItem(i))
     }

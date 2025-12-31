@@ -1,4 +1,4 @@
-import { Component, inject, output, signal, computed } from '@angular/core';
+import { Component, inject, output, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CurrentFileService } from '../../../../../services/current-file.service';
 import { InteractiveImageComponent } from '../../../../image/refactored/interactive-image/interactive-image.component';
@@ -9,6 +9,10 @@ import { EquipmentDialogFileService } from '../services/equipment-dialog-file.se
 import { RfToggleMenuComponent } from '../../../../menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 import { NestedItem } from '../../../../../models/ui/nested-item.model';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
+import { RfLotoPointLeftMenuService, GroupingCriteria } from '../../../../../features/loto-points/refactored/services/rf-loto-point-left-menu.service';
+import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
+import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
+import { FileDto } from '../../../../../models/file/file.model';
 
 @Component({
   selector: 'app-equipment-browser-dialog',
@@ -23,41 +27,152 @@ export class EquipmentBrowserDialogComponent {
   fileService = inject(EquipmentDialogFileService);
   equipmentMapper = inject(EquipmentMapperService);
   currentFileService = inject(CurrentFileService);
+  lotoPointMenuService = inject(RfLotoPointLeftMenuService);
+  lotoPointApiService = inject(RfLotoPointApiService);
 
   // Outputs
   equipmentSelected = output<EquipmentDto>();
   close = output<void>();
 
+  // Navigation mode
+  browseMode = signal<'file' | 'lotoPoint'>('file');
+
+  // LOTO Point grouping
+  lotoPointGrouping = signal<GroupingCriteria>('equipmentType');
+
+  // Available grouping options
+  groupingOptions: { value: GroupingCriteria; label: string }[] = [
+    { value: 'equipmentType', label: 'Equipment Type' },
+    { value: 'location', label: 'Location' },
+    { value: 'file', label: 'File' },
+    { value: 'system', label: 'System' },
+    { value: 'unit', label: 'Unit' },
+    { value: 'zeroEnergyMethod', label: 'Zero Energy Method' }
+  ];
+
   // State
   selectedEquipment = signal<EquipmentDto | null>(null);
+  highlightEquipmentId = signal<number | null>(null);
 
-  // Delegated to shared service
+  // Delegated to file service
   selectedFile = this.fileService.selectedFile;
-  menuItems = this.fileService.menuItems;
+  fileMenuItems = this.fileService.menuItems;
   currentFileLink = this.fileService.currentFileLink;
 
-  // Equipment from selected file
+  // Delegated to LOTO point service
+  lotoPointMenuItems = toSignal(this.lotoPointMenuService.menuData$, { initialValue: [] });
+  isLoadingLotoPoints = toSignal(this.lotoPointMenuService.isLoading$, { initialValue: false });
+  selectedLotoPoint = toSignal(this.lotoPointMenuService.selectedLotoPoint$, { initialValue: null });
+  lotoPointSelectedEquipment = toSignal(this.lotoPointMenuService.selectedEquipment$, { initialValue: null });
+  lotoPointSelectedFile = toSignal(this.lotoPointMenuService.selectedFile$, { initialValue: null });
+
+  // Subscribe to CurrentFileService to get complete file data in LOTO point mode
+  currentFile = toSignal(this.currentFileService.currentFile$, { initialValue: null });
+
+  // Active file based on current mode
+  activeFile = computed(() => {
+    const mode = this.browseMode();
+    if (mode === 'lotoPoint') {
+      return this.currentFile();
+    } else {
+      return this.selectedFile();
+    }
+  });
+
+  // Active file link based on current mode
+  activeFileLink = computed(() => {
+    const file = this.activeFile();
+    return file ? file.fileLink : '';
+  });
+
+  // Equipment from active file (works in both modes)
   equipment = computed(() => {
-    const file = this.selectedFile();
+    const file = this.activeFile();
     if (!file) return [];
     return file.points ?? [];
   });
 
-  // Equipment shapes for InteractiveImageComponent
+  // Equipment shapes for InteractiveImageComponent - reactive to both file and LOTO point selection
   equipmentShapes = computed(() => {
     const eq = this.equipment();
     if (!eq) return [];
-    return eq.map((e: EquipmentDto) => this.equipmentMapper.mapToRfShape(e)).filter(s => s !== null);
+    const shapes = eq.map((e: EquipmentDto) => this.equipmentMapper.mapToRfShape(e)).filter(s => s !== null);
+
+    const mode = this.browseMode();
+
+    // Highlight selected equipment based on mode
+    let highlightId: number | null = null;
+
+    if (mode === 'lotoPoint') {
+      // In LOTO point mode, highlight equipment from LOTO point service
+      const lotoEquipment = this.lotoPointSelectedEquipment();
+      highlightId = lotoEquipment?.id ?? null;
+    } else {
+      // In file mode, use manual selection
+      highlightId = this.highlightEquipmentId();
+    }
+
+    if (highlightId !== null) {
+      shapes.forEach((shape: RfShape) => {
+        if (shape.id === highlightId) {
+          shape.isSelected = true;
+          shape.color = '#FF0000';
+        }
+      });
+    }
+
+    return shapes;
   });
+
+  constructor() {
+    // Load LOTO points when mode switches to lotoPoint
+    effect(() => {
+      const mode = this.browseMode();
+      const grouping = this.lotoPointGrouping();
+
+      if (mode === 'lotoPoint') {
+        this.lotoPointMenuService.loadGroupedLotoPoints(grouping);
+      }
+    }, { allowSignalWrites: true });
+  }
 
   onFileSelect(fileItem: NestedItem) {
     this.fileService.selectFileFromNestedItem(fileItem);
     this.selectedEquipment.set(null);
+    this.highlightEquipmentId.set(null);
+  }
+
+  onLotoPointSelect(lotoPointItem: NestedItem) {
+    // Delegate to service - it handles all the logic
+    this.lotoPointMenuService.selectLotoPointFromNestedItem(lotoPointItem);
+
+    // Sync the file with CurrentFileService for complete data fetching
+    const selectedFile = this.lotoPointMenuService.getSelectedFile();
+    if (selectedFile) {
+      this.currentFileService.setCurrentFile(selectedFile);
+    }
+  }
+
+  onBrowseModeChange(mode: 'file' | 'lotoPoint') {
+    this.browseMode.set(mode);
+    this.selectedEquipment.set(null);
+    this.highlightEquipmentId.set(null);
+
+    // Clear LOTO point selections when switching away from LOTO point mode
+    if (mode !== 'lotoPoint') {
+      this.lotoPointMenuService.clearSelections();
+    }
+  }
+
+  onGroupingChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const grouping = select.value as GroupingCriteria;
+    this.lotoPointGrouping.set(grouping);
   }
 
   onConfirmSelection() {
     const equipment = this.selectedEquipment();
-    const file = this.selectedFile();
+    const file = this.activeFile();
 
     if (equipment && file) {
       // Ensure mainFileObject and mainFileId are populated from the current file context
@@ -68,12 +183,12 @@ export class EquipmentBrowserDialogComponent {
       });
 
       this.equipmentSelected.emit(enrichedEquipment);
-      this.fileService.reset();
+      this.reset();
     }
   }
 
   onCancel() {
-    this.fileService.reset();
+    this.reset();
     this.close.emit();
   }
 
@@ -87,8 +202,17 @@ export class EquipmentBrowserDialogComponent {
         if (selected) {
           console.log('Selected equipment:', selected);
           this.selectedEquipment.set(selected);
+          this.highlightEquipmentId.set(selectedId);
         }
       }
     }
+  }
+
+  private reset() {
+    this.fileService.reset();
+    this.lotoPointMenuService.reset();
+    this.selectedEquipment.set(null);
+    this.highlightEquipmentId.set(null);
+    this.browseMode.set('file');
   }
 }

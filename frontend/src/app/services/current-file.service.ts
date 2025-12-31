@@ -79,19 +79,59 @@ export class CurrentFileService {
   
 
     setCurrentFile(file: FileDto | null): void {
+        // If no file is provided, clear everything
+        if (!file) {
+            this.currentFileSubject.next(null);
+            this.elementsSubject.next([]);
+            this.uniqueEquipmentTypesSubject.next([]);
+            this.updateElementsToRender(this.equipmentNotSelectedByDefault);
+            return;
+        }
+
+        // Check if file has incomplete data (missing points but has an ID)
+        const isIncompleteDto = file.id && (!file.points || file.points.length === 0);
+
+        if (isIncompleteDto) {
+            console.log('Incomplete file DTO detected, fetching complete data from server for file ID:', file.id);
+
+            // Fetch the complete file data from server
+            this.fileService.getFileById(file.id.toString()).pipe(
+                takeUntilDestroyed(this.destroyRef),
+                map(response => FileDto.fromJson(response.responseData))
+            ).subscribe({
+                next: (completeFile) => {
+                    console.log('Complete file data fetched successfully:', completeFile);
+                    this.setFileData(completeFile);
+                },
+                error: (error) => {
+                    console.error('Error fetching complete file data:', error);
+                    // Fall back to using the incomplete file
+                    this.setFileData(file);
+                }
+            });
+        } else {
+            // File already has complete data, use it directly
+            this.setFileData(file);
+        }
+    }
+
+    /**
+     * Internal helper method to set file data and update all subjects
+     */
+    private setFileData(file: FileDto): void {
         this.currentFileSubject.next(file);
-          
+
         // Extract elements from the points field
         const elements: EquipmentDto[] = file?.points || [];
         this.elementsSubject.next(elements);
-        
+
         if (file && file.points) {
             const uniqueTypes = this.getUniqueEqTypes();
             this.uniqueEquipmentTypesSubject.next(uniqueTypes);
         } else {
             this.uniqueEquipmentTypesSubject.next([]);
         }
-        
+
         this.updateElementsToRender(this.equipmentNotSelectedByDefault);
     }
 
