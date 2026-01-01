@@ -3,6 +3,9 @@
   [service]="bulkEditService"
   [open]="isBulkEditOpen()"
   [title]="'Bulk Edit LOTO Points'"
+  [clipboardEntityType]="'LotoPoint'"
+  [clipboardHasValidData]="hasValidData"
+  [clipboardGetItemSummary]="getItemSummary"
   (applied)="onBulkEditApplied($event)"
   (close)="onClose()"
 ></app-bulk-edit-menu>

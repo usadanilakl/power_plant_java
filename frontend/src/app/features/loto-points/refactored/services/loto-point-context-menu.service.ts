@@ -4,12 +4,15 @@ import { ContextMenuAction } from "../../../../shared/menu/context-menu/context-
 import { LotoPointDto, LotoPointModel } from "../../../../models/loto/loto-point.model";
 import { LotoPointClipboardItem } from "../../../../models/loto/loto-point-clipboard.model";
 import { RfLotoPointStateService } from "./rf-loto-point-state.service";
+import { RfLotoPointApiService } from "./rf-loto-point-api.service";
+import { map } from "rxjs";
 
 @Injectable({
     providedIn: "root"
 })
 export class LotoPointContextMenuService extends ContextMenuService {
   private stateService = inject(RfLotoPointStateService);
+  private apiService = inject(RfLotoPointApiService);
 
   customMenuActions: ContextMenuAction[] = [
       {
@@ -61,6 +64,36 @@ export class LotoPointContextMenuService extends ContextMenuService {
     } else {
       console.warn('Cannot view details: item has no ID', item);
     }
+  }
+
+  /**
+   * Override clipboard handler to fetch full DTO before adding to clipboard
+   * Table data is incomplete, so we need to fetch from server to get all fields
+   * including nested structures like zeroEnergy
+   */
+  override handleClipboard(item: any): void {
+    console.log('[LotoPointContextMenu] Clipboard requested for item:', item);
+
+    if (!item?.id) {
+      console.warn('[LotoPointContextMenu] Cannot add to clipboard: item has no ID', item);
+      return;
+    }
+
+    // Fetch full DTO from server using API service
+    this.apiService.getLotoPointById(item.id + '').pipe(
+      map(response => LotoPointDto.fromJson(response.responseData))
+    ).subscribe({
+      next: (fullDto: LotoPointDto) => {
+        console.log('[LotoPointContextMenu] Full DTO fetched:', fullDto);
+        // Now add the complete DTO to clipboard
+        super.handleClipboard(fullDto);
+      },
+      error: (error: any) => {
+        console.error('[LotoPointContextMenu] Failed to fetch full DTO:', error);
+        // Fallback to table data if fetch fails
+        super.handleClipboard(item);
+      }
+    });
   }
 
     private handleInspect(item: LotoPointDto): void {

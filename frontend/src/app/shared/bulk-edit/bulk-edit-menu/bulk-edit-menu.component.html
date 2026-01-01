@@ -42,6 +42,14 @@
           <p class="form-description">
             Changes will be applied to all {{ itemCount() }} selected item{{ itemCount() !== 1 ? 's' : '' }}.
           </p>
+          <!-- Clipboard Integration -->
+          <app-clipboard-form
+            [entityType]="clipboardEntityType()"
+            [initialEntity]="clipboardInitialEntity()"
+            [hasValidData]="clipboardHasValidData()"
+            [getItemSummary]="clipboardGetItemSummary()"
+            (itemSelected)="onClipboardItemSelected($event)"
+          ></app-clipboard-form>
         </div>
 
         <!-- Form -->

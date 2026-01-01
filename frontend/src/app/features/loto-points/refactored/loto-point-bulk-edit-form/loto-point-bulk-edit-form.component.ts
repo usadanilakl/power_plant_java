@@ -29,6 +29,17 @@ export class LotoPointBulkEditFormComponent {
   isBulkEditOpen = this.bulkEditService.isBulkEditOpen;
 
   /**
+   * Clipboard configuration functions - same as loto point form
+   */
+  hasValidData = (entity: LotoPointDto): boolean => {
+    return !!(entity.id || entity.tagNumber || entity.description);
+  };
+
+  getItemSummary = (item: LotoPointDto): string => {
+    return `${item.tagNumber || 'N/A'} - ${item.description || 'No description'}`;
+  };
+
+  /**
    * Handle successful bulk edit application
    */
   onBulkEditApplied(updatedItems: LotoPointDto[]): void {

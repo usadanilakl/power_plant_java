@@ -27,7 +27,6 @@ export class LotoPointBulkEditService extends TableBulkEditService<LotoPointDto>
     const excludedFields = [
       'id',
       'equipmentList', // Too complex for bulk edit
-      'zeroEnergy',    // Complex nested object
       'createdAt',
       'updatedAt',
       'createdBy',
@@ -37,14 +36,23 @@ export class LotoPointBulkEditService extends TableBulkEditService<LotoPointDto>
     // Convert to BulkEditFieldDefinition and filter
     return formFields
       .filter(field => !excludedFields.includes(field.name))
-      .map(field => ({
-        name: field.name,
-        label: field.label,
-        type: field.type,
-        category: this.getFieldCategory(field.name), // UI grouping category
-        categoryAlias: field.categoryAlias, // Value category alias for value-select fields
-        readonly: field.readonly || false
-      }));
+      .map(field => {
+        const bulkField: any = {
+          name: field.name,
+          label: field.label,
+          type: field.type,
+          category: this.getFieldCategory(field.name), // UI grouping category
+          categoryAlias: field.categoryAlias, // Value category alias for value-select fields
+          readonly: field.readonly || false
+        };
+
+        // Preserve nested fields for group types (e.g., zeroEnergy)
+        if ((field as any).fields) {
+          bulkField.fields = (field as any).fields;
+        }
+
+        return bulkField;
+      });
   }
 
   /**
@@ -110,6 +118,11 @@ export class LotoPointBulkEditService extends TableBulkEditService<LotoPointDto>
     // Notes/Comments
     if (['notes', 'comments', 'remarks'].includes(fieldName)) {
       return 'Notes';
+    }
+
+    // Zero Energy
+    if (['zeroEnergy'].includes(fieldName)) {
+      return 'Zero Energy';
     }
 
     // Default category

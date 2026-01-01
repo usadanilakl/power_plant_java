@@ -584,30 +584,43 @@ export class LotoPointMapperService {
       fileIds: this.parseFileIds(lotoPoint.fileIds),
     };
 
-    // Add zeroEnergy if it exists and has valid data
+    // Add zeroEnergy if it exists
     if (lotoPoint.zeroEnergy) {
-      const templateId = lotoPoint.zeroEnergy.zeroEnergyTemplate?.id || null;
+      // Get template ID - handle both object and direct ID cases
+      // Form field stores ID as number, but clipboard/API stores as ValueDto object
+      let templateId: number | null = null;
+      const template = lotoPoint.zeroEnergy.zeroEnergyTemplate as any;
+      if (typeof template === 'number') {
+        // Direct ID from form field
+        templateId = template;
+      } else if (template?.id) {
+        // ValueDto object from API/clipboard
+        templateId = template.id;
+      }
 
-      // Extract equipment IDs from equipment selections
-      // templateEquipment contains equipment objects from equipment-list-manager
-      // Send equipment IDs directly (backend expects equipment IDs in templateEquipmentIds field)
+      // Filter out 0 and null
+      const validTemplateId = (templateId && templateId !== 0) ? templateId : null;
+
+      // Extract equipment IDs from templateEquipment array
       const equipmentIds: number[] = [];
-      if (lotoPoint.zeroEnergy.templateEquipment) {
+      if (lotoPoint.zeroEnergy.templateEquipment && Array.isArray(lotoPoint.zeroEnergy.templateEquipment)) {
         equipmentIds.push(
           ...lotoPoint.zeroEnergy.templateEquipment
             .map(eq => eq.id)
-            .filter(id => id != null) as number[]
+            .filter(id => id != null && id !== 0) as number[]
         );
       }
 
-      // Only send zeroEnergy if there's actual data (template selected or equipment selected)
-      if (templateId || equipmentIds.length > 0 || lotoPoint.zeroEnergy.id) {
-        apiModel.zeroEnergy = {
-          id: lotoPoint.zeroEnergy.id || null,
-          zeroEnergyTemplateId: templateId,
-          templateEquipmentIds: equipmentIds
-        };
-      }
+      // Get zero energy record ID
+      const zeroEnergyId = lotoPoint.zeroEnergy.id;
+      const validZeroEnergyId = (zeroEnergyId && zeroEnergyId !== 0) ? zeroEnergyId : null;
+
+      // Build and send the zeroEnergy object
+      apiModel.zeroEnergy = {
+        id: validZeroEnergyId,
+        zeroEnergyTemplateId: validTemplateId,
+        templateEquipmentIds: equipmentIds.length > 0 ? equipmentIds : null
+      };
     }
 
     return apiModel;

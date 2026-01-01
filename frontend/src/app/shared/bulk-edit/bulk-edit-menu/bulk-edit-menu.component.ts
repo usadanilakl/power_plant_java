@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FloatingMenuComponent, MenuPosition } from '../../menu/floating-menu/floating-menu.component';
 import { FieldSelectorComponent } from '../field-selector/field-selector.component';
 import { RfReactiveFormComponent } from '../../reactive-form/refactored/reactive-form/rf-reactive-form.component';
+import { ClipboardFormComponent } from '../../reactive-form/refactored/form-clipboard/clipboard-form.component';
 import { TableBulkEditService, BulkEditFieldDefinition } from '../../table/refactored/services/table-bulk-edit.service';
 import { RfFormField } from '../../../models/ui/form-field.model';
 
 @Component({
   selector: 'app-bulk-edit-menu',
   standalone: true,
-  imports: [CommonModule, FloatingMenuComponent, FieldSelectorComponent, RfReactiveFormComponent],
+  imports: [CommonModule, FloatingMenuComponent, FieldSelectorComponent, RfReactiveFormComponent, ClipboardFormComponent],
   templateUrl: './bulk-edit-menu.component.html',
   styleUrl: './bulk-edit-menu.component.css'
 })
@@ -106,6 +107,27 @@ export class BulkEditMenuComponent<T> {
     return `${baseTitle} (${count} item${count !== 1 ? 's' : ''})`;
   });
 
+  // Clipboard configuration for bulk edit
+  clipboardEntityType = input<string>(''); // Entity type for clipboard (e.g., 'LotoPoint')
+
+  // Provide default functions for clipboard validation and formatting
+  private defaultHasValidData = (entity: T): boolean => {
+    if (!entity) return false;
+    return Object.values(entity).some(value => value != null);
+  };
+
+  private defaultGetItemSummary = (item: T): string => {
+    return JSON.stringify(item).substring(0, 50) + '...';
+  };
+
+  clipboardHasValidData = input<(entity: T) => boolean>(this.defaultHasValidData); // Function to validate clipboard items
+  clipboardGetItemSummary = input<(item: T) => string>(this.defaultGetItemSummary); // Function to format clipboard item summary
+
+  clipboardInitialEntity = computed(() => {
+    // Use template values as initial entity for clipboard
+    return this.templateValues() as T;
+  });
+
   /**
    * Handle field selection change
    */
@@ -165,15 +187,32 @@ export class BulkEditMenuComponent<T> {
   }
 
   /**
+   * Handle clipboard item selection
+   */
+  onClipboardItemSelected(item: any): void {
+    console.log('[BulkEditMenu] Clipboard item selected:', item);
+    console.log('[BulkEditMenu] Zero energy in clipboard item:', item.zeroEnergy);
+    this.service().setTemplateValues(item);
+  }
+
+  /**
    * Convert BulkEditFieldDefinition to RfFormField
+   * Preserves nested fields for group types
    */
   private convertToFormField(field: BulkEditFieldDefinition): RfFormField {
-    return {
+    const formField: RfFormField = {
       name: field.name,
       label: field.label,
       type: field.type as any,
       categoryAlias: field.categoryAlias, // Use categoryAlias for value-select fields
       readonly: field.readonly || false
     };
+
+    // Preserve nested fields for group types (e.g., zeroEnergy)
+    if ((field as any).fields) {
+      (formField as any).fields = (field as any).fields;
+    }
+
+    return formField;
   }
 }
