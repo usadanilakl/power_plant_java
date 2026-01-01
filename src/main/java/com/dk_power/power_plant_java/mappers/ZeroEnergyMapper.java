@@ -70,17 +70,20 @@ public class ZeroEnergyMapper implements BaseMapper {
 
         // Set template equipment IDs
         if (entity.getTemplateEquipmentIds() != null && !entity.getTemplateEquipmentIds().isEmpty()) {
-            dto.setTemplateEquipmentIds(new ArrayList<>(entity.getTemplateEquipmentIds()));
+            List<Long> list = entity.getTemplateEquipmentIds().stream().filter(e -> e != 0).toList();
+            if(!list.isEmpty()){
+                dto.setTemplateEquipmentIds(new ArrayList<>(list));
 
-            // Load equipment by IDs
-            List<EquipmentDto> equipmentDtos = new ArrayList<>();
-            for (Long equipmentId : entity.getTemplateEquipmentIds()) {
-                equipmentService.findById(equipmentId).ifPresent(equipment -> {
-                    equipmentDtos.add(equipmentService.toDto(equipment));
-                });
+                // Load equipment by IDs
+                List<EquipmentDto> equipmentDtos = new ArrayList<>();
+                for (Long equipmentId : entity.getTemplateEquipmentIds()) {
+                    equipmentService.findById(equipmentId).ifPresent(equipment -> {
+                        equipmentDtos.add(equipmentService.toDto(equipment));
+                    });
+                }
+
+                dto.setTemplateEquipment(equipmentDtos);
             }
-
-            dto.setTemplateEquipment(equipmentDtos);
         }
 
         // Resolved method from @Transient getter

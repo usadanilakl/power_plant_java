@@ -110,6 +110,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     }
 
     return new EquipmentDto({
+      id: json.id || 0,
       tagNumber: json.tagNumber || null,
       description: json.description || null,
       specificLocation: json.specificLocation || null,
