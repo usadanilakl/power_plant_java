@@ -53,15 +53,7 @@ export class RfLotoPointTableComponent implements OnInit {
   filterOutItems = input<FilterOutRules | undefined>();
   hoverDebounceTime = input<number>(0);
   hoveredItemId = input<number | null>(null);
-  fieldsToDisplay = input<(keyof LotoPointDto)[]>([
-    'isVerified',
-    'tagNumber',
-    'description',
-    'specificLocation',
-    'isoPos',
-    'normPos',
-    'zeroEnergyMethod',
-  ]);
+  fieldsToDisplay = input<(keyof LotoPointDto)[]>();
 
   // Outputs
   selectedItemsEvent = output<LotoPointDto[]>();

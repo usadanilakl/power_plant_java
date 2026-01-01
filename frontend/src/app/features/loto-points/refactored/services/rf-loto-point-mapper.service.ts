@@ -59,7 +59,7 @@ export class LotoPointMapperService {
       'isoPos',
       'normPos',
       'zeroEnergy',
-      'relatedLotoPointIds',
+      'equipmentList',
     ]
   ): Column[] {
     const allColumns: { [key in keyof LotoPointDto]?: Column } = {
@@ -272,21 +272,29 @@ export class LotoPointMapperService {
         id: 'zeroEnergy',
         header: 'Zero Energy',
         accessorKey: 'zeroEnergy.method',
+        filterable: true,
+        sortable: true,
       },
       relatedLotoPointIds: {
         id: 'relatedLotoPointIds',
         header: 'Related LOTO Point IDs',
         accessorKey: 'relatedLotoPointIds',
+        filterable: true,
+        sortable: true,
       },
       location: {
         id: 'location',
         header: 'Location',
         accessorKey: 'location.name',
+        filterable: true,
+        sortable: true,
       },
       eqType: {
         id: 'eqType',
         header: 'Equipment Type',
         accessorKey: 'eqType.name',
+        filterable: true,
+        sortable: true,
       },
     };
 
