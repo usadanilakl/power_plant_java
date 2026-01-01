@@ -1,0 +1,51 @@
+<div class="carousel-container" *ngIf="hasMultipleImages()">
+  <div class="carousel-navigation">
+    <button
+      class="nav-button prev"
+      (click)="previousImage()"
+      [disabled]="imageList().length === 0"
+      title="Previous image">
+      <span class="arrow">‹</span>
+    </button>
+
+    <div class="carousel-thumbnails">
+      <div
+        *ngFor="let image of imageList(); let i = index"
+        class="thumbnail-wrapper"
+        [class.selected]="selectedIndex() === i"
+        (click)="selectImage(i)">
+        <img
+          [src]="getImageUrl(image)"
+          [alt]="getImageTitle(image)"
+          class="thumbnail-image"
+          loading="lazy">
+        <div class="thumbnail-label">
+          {{ image.equipmentTagNumber || image.file.name || 'Image ' + (i + 1) }}
+        </div>
+      </div>
+    </div>
+
+    <button
+      class="nav-button next"
+      (click)="nextImage()"
+      [disabled]="imageList().length === 0"
+      title="Next image">
+      <span class="arrow">›</span>
+    </button>
+  </div>
+
+  <div class="carousel-info" *ngIf="selectedImage()">
+    <span class="image-counter">
+      {{ selectedIndex() + 1 }} / {{ imageList().length }}
+    </span>
+    <span class="image-title">
+      {{ getImageTitle(selectedImage()!) }}
+    </span>
+  </div>
+</div>
+
+<div class="carousel-single" *ngIf="!hasMultipleImages() && imageList().length === 1">
+  <div class="single-image-info">
+    {{ getImageTitle(imageList()[0]) }}
+  </div>
+</div>

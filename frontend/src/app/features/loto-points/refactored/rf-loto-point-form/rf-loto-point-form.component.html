@@ -11,30 +11,37 @@
   ></app-draft-comparison-dialog>
 }
 
-<app-rf-reactive-form
-  [entity]="entity()"
-  [fields]="fields()"
-  [title]="'Loto Point Form'"
-  (formValueChange)="onAnyValueChange($event)"
-  (formSubmit)="onSubmit($event)"
->
-  <ng-container extra-buttons>
-    <button
-      type="button"
-      class="tag-generator-button"
-      (click)="openTagGenerator()"
-      title="Generate New Tag Number">
-      Generate Tag Number
-    </button>
-    <app-clipboard-form
-      [entityType]="'LotoPoint'"
-      [initialEntity]="initialEntity()"
-      [hasValidData]="hasValidData"
-      [getItemSummary]="getItemSummary"
-      (itemSelected)="onClipboardItemSelected($event)"
-    ></app-clipboard-form>
-  </ng-container>
-</app-rf-reactive-form>
+<div class="form-container">
+  <app-rf-reactive-form
+    [entity]="entity()"
+    [fields]="fields()"
+    [title]="'Loto Point Form'"
+    (formValueChange)="onAnyValueChange($event)"
+    (formSubmit)="onSubmit($event)"
+  >
+    <ng-container extra-buttons>
+      <button
+        type="button"
+        class="tag-generator-button"
+        (click)="openTagGenerator()"
+        title="Generate New Tag Number">
+        Generate Tag Number
+      </button>
+      <app-clipboard-form
+        [entityType]="'LotoPoint'"
+        [initialEntity]="initialEntity()"
+        [hasValidData]="hasValidData"
+        [getItemSummary]="getItemSummary"
+        (itemSelected)="onClipboardItemSelected($event)"
+      ></app-clipboard-form>
+    </ng-container>
+  </app-rf-reactive-form>
+
+  <!-- File Viewer Section -->
+  <app-loto-point-file-viewer
+    [lotoPoint]="entity()">
+  </app-loto-point-file-viewer>
+</div>
 
 <!-- Tag Number Generator Popup -->
 <app-popup-projection

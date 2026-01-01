@@ -15,6 +15,7 @@ import com.dk_power.power_plant_java.sevice.angular.loto.NgZeroEnergyService;
 import com.dk_power.power_plant_java.sevice.categories.ValueService;
 import com.dk_power.power_plant_java.sevice.equipment.EquipmentService;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
+import org.jetbrains.annotations.NotNull;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -82,29 +83,20 @@ public class LotoPointMapper implements BaseMapper{
 //        if (entity.getRedTagId() != null) dto.setRedTagId(entity.getRedTagId());
 //        if (entity.getInUse() != null) dto.setInUse(entity.getInUse());
         if(entity.getEquipmentList()!=null){
-            Set<EquipmentDto> eqList = new HashSet<>();
-            for (Equipment e : entity.getEquipmentList()) {
-                EquipmentDto newEq = new EquipmentDto();
-
-                FileObject file = e.getMainFile();
-                FileDto fileDto = new FileDto();
-
-                if(file!=null){
-                    fileDto.setId(file.getId());
-                    fileDto.setFileLink(file.getFileLink());
-                    fileDto.setName(file.getName());
-                }
-
-                newEq.setId(e.getId());
-                newEq.setCoordinates(e.getCoordinates());
-                newEq.setOriginalPictureSize(e.getOriginalPictureSize());
-                newEq.setMainFile(fileDto.getFileLink());
-                newEq.setMainFileId(fileDto.getId());
-                newEq.setMainFileObject(fileDto);
-
-                eqList.add(newEq);
-            }
+            Set<EquipmentDto> eqList = getEquipmentDtos(entity);
             dto.setEquipmentList(eqList);
+
+            dto.setFileIds(
+                    entity.getEquipmentList().stream()
+                            .map(e -> {
+                                FileObject mainFile = e.getMainFile();
+                                return mainFile != null ? mainFile.getId() : null;
+                            })
+                            .filter(Objects::nonNull)
+                            .map(Object::toString)
+                            .collect(Collectors.joining(","))
+            );
+
         }
 //        if(entity.getLotos()!=null) dto.setLotos(entity.getLotos().stream().map(lotoMapper::convertToDto).toList());
         if (entity.getOldId() != null) dto.setOldId(entity.getOldId());
@@ -119,6 +111,33 @@ public class LotoPointMapper implements BaseMapper{
         if(entity.getRelatedLotoPointIds()!=null) dto.setRelatedLotoPointIds(entity.getRelatedLotoPointIds());
         dto.setObjectType(entity.getObjectType());
         return dto;
+    }
+
+    @NotNull
+    private static Set<EquipmentDto> getEquipmentDtos(LotoPoint entity) {
+        Set<EquipmentDto> eqList = new HashSet<>();
+        for (Equipment e : entity.getEquipmentList()) {
+            EquipmentDto newEq = new EquipmentDto();
+
+            FileObject file = e.getMainFile();
+            FileDto fileDto = new FileDto();
+
+            if(file!=null){
+                fileDto.setId(file.getId());
+                fileDto.setFileLink(file.getFileLink());
+                fileDto.setName(file.getName());
+            }
+
+            newEq.setId(e.getId());
+            newEq.setCoordinates(e.getCoordinates());
+            newEq.setOriginalPictureSize(e.getOriginalPictureSize());
+            newEq.setMainFile(fileDto.getFileLink());
+            newEq.setMainFileId(fileDto.getId());
+            newEq.setMainFileObject(fileDto);
+
+            eqList.add(newEq);
+        }
+        return eqList;
     }
 
     public LotoPointDto convertToDto(LotoPointIdDto entity) {

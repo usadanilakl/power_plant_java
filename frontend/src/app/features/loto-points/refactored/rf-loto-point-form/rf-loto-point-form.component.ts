@@ -16,6 +16,7 @@ import { ClipboardService } from '../../../../shared/clipboard/clipboard.service
 import { DraftComparisonDialogComponent } from '../draft-comparison-dialog/draft-comparison-dialog.component';
 import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-generator/tag-number-generator.component';
 import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
+import { LotoPointFileViewerComponent } from '../loto-point-file-viewer/loto-point-file-viewer.component';
 
 type LotoPointFieldName = keyof LotoPointDto;
 
@@ -26,7 +27,8 @@ type LotoPointFieldName = keyof LotoPointDto;
     ClipboardFormComponent,
     DraftComparisonDialogComponent,
     TagNumberGeneratorComponent,
-    PopupProjectionComponent
+    PopupProjectionComponent,
+    LotoPointFileViewerComponent
   ],
   templateUrl: './rf-loto-point-form.component.html',
   styleUrl: './rf-loto-point-form.component.css',
