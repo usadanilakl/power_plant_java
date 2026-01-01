@@ -48,17 +48,15 @@ export class TableControlsService {
    * Default table control buttons
    */
   protected getDefaultTableControlButtons(): ButtonConfig[] {
-    const currentMode = this.tableStateService.tableMode();
-
     return [
       {
-        name: currentMode === 'row' ? 'Cell-Mode' : 'Row-Mode',
+        name: computed(() => this.tableStateService.tableMode() === 'row' ? 'Cell-Mode' : 'Row-Mode'),
         action: () =>
           this.tableStateService.setTableMode(
-            currentMode === 'row' ? 'cell' : 'row'
+            this.tableStateService.tableMode() === 'row' ? 'cell' : 'row'
           ),
-        color: currentMode === 'row' ? 'warn' : ('primary' as ButtonColor),
-        icon: currentMode === 'row' ? 'grid_on' : 'view_agenda',
+        color: computed(() => this.tableStateService.tableMode() === 'row' ? 'warn' : ('primary' as ButtonColor)),
+        icon: computed(() => this.tableStateService.tableMode() === 'row' ? 'grid_on' : 'view_agenda'),
       },
     ];
   }

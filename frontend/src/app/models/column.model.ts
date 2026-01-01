@@ -11,4 +11,6 @@ export interface Column {
   filterable?: boolean;
   sortable?: boolean;
   template?: TemplateRef<{ $implicit: any; column: Column }>;
+  /** Optional field key to use when opening forms - useful when accessorKey is nested (e.g., 'zeroEnergy.method') but form needs base field ('zeroEnergy') */
+  formFieldKey?: string;
 }

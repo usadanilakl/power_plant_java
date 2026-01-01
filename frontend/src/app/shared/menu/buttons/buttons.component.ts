@@ -4,16 +4,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 export interface ButtonConfig {
-  name: string;
+  name: string | Signal<string>;
   action: () => void;
-  color?: 'primary' | 'accent' | 'warn';
+  color?: ButtonColor | Signal<ButtonColor>;
   disabled?: boolean;
   icon?: string | Signal<string>;
   tooltip?: string;
   class?: string;
 }
 
-export type ButtonColor = 'primary' | 'accent' | 'warn';
+export type ButtonColor = 'primary' | 'accent' | 'warn' | 'success' | 'info' | 'secondary' | 'danger';
 
 @Component({
   selector: 'app-buttons',
@@ -35,5 +35,10 @@ export class ButtonsComponent {
 
   isString(value: any): value is string {
     return typeof value === 'string';
+  }
+
+  getColorValue(color: ButtonColor | Signal<ButtonColor> | undefined): ButtonColor {
+    if (!color) return 'primary';
+    return this.isString(color) ? color : color();
   }
 }

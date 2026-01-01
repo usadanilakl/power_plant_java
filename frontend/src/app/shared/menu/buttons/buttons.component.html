@@ -4,7 +4,7 @@
     [ngClass]="[
       'button',
       button.class || '',
-      'color-' + (button.color || 'primary')
+      'color-' + getColorValue(button.color)
     ]"
     [disabled]="button.disabled"
     (click)="onButtonClick(button)"
@@ -14,6 +14,6 @@
     <mat-icon *ngIf="button.icon" class="button-icon">{{
       isString(button.icon) ? button.icon : button.icon()
     }}</mat-icon>
-    <span>{{ button.name }}</span>
+    <span>{{ isString(button.name) ? button.name : button.name() }}</span>
   </button>
 </div>

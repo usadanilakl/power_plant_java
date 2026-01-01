@@ -57,7 +57,9 @@ export class RfLotoPointClickService extends TableClickService {
     // Fetch full entity from server instead of using incomplete table data
     if (normalizedItem?.id) {
       this.lotoStateService.loadItemById(normalizedItem.id);
-      const field = column.accessorKey as keyof LotoPointModel;
+      // Use formFieldKey if available (for nested accessors like 'zeroEnergy.method'), otherwise use accessorKey
+      const fieldKey = column.formFieldKey || column.accessorKey;
+      const field = fieldKey as keyof LotoPointModel;
       this.lotoStateService.openForm([field]);
     } else {
       console.warn('Cannot load item: no ID found', normalizedItem);

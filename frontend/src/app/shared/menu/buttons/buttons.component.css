@@ -69,6 +69,42 @@ button.color-warn:hover:not(:disabled) {
   background-color: #da190b;
 }
 
+button.color-success {
+  background-color: #4caf50;
+  color: white;
+}
+
+button.color-success:hover:not(:disabled) {
+  background-color: #388e3c;
+}
+
+button.color-info {
+  background-color: #2196f3;
+  color: white;
+}
+
+button.color-info:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+button.color-secondary {
+  background-color: #757575;
+  color: white;
+}
+
+button.color-secondary:hover:not(:disabled) {
+  background-color: #616161;
+}
+
+button.color-danger {
+  background-color: #d32f2f;
+  color: white;
+}
+
+button.color-danger:hover:not(:disabled) {
+  background-color: #c62828;
+}
+
 span {
   white-space: nowrap;
 }
