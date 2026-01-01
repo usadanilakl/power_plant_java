@@ -11,6 +11,7 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/', label: 'Home' },
     { route: '/loto', label: 'LOTO' },
     { route: '/loto-points', label: 'LOTO Points' },
+    { route: '/loto-standard', label: 'LOTO Standards' },
     { route: '/tag-number', label: 'Create New Tag' },
     { route: '/file', label: 'View Files' },
     { route: '/print', label: 'Print' },

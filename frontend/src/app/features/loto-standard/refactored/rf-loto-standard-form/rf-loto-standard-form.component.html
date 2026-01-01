@@ -1,0 +1,31 @@
+<!-- Draft Comparison Dialog (future implementation) -->
+@if (showDraftDialog() && serverEntity() && draftEntity()) {
+  <div class="draft-dialog">
+    <h3>Draft detected</h3>
+    <p>A draft was saved at {{ draftTimestamp() }}</p>
+    <button (click)="onUseDraft()">Use Draft</button>
+    <button (click)="onUseServer()">Use Server Version</button>
+    <button (click)="onCancelDraftDialog()">Cancel</button>
+  </div>
+}
+
+<div class="form-container">
+  <app-rf-reactive-form
+    [entity]="entity()"
+    [fields]="fields()"
+    [title]="'LOTO Standard Form'"
+    (formValueChange)="onAnyValueChange($event)"
+    (formSubmit)="onSubmit($event)"
+  >
+    <ng-container extra-buttons>
+      <!-- Future: Add double table component for managing loto points -->
+      <!-- Future: Add file viewer for viewing related images from all loto points -->
+    </ng-container>
+  </app-rf-reactive-form>
+
+  <!-- Future: Add double loto point table component here -->
+  <!-- This will allow users to add/remove/reorder loto points -->
+
+  <!-- Future: Add loto point file viewer component here -->
+  <!-- This will show all related images from all loto points in the standard -->
+</div>

@@ -12,7 +12,7 @@ import { LotoPointDto } from "../../models/loto/loto-point.model";
   providedIn: 'root'
 })
 export class LotoStandardService {
-    private apiUrl = `${environment.apiUrl}/loto-standard`;
+    private apiUrl = `${environment.apiUrl}/loto-standards`;
 
     constructor(private http: HttpClient) {}
 

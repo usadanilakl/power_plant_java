@@ -39,6 +39,8 @@ import { PrintableFormDesignerRefactoredComponent } from './features/form-design
 import { RfFilePageComponent } from './features/files/refactored/rf-file-page/rf-file-page.component';
 import { RfFileEditroComponent } from './features/files/refactored/rf-file-editor.component';
 import { EspDeviceListComponent } from './features/esp/esp-device-list/esp-device-list.component';
+import { RfLotoStandardPageComponent } from './features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-page.component';
+import { RfLotoStandardMainTableViewComponent } from './features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-main-table-view.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -55,6 +57,24 @@ export const routes: Routes = [
       ]
     },
 
+    // {
+    //   path: 'loto',
+    //   component: LotoPageComponent,
+    //   // data: {menuType: 'loto'},
+    //   children: [
+    //     { path: '', redirectTo: 'loto', pathMatch: 'full' },
+    //     { path: 'loto', component: LotoComponent },
+    //     { path: 'loto-standard', component: RfLotoStandardPageComponent },
+    //     // { path: 'loto-standard', component: LotoStandardComponent,data: {leftMenu: LotoStandardSideMenuComponent} },
+    //     { path: 'loto-points', component: LotoPointTableComponent },
+    //     { path: 'loto-points-active', component: ActiveLotoPointsComponent },
+    //     { path: 'loto-boxes', component: LotoBoxTableComponent },
+    //     { path: 'loto-boxes-grid', component: LotoBoxGridComponent },
+    //     { path: 'locks', component: LockTableComponent },
+    //     { path: 'esp-devices', component: EspDeviceListComponent }
+    //   ]
+    // },
+
     {
       path: 'loto',
       component: LotoPageComponent,
@@ -62,13 +82,19 @@ export const routes: Routes = [
       children: [
         { path: '', redirectTo: 'loto', pathMatch: 'full' },
         { path: 'loto', component: LotoComponent },
-        { path: 'loto-standard', component: LotoStandardComponent,data: {leftMenu: LotoStandardSideMenuComponent} },
-        { path: 'loto-points', component: LotoPointTableComponent },
         { path: 'loto-points-active', component: ActiveLotoPointsComponent },
         { path: 'loto-boxes', component: LotoBoxTableComponent },
         { path: 'loto-boxes-grid', component: LotoBoxGridComponent },
         { path: 'locks', component: LockTableComponent },
         { path: 'esp-devices', component: EspDeviceListComponent }
+      ]
+    },
+
+    {
+      path: 'loto-standard',
+      component: RfLotoStandardPageComponent,
+      children: [
+        { path: '', component: RfLotoStandardMainTableViewComponent }
       ]
     },
 

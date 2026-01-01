@@ -1,0 +1,30 @@
+<app-main-layout
+  [isBottomMenuEnabled]="true"
+  [isSideMenuEnabled]="true"
+>
+  <ng-container header>
+    <div class="header-menus">
+      <div class="menu-container">
+        <app-router-menu [layout]="'row'"></app-router-menu>
+      </div>
+    </div>
+  </ng-container>
+  <ng-container left-menu>
+    <!-- Future: Add left menu for loto standard grouping -->
+    <!-- <app-rf-loto-standard-left-menu></app-rf-loto-standard-left-menu> -->
+  </ng-container>
+  <ng-container main-content>
+    <router-outlet></router-outlet>
+  </ng-container>
+  <ng-container bottom-menu>
+    <!-- <app-bottom-menu-outlet></app-bottom-menu-outlet> -->
+  </ng-container>
+</app-main-layout>
+
+<!-- Form Popup -->
+<app-rf-popup-projection
+  [isOpen]="stateService.isLotoStandardFormOpen()"
+  (close)="stateService.closeForm()"
+>
+  <app-rf-loto-standard-form [fieldsInput]="stateService.formFields()"></app-rf-loto-standard-form>
+</app-rf-popup-projection>
