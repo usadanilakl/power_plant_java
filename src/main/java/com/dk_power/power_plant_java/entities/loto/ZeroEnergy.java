@@ -25,27 +25,30 @@ public class ZeroEnergy extends BaseAuditEntity {
     @Column(name = "template_loto_point_ids", columnDefinition = "TEXT")
     private String templateEquipmentIds; // Comma-separated equipment IDs: "123,456,789"
 
+    @Column(name = "method", columnDefinition = "TEXT")
+    private String method; // Resolved zero energy method with equipment tag numbers substituted
+
     /**
      * Builds the resolved zero energy method from template and equipment references.
      * Template placeholders like [tag1], [tag2], etc. are replaced with actual tag numbers.
      */
-    @Transient
-    public String getMethod() {
-        if (zeroEnergyTemplate == null || zeroEnergyTemplate.getAlias() == null) {
-            return null;
-        }
-
-        try {
-            // Parse the phrase data from the template's alias field
-            String phraseJson = zeroEnergyTemplate.getAlias();
-            // You would parse JSON here and replace placeholders
-            // For now, return the raw text from the phrase
-            // This will be enhanced by the service layer with actual substitutions
-            return phraseJson; // Temporary - should parse and substitute
-        } catch (Exception e) {
-            return null;
-        }
-    }
+//    @Transient
+//    public String getMethod() {
+//        if (zeroEnergyTemplate == null || zeroEnergyTemplate.getAlias() == null) {
+//            return null;
+//        }
+//
+//        try {
+//            // Parse the phrase data from the template's alias field
+//            String phraseJson = zeroEnergyTemplate.getAlias();
+//            // You would parse JSON here and replace placeholders
+//            // For now, return the raw text from the phrase
+//            // This will be enhanced by the service layer with actual substitutions
+//            return phraseJson; // Temporary - should parse and substitute
+//        } catch (Exception e) {
+//            return null;
+//        }
+//    }
 
     /**
      * Gets template equipment IDs as a Set.

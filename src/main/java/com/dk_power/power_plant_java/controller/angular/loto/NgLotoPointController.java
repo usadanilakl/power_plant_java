@@ -9,6 +9,7 @@ import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointSummaryDto;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
 import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoPointService;
+import com.dk_power.power_plant_java.sevice.angular.loto.NgZeroEnergyService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class NgLotoPointController {
     private final NgLotoPointService ngLotoPointService;
+    private final NgZeroEnergyService ngZeroEnergyService;
 
     @GetMapping("/paginated")
     public ResponseEntity<NgApiResponse<Page<LotoPointDto>>> getPaginatedFiles(
@@ -36,7 +38,7 @@ public class NgLotoPointController {
                     new ArrayList<>(Arrays.asList(
                             "id", "tagNumber", "unit", "description", "specificLocation", "isoPos.name",
                             "isoPos.id", "normPos.name", "normPos.id", "eqType.name", "eqType.id",
-                            "location.name", "location.id", "zeroEnergy"
+                            "location.name", "location.id", "zeroEnergy.id", "zeroEnergy.method"
                     )),
                     PageRequest.of(page - 1, pageSize)
             ).map(ngLotoPointService::toDto);
@@ -385,6 +387,25 @@ public class NgLotoPointController {
             NgApiResponse<List<LotoPointSummaryDto>> response = new NgApiResponse<>(
                     summaries,
                     "Successfully retrieved LOTO point summaries"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Migration endpoint to populate the method field for all existing ZeroEnergy records.
+     * This should be called once after deploying the change to persist the method field.
+     */
+    @PostMapping("/migrate-zero-energy-methods")
+    public ResponseEntity<NgApiResponse<Integer>> migrateZeroEnergyMethods() {
+        try {
+            int updatedCount = ngZeroEnergyService.migrateMethodFields();
+            NgApiResponse<Integer> response = new NgApiResponse<>(
+                    updatedCount,
+                    "Successfully migrated " + updatedCount + " ZeroEnergy records"
             );
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {

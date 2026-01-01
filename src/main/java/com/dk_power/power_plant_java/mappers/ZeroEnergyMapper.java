@@ -86,7 +86,7 @@ public class ZeroEnergyMapper implements BaseMapper {
             }
         }
 
-        // Resolved method from @Transient getter
+        // Use the persisted method field directly (already resolved and stored in DB)
         if (entity.getMethod() != null) {
             dto.setMethod(entity.getMethod());
         }
@@ -126,12 +126,96 @@ public class ZeroEnergyMapper implements BaseMapper {
             dto.setTemplateEquipmentIds(new ArrayList<>(entity.getTemplateEquipmentIds()));
         }
 
-        // Resolved method from @Transient getter
+        // Use the persisted method field directly (already resolved and stored in DB)
         if (entity.getMethod() != null) {
             dto.setMethod(entity.getMethod());
         }
 
         return dto;
+    }
+
+    /**
+     * Builds the resolved zero energy method by substituting equipment tag numbers into placeholders.
+     * Parses the JSON phrase from the template's alias field and replaces [tag1], [tag2], etc.
+     * with actual equipment tag numbers.
+     *
+     * @param entity The ZeroEnergy entity
+     * @return Resolved method string with equipment tag numbers substituted
+     */
+    private String buildResolvedMethod(ZeroEnergy entity) {
+        if (entity == null || entity.getZeroEnergyTemplate() == null ||
+            entity.getZeroEnergyTemplate().getAlias() == null) {
+            return null;
+        }
+
+        try {
+            String phraseJson = entity.getZeroEnergyTemplate().getAlias();
+
+            // Parse JSON to extract segments
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(phraseJson);
+
+            if (!root.has("segments")) {
+                // No segments, return rawText if available
+                if (root.has("rawText")) {
+                    return root.get("rawText").asText();
+                }
+                return null;
+            }
+
+            // Get equipment IDs and load equipment entities
+            java.util.List<Long> equipmentIds = new ArrayList<>();
+            if (entity.getTemplateEquipmentIds() != null && !entity.getTemplateEquipmentIds().isEmpty()) {
+                equipmentIds = new ArrayList<>(entity.getTemplateEquipmentIds());
+            }
+
+            // Load equipment entities to get tag numbers
+            java.util.Map<Integer, String> placeholderToTagNumber = new java.util.HashMap<>();
+            for (int i = 0; i < equipmentIds.size(); i++) {
+                Long equipmentId = equipmentIds.get(i);
+                final int index = i; // For lambda
+                equipmentService.findById(equipmentId).ifPresent(equipment -> {
+                    String tagNumber = equipment.getTagNumber();
+                    if (tagNumber != null && !tagNumber.isEmpty()) {
+                        placeholderToTagNumber.put(index, tagNumber);
+                    }
+                });
+            }
+
+            // Build the resolved string from segments
+            StringBuilder result = new StringBuilder();
+            com.fasterxml.jackson.databind.JsonNode segments = root.get("segments");
+
+            if (segments.isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode segment : segments) {
+                    String type = segment.has("type") ? segment.get("type").asText() : "text";
+
+                    if ("text".equals(type)) {
+                        String content = segment.has("content") ? segment.get("content").asText() : "";
+                        result.append(content);
+                    } else if ("placeholder".equals(type)) {
+                        int placeholderIndex = segment.has("placeholderIndex") ? segment.get("placeholderIndex").asInt() : -1;
+
+                        // Substitute with actual equipment tag number
+                        if (placeholderIndex >= 0 && placeholderToTagNumber.containsKey(placeholderIndex)) {
+                            result.append(placeholderToTagNumber.get(placeholderIndex));
+                        } else {
+                            // Fallback: use the placeholder content (e.g., "tag1")
+                            String content = segment.has("content") ? segment.get("content").asText() : "?";
+                            result.append("[").append(content).append("]");
+                        }
+                    }
+                }
+            }
+
+            return result.toString();
+        } catch (Exception e) {
+            // If parsing fails, return null or basic method
+            if (entity.getMethod() != null) {
+                return entity.getMethod();
+            }
+            return null;
+        }
     }
 
     /**
@@ -172,6 +256,12 @@ public class ZeroEnergyMapper implements BaseMapper {
         // Set template equipment IDs with normalization (sorted, no duplicates)
         if (dto.getTemplateEquipmentIds() != null && !dto.getTemplateEquipmentIds().isEmpty()) {
             entity.setNormalizedEquipmentIds(dto.getTemplateEquipmentIds());
+        }
+
+        // Build and persist the resolved method
+        String resolvedMethod = buildResolvedMethod(entity);
+        if (resolvedMethod != null) {
+            entity.setMethod(resolvedMethod);
         }
 
         return entity;
@@ -233,6 +323,12 @@ public class ZeroEnergyMapper implements BaseMapper {
         // Set template equipment IDs
         if (dto.getTemplateEquipmentIds() != null && !dto.getTemplateEquipmentIds().isEmpty()) {
             entity.setTemplateEquipmentIdsList(dto.getTemplateEquipmentIds());
+        }
+
+        // Build and persist the resolved method
+        String resolvedMethod = buildResolvedMethod(entity);
+        if (resolvedMethod != null) {
+            entity.setMethod(resolvedMethod);
         }
 
         return entity;

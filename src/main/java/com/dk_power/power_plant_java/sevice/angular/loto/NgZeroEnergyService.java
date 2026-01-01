@@ -138,7 +138,18 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         if (existing.isPresent()) {
             // Reuse existing ZeroEnergy
             System.out.println("Reusing existing ZeroEnergy ID: " + existing.get().getId());
-            return existing.get();
+            ZeroEnergy existingEntity = existing.get();
+
+            // Check if method needs to be generated (for legacy records)
+            if (existingEntity.getMethod() == null || existingEntity.getMethod().isEmpty()) {
+                System.out.println("Generating method for existing ZeroEnergy ID: " + existingEntity.getId());
+                // Convert to IdDto and back to regenerate the method
+                ZeroEnergyIdDto tempDto = zeroEnergyMapper.convertToIdDto(existingEntity);
+                ZeroEnergy updated = zeroEnergyMapper.convertIdDtoToEntity(tempDto);
+                return zeroEnergyRepo.save(updated);
+            }
+
+            return existingEntity;
         }
 
         // Create new ZeroEnergy
@@ -260,7 +271,18 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
 
         if (existing.isPresent()) {
             // Reuse existing ZeroEnergy
-            return existing.get();
+            ZeroEnergy existingEntity = existing.get();
+
+            // Check if method needs to be generated (for legacy records)
+            if (existingEntity.getMethod() == null || existingEntity.getMethod().isEmpty()) {
+                System.out.println("Generating method for existing ZeroEnergy ID: " + existingEntity.getId());
+                // Convert to IdDto and back to regenerate the method
+                ZeroEnergyIdDto tempDto = zeroEnergyMapper.convertToIdDto(existingEntity);
+                ZeroEnergy updated = zeroEnergyMapper.convertIdDtoToEntity(tempDto);
+                return zeroEnergyRepo.save(updated);
+            }
+
+            return existingEntity;
         }
 
         // Create new ZeroEnergy
@@ -328,5 +350,31 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
     @Transactional
     public int cleanupOrphans() {
         return zeroEnergyRepo.deleteOrphans();
+    }
+
+    /**
+     * Migrates all ZeroEnergy records to populate the method field.
+     * This is needed for existing records that were created before the method field was persisted.
+     *
+     * @return Number of records updated
+     */
+    @Transactional
+    public int migrateMethodFields() {
+        List<ZeroEnergy> allZeroEnergies = zeroEnergyRepo.findAll();
+        int updatedCount = 0;
+
+        for (ZeroEnergy entity : allZeroEnergies) {
+            if (entity.getMethod() == null || entity.getMethod().isEmpty()) {
+                // Convert to IdDto and back to regenerate the method
+                ZeroEnergyIdDto tempDto = zeroEnergyMapper.convertToIdDto(entity);
+                ZeroEnergy updated = zeroEnergyMapper.convertIdDtoToEntity(tempDto);
+                zeroEnergyRepo.save(updated);
+                updatedCount++;
+                System.out.println("Updated ZeroEnergy ID: " + entity.getId() + " with method: " + updated.getMethod());
+            }
+        }
+
+        System.out.println("Migration complete. Updated " + updatedCount + " ZeroEnergy records.");
+        return updatedCount;
     }
 }
