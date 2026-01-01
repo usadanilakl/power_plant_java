@@ -9,7 +9,8 @@ export interface BulkEditFieldDefinition {
   name: string;
   label: string;
   type: string;
-  category?: string;
+  category?: string; // UI grouping category (for field selector organization)
+  categoryAlias?: string; // Value category alias (for value-select fields)
   readonly?: boolean;
 }
 

@@ -172,6 +172,7 @@ export class BulkEditMenuComponent<T> {
       name: field.name,
       label: field.label,
       type: field.type as any,
+      categoryAlias: field.categoryAlias, // Use categoryAlias for value-select fields
       readonly: field.readonly || false
     };
   }

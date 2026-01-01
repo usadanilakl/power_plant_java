@@ -69,6 +69,8 @@ export class RfReactiveFormComponent {
   // State
   formErrors = signal<{ [key: string]: string }>({});
   form: FormGroup = new FormGroup({});
+  private isCreatingForm = false;
+  private lastPatchedEntity: any = null;
 
   // Computed
   Object = Object;
@@ -79,16 +81,35 @@ export class RfReactiveFormComponent {
     effect(() => {
       const fields = this.fields();
       if (fields && fields.length > 0) {
+        this.isCreatingForm = true;
         this.createForm();
+        this.isCreatingForm = false;
       }
     });
 
     // Patch form when entity changes
     effect(() => {
       const data = this.entity();
-      if (data && this.form && Object.keys(this.form.controls).length > 0) {
+      // Skip patching if we're currently creating the form (initial values are already set)
+      // or if there are no controls in the form yet
+      if (this.isCreatingForm || !this.form || Object.keys(this.form.controls).length === 0) {
+        return;
+      }
+
+      // Skip if entity hasn't actually changed (prevent unnecessary patches)
+      if (data === this.lastPatchedEntity) {
+        return;
+      }
+
+      if (data && Object.keys(data).length > 0) {
+        this.lastPatchedEntity = data;
         const normalizedData = this.normalizeEntityForPatch(data);
-        this.form.patchValue(normalizedData, { emitEvent: true });
+        // Use setTimeout to break synchronous update chain and prevent loops
+        setTimeout(() => {
+          if (this.form) {
+            this.form.patchValue(normalizedData, { emitEvent: false });
+          }
+        }, 0);
       }
     });
   }

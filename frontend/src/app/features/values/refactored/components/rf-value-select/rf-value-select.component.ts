@@ -34,9 +34,12 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
   // Computed options based on categoryAlias
   options = computed(() => {
     const alias = this.categoryAlias();
+    console.log('RfValueSelect options computed running - alias:', alias);
     if (!alias) return [];
     const optionsSignal = this.valueService.getValueOptions(alias);
-    return optionsSignal();
+    const opts = optionsSignal();
+    console.log('RfValueSelect options computed result:', opts, 'length:', opts?.length);
+    return opts;
   });
 
   // Dialog state for Add/Edit

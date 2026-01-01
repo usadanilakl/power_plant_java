@@ -41,7 +41,8 @@ export class LotoPointBulkEditService extends TableBulkEditService<LotoPointDto>
         name: field.name,
         label: field.label,
         type: field.type,
-        category: this.getFieldCategory(field.name),
+        category: this.getFieldCategory(field.name), // UI grouping category
+        categoryAlias: field.categoryAlias, // Value category alias for value-select fields
         readonly: field.readonly || false
       }));
   }
