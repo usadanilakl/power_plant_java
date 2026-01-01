@@ -14,6 +14,7 @@ import { TableClickService } from '../../../../shared/table/refactored/services/
 import { TableControlsService } from '../../../../shared/table/refactored/services/table-controls.service';
 import { LotoPointDisplayTableClickService } from './loto-point-display-table-click.service';
 import { LotoPointDisplayTableControlService } from './loto-point-display-table-control.service';
+import { LotoPointBulkEditService } from '../services/loto-point-bulk-edit.service';
 
 @Component({
   selector: 'app-loto-point-display-table',
@@ -28,6 +29,7 @@ import { LotoPointDisplayTableControlService } from './loto-point-display-table-
     TableSortService,
     TableResizeService,
     TableSyncService,
+    LotoPointBulkEditService,
     {
       provide: TableClickService,
       useClass: LotoPointDisplayTableClickService,

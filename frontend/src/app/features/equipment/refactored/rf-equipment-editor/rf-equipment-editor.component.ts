@@ -2,12 +2,8 @@ import { CommonModule } from "@angular/common";
 import { Component, computed, DestroyRef, inject, input, effect } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { InteractiveImageComponent } from "../../../../shared/image/refactored/interactive-image/interactive-image.component";
-import { PdfDisplayIframeComponent } from "../../../../shared/pdf-dislplay-iframe/pdf-dislplay-iframe.component";
-import { PopupProjectionComponent } from "../../../../shared/popup-projection/popup-projection.component";
 import { RfShape } from "../../../../shared/image/refactored/models/fr-shape.model";
 import { LotoPointDto } from "../../../../models/loto/loto-point.model";
-import { LotoPointDisplayTableComponent } from "../../../loto-points/refactored/loto-point-display-table/loto-point-display-table.component";
-import { LotoPointDetailFormComponent } from "../../../loto-points/loto-point-detail-form/loto-point-detail-form.component";
 import { RfEquipmentEditorStateService } from "../services/rf-equipment-editor-state.service";
 import { RfEquipmentEditorDataService } from "../services/rf-equipment-editor-data.service";
 import { RfEquipmentEditorUiService } from "../services/rf-equipment-editor-ui.service";
@@ -16,11 +12,7 @@ import { RfEquipmentEditorUiService } from "../services/rf-equipment-editor-ui.s
   selector: 'app-rf-equipment-editor',
   imports: [
     CommonModule,
-    PdfDisplayIframeComponent,
-    InteractiveImageComponent,
-    PopupProjectionComponent,
-    LotoPointDisplayTableComponent,
-    LotoPointDetailFormComponent
+    InteractiveImageComponent
   ],
   providers: [
     RfEquipmentEditorStateService,

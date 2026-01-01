@@ -8,7 +8,6 @@ import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { FileDto } from '../../../../../models/file/file.model';
 import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
-import { sign } from 'crypto';
 import { RfEquipmentEditorComponent } from "../../../../../features/equipment/refactored/rf-equipment-editor/rf-equipment-editor.component";
 
 interface EquipmentListItem {

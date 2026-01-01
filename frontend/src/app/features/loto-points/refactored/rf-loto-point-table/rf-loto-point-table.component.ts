@@ -27,13 +27,12 @@ import { LotoPointContextMenuService } from '../services/loto-point-context-menu
 import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
 import { TableUtilService } from '../../../../shared/table/refactored/services/table-util.service';
 import { LotoPointBulkEditFormComponent } from '../loto-point-bulk-edit-form/loto-point-bulk-edit-form.component';
-import { LotoPointBulkEditService } from '../services/loto-point-bulk-edit.service';
 
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
   imports: [CommonModule, TableComponent, ContextMenuComponent, LotoPointBulkEditFormComponent],
-  providers: [ContextMenuComponent, LotoPointBulkEditService],
+  providers: [ContextMenuComponent],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',
 })

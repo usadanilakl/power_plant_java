@@ -30,6 +30,10 @@ export class BulkEditMenuComponent<T> {
   // Local state
   showFieldSelector = signal<boolean>(true);
 
+  // Local copy of template values to prevent infinite loop
+  private localTemplateValues = signal<Partial<T>>({});
+  private isUpdatingFromService = false;
+
   // Computed: Available fields from service
   availableFields = computed(() => {
     const svc = this.service();
@@ -42,11 +46,21 @@ export class BulkEditMenuComponent<T> {
     return svc ? svc.selectedFieldNames() : [];
   });
 
-  // Computed: Template values from service
-  templateValues = computed(() => {
-    const svc = this.service();
-    return svc ? svc.templateValues() : {};
-  });
+  // Use local signal for template values to prevent infinite updates
+  templateValues = this.localTemplateValues.asReadonly();
+
+  constructor() {
+    // Sync service template values to local signal
+    effect(() => {
+      const svc = this.service();
+      if (svc) {
+        const serviceValues = svc.templateValues();
+        this.isUpdatingFromService = true;
+        this.localTemplateValues.set(serviceValues);
+        this.isUpdatingFromService = false;
+      }
+    });
+  }
 
   // Computed: Is updating from service
   isUpdating = computed(() => {
@@ -101,8 +115,14 @@ export class BulkEditMenuComponent<T> {
 
   /**
    * Handle form value changes
+   * Only update if not coming from service to prevent infinite loop
    */
   onFormValueChange(values: any): void {
+    // Don't update service if we're currently syncing from service
+    if (this.isUpdatingFromService) {
+      return;
+    }
+
     this.service().setTemplateValues(values);
   }
 

@@ -1,7 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { DoubleLotoPointTableService } from '../double-loto-point-table.service';
-import { ButtonColor } from '../../../../../shared/menu/buttons/buttons.component';
 import { RfLotoPointTableComponent } from "../../rf-loto-point-table/rf-loto-point-table.component";
 import { TableClickService } from '../../../../../shared/table/refactored/services/table-click.service';
 import { SourceLotoPointTableClickService } from './source-loto-point-table-click.service';
@@ -31,9 +29,10 @@ import { LotoPointBulkEditService } from '../../services/loto-point-bulk-edit.se
     TableResizeService,
     TableSyncService,
     LotoPointBulkEditService,
+    RfLotoPointTableDataService,
     { provide: TableClickService, useClass: SourceLotoPointTableClickService },
     { provide: TableControlsService, useClass: SourceLotoPointTableControlService },
-    { provide: TableDataService, useClass: RfLotoPointTableDataService },
+    { provide: TableDataService, useExisting: RfLotoPointTableDataService },
   ],
   templateUrl: './source-loto-point-table.component.html',
   styleUrl: './source-loto-point-table.component.css',
