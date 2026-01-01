@@ -98,13 +98,54 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
         return getMapper().convertIdDtoToEntity(zeroEnergyIdDto);
     }
 
+    /**
+     * @deprecated Use findOrCreate(ZeroEnergyIdDto) instead for automatic deduplication
+     */
+    @Deprecated
     @Transactional
     public ZeroEnergy processZeroEnergy(ZeroEnergyIdDto zeroEnergyIdDto) {
-        System.out.println("Processing ZeroEnergy");
-        ZeroEnergy entity = convertIdDtoToEntity(zeroEnergyIdDto);
-        entity = zeroEnergyRepo.save(entity);
-        Long savedZeId = entity.getId();
-        return getEntityById(savedZeId);
+        System.out.println("Processing ZeroEnergy - DEPRECATED, use findOrCreate instead");
+        // Redirect to findOrCreate for deduplication
+        return findOrCreate(zeroEnergyIdDto);
+    }
+
+    /**
+     * Finds an existing ZeroEnergy with the same template and equipment IDs,
+     * or creates a new one if no match exists.
+     *
+     * This overload accepts ZeroEnergyIdDto (with ID references) from the client.
+     *
+     * @param idDto The ZeroEnergy data with ID references from the client
+     * @return Existing or newly created ZeroEnergy entity
+     */
+    @Transactional
+    public ZeroEnergy findOrCreate(ZeroEnergyIdDto idDto) {
+        if (idDto == null) {
+            return null;
+        }
+
+        // Extract and normalize the key fields
+        Long templateId = idDto.getZeroEnergyTemplateId();
+        Set<Long> equipmentIds = normalizeEquipmentIds(idDto.getTemplateEquipmentIds());
+        String normalizedEquipmentIdsString = sortAndJoinIds(equipmentIds);
+
+        // Try to find existing ZeroEnergy with same template and equipment IDs
+        Optional<ZeroEnergy> existing = zeroEnergyRepo.findByTemplateAndEquipmentIds(
+                templateId,
+                normalizedEquipmentIdsString
+        );
+
+        if (existing.isPresent()) {
+            // Reuse existing ZeroEnergy
+            System.out.println("Reusing existing ZeroEnergy ID: " + existing.get().getId());
+            return existing.get();
+        }
+
+        // Create new ZeroEnergy
+        System.out.println("Creating new ZeroEnergy with template ID: " + templateId + " and equipment IDs: " + normalizedEquipmentIdsString);
+        idDto.setId(null);
+        ZeroEnergy newZeroEnergy = zeroEnergyMapper.convertIdDtoToEntity(idDto);
+        return zeroEnergyRepo.save(newZeroEnergy);
     }
 
     public ZeroEnergyIdDto toIdDto(ZeroEnergy zeroEnergy) {
@@ -179,5 +220,113 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
             System.arraycopy(textWords, 0, words, 0, Math.min(textWords.length, maxWords));
         }
         return words;
+    }
+
+    /**
+     * Finds an existing ZeroEnergy with the same template and equipment IDs,
+     * or creates a new one if no match exists.
+     *
+     * This implements the deduplication pattern - identical zero energy methods
+     * are stored once and shared across multiple LOTO points.
+     *
+     * Algorithm:
+     * 1. Extract and normalize template ID and equipment IDs from DTO
+     * 2. Search for existing ZeroEnergy with matching signature
+     * 3. If found, return it (reuse)
+     * 4. If not found, create and save new one
+     *
+     * @param dto The ZeroEnergy data from the client
+     * @return Existing or newly created ZeroEnergy entity
+     */
+    @Transactional
+    public ZeroEnergy findOrCreate(ZeroEnergyDto dto) {
+        if (dto == null) {
+            return null;
+        }
+
+        // Extract and normalize the key fields
+        Long templateId = (dto.getZeroEnergyTemplate() != null)
+                ? dto.getZeroEnergyTemplate().getId()
+                : null;
+
+        Set<Long> equipmentIds = normalizeEquipmentIds(dto.getTemplateEquipmentIds());
+        String normalizedEquipmentIdsString = sortAndJoinIds(equipmentIds);
+
+        // Try to find existing ZeroEnergy with same template and equipment IDs
+        Optional<ZeroEnergy> existing = zeroEnergyRepo.findByTemplateAndEquipmentIds(
+                templateId,
+                normalizedEquipmentIdsString
+        );
+
+        if (existing.isPresent()) {
+            // Reuse existing ZeroEnergy
+            return existing.get();
+        }
+
+        // Create new ZeroEnergy
+        ZeroEnergy newZeroEnergy = zeroEnergyMapper.convertToEntity(dto);
+        return zeroEnergyRepo.save(newZeroEnergy);
+    }
+
+    /**
+     * Normalizes equipment IDs by removing nulls, zeros, and duplicates.
+     */
+    private Set<Long> normalizeEquipmentIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new HashSet<>();
+        }
+
+        return ids.stream()
+                .filter(Objects::nonNull)
+                .filter(id -> id > 0)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Sorts equipment IDs and joins them as comma-separated string for comparison.
+     * This ensures that [1,2,3] and [3,2,1] are treated as the same.
+     */
+    private String sortAndJoinIds(Set<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return "";
+        }
+
+        return ids.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+    }
+
+    /**
+     * Gets all ZeroEnergy items with their usage count.
+     * Useful for admin UI to view and manage zero energy templates.
+     *
+     * @return List of ZeroEnergy DTOs
+     */
+    public List<ZeroEnergyDto> getAllWithUsageCount() {
+        List<ZeroEnergy> allZeroEnergies = zeroEnergyRepo.findAll();
+        return allZeroEnergies.stream()
+                .map(zeroEnergyMapper::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Finds all unused ZeroEnergy items (not referenced by any LotoPoint).
+     *
+     * @return List of orphaned ZeroEnergy entities
+     */
+    public List<ZeroEnergy> findOrphans() {
+        return zeroEnergyRepo.findOrphans();
+    }
+
+    /**
+     * Deletes all unused ZeroEnergy items.
+     * Should be called periodically or manually from admin UI.
+     *
+     * @return Number of items deleted
+     */
+    @Transactional
+    public int cleanupOrphans() {
+        return zeroEnergyRepo.deleteOrphans();
     }
 }

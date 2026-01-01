@@ -96,7 +96,7 @@ export class RfLotoPointFormComponent {
         this.originalServerVersion.set(currentEntity);
       }
     }
-  }, { allowSignalWrites: true });
+  });
 
   /**
    * Check if there are real differences between server and draft versions

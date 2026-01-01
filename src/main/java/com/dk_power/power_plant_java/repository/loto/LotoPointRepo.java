@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.repository.base_repositories.BaseRepository
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -680,5 +681,27 @@ public interface LotoPointRepo extends BaseRepository<LotoPoint> {
            "LEFT JOIN FETCH ze.zeroEnergyTemplate " +
            "WHERE lp.id = :id")
     LotoPoint findByIdWithEquipment(@Param("id") Long id);
+
+    /**
+     * Counts how many LOTO points use a specific ZeroEnergy.
+     * Used for usage statistics and before deleting orphaned ZeroEnergy items.
+     *
+     * @param zeroEnergyId The ZeroEnergy ID
+     * @return Count of LOTO points using this ZeroEnergy
+     */
+    @Query("SELECT COUNT(lp) FROM LotoPoint lp WHERE lp.zeroEnergy.id = :zeroEnergyId")
+    long countByZeroEnergyId(@Param("zeroEnergyId") Long zeroEnergyId);
+
+    /**
+     * Reassigns all LOTO points from one ZeroEnergy to another.
+     * Used when merging ZeroEnergy items.
+     *
+     * @param sourceId The source ZeroEnergy ID to reassign from
+     * @param targetId The target ZeroEnergy ID to reassign to
+     * @return Number of LOTO points reassigned
+     */
+    @Modifying
+    @Query("UPDATE LotoPoint lp SET lp.zeroEnergy.id = :targetId WHERE lp.zeroEnergy.id = :sourceId")
+    int reassignZeroEnergy(@Param("sourceId") Long sourceId, @Param("targetId") Long targetId);
 
 }

@@ -409,7 +409,6 @@ Potential improvements:
 - **LocalStorage limit:** ~5-10MB per domain
 - **20 drafts estimate:** ~500KB (assuming 25KB per draft)
 - **Debouncing:** Auto-save debounced (default 1000ms)
-- **Effect optimization:** Uses `allowSignalWrites` to prevent infinite loops
 
 ---
 

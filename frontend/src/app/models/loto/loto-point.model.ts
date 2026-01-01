@@ -6,7 +6,7 @@ import { Option } from '../option.model';
 import { LotoPointIdDto } from './loto-point-id.model';
 import { Column } from '../column.model';
 import { BaseDto, BaseModel } from '../base/base.model';
-import { ZeroEnergyModel } from './zero-energy.model';
+import { ZeroEnergyDto, ZeroEnergyModel } from './zero-energy.model';
 
 export type LotoPointFieldName = keyof LotoPointModel;
 
@@ -99,26 +99,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
 
     // Deserialize zeroEnergy with its nested objects
     if (data.zeroEnergy) {
-      this.zeroEnergy = {
-        id: data.zeroEnergy.id || 0,
-        name: data.zeroEnergy.name || '',
-        objectType: data.zeroEnergy.objectType || '',
-        isVerified: data.zeroEnergy.isVerified || false,
-        method: data.zeroEnergy.method || '',
-        zeroEnergyTemplate: data.zeroEnergy.zeroEnergyTemplate
-          ? (data.zeroEnergy.zeroEnergyTemplate instanceof ValueDto
-              ? data.zeroEnergy.zeroEnergyTemplate
-              : new ValueDto(data.zeroEnergy.zeroEnergyTemplate))
-          : new ValueDto(),
-        templateEquipment: Array.isArray(data.zeroEnergy.templateEquipment)
-          ? data.zeroEnergy.templateEquipment.map(eq =>
-              eq instanceof EquipmentDto ? eq : new EquipmentDto(eq)
-            )
-          : [],
-        templateEquipmentIds: Array.isArray(data.zeroEnergy.templateEquipmentIds)
-          ? data.zeroEnergy.templateEquipmentIds
-          : [],
-      };
+      this.zeroEnergy = new ZeroEnergyDto(data.zeroEnergy);
     } else {
       this.zeroEnergy = null;
     }

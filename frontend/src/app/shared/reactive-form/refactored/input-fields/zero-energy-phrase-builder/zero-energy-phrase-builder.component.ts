@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { RfValueService } from '../../../../../features/values/refactored/services/rf-value.service';
 import { SearchableSelectInputComponent } from '../searchable-select-input/searchable-select-input.component';
+import { ValueDto } from '../../../../../models/value.model';
 
 export interface PhraseSegment {
   type: 'text' | 'placeholder';
@@ -188,8 +189,10 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
     // Connect the child component's CVA to our CVA
     if (this.selectInput) {
       this.selectInput.registerOnChange((val: any) => {
-        this.selectedPhraseId.set(val);
-        this.onChange(val);
+        console.log('ZeroEnergyPhraseBuilder received new value:', val);
+        const id = val?.id ?? val;
+        this.selectedPhraseId.set(id);
+        this.onChange({id:id});
       });
       this.selectInput.registerOnTouched(() => {
         this.onTouched();
@@ -213,7 +216,7 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
             }
           }, 0);
         }
-      }, { allowSignalWrites: true, injector: this.injector });
+      }, { injector: this.injector });
     }
   }
 

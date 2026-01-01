@@ -55,7 +55,7 @@ export class RfEquipmentEditorComponent {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe();
       }
-    }, { allowSignalWrites: true });
+    });
 
     // Highlight selected equipment once loaded
     effect(() => {
@@ -68,7 +68,7 @@ export class RfEquipmentEditorComponent {
           this.uiService.highlightEquipment(selectedId);
         }, 100);
       }
-    }, { allowSignalWrites: true });
+    });
   }
 
   // Loto point table actions

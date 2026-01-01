@@ -136,6 +136,10 @@ public class ZeroEnergyMapper implements BaseMapper {
 
     /**
      * Converts ZeroEnergyDto to ZeroEnergy entity.
+     *
+     * IMPORTANT: This method is for direct entity creation/update only.
+     * When saving a LotoPoint with ZeroEnergy, use ZeroEnergyService.findOrCreate()
+     * instead to enable automatic deduplication.
      */
     public ZeroEnergy convertToEntity(ZeroEnergyDto dto) {
         if (dto == null) {
@@ -165,12 +169,32 @@ public class ZeroEnergyMapper implements BaseMapper {
             entity.setZeroEnergyTemplate(valueService.convertToEntity(dto.getZeroEnergyTemplate()));
         }
 
-        // Set template equipment IDs directly if provided
+        // Set template equipment IDs with normalization (sorted, no duplicates)
         if (dto.getTemplateEquipmentIds() != null && !dto.getTemplateEquipmentIds().isEmpty()) {
-            entity.setTemplateEquipmentIdsList(dto.getTemplateEquipmentIds());
+            entity.setNormalizedEquipmentIds(dto.getTemplateEquipmentIds());
         }
 
         return entity;
+    }
+
+    /**
+     * Converts ZeroEnergyDto to ZeroEnergy using find-or-create pattern.
+     * This is the recommended method for saving LotoPoints with ZeroEnergy.
+     *
+     * It will:
+     * 1. Search for existing ZeroEnergy with same template + equipment IDs
+     * 2. Reuse if found
+     * 3. Create new if not found
+     *
+     * This enables automatic deduplication.
+     */
+    public ZeroEnergy convertToEntityWithDeduplication(ZeroEnergyDto dto) {
+        if (dto == null) {
+            return null;
+        }
+
+        // Use the service's findOrCreate method
+        return zeroEnergyService.findOrCreate(dto);
     }
 
     /**

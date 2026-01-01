@@ -87,4 +87,36 @@ public class ZeroEnergy extends BaseAuditEntity {
                     .collect(java.util.stream.Collectors.joining(","));
         }
     }
+
+    /**
+     * Normalizes and sorts equipment IDs for consistent storage and comparison.
+     * This ensures [1,2,3] and [3,2,1] are stored and compared the same way.
+     *
+     * @param equipmentIds List of equipment IDs (may contain nulls or zeros)
+     */
+    public void setNormalizedEquipmentIds(java.util.List<Long> equipmentIds) {
+        if (equipmentIds == null || equipmentIds.isEmpty()) {
+            this.templateEquipmentIds = null;
+        } else {
+            // Filter out nulls and zeros, then sort
+            this.templateEquipmentIds = equipmentIds.stream()
+                    .filter(id -> id != null && id > 0)
+                    .sorted()
+                    .map(String::valueOf)
+                    .collect(java.util.stream.Collectors.joining(","));
+        }
+    }
+
+    /**
+     * Gets a hash/signature of this ZeroEnergy for deduplication.
+     * Used to find identical ZeroEnergy items.
+     *
+     * @return Unique signature based on template and equipment IDs
+     */
+    @Transient
+    public String getSignature() {
+        Long templateId = (zeroEnergyTemplate != null) ? zeroEnergyTemplate.getId() : null;
+        String equipIds = (templateEquipmentIds != null) ? templateEquipmentIds : "";
+        return templateId + "|" + equipIds;
+    }
 }

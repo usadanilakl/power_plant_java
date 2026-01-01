@@ -133,7 +133,7 @@ export class EquipmentBrowserDialogComponent {
       if (mode === 'lotoPoint') {
         this.lotoPointMenuService.loadGroupedLotoPoints(grouping);
       }
-    }, { allowSignalWrites: true });
+    });
   }
 
   onFileSelect(fileItem: NestedItem) {

@@ -102,7 +102,7 @@ export class EquipmentFormComponent {
         }
       }
     }
-  }, { allowSignalWrites: true });
+  });
 
   private isNewItem(entity: EquipmentDto): boolean {
     return !entity.id && (!!entity.name || !!entity.description);

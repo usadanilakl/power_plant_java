@@ -8,6 +8,7 @@ import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.files.FileObject;
 import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.entities.loto.ZeroEnergy;
 import com.dk_power.power_plant_java.mappers.equipment.EquipmentMapper;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgLotoService;
 import com.dk_power.power_plant_java.sevice.angular.loto.NgZeroEnergyService;
@@ -258,13 +259,9 @@ public class LotoPointMapper implements BaseMapper{
 
         // Handle ZeroEnergy - if nested object exists, process it; otherwise use ID
         if (dto.getZeroEnergy() != null) {
-            System.out.println("Processing nested ZeroEnergy object: templateId=" +
-                dto.getZeroEnergy().getZeroEnergyTemplateId() +
-                ", pointIds=" + dto.getZeroEnergy().getTemplateEquipmentIds());
             // Process the nested ZeroEnergy object
-            com.dk_power.power_plant_java.entities.loto.ZeroEnergy zeroEnergy =
-                zeroEnergyService.processZeroEnergy(dto.getZeroEnergy());
-            System.out.println("ZeroEnergy processed with ID: " + zeroEnergy.getId());
+            ZeroEnergy zeroEnergy =
+                zeroEnergyService.findOrCreate(dto.getZeroEnergy());
             lotoPoint.setZeroEnergy(zeroEnergy);
         } else if (dto.getZeroEnergyId() != null) {
             System.out.println("Using existing ZeroEnergy by ID: " + dto.getZeroEnergyId());

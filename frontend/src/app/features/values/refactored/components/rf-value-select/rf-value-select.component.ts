@@ -92,7 +92,7 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
             }
           }, 0);
         }
-      }, { allowSignalWrites: true, injector: this.injector });
+      }, { injector: this.injector });
     }
   }
 
