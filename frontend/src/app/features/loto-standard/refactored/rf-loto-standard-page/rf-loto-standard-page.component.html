@@ -24,6 +24,7 @@
 <!-- Form Popup -->
 <app-rf-popup-projection
   [isOpen]="stateService.isLotoStandardFormOpen()"
+  [size]="'auto'"
   (close)="stateService.closeForm()"
 >
   <app-rf-loto-standard-form [fieldsInput]="stateService.formFields()"></app-rf-loto-standard-form>

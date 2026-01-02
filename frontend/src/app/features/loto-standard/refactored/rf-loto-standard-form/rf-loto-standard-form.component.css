@@ -1,13 +1,13 @@
 .form-container {
   width: 100%;
-  min-width: 1200px;
+  min-width: 90vw;
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 20px;
-  overflow-y: auto;
+  padding: 0;
+  overflow: hidden;
   box-sizing: border-box;
+  position: relative;
 }
 
 .draft-dialog {
@@ -38,55 +38,172 @@
   background-color: #f0f0f0;
 }
 
-/* Section styling */
-.loto-points-section {
-  background: #f9f9f9;
-  border: 1px solid #e0e0e0;
+/* Carousel Navigation */
+.carousel-nav {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+  background: #f5f5f5;
+  border-bottom: 2px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e0e0e0;
   border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  color: #666;
+}
+
+.nav-btn:hover:not(:disabled) {
+  border-color: #2196F3;
+  background: #f0f8ff;
+  color: #2196F3;
+}
+
+.nav-btn.active {
+  border-color: #2196F3;
+  background: #2196F3;
+  color: white;
+}
+
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nav-icon {
+  font-size: 24px;
+}
+
+.nav-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Carousel Container - Simple Sliding Approach */
+.carousel-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
+.carousel-track {
+  display: flex;
+  height: 100%;
+  width: 300%;
+  transition: transform 0.3s ease-in-out;
+  will-change: transform;
+}
+
+.carousel-slide {
+  width: 33.333%;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.slide-content {
+  width: 100%;
+  height: 100%;
   padding: 20px;
-  margin-top: 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Carousel Arrow Controls */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(33, 150, 243, 0.9);
+  color: white;
+  border: none;
+  font-size: 32px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.carousel-arrow:hover:not(:disabled) {
+  background: rgba(33, 150, 243, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: rgba(150, 150, 150, 0.5);
+}
+
+.carousel-arrow-left {
+  left: 20px;
+}
+
+.carousel-arrow-right {
+  right: 20px;
+}
+
+/* Section styling within slides */
+.loto-points-section {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 500px;
-  overflow: hidden;
+  min-height: 0;
 }
 
 .loto-points-section h3 {
   margin: 0 0 16px 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #333;
   flex-shrink: 0;
 }
 
 .loto-points-section app-double-loto-point-table {
-  display: flex;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-}
-
-/* Reactive form should not grow */
-app-rf-reactive-form {
-  flex-shrink: 0;
 }
 
 .file-viewer-section {
-  background: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
-  margin-top: 20px;
-  flex-shrink: 0;
-  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0 !important;
+}
+
+.file-viewer-section app-loto-standard-image-viewer {
+  flex: 1;
+  display: flex;
+  min-height: 0;
 }
 
 .file-viewer-section h3 {
   margin: 0 0 16px 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #333;
+  flex-shrink: 0;
 }
 
 .info-text {
@@ -94,7 +211,16 @@ app-rf-reactive-form {
   font-style: italic;
   margin: 0;
   padding: 12px;
-  background: #fff;
+  background: #f9f9f9;
   border-radius: 4px;
   border-left: 4px solid #2196F3;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: #999;
+  font-size: 16px;
 }

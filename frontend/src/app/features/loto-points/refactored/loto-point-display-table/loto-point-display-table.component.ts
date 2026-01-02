@@ -15,6 +15,7 @@ import { TableControlsService } from '../../../../shared/table/refactored/servic
 import { LotoPointDisplayTableClickService } from './loto-point-display-table-click.service';
 import { LotoPointDisplayTableControlService } from './loto-point-display-table-control.service';
 import { LotoPointBulkEditService } from '../services/loto-point-bulk-edit.service';
+import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-point-table-data.service';
 
 @Component({
   selector: 'app-loto-point-display-table',
@@ -22,14 +23,19 @@ import { LotoPointBulkEditService } from '../services/loto-point-bulk-edit.servi
   imports: [RfLotoPointTableComponent],
   providers: [
     TableSelectionService,
-    TableDragService,
     TableStateService,
-    TableDataService,
+    TableDragService,
     TableSearchService,
     TableSortService,
     TableResizeService,
     TableSyncService,
     LotoPointBulkEditService,
+    LotoPointDisplayTableClickService,
+    RfLotoPointTableDataService,
+    {
+      provide: TableDataService,
+      useClass: RfLotoPointTableDataService,
+    },
     {
       provide: TableClickService,
       useClass: LotoPointDisplayTableClickService,
@@ -43,6 +49,8 @@ import { LotoPointBulkEditService } from '../services/loto-point-bulk-edit.servi
   styleUrl: './loto-point-display-table.component.css',
 })
 export class LotoPointDisplayTableComponent {
+  private clickService = inject(LotoPointDisplayTableClickService);
+
   inputItems = input<LotoPointDto[]>([]);
   isTableIsolated = input<boolean>(false);
   loadMoreEnabled = input<boolean>(false);
@@ -51,4 +59,12 @@ export class LotoPointDisplayTableComponent {
 
   selectedItemsEvent = output<LotoPointDto[]>();
   rowHoveredEvent = output<LotoPointDto | null>();
+  rowClickedEvent = output<LotoPointDto>();
+
+  constructor() {
+    // Forward row clicked events from click service to output event
+    this.clickService.rowClicked$.subscribe((item: LotoPointDto) => {
+      this.rowClickedEvent.emit(item);
+    });
+  }
 }

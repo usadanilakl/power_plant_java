@@ -13,6 +13,7 @@ import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { DoubleLotoPointTableComponent } from '../../../loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
+import { LotoStandardImageViewerComponent } from '../loto-standard-image-viewer/loto-standard-image-viewer.component';
 
 type LotoStandardFieldName = keyof LotoStandardDto;
 
@@ -22,6 +23,7 @@ type LotoStandardFieldName = keyof LotoStandardDto;
   imports: [
     RfReactiveFormComponent,
     DoubleLotoPointTableComponent,
+    LotoStandardImageViewerComponent,
   ],
   templateUrl: './rf-loto-standard-form.component.html',
   styleUrl: './rf-loto-standard-form.component.css',
@@ -170,6 +172,11 @@ export class RfLotoStandardFormComponent {
   });
 
   /**
+   * Carousel state
+   */
+  currentSlide = signal<number>(0);
+
+  /**
    * Handle form value changes - save draft
    */
   onAnyValueChange(item: LotoStandardDto) {
@@ -239,5 +246,26 @@ export class RfLotoStandardFormComponent {
     // Update state and trigger draft save
     this.stateService.setSelectedItem(updatedEntity);
     this.onAnyValueChange(updatedEntity);
+  }
+
+  /**
+   * Carousel navigation methods
+   */
+  goToSlide(index: number): void {
+    this.currentSlide.set(index);
+  }
+
+  nextSlide(): void {
+    const current = this.currentSlide();
+    if (current < 2 && (current !== 1 || this.entity().id)) {
+      this.currentSlide.set(current + 1);
+    }
+  }
+
+  previousSlide(): void {
+    const current = this.currentSlide();
+    if (current > 0) {
+      this.currentSlide.set(current - 1);
+    }
   }
 }

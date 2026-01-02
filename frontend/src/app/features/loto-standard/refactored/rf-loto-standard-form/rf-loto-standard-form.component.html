@@ -10,33 +10,97 @@
 }
 
 <div class="form-container">
-  <!-- Standard Fields Form -->
-  <app-rf-reactive-form
-    [entity]="entity()"
-    [fields]="fields()"
-    [title]="'LOTO Standard Form'"
-    (formValueChange)="onAnyValueChange($event)"
-    (formSubmit)="onSubmit($event)"
-  >
-    <ng-container extra-buttons>
-      <!-- Future: Add clipboard functionality for standards -->
-    </ng-container>
-  </app-rf-reactive-form>
-
-  <!-- Double LOTO Point Table for managing loto points -->
-  <div class="loto-points-section">
-    <h3>LOTO Points</h3>
-    <app-double-loto-point-table
-      [selectedItems]="selectedLotoPoints()"
-    ></app-double-loto-point-table>
+  <!-- Carousel Navigation -->
+  <div class="carousel-nav">
+    <button
+      class="nav-btn"
+      [class.active]="currentSlide() === 0"
+      (click)="goToSlide(0)"
+    >
+      <span class="nav-icon">📝</span>
+      <span class="nav-label">General Info</span>
+    </button>
+    <button
+      class="nav-btn"
+      [class.active]="currentSlide() === 1"
+      (click)="goToSlide(1)"
+    >
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">LOTO Points</span>
+    </button>
+    <button
+      class="nav-btn"
+      [class.active]="currentSlide() === 2"
+      (click)="goToSlide(2)"
+      [disabled]="!entity().id"
+    >
+      <span class="nav-icon">🖼️</span>
+      <span class="nav-label">Images</span>
+    </button>
   </div>
 
-  <!-- File Viewer - displays aggregated files from loto standard -->
-  @if (entity().id) {
-    <div class="file-viewer-section">
-      <h3>Related Files from LOTO Points</h3>
-      <!-- File viewer will fetch files from backend based on lotoStandardId -->
-      <p class="info-text">File viewer to be implemented - will show aggregated images from all LOTO points in this standard</p>
+  <!-- Carousel Container -->
+  <div class="carousel-container">
+    <div class="carousel-track" [style.transform]="'translateX(-' + (currentSlide() * 33.333) + '%)'">
+
+      <!-- Slide 1: Standard Fields Form -->
+      <div class="carousel-slide">
+        <div class="slide-content">
+          <app-rf-reactive-form
+            [entity]="entity()"
+            [fields]="fields()"
+            [title]="'LOTO Standard Form'"
+            (formValueChange)="onAnyValueChange($event)"
+            (formSubmit)="onSubmit($event)"
+          >
+            <ng-container extra-buttons>
+              <!-- Future: Add clipboard functionality for standards -->
+            </ng-container>
+          </app-rf-reactive-form>
+        </div>
+      </div>
+
+      <!-- Slide 2: Double LOTO Point Table -->
+      <div class="carousel-slide">
+        <div class="slide-content loto-points-section">
+          <h3>LOTO Points</h3>
+          <app-double-loto-point-table
+            [selectedItems]="selectedLotoPoints()"
+          ></app-double-loto-point-table>
+        </div>
+      </div>
+
+      <!-- Slide 3: Image Viewer -->
+      <div class="carousel-slide">
+        <div class="slide-content file-viewer-section">
+          @if (entity().id) {
+            <app-loto-standard-image-viewer
+              [lotoStandard]="entity()"
+            ></app-loto-standard-image-viewer>
+          } @else {
+            <div class="empty-state">
+              <p>Save the LOTO Standard first to view related images</p>
+            </div>
+          }
+        </div>
+      </div>
+
     </div>
-  }
+  </div>
+
+  <!-- Carousel Arrow Controls -->
+  <button
+    class="carousel-arrow carousel-arrow-left"
+    (click)="previousSlide()"
+    [disabled]="currentSlide() === 0"
+  >
+    ‹
+  </button>
+  <button
+    class="carousel-arrow carousel-arrow-right"
+    (click)="nextSlide()"
+    [disabled]="currentSlide() === 2 || (currentSlide() === 1 && !entity().id)"
+  >
+    ›
+  </button>
 </div>
