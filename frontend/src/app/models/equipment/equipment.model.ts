@@ -148,7 +148,7 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       originalPictureSize: this.originalPictureSize,
       rotation: this.rotation,
       mainFile: this.mainFile,
-      mainFileId: this.mainFileId,
+      mainFileId: this.mainFileId ?? this.mainFileObject?.id,
       lotoPointIds: this.lotoPoints?.map(point => point.id) || null,
       isUpdated: this.isUpdated,
       conflictStatus: this.conflictStatus,

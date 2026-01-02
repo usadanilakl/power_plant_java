@@ -205,6 +205,7 @@ export class LotoBuilderRightPanelComponent {
       updatedEquipment.coordinates = coordinates;
       updatedEquipment.originalPictureSize = originalPictureSize;
 
+
       // Save to backend
       this.equipmentService.updateEquipment(updatedEquipment)
         .pipe(takeUntilDestroyed(this.destroyRef))

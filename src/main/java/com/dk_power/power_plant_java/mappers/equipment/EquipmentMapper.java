@@ -3,6 +3,7 @@ package com.dk_power.power_plant_java.mappers.equipment;
 import com.dk_power.power_plant_java.dto.categories.ValueDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.equipment.EquipmentIdDto;
+import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.entities.equipment.Equipment;
 import com.dk_power.power_plant_java.entities.equipment.HeatTrace;
 import com.dk_power.power_plant_java.entities.files.FileObject;
@@ -89,6 +90,12 @@ public class EquipmentMapper implements BaseMapper {
         if (entity.getMainFile() != null) {
             dto.setMainFile(entity.getMainFile().getFileLink());
             dto.setMainFileId(entity.getMainFile().getId());
+
+            FileDto fileDto = new FileDto();
+            fileDto.setId(entity.getMainFile().getId());
+            fileDto.setFileLink(entity.getMainFile().getFileLink());
+            fileDto.setName(entity.getMainFile().getName());
+            dto.setMainFileObject(fileDto);
         }
         if (entity.getLocation() != null) {
             dto.setLocation(valueService.getDtoById(entity.getLocation().getId()));
@@ -346,11 +353,17 @@ public class EquipmentMapper implements BaseMapper {
         if (dto.getCoordinates() != null) equipment.setCoordinates(dto.getCoordinates());
         if (dto.getOriginalPictureSize() != null) equipment.setOriginalPictureSize(dto.getOriginalPictureSize());
         if (dto.getRotation() != null) equipment.setRotation(dto.getRotation());
-        if (dto.getMainFile() != null && !dto.getMainFile().isEmpty() && equipment.getMainFile()==null)
-            equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
         if(dto.getMainFileId()!=null && equipment.getMainFile()==null) equipment.setMainFile(fileService.getEntityById(dto.getMainFileId()));
         if (dto.getConflictStatus() != null) equipment.setConflictStatus(dto.getConflictStatus());
         if (dto.getIsVerified() != null) equipment.setIsVerified(dto.getIsVerified());
+
+        //Handle Main File
+        if(dto.getMainFileId()!=null){
+            equipment.setMainFile(fileService.getEntityById(dto.getMainFileId()));
+        }else if (dto.getMainFile() != null && !dto.getMainFile().isEmpty() && equipment.getMainFile()==null){
+            equipment.setMainFile(fileService.getByFileLink(dto.getMainFile()));
+        }
+
 
         // Handle files
         if (dto.getFiles() != null && !dto.getFiles().isEmpty() && (equipment.getFiles()==null || equipment.getFiles().isEmpty())) {
