@@ -1,0 +1,49 @@
+<div class="file-table-container">
+  <!-- Error message display -->
+  @if (errorMessage()) {
+    <div class="error-message">
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Loading indicator -->
+  @if (isLoading()) {
+    <div class="loading-indicator">
+      Loading files...
+    </div>
+  }
+
+  <!-- Table component -->
+  <app-table
+    #tableComponent
+    [tableId]="tableId()"
+    [items]="items()"
+    [columns]="columns()"
+    [isTableIsolated]="isTableIsolated()"
+    [columnUniqueOptions]="currentColumnUniqueItems()!"
+    [isLoadingMore]="stateService.loadingUniqueItems()"
+    [isDragAndDropEnabled]="enableDragDrop()"
+    [hoverDebounceTime]="hoverDebounceTime()"
+    [hoveredItemId]="hoveredItemId()"
+    [filterOutItems]="filterOutItems()"
+
+    (search)="onSearch($event)"
+    (sortChanged)="onTableSortChanged($event)"
+    (loadMoreItems)="onLoadMore($event)"
+    (loadInitialOptions)="loadUniqueItems($event.column, $event.filter)"
+    (loadMoreOptions)="loadMoreUniqueItems($event.column, $event.filter)"
+    (selectedItemsEvent)="selectedItemsEvent.emit($event)"
+    (itemsReordered)="itemsReorderedEvent.emit($event)"
+    (rowHoveredEvent)="rowHoveredEvent.emit($event)"
+    >
+
+  </app-table>
+</div>
+
+<app-context-menu
+  [selectedItem]="contextMenuService.contextMenuSelectedItem()"
+  [isVisible]="contextMenuService.contextMenuVisible()"
+  [position]="contextMenuService.contextMenuPosition()"
+  [actions]="contextMenuService.contextMenuActions"
+  (closeMenu)="contextMenuService.closeContextMenu()"
+></app-context-menu>

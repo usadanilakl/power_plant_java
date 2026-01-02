@@ -46,19 +46,23 @@
       @if (builderState.displayMode() === 'toggle-menu') {
         <app-rf-file-left-menu></app-rf-file-left-menu>
       } @else {
-        <!-- TODO: Add file table component -->
-        <div class="placeholder">
-          File Table View (Coming Soon)
-        </div>
+        <app-rf-file-table
+          [tableId]="'loto-builder-file-table'"
+          [isTableIsolated]="false"
+          [loadMoreEnabled]="true"
+          [enableDragDrop]="false"
+        ></app-rf-file-table>
       }
     } @else {
       @if (builderState.displayMode() === 'toggle-menu') {
         <app-rf-loto-point-left-menu></app-rf-loto-point-left-menu>
       } @else {
-        <!-- TODO: Add LOTO point table component -->
-        <div class="placeholder">
-          LOTO Point Table View (Coming Soon)
-        </div>
+        <app-rf-loto-point-table
+          [tableId]="'loto-builder-loto-point-table'"
+          [isTableIsolated]="false"
+          [loadMoreEnabled]="true"
+          [enableDragDrop]="false"
+        ></app-rf-loto-point-table>
       }
     }
   </div>
