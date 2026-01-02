@@ -182,7 +182,9 @@
 .loto-points-section app-double-loto-point-table {
   flex: 1;
   min-height: 0;
+  overflow: visible;
 }
+
 
 .file-viewer-section {
   display: flex;

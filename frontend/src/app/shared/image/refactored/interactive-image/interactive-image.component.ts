@@ -22,6 +22,7 @@ import {
   ToolbarTool,
   ContextMenuActionType
 } from "../models/interactive-image-config.model";
+import { environment } from "../../../../../environments/environment";
 
 
 
@@ -90,7 +91,8 @@ export class InteractiveImageComponent {
   shapeDrawn = output<RfShape>();
   shapeHovered = output<RfShape | null>();
 
-  pngUrl = computed(()=>this.imageUrl()?.replaceAll('pdf', 'jpg'));
+  baseUrl = environment.baseApiUrl;
+  pngUrl = computed(()=>this.baseUrl +'/'+ this.imageUrl()?.replaceAll('pdf', 'jpg'));
 
   shapes = this.shapeManager.shapes;
   selectedShapeIds = this.shapeManager.selectedShapeIds;

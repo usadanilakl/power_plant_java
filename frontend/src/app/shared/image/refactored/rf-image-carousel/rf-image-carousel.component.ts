@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FileModel } from '../../../../models/file/file.model';
+import { environment } from '../../../../../environments/environment';
 
 export interface CarouselImage {
   file: FileModel;
@@ -72,7 +73,9 @@ export class RfImageCarouselComponent {
   }
 
   getImageUrl(image: CarouselImage): string {
-    return image.file.fileLink || '';
+    if(!image ||!image.file ||!image.file.fileLink) return '';
+    const baseUrl = environment.baseApiUrl + "/";
+    return baseUrl + image.file.fileLink.replaceAll('pdf', 'jpg');
   }
 
   getImageTitle(image: CarouselImage): string {

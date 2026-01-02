@@ -30,7 +30,7 @@ import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-poin
     TableResizeService,
     TableSyncService,
     LotoPointBulkEditService,
-    LotoPointDisplayTableClickService,
+    // LotoPointDisplayTableClickService,
     RfLotoPointTableDataService,
     {
       provide: TableDataService,
@@ -49,7 +49,9 @@ import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-poin
   styleUrl: './loto-point-display-table.component.css',
 })
 export class LotoPointDisplayTableComponent {
-  private clickService = inject(LotoPointDisplayTableClickService);
+  // private clickService = inject(LotoPointDisplayTableClickService);
+  private clickService = inject(TableClickService) as LotoPointDisplayTableClickService;
+
 
   inputItems = input<LotoPointDto[]>([]);
   isTableIsolated = input<boolean>(false);
