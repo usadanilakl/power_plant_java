@@ -6,12 +6,14 @@ import {
   LotoStandardModel,
 } from '../../../../models/loto/loto-standard.model';
 import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.service';
+import { LotoStandardContextMenuService } from '../services/loto-standard-context-menu.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class RfLotoStandardClickService extends TableClickService {
   private lotoStandardStateService = inject(RfLotoStandardStateService);
+  private contextMenuService = inject(LotoStandardContextMenuService);
 
   constructor() {
     super();
@@ -41,9 +43,8 @@ export class RfLotoStandardClickService extends TableClickService {
     const normalizedItem = this.normalizeItem(item) as LotoStandardDto;
     console.log('🔵 LOTO Standard: Right click -', normalizedItem);
 
-    // Future: Add context menu service if needed
-    // this.contextMenuService.showContextMenu(normalizedItem, event);
-    // this.contextMenuService.positionContextMenu(event, 220, 320);
+    this.contextMenuService.showContextMenu(normalizedItem, event);
+    this.contextMenuService.positionContextMenu(event, 220, 320);
   }
 
   /**
@@ -68,10 +69,13 @@ export class RfLotoStandardClickService extends TableClickService {
   /**
    * Override: Handle cell right click for LOTO standards
    */
-  protected override handleCellRightClick(item: any, column: Column): void {
+  protected override handleCellRightClick(item: any, column: Column, event?: MouseEvent): void {
     const normalizedItem = this.normalizeItem(item) as LotoStandardDto;
     console.log('LOTO Standard: Cell right click -', normalizedItem, column);
 
-    // Custom context menu for cell (future implementation)
+    if (event) {
+      this.contextMenuService.showContextMenu(normalizedItem, event);
+      this.contextMenuService.positionContextMenu(event, 220, 320);
+    }
   }
 }

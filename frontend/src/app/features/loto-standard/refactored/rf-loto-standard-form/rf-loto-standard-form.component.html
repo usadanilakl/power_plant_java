@@ -10,6 +10,7 @@
 }
 
 <div class="form-container">
+  <!-- Standard Fields Form -->
   <app-rf-reactive-form
     [entity]="entity()"
     [fields]="fields()"
@@ -18,14 +19,24 @@
     (formSubmit)="onSubmit($event)"
   >
     <ng-container extra-buttons>
-      <!-- Future: Add double table component for managing loto points -->
-      <!-- Future: Add file viewer for viewing related images from all loto points -->
+      <!-- Future: Add clipboard functionality for standards -->
     </ng-container>
   </app-rf-reactive-form>
 
-  <!-- Future: Add double loto point table component here -->
-  <!-- This will allow users to add/remove/reorder loto points -->
+  <!-- Double LOTO Point Table for managing loto points -->
+  <div class="loto-points-section">
+    <h3>LOTO Points</h3>
+    <app-double-loto-point-table
+      [selectedItems]="selectedLotoPoints()"
+    ></app-double-loto-point-table>
+  </div>
 
-  <!-- Future: Add loto point file viewer component here -->
-  <!-- This will show all related images from all loto points in the standard -->
+  <!-- File Viewer - displays aggregated files from loto standard -->
+  @if (entity().id) {
+    <div class="file-viewer-section">
+      <h3>Related Files from LOTO Points</h3>
+      <!-- File viewer will fetch files from backend based on lotoStandardId -->
+      <p class="info-text">File viewer to be implemented - will show aggregated images from all LOTO points in this standard</p>
+    </div>
+  }
 </div>

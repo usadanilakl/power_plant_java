@@ -10,8 +10,9 @@ import {
 import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.service';
 import { LotoStandardMapperService } from '../services/rf-loto-standard-mapper.service';
 import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
+import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
-import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
+import { DoubleLotoPointTableComponent } from '../../../loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
 
 type LotoStandardFieldName = keyof LotoStandardDto;
 
@@ -20,7 +21,7 @@ type LotoStandardFieldName = keyof LotoStandardDto;
   standalone: true,
   imports: [
     RfReactiveFormComponent,
-    PopupProjectionComponent,
+    DoubleLotoPointTableComponent,
   ],
   templateUrl: './rf-loto-standard-form.component.html',
   styleUrl: './rf-loto-standard-form.component.css',
@@ -162,6 +163,13 @@ export class RfLotoStandardFormComponent {
   });
 
   /**
+   * Get loto points from entity for double table
+   */
+  selectedLotoPoints = computed(() => {
+    return this.entity().lotoPoints || [];
+  });
+
+  /**
    * Handle form value changes - save draft
    */
   onAnyValueChange(item: LotoStandardDto) {
@@ -214,5 +222,22 @@ export class RfLotoStandardFormComponent {
   onCancelDraftDialog() {
     this.showDraftDialog.set(false);
     this.closeForm();
+  }
+
+  /**
+   * Handle loto points reordered from double table
+   */
+  onLotoPointsReordered(reorderedLotoPoints: LotoPointDto[]): void {
+    console.log('LOTO Points reordered:', reorderedLotoPoints);
+
+    // Update the entity with new loto points order
+    const updatedEntity = new LotoStandardDto({
+      ...this.entity(),
+      lotoPoints: reorderedLotoPoints
+    });
+
+    // Update state and trigger draft save
+    this.stateService.setSelectedItem(updatedEntity);
+    this.onAnyValueChange(updatedEntity);
   }
 }

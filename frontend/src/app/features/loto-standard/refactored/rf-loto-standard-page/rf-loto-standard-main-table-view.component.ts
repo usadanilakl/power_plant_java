@@ -3,6 +3,7 @@ import { RfLotoStandardTableComponent } from '../rf-loto-standard-table/rf-loto-
 import { RfLotoStandardClickService } from '../rf-loto-standard-table/rf-loto-standard-click.service';
 import { LotoStandardTableControlService } from '../rf-loto-standard-table/rf-loto-standard-table-control.service';
 import { RfLotoStandardTableDataService } from '../rf-loto-standard-table/rf-loto-standard-table-data.service';
+import { LotoStandardBulkEditService } from '../services/loto-standard-bulk-edit.service';
 import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
 import { TableControlsService } from '../../../../shared/table/refactored/services/table-controls.service';
 import { TableDataService } from '../../../../shared/table/refactored/services/table-data.service';
@@ -27,6 +28,7 @@ import { TableSyncService } from '../../../../shared/table/refactored/services/t
     TableResizeService,
     TableSyncService,
     RfLotoStandardTableDataService,
+    LotoStandardBulkEditService,
     { provide: TableClickService, useClass: RfLotoStandardClickService },
     { provide: TableControlsService, useClass: LotoStandardTableControlService },
     { provide: TableDataService, useExisting: RfLotoStandardTableDataService },

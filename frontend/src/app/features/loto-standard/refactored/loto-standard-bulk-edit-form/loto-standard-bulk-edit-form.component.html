@@ -1,0 +1,11 @@
+<app-bulk-edit-menu
+  [items]="selectedItems()"
+  [service]="bulkEditService"
+  [open]="isBulkEditOpen()"
+  [title]="'Bulk Edit LOTO Standards'"
+  [clipboardEntityType]="'LotoStandard'"
+  [clipboardHasValidData]="hasValidData"
+  [clipboardGetItemSummary]="getItemSummary"
+  (applied)="onBulkEditApplied($event)"
+  (close)="onClose()"
+></app-bulk-edit-menu>

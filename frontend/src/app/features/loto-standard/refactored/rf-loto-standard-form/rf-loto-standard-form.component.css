@@ -1,10 +1,13 @@
 .form-container {
   width: 100%;
+  min-width: 1200px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: 20px;
+  padding: 20px;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .draft-dialog {
@@ -33,4 +36,65 @@
 
 .draft-dialog button:hover {
   background-color: #f0f0f0;
+}
+
+/* Section styling */
+.loto-points-section {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 500px;
+  overflow: hidden;
+}
+
+.loto-points-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.loto-points-section app-double-loto-point-table {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Reactive form should not grow */
+app-rf-reactive-form {
+  flex-shrink: 0;
+}
+
+.file-viewer-section {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  flex-shrink: 0;
+  min-height: 200px;
+}
+
+.file-viewer-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.info-text {
+  color: #666;
+  font-style: italic;
+  margin: 0;
+  padding: 12px;
+  background: #fff;
+  border-radius: 4px;
+  border-left: 4px solid #2196F3;
 }

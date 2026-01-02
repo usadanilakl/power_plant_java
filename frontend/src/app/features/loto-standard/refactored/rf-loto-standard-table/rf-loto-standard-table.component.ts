@@ -24,11 +24,15 @@ import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
 import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { TableUtilService } from '../../../../shared/table/refactored/services/table-util.service';
+import { LotoStandardContextMenuService } from '../services/loto-standard-context-menu.service';
+import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
+import { LotoStandardBulkEditFormComponent } from '../loto-standard-bulk-edit-form/loto-standard-bulk-edit-form.component';
 
 @Component({
   selector: 'app-rf-loto-standard-table',
   standalone: true,
-  imports: [CommonModule, TableComponent],
+  imports: [CommonModule, TableComponent, ContextMenuComponent, LotoStandardBulkEditFormComponent],
+  providers: [ContextMenuComponent],
   templateUrl: './rf-loto-standard-table.component.html',
   styleUrl: './rf-loto-standard-table.component.css',
 })
@@ -36,6 +40,7 @@ export class RfLotoStandardTableComponent implements OnInit {
   private apiService = inject(RfLotoStandardApiService);
   protected stateService = inject(RfLotoStandardStateService);
   private mapperService = inject(LotoStandardMapperService);
+  protected contextMenuService = inject(LotoStandardContextMenuService);
   private tableUtilService = inject(TableUtilService);
   private destroyRef = inject(DestroyRef);
 
@@ -361,5 +366,35 @@ export class RfLotoStandardTableComponent implements OnInit {
    */
   onRowHovered(item: LotoStandardDto | null): void {
     this.rowHoveredEvent.emit(item);
+  }
+
+  /**
+   * Handle bulk edit applied event
+   * Refresh the table to show updated items
+   */
+  onBulkEditApplied(updatedItems: LotoStandardDto[]): void {
+    console.log(`Bulk edit applied to ${updatedItems.length} items`);
+
+    // If using input items, we can't refresh from API
+    // The parent component should handle the update
+    const isUsingInputItems = this.inputItems();
+
+    if (!isUsingInputItems) {
+      // Refresh from database to get updated data
+      const currentCriteria = this.stateService.getCurrentSearchCriteria();
+
+      if (currentCriteria) {
+        // Re-run the current search to refresh data
+        this.onSearch(currentCriteria);
+      } else {
+        // No active search, just reload all items
+        this.stateService.clearLotoStandards();
+        this.stateService.resetPage();
+        this.loadInitialData();
+      }
+    }
+
+    // Clear selection after bulk edit
+    // The selection service should be available through the table
   }
 }

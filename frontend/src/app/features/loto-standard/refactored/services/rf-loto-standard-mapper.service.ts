@@ -88,9 +88,9 @@ export class LotoStandardMapperService {
    */
   toFormFields(
     lotoStandard: LotoStandardDto | null,
-    fields: (keyof LotoStandardDto)[] = ['name', 'description', 'lotoPoints']
+    fields: (keyof LotoStandardDto)[] = ['name', 'description', 'isVerified']
   ): RfFormField[] {
-    const allFields: { [key in keyof LotoStandardDto]?: RfFormField } = {
+    const allFields: { [key in keyof LotoStandardDto]?: RfFormField} = {
       id: {
         name: 'id',
         label: 'ID',
@@ -111,14 +111,6 @@ export class LotoStandardMapperService {
         type: 'textarea',
         initialValue: lotoStandard?.description || '',
         validators: [Validators.required],
-      },
-      lotoPoints: {
-        name: 'lotoPoints',
-        label: 'LOTO Points',
-        type: 'multi-select',
-        initialValue: lotoStandard?.lotoPoints || [],
-        options: [],
-        // This will be handled by the double table component in the future
       },
       isVerified: {
         name: 'isVerified',
