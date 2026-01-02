@@ -1,0 +1,65 @@
+<div class="left-panel-container">
+  <!-- Header with Tabs and Mode Toggle -->
+  <div class="panel-header">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button
+        class="tab-button"
+        [class.active]="builderState.leftMenuTab() === 'file'"
+        (click)="selectFileTab()"
+      >
+        📁 Files
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="builderState.leftMenuTab() === 'loto-point'"
+        (click)="selectLotoPointTab()"
+      >
+        🔒 LOTO Points
+      </button>
+    </div>
+
+    <!-- Mode Toggle -->
+    <div class="mode-toggle">
+      <button
+        class="mode-button"
+        [class.active]="builderState.displayMode() === 'table'"
+        (click)="toggleDisplayMode()"
+        title="Table Mode"
+      >
+        📊
+      </button>
+      <button
+        class="mode-button"
+        [class.active]="builderState.displayMode() === 'toggle-menu'"
+        (click)="toggleDisplayMode()"
+        title="Menu Mode"
+      >
+        📂
+      </button>
+    </div>
+  </div>
+
+  <!-- Content Area -->
+  <div class="panel-content">
+    @if (builderState.leftMenuTab() === 'file') {
+      @if (builderState.displayMode() === 'toggle-menu') {
+        <app-rf-file-left-menu></app-rf-file-left-menu>
+      } @else {
+        <!-- TODO: Add file table component -->
+        <div class="placeholder">
+          File Table View (Coming Soon)
+        </div>
+      }
+    } @else {
+      @if (builderState.displayMode() === 'toggle-menu') {
+        <app-rf-loto-point-left-menu></app-rf-loto-point-left-menu>
+      } @else {
+        <!-- TODO: Add LOTO point table component -->
+        <div class="placeholder">
+          LOTO Point Table View (Coming Soon)
+        </div>
+      }
+    }
+  </div>
+</div>

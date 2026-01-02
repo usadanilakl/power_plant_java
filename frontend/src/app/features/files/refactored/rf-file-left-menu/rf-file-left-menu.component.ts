@@ -146,7 +146,8 @@ constructor(
         this.handleFileTreeClick(item);
         break;
       default:
-        console.log('Unhandled route for item click:', this.currentRoute());
+        // console.log('Unhandled route for item click:', this.currentRoute());
+        this.handleFileEditClick(item);
     }
   }
 

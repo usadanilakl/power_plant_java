@@ -1,0 +1,63 @@
+<div class="right-panel-container">
+  <!-- Image Viewer Area -->
+  <div class="image-area">
+    @if (currentImageUrl()) {
+      <app-interactive-image
+        [imageUrl]="currentImageUrl()"
+        [shapesInput]="currentShapes()"
+        [hoveredShapeId]="hoveredShapeId()"
+        [preset]="'FILE_EDITOR'"
+        (shapeHovered)="onShapeHovered($event)"
+        (shapeClicked)="onShapeClicked($event)"
+        (shapeDoubleClicked)="onShapeDoubleClicked($event)"
+        (shapeRightClicked)="onShapeRightClicked($event)"
+        (shapeUpdated)="onShapeUpdated($event)"
+        (shapeDrawn)="onShapeDrawn($event)"
+      ></app-interactive-image>
+
+      <!-- Info Window (positioned in upper right) -->
+      <app-loto-builder-info-window></app-loto-builder-info-window>
+    } @else {
+      <div class="empty-state">
+        <div class="empty-icon">🖼️</div>
+        <p class="empty-title">No File Selected</p>
+        <p class="empty-message">
+          Select a file from the left panel to start building LOTO points
+        </p>
+      </div>
+    }
+  </div>
+
+  <!-- Toolbar (will be enhanced in next phase) -->
+  <div class="toolbar">
+    <button
+      class="toolbar-button"
+      title="Show LOTO Points"
+      (click)="builderState.toggleLotoPointTable()"
+    >
+      📋 LOTO Points
+    </button>
+    <button
+      class="toolbar-button"
+      title="LOTO Standards"
+      (click)="builderState.openLotoStandardsPopup()"
+    >
+      📚 Standards
+    </button>
+    <button
+      class="toolbar-button primary"
+      title="Save Changes"
+      [disabled]="!builderState.hasUnsavedChanges()"
+      (click)="onSave()"
+    >
+      💾 Save
+    </button>
+    <button
+      class="toolbar-button"
+      title="Close Builder"
+      (click)="onClose()"
+    >
+      ❌ Close
+    </button>
+  </div>
+</div>

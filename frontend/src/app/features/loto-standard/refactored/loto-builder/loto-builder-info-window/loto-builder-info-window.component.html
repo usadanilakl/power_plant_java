@@ -1,0 +1,50 @@
+@if (isVisible() && lotoPoint()) {
+  <div class="info-window">
+    <div class="info-header">
+      <h3 class="info-title">LOTO Point Info</h3>
+      <button class="close-button" (click)="close()" title="Close">
+        ✕
+      </button>
+    </div>
+
+    <div class="info-content">
+      <div class="info-row">
+        <span class="info-label">Tag Number:</span>
+        <span class="info-value">{{ lotoPoint()?.tagNumber || 'N/A' }}</span>
+      </div>
+
+      <div class="info-row">
+        <span class="info-label">Equipment Type:</span>
+        <span class="info-value">{{ lotoPoint()?.eqType?.name || 'N/A' }}</span>
+      </div>
+
+      <div class="info-row">
+        <span class="info-label">Location:</span>
+        <span class="info-value">{{ lotoPoint()?.location?.name || lotoPoint()?.specificLocation || 'N/A' }}</span>
+      </div>
+
+      <div class="info-row">
+        <span class="info-label">ISO Position:</span>
+        <span class="info-value">{{ lotoPoint()?.isoPos?.name || 'N/A' }}</span>
+      </div>
+
+      <div class="info-row">
+        <span class="info-label">Normal Position:</span>
+        <span class="info-value">{{ lotoPoint()?.normPos?.name || 'N/A' }}</span>
+      </div>
+
+      @if (lotoPoint()?.description) {
+        <div class="info-row full-width">
+          <span class="info-label">Description:</span>
+          <span class="info-value">{{ lotoPoint()?.description }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="info-footer">
+      <button class="action-button primary" (click)="close()">
+        Close
+      </button>
+    </div>
+  </div>
+}

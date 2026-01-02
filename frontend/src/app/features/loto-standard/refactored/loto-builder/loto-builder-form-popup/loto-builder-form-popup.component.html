@@ -1,0 +1,29 @@
+@if (isVisible()) {
+  <div class="form-overlay" (click)="onBackdropClick($event)">
+    <div class="form-popup">
+      <div class="form-header">
+        <h2 class="form-title">
+          {{ lotoPoint() ? 'Edit LOTO Point' : 'Create LOTO Point' }}
+        </h2>
+        <button class="close-button" (click)="close()" title="Close">
+          ✕
+        </button>
+      </div>
+
+      <div class="form-content">
+        <app-rf-loto-point-form
+          [entityInput]="lotoPoint() || undefined"
+        ></app-rf-loto-point-form>
+      </div>
+
+      <div class="form-footer">
+        <button class="action-button" (click)="close()">
+          Cancel
+        </button>
+        <button class="action-button primary">
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+}

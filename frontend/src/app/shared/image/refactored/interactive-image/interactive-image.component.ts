@@ -254,6 +254,11 @@ export class InteractiveImageComponent {
       this.updateImageScale();
       this.updateCanvasAndRedraw();
       this.updateTempCanvasSize();
+
+      // Automatically fit image to screen on load
+      setTimeout(() => {
+        this.fitToScreen();
+      }, 50); // Small delay to ensure container dimensions are calculated
     };
 
     // Set up ResizeObserver to monitor image size changes

@@ -1,0 +1,27 @@
+@if (isVisible()) {
+  <div class="table-overlay" (click)="onBackdropClick($event)">
+    <div class="table-popup">
+      <div class="table-header">
+        <h2 class="table-title">LOTO Points</h2>
+        <div class="table-info">
+          {{ lotoPoints().length }} point{{ lotoPoints().length !== 1 ? 's' : '' }}
+        </div>
+        <button class="close-button" (click)="close()" title="Close">
+          ✕
+        </button>
+      </div>
+
+      <div class="table-content">
+        <app-loto-point-display-table
+          [inputItems]="lotoPoints()"
+        ></app-loto-point-display-table>
+      </div>
+
+      <div class="table-footer">
+        <button class="action-button" (click)="close()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+}
