@@ -1,3 +1,10 @@
 <router-outlet></router-outlet>
 <app-print-layout></app-print-layout>
 <app-global-message></app-global-message>
+
+<app-rf-popup-projection
+  [isOpen]="stateService.isLotoPointFormOpen()"
+  (close)="stateService.closeForm()"
+>
+  <app-rf-loto-point-form [fieldsInput]="stateService.formFields()"></app-rf-loto-point-form>
+</app-rf-popup-projection>

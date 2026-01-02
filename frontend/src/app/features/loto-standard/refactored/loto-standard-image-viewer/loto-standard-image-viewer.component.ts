@@ -33,6 +33,17 @@ export class LotoStandardImageViewerComponent {
   // Track selected carousel image
   selectedCarouselImage = signal<CarouselImage | null>(null);
 
+  // Track current file ID explicitly for shape filtering
+  currentFileId = computed(() => {
+    const selected = this.selectedCarouselImage();
+    if (selected?.file?.id) {
+      return selected.file.id;
+    }
+    // Fallback to first image's file ID
+    const firstImage = this.allCarouselImages()[0];
+    return firstImage?.file?.id || null;
+  });
+
   // Aggregate all unique images from all LOTO points in the standard
   allCarouselImages = computed(() => {
     const standard = this.lotoStandard();
@@ -80,40 +91,55 @@ export class LotoStandardImageViewerComponent {
 
   // Get shapes for the current image
   currentShapes = computed(() => {
-    const selected = this.selectedCarouselImage();
+    const fileId = this.currentFileId();
     const standard = this.lotoStandard();
     const clickedPoint = this.clickedLotoPoint();
 
-    if (!standard || !standard.lotoPoints) {
+    // Early returns for invalid state
+    if (!fileId) {
+      console.log('[currentShapes] No file ID available');
       return [];
     }
 
-    const currentFileId = selected?.file.id || this.allCarouselImages()[0]?.file.id;
-    if (!currentFileId) {
+    if (!standard?.lotoPoints || standard.lotoPoints.length === 0) {
+      console.log('[currentShapes] No LOTO points in standard');
       return [];
     }
 
     const shapes: RfShape[] = [];
 
+    // Iterate through all LOTO points and their equipment
     standard.lotoPoints.forEach((lotoPoint) => {
-      if (lotoPoint.equipmentList) {
-        lotoPoint.equipmentList.forEach((equipment) => {
-          if (
-            equipment.mainFileObject?.id === currentFileId &&
-            equipment.coordinates &&
-            equipment.originalPictureSize
-          ) {
-            // Highlight equipment from clicked LOTO point
-            const shouldHighlight = clickedPoint && clickedPoint.id === lotoPoint.id;
-            const shape = this.createShapeFromEquipment(equipment, lotoPoint, shouldHighlight ?? false);
-            if (shape) {
-              shapes.push(shape);
-            }
-          }
-        });
-      }
+      if (!lotoPoint.equipmentList) return;
+
+      lotoPoint.equipmentList.forEach((equipment) => {
+        // Only process equipment for the current file
+        if (equipment.mainFileObject?.id !== fileId) return;
+
+        // Validate required data exists
+        if (!equipment.coordinates || !equipment.originalPictureSize) {
+          console.warn('[currentShapes] Equipment missing coordinates or picture size:', {
+            equipmentId: equipment.id,
+            tagNumber: equipment.tagNumber,
+            hasCoordinates: !!equipment.coordinates,
+            hasPictureSize: !!equipment.originalPictureSize
+          });
+          return;
+        }
+
+        // Highlight equipment from clicked LOTO point
+        const shouldHighlight = clickedPoint?.id === lotoPoint.id;
+        const shape = this.createShapeFromEquipment(equipment, lotoPoint, shouldHighlight);
+
+        if (shape) {
+          shapes.push(shape);
+        } else {
+          console.warn('[currentShapes] Failed to create shape for equipment:', equipment.tagNumber);
+        }
+      });
     });
 
+    console.log('[currentShapes] File ID:', fileId, '| Shapes count:', shapes.length);
     return shapes;
   });
 
@@ -180,7 +206,23 @@ export class LotoStandardImageViewerComponent {
       const coordinates = this.parseCoordinates(equipment.coordinates || '');
       const pictureSize = this.parsePictureSize(equipment.originalPictureSize || '');
 
+      // Validate coordinates - all must be non-zero
       if (!coordinates.startX || !coordinates.startY || !coordinates.endX || !coordinates.endY) {
+        console.warn('[createShape] Invalid coordinates:', {
+          equipmentTag: equipment.tagNumber,
+          rawCoordinates: equipment.coordinates,
+          parsed: coordinates
+        });
+        return null;
+      }
+
+      // Validate picture size
+      if (!pictureSize.width || !pictureSize.height) {
+        console.warn('[createShape] Invalid picture size:', {
+          equipmentTag: equipment.tagNumber,
+          rawSize: equipment.originalPictureSize,
+          parsed: pictureSize
+        });
         return null;
       }
 
@@ -189,6 +231,17 @@ export class LotoStandardImageViewerComponent {
       const y = Math.min(coordinates.startY, coordinates.endY);
       const width = Math.abs(coordinates.endX - coordinates.startX);
       const height = Math.abs(coordinates.endY - coordinates.startY);
+
+      // Validate that width and height are non-zero
+      if (width === 0 || height === 0) {
+        console.warn('[createShape] Zero width or height:', {
+          equipmentTag: equipment.tagNumber,
+          width,
+          height,
+          coordinates
+        });
+        return null;
+      }
 
       const shape: RfShape = {
         id: equipment.id || 0,
@@ -213,42 +266,81 @@ export class LotoStandardImageViewerComponent {
 
       return shape;
     } catch (error) {
-      console.error('Error creating shape from equipment:', error);
+      console.error('[createShape] Error creating shape:', {
+        equipmentTag: equipment.tagNumber,
+        error
+      });
       return null;
     }
   }
 
   private parseCoordinates(coordString: string): { startX: number; startY: number; endX: number; endY: number } {
     try {
-      // Parse format: "startX:485,startY:123,endX:600,endY:250"
-      const parts = coordString.split(',');
+      if (!coordString) {
+        return { startX: 0, startY: 0, endX: 0, endY: 0 };
+      }
+
+      // Remove curly braces if present (handles JSON-like format)
+      const cleanedString = coordString.replace(/[{}]/g, '').trim();
+
+      // Parse format: "startX:485,startY:123,endX:600,endY:250" or "StartX:485,StartY:123,EndX:600,EndY:250"
+      const parts = cleanedString.split(',');
       const coords: any = {};
 
       parts.forEach(part => {
         const [key, value] = part.split(':');
         if (key && value) {
-          coords[key.trim()] = parseInt(value.trim());
+          // Normalize key to lowercase for case-insensitive matching
+          const normalizedKey = key.trim().toLowerCase();
+          const parsedValue = parseFloat(value.trim()); // Use parseFloat to handle decimals
+          if (!isNaN(parsedValue)) {
+            coords[normalizedKey] = parsedValue;
+          }
         }
       });
 
       return {
-        startX: coords.startX || 0,
-        startY: coords.startY || 0,
-        endX: coords.endX || 0,
-        endY: coords.endY || 0,
+        startX: coords.startx || 0,
+        startY: coords.starty || 0,
+        endX: coords.endx || 0,
+        endY: coords.endy || 0,
       };
-    } catch {
+    } catch (error) {
+      console.error('[parseCoordinates] Parse error:', { coordString, error });
       return { startX: 0, startY: 0, endX: 0, endY: 0 };
     }
   }
 
   private parsePictureSize(sizeString: string): { width: number; height: number } {
     try {
-      const parts = sizeString.split(',');
-      const width = parseInt(parts[0]?.split(':')[1] || '0');
-      const height = parseInt(parts[1]?.split(':')[1] || '0');
-      return { width, height };
-    } catch {
+      if (!sizeString) {
+        return { width: 0, height: 0 };
+      }
+
+      // Remove curly braces if present
+      const cleanedString = sizeString.replace(/[{}]/g, '').trim();
+
+      // Parse format: "width:1920,height:1080" or "Width:1920,Height:1080"
+      const parts = cleanedString.split(',');
+      const size: any = {};
+
+      parts.forEach(part => {
+        const [key, value] = part.split(':');
+        if (key && value) {
+          const normalizedKey = key.trim().toLowerCase();
+          const parsedValue = parseFloat(value.trim());
+          if (!isNaN(parsedValue)) {
+            size[normalizedKey] = parsedValue;
+          }
+        }
+      });
+
+      return {
+        width: size.width || 0,
+        height: size.height || 0
+      };
+    } catch (error) {
+      console.error('[parsePictureSize] Parse error:', { sizeString, error });
       return { width: 0, height: 0 };
     }
   }
