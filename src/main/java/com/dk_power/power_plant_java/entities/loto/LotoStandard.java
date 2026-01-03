@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.entities.loto;
 
 import com.dk_power.power_plant_java.entities.base_entities.BaseAuditEntity;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
+import com.dk_power.power_plant_java.entities.categories.Value;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
@@ -33,7 +34,18 @@ public class LotoStandard extends BaseAuditEntity {
     @Lob
     @Column(columnDefinition = "TEXT")
     private String lotoPointOrder;
+
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+            name = "loto_standard_groups",
+            joinColumns = @JoinColumn(name = "loto_standard_id"),
+            inverseJoinColumns = @JoinColumn(name = "value_id")
+    )
+    private Set<Value> groups = new HashSet<>();
+
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
+
 
     // Getter
     public Map<String, Integer> getLotoPointOrder() {

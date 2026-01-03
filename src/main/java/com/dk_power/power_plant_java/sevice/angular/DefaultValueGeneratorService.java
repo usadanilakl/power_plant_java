@@ -15,7 +15,8 @@ public class DefaultValueGeneratorService {
         generateEquipmentTypes();
         generatePermitStatuses();
         generateUnitValues();
-        zeroEnergyTemplate();
+        generateZeroEnergyTemplates();
+        generateGroupValues();
     }
 
     private void generateSystems() {
@@ -85,8 +86,15 @@ public class DefaultValueGeneratorService {
         ngValueService.createValue("Unit", "BOP", "00");
     }
 
-    private void zeroEnergyTemplate(){
+    private void generateZeroEnergyTemplates(){
         ngValueService.createValue("Zero Energy Template", "No", "NO");
         ngValueService.createValue("Zero Energy Template", "Yes", "YES");
+    }
+
+    private void generateGroupValues(){
+        ngValueService.createValue("Group", "Fire Side", "FSD");
+        ngValueService.createValue("Group", "Water Side", "WSD");
+        ngValueService.createValue("Group", "Unit 1", "U1");
+        ngValueService.createValue("Group", "Unit 2", "U2");
     }
 }

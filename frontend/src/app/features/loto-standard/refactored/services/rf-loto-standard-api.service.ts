@@ -7,6 +7,7 @@ import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { SpringApiResponse } from '../../../../models/api/spring-api-response.model';
 import { LotoStandardIdDto } from '../../../../models/loto/loto-standard-id.model';
+import { LotoStandardMapperService } from './rf-loto-standard-mapper.service';
 
 @Injectable({
   providedIn: 'root',
@@ -14,7 +15,10 @@ import { LotoStandardIdDto } from '../../../../models/loto/loto-standard-id.mode
 export class RfLotoStandardApiService {
   private apiUrl = `${environment.apiUrl}/loto-standards`;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private mapper: LotoStandardMapperService
+  ) {}
 
   /**
    * Get paginated loto standards
@@ -65,21 +69,9 @@ export class RfLotoStandardApiService {
   createLotoStandard(
     lotoStandard: LotoStandardDto
   ): Observable<SpringApiResponse<LotoStandardDto>> {
+    const lotoStandardIdDto = this.mapper.toIdDto(lotoStandard);
+
     console.log('createLotoStandard received:', lotoStandard);
-    console.log('Has toIdDto?', typeof (lotoStandard as any).toIdDto === 'function');
-
-    let lotoStandardIdDto: LotoStandardIdDto;
-
-    // Check if it has the toIdDto method (duck typing)
-    if (typeof (lotoStandard as any).toIdDto === 'function') {
-      console.log('Converting using toIdDto');
-      lotoStandardIdDto = lotoStandard.toIdDto();
-    } else {
-      console.log('Creating new LotoStandardDto and converting');
-      const dto = new LotoStandardDto(lotoStandard as any);
-      lotoStandardIdDto = dto.toIdDto();
-    }
-
     console.log('Sending to backend:', lotoStandardIdDto);
 
     return this.http.post<SpringApiResponse<LotoStandardDto>>(
@@ -94,24 +86,9 @@ export class RfLotoStandardApiService {
   updateLotoStandard(
     lotoStandard: Partial<LotoStandardIdDto | LotoStandardDto>
   ): Observable<SpringApiResponse<LotoStandardDto>> {
-    let lotoStandardIdDto: LotoStandardIdDto;
+    const lotoStandardIdDto = this.mapper.toIdDto(lotoStandard);
 
     console.log('updateLotoStandard received:', lotoStandard);
-    console.log('Has toIdDto?', typeof (lotoStandard as any).toIdDto === 'function');
-
-    // Check if it has the toIdDto method (duck typing)
-    if (typeof (lotoStandard as any).toIdDto === 'function') {
-      console.log('Converting using toIdDto');
-      lotoStandardIdDto = (lotoStandard as LotoStandardDto).toIdDto();
-    } else if (this.isLotoStandardIdDto(lotoStandard)) {
-      console.log('Already an IdDto');
-      lotoStandardIdDto = lotoStandard as LotoStandardIdDto;
-    } else {
-      console.log('Creating new LotoStandardDto and converting');
-      const dto = new LotoStandardDto(lotoStandard as any);
-      lotoStandardIdDto = dto.toIdDto();
-    }
-
     console.log('Sending to backend:', lotoStandardIdDto);
 
     const headers = new HttpHeaders().set('Content-Type', 'application/json');
@@ -131,28 +108,6 @@ export class RfLotoStandardApiService {
     } else {
       return this.createLotoStandard(lotoStandard);
     }
-  }
-
-  /**
-   * Type guard to check if object is LotoStandardIdDto
-   */
-  private isLotoStandardIdDto(object: any): object is LotoStandardIdDto {
-    // Iterate over all fields
-    for (const key in object) {
-      if (Object.prototype.hasOwnProperty.call(object, key)) {
-        const value = object[key];
-        // Check if the value is an object, but not an array or null
-        if (
-          typeof value === 'object' &&
-          value !== null &&
-          !Array.isArray(value)
-        ) {
-          return false; // Found a nested object, so it's not a LotoStandardIdDto
-        }
-      }
-    }
-
-    return true; // No nested objects found, likely a LotoStandardIdDto
   }
 
   /**

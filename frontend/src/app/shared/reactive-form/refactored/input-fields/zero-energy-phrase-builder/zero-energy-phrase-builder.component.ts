@@ -266,13 +266,10 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
   // ==================== ControlValueAccessor Methods ====================
 
   writeValue(value: any): void {
-    console.log('ZeroEnergyPhraseBuilder.writeValue called with:', value, 'selectInput exists:', !!this.selectInput);
     this.selectedPhraseId.set(value);
     if (this.selectInput) {
-      console.log('Calling selectInput.writeValue with:', value);
       this.selectInput.writeValue(value);
     } else {
-      console.log('selectInput not ready, storing as pending value');
       this.pendingValue = value;
       this.hasPendingValue = true;
     }

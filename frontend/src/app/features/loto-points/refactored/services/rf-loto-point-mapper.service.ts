@@ -38,7 +38,6 @@ export class LotoPointMapperService {
       .getOptionsByCategory(category)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((options) => {
-        console.log('Options loaded for', category);
         optionsSignal.set(options);
       });
   }
@@ -336,11 +335,6 @@ export class LotoPointMapperService {
       'equipmentIdList'
     ]
   ): RfFormField[] {
-    console.log('toFormFields called with lotoPoint:', {
-      hasZeroEnergy: !!lotoPoint.zeroEnergy,
-      zeroEnergy: lotoPoint.zeroEnergy,
-      lotoPointId: lotoPoint.id
-    });
     const allFields: { [key in keyof LotoPointDto]?: RfFormField} = {
       tagNumber: {
         name: 'tagNumber',
@@ -479,13 +473,6 @@ export class LotoPointMapperService {
           canManageValues: true,
           initialValue: (() => {
             const templateId = lotoPoint.zeroEnergy?.zeroEnergyTemplate?.id || null;
-            console.log('Zero Energy Template Initial Value:', {
-              hasZeroEnergy: !!lotoPoint.zeroEnergy,
-              zeroEnergy: lotoPoint.zeroEnergy,
-              hasTemplate: !!lotoPoint.zeroEnergy?.zeroEnergyTemplate,
-              template: lotoPoint.zeroEnergy?.zeroEnergyTemplate,
-              templateId: templateId
-            });
             return templateId;
           })(),
         },

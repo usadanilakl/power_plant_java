@@ -5,6 +5,7 @@ import { RouterOutlet } from "@angular/router";
 import { RfPopupProjectionComponent } from "../../../../shared/popup-projection/rf-popup-projection.component";
 import { RfLotoStandardFormComponent } from "../rf-loto-standard-form/rf-loto-standard-form.component";
 import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.service';
+import { RfLotoStandardLeftMenuComponent } from "../rf-loto-standard-left-menu/rf-loto-standard-left-menu.component";
 
 @Component({
   selector: 'app-rf-loto-standard-page',
@@ -15,7 +16,8 @@ import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.s
     RouterOutlet,
     RfPopupProjectionComponent,
     RfLotoStandardFormComponent,
-  ],
+    RfLotoStandardLeftMenuComponent
+],
   templateUrl: './rf-loto-standard-page.component.html',
   styleUrl: './rf-loto-standard-page.component.css',
 })

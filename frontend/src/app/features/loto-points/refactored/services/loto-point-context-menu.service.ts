@@ -72,7 +72,6 @@ export class LotoPointContextMenuService extends ContextMenuService {
    * including nested structures like zeroEnergy
    */
   override handleClipboard(item: any): void {
-    console.log('[LotoPointContextMenu] Clipboard requested for item:', item);
 
     if (!item?.id) {
       console.warn('[LotoPointContextMenu] Cannot add to clipboard: item has no ID', item);
@@ -84,7 +83,6 @@ export class LotoPointContextMenuService extends ContextMenuService {
       map(response => LotoPointDto.fromJson(response.responseData))
     ).subscribe({
       next: (fullDto: LotoPointDto) => {
-        console.log('[LotoPointContextMenu] Full DTO fetched:', fullDto);
         // Now add the complete DTO to clipboard
         super.handleClipboard(fullDto);
       },

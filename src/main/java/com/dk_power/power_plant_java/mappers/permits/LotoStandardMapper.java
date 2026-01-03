@@ -4,6 +4,8 @@ import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardDto;
 import com.dk_power.power_plant_java.dto.permits.loto_standard.LotoStandardIdDto;
 import com.dk_power.power_plant_java.entities.loto.LotoStandard;
 import com.dk_power.power_plant_java.mappers.BaseMapper;
+import com.dk_power.power_plant_java.mappers.ValueMapper;
+import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoStandardRepo;
 import com.dk_power.power_plant_java.sevice.loto.loto_point.LotoPointService;
 import org.modelmapper.ModelMapper;
@@ -17,11 +19,15 @@ public class LotoStandardMapper implements BaseMapper {
     private final ModelMapper mapper;
     private final LotoStandardRepo lotoStandardRepo;
     private final LotoPointService lotoPointService;
+    private final ValueMapper valueMapper;
+    private final ValueRepo valueRepo;
 
-    public LotoStandardMapper(ModelMapper mapper, LotoStandardRepo lotoStandardRepo, LotoPointService lotoPointService) {
+    public LotoStandardMapper(ModelMapper mapper, LotoStandardRepo lotoStandardRepo, LotoPointService lotoPointService, ValueMapper valueMapper, ValueRepo valueRepo) {
         this.mapper = mapper;
         this.lotoStandardRepo = lotoStandardRepo;
         this.lotoPointService = lotoPointService;
+        this.valueMapper = valueMapper;
+        this.valueRepo = valueRepo;
     }
 
     @Override
@@ -46,6 +52,14 @@ public class LotoStandardMapper implements BaseMapper {
                                 .toList())
                         .orElse(new ArrayList<>())
         );
+        dto.setGroups(
+                Optional.ofNullable(entity.getGroups())
+                        .map(groups -> groups.stream()
+                                .filter(Objects::nonNull)
+                                .map(valueMapper::convertToDto)
+                                .collect(Collectors.toSet()))
+                        .orElse(new HashSet<>())
+        );
 
         return dto;
 
@@ -68,6 +82,14 @@ public class LotoStandardMapper implements BaseMapper {
                                 .map(ls -> lotoPointService.getEntityById(ls.getId()))
                                 .toList())
                         .orElse(new ArrayList<>())
+        );
+        entity.setGroups(
+                Optional.ofNullable(dto.getGroups())
+                        .map(groups -> groups.stream()
+                                .filter(Objects::nonNull)
+                                .map(valueMapper::convertToEntity)
+                                .collect(Collectors.toSet()))
+                        .orElse(new HashSet<>())
         );
 
         return entity;
@@ -94,6 +116,21 @@ public class LotoStandardMapper implements BaseMapper {
                                 .toList())
                         .orElse(new ArrayList<>())
         );
+        if (dto.getGroups() != null) {
+            // Create a new mutable HashSet to avoid immutable collection issues with Hibernate
+            Set<com.dk_power.power_plant_java.entities.categories.Value> newGroups = new HashSet<>(
+                Optional.ofNullable(dto.getGroups())
+                        .map(groups -> groups.stream()
+                                .filter(Objects::nonNull)
+                                .map(id -> valueRepo.findById(id).orElse(null))
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet()))
+                        .orElse(new HashSet<>())
+            );
+
+            // Replace the entire collection instead of trying to modify it
+            entity.setGroups(newGroups);
+        }
 
         return entity;
     }

@@ -68,7 +68,6 @@ export class RfFileStateService {
   }
 
   setSelectedFiles(items: FileDto[]): void {
-    console.log('Setting selected items:', items);
     this.selectedItems.set(items);
   }
 

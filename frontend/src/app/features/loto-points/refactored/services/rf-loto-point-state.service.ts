@@ -76,7 +76,6 @@ export class RfLotoPointStateService {
   }
 
   setSelectedLotoPoints(items: LotoPointDto[]) {
-    console.log('Setting selected items:', items);
     this.selectedItems.set(items);
   }
 

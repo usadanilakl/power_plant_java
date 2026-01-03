@@ -113,7 +113,6 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
   // ---- Options handling ----
   private setupOptionsSource(): void {
     const opts = this.options();
-    console.log('setupOptionsSource called - options:', opts, 'isArray:', Array.isArray(opts), 'length:', Array.isArray(opts) ? opts.length : 'N/A');
 
     if (this.optionsSubscription) {
       this.optionsSubscription.unsubscribe();
@@ -122,14 +121,11 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
 
     if (opts instanceof Observable) {
       this.optionsSubscription = opts.subscribe((newOptions: any[]) => {
-        console.log('Observable emitted new options:', newOptions);
         this.filteredOptions.set(newOptions ?? []);
       });
     } else if (Array.isArray(opts)) {
-      console.log('Setting filteredOptions from array:', opts.length);
       this.filteredOptions.set(opts ?? []);
     } else {
-      console.log('No valid options, setting empty array');
       this.filteredOptions.set([]);
     }
   }
@@ -155,10 +151,8 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
     // Always refresh filteredOptions from current options when opening
     // This ensures we pick up any async-loaded options
     const opts = this.options();
-    console.log('SearchableSelect opening dropdown - options:', opts, 'isArray:', Array.isArray(opts), 'length:', Array.isArray(opts) ? opts.length : 'N/A');
     if (Array.isArray(opts)) {
       this.filteredOptions.set(opts);
-      console.log('SearchableSelect set filteredOptions:', this.filteredOptions());
     }
 
     const positionStrategy = this.overlay

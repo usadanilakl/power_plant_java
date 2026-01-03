@@ -178,6 +178,7 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
     /**
      * Update existing LOTO standard
      */
+    @Transactional
     public LotoStandardDto updateStandard(LotoStandardIdDto standardIdDto) {
         if (standardIdDto.getId() == null) {
             throw new IllegalArgumentException("ID is required for update");
@@ -188,9 +189,39 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
             throw new EntityNotFoundException("LotoStandard not found with id: " + standardIdDto.getId());
         }
 
-        LotoStandard updated = lotoStandardMapper.convertIdDtoToEntity(standardIdDto);
-        LotoStandard saved = lotoStandardRepo.save(updated);
-        return lotoStandardMapper.convertToDto(saved);
+        // Update fields on the existing managed entity instead of creating a new one
+        if (standardIdDto.getName() != null && !standardIdDto.getName().isEmpty()) {
+            existing.setName(standardIdDto.getName());
+        }
+        if (standardIdDto.getDescription() != null && !standardIdDto.getDescription().isEmpty()) {
+            existing.setDescription(standardIdDto.getDescription());
+        }
+
+        // Update loto points
+        if (standardIdDto.getLotoPoints() != null) {
+            List<LotoPoint> newPoints = standardIdDto.getLotoPoints().stream()
+                .filter(Objects::nonNull)
+                .map(ngLotoPointService::getEntityById)
+                .toList();
+            existing.setLotoPoints(newPoints);
+        }
+
+        // Update groups - replace the collection with a new HashSet
+        if (standardIdDto.getGroups() != null) {
+            Set<com.dk_power.power_plant_java.entities.categories.Value> newGroups = standardIdDto.getGroups().stream()
+                .filter(Objects::nonNull)
+                .map(id -> {
+                    return entityManager.find(com.dk_power.power_plant_java.entities.categories.Value.class, id);
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+
+            existing.setGroups(newGroups);
+        }
+
+        // The entity is already managed, changes will be flushed automatically
+        entityManager.flush();
+        return lotoStandardMapper.convertToDto(existing);
     }
 
     /**

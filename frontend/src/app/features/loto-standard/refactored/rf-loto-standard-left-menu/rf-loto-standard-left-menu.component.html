@@ -1,0 +1,59 @@
+<div class="loto-standard-menu-container">
+  <div class="menu-header">
+    <h2>LOTO Standards</h2>
+    <div class="header-actions">
+      <button class="create-button" (click)="createNew()" title="Create New">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <button class="refresh-button" (click)="refresh()" [disabled]="isLoading()" title="Refresh">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grouping Controls -->
+  <div class="grouping-controls">
+    <label class="grouping-label">Group by:</label>
+    <div class="grouping-buttons">
+      @for (option of groupingOptions; track option.value) {
+        <button
+          class="grouping-button"
+          [class.active]="selectedGrouping() === option.value"
+          (click)="loadLotoStandards(option.value)"
+          [disabled]="isLoading()"
+        >
+          {{ option.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Loading/Error States -->
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <div>Loading LOTO standards...</div>
+    </div>
+  } @else if (error()) {
+    <div class="error-state">
+      <div class="error-icon">⚠️</div>
+      <div class="error-message">{{ error() }}</div>
+      <button class="retry-button" (click)="refresh()">Retry</button>
+    </div>
+  } @else {
+    <!-- Toggle Menu with Search -->
+    <app-rf-toggle-menu
+      [menuItems]="menuItems()"
+      [enableSearch]="true"
+      [searchPlaceholder]="'Search LOTO standards...'"
+      (itemClick)="onItemClick($event)"
+      (itemDblClick)="onItemDoubleClick($event)"
+      (itemRightClick)="onItemRightClick($event)"
+    ></app-rf-toggle-menu>
+  }
+</div>

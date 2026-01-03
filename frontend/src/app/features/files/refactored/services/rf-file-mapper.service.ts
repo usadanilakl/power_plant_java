@@ -37,7 +37,6 @@ export class FileMapperService {
       .getOptionsByCategory(category)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((options) => {
-        console.log('Options loaded for', category);
         optionsSignal.set(options);
       });
   }

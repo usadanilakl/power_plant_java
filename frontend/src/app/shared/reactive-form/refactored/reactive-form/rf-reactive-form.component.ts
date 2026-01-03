@@ -118,8 +118,6 @@ export class RfReactiveFormComponent {
     const entity = this.entity();
     const fields = this.fields();
 
-    console.log("entity: ", entity)
-
     // Create form using service
     this.form = this.formBuilderService.createFormFromFields(fields, entity);
 

@@ -77,7 +77,6 @@ export class RfLotoStandardFormComponent {
             this.showDraftDialog.set(true);
           } else {
             // No real differences - just clear the draft silently
-            console.log('Draft has no real differences from server version, clearing silently');
             this.stateService.clearDraftForItem(lotoStandardId);
           }
         } else {
@@ -148,15 +147,9 @@ export class RfLotoStandardFormComponent {
     const entity = this.entity();
 
     if (customFields.length > 0) {
-      console.log(
-        'Using custom fields:',
-        this.mapperService.toFormFields(entity, customFields)
-      );
       return this.mapperService.toFormFields(entity, customFields);
     }
 
-    console.log('Entity:', entity);
-    console.log('Using default fields:', this.mapperService.toFormFields(entity));
     return this.mapperService.toFormFields(entity);
   });
 
@@ -180,7 +173,6 @@ export class RfLotoStandardFormComponent {
    * Handle form value changes - save draft
    */
   onAnyValueChange(item: LotoStandardDto) {
-    console.log('Form value changed:', item);
 
     // Only save draft if there are real differences from the original server version
     if (this.hasRealDifferences(this.originalServerVersion() ?? new LotoStandardDto(), item)) {
@@ -192,7 +184,6 @@ export class RfLotoStandardFormComponent {
    * Handle form submission
    */
   onSubmit(item: LotoStandardDto) {
-    console.log('Submitting LOTO Standard:', item);
     this.stateService.submitForm(item);
   }
 
@@ -235,7 +226,6 @@ export class RfLotoStandardFormComponent {
    * Handle loto points reordered from double table
    */
   onLotoPointsReordered(reorderedLotoPoints: LotoPointDto[]): void {
-    console.log('LOTO Points reordered:', reorderedLotoPoints);
 
     // Update the entity with new loto points order
     const updatedEntity = new LotoStandardDto({

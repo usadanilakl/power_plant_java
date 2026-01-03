@@ -77,7 +77,6 @@ export class RfLotoStandardStateService {
   }
 
   setSelectedLotoStandards(items: LotoStandardDto[]) {
-    console.log('Setting selected items:', items);
     this.selectedItems.set(items);
   }
 
@@ -94,9 +93,7 @@ export class RfLotoStandardStateService {
       .getLotoStandardById(id + '')
       .pipe(
         tap((response) => {
-          console.log('Loaded full LOTO Standard from server:', response.responseData);
           this.setSelectedItem(LotoStandardDto.fromJson(response.responseData));
-          console.log('Converted from Json:', LotoStandardDto.fromJson(response.responseData));
           // Open form after loading the item
           this.openForm();
         }),
@@ -110,11 +107,6 @@ export class RfLotoStandardStateService {
   }
 
   submitForm(item: LotoStandardDto) {
-    console.log('Submitting LOTO Standard:', item);
-    console.log('Item has toIdDto?', typeof (item as any).toIdDto === 'function');
-    if (typeof (item as any).toIdDto === 'function') {
-      console.log('Converted to IdDto:', item.toIdDto());
-    }
 
     const lotoStandardId = item.id;
 
@@ -122,7 +114,6 @@ export class RfLotoStandardStateService {
       .saveLotoStandard(item)
       .pipe(
         tap((response) => {
-          console.log('LOTO Standard saved successfully:', response.responseData);
           // Clear the draft after successful save
           this.clearDraftForItem(lotoStandardId);
           // Update the selected item with the saved data
@@ -144,7 +135,6 @@ export class RfLotoStandardStateService {
 
   openNewLotoStandardForm() {
     // Set a new blank item - the form component's effect will check for drafts
-    console.log('openNewLotoStandardForm: Setting new blank LotoStandardDto');
     this.setSelectedItem(new LotoStandardDto());
   }
 

@@ -4,22 +4,26 @@ import { FormField } from '../ui/form-field.model';
 import { LotoPointDto } from './loto-point.model';
 import { LotoStandardIdDto } from './loto-standard-id.model';
 import { Column } from '../column.model';
+import { ValueDto } from '../value.model';
 
 export type LotoStandardFieldName = keyof LotoStandardModel;
 
 export interface LotoStandardModel extends BaseModel {
   description: string | null;
   lotoPoints: LotoPointDto[] | null;
+  groups: ValueDto[] | null;
 }
 
 export class LotoStandardDto extends BaseDto {
   description: string | null;
   lotoPoints: LotoPointDto[] | null;
+  groups: ValueDto[] | null;
 
   constructor(data: Partial<LotoStandardDto> = {}) {
     super(data);
     this.description = data.description || null;
     this.lotoPoints = data.lotoPoints?.map(point => new LotoPointDto(point)) || null;
+    this.groups = data.groups?.map(group => new ValueDto(group)) || null;
   }
 
   // Serialization method
@@ -27,7 +31,8 @@ export class LotoStandardDto extends BaseDto {
     return {
       ...super.toJson(),
       description: this.description,
-      lotoPoints: this.lotoPoints?.map(point => point.toJson())
+      lotoPoints: this.lotoPoints?.map(point => point.toJson()),
+      groups: this.groups?.map(group => group.toJson())
     };
   }
 
@@ -36,7 +41,8 @@ export class LotoStandardDto extends BaseDto {
     return new LotoStandardDto({
       ...super.fromJson(json),
       description: json.description,
-      lotoPoints: json.lotoPoints?.map((pointJson: any) => LotoPointDto.fromJson(pointJson)) || null
+      lotoPoints: json.lotoPoints?.map((pointJson: any) => LotoPointDto.fromJson(pointJson)) || null,
+      groups: json.groups?.map((groupJson: any) => ValueDto.fromJson(groupJson)) || null
     });
   }
 
@@ -46,6 +52,7 @@ export class LotoStandardDto extends BaseDto {
     idDto.name = this.name;
     idDto.description = this.description;
     idDto.lotoPoints = this.lotoPoints?.map(point => point.id) || null;
+    idDto.groups = this.groups?.map(group => group.id) || null;
     return idDto;
   }
 
@@ -55,6 +62,7 @@ export class LotoStandardDto extends BaseDto {
       name: { name: 'name', label: 'Name', type: 'text', initialValue: this.name } as FormField,
       description: { name: 'description', label: 'Description', type: 'text', validators: [Validators.required], initialValue: this.description } as FormField,
       lotoPoints: { name: 'lotoPoints', label: 'Loto Points', type: 'multi-select', options: this.lotoPoints?.map(point => point.toOption()) || [] } as FormField,
+      groups: { name: 'groups', label: 'Groups', type: 'multi-value-select', initialValue: this.groups || [] } as FormField,
       objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: 'Loto Standard' } as FormField,
       isVerified: { name: 'isVerified', label: 'Is Verified', type: 'select', options: [{}], initialValue: 'false' } as FormField
     }
@@ -63,36 +71,41 @@ export class LotoStandardDto extends BaseDto {
 
   static toTableColumns(fields: LotoStandardFieldName[] = ['name', 'description', 'lotoPoints']): Column[] {
     const allColumns: { [key in LotoStandardFieldName]: Column } = {
-      id: { 
-        id: 'id', 
-        header: 'ID', 
+      id: {
+        id: 'id',
+        header: 'ID',
         accessorKey: 'id'
       },
-      name: { 
-        id: 'name', 
-        header: 'Name', 
+      name: {
+        id: 'name',
+        header: 'Name',
         accessorKey: 'name'
       },
-      description: { 
-        id: 'description', 
-        header: 'Description', 
+      description: {
+        id: 'description',
+        header: 'Description',
         accessorKey: 'description'
       },
-      lotoPoints: { 
-        id: 'lotoPoints', 
-        header: 'LOTO Points', 
+      lotoPoints: {
+        id: 'lotoPoints',
+        header: 'LOTO Points',
         accessorFn: (item: LotoStandardDto) => item.lotoPoints?.length.toString() || '0'
       },
-      objectType: { 
-        id: 'objectType', 
-        header: 'Object Type', 
+      groups: {
+        id: 'groups',
+        header: 'Groups',
+        accessorFn: (item: LotoStandardDto) => item.groups?.map(g => g.name).join(', ') || ''
+      },
+      objectType: {
+        id: 'objectType',
+        header: 'Object Type',
         accessorKey: 'objectType'
       },
-      isVerified: { 
-        id: 'isVerified', 
-        header: 'Verified', 
+      isVerified: {
+        id: 'isVerified',
+        header: 'Verified',
         accessorFn: (item: LotoStandardDto) => item.isVerified ? 'Yes' : 'No',
-        conditionalStyling: (item: LotoStandardDto) => 
+        conditionalStyling: (item: LotoStandardDto) =>
           item.isVerified ? { 'background-color': '#90EE90' } : { 'background-color': '#FFCCCB' }
       }
     };

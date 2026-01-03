@@ -41,15 +41,8 @@ export class RfFileFormComponent {
     const entity = this.entity();
 
     if (customFields.length > 0) {
-      console.log(
-        'Using custom fields:',
-        this.mapperService.toFormFields(entity, customFields)
-      );
       return this.mapperService.toFormFields(entity, customFields);
     }
-
-    console.log('Entity:', entity);
-    console.log('Using default fields:', this.mapperService.toFormFields(entity));
     return this.mapperService.toFormFields(entity);
   });
 
@@ -94,7 +87,6 @@ export class RfFileFormComponent {
 
   onClipboardItemSelected(item: FileDto): void {
     if (item) {
-      console.log('Loading item from clipboard:', item);
       this.stateService.setSelectedItem(new FileDto(item));
     }
   }

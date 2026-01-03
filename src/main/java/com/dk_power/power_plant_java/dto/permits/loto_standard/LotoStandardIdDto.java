@@ -15,5 +15,6 @@ public class LotoStandardIdDto extends BaseDto {
     private String description;
     private List<Long> lotoPoints;
     private String lotoPointOrder;
+    private Set<Long> groups;
 
 }

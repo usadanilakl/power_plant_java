@@ -184,15 +184,8 @@ export class RfLotoPointFormComponent {
     const entity = this.entity();
 
     if (customFields.length > 0) {
-      console.log(
-        'Using custom fields:',
-        this.mapperService.toFormFields(entity, customFields)
-      );
       return this.mapperService.toFormFields(entity, customFields);
     }
-
-    console.log('Entity:', entity);
-    console.log('Using default fields:', this.mapperService.toFormFields(entity));
     return this.mapperService.toFormFields(entity);
   });
 
