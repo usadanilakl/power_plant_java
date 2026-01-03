@@ -47,17 +47,11 @@
   @if (canManageValues() && selectedPhraseId()) {
     <div class="action-buttons">
       <button type="button" class="btn-action btn-edit" (click)="onEdit()" [disabled]="disabled()" title="Edit phrase">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
+        <mat-icon>edit</mat-icon>
         Edit
       </button>
       <button type="button" class="btn-action btn-delete" (click)="openDeleteDialog()" [disabled]="disabled()" title="Delete phrase">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"/>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-        </svg>
+        <mat-icon>delete</mat-icon>
         Delete
       </button>
     </div>
@@ -71,21 +65,14 @@
       <div class="dialog-header">
         <h3>{{ dialogMode() === 'add' ? 'Create New Phrase' : 'Edit Phrase' }}</h3>
         <button type="button" class="close-btn" (click)="closePhraseDialog()" title="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
+          <mat-icon>close</mat-icon>
         </button>
       </div>
 
       <div class="dialog-body">
         @if (errorMessage()) {
           <div class="error-message">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
+            <mat-icon>error</mat-icon>
             {{ errorMessage() }}
           </div>
         }
@@ -112,10 +99,7 @@
               (click)="insertPlaceholder()"
               [disabled]="disabled()"
               title="Insert placeholder for equipment tag">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
+              <mat-icon>add</mat-icon>
               Add Tag Placeholder
             </button>
             @if (placeholderCount() > 0) {
@@ -154,11 +138,7 @@
           }
 
           <div class="phrase-help">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 16v-4"/>
-              <path d="M12 8h.01"/>
-            </svg>
+            <mat-icon>info</mat-icon>
             <span>
               Build a phrase with placeholders for equipment tags.
               Example: "Verify that [tag1] is open and [tag2] shows zero pressure"
@@ -186,21 +166,14 @@
       <div class="dialog-header">
         <h3>Delete Phrase</h3>
         <button type="button" class="close-btn" (click)="closeDeleteDialog()" title="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
+          <mat-icon>close</mat-icon>
         </button>
       </div>
 
       <div class="dialog-body">
         @if (errorMessage()) {
           <div class="error-message">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
+            <mat-icon>error</mat-icon>
             {{ errorMessage() }}
           </div>
         }

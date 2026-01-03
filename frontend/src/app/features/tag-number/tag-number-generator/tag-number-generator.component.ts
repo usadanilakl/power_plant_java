@@ -2,6 +2,7 @@
 import { Component, output, signal, inject, DestroyRef, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
 import { TagNumberService } from '../../../services/tag-number.service';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { ClipboardService } from '../../../services/util/clipboard.service';
@@ -26,7 +27,7 @@ import { TableControlsService } from '../../../shared/table/refactored/services/
 @Component({
   selector: 'app-tag-number-generator',
   standalone: true,
-  imports: [CommonModule, FormsModule, NamingConventionComponent, RfValueSelectComponent, RfLotoPointTableComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, NamingConventionComponent, RfValueSelectComponent, RfLotoPointTableComponent],
   providers: [
     TableSelectionService,
     TableDragService,

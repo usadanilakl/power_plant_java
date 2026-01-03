@@ -1,45 +1,49 @@
-<div class="loto-builder-container">
-  <!-- Left Panel -->
-  <div
-    class="left-panel"
-    [style.width.px]="builderState.leftPanelWidth()"
-  >
-    <app-loto-builder-left-panel></app-loto-builder-left-panel>
-  </div>
+@if (builderState.isBuilderOpen()) {
+  <div class="loto-builder-overlay" (click)="onClose()">
+    <div class="loto-builder-container" (click)="$event.stopPropagation()">
+      <!-- Left Panel -->
+      <div
+        class="left-panel"
+        [style.width.px]="builderState.leftPanelWidth()"
+      >
+        <app-loto-builder-left-panel></app-loto-builder-left-panel>
+      </div>
 
-  <!-- Resizable Divider -->
-  <div
-    class="divider"
-    [class.resizing]="isResizing()"
-    (mousedown)="onDividerMouseDown($event)"
-  >
-    <div class="divider-handle"></div>
-  </div>
+      <!-- Resizable Divider -->
+      <div
+        class="divider"
+        [class.resizing]="isResizing()"
+        (mousedown)="onDividerMouseDown($event)"
+      >
+        <div class="divider-handle"></div>
+      </div>
 
-  <!-- Right Panel -->
-  <div class="right-panel">
-    <app-loto-builder-right-panel
-      (closeRequested)="onClose()"
-    ></app-loto-builder-right-panel>
-  </div>
+      <!-- Right Panel -->
+      <div class="right-panel">
+        <app-loto-builder-right-panel
+          (closeRequested)="onClose()"
+        ></app-loto-builder-right-panel>
+      </div>
 
-  <!-- Popups (overlays) -->
-  <app-loto-builder-form-popup></app-loto-builder-form-popup>
-  <app-loto-builder-table-popup></app-loto-builder-table-popup>
+      <!-- Popups (overlays) -->
+      <app-loto-builder-form-popup></app-loto-builder-form-popup>
+      <app-loto-builder-table-popup></app-loto-builder-table-popup>
 
-  <!-- LOTO Standards Carousel (floating window) -->
-  @if (builderState.isCarouselVisible()) {
-    <div class="carousel-wrapper">
-      <app-loto-form-carousel
-        [lotoStandards]="builderState.selectedLotoStandards()"
-        (standardUpdated)="onCarouselStandardUpdated($event)"
-        (standardSubmitted)="onCarouselStandardSubmitted($event)"
-        (standardCancelled)="onCarouselStandardCancelled($event)"
-        (close)="onCarouselClose()"
-      ></app-loto-form-carousel>
+      <!-- LOTO Standards Carousel (floating window) -->
+      @if (builderState.isCarouselVisible()) {
+        <div class="carousel-wrapper">
+          <app-loto-form-carousel
+            [lotoStandards]="builderState.selectedLotoStandards()"
+            (standardUpdated)="onCarouselStandardUpdated($event)"
+            (standardSubmitted)="onCarouselStandardSubmitted($event)"
+            (standardCancelled)="onCarouselStandardCancelled($event)"
+            (close)="onCarouselClose()"
+          ></app-loto-form-carousel>
+        </div>
+      }
+
+      <!-- LOTO Standards Selector Popup -->
+      <app-loto-standards-selector></app-loto-standards-selector>
     </div>
-  }
-
-  <!-- LOTO Standards Selector Popup -->
-  <app-loto-standards-selector></app-loto-standards-selector>
-</div>
+  </div>
+}

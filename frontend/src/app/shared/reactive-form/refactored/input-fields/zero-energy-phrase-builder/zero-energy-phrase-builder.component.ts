@@ -1,6 +1,7 @@
 import { Component, signal, inject, computed, input, ViewChild, AfterViewInit, Injector, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
 import { RfValueService } from '../../../../../features/values/refactored/services/rf-value.service';
 import { SearchableSelectInputComponent } from '../searchable-select-input/searchable-select-input.component';
 import { ValueDto } from '../../../../../models/value.model';
@@ -23,7 +24,7 @@ export interface ZeroEnergyPhrase {
 @Component({
   selector: 'app-zero-energy-phrase-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, SearchableSelectInputComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, SearchableSelectInputComponent],
   providers: [{
     provide: NG_VALUE_ACCESSOR,
     useExisting: ZeroEnergyPhraseBuilderComponent,

@@ -1,9 +1,11 @@
 
 import { Component, DestroyRef, effect, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 import { NestedItem, NestedItemImpl } from '../../../../models/ui/nested-item.model';
 import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.service';
+import { LotoBuilderStateService } from '../loto-builder/services/loto-builder-state.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 type GroupingCriteria = 'groups' | 'name' | 'none';
@@ -11,12 +13,13 @@ type GroupingCriteria = 'groups' | 'name' | 'none';
 @Component({
   selector: 'app-rf-loto-standard-left-menu',
   standalone: true,
-  imports: [CommonModule, RfToggleMenuComponent],
+  imports: [CommonModule, MatIconModule, RfToggleMenuComponent],
   templateUrl: './rf-loto-standard-left-menu.component.html',
   styleUrl: './rf-loto-standard-left-menu.component.css',
 })
 export class RfLotoStandardLeftMenuComponent implements OnInit {
   private stateService = inject(RfLotoStandardStateService);
+  private builderState = inject(LotoBuilderStateService);
   private destroyRef = inject(DestroyRef);
 
   // UI State
@@ -275,5 +278,12 @@ export class RfLotoStandardLeftMenuComponent implements OnInit {
   createNew(): void {
     // this.stateService.createNew();
     this.stateService.openForm();
+  }
+
+  /**
+   * Open LOTO Builder
+   */
+  openBuilder(): void {
+    this.builderState.openBuilder();
   }
 }

@@ -84,13 +84,7 @@ export class LotoBuilderContainerComponent {
    * Close the builder
    */
   onClose(): void {
-    if (this.builderState.hasUnsavedChanges()) {
-      const confirmed = confirm('You have unsaved changes. Are you sure you want to close?');
-      if (!confirmed) return;
-    }
-
-    // TODO: Navigate away or emit close event
-    this.builderState.reset();
+    this.builderState.closeBuilder();
   }
 
   /**

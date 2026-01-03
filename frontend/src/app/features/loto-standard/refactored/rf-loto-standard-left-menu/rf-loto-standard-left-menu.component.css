@@ -28,6 +28,7 @@
   gap: 0.5rem;
 }
 
+.builder-button,
 .create-button,
 .refresh-button {
   display: flex;
@@ -44,10 +45,19 @@
   transition: all 0.2s ease;
 }
 
+.builder-button:hover:not(:disabled),
 .create-button:hover:not(:disabled),
 .refresh-button:hover:not(:disabled) {
   background: var(--button-hover-bg, #f0f0f0);
   border-color: var(--primary-color, #1976d2);
+}
+
+.builder-button {
+  color: var(--primary-color, #1976d2);
+}
+
+.builder-button:hover:not(:disabled) {
+  background: var(--primary-light, #e3f2fd);
 }
 
 .create-button {

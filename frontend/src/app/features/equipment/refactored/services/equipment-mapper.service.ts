@@ -13,7 +13,11 @@ export class EquipmentMapperService{
             .filter((shape): shape is RfShape => shape !== null);
     }
 
-    mapToRfShape(equipment: EquipmentModel): RfShape | null {
+    mapToRfShape(equipment: EquipmentModel, options?: {
+        shouldHighlight?: boolean;
+        highlightColor?: string;
+        defaultColor?: string;
+    }): RfShape | null {
         if (!equipment.coordinates || !equipment.originalPictureSize) {
             return null;
         }
@@ -26,24 +30,71 @@ export class EquipmentMapperService{
                 return null;
             }
 
+            // Validate coordinates - all must be non-zero
+            if (!coordinates.startX || !coordinates.startY || !coordinates.endX || !coordinates.endY) {
+                console.warn('[mapToRfShape] Invalid coordinates:', {
+                    equipmentId: equipment.id,
+                    rawCoordinates: equipment.coordinates,
+                    parsed: coordinates
+                });
+                return null;
+            }
+
+            // Validate picture size
+            if (!pictureSize.width || !pictureSize.height) {
+                console.warn('[mapToRfShape] Invalid picture size:', {
+                    equipmentId: equipment.id,
+                    rawSize: equipment.originalPictureSize,
+                    parsed: pictureSize
+                });
+                return null;
+            }
+
+            // Calculate x, y, width, height from start/end coordinates
+            const x = Math.min(coordinates.startX, coordinates.endX);
+            const y = Math.min(coordinates.startY, coordinates.endY);
+            const width = coordinates.width;
+            const height = coordinates.height;
+
+            // Validate that width and height are non-zero
+            if (width === 0 || height === 0) {
+                console.warn('[mapToRfShape] Zero width or height:', {
+                    equipmentId: equipment.id,
+                    width,
+                    height,
+                    coordinates
+                });
+                return null;
+            }
+
+            // Determine color
+            let color: string;
+            if (options?.shouldHighlight) {
+                color = options.highlightColor || '#ff0000';
+            } else if (options?.defaultColor) {
+                color = options.defaultColor;
+            } else {
+                color = this.getShapeColor(equipment);
+            }
+
             const shape: RfRectangleShape = {
                 id: equipment.id || 0,
-                fileId: equipment.mainFileId || 0,
+                fileId: equipment.mainFileId || (equipment as any).mainFileObject?.id || 0,
                 type: 'rectangle',
-                color: this.getShapeColor(equipment),
+                color: color,
                 originalPictureWidth: pictureSize.width,
                 originalPictureHeight: pictureSize.height,
-                originalWidth: pictureSize.width,
-                originalHeight: pictureSize.height,
+                originalWidth: width,
+                originalHeight: height,
                 isSelected: false,
-                isBulkSelected: false,
+                isBulkSelected: options?.shouldHighlight || false,
                 currentImgWidth: pictureSize.width,
                 currentImgHeigth: pictureSize.height,
                 scaleToCurrentImage: 1,
-                x: Math.min(coordinates.startX, coordinates.endX),
-                y: Math.min(coordinates.startY, coordinates.endY),
-                width: coordinates.width,
-                height: coordinates.height,
+                x: x,
+                y: y,
+                width: width,
+                height: height,
                 rotation: equipment.rotation !== undefined && equipment.rotation !== null
                     ? equipment.rotation
                     : (coordinates.rotation !== undefined ? coordinates.rotation : 0)
@@ -58,35 +109,61 @@ export class EquipmentMapperService{
 
     private parseCoordinates(coordinatesStr: string): { startX: number; startY: number; endX: number; endY: number; width: number; height: number; rotation?: number } | null {
         try {
-            const cleanedCoords = coordinatesStr.replace(/\\/g, '').replace(/^"(.*)"$/, '$1');
-
-            let coordsObj;
-            try {
-                coordsObj = JSON.parse(cleanedCoords);
-            } catch {
-                const parts = cleanedCoords.split(',');
-                coordsObj = {
-                    startX: parseFloat(parts[0].split(':')[1]),
-                    startY: parseFloat(parts[1].split(':')[1]),
-                    endX: parseFloat(parts[2].split(':')[1]),
-                    endY: parseFloat(parts[3].split(':')[1]),
-                    width: parseFloat(parts[4].split(':')[1]),
-                    height: parseFloat(parts[5].split(':')[1]),
-                    rotation: parts[6] ? parseFloat(parts[6].split(':')[1]) : undefined
-                };
+            if (!coordinatesStr) {
+                return null;
             }
 
-            const startX = Number(coordsObj.startX);
-            const startY = Number(coordsObj.startY);
-            const endX = Number(coordsObj.endX);
-            const endY = Number(coordsObj.endY);
+            // Remove backslashes, quotes, and curly braces for flexible parsing
+            const cleanedCoords = coordinatesStr
+                .replace(/\\/g, '')
+                .replace(/^"(.*)"$/, '$1')
+                .replace(/[{}]/g, '')
+                .trim();
+
+            let coordsObj: any = {};
+
+            // Try JSON parse first
+            try {
+                const jsonStr = cleanedCoords.startsWith('{') ? cleanedCoords : `{${cleanedCoords}}`;
+                coordsObj = JSON.parse(jsonStr);
+            } catch {
+                // Fall back to key:value parsing (case-insensitive)
+                const parts = cleanedCoords.split(',');
+                parts.forEach(part => {
+                    const [key, value] = part.split(':');
+                    if (key && value) {
+                        const normalizedKey = key.trim().toLowerCase();
+                        const parsedValue = parseFloat(value.trim());
+                        if (!isNaN(parsedValue)) {
+                            coordsObj[normalizedKey] = parsedValue;
+                        }
+                    }
+                });
+            }
+
+            // Normalize keys to lowercase for consistent access
+            const normalizedObj: any = {};
+            for (const key in coordsObj) {
+                normalizedObj[key.toLowerCase()] = coordsObj[key];
+            }
+
+            const startX = Number(normalizedObj.startx);
+            const startY = Number(normalizedObj.starty);
+            const endX = Number(normalizedObj.endx);
+            const endY = Number(normalizedObj.endy);
 
             if (isNaN(startX) || isNaN(startY) || isNaN(endX) || isNaN(endY)) {
-                throw new Error('Invalid coordinate values');
+                console.warn('Invalid coordinate values:', { coordinatesStr, normalizedObj });
+                return null;
             }
 
-            const width = Math.abs(endX - startX);
-            const height = Math.abs(endY - startY);
+            // Calculate width and height if not provided
+            const width = normalizedObj.width !== undefined
+                ? Number(normalizedObj.width)
+                : Math.abs(endX - startX);
+            const height = normalizedObj.height !== undefined
+                ? Number(normalizedObj.height)
+                : Math.abs(endY - startY);
 
             return {
                 startX,
@@ -95,31 +172,60 @@ export class EquipmentMapperService{
                 endY,
                 width,
                 height,
-                rotation: coordsObj.rotation !== undefined ? Number(coordsObj.rotation) : undefined
+                rotation: normalizedObj.rotation !== undefined ? Number(normalizedObj.rotation) : undefined
             };
         } catch (error) {
-            console.error('Error parsing coordinates:', error);
+            console.error('Error parsing coordinates:', { coordinatesStr, error });
             return null;
         }
     }
 
     private parsePictureSize(pictureSizeStr: string): { width: number; height: number } | null {
         try {
-            const sizeMatch = pictureSizeStr.match(/width:(\d+),height:(\d+)/);
-            if (!sizeMatch) {
-                throw new Error('Invalid original picture size format');
+            if (!pictureSizeStr) {
+                return null;
             }
 
-            const width = Number(sizeMatch[1]);
-            const height = Number(sizeMatch[2]);
+            // Remove curly braces if present for flexible parsing
+            const cleanedString = pictureSizeStr.replace(/[{}]/g, '').trim();
 
-            if (isNaN(width) || isNaN(height)) {
-                throw new Error('Invalid original picture size values');
+            // Try regex match first (faster for standard format)
+            const sizeMatch = cleanedString.match(/width:(\d+(?:\.\d+)?),\s*height:(\d+(?:\.\d+)?)/i);
+            if (sizeMatch) {
+                const width = Number(sizeMatch[1]);
+                const height = Number(sizeMatch[2]);
+
+                if (!isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
+                    return { width, height };
+                }
             }
 
-            return { width, height };
+            // Fall back to key:value parsing (case-insensitive)
+            const parts = cleanedString.split(',');
+            const size: any = {};
+
+            parts.forEach(part => {
+                const [key, value] = part.split(':');
+                if (key && value) {
+                    const normalizedKey = key.trim().toLowerCase();
+                    const parsedValue = parseFloat(value.trim());
+                    if (!isNaN(parsedValue)) {
+                        size[normalizedKey] = parsedValue;
+                    }
+                }
+            });
+
+            const width = size.width;
+            const height = size.height;
+
+            if (width && height && !isNaN(width) && !isNaN(height) && width > 0 && height > 0) {
+                return { width, height };
+            }
+
+            console.warn('Invalid picture size format:', pictureSizeStr);
+            return null;
         } catch (error) {
-            console.error('Error parsing picture size:', error);
+            console.error('Error parsing picture size:', { pictureSizeStr, error });
             return null;
         }
     }

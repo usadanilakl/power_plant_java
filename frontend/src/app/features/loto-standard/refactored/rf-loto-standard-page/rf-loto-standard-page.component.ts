@@ -6,6 +6,7 @@ import { RfPopupProjectionComponent } from "../../../../shared/popup-projection/
 import { RfLotoStandardFormComponent } from "../rf-loto-standard-form/rf-loto-standard-form.component";
 import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.service';
 import { RfLotoStandardLeftMenuComponent } from "../rf-loto-standard-left-menu/rf-loto-standard-left-menu.component";
+import { LotoBuilderContainerComponent } from "../loto-builder/loto-builder-container.component";
 
 @Component({
   selector: 'app-rf-loto-standard-page',
@@ -16,7 +17,8 @@ import { RfLotoStandardLeftMenuComponent } from "../rf-loto-standard-left-menu/r
     RouterOutlet,
     RfPopupProjectionComponent,
     RfLotoStandardFormComponent,
-    RfLotoStandardLeftMenuComponent
+    RfLotoStandardLeftMenuComponent,
+    LotoBuilderContainerComponent
 ],
   templateUrl: './rf-loto-standard-page.component.html',
   styleUrl: './rf-loto-standard-page.component.css',

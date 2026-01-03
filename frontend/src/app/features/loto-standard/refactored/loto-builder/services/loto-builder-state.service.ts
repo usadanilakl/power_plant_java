@@ -50,6 +50,9 @@ export class LotoBuilderStateService {
 
   // ========== UI State ==========
 
+  /** Whether the builder popup is open */
+  isBuilderOpen = signal<boolean>(false);
+
   /** Hovered shape ID (for highlighting) */
   hoveredShapeId = signal<number | null>(null);
 
@@ -316,6 +319,25 @@ export class LotoBuilderStateService {
         this.openLotoStandardsPopup();
       }
     }
+  }
+
+  /**
+   * Open the builder popup
+   */
+  openBuilder(): void {
+    this.isBuilderOpen.set(true);
+  }
+
+  /**
+   * Close the builder popup
+   */
+  closeBuilder(): void {
+    if (this.hasUnsavedChanges()) {
+      const confirmed = confirm('You have unsaved changes. Are you sure you want to close?');
+      if (!confirmed) return;
+    }
+    this.isBuilderOpen.set(false);
+    this.reset();
   }
 
   /**

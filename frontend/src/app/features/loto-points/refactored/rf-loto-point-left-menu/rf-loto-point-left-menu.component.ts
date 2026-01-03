@@ -1,5 +1,6 @@
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NestedItem } from '../../../../models/ui/nested-item.model';
 import { RfLotoPointLeftMenuService, GroupingCriteria } from '../services/rf-loto-point-left-menu.service';
@@ -9,7 +10,7 @@ import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-tog
 @Component({
   selector: 'app-rf-loto-point-left-menu',
   standalone: true,
-  imports: [CommonModule, RfToggleMenuComponent],
+  imports: [CommonModule, MatIconModule, RfToggleMenuComponent],
   templateUrl: './rf-loto-point-left-menu.component.html',
   styleUrl: './rf-loto-point-left-menu.component.css'
 })
