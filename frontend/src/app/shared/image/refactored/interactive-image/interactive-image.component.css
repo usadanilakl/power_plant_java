@@ -108,6 +108,34 @@ canvas {
   overflow: hidden;
 }
 
+/* When used in a context without fixed height, size to image content */
+:host-context(.large-image-container) .interactive-image-container {
+  height: auto;
+}
+
+:host-context(.large-image-container) .image-workspace {
+  height: auto;
+}
+
+:host-context(.large-image-container) .image-container {
+  height: auto;
+}
+
+:host-context(.large-image-container) .zoom-outer {
+  height: auto;
+}
+
+:host-context(.large-image-container) .zoom-element {
+  height: auto;
+}
+
+:host-context(.large-image-container) .main-image {
+  height: auto;
+  max-height: 600px;
+  width: 100%;
+  object-fit: contain;
+}
+
 .symbol-palette-sidebar {
   width: 280px;
   flex-shrink: 0;

@@ -152,10 +152,12 @@
 
 /* Large Image Container */
 .large-image-container {
-  flex: 1;
   position: relative;
   overflow: hidden;
   background: var(--image-background, #f0f0f0);
+  /* Size to content instead of expanding infinitely */
+  min-height: 200px;
+  max-height: 600px;
 }
 
 .no-image-message {

@@ -55,26 +55,3 @@
   </app-tag-number-generator>
 </app-popup-projection>
 
-<!-- <app-rf-reactive-form
-  [entity]="entity()"
-  [fields]="fields()"
-  [title]="'Loto Point Form'"
-  (formValueChange)="onAnyValueChange($event)"
-  (formSubmit)="onSubmit($event)"
->
-  <ng-container extra-buttons>
-    <div class="clipboard-controls">
-      <label for="itemNumber" class="clipboard-label">Clipboard Item:</label>
-      <input
-        id="itemNumber"
-        type="number"
-        class="clipboard-input"
-        [value]="itemNumber()"
-        (change)="itemNumber.set($any($event.target).value)"
-        min="0"
-        [max]="clipboardItems().length"
-        [disabled]="clipboardItems().length === 0"
-      />
-    </div>
-  </ng-container>
-</app-rf-reactive-form> -->

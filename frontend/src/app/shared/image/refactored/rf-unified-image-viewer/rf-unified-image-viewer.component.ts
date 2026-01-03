@@ -116,7 +116,7 @@ export class RfUnifiedImageViewerComponent {
 
   selectedCarouselImage = signal<CarouselImage | null>(null);
   clickedLotoPoint = signal<LotoPointDto | null>(null);
-  isCollapsed = signal<boolean>(false);
+  isCollapsed = signal<boolean>(true);
 
   // ==================== COMPUTED DATA ====================
 
