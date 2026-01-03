@@ -836,6 +836,11 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                 .fileName(firstEquipment != null && firstEquipment.getMainFile() != null
                         ? firstEquipment.getMainFile().getName()
                         : "Unknown")
+                .equipmentIds(lp.getEquipmentList() != null
+                        ? lp.getEquipmentList().stream()
+                                .map(Equipment::getId)
+                                .collect(Collectors.toList())
+                        : new java.util.ArrayList<>())
                 .build();
     }
 

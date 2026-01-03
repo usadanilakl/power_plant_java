@@ -125,3 +125,11 @@
     [selectedEquipmentId]="selectedEquipment()?.id!"
   ></app-rf-equipment-editor>
 </app-rf-popup-projection>
+
+<!-- Conflict Dialog -->
+<app-equipment-conflict-dialog
+  [isOpen]="isConflictDialogOpen()"
+  [data]="conflictDialogData()"
+  (confirmed)="onConflictConfirmed($event)"
+  (cancelled)="onConflictCancelled()"
+/>

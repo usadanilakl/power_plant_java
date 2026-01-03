@@ -17,6 +17,9 @@ export interface LotoPointSummaryModel extends BaseModel {
   unit: string;
   zeroEnergyMethod: string | null;
   fileName: string;
+
+  // Equipment IDs for conflict detection
+  equipmentIds: number[];
 }
 
 export class LotoPointSummaryDto implements LotoPointSummaryModel {
@@ -33,6 +36,7 @@ export class LotoPointSummaryDto implements LotoPointSummaryModel {
   unit!: string;
   zeroEnergyMethod!: string | null;
   fileName!: string;
+  equipmentIds!: number[];
 
   constructor(data: Partial<LotoPointSummaryDto> = {}) {
     this.id = data.id ?? 0;
@@ -48,6 +52,7 @@ export class LotoPointSummaryDto implements LotoPointSummaryModel {
     this.unit = data.unit ?? '';
     this.zeroEnergyMethod = data.zeroEnergyMethod ?? null;
     this.fileName = data.fileName ?? '';
+    this.equipmentIds = data.equipmentIds ?? [];
   }
 
   static fromJson(json: any): LotoPointSummaryDto {
@@ -67,7 +72,8 @@ export class LotoPointSummaryDto implements LotoPointSummaryModel {
       system: json.system || '',
       unit: json.unit || '',
       zeroEnergyMethod: json.zeroEnergyMethod,
-      fileName: json.fileName || ''
+      fileName: json.fileName || '',
+      equipmentIds: json.equipmentIds || []
     });
   }
 
@@ -84,7 +90,8 @@ export class LotoPointSummaryDto implements LotoPointSummaryModel {
       system: this.system,
       unit: this.unit,
       zeroEnergyMethod: this.zeroEnergyMethod,
-      fileName: this.fileName
+      fileName: this.fileName,
+      equipmentIds: this.equipmentIds
     };
   }
 }

@@ -69,6 +69,12 @@ export interface FormField {
     field: string;
     value: any;
   };
+
+  // Context for equipment-list-manager conflict detection
+  context?: {
+    currentLotoPointId?: number;
+    currentLotoPointTagNumber?: string;
+  };
 }
 
 export interface FormFieldGroup {
@@ -142,5 +148,11 @@ export interface RfFormField {
   showWhen?: {
     field: string;
     value: any;
+  };
+
+  // Context for equipment-list-manager conflict detection
+  context?: {
+    currentLotoPointId?: number;
+    currentLotoPointTagNumber?: string;
   };
 }

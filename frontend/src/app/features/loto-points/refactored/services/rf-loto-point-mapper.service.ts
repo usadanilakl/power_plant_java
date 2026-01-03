@@ -511,6 +511,10 @@ export class LotoPointMapperService {
         label: 'Equipment List',
         type: 'equipment-list-manager',
         initialValue: lotoPoint.equipmentList || [],
+        context: {
+          currentLotoPointId: lotoPoint.id,
+          currentLotoPointTagNumber: lotoPoint.tagNumber || undefined,
+        },
       }
 
     };

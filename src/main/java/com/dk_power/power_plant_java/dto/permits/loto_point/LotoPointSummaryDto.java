@@ -27,4 +27,7 @@ public class LotoPointSummaryDto {
     private String unit;             // Unit
     private String zeroEnergyMethod; // Zero energy method
     private String fileName;         // First equipment's file name
+
+    // Equipment IDs for conflict detection
+    private java.util.List<Long> equipmentIds;
 }

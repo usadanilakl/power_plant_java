@@ -5,10 +5,10 @@ import { RfPopupProjectionComponent } from '../../../../popup-projection/rf-popu
 import { EquipmentBrowserDialogComponent } from '../equipment-browser-dialog/equipment-browser-dialog.component';
 import { EquipmentShapeDrawerDialogComponent } from '../equipment-shape-drawer-dialog/equipment-shape-drawer-dialog.component';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
-import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
-import { FileDto } from '../../../../../models/file/file.model';
 import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
 import { RfEquipmentEditorComponent } from "../../../../../features/equipment/refactored/rf-equipment-editor/rf-equipment-editor.component";
+import { EquipmentLotoConflictService } from '../services/equipment-loto-conflict.service';
+import { EquipmentConflictDialogComponent, ConflictDialogData } from '../equipment-conflict-dialog/equipment-conflict-dialog.component';
 
 interface EquipmentListItem {
   id?: number;
@@ -28,7 +28,8 @@ interface EquipmentListItem {
     RfPopupProjectionComponent,
     EquipmentBrowserDialogComponent,
     EquipmentShapeDrawerDialogComponent,
-    RfEquipmentEditorComponent
+    RfEquipmentEditorComponent,
+    EquipmentConflictDialogComponent
 ],
   templateUrl: './equipment-list-manager.component.html',
   styleUrl: './equipment-list-manager.component.css',
@@ -44,16 +45,22 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   @Input() label: string = 'Equipment List';
   @Input() allowBrowse: boolean = true;  // Allow selecting existing equipment
   @Input() allowDraw: boolean = true;    // Allow drawing new shapes
+  @Input() currentLotoPointId?: number;  // For conflict detection exclusion
+  @Input() currentLotoPointTagNumber?: string;  // For conflict dialog display
 
   // Services
   private equipmentMapper = inject(EquipmentMapperService);
+  private conflictService = inject(EquipmentLotoConflictService);
 
   // State
   isBrowserOpen = signal(false);
   isDrawerOpen = signal(false);
   isVeiewerOpen = signal(false);
+  isConflictDialogOpen = signal(false);
   equipmentList = signal<EquipmentListItem[]>([]);
   selectedEquipment = signal<EquipmentListItem | null>(null);
+  conflictDialogData = signal<ConflictDialogData | null>(null);
+  pendingEquipment = signal<EquipmentDto | null>(null);
 
   // ControlValueAccessor
   value = signal<EquipmentListItem[]>([]);
@@ -121,6 +128,30 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   }
 
   onEquipmentSelected(equipment: EquipmentDto) {
+    // Check for conflicts with existing LOTO points
+    if (equipment.id) {
+      const conflicts = this.conflictService.findConflicts(equipment.id, this.currentLotoPointId);
+
+      if (conflicts.length > 0) {
+        // Show conflict dialog
+        this.pendingEquipment.set(equipment);
+        this.conflictDialogData.set({
+          equipment,
+          conflicts,
+          currentLotoPointTagNumber: this.currentLotoPointTagNumber
+        });
+        this.isConflictDialogOpen.set(true);
+        this.closeBrowser();
+        return;
+      }
+    }
+
+    // No conflicts, add directly
+    this.addEquipmentToList(equipment);
+    this.closeBrowser();
+  }
+
+  private addEquipmentToList(equipment: EquipmentDto) {
     const newItem: EquipmentListItem = {
       id: equipment.id,
       coordinates: equipment.coordinates || '',
@@ -132,7 +163,22 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     };
 
     this.addItem(newItem);
-    this.closeBrowser();
+  }
+
+  // Conflict Dialog handlers
+  onConflictConfirmed(equipment: EquipmentDto) {
+    this.addEquipmentToList(equipment);
+    this.closeConflictDialog();
+  }
+
+  onConflictCancelled() {
+    this.closeConflictDialog();
+  }
+
+  private closeConflictDialog() {
+    this.isConflictDialogOpen.set(false);
+    this.conflictDialogData.set(null);
+    this.pendingEquipment.set(null);
   }
 
   // Drawer Dialog

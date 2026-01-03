@@ -109,7 +109,7 @@ export const routes: Routes = [
       path: 'loto-points', component: RfLotoPointPageComponent,
       children: [
         { path: '', redirectTo: 'table', pathMatch: 'full' },
-        { path: 'table', component: SourceLotoPointTableComponent },
+        { path: 'table', component: DoubleLotoPointTableComponent },
         { path: ':lotoPointId', component: LotoPointComponent }
       ]
     },

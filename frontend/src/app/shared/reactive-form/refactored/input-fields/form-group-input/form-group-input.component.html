@@ -33,6 +33,8 @@
             <app-equipment-list-manager
               [label]="field.label"
               [formControl]="getFormControl(field.name)"
+              [currentLotoPointId]="field.context?.currentLotoPointId"
+              [currentLotoPointTagNumber]="field.context?.currentLotoPointTagNumber"
             >
             </app-equipment-list-manager>
           }
