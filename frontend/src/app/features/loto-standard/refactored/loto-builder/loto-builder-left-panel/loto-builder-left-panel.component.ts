@@ -15,6 +15,8 @@ import { TableSearchService } from '../../../../../shared/table/refactored/servi
 import { TableSortService } from '../../../../../shared/table/refactored/services/table-sort.service';
 import { TableResizeService } from '../../../../../shared/table/refactored/services/table-resize.service';
 import { TableSyncService } from '../../../../../shared/table/refactored/services/table-sync.service';
+import { LotoPointBulkEditService } from '../../../../loto-points/refactored/services/loto-point-bulk-edit.service';
+import { RfLotoPointTableDataService } from '../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table-data.service';
 
 @Component({
   selector: 'app-loto-builder-left-panel',
@@ -37,6 +39,8 @@ import { TableSyncService } from '../../../../../shared/table/refactored/service
     TableSortService,
     TableResizeService,
     TableSyncService,
+    LotoPointBulkEditService,
+    RfLotoPointTableDataService
   ],
   templateUrl: './loto-builder-left-panel.component.html',
   styleUrl: './loto-builder-left-panel.component.css',

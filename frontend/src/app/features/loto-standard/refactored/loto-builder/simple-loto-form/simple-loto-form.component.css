@@ -1,0 +1,254 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.simple-loto-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--primary-background, #ffffff);
+  border: 2px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.simple-loto-form.active {
+  border-color: var(--primary-color, #2196F3);
+  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.3);
+}
+
+/* Form Header */
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--primary-color, #2196F3) 0%, #1976D2 100%);
+  color: white;
+  flex-shrink: 0;
+}
+
+.form-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.point-count-badge {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+}
+
+/* Form Body */
+.form-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-text, #333);
+}
+
+.form-input,
+.form-textarea {
+  padding: 10px 12px;
+  border: 2px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: var(--input-background, #ffffff);
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #2196F3);
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Points List */
+.points-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--secondary-text, #666);
+}
+
+.empty-message {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.empty-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tertiary-text, #999);
+  font-style: italic;
+}
+
+.point-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--secondary-background, #f5f5f5);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.point-item:hover {
+  background: var(--hover-color, #e3f2fd);
+  border-color: var(--primary-color, #2196F3);
+}
+
+.point-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.point-tag {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-color, #2196F3);
+}
+
+.point-description {
+  font-size: 13px;
+  color: var(--secondary-text, #666);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-button {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--secondary-text, #666);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.remove-button:hover {
+  background: #ffebee;
+  border-color: #f44336;
+  color: #f44336;
+}
+
+/* Form Footer */
+.form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 2px solid var(--border-color, #e0e0e0);
+  background: var(--secondary-background, #f9f9f9);
+  flex-shrink: 0;
+}
+
+.button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.button-secondary {
+  background: var(--secondary-background, #f5f5f5);
+  color: var(--primary-text, #333);
+  border: 2px solid var(--border-color, #e0e0e0);
+}
+
+.button-secondary:hover {
+  background: var(--hover-color, #e0e0e0);
+}
+
+.button-primary {
+  background: var(--primary-color, #2196F3);
+  color: white;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: #1976D2;
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
+  transform: translateY(-1px);
+}
+
+.button-primary:disabled {
+  background: var(--disabled-background, #cccccc);
+  color: var(--disabled-text, #999);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Scrollbar Styling */
+.form-body::-webkit-scrollbar,
+.points-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.form-body::-webkit-scrollbar-track,
+.points-list::-webkit-scrollbar-track {
+  background: var(--secondary-background, #f5f5f5);
+  border-radius: 4px;
+}
+
+.form-body::-webkit-scrollbar-thumb,
+.points-list::-webkit-scrollbar-thumb {
+  background: var(--border-color, #e0e0e0);
+  border-radius: 4px;
+}
+
+.form-body::-webkit-scrollbar-thumb:hover,
+.points-list::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-text, #999);
+}

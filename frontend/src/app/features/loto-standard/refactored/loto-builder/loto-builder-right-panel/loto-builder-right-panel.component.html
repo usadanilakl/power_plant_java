@@ -28,7 +28,7 @@
     }
   </div>
 
-  <!-- Toolbar (will be enhanced in next phase) -->
+  <!-- Toolbar -->
   <div class="toolbar">
     <button
       class="toolbar-button"
@@ -39,10 +39,18 @@
     </button>
     <button
       class="toolbar-button"
-      title="LOTO Standards"
+      [class.active]="builderState.isCarouselVisible()"
+      title="Toggle LOTO Building Mode"
+      (click)="builderState.toggleCarousel()"
+    >
+      🔧 Build LOTO ({{ builderState.selectedLotoStandards().length }})
+    </button>
+    <button
+      class="toolbar-button"
+      title="Select LOTO Standards"
       (click)="builderState.openLotoStandardsPopup()"
     >
-      📚 Standards
+      📚 Select Standards
     </button>
     <button
       class="toolbar-button primary"

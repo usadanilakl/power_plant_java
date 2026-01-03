@@ -42,6 +42,11 @@
     </div>
 
     <div class="info-footer">
+      @if (canAddToStandard()) {
+        <button class="action-button secondary" (click)="addToActiveStandard()" title="Add to active LOTO standard">
+          + Add to "{{ activeStandardName() }}"
+        </button>
+      }
       <button class="action-button primary" (click)="close()">
         Close
       </button>

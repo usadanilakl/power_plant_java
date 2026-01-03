@@ -1,0 +1,78 @@
+<div class="carousel-container">
+  <!-- Header with navigation and close -->
+  <div class="carousel-header">
+    <div class="carousel-title">
+      <h2>LOTO Standards Editor</h2>
+      @if (hasMultiple()) {
+        <span class="carousel-counter">{{ activeIndex() + 1 }} / {{ totalCount() }}</span>
+      }
+    </div>
+    <button
+      type="button"
+      class="close-button"
+      (click)="onClose()"
+      title="Close carousel"
+    >
+      ✕
+    </button>
+  </div>
+
+  <!-- Navigation arrows (only show if multiple standards) -->
+  @if (hasMultiple()) {
+    <div class="carousel-navigation">
+      <button
+        type="button"
+        class="nav-button prev"
+        [disabled]="!canGoPrevious()"
+        (click)="goToPrevious()"
+        title="Previous standard"
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        class="nav-button next"
+        [disabled]="!canGoNext()"
+        (click)="goToNext()"
+        title="Next standard"
+      >
+        ›
+      </button>
+    </div>
+  }
+
+  <!-- Carousel content area -->
+  <div class="carousel-content">
+    @if (activeStandard()) {
+      <app-simple-loto-form
+        [lotoStandard]="activeStandard()!"
+        [isActive]="true"
+        (nameChanged)="onNameChanged($event)"
+        (descriptionChanged)="onDescriptionChanged($event)"
+        (removePoint)="onRemovePoint($event)"
+        (submit)="onSubmit($event)"
+        (cancel)="onCancel()"
+      ></app-simple-loto-form>
+    } @else {
+      <div class="empty-carousel">
+        <p class="empty-message">No LOTO standards to display</p>
+        <p class="empty-hint">Add a new standard or select an existing one</p>
+      </div>
+    }
+  </div>
+
+  <!-- Dot indicators (only show if multiple standards) -->
+  @if (hasMultiple()) {
+    <div class="carousel-indicators">
+      @for (standard of lotoStandards(); track standard.id; let i = $index) {
+        <button
+          type="button"
+          class="indicator-dot"
+          [class.active]="i === activeIndex()"
+          (click)="goToIndex(i)"
+          [title]="standard.name || 'Untitled'"
+        ></button>
+      }
+    </div>
+  }
+</div>

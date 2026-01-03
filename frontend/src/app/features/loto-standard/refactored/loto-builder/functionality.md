@@ -18,7 +18,10 @@ User interactions:
 6. on right click and drag (outside of shapes - on image) a new shape is drawn and at the end of draw - shape is converted to equipment and saved on server. then loto point form opens where user can fill out a new loto point information or associate existing.
 7. User can call "show loto points" menu where a loto point table is displaying all loto points that are in the current file - loto point table has full functionality of loto point table - row/cell mode, context menu, loto point form to edit, clipboard, bulk-edit.
 8. User can select loto-building-mode where one or multiple loto standards can be selected (existing or new)
-8. User can add loto points to: any of the lotos that were selected for edit.
+9. User can add loto points to: any of the lotos that were selected for edit.
+    -create simple-loto-form container that shows loto standard data - name, description, loto points (as list). - text fields are editable from the from, loto points are added externaly
+    -create carousel component that renders simple loto-forms and have a way to scroll through them. Render this as floating window.
+    -items from loto builder component can be added to the simple form. on submit froms disapear from list of edited lotos.
 
 Structure:
 1. Main window component:

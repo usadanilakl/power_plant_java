@@ -1,0 +1,148 @@
+@if (isVisible()) {
+  <div class="selector-overlay" (click)="onCancel()">
+    <div class="selector-container" (click)="$event.stopPropagation()">
+      <!-- Header -->
+      <div class="selector-header">
+        <h2>Select LOTO Standards</h2>
+        <button type="button" class="close-button" (click)="onCancel()" title="Close">
+          ✕
+        </button>
+      </div>
+
+      <!-- Content -->
+      <div class="selector-content">
+        @if (!showCreateNew()) {
+          <!-- Search and List View -->
+          <div class="search-section">
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Search by name or description..."
+              [value]="searchTerm()"
+              (input)="onSearchChange($any($event.target).value)"
+            />
+          </div>
+
+          @if (isLoading()) {
+            <div class="loading-state">
+              <p>Loading LOTO standards...</p>
+            </div>
+          } @else if (errorMessage()) {
+            <div class="error-state">
+              <p class="error-message">{{ errorMessage() }}</p>
+              <button type="button" class="retry-button" (click)="loadStandards()">
+                Retry
+              </button>
+            </div>
+          } @else {
+            <div class="standards-list">
+              @if (filteredStandards().length === 0) {
+                <div class="empty-state">
+                  <p class="empty-message">No LOTO standards found</p>
+                  @if (searchTerm()) {
+                    <p class="empty-hint">Try adjusting your search</p>
+                  } @else {
+                    <p class="empty-hint">Create a new standard to get started</p>
+                  }
+                </div>
+              } @else {
+                @for (standard of filteredStandards(); track standard.id) {
+                  <div
+                    class="standard-item"
+                    [class.selected]="isSelected(standard.id)"
+                    (click)="toggleSelection(standard.id)"
+                  >
+                    <div class="standard-checkbox">
+                      <input
+                        type="checkbox"
+                        [checked]="isSelected(standard.id)"
+                        (click)="$event.stopPropagation()"
+                        (change)="toggleSelection(standard.id)"
+                      />
+                    </div>
+                    <div class="standard-info">
+                      <div class="standard-name">{{ standard.name || 'Untitled' }}</div>
+                      @if (standard.description) {
+                        <div class="standard-description">{{ standard.description }}</div>
+                      }
+                      @if (standard.lotoPoints && standard.lotoPoints.length > 0) {
+                        <div class="standard-points-count">
+                          {{ standard.lotoPoints.length }} point{{
+                            standard.lotoPoints.length !== 1 ? 's' : ''
+                          }}
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
+        } @else {
+          <!-- Create New Form -->
+          <div class="create-new-form">
+            <div class="form-field">
+              <label for="new-name">Name*</label>
+              <input
+                id="new-name"
+                type="text"
+                class="form-input"
+                placeholder="Enter LOTO standard name"
+                [value]="newStandardName()"
+                (input)="newStandardName.set($any($event.target).value)"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="new-description">Description</label>
+              <textarea
+                id="new-description"
+                class="form-textarea"
+                rows="4"
+                placeholder="Enter description (optional)"
+                [value]="newStandardDescription()"
+                (input)="newStandardDescription.set($any($event.target).value)"
+              ></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="button button-secondary" (click)="hideCreateNewForm()">
+                Back to List
+              </button>
+              <button
+                type="button"
+                class="button button-primary"
+                [disabled]="!canCreateNew()"
+                (click)="createNewStandard()"
+              >
+                Create & Add
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Footer -->
+      <div class="selector-footer">
+        @if (!showCreateNew()) {
+          <button type="button" class="button button-secondary" (click)="showCreateNewForm()">
+            + Create New Standard
+          </button>
+          <div class="footer-actions">
+            <button type="button" class="button button-secondary" (click)="onCancel()">
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="button button-primary"
+              [disabled]="!hasSelection()"
+              (click)="addSelectedStandards()"
+            >
+              Add Selected ({{ selectedStandardIds().size }})
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

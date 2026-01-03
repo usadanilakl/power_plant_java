@@ -26,4 +26,20 @@
   <!-- Popups (overlays) -->
   <app-loto-builder-form-popup></app-loto-builder-form-popup>
   <app-loto-builder-table-popup></app-loto-builder-table-popup>
+
+  <!-- LOTO Standards Carousel (floating window) -->
+  @if (builderState.isCarouselVisible()) {
+    <div class="carousel-wrapper">
+      <app-loto-form-carousel
+        [lotoStandards]="builderState.selectedLotoStandards()"
+        (standardUpdated)="onCarouselStandardUpdated($event)"
+        (standardSubmitted)="onCarouselStandardSubmitted($event)"
+        (standardCancelled)="onCarouselStandardCancelled($event)"
+        (close)="onCarouselClose()"
+      ></app-loto-form-carousel>
+    </div>
+  }
+
+  <!-- LOTO Standards Selector Popup -->
+  <app-loto-standards-selector></app-loto-standards-selector>
 </div>

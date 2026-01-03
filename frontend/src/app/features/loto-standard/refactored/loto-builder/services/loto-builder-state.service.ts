@@ -45,6 +45,9 @@ export class LotoBuilderStateService {
   /** Selected LOTO standards for building mode */
   selectedLotoStandards = signal<LotoStandardDto[]>([]);
 
+  /** Currently active LOTO standard index in carousel */
+  activeLotoStandardIndex = signal<number>(0);
+
   // ========== UI State ==========
 
   /** Hovered shape ID (for highlighting) */
@@ -97,6 +100,18 @@ export class LotoBuilderStateService {
 
   /** Whether builder is in a dirty state (unsaved changes) */
   hasUnsavedChanges = signal<boolean>(false);
+
+  /** Currently active LOTO standard */
+  activeLotoStandard = computed(() => {
+    const standards = this.selectedLotoStandards();
+    const index = this.activeLotoStandardIndex();
+    return standards[index] || null;
+  });
+
+  /** Whether carousel should be visible */
+  isCarouselVisible = computed(() => {
+    return this.isLotoBuildingMode() && this.selectedLotoStandards().length > 0;
+  });
 
   // ========== Methods ==========
 
@@ -212,6 +227,98 @@ export class LotoBuilderStateService {
   }
 
   /**
+   * Add LOTO standard to the list
+   */
+  addLotoStandard(standard: LotoStandardDto): void {
+    this.selectedLotoStandards.update(standards => [...standards, standard]);
+    // Set active index to the newly added standard
+    this.activeLotoStandardIndex.set(this.selectedLotoStandards().length - 1);
+  }
+
+  /**
+   * Update LOTO standard at specific index
+   */
+  updateLotoStandard(index: number, standard: LotoStandardDto): void {
+    this.selectedLotoStandards.update(standards => {
+      const updated = [...standards];
+      if (index >= 0 && index < updated.length) {
+        updated[index] = standard;
+      }
+      return updated;
+    });
+  }
+
+  /**
+   * Remove LOTO standard at specific index
+   */
+  removeLotoStandard(index: number): void {
+    this.selectedLotoStandards.update(standards => {
+      const updated = standards.filter((_, i) => i !== index);
+      return updated;
+    });
+
+    // Adjust active index if needed
+    const currentActive = this.activeLotoStandardIndex();
+    if (currentActive >= this.selectedLotoStandards().length) {
+      this.activeLotoStandardIndex.set(Math.max(0, this.selectedLotoStandards().length - 1));
+    }
+  }
+
+  /**
+   * Set active LOTO standard index
+   */
+  setActiveLotoStandardIndex(index: number): void {
+    if (index >= 0 && index < this.selectedLotoStandards().length) {
+      this.activeLotoStandardIndex.set(index);
+    }
+  }
+
+  /**
+   * Add LOTO point to currently active standard
+   */
+  addLotoPointToActiveStandard(lotoPoint: LotoPointDto): void {
+    const index = this.activeLotoStandardIndex();
+    const standard = this.activeLotoStandard();
+
+    if (standard) {
+      const existingPoints = standard.lotoPoints || [];
+
+      // Check if point already exists
+      if (existingPoints.some(p => p.id === lotoPoint.id)) {
+        console.warn('LOTO point already exists in this standard');
+        return;
+      }
+
+      const updatedStandard = new LotoStandardDto({
+        ...standard,
+        lotoPoints: [...existingPoints, lotoPoint]
+      });
+
+      this.updateLotoStandard(index, updatedStandard);
+    }
+  }
+
+  /**
+   * Toggle LOTO building mode with carousel
+   */
+  toggleCarousel(): void {
+    const isVisible = this.isCarouselVisible();
+
+    if (isVisible) {
+      // Close carousel - ask for confirmation if standards exist
+      this.isLotoBuildingMode.set(false);
+    } else {
+      // Open carousel
+      this.isLotoBuildingMode.set(true);
+
+      // If no standards, open the selector popup
+      if (this.selectedLotoStandards().length === 0) {
+        this.openLotoStandardsPopup();
+      }
+    }
+  }
+
+  /**
    * Reset builder state
    */
   reset(): void {
@@ -220,6 +327,7 @@ export class LotoBuilderStateService {
     this.currentEquipment.set([]);
     this.currentShapes.set([]);
     this.selectedLotoStandards.set([]);
+    this.activeLotoStandardIndex.set(0);
     this.isLotoBuildingMode.set(false);
     this.hasUnsavedChanges.set(false);
     this.closeLotoPointForm();

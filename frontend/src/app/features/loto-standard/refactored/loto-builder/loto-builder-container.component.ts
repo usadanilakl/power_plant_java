@@ -5,6 +5,9 @@ import { LotoBuilderLeftPanelComponent } from './loto-builder-left-panel/loto-bu
 import { LotoBuilderRightPanelComponent } from './loto-builder-right-panel/loto-builder-right-panel.component';
 import { LotoBuilderFormPopupComponent } from './loto-builder-form-popup/loto-builder-form-popup.component';
 import { LotoBuilderTablePopupComponent } from './loto-builder-table-popup/loto-builder-table-popup.component';
+import { LotoFormCarouselComponent } from './loto-form-carousel/loto-form-carousel.component';
+import { LotoStandardsSelectorComponent } from './loto-standards-selector/loto-standards-selector.component';
+import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
 
 @Component({
   selector: 'app-loto-builder-container',
@@ -15,6 +18,8 @@ import { LotoBuilderTablePopupComponent } from './loto-builder-table-popup/loto-
     LotoBuilderRightPanelComponent,
     LotoBuilderFormPopupComponent,
     LotoBuilderTablePopupComponent,
+    LotoFormCarouselComponent,
+    LotoStandardsSelectorComponent,
   ],
   templateUrl: './loto-builder-container.component.html',
   styleUrl: './loto-builder-container.component.css',
@@ -86,5 +91,35 @@ export class LotoBuilderContainerComponent {
 
     // TODO: Navigate away or emit close event
     this.builderState.reset();
+  }
+
+  /**
+   * Handle carousel standard update
+   */
+  onCarouselStandardUpdated(event: { index: number; standard: LotoStandardDto }): void {
+    this.builderState.updateLotoStandard(event.index, event.standard);
+  }
+
+  /**
+   * Handle carousel standard submission (save and remove)
+   */
+  onCarouselStandardSubmitted(event: { index: number; standard: LotoStandardDto }): void {
+    // Remove the standard from the carousel after submission
+    this.builderState.removeLotoStandard(event.index);
+  }
+
+  /**
+   * Handle carousel standard cancellation
+   */
+  onCarouselStandardCancelled(event: { index: number }): void {
+    // Remove the standard from the carousel
+    this.builderState.removeLotoStandard(event.index);
+  }
+
+  /**
+   * Handle carousel close
+   */
+  onCarouselClose(): void {
+    this.builderState.isLotoBuildingMode.set(false);
   }
 }

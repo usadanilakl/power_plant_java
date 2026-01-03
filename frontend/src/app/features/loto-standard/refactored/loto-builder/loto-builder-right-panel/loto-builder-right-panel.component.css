@@ -87,3 +87,10 @@
 .toolbar-button:active {
   transform: translateY(0);
 }
+
+.toolbar-button.active {
+  background: rgba(33, 150, 243, 0.15);
+  border-color: var(--primary-color, #2196F3);
+  color: var(--primary-color, #2196F3);
+  font-weight: 600;
+}

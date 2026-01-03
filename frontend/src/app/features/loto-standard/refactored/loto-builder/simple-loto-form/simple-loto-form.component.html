@@ -1,0 +1,82 @@
+<div class="simple-loto-form" [class.active]="isActive()">
+  <div class="form-header">
+    <h3 class="form-title">{{ lotoStandard().name || 'Untitled LOTO Standard' }}</h3>
+    <div class="point-count-badge">{{ pointCount() }} Points</div>
+  </div>
+
+  <div class="form-body">
+    <!-- Name Field -->
+    <div class="form-field">
+      <label for="loto-name">Name</label>
+      <input
+        id="loto-name"
+        type="text"
+        class="form-input"
+        [value]="lotoStandard().name || ''"
+        (input)="onNameChange($any($event.target).value)"
+        placeholder="Enter LOTO standard name"
+      />
+    </div>
+
+    <!-- Description Field -->
+    <div class="form-field">
+      <label for="loto-description">Description</label>
+      <textarea
+        id="loto-description"
+        class="form-textarea"
+        rows="3"
+        [value]="lotoStandard().description || ''"
+        (input)="onDescriptionChange($any($event.target).value)"
+        placeholder="Enter description"
+      ></textarea>
+    </div>
+
+    <!-- LOTO Points List -->
+    <div class="form-field">
+      <label>LOTO Points</label>
+      <div class="points-list">
+        @if (lotoPoints().length === 0) {
+          <div class="empty-state">
+            <p class="empty-message">No LOTO points added yet</p>
+            <p class="empty-hint">Add points from the builder to populate this list</p>
+          </div>
+        } @else {
+          @for (point of lotoPoints(); track point.id) {
+            <div class="point-item">
+              <div class="point-info">
+                <span class="point-tag">{{ point.tagNumber || 'N/A' }}</span>
+                <span class="point-description">{{ point.description || '' }}</span>
+              </div>
+              <button
+                type="button"
+                class="remove-button"
+                (click)="onRemovePoint(point)"
+                title="Remove point"
+              >
+                ✕
+              </button>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <button
+      type="button"
+      class="button button-secondary"
+      (click)="onCancel()"
+    >
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="button button-primary"
+      (click)="onSubmit()"
+      [disabled]="!lotoStandard().name"
+    >
+      Save & Close
+    </button>
+  </div>
+</div>
