@@ -1,11 +1,9 @@
 import { CommonModule } from "@angular/common";
 import { Component, computed, DestroyRef, inject, signal } from "@angular/core";
 import { PdfDisplayIframeComponent } from "../../../shared/pdf-dislplay-iframe/pdf-dislplay-iframe.component";
-import { InteractiveImageComponent } from "../../../shared/image/refactored/interactive-image/interactive-image.component";
 import { CurrentFileService } from "../../../services/current-file.service";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { toSignal } from "@angular/core/rxjs-interop";
-import { EquipmentMapperService } from "../../equipment/refactored/services/equipment-mapper.service";
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { LotoPointDto } from "../../../models/loto/loto-point.model";
 import { ShapeManagerService } from "../../../shared/image/refactored/services/shape-manager.service";
@@ -14,50 +12,68 @@ import { LotoPointDisplayTableComponent } from "../../loto-points/refactored/lot
 import { LotoPointDetailFormComponent } from "../../loto-points/loto-point-detail-form/loto-point-detail-form.component";
 import { EquipmentService } from "../../../services/equipment.service";
 import { EquipmentDto } from "../../../models/equipment/equipment.model";
+import {
+  RfUnifiedImageViewerComponent,
+  ViewerDataSource,
+  ViewerConfig,
+} from "../../../shared/image/refactored/rf-unified-image-viewer/rf-unified-image-viewer.component";
 
+/**
+ * File Editor Component
+ *
+ * This component is now a wrapper around RfUnifiedImageViewerComponent for image files,
+ * while maintaining PDF display and LOTO point editing capabilities.
+ *
+ * **Refactored**: This component has been refactored to use the unified image viewer
+ * for better code reusability. All existing functionality is preserved.
+ */
 @Component({
   selector: 'app-rf-file-editor',
   imports: [
     CommonModule,
     PdfDisplayIframeComponent,
-    InteractiveImageComponent,
+    RfUnifiedImageViewerComponent,
     PopupProjectionComponent,
     LotoPointDisplayTableComponent,
     LotoPointDetailFormComponent
-],
+  ],
   templateUrl: './rf-file-editor.component.html',
   styleUrl: './rf-file-editor.component.css',
   standalone: true,
 })
 export class RfFileEditroComponent {
 
-  currentFileService = inject(CurrentFileService);
-  equipmentMapper = inject(EquipmentMapperService);
-  equipmentService = inject(EquipmentService);
-  shapeManager = inject(ShapeManagerService);
-  destroyRef = inject(DestroyRef);
+  private currentFileService = inject(CurrentFileService);
+  private equipmentService = inject(EquipmentService);
+  private shapeManager = inject(ShapeManagerService);
+  private destroyRef = inject(DestroyRef);
 
+  // File and equipment from service
   currentFile = toSignal(this.currentFileService.currentFile$, { initialValue: null });
+  equipment = toSignal(this.currentFileService.elementsToRender$, { initialValue: null });
+
   fileLink = computed(() => {
     const file = this.currentFile();
     if (!file) return '';
     return file.fileLink;
   });
-  equipment = toSignal(this.currentFileService.elementsToRender$, { initialValue: null });
 
-  shapes = computed(() => {
-    const equipment = this.equipment();
-    if (!equipment) return [];
-    const shapes = this.equipmentMapper.mapAllToRfShapes(equipment);
-    console.log('shapes', shapes);
-    console.log('equipment', equipment);
-    return shapes;
+  // Check if current file is PDF
+  isPdf = computed(() => {
+    const link = this.fileLink();
+    return link.endsWith('.pdf');
   });
 
-  // Loto point table popup state
+  // Check if current file is image
+  isImage = computed(() => {
+    const link = this.fileLink();
+    return link.endsWith('.jpg') || link.endsWith('.jpeg') || link.endsWith('.png');
+  });
+
+  // LOTO point table popup state
   isLotoPointTableOpen = signal<boolean>(false);
 
-  // Loto point edit form state
+  // LOTO point edit form state
   isLotoPointFormOpen = signal<boolean>(false);
   selectedLotoPoint = signal<LotoPointDto | null>(null);
 
@@ -65,21 +81,59 @@ export class RfFileEditroComponent {
   hoveredEquipmentId = signal<number | null>(null);
   hoveredLotoPoint = signal<LotoPointDto | null>(null);
 
-  // Compute all loto points from current file's equipment
+  // Compute all LOTO points from current file's equipment
   allLotoPoints = computed(() => {
     const equipment = this.equipment();
     if (!equipment) return [];
 
     const lotoPoints: LotoPointDto[] = [];
+    const seenIds = new Set<number>();
+
     equipment.forEach(eq => {
       if (eq.lotoPoints && eq.lotoPoints.length > 0) {
         eq.lotoPoints.forEach(lp => {
-          lotoPoints.push(lp);
+          // Avoid duplicates
+          if (lp.id && !seenIds.has(lp.id)) {
+            seenIds.add(lp.id);
+            lotoPoints.push(lp);
+          }
         });
       }
     });
     return lotoPoints;
   });
+
+  // Data source for unified viewer
+  dataSource = computed<ViewerDataSource>(() => ({
+    type: 'file',
+    file: this.currentFile(),
+    equipmentList: this.equipment(),
+  }));
+
+  // UI configuration for unified viewer
+  // Note: Table is shown via popup, not in the viewer itself
+  viewerConfig: ViewerConfig = {
+    showCarousel: false,
+    showTable: false,  // We handle table separately as popup
+    tablePosition: 'none',
+    collapsible: false,
+    highlightMode: 'hovered',
+    legend: false,
+    emptyStateMessage: 'No equipment on this file',
+  };
+
+  // ==================== FILE FORMAT TOGGLE ====================
+
+  toggleFileFormat() {
+    const currentFile = this.currentFile();
+    if (!currentFile) return;
+
+    const currentExtension = currentFile.fileLink?.split('.').pop();
+    const newExtension = currentExtension === 'pdf' ? 'jpg' : 'pdf';
+    this.currentFileService.switchFileFormat(newExtension);
+  }
+
+  // ==================== LOTO POINT TABLE METHODS ====================
 
   openLotoPointTable() {
     this.isLotoPointTableOpen.set(true);
@@ -100,7 +154,7 @@ export class RfFileEditroComponent {
   onLotoPointSelected(lotoPoints: LotoPointDto[]) {
     if (lotoPoints.length === 0) return;
 
-    // Find equipment that contains this loto point
+    // Find equipment that contains this LOTO point
     const selectedLotoPoint = lotoPoints[0];
     const equipment = this.equipment();
 
@@ -117,7 +171,7 @@ export class RfFileEditroComponent {
   }
 
   onLotoPointHovered(lotoPoint: LotoPointDto | null) {
-    // Store the hovered LOTO point (for potential future use)
+    // Store the hovered LOTO point
     this.hoveredLotoPoint.set(lotoPoint);
 
     if (!lotoPoint) {
@@ -125,7 +179,7 @@ export class RfFileEditroComponent {
       return;
     }
 
-    // Find equipment that contains this loto point
+    // Find equipment that contains this LOTO point
     const equipment = this.equipment();
     if (equipment) {
       const matchingEquipment = equipment.find(eq =>
@@ -140,6 +194,8 @@ export class RfFileEditroComponent {
       }
     }
   }
+
+  // ==================== SHAPE EVENT HANDLERS (from unified viewer) ====================
 
   onShapeHovered(shape: RfShape | null) {
     if (!shape) {
@@ -172,27 +228,10 @@ export class RfFileEditroComponent {
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
 
     if (matchingEquipment && matchingEquipment.lotoPoints && matchingEquipment.lotoPoints.length > 0) {
-      // Open the first loto point for editing
+      // Open the first LOTO point for editing
       this.selectedLotoPoint.set(matchingEquipment.lotoPoints[0]);
       this.isLotoPointFormOpen.set(true);
     }
-  }
-
-  onLotoPointFormClose() {
-    this.isLotoPointFormOpen.set(false);
-    this.selectedLotoPoint.set(null);
-  }
-
-  onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
-    // TODO: Implement save logic
-    console.log('Saving loto point:', lotoPoint);
-    this.onLotoPointFormClose();
-  }
-
-  onLotoPointFormDelete() {
-    // TODO: Implement delete logic
-    console.log('Deleting loto point:', this.selectedLotoPoint());
-    this.onLotoPointFormClose();
   }
 
   onShapeUpdated(shape: RfShape) {
@@ -239,5 +278,23 @@ export class RfFileEditroComponent {
         });
     }
   }
-}
 
+  // ==================== LOTO POINT FORM METHODS ====================
+
+  onLotoPointFormClose() {
+    this.isLotoPointFormOpen.set(false);
+    this.selectedLotoPoint.set(null);
+  }
+
+  onLotoPointFormSubmit(lotoPoint: LotoPointDto) {
+    // TODO: Implement save logic
+    console.log('Saving loto point:', lotoPoint);
+    this.onLotoPointFormClose();
+  }
+
+  onLotoPointFormDelete() {
+    // TODO: Implement delete logic
+    console.log('Deleting loto point:', this.selectedLotoPoint());
+    this.onLotoPointFormClose();
+  }
+}

@@ -1,20 +1,23 @@
 <div class="split-view-container" [class.table-open]="isLotoPointTableOpen()">
-  <!-- Image Section -->
+  <!-- Image/PDF Section -->
   <div class="image-section">
     <div class="image-container">
       @if (currentFile()) {
-        @if(currentFile()?.fileLink?.endsWith('.jpg')){
-          <app-interactive-image
-            [imageUrl]="fileLink()"
-            [shapesInput]="shapes()"
-            [preset]="'FILE_EDITOR'"
-            [hoveredShapeId]="hoveredEquipmentId()"
+        <!-- PDF Display -->
+        @if (isPdf()) {
+          <app-pdf-display-iframe [pdfSrc]="fileLink()"></app-pdf-display-iframe>
+        }
+        <!-- Image Display (using unified viewer) -->
+        @else if (isImage()) {
+          <app-rf-unified-image-viewer
+            [mode]="'FILE_EDITOR'"
+            [dataSource]="dataSource()"
+            [config]="viewerConfig"
+            [externalHoveredShapeId]="hoveredEquipmentId()"
+            (shapeHovered)="onShapeHovered($event)"
             (shapeRightClicked)="onShapeRightClicked($event)"
             (shapeUpdated)="onShapeUpdated($event)"
-            (shapeHovered)="onShapeHovered($event)">
-          </app-interactive-image>
-        } @else if(currentFile()?.fileLink?.endsWith('.pdf')){
-          <app-pdf-display-iframe [pdfSrc]="currentFile()?.fileLink"></app-pdf-display-iframe>
+          />
         }
       } @else {
         <div class="no-file-selected">
@@ -27,6 +30,9 @@
         <div class="button-row">
           <button (click)="toggleLotoPointTable()" class="control-button">
             {{ isLotoPointTableOpen() ? 'Hide' : 'Show' }} LOTO Points
+          </button>
+          <button (click)="toggleFileFormat()" class="control-button">
+            Toggle PDF/JPG
           </button>
         </div>
       </div>

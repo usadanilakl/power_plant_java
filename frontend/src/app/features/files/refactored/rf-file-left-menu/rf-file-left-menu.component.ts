@@ -283,7 +283,12 @@ constructor(
     ).subscribe({
       next: (response) => {
         const file = FileDto.fromJson(response.responseData);
-        file.fileLink = file.fileLink.replaceAll('pdf','jpg');
+        // Convert PDF links to JPG by default for shape editing
+        // User can toggle back to PDF using the format switcher
+        if (file.fileLink.endsWith('.pdf')) {
+          file.fileLink = file.fileLink.replace(/\.pdf$/, '.jpg');
+          file.extension = 'jpg';
+        }
         this.currentFileService.setCurrentFile(file);
         this.currentFile.set(file);
   

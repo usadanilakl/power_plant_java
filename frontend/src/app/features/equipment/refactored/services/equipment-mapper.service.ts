@@ -84,8 +84,8 @@ export class EquipmentMapperService{
                 color: color,
                 originalPictureWidth: pictureSize.width,
                 originalPictureHeight: pictureSize.height,
-                originalWidth: width,
-                originalHeight: height,
+                originalWidth: pictureSize.width,  // Use picture size, not shape dimensions
+                originalHeight: pictureSize.height,  // Use picture size, not shape dimensions
                 isSelected: false,
                 isBulkSelected: options?.shouldHighlight || false,
                 currentImgWidth: pictureSize.width,
@@ -157,13 +157,10 @@ export class EquipmentMapperService{
                 return null;
             }
 
-            // Calculate width and height if not provided
-            const width = normalizedObj.width !== undefined
-                ? Number(normalizedObj.width)
-                : Math.abs(endX - startX);
-            const height = normalizedObj.height !== undefined
-                ? Number(normalizedObj.height)
-                : Math.abs(endY - startY);
+            // ALWAYS calculate width and height from endX/endY - startX/startY
+            // Don't trust stored width/height values as they may be incorrect
+            const width = Math.abs(endX - startX);
+            const height = Math.abs(endY - startY);
 
             return {
                 startX,

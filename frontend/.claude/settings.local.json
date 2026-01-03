@@ -5,7 +5,8 @@
       "Bash(npx ng build --configuration development)",
       "Bash(npm run start)",
       "Bash(ng:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx ng generate:*)"
     ]
   }
 }

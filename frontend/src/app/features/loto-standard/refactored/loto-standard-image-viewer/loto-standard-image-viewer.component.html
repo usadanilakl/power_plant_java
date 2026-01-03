@@ -1,88 +1,10 @@
-<div class="image-viewer-container">
-  <!-- Left Panel: LOTO Points List -->
-  <div class="loto-points-panel">
-    <div class="panel-header">
-      <h3>LOTO Points in this Standard</h3>
-      <span class="point-count">{{ lotoStandard().lotoPoints?.length || 0 }} points</span>
-    </div>
-    <div class="panel-content">
-      <app-loto-point-display-table
-        [inputItems]="lotoStandard().lotoPoints || []"
-        [isTableIsolated]="true"
-        [loadMoreEnabled]="false"
-        [hoverDebounceTime]="200"
-        (selectedItemsEvent)="onLotoPointSelected($event)"
-        (rowClickedEvent)="onLotoPointClicked($event)"
-        (rowHoveredEvent)="onLotoPointHovered($event)"
-      ></app-loto-point-display-table>
-    </div>
-  </div>
-
-  <!-- Right Panel: Image Carousel and Large Image Viewer -->
-  <div class="file-viewer-panel">
-    <div class="panel-header">
-      <h3>Images & Files</h3>
-      @if (clickedLotoPoint()) {
-        <span class="selected-point-info">
-          {{ clickedLotoPoint()?.tagNumber || 'N/A' }}
-        </span>
-      }
-      @if (hasImages()) {
-        <span class="image-count">{{ allCarouselImages().length }} images</span>
-      }
-    </div>
-    <div class="panel-content">
-      @if (hasImages()) {
-        <!-- Image Carousel -->
-        <div class="carousel-section">
-          @if (allCarouselImages().length > 1) {
-            <app-rf-image-carousel
-              [images]="allCarouselImages()"
-              (imageSelected)="onImageSelected($event)"
-            ></app-rf-image-carousel>
-          }
-          @if (allCarouselImages().length === 1) {
-            <div class="single-image-header">
-              <span class="image-name">{{ allCarouselImages()[0].file.name }}</span>
-            </div>
-          }
-        </div>
-
-        <!-- Large Interactive Image -->
-        <div class="large-image-container">
-          @if (currentImageUrl()) {
-            <app-interactive-image
-              [imageUrl]="currentImageUrl()"
-              [shapesInput]="currentShapes()"
-              [preset]="imagePreset"
-            ></app-interactive-image>
-          } @else {
-            <div class="no-image-message">No image available</div>
-          }
-        </div>
-
-        <!-- Legend -->
-        @if (currentShapes().length > 0) {
-          <div class="legend">
-            <div class="legend-item">
-              <span class="legend-color highlighted"></span>
-              <span class="legend-text">Selected LOTO Point Equipment (Red)</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-color other"></span>
-              <span class="legend-text">Other Equipment (Blue)</span>
-            </div>
-          </div>
-        }
-      } @else {
-        <div class="empty-state">
-          <div class="empty-icon">📷</div>
-          <p class="empty-title">No Images Available</p>
-          <p class="empty-message">
-            No images are associated with the LOTO points in this standard
-          </p>
-        </div>
-      }
-    </div>
-  </div>
-</div>
+<!-- Unified Image Viewer -->
+<app-rf-unified-image-viewer
+  [mode]="'VIEW_ONLY'"
+  [dataSource]="dataSource()"
+  [config]="viewerConfig"
+  [externalClickedLotoPoint]="clickedLotoPoint()"
+  (lotoPointClicked)="onLotoPointClicked($event)"
+  (lotoPointSelected)="onLotoPointSelected($event)"
+  (lotoPointHovered)="onLotoPointHovered($event)"
+/>

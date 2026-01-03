@@ -1,0 +1,126 @@
+<div class="unified-viewer-container" [class.collapsed]="isCollapsed() && config().collapsible">
+  @if (hasImages()) {
+    <!-- Collapsible Header (if enabled) -->
+    @if (config().collapsible) {
+      <div class="viewer-header" (click)="toggleCollapse()">
+        <h3 class="viewer-title">
+          <span class="collapse-icon" [class.collapsed]="isCollapsed()">
+            {{ isCollapsed() ? '▶' : '▼' }}
+          </span>
+          Related Images
+          <span class="image-count">({{ carouselImages().length }})</span>
+        </h3>
+      </div>
+    }
+
+    <!-- Main Content -->
+    <div class="viewer-content" [class.collapsed]="isCollapsed() && config().collapsible">
+      <!-- Layout: Table + Images -->
+      <div class="viewer-layout" [class.with-table-left]="config().tablePosition === 'left'" [class.with-table-right]="config().tablePosition === 'right'">
+
+        <!-- Left Table (if configured) -->
+        @if (shouldShowTable() && config().tablePosition === 'left') {
+          <div class="table-panel left-panel">
+            <div class="panel-header">
+              <h3>LOTO Points</h3>
+              <span class="point-count">{{ lotoPointsForTable().length }} points</span>
+            </div>
+            <div class="panel-content">
+              <app-loto-point-display-table
+                [inputItems]="lotoPointsForTable()"
+                [isTableIsolated]="true"
+                [loadMoreEnabled]="false"
+                [hoverDebounceTime]="200"
+                (selectedItemsEvent)="onLotoPointSelected($event)"
+                (rowClickedEvent)="onLotoPointClicked($event)"
+                (rowHoveredEvent)="onLotoPointHovered($event)"
+              ></app-loto-point-display-table>
+            </div>
+          </div>
+        }
+
+        <!-- Image Section -->
+        <div class="image-section">
+          <!-- Carousel (if multiple images) -->
+          @if (config().showCarousel && carouselImages().length > 1) {
+            <div class="carousel-section">
+              <app-rf-image-carousel
+                [images]="carouselImages()"
+                (imageSelected)="onImageSelected($event)"
+              ></app-rf-image-carousel>
+            </div>
+          }
+
+          <!-- Single Image Header -->
+          @if (carouselImages().length === 1) {
+            <div class="single-image-header">
+              <span class="image-name">{{ carouselImages()[0].file.name }}</span>
+            </div>
+          }
+
+          <!-- Interactive Image -->
+          <div class="large-image-container">
+            @if (currentImageUrl()) {
+              <app-interactive-image
+                [imageUrl]="currentImageUrl()"
+                [shapesInput]="currentShapes()"
+                [preset]="mode()"
+                [hoveredShapeId]="externalHoveredShapeId()"
+                (shapeHovered)="onShapeHovered($event)"
+                (shapeClicked)="onShapeClicked($event)"
+                (shapeDoubleClicked)="onShapeDoubleClicked($event)"
+                (shapeRightClicked)="onShapeRightClicked($event)"
+                (shapeUpdated)="onShapeUpdated($event)"
+                (shapeDrawn)="onShapeDrawn($event)"
+              ></app-interactive-image>
+            } @else {
+              <div class="no-image-message">No image available</div>
+            }
+          </div>
+
+          <!-- Legend -->
+          @if (config().legend && currentShapes().length > 0) {
+            <div class="legend">
+              <div class="legend-item">
+                <span class="legend-color highlighted"></span>
+                <span class="legend-text">Selected/Highlighted Equipment (Red)</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-color other"></span>
+                <span class="legend-text">Other Equipment (Blue)</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Right Table (if configured) -->
+        @if (shouldShowTable() && config().tablePosition === 'right') {
+          <div class="table-panel right-panel">
+            <div class="panel-header">
+              <h3>LOTO Points</h3>
+              <span class="point-count">{{ lotoPointsForTable().length }} points</span>
+            </div>
+            <div class="panel-content">
+              <app-loto-point-display-table
+                [inputItems]="lotoPointsForTable()"
+                [isTableIsolated]="true"
+                [loadMoreEnabled]="false"
+                [hoverDebounceTime]="200"
+                (selectedItemsEvent)="onLotoPointSelected($event)"
+                (rowClickedEvent)="onLotoPointClicked($event)"
+                (rowHoveredEvent)="onLotoPointHovered($event)"
+              ></app-loto-point-display-table>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  } @else {
+    <!-- Empty State -->
+    <div class="empty-state">
+      <div class="empty-icon">📷</div>
+      <p class="empty-title">No Images Available</p>
+      <p class="empty-message">{{ config().emptyStateMessage }}</p>
+    </div>
+  }
+</div>
