@@ -12,35 +12,87 @@
 }
 
 <div class="form-container">
-  <app-rf-reactive-form
-    [entity]="entity()"
-    [fields]="fields()"
-    [title]="'Loto Point Form'"
-    (formValueChange)="onAnyValueChange($event)"
-    (formSubmit)="onSubmit($event)"
-  >
-    <ng-container extra-buttons>
-      <button
-        type="button"
-        class="tag-generator-button"
-        (click)="openTagGenerator()"
-        title="Generate New Tag Number">
-        Generate Tag Number
-      </button>
-      <app-clipboard-form
-        [entityType]="'LotoPoint'"
-        [initialEntity]="initialEntity()"
-        [hasValidData]="hasValidData"
-        [getItemSummary]="getItemSummary"
-        (itemSelected)="onClipboardItemSelected($event)"
-      ></app-clipboard-form>
-    </ng-container>
-  </app-rf-reactive-form>
+  <!-- Carousel Navigation -->
+  <div class="carousel-nav">
+    <button
+      class="nav-btn"
+      [class.active]="currentSlide() === 0"
+      (click)="goToSlide(0)"
+    >
+      <span class="nav-icon">📝</span>
+      <span class="nav-label">Form</span>
+    </button>
+    <button
+      class="nav-btn"
+      [class.active]="currentSlide() === 1"
+      (click)="goToSlide(1)"
+    >
+      <span class="nav-icon">🖼️</span>
+      <span class="nav-label">Images</span>
+    </button>
+  </div>
 
-  <!-- File Viewer Section -->
-  <app-loto-point-file-viewer
-    [lotoPoint]="entity()">
-  </app-loto-point-file-viewer>
+  <!-- Carousel Container -->
+  <div class="carousel-container">
+    <div class="carousel-track" [style.margin-left]="'-' + (currentSlide() * 100) + '%'">
+
+      <!-- Slide 1: Form -->
+      <div class="carousel-slide">
+        <div class="slide-content">
+          <app-rf-reactive-form
+            [entity]="entity()"
+            [fields]="fields()"
+            [title]="'Loto Point Form'"
+            (formValueChange)="onAnyValueChange($event)"
+            (formSubmit)="onSubmit($event)"
+          >
+            <ng-container extra-buttons>
+              <button
+                type="button"
+                class="tag-generator-button"
+                (click)="openTagGenerator()"
+                title="Generate New Tag Number">
+                Generate Tag Number
+              </button>
+              <app-clipboard-form
+                [entityType]="'LotoPoint'"
+                [initialEntity]="initialEntity()"
+                [hasValidData]="hasValidData"
+                [getItemSummary]="getItemSummary"
+                (itemSelected)="onClipboardItemSelected($event)"
+              ></app-clipboard-form>
+            </ng-container>
+          </app-rf-reactive-form>
+        </div>
+      </div>
+
+      <!-- Slide 2: File Viewer -->
+      <div class="carousel-slide">
+        <div class="slide-content file-viewer-section">
+          <app-loto-point-file-viewer
+            [lotoPoint]="entity()">
+          </app-loto-point-file-viewer>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Carousel Arrow Controls -->
+  <button
+    class="carousel-arrow carousel-arrow-left"
+    (click)="previousSlide()"
+    [disabled]="currentSlide() === 0"
+  >
+    ‹
+  </button>
+  <button
+    class="carousel-arrow carousel-arrow-right"
+    (click)="nextSlide()"
+    [disabled]="currentSlide() === 1"
+  >
+    ›
+  </button>
 </div>
 
 <!-- Tag Number Generator Popup -->

@@ -43,6 +43,25 @@ export class RfLotoPointFormComponent {
   // Tag number generator state
   isTagGeneratorOpen = signal<boolean>(false);
 
+  // Carousel state
+  currentSlide = signal<number>(0);
+
+  goToSlide(index: number): void {
+    this.currentSlide.set(index);
+  }
+
+  nextSlide(): void {
+    if (this.currentSlide() < 1) {
+      this.currentSlide.update(s => s + 1);
+    }
+  }
+
+  previousSlide(): void {
+    if (this.currentSlide() > 0) {
+      this.currentSlide.update(s => s - 1);
+    }
+  }
+
   entityInput = input<LotoPointDto>();
   fieldsInput = input<LotoPointFieldName[]>([]);
 

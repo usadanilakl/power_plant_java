@@ -1,6 +1,7 @@
 import { Component, inject, computed, DestroyRef, effect, output, Injector } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { catchError, of, tap } from 'rxjs';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { InteractiveImageComponent } from '../../../../../shared/image/refactored/interactive-image/interactive-image.component';
 import { LotoBuilderInfoWindowComponent } from '../loto-builder-info-window/loto-builder-info-window.component';
@@ -8,6 +9,7 @@ import { CurrentFileService } from '../../../../../services/current-file.service
 import { EquipmentMapperService } from '../../../../equipment/refactored/services/equipment-mapper.service';
 import { EquipmentService } from '../../../../../services/equipment.service';
 import { RfLotoPointStateService } from '../../../../loto-points/refactored/services/rf-loto-point-state.service';
+import { ImageService } from '../../../../../services/text-recognition.service';
 import { RfShape } from '../../../../../shared/image/refactored/models/fr-shape.model';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
@@ -29,6 +31,7 @@ export class LotoBuilderRightPanelComponent {
   private equipmentMapper = inject(EquipmentMapperService);
   private equipmentService = inject(EquipmentService);
   private lotoPointStateService = inject(RfLotoPointStateService);
+  private imageService = inject(ImageService);
   private destroyRef = inject(DestroyRef);
   private injector = inject(Injector);
 
@@ -256,16 +259,55 @@ export class LotoBuilderRightPanelComponent {
           console.log('Equipment created successfully:', response);
           const savedEquipment = EquipmentDto.fromJson(response.responseData);
 
-          // Store as pending equipment
-          this.builderState.setPendingEquipment(savedEquipment);
-
-          // Open LOTO point form
-          this.builderState.openLotoPointForm(null);
+          // If text recognition is enabled, perform OCR and open table with search
+          if (this.builderState.isTextRecognitionEnabled()) {
+            this.performTextRecognitionAndOpenPopup(shape, savedEquipment);
+          } else {
+            // Open empty LOTO point form
+            this.builderState.openLotoPointFormForNewEquipment(savedEquipment);
+          }
         },
         error: (error: any) => {
           console.error('Error creating equipment:', error);
         }
       });
+  }
+
+  /**
+   * Perform text recognition on the drawn shape and open popup accordingly
+   */
+  private performTextRecognitionAndOpenPopup(shape: RfShape, equipment: EquipmentDto): void {
+    const filePath = this.builderState.currentFile()?.fileLink;
+
+    if (!filePath) {
+      console.warn('No file path available for text recognition');
+      this.builderState.openLotoPointFormForNewEquipment(equipment);
+      return;
+    }
+
+    this.imageService.getTextFromRfShape(filePath, shape)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((text: string) => {
+          if (text && text.trim()) {
+            const recognizedText = text.trim();
+            console.log('Text recognized:', recognizedText);
+            this.builderState.setRecognizedText(recognizedText);
+            // Open table view with pre-filtered search by recognized tag number
+            this.builderState.openLotoPointTableWithSearch(recognizedText, equipment);
+          } else {
+            // No text recognized, open empty form
+            this.builderState.openLotoPointFormForNewEquipment(equipment);
+          }
+        }),
+        catchError((error) => {
+          console.error('Error during text recognition:', error);
+          // On error, fall back to opening empty form
+          this.builderState.openLotoPointFormForNewEquipment(equipment);
+          return of(null);
+        })
+      )
+      .subscribe();
   }
 
   /**

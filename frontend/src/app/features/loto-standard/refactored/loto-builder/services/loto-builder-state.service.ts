@@ -7,6 +7,7 @@ import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 
 export type LeftMenuTab = 'file' | 'loto-point';
 export type DisplayMode = 'table' | 'toggle-menu';
+export type LotoPointPopupView = 'form' | 'table';
 
 @Injectable({
   providedIn: 'root'
@@ -79,6 +80,22 @@ export class LotoBuilderStateService {
 
   /** Newly created equipment (pending LOTO point association) */
   pendingEquipment = signal<EquipmentDto | null>(null);
+
+  // ========== Text Recognition State ==========
+
+  /** Whether text recognition is enabled */
+  isTextRecognitionEnabled = signal<boolean>(true);
+
+  /** Recognized text from OCR */
+  recognizedText = signal<string | null>(null);
+
+  /** Pre-filter search term for loto point table (from text recognition) */
+  tableSearchTerm = signal<string | null>(null);
+
+  // ========== Form/Table View State ==========
+
+  /** Current view mode in loto point popup (form or table) */
+  lotoPointPopupView = signal<LotoPointPopupView>('form');
 
   // ========== Computed Values ==========
 
@@ -230,6 +247,69 @@ export class LotoBuilderStateService {
   }
 
   /**
+   * Toggle text recognition
+   */
+  toggleTextRecognition(): void {
+    this.isTextRecognitionEnabled.set(!this.isTextRecognitionEnabled());
+  }
+
+  /**
+   * Set recognized text from OCR
+   */
+  setRecognizedText(text: string | null): void {
+    this.recognizedText.set(text);
+  }
+
+  /**
+   * Set table search term (for pre-filtering)
+   */
+  setTableSearchTerm(term: string | null): void {
+    this.tableSearchTerm.set(term);
+  }
+
+  /**
+   * Switch popup view to form
+   */
+  switchToFormView(): void {
+    this.lotoPointPopupView.set('form');
+  }
+
+  /**
+   * Switch popup view to table
+   */
+  switchToTableView(): void {
+    this.lotoPointPopupView.set('table');
+  }
+
+  /**
+   * Toggle between form and table view
+   */
+  togglePopupView(): void {
+    const current = this.lotoPointPopupView();
+    this.lotoPointPopupView.set(current === 'form' ? 'table' : 'form');
+  }
+
+  /**
+   * Open LOTO point popup with table view and pre-filtered search
+   */
+  openLotoPointTableWithSearch(searchTerm: string, equipment: EquipmentDto): void {
+    this.setPendingEquipment(equipment);
+    this.setTableSearchTerm(searchTerm);
+    this.lotoPointPopupView.set('table');
+    this.isLotoPointFormOpen.set(true);
+  }
+
+  /**
+   * Open LOTO point popup with empty form
+   */
+  openLotoPointFormForNewEquipment(equipment: EquipmentDto): void {
+    this.setPendingEquipment(equipment);
+    this.selectedLotoPointForEdit.set(null);
+    this.lotoPointPopupView.set('form');
+    this.isLotoPointFormOpen.set(true);
+  }
+
+  /**
    * Add LOTO standard to the list
    */
   addLotoStandard(standard: LotoStandardDto): void {
@@ -357,5 +437,9 @@ export class LotoBuilderStateService {
     this.closeLotoStandardsPopup();
     this.hideLotoPointInfoWindow();
     this.setPendingEquipment(null);
+    // Reset text recognition state
+    this.recognizedText.set(null);
+    this.tableSearchTerm.set(null);
+    this.lotoPointPopupView.set('form');
   }
 }

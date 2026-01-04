@@ -1,28 +1,96 @@
 @if (isVisible()) {
   <div class="form-overlay" (click)="onBackdropClick($event)">
-    <div class="form-popup">
+    <div class="form-popup" [class.table-view]="isTableView()">
       <div class="form-header">
-        <h2 class="form-title">
-          {{ lotoPoint() ? 'Edit LOTO Point' : 'Create LOTO Point' }}
-        </h2>
+        <h2 class="form-title">{{ popupTitle() }}</h2>
+
+        <!-- View Toggle Buttons -->
+        <div class="view-toggle">
+          <button
+            class="toggle-btn"
+            [class.active]="isFormView()"
+            (click)="switchToForm()"
+            title="Create New LOTO Point"
+          >
+            New
+          </button>
+          <button
+            class="toggle-btn"
+            [class.active]="isTableView()"
+            (click)="switchToTable()"
+            title="Select Existing LOTO Point"
+          >
+            Select Existing
+          </button>
+        </div>
+
         <button class="close-button" (click)="close()" title="Close">
           ✕
         </button>
       </div>
 
+      <!-- Loading Overlay -->
+      @if (isLoading()) {
+        <div class="loading-overlay">
+          <div class="loading-spinner"></div>
+          <span>Saving...</span>
+        </div>
+      }
+
       <div class="form-content">
-        <app-rf-loto-point-form
-          [entityInput]="lotoPoint() || undefined"
-        ></app-rf-loto-point-form>
+        <!-- Form View -->
+        @if (isFormView()) {
+          <app-rf-loto-point-form
+            [entityInput]="lotoPoint() || undefined"
+          ></app-rf-loto-point-form>
+        }
+
+        <!-- Table View -->
+        @if (isTableView()) {
+          <div class="table-container">
+            @if (searchTerm()) {
+              <div class="search-info">
+                <span class="search-label">Searching for:</span>
+                <span class="search-term">{{ searchTerm() }}</span>
+                <button class="clear-search" (click)="builderState.setTableSearchTerm(null)">
+                  Clear
+                </button>
+              </div>
+            }
+
+            <p class="table-instructions">
+              Double-click a row to select and associate the LOTO point with the equipment.
+            </p>
+
+            <app-rf-loto-point-table
+              [tableId]="'loto-builder-select-table'"
+              [fieldsToDisplay]="['tagNumber', 'description', 'normPos', 'zeroEnergyMethod']"
+              [initialSearchCriteria]="getInitialSearchCriteria()"
+              (selectedItemsEvent)="onLotoPointSelected($event)"
+            ></app-rf-loto-point-table>
+          </div>
+        }
       </div>
 
       <div class="form-footer">
         <button class="action-button" (click)="close()">
           Cancel
         </button>
-        <button class="action-button primary">
-          Save
-        </button>
+        @if (isTableView()) {
+          <button
+            class="action-button"
+            (click)="switchToForm()"
+          >
+            Create New Instead
+          </button>
+          <button
+            class="action-button primary"
+            [disabled]="!hasSelectedLotoPoint()"
+            (click)="associateSelectedLotoPoint()"
+          >
+            Associate Selected
+          </button>
+        }
       </div>
     </div>
   </div>

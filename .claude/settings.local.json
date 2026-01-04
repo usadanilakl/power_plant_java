@@ -6,7 +6,8 @@
       "Bash(ls:*)",
       "Bash(mvn compile:*)",
       "Bash(find:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

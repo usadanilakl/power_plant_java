@@ -94,6 +94,8 @@ export class TableComponent implements OnInit, AfterViewInit {
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],
   });
+  /** Initial search criteria to apply when the table loads */
+  initialSearchCriteria = input<SearchCriteria | null>(null);
 
   // Outputs
   loadMoreItems = output<SearchCriteria>();
@@ -144,6 +146,26 @@ export class TableComponent implements OnInit, AfterViewInit {
   private flagEffects = effect(() => {
     this.dataService.isDragAndDropEnabled.set(this.isDragAndDropEnabled());
     this.dataService.isTableIsolated.set(this.isTableIsolated());
+  });
+
+  /** Apply initial search criteria when provided */
+  private initialSearchCriteriaApplied = false;
+  private initialSearchCriteriaEffect = effect(() => {
+    const criteria = this.initialSearchCriteria();
+    // Only apply once when criteria is first provided
+    if (criteria && !this.initialSearchCriteriaApplied) {
+      this.initialSearchCriteriaApplied = true;
+      // Apply global search if provided
+      if (criteria.type === 'global' && criteria.query) {
+        this.dataService.globalSearchQuery = criteria.query;
+        this.searchService.search();
+      }
+      // Apply column filters if provided
+      else if (criteria.type === 'column' && criteria.filters) {
+        this.dataService.columnFilters.set(criteria.filters);
+        this.searchService.search();
+      }
+    }
   });
 
   private filterOutEffect = effect(() => {

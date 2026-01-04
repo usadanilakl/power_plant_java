@@ -10,6 +10,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { LotoPointLocalStorageService } from './rf-loto-point-local-storage.service';
+import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 
 @Injectable({
   providedIn: 'root',
@@ -18,6 +19,7 @@ export class RfLotoPointStateService {
   private apiService = inject(RfLotoPointApiService);
   private localStorage = inject(LotoPointLocalStorageService);
   private destroyRef = inject(DestroyRef);
+  private messageService = inject(GlobalMessageService);
 
   private pageSize = 50;
   private currentPage = 1;
@@ -109,16 +111,9 @@ export class RfLotoPointStateService {
   }
 
   submitForm(item: LotoPointDto) {
-    console.log('Submitting LOTO Point:', item);
-    console.log(
-      'Item has toIdModel?',
-      typeof (item as any).toIdModel === 'function'
-    );
-    if (typeof (item as any).toIdModel === 'function') {
-      console.log('Converted to IdModel:', item.toIdModel());
-    }
 
     const lotoPointId = item.id;
+    const isNew = !lotoPointId;
 
     this.apiService
       .saveLotoPoint(item)
@@ -129,14 +124,19 @@ export class RfLotoPointStateService {
           this.clearDraftForItem(lotoPointId);
           // Update the selected item with the saved data
           this.setSelectedItem(LotoPointDto.fromJson(response.responseData));
-          // Optionally close the form
-          // this.closeForm();
+          // Show success message
+          const action = isNew ? 'created' : 'updated';
+          this.messageService.showSuccess(`LOTO Point ${action} successfully`);
+          // Close the form
+          this.closeForm();
         }),
         catchError((error) => {
           console.error('Error saving LOTO Point:', error);
           console.error('Error details:', error.error);
           console.error('Error message:', error.message);
-          // Handle error (could emit to a global error service)
+          // Show error message
+          const errorMsg = error.error?.message || error.message || 'Unknown error';
+          this.messageService.showError(`Failed to save LOTO Point: ${errorMsg}`);
           return of(null);
         }),
         takeUntilDestroyed(this.destroyRef)

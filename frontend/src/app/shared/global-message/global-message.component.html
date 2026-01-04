@@ -1,7 +1,22 @@
 @if (message) {
-  <div class="overlay" (click)="onOverlayClick($event)">
-    <div class="message-box" [ngClass]="message.color" (click)="hide()">
+  <!-- Blocking messages show with overlay -->
+  @if (!message.isMinimized) {
+    <div class="overlay"
+         [class.transparent-overlay]="message.type === 'informational'"
+         (click)="onOverlayClick($event)">
+      <div class="message-box"
+           [ngClass]="message.color"
+           [class.informational]="message.type === 'informational'"
+           (click)="hide()">
+        {{ message.text }}
+      </div>
+    </div>
+  } @else {
+    <!-- Minimized message in corner -->
+    <div class="minimized-message"
+         [ngClass]="message.color"
+         (click)="hide()">
       {{ message.text }}
     </div>
-  </div>
+  }
 }

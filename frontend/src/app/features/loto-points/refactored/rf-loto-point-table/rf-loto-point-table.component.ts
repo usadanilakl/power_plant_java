@@ -54,6 +54,8 @@ export class RfLotoPointTableComponent implements OnInit {
   hoverDebounceTime = input<number>(0);
   hoveredItemId = input<number | null>(null);
   fieldsToDisplay = input<(keyof LotoPointDto)[]>();
+  /** Initial search criteria to apply when the table loads */
+  initialSearchCriteria = input<SearchCriteria | null>(null);
 
   // Outputs
   selectedItemsEvent = output<LotoPointDto[]>();

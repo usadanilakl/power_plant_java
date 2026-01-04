@@ -32,10 +32,18 @@
   <div class="toolbar">
     <button
       class="toolbar-button"
+      [class.active]="builderState.isTextRecognitionEnabled()"
+      title="Toggle Text Recognition - When enabled, OCR will recognize text from drawn shapes"
+      (click)="builderState.toggleTextRecognition()"
+    >
+      {{ builderState.isTextRecognitionEnabled() ? 'OCR On' : 'OCR Off' }}
+    </button>
+    <button
+      class="toolbar-button"
       title="Show LOTO Points"
       (click)="builderState.toggleLotoPointTable()"
     >
-      📋 LOTO Points
+      LOTO Points
     </button>
     <button
       class="toolbar-button"
@@ -43,14 +51,14 @@
       title="Toggle LOTO Building Mode"
       (click)="builderState.toggleCarousel()"
     >
-      🔧 Build LOTO ({{ builderState.selectedLotoStandards().length }})
+      Build LOTO ({{ builderState.selectedLotoStandards().length }})
     </button>
     <button
       class="toolbar-button"
       title="Select LOTO Standards"
       (click)="builderState.openLotoStandardsPopup()"
     >
-      📚 Select Standards
+      Select Standards
     </button>
     <button
       class="toolbar-button primary"
@@ -58,14 +66,14 @@
       [disabled]="!builderState.hasUnsavedChanges()"
       (click)="onSave()"
     >
-      💾 Save
+      Save
     </button>
     <button
       class="toolbar-button"
       title="Close Builder"
       (click)="onClose()"
     >
-      ❌ Close
+      Close
     </button>
   </div>
 </div>

@@ -13,8 +13,9 @@ import java.io.IOException;
 public class ImageCropper {
     public void crop(String path, String coordinates) {
         try {
+            String jpgPath = path.replaceAll("pdf","jpg");
             // Load the image
-            BufferedImage originalImage = ImageIO.read(new File(path));
+            BufferedImage originalImage = ImageIO.read(new File(jpgPath));
 
             String[] coords = coordinates.split(",");
 

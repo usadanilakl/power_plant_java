@@ -49,7 +49,7 @@ export class LotoPointFileViewerComponent {
     showCarousel: true,
     showTable: false,
     tablePosition: 'none',
-    collapsible: true,
+    collapsible: false,
     highlightMode: 'clicked',
     legend: true,
     emptyStateMessage: 'No images associated with this LOTO point\'s equipment.',

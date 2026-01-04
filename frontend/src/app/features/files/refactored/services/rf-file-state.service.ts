@@ -9,6 +9,7 @@ import { of } from "rxjs";
 import { RfFormField } from "../../../../models/ui/form-field.model";
 import { RfFileApiService } from "./rf-file-api.service";
 import { FileLocalStorageService } from "./rf-file-local-storage.service";
+import { GlobalMessageService } from "../../../../shared/global-message/global-message.service";
 
 @Injectable({
   providedIn: 'root'
@@ -17,6 +18,7 @@ export class RfFileStateService {
   private apiService = inject(RfFileApiService);
   private localStorage = inject(FileLocalStorageService);
   private destroyRef = inject(DestroyRef);
+  private messageService = inject(GlobalMessageService);
 
   private pageSize = 50;
   private currentPage = 1;
@@ -76,7 +78,34 @@ export class RfFileStateService {
   }
 
   submitForm(item: FileDto): void {
-    throw new Error('Method not implemented.');
+    const fileId = item.id;
+    const isNew = !fileId;
+
+    const saveObs = isNew
+      ? this.apiService.createFile(item)
+      : this.apiService.updateFile(item);
+
+    saveObs
+      .pipe(
+        tap((response) => {
+          // Update the selected item with the saved data
+          this.setSelectedItem(new FileDto(response.responseData));
+          // Show success message
+          const action = isNew ? 'created' : 'updated';
+          this.messageService.showSuccess(`File ${action} successfully`);
+          // Close the form
+          this.closeForm();
+        }),
+        catchError((error) => {
+          console.error('Error saving File:', error);
+          // Show error message
+          const errorMsg = error.error?.message || error.message || 'Unknown error';
+          this.messageService.showError(`Failed to save File: ${errorMsg}`);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   saveDraft(item: FileDto): void {

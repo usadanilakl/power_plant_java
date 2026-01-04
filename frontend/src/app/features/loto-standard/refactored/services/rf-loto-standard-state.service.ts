@@ -10,6 +10,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { LotoStandardLocalStorageService } from './rf-loto-standard-local-storage.service';
+import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 
 @Injectable({
   providedIn: 'root',
@@ -18,6 +19,7 @@ export class RfLotoStandardStateService {
   private apiService = inject(RfLotoStandardApiService);
   private localStorage = inject(LotoStandardLocalStorageService);
   private destroyRef = inject(DestroyRef);
+  private messageService = inject(GlobalMessageService);
 
   private pageSize = 50;
   private currentPage = 1;
@@ -107,8 +109,8 @@ export class RfLotoStandardStateService {
   }
 
   submitForm(item: LotoStandardDto) {
-
     const lotoStandardId = item.id;
+    const isNew = !lotoStandardId;
 
     this.apiService
       .saveLotoStandard(item)
@@ -118,14 +120,19 @@ export class RfLotoStandardStateService {
           this.clearDraftForItem(lotoStandardId);
           // Update the selected item with the saved data
           this.setSelectedItem(LotoStandardDto.fromJson(response.responseData));
-          // Optionally close the form
-          // this.closeForm();
+          // Show success message
+          const action = isNew ? 'created' : 'updated';
+          this.messageService.showSuccess(`LOTO Standard ${action} successfully`);
+          // Close the form
+          this.closeForm();
         }),
         catchError((error) => {
           console.error('Error saving LOTO Standard:', error);
           console.error('Error details:', error.error);
           console.error('Error message:', error.message);
-          // Handle error (could emit to a global error service)
+          // Show error message
+          const errorMsg = error.error?.message || error.message || 'Unknown error';
+          this.messageService.showError(`Failed to save LOTO Standard: ${errorMsg}`);
           return of(null);
         }),
         takeUntilDestroyed(this.destroyRef)

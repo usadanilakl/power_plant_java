@@ -1,11 +1,3 @@
-<!-- Debug info - Remove after testing -->
-<div style="padding: 1rem; background: #fff3cd; border: 1px solid #ffc107; margin: 1rem 0;">
-  <strong>Debug Info:</strong>
-  <div>LOTO Point ID: {{ lotoPointData()?.id || 'null' }}</div>
-  <div>Equipment List Length: {{ lotoPointData()?.equipmentList?.length || 0 }}</div>
-</div>
-
-<!-- Unified Image Viewer -->
 <app-rf-unified-image-viewer
   [mode]="'VIEW_ONLY'"
   [dataSource]="dataSource()"
