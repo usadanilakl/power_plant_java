@@ -35,6 +35,9 @@ import { RfLotoPointTableDataService } from '../../../../loto-points/refactored/
     RfLotoPointTableComponent,
   ],
   providers: [
+    // Provide a separate instance of RfLotoPointStateService for this popup
+    // to prevent the table from clearing LOTO points in the main left panel table
+    RfLotoPointStateService,
     TableSelectionService,
     TableStateService,
     TableDragService,

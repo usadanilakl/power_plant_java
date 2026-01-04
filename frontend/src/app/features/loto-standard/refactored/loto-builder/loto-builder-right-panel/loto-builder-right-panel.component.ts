@@ -101,12 +101,22 @@ export class LotoBuilderRightPanelComponent {
     });
 
     // Subscribe to current file changes to update builder state
+    // Only update if builder has no file yet or if this is the same file (updated data)
     this.currentFileService.currentFile$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (file) => {
           if (file) {
-            this.builderState.setCurrentFile(file);
+            const currentBuilderFileId = this.builderState.currentFile()?.id;
+            console.log('[LOTO Builder] currentFile$ emitted:', file.id, 'current builder file:', currentBuilderFileId);
+            // Only update if:
+            // 1. Builder has no file yet (initial load), OR
+            // 2. This is the same file (possibly with updated data)
+            if (!currentBuilderFileId || file.id === currentBuilderFileId) {
+              this.builderState.setCurrentFile(file);
+            } else {
+              console.log('[LOTO Builder] Ignoring file change - different file ID');
+            }
           }
         },
         error: (error) => {
@@ -115,12 +125,29 @@ export class LotoBuilderRightPanelComponent {
       });
 
     // Subscribe to current file service to load equipment when file changes
+    // Only update if the equipment belongs to the current builder file to prevent
+    // other components (like equipment browser dialogs) from overwriting our state
     this.currentFileService.elementsToRender$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (equipment) => {
-          if (equipment) {
-            this.builderState.setCurrentEquipment(equipment);
+          console.log('[LOTO Builder] elementsToRender$ emitted:', equipment?.length, 'items');
+          if (equipment && equipment.length > 0) {
+            const currentBuilderFileId = this.builderState.currentFile()?.id;
+            // Get the file ID from the first equipment item
+            const equipmentFileId = equipment[0]?.mainFileId || equipment[0]?.mainFileObject?.id;
+            console.log('[LOTO Builder] Equipment file ID:', equipmentFileId, 'current builder file:', currentBuilderFileId);
+
+            // Only update if:
+            // 1. Builder has no file yet (initial load), OR
+            // 2. The equipment belongs to the current builder file
+            if (!currentBuilderFileId || equipmentFileId === currentBuilderFileId) {
+              this.builderState.setCurrentEquipment(equipment);
+            } else {
+              console.log('[LOTO Builder] Ignoring equipment change - different file ID');
+            }
+          } else if (equipment && equipment.length === 0) {
+            console.log('[LOTO Builder] Empty equipment array received - NOT updating');
           }
         },
         error: (error) => {
@@ -139,6 +166,26 @@ export class LotoBuilderRightPanelComponent {
         },
         error: (error) => {
           console.error('Error handling LOTO point selection:', error);
+        }
+      });
+
+    // Subscribe to equipment updates to keep builder state in sync
+    // This handles cases where equipment is updated from any component
+    this.equipmentService.equipmentUpdated$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedEquipment) => {
+          const currentEquipment = this.builderState.currentEquipment();
+          const currentFileId = this.builderState.currentFile()?.id;
+
+          // Only update if the equipment belongs to the current file
+          if (currentFileId && updatedEquipment.mainFileId === currentFileId) {
+            console.log('[LOTO Builder] Equipment updated, refreshing local state:', updatedEquipment.id);
+            const updatedList = currentEquipment.map(eq =>
+              eq.id === updatedEquipment.id ? updatedEquipment : eq
+            );
+            this.builderState.setCurrentEquipment(updatedList);
+          }
         }
       });
   }

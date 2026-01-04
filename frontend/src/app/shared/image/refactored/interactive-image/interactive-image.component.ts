@@ -40,6 +40,14 @@ type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
   ],
   templateUrl: './interactive-image.component.html',
   styleUrl: './interactive-image.component.css',
+  // Provide component-level instances to prevent shared state between multiple image viewers
+  providers: [
+    ShapeManagerService,
+    ZoomPanService,
+    CanvasRenderService,
+    DrawingService,
+    ShapeConversionService,
+  ],
 })
 export class InteractiveImageComponent {
   @ViewChild('imageContainer') imageContainer!: ElementRef<HTMLDivElement>;
@@ -1051,6 +1059,17 @@ export class InteractiveImageComponent {
     fromEvent<KeyboardEvent>(document, 'keydown')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => {
+        // Skip shortcuts when user is typing in an input field
+        const activeElement = document.activeElement;
+        const isTypingInInput = activeElement instanceof HTMLInputElement ||
+          activeElement instanceof HTMLTextAreaElement ||
+          activeElement?.hasAttribute('contenteditable') ||
+          activeElement?.closest('input, textarea, [contenteditable]');
+
+        if (isTypingInInput) {
+          return; // Don't intercept keyboard events when typing in form fields
+        }
+
         const config = this.activeConfig();
 
         // Drawing mode shortcuts

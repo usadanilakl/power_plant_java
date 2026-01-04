@@ -1,7 +1,7 @@
 
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, Subject, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { EquipmentDto } from '../models/equipment/equipment.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
@@ -15,6 +15,14 @@ import { RfShape } from '../shared/image/refactored/models/fr-shape.model';
 })
 export class EquipmentService {
   private apiUrl = `${environment.apiUrl}/equipment`;
+
+  // Subject to broadcast equipment updates to all listening components
+  private equipmentUpdatedSubject = new Subject<EquipmentDto>();
+  equipmentUpdated$ = this.equipmentUpdatedSubject.asObservable();
+
+  // Subject to broadcast equipment deletions
+  private equipmentDeletedSubject = new Subject<number>();
+  equipmentDeleted$ = this.equipmentDeletedSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
@@ -48,11 +56,24 @@ export class EquipmentService {
   }
 
   updateEquipment(equipment: EquipmentDto): Observable<SpringApiResponse<EquipmentDto>> {
-    return this.http.put<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}`, equipment.toIdModel());
+    return this.http.put<SpringApiResponse<EquipmentDto>>(`${this.apiUrl}`, equipment.toIdModel()).pipe(
+      tap(response => {
+        if (response.responseData) {
+          // Broadcast the updated equipment to all listeners
+          const updatedEquipment = EquipmentDto.fromJson(response.responseData);
+          this.equipmentUpdatedSubject.next(updatedEquipment);
+        }
+      })
+    );
   }
 
   deleteEquipment(id: number): Observable<SpringApiResponse<void>> {
-    return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
+    return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`).pipe(
+      tap(() => {
+        // Broadcast the deletion to all listeners
+        this.equipmentDeletedSubject.next(id);
+      })
+    );
   }
 
   getByEquipmentType(equipmentType: string): Observable<SpringApiResponse<EquipmentDto[]>> {

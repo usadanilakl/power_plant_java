@@ -6,12 +6,14 @@ import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { LotoPointDto } from '../models/loto/loto-point.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FileService } from './file.service';
+import { EquipmentService } from './equipment.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CurrentFileService {
     private fileService = inject(FileService);
+    private equipmentService = inject(EquipmentService);
     private destroyRef = inject(DestroyRef);
     private currentFileSubject = new BehaviorSubject<FileDto | null>(null);
     currentFile$: Observable<FileDto | null> = this.currentFileSubject.asObservable();
@@ -50,6 +52,49 @@ export class CurrentFileService {
     
     constructor() {
       this.loadAllFilesByType();
+      this.subscribeToEquipmentUpdates();
+    }
+
+    /**
+     * Subscribe to equipment updates from EquipmentService
+     * This ensures all components displaying equipment get updated when any component saves changes
+     */
+    private subscribeToEquipmentUpdates(): void {
+      this.equipmentService.equipmentUpdated$
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(updatedEquipment => {
+          console.log('[CurrentFileService] Equipment updated:', updatedEquipment.id);
+          this.updateEquipmentInList(updatedEquipment);
+        });
+
+      this.equipmentService.equipmentDeleted$
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(deletedId => {
+          console.log('[CurrentFileService] Equipment deleted:', deletedId);
+          this.removeEquipmentFromList(deletedId);
+        });
+    }
+
+    /**
+     * Remove equipment from all lists by ID
+     */
+    private removeEquipmentFromList(equipmentId: number): void {
+      // Update elementsSubject
+      const currentElements = this.elementsSubject.getValue();
+      const updatedElements = currentElements.filter(eq => eq.id !== equipmentId);
+      this.elementsSubject.next(updatedElements);
+
+      // Update elementsToRenderSubject
+      const currentToRender = this.elementsToRenderSubject.getValue();
+      const updatedToRender = currentToRender.filter(eq => eq.id !== equipmentId);
+      this.elementsToRenderSubject.next(updatedToRender);
+
+      // Update the current file if it exists
+      const currentFile = this.currentFileSubject.getValue();
+      if (currentFile && currentFile.points) {
+        const updatedPoints = currentFile.points.filter(eq => eq.id !== equipmentId);
+        this.currentFileSubject.next(new FileDto({...currentFile, points: updatedPoints}));
+      }
     }
   
     private loadAllFilesByType(): void {
