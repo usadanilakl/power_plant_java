@@ -1,20 +1,49 @@
-<div class="carousel-container">
-  <!-- Header with navigation and close -->
-  <div class="carousel-header">
+<div
+  class="carousel-container"
+  [class.dragging]="isDragging()"
+  (mousedown)="onWindowClick()"
+>
+  <!-- Saving overlay -->
+  @if (isSaving()) {
+    <div class="saving-overlay">
+      <div class="saving-content">
+        <span class="spinner"></span>
+        <span>Saving...</span>
+      </div>
+    </div>
+  }
+
+  <!-- Header with navigation and close - also drag handle -->
+  <div
+    class="carousel-header"
+    (mousedown)="onDragStart($event)"
+  >
     <div class="carousel-title">
+      <span class="drag-handle" title="Drag to move">⋮⋮</span>
       <h2>LOTO Standards Editor</h2>
       @if (hasMultiple()) {
         <span class="carousel-counter">{{ activeIndex() + 1 }} / {{ totalCount() }}</span>
       }
     </div>
-    <button
-      type="button"
-      class="close-button"
-      (click)="onClose()"
-      title="Close carousel"
-    >
-      ✕
-    </button>
+    <div class="header-actions">
+      <button
+        type="button"
+        class="add-new-button"
+        (click)="onAddNew()"
+        [disabled]="isSaving()"
+        title="Add new LOTO Standard"
+      >
+        + Add New
+      </button>
+      <button
+        type="button"
+        class="close-button"
+        (click)="onClose()"
+        title="Close carousel"
+      >
+        ✕
+      </button>
+    </div>
   </div>
 
   <!-- Navigation arrows (only show if multiple standards) -->
@@ -57,6 +86,13 @@
       <div class="empty-carousel">
         <p class="empty-message">No LOTO standards to display</p>
         <p class="empty-hint">Add a new standard or select an existing one</p>
+        <button
+          type="button"
+          class="add-new-button large"
+          (click)="onAddNew()"
+        >
+          + Add LOTO Standard
+        </button>
       </div>
     }
   </div>

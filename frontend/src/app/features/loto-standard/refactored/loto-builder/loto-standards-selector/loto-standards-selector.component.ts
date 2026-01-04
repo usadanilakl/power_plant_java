@@ -1,10 +1,11 @@
-import { Component, computed, inject, output, signal, DestroyRef } from '@angular/core';
+import { Component, computed, inject, output, signal, DestroyRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { RfLotoStandardApiService } from '../../../refactored/services/rf-loto-standard-api.service';
 import { LotoStandardDto } from '../../../../../models/loto/loto-standard.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DraggableWindowService } from '../services/draggable-window.service';
 
 @Component({
   selector: 'app-loto-standards-selector',
@@ -13,10 +14,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   templateUrl: './loto-standards-selector.component.html',
   styleUrl: './loto-standards-selector.component.css',
 })
-export class LotoStandardsSelectorComponent {
+export class LotoStandardsSelectorComponent implements OnInit, OnDestroy {
   private builderState = inject(LotoBuilderStateService);
   private apiService = inject(RfLotoStandardApiService);
   private destroyRef = inject(DestroyRef);
+  private windowService = inject(DraggableWindowService);
+
+  // Window ID for draggable service
+  readonly windowId = 'loto-selector';
 
   // Outputs
   close = output<void>();
@@ -30,6 +35,13 @@ export class LotoStandardsSelectorComponent {
   showCreateNew = signal<boolean>(false);
   newStandardName = signal<string>('');
   newStandardDescription = signal<string>('');
+
+  // Dragging state
+  isDragging = signal<boolean>(false);
+  currentZIndex = signal<number>(1100);
+  position = signal<{ x: number; y: number }>({ x: 0, y: 0 });
+  private dragStartPos = { x: 0, y: 0 };
+  private windowStartPos = { x: 0, y: 0 };
 
   // Computed
   isVisible = computed(() => this.builderState.isLotoStandardsPopupOpen());
@@ -58,6 +70,75 @@ export class LotoStandardsSelectorComponent {
   constructor() {
     this.loadStandards();
   }
+
+  ngOnInit(): void {
+    // Register with draggable window service
+    const windowState = this.windowService.registerWindow(this.windowId, { x: 0, y: 0 });
+    this.currentZIndex.set(windowState.zIndex);
+    this.position.set(windowState.position);
+  }
+
+  ngOnDestroy(): void {
+    // Cleanup drag listeners
+    document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('mouseup', this.onMouseUp);
+
+    // Unregister from window service
+    this.windowService.unregisterWindow(this.windowId);
+  }
+
+  /**
+   * Bring window to front on click
+   */
+  onWindowClick(): void {
+    const newZIndex = this.windowService.bringToFront(this.windowId);
+    this.currentZIndex.set(newZIndex);
+  }
+
+  /**
+   * Start dragging the window
+   */
+  onDragStart(event: MouseEvent): void {
+    // Only start drag on left mouse button and from header
+    if (event.button !== 0) return;
+
+    event.preventDefault();
+    this.isDragging.set(true);
+    this.onWindowClick();
+
+    this.dragStartPos = { x: event.clientX, y: event.clientY };
+    this.windowStartPos = { ...this.position() };
+
+    document.addEventListener('mousemove', this.onMouseMove);
+    document.addEventListener('mouseup', this.onMouseUp);
+  }
+
+  /**
+   * Handle mouse move during drag
+   */
+  private onMouseMove = (event: MouseEvent): void => {
+    if (!this.isDragging()) return;
+
+    const deltaX = event.clientX - this.dragStartPos.x;
+    const deltaY = event.clientY - this.dragStartPos.y;
+
+    const newPosition = {
+      x: this.windowStartPos.x + deltaX,
+      y: this.windowStartPos.y + deltaY,
+    };
+
+    this.position.set(newPosition);
+    this.windowService.updatePosition(this.windowId, newPosition);
+  };
+
+  /**
+   * Handle mouse up to end drag
+   */
+  private onMouseUp = (): void => {
+    this.isDragging.set(false);
+    document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('mouseup', this.onMouseUp);
+  };
 
   /**
    * Load available LOTO standards from API

@@ -31,15 +31,18 @@
 
       <!-- LOTO Standards Carousel (floating window) -->
       @if (builderState.isCarouselVisible()) {
-        <div class="carousel-wrapper">
-          <app-loto-form-carousel
-            [lotoStandards]="builderState.selectedLotoStandards()"
-            (standardUpdated)="onCarouselStandardUpdated($event)"
-            (standardSubmitted)="onCarouselStandardSubmitted($event)"
-            (standardCancelled)="onCarouselStandardCancelled($event)"
-            (close)="onCarouselClose()"
-          ></app-loto-form-carousel>
-        </div>
+        <app-loto-form-carousel
+          #carouselRef
+          class="carousel-window"
+          [lotoStandards]="builderState.selectedLotoStandards()"
+          [style.z-index]="carouselRef.currentZIndex()"
+          [style.transform]="'translate(' + carouselRef.position().x + 'px, ' + carouselRef.position().y + 'px)'"
+          (standardUpdated)="onCarouselStandardUpdated($event)"
+          (standardSubmitted)="onCarouselStandardSubmitted($event)"
+          (standardCancelled)="onCarouselStandardCancelled($event)"
+          (addNewRequested)="onCarouselAddNewRequested()"
+          (close)="onCarouselClose()"
+        ></app-loto-form-carousel>
       }
 
       <!-- LOTO Standards Selector Popup -->

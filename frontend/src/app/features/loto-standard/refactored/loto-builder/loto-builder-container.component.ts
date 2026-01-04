@@ -116,4 +116,11 @@ export class LotoBuilderContainerComponent {
   onCarouselClose(): void {
     this.builderState.isLotoBuildingMode.set(false);
   }
+
+  /**
+   * Handle add new LOTO request from carousel
+   */
+  onCarouselAddNewRequested(): void {
+    this.builderState.openLotoStandardsPopup();
+  }
 }
