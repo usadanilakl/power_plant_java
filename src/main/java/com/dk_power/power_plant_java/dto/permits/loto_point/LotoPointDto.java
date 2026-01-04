@@ -45,6 +45,7 @@ public class LotoPointDto extends BaseDto {
 //    @JsonBackReference
     private List<LotoDto> lotos;
     private Set<EquipmentDto> equipmentList;
+    private String equipmentIds;
     private String oldId;
     private String objectType;
     private Long isUpdated;

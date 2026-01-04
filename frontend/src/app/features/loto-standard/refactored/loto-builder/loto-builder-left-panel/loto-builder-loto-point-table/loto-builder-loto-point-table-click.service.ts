@@ -1,7 +1,9 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TableClickService } from '../../../../../../shared/table/refactored/services/table-click.service';
 import { CurrentFileService } from '../../../../../../services/current-file.service';
 import { LotoBuilderStateService } from '../../services/loto-builder-state.service';
+import { RfLotoPointApiService } from '../../../../../loto-points/refactored/services/rf-loto-point-api.service';
 import { LotoPointDto } from '../../../../../../models/loto/loto-point.model';
 import { FileDto } from '../../../../../../models/file/file.model';
 
@@ -14,6 +16,8 @@ import { FileDto } from '../../../../../../models/file/file.model';
 export class LotoBuilderLotoPointTableClickService extends TableClickService {
   private currentFileService = inject(CurrentFileService);
   private builderState = inject(LotoBuilderStateService);
+  private lotoPointApiService = inject(RfLotoPointApiService);
+  private localDestroyRef = inject(DestroyRef);
 
   /**
    * Override double click to find equipment's file and highlight the loto point
@@ -33,20 +37,57 @@ export class LotoBuilderLotoPointTableClickService extends TableClickService {
     const file = this.findFileFromLotoPoint(lotoPoint);
 
     if (file) {
-      console.log('[LotoBuilderLotoPointTable] Opening file:', file.id, 'and highlighting point:', lotoPoint.tagNumber);
-
-      // Set the current file to load it
-      this.currentFileService.setCurrentFile(file);
-
-      // Highlight the loto point after file loads
-      this.builderState.setCurrentLotoPoint(lotoPoint);
-      this.builderState.showLotoPointInfoWindow(lotoPoint);
+      this.openFileAndHighlightPoint(file, lotoPoint);
     } else {
-      console.warn('[LotoBuilderLotoPointTable] No file found for LOTO point:', lotoPoint.tagNumber);
-      // Still show the info window even if no file is found
-      this.builderState.setCurrentLotoPoint(lotoPoint);
-      this.builderState.showLotoPointInfoWindow(lotoPoint);
+      // Equipment list might be missing in partial DTO - fetch full data from server
+      console.log('[LotoBuilderLotoPointTable] No equipment list, fetching full LOTO point data...');
+      this.fetchFullLotoPointAndOpenFile(lotoPoint);
     }
+  }
+
+  /**
+   * Open the file and highlight the loto point
+   */
+  private openFileAndHighlightPoint(file: FileDto, lotoPoint: LotoPointDto): void {
+    console.log('[LotoBuilderLotoPointTable] Opening file:', file.id, 'and highlighting point:', lotoPoint.tagNumber);
+
+    // Set the current file to load it
+    this.currentFileService.setCurrentFile(file);
+
+    // Highlight the loto point after file loads
+    this.builderState.setCurrentLotoPoint(lotoPoint);
+    this.builderState.showLotoPointInfoWindow(lotoPoint);
+  }
+
+  /**
+   * Fetch full LOTO point data from server and try to open associated file
+   */
+  private fetchFullLotoPointAndOpenFile(partialLotoPoint: LotoPointDto): void {
+    this.lotoPointApiService.getLotoPointById(partialLotoPoint.id.toString())
+      .pipe(takeUntilDestroyed(this.localDestroyRef))
+      .subscribe({
+        next: (response) => {
+          const fullLotoPoint = LotoPointDto.fromJson(response.responseData);
+          console.log('[LotoBuilderLotoPointTable] Fetched full LOTO point:', fullLotoPoint);
+
+          const file = this.findFileFromLotoPoint(fullLotoPoint);
+
+          if (file) {
+            this.openFileAndHighlightPoint(file, fullLotoPoint);
+          } else {
+            console.warn('[LotoBuilderLotoPointTable] No file found even after fetching full data:', fullLotoPoint.tagNumber);
+            // Still show the info window even if no file is found
+            this.builderState.setCurrentLotoPoint(fullLotoPoint);
+            this.builderState.showLotoPointInfoWindow(fullLotoPoint);
+          }
+        },
+        error: (error) => {
+          console.error('[LotoBuilderLotoPointTable] Error fetching LOTO point:', error);
+          // Fall back to showing info window with partial data
+          this.builderState.setCurrentLotoPoint(partialLotoPoint);
+          this.builderState.showLotoPointInfoWindow(partialLotoPoint);
+        }
+      });
   }
 
   /**

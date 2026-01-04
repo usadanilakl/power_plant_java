@@ -38,7 +38,8 @@ public class NgLotoPointController {
                     new ArrayList<>(Arrays.asList(
                             "id", "tagNumber", "unit", "description", "specificLocation", "isoPos.name",
                             "isoPos.id", "normPos.name", "normPos.id", "eqType.name", "eqType.id",
-                            "location.name", "location.id", "zeroEnergy.id", "zeroEnergy.method"
+                            "location.name", "location.id", "zeroEnergy.id", "zeroEnergy.method",
+                            "equipmentIds"
                     )),
                     PageRequest.of(page - 1, pageSize)
             ).map(ngLotoPointService::toDto);

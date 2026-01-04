@@ -46,6 +46,7 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     private Long isUpdated;
     private Boolean isProcessed;
     private String fileIds;
+    private String equipmentIds;
     @ManyToOne()
     @JoinColumn(name = "isoPos_id")
     private Value isoPos;
