@@ -148,23 +148,31 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.dataService.isTableIsolated.set(this.isTableIsolated());
   });
 
-  /** Apply initial search criteria when provided */
+  /** Apply initial search criteria when provided - only updates UI state, does NOT trigger search event.
+   *  The parent component is responsible for loading data with initial criteria.
+   */
   private initialSearchCriteriaApplied = false;
   private initialSearchCriteriaEffect = effect(() => {
     const criteria = this.initialSearchCriteria();
     // Only apply once when criteria is first provided
     if (criteria && !this.initialSearchCriteriaApplied) {
       this.initialSearchCriteriaApplied = true;
-      // Apply global search if provided
+      // Apply global search UI state if provided
       if (criteria.type === 'global' && criteria.query) {
         this.dataService.globalSearchQuery = criteria.query;
-        this.searchService.search();
+        if (criteria.globalFilterLogic) {
+          this.dataService.globalFilterLogic = criteria.globalFilterLogic;
+        }
       }
-      // Apply column filters if provided
+      // Apply column filters UI state if provided
       else if (criteria.type === 'column' && criteria.filters) {
         this.dataService.columnFilters.set(criteria.filters);
-        this.searchService.search();
+        if (criteria.columnFilterLogic) {
+          this.dataService.columnFilterLogic = criteria.columnFilterLogic;
+        }
       }
+      // Update current search criteria for state tracking (but don't emit search event)
+      this.dataService.currentSearchCriteria = criteria;
     }
   });
 

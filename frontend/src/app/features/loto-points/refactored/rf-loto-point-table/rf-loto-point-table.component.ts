@@ -101,7 +101,52 @@ export class RfLotoPointTableComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadInitialData();
+    // Check if we have initial search criteria - if so, load with that criteria
+    // Otherwise, load initial data without filters
+    const initialCriteria = this.initialSearchCriteria();
+    if (initialCriteria && (initialCriteria.query || (initialCriteria.filters && Object.keys(initialCriteria.filters).length > 0))) {
+      this.loadInitialDataWithCriteria(initialCriteria);
+    } else {
+      this.loadInitialData();
+    }
+  }
+
+  /**
+   * Load initial batch of LOTO points with search criteria applied
+   */
+  private loadInitialDataWithCriteria(criteria: SearchCriteria): void {
+    if (this.inputItems()) return;
+
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+
+    const searchCriteria: SearchCriteria = {
+      ...criteria,
+      page: 1,
+      pageSize: 50,
+    };
+
+    this.stateService.setSearchCriteria(searchCriteria);
+
+    this.apiService
+      .searchLotoPoints(searchCriteria, 50)
+      .pipe(
+        tap((response) => {
+          if (response.responseData?.content) {
+            this.stateService.addLotoPoints(response.responseData.content);
+            this.stateService.incrementPage();
+          }
+          this.isLoading.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error loading LOTO points with criteria:', error);
+          this.errorMessage.set('Failed to load LOTO points');
+          this.isLoading.set(false);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   /**
