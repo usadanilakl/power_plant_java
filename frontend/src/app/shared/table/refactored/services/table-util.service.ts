@@ -12,6 +12,7 @@ export class TableUtilService {
     globalQuery: string,
     columnFilters: { [key: string]: string },
     columnFilterLogic: { [key: string]: filterLogic } = {},
+    globalFilterLogic: filterLogic = 'AND',
   ): SearchCriteria {
     const filters = Object.entries(columnFilters)
       .filter(([_, value]) => value !== '')
@@ -22,6 +23,7 @@ export class TableUtilService {
       query: globalQuery,
       filters: filters,
       columnFilterLogic: columnFilterLogic,
+      globalFilterLogic: globalFilterLogic,
       page: 1,
     };
   }

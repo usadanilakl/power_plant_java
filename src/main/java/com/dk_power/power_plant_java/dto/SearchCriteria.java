@@ -22,6 +22,7 @@ public class SearchCriteria {
     private String query;
     private Map<String, String> filters;
     private Map<String,String> columnFilterLogic;
+    private String globalFilterLogic; // "AND" or "OR"
     private int page;
     private String sortColumn;
     private String sortDirection;

@@ -2,6 +2,13 @@
 <div class="table-wrapper" [class.resizing]="resizeService.isResizing()">
 
   <div class="search-bar">
+    <button
+      class="filter-logic-toggle global-logic-toggle"
+      [class.active]="searchService.getGlobalFilterLogic() === 'OR'"
+      (click)="searchService.toggleGlobalFilterLogic()"
+      [title]="'Global filter logic: ' + searchService.getGlobalFilterLogic()">
+      {{ searchService.getGlobalFilterLogic() }}
+    </button>
     <input
       type="text"
       placeholder="Global Search"

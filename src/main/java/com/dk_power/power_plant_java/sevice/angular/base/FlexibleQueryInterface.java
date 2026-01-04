@@ -201,8 +201,19 @@ public interface FlexibleQueryInterface {
                 basePredicates.addAll(buildPredicates(root, criteriaBuilder, baseCriteria.getFilters(), criteria.getColumnFilterLogic()));
             }
 
-            // Handle main criteria - only if filters exist and are not empty
-            if (criteria.getFilters() != null && !criteria.getFilters().isEmpty()) {
+            // Handle GLOBAL search - apply query across all searchable columns
+            if (criteria.getType() == SearchCriteria.SearchType.GLOBAL
+                    && criteria.getQuery() != null
+                    && !criteria.getQuery().trim().isEmpty()) {
+                // Determine global filter logic (default to AND if not specified)
+                boolean useAndLogicForGlobal = !"OR".equalsIgnoreCase(criteria.getGlobalFilterLogic());
+                Predicate globalPredicate = buildGlobalSearchPredicate(root, criteriaBuilder, criteria.getQuery(), useAndLogicForGlobal);
+                if (globalPredicate != null) {
+                    predicates.add(globalPredicate);
+                }
+            }
+            // Handle COLUMN search - only if filters exist and are not empty
+            else if (criteria.getFilters() != null && !criteria.getFilters().isEmpty()) {
                 predicates.addAll(buildPredicates(root, criteriaBuilder, criteria.getFilters(), criteria.getColumnFilterLogic()));
             }
 
@@ -230,6 +241,104 @@ public interface FlexibleQueryInterface {
             // Combine base predicate with main predicate
             return criteriaBuilder.and(basePredicate, mainPredicate);
         };
+    }
+
+    /**
+     * Builds a predicate for global search that applies the query across all searchable String columns.
+     * Supports both simple columns (e.g., "tagNumber") and nested paths (e.g., "location.name").
+     *
+     * @param root The root entity
+     * @param cb The CriteriaBuilder
+     * @param queryValue The search query string
+     * @param useAndLogic If true (AND): all tokens must match somewhere across any column.
+     *                    If false (OR): at least one token must match somewhere across any column.
+     * @return A predicate for the global search, or null if no valid predicate can be built
+     */
+    default Predicate buildGlobalSearchPredicate(Root<?> root, CriteriaBuilder cb, String queryValue, boolean useAndLogic) {
+        String trimmed = queryValue.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+
+        String[] tokens = trimmed.toLowerCase().split("\\s+");
+
+        // Define searchable columns for global search (supports nested paths like "location.name")
+        List<String> searchableColumns = Arrays.asList(
+                "tagNumber", "description", "specificLocation", "unit", "system",
+                "location.name", "isoPos.name", "normPos.name"
+        );
+
+        // Cache joins to avoid creating multiple joins for the same relation
+        Map<String, Join<?, ?>> joinCache = new HashMap<>();
+
+        // For each token, build a predicate that checks if it matches ANY column
+        List<Predicate> tokenPredicates = new ArrayList<>();
+
+        for (String token : tokens) {
+            if (token.isEmpty()) continue;
+
+            List<Predicate> columnMatchesForToken = new ArrayList<>();
+
+            for (String columnPath : searchableColumns) {
+                try {
+                    Path<?> path = resolvePathForGlobalSearch(root, columnPath, joinCache);
+                    if (path == null) continue;
+
+                    Class<?> fieldType = path.getJavaType();
+
+                    // Only search String columns
+                    if (!String.class.isAssignableFrom(fieldType)) {
+                        continue;
+                    }
+
+                    Expression<String> fieldExpr = cb.lower(path.as(String.class));
+                    columnMatchesForToken.add(cb.like(fieldExpr, "%" + token + "%"));
+                } catch (IllegalArgumentException e) {
+                    // Column doesn't exist on this entity, skip it
+                    System.out.println("Skipping column for global search: " + columnPath);
+                }
+            }
+
+            if (!columnMatchesForToken.isEmpty()) {
+                // OR between columns: token can match in any column
+                Predicate tokenMatchesAnyColumn = cb.or(columnMatchesForToken.toArray(new Predicate[0]));
+                tokenPredicates.add(tokenMatchesAnyColumn);
+            }
+        }
+
+        if (tokenPredicates.isEmpty()) {
+            return null;
+        }
+
+        // AND logic: all tokens must match (each in any column)
+        // OR logic: at least one token must match (in any column)
+        if (useAndLogic) {
+            return cb.and(tokenPredicates.toArray(new Predicate[0]));
+        } else {
+            return cb.or(tokenPredicates.toArray(new Predicate[0]));
+        }
+    }
+
+    /**
+     * Resolves a column path for global search, handling both simple and nested paths.
+     * Uses LEFT JOIN for nested paths to avoid excluding records with null relations.
+     */
+    private Path<?> resolvePathForGlobalSearch(Root<?> root, String columnPath, Map<String, Join<?, ?>> joinCache) {
+        if (!columnPath.contains(".")) {
+            // Simple path: just get the attribute directly
+            return root.get(columnPath);
+        }
+
+        // Nested path: need to join
+        String[] parts = columnPath.split("\\.");
+        String relationName = parts[0];
+        String fieldName = parts[1];
+
+        // Get or create the join (use LEFT JOIN to include records with null relations)
+        Join<?, ?> join = joinCache.computeIfAbsent(relationName,
+                name -> root.join(name, JoinType.LEFT));
+
+        return join.get(fieldName);
     }
 
 

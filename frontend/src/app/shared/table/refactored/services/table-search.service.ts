@@ -49,11 +49,23 @@ export class TableSearchService {
     if (!query) return true;
 
     const tokens = query.toLowerCase().trim().split(/\s+/);
-    return tokens.every((token) =>
-      Object.values(item).some((value) =>
-        String(value).toLowerCase().includes(token)
-      )
-    );
+    const useAndLogic = this.dataService.globalFilterLogic === 'AND';
+
+    // AND logic: all tokens must match somewhere across any column
+    // OR logic: at least one token must match somewhere across any column
+    if (useAndLogic) {
+      return tokens.every((token) =>
+        Object.values(item).some((value) =>
+          String(value).toLowerCase().includes(token)
+        )
+      );
+    } else {
+      return tokens.some((token) =>
+        Object.values(item).some((value) =>
+          String(value).toLowerCase().includes(token)
+        )
+      );
+    }
   }
 
   private matchesColumnFilters(
@@ -213,7 +225,8 @@ export class TableSearchService {
     const searchCriteria = this.utilService.buildSearchCriteria(
       this.dataService.globalSearchQuery,
       this.dataService.columnFilters(),
-      this.dataService.columnFilterLogic
+      this.dataService.columnFilterLogic,
+      this.dataService.globalFilterLogic
     );
 
     this.dataService.currentSearchCriteria = searchCriteria;
@@ -252,6 +265,18 @@ export class TableSearchService {
     const currentLogic = this.getColumnFilterLogic(columnId);
     const newLogic = currentLogic === 'AND' ? 'OR' : 'AND';
     this.columnFilterLogic[columnId] = newLogic;
+
+    //Trigger a search to apply the new logic
+    this.search();
+  }
+
+  getGlobalFilterLogic(): filterLogic {
+    return this.dataService.globalFilterLogic;
+  }
+
+  toggleGlobalFilterLogic(): void {
+    const currentLogic = this.dataService.globalFilterLogic;
+    this.dataService.globalFilterLogic = currentLogic === 'AND' ? 'OR' : 'AND';
 
     //Trigger a search to apply the new logic
     this.search();

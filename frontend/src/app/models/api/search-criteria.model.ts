@@ -5,6 +5,7 @@ export interface SearchCriteria {
   query?: string;
   filters?: { [key: string]: string };
   columnFilterLogic?: { [key: string]: filterLogic };
+  globalFilterLogic?: filterLogic;
   sortColumn?: string;
   sortDirection?: 'ASC' | 'DESC';
   page?: number;

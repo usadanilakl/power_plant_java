@@ -28,8 +28,9 @@ export class TableDataService {
   globalSearchQuery: string = '';
   columnFilters = signal<{ [key: string]: string }>({});
   columnFilterLogic: { [key: string]: filterLogic } = {};
+  globalFilterLogic: filterLogic = 'AND';
   isTableIsolated = signal<boolean>(false);
-  currentSearchCriteria: SearchCriteria = { type: 'column', query: '', filters: {}, columnFilterLogic: {} };
+  currentSearchCriteria: SearchCriteria = { type: 'column', query: '', filters: {}, columnFilterLogic: {}, globalFilterLogic: 'AND' };
 
   excludedItemIds = new Set<any>();
   highlightedItemIds = new Set<any>();
