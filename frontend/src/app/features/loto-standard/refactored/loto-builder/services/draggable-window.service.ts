@@ -5,10 +5,16 @@ export interface WindowPosition {
   y: number;
 }
 
+export interface WindowSize {
+  width: number;
+  height: number;
+}
+
 export interface DraggableWindow {
   id: string;
   zIndex: number;
   position: WindowPosition;
+  size: WindowSize;
 }
 
 @Injectable({
@@ -23,15 +29,27 @@ export class DraggableWindowService {
   /**
    * Register a new draggable window
    */
-  registerWindow(id: string, initialPosition?: WindowPosition): DraggableWindow {
+  registerWindow(
+    id: string,
+    initialPosition?: WindowPosition,
+    initialSize?: WindowSize
+  ): DraggableWindow {
     const currentWindows = this.windows();
+
+    // If window already exists, return it
+    const existing = currentWindows.get(id);
+    if (existing) {
+      return existing;
+    }
+
     const newZIndex = this.maxZIndex() + 1;
     this.maxZIndex.set(newZIndex);
 
     const window: DraggableWindow = {
       id,
       zIndex: newZIndex,
-      position: initialPosition || { x: 0, y: 0 }
+      position: initialPosition || { x: 0, y: 0 },
+      size: initialSize || { width: 400, height: 300 }
     };
 
     const updatedWindows = new Map(currentWindows);
@@ -91,6 +109,40 @@ export class DraggableWindowService {
   }
 
   /**
+   * Update window size
+   */
+  updateSize(id: string, size: WindowSize): void {
+    const currentWindows = this.windows();
+    const window = currentWindows.get(id);
+
+    if (!window) {
+      return;
+    }
+
+    const updatedWindow = { ...window, size };
+    const updatedWindows = new Map(currentWindows);
+    updatedWindows.set(id, updatedWindow);
+    this.windows.set(updatedWindows);
+  }
+
+  /**
+   * Update both position and size
+   */
+  updatePositionAndSize(id: string, position: WindowPosition, size: WindowSize): void {
+    const currentWindows = this.windows();
+    const window = currentWindows.get(id);
+
+    if (!window) {
+      return;
+    }
+
+    const updatedWindow = { ...window, position, size };
+    const updatedWindows = new Map(currentWindows);
+    updatedWindows.set(id, updatedWindow);
+    this.windows.set(updatedWindows);
+  }
+
+  /**
    * Get current z-index for a window
    */
   getZIndex(id: string): number {
@@ -104,6 +156,21 @@ export class DraggableWindowService {
   getPosition(id: string): WindowPosition | null {
     const window = this.windows().get(id);
     return window?.position || null;
+  }
+
+  /**
+   * Get current size for a window
+   */
+  getSize(id: string): WindowSize | null {
+    const window = this.windows().get(id);
+    return window?.size || null;
+  }
+
+  /**
+   * Get window state
+   */
+  getWindow(id: string): DraggableWindow | null {
+    return this.windows().get(id) || null;
   }
 
   /**

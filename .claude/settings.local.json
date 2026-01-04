@@ -8,7 +8,8 @@
       "Bash(find:*)",
       "Bash(git checkout:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx ng build --configuration=development)"
+      "Bash(npx ng build --configuration=development)",
+      "Bash(./node_modules/.bin/ng build:*)"
     ]
   }
 }

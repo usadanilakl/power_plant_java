@@ -11,6 +11,7 @@ import { CurrentFileService } from '../../../../../services/current-file.service
 import { EquipmentMapperService } from '../../../../equipment/refactored/services/equipment-mapper.service';
 import { EquipmentService } from '../../../../../services/equipment.service';
 import { RfLotoPointStateService } from '../../../../loto-points/refactored/services/rf-loto-point-state.service';
+import { RfLotoPointApiService } from '../../../../loto-points/refactored/services/rf-loto-point-api.service';
 import { ImageService } from '../../../../../services/text-recognition.service';
 import { RfShape } from '../../../../../shared/image/refactored/models/fr-shape.model';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
@@ -33,6 +34,7 @@ export class LotoBuilderRightPanelComponent {
   private equipmentMapper = inject(EquipmentMapperService);
   private equipmentService = inject(EquipmentService);
   private lotoPointStateService = inject(RfLotoPointStateService);
+  private lotoPointApiService = inject(RfLotoPointApiService);
   private imageService = inject(ImageService);
   private destroyRef = inject(DestroyRef);
   private injector = inject(Injector);
@@ -101,22 +103,21 @@ export class LotoBuilderRightPanelComponent {
     });
 
     // Subscribe to current file changes to update builder state
-    // Only update if builder has no file yet or if this is the same file (updated data)
+    // Always accept file changes - the currentFileService is the source of truth for file selection
     this.currentFileService.currentFile$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (file) => {
           if (file) {
-            const currentBuilderFileId = this.builderState.currentFile()?.id;
-            console.log('[LOTO Builder] currentFile$ emitted:', file.id, 'current builder file:', currentBuilderFileId);
-            // Only update if:
-            // 1. Builder has no file yet (initial load), OR
-            // 2. This is the same file (possibly with updated data)
-            if (!currentBuilderFileId || file.id === currentBuilderFileId) {
-              this.builderState.setCurrentFile(file);
-            } else {
-              console.log('[LOTO Builder] Ignoring file change - different file ID');
+            const previousFileId = this.builderState.currentFile()?.id;
+
+            // If switching to a different file, clear equipment immediately
+            // This prevents old shapes from showing on the new file
+            if (previousFileId && previousFileId !== file.id) {
+              this.builderState.setCurrentEquipment([]);
             }
+
+            this.builderState.setCurrentFile(file);
           }
         },
         error: (error) => {
@@ -125,29 +126,24 @@ export class LotoBuilderRightPanelComponent {
       });
 
     // Subscribe to current file service to load equipment when file changes
-    // Only update if the equipment belongs to the current builder file to prevent
-    // other components (like equipment browser dialogs) from overwriting our state
+    // Accept equipment updates that belong to the current builder file
     this.currentFileService.elementsToRender$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (equipment) => {
-          console.log('[LOTO Builder] elementsToRender$ emitted:', equipment?.length, 'items');
           if (equipment && equipment.length > 0) {
             const currentBuilderFileId = this.builderState.currentFile()?.id;
             // Get the file ID from the first equipment item
             const equipmentFileId = equipment[0]?.mainFileId || equipment[0]?.mainFileObject?.id;
-            console.log('[LOTO Builder] Equipment file ID:', equipmentFileId, 'current builder file:', currentBuilderFileId);
 
-            // Only update if:
-            // 1. Builder has no file yet (initial load), OR
-            // 2. The equipment belongs to the current builder file
-            if (!currentBuilderFileId || equipmentFileId === currentBuilderFileId) {
+            // Update if the equipment belongs to the current builder file
+            if (equipmentFileId === currentBuilderFileId) {
               this.builderState.setCurrentEquipment(equipment);
-            } else {
-              console.log('[LOTO Builder] Ignoring equipment change - different file ID');
             }
           } else if (equipment && equipment.length === 0) {
-            console.log('[LOTO Builder] Empty equipment array received - NOT updating');
+            // Always clear equipment when empty array is received
+            // This handles file switching where the new file has no equipment
+            this.builderState.setCurrentEquipment([]);
           }
         },
         error: (error) => {
@@ -186,6 +182,27 @@ export class LotoBuilderRightPanelComponent {
             );
             this.builderState.setCurrentEquipment(updatedList);
           }
+        }
+      });
+
+    // Subscribe to LOTO point updates to keep builder state in sync
+    // This handles cases where LOTO points are updated from any component (form, table, etc.)
+    this.lotoPointApiService.lotoPointUpdated$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedLotoPoint) => {
+          console.log('[LOTO Builder] LOTO point updated:', updatedLotoPoint.id);
+          this.updateLotoPointInEquipment(updatedLotoPoint);
+        }
+      });
+
+    // Subscribe to LOTO point deletions
+    this.lotoPointApiService.lotoPointDeleted$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (deletedLotoPointId) => {
+          console.log('[LOTO Builder] LOTO point deleted:', deletedLotoPointId);
+          this.removeLotoPointFromEquipment(deletedLotoPointId);
         }
       });
   }
@@ -370,6 +387,9 @@ export class LotoBuilderRightPanelComponent {
           console.log('Equipment created successfully:', response);
           const savedEquipment = EquipmentDto.fromJson(response.responseData);
 
+          // Add the newly created equipment to the local list immediately
+          this.addEquipmentToLocalList(savedEquipment);
+
           // If text recognition is enabled, perform OCR and open table with search
           if (this.builderState.isTextRecognitionEnabled()) {
             this.performTextRecognitionAndOpenPopup(shape, savedEquipment);
@@ -462,6 +482,86 @@ export class LotoBuilderRightPanelComponent {
       this.builderState.showLotoPointInfoWindow(lotoPoint);
     } else {
       console.log('No equipment found for LOTO point:', lotoPoint.tagNumber);
+    }
+  }
+
+  /**
+   * Update LOTO point in equipment list when it changes
+   * This syncs changes from form submissions back to the builder state
+   */
+  private updateLotoPointInEquipment(updatedLotoPoint: LotoPointDto): void {
+    const currentEquipment = this.builderState.currentEquipment();
+
+    // Check if this LOTO point is associated with any equipment in the current file
+    const updatedEquipmentList = currentEquipment.map(eq => {
+      // Check if this equipment has the updated LOTO point
+      if (eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === updatedLotoPoint.id)) {
+        // Update the LOTO point in the equipment's lotoPoints array
+        const updatedLotoPoints = eq.lotoPoints.map(lp =>
+          lp.id === updatedLotoPoint.id ? updatedLotoPoint : lp
+        );
+        return new EquipmentDto({ ...eq, lotoPoints: updatedLotoPoints });
+      }
+
+      // Check if this equipment is in the updated LOTO point's equipmentList
+      // This handles newly associated equipment
+      if (updatedLotoPoint.equipmentList && updatedLotoPoint.equipmentList.some(e => e.id === eq.id)) {
+        // Check if LOTO point is not already in this equipment's lotoPoints
+        if (!eq.lotoPoints || !eq.lotoPoints.some(lp => lp.id === updatedLotoPoint.id)) {
+          const existingLotoPoints = eq.lotoPoints || [];
+          return new EquipmentDto({
+            ...eq,
+            lotoPoints: [...existingLotoPoints, updatedLotoPoint]
+          });
+        }
+      }
+
+      return eq;
+    });
+
+    // Check if any equipment was actually updated
+    const hasChanges = updatedEquipmentList.some((eq, index) => eq !== currentEquipment[index]);
+    if (hasChanges) {
+      console.log('[LOTO Builder] Updated equipment with new LOTO point data');
+      this.builderState.setCurrentEquipment(updatedEquipmentList);
+    }
+  }
+
+  /**
+   * Remove LOTO point from equipment list when it's deleted
+   */
+  private removeLotoPointFromEquipment(deletedLotoPointId: number): void {
+    const currentEquipment = this.builderState.currentEquipment();
+
+    const updatedEquipmentList = currentEquipment.map(eq => {
+      if (eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === deletedLotoPointId)) {
+        const filteredLotoPoints = eq.lotoPoints.filter(lp => lp.id !== deletedLotoPointId);
+        return new EquipmentDto({ ...eq, lotoPoints: filteredLotoPoints });
+      }
+      return eq;
+    });
+
+    const hasChanges = updatedEquipmentList.some((eq, index) => eq !== currentEquipment[index]);
+    if (hasChanges) {
+      console.log('[LOTO Builder] Removed deleted LOTO point from equipment');
+      this.builderState.setCurrentEquipment(updatedEquipmentList);
+    }
+  }
+
+  /**
+   * Add newly created equipment to the local equipment list
+   */
+  private addEquipmentToLocalList(equipment: EquipmentDto): void {
+    const currentEquipment = this.builderState.currentEquipment();
+    const currentFileId = this.builderState.currentFile()?.id;
+
+    // Only add if the equipment belongs to the current file
+    if (currentFileId && equipment.mainFileId === currentFileId) {
+      // Check if it's not already in the list
+      if (!currentEquipment.some(eq => eq.id === equipment.id)) {
+        console.log('[LOTO Builder] Adding new equipment to local list:', equipment.id);
+        this.builderState.setCurrentEquipment([...currentEquipment, equipment]);
+      }
     }
   }
 }

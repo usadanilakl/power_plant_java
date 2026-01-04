@@ -46,23 +46,23 @@
       @if (builderState.displayMode() === 'toggle-menu') {
         <app-rf-file-left-menu></app-rf-file-left-menu>
       } @else {
-        <app-rf-file-table
+        <app-loto-builder-file-table
           [tableId]="'loto-builder-file-table'"
           [isTableIsolated]="false"
           [loadMoreEnabled]="true"
           [enableDragDrop]="false"
-        ></app-rf-file-table>
+        ></app-loto-builder-file-table>
       }
     } @else {
       @if (builderState.displayMode() === 'toggle-menu') {
         <app-rf-loto-point-left-menu></app-rf-loto-point-left-menu>
       } @else {
-        <app-rf-loto-point-table
+        <app-loto-builder-loto-point-table
           [tableId]="'loto-builder-loto-point-table'"
           [isTableIsolated]="false"
           [loadMoreEnabled]="true"
           [enableDragDrop]="false"
-        ></app-rf-loto-point-table>
+        ></app-loto-builder-loto-point-table>
       }
     }
   </div>

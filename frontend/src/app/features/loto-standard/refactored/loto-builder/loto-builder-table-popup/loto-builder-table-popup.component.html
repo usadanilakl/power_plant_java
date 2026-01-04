@@ -1,27 +1,42 @@
 @if (isVisible()) {
-  <div class="table-overlay" (click)="onBackdropClick($event)">
-    <div class="table-popup">
-      <div class="table-header">
-        <h2 class="table-title">LOTO Points</h2>
-        <div class="table-info">
+  <app-rf-floating-window
+    [windowId]="windowId"
+    [initialPosition]="initialPosition"
+    [initialSize]="initialSize"
+    [minSize]="minSize"
+  >
+    <!-- Header content -->
+    <div window-header class="header-content">
+      <div class="header-title">
+        <span class="drag-handle" title="Drag to move">&#8942;&#8942;</span>
+        <h2>LOTO Points</h2>
+        <span class="table-info">
           {{ lotoPoints().length }} point{{ lotoPoints().length !== 1 ? 's' : '' }}
-        </div>
-        <button class="close-button" (click)="close()" title="Close">
-          ✕
-        </button>
+        </span>
       </div>
-
-      <div class="table-content">
-        <app-loto-point-display-table
-          [inputItems]="lotoPoints()"
-        ></app-loto-point-display-table>
-      </div>
-
-      <div class="table-footer">
-        <button class="action-button" (click)="close()">
-          Close
-        </button>
-      </div>
+      <button class="close-button" (click)="close()" title="Close">
+        &#10005;
+      </button>
     </div>
-  </div>
+
+    <!-- Table content -->
+    <div class="table-content">
+      <app-loto-point-display-table
+        [inputItems]="lotoPoints()"
+        [isTableIsolated]="true"
+        [loadMoreEnabled]="false"
+        [hoverDebounceTime]="100"
+        [hoveredItemId]="hoveredLotoPoint()?.id ?? null"
+        (selectedItemsEvent)="onRowSelected($event)"
+        (rowHoveredEvent)="onRowHovered($event)"
+      ></app-loto-point-display-table>
+    </div>
+
+    <!-- Footer -->
+    <div window-footer class="table-footer">
+      <button class="action-button" (click)="close()">
+        Close
+      </button>
+    </div>
+  </app-rf-floating-window>
 }

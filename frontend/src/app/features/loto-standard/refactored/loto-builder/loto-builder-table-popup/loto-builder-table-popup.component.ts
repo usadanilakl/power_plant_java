@@ -2,6 +2,8 @@ import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { LotoPointDisplayTableComponent } from '../../../../loto-points/refactored/loto-point-display-table/loto-point-display-table.component';
+import { RfFloatingWindowComponent } from '../../../../../shared/rf-floating-window/rf-floating-window.component';
+import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 
 @Component({
   selector: 'app-loto-builder-table-popup',
@@ -9,12 +11,19 @@ import { LotoPointDisplayTableComponent } from '../../../../loto-points/refactor
   imports: [
     CommonModule,
     LotoPointDisplayTableComponent,
+    RfFloatingWindowComponent,
   ],
   templateUrl: './loto-builder-table-popup.component.html',
   styleUrl: './loto-builder-table-popup.component.css',
 })
 export class LotoBuilderTablePopupComponent {
   protected builderState = inject(LotoBuilderStateService);
+
+  // Window configuration
+  readonly windowId = 'loto-table-popup';
+  readonly initialPosition = { x: 20, y: 100 };
+  readonly initialSize = { width: 650, height: 500 };
+  readonly minSize = { width: 400, height: 300 };
 
   /**
    * Check if table popup should be shown
@@ -27,9 +36,8 @@ export class LotoBuilderTablePopupComponent {
    * Get all LOTO points for the current file
    */
   lotoPoints = computed(() => {
-    // Get all LOTO points from current equipment
     const equipment = this.builderState.currentEquipment();
-    const allLotoPoints: any[] = [];
+    const allLotoPoints: LotoPointDto[] = [];
 
     equipment.forEach(eq => {
       if (eq.lotoPoints && eq.lotoPoints.length > 0) {
@@ -41,6 +49,13 @@ export class LotoBuilderTablePopupComponent {
   });
 
   /**
+   * Get the currently hovered LOTO point from state
+   */
+  hoveredLotoPoint = computed(() => {
+    return this.builderState.hoveredLotoPoint();
+  });
+
+  /**
    * Close the table popup
    */
   close(): void {
@@ -48,12 +63,44 @@ export class LotoBuilderTablePopupComponent {
   }
 
   /**
-   * Handle backdrop click to close
+   * Handle row hover event from table - sync with shape highlighting
    */
-  onBackdropClick(event: MouseEvent): void {
-    // Only close if clicking the backdrop itself, not child elements
-    if (event.target === event.currentTarget) {
-      this.close();
+  onRowHovered(lotoPoint: LotoPointDto | null): void {
+    this.builderState.hoveredLotoPoint.set(lotoPoint);
+
+    if (!lotoPoint) {
+      this.builderState.hoveredShapeId.set(null);
+      return;
+    }
+
+    // Find equipment that contains this LOTO point and highlight its shape
+    const equipment = this.builderState.currentEquipment();
+    const matchingEquipment = equipment.find(eq =>
+      eq.lotoPoints?.some(lp => lp.id === lotoPoint.id)
+    );
+
+    if (matchingEquipment) {
+      this.builderState.hoveredShapeId.set(matchingEquipment.id!);
+    } else {
+      this.builderState.hoveredShapeId.set(null);
+    }
+  }
+
+  /**
+   * Handle row selection event from table
+   */
+  onRowSelected(lotoPoints: LotoPointDto[]): void {
+    if (lotoPoints.length === 0) return;
+
+    const selectedLotoPoint = lotoPoints[0];
+    const equipment = this.builderState.currentEquipment();
+
+    const matchingEquipment = equipment.find(eq =>
+      eq.lotoPoints?.some(lp => lp.id === selectedLotoPoint.id)
+    );
+
+    if (matchingEquipment) {
+      this.builderState.hoveredShapeId.set(matchingEquipment.id!);
     }
   }
 }

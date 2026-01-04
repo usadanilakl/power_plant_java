@@ -6,7 +6,12 @@
       "Bash(npm run start)",
       "Bash(ng:*)",
       "Bash(npm run build:*)",
-      "Bash(npx ng generate:*)"
+      "Bash(npx ng generate:*)",
+      "Bash(./node_modules/.bin/ng build:*)",
+      "Bash(export NVM_DIR=\"$HOME/.nvm\")",
+      "Bash([ -s \"$NVM_DIR/nvm.sh\" ])",
+      "Bash(. \"$NVM_DIR/nvm.sh\")",
+      "Bash(npx ng build)"
     ]
   }
 }

@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal, DestroyRef, OnInit, OnDestroy, ElementRef } from '@angular/core';
+import { Component, computed, inject, input, output, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SimpleLotoFormComponent } from '../simple-loto-form/simple-loto-form.component';
@@ -6,25 +6,26 @@ import { LotoStandardDto } from '../../../../../models/loto/loto-standard.model'
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { RfLotoStandardApiService } from '../../services/rf-loto-standard-api.service';
 import { GlobalMessageService } from '../../../../../shared/global-message/global-message.service';
-import { DraggableWindowService } from '../services/draggable-window.service';
+import { RfFloatingWindowComponent } from '../../../../../shared/rf-floating-window/rf-floating-window.component';
 
 @Component({
   selector: 'app-loto-form-carousel',
   standalone: true,
-  imports: [CommonModule, SimpleLotoFormComponent],
+  imports: [CommonModule, SimpleLotoFormComponent, RfFloatingWindowComponent],
   templateUrl: './loto-form-carousel.component.html',
   styleUrl: './loto-form-carousel.component.css',
 })
-export class LotoFormCarouselComponent implements OnInit, OnDestroy {
+export class LotoFormCarouselComponent {
   // Services
   private apiService = inject(RfLotoStandardApiService);
   private messageService = inject(GlobalMessageService);
   private destroyRef = inject(DestroyRef);
-  private windowService = inject(DraggableWindowService);
-  private elementRef = inject(ElementRef);
 
-  // Window ID for draggable service
+  // Window configuration
   readonly windowId = 'loto-carousel';
+  readonly initialPosition = { x: 0, y: 0 };
+  readonly initialSize = { width: 500, height: 600 };
+  readonly minSize = { width: 350, height: 400 };
 
   // Inputs
   lotoStandards = input.required<LotoStandardDto[]>();
@@ -40,13 +41,6 @@ export class LotoFormCarouselComponent implements OnInit, OnDestroy {
   activeIndex = signal<number>(0);
   isSaving = signal<boolean>(false);
 
-  // Dragging state
-  isDragging = signal<boolean>(false);
-  currentZIndex = signal<number>(1100);
-  position = signal<{ x: number; y: number }>({ x: 0, y: 0 });
-  private dragStartPos = { x: 0, y: 0 };
-  private windowStartPos = { x: 0, y: 0 };
-
   // Computed
   activeStandard = computed(() => {
     const standards = this.lotoStandards();
@@ -61,66 +55,6 @@ export class LotoFormCarouselComponent implements OnInit, OnDestroy {
   canGoPrevious = computed(() => this.activeIndex() > 0);
 
   canGoNext = computed(() => this.activeIndex() < this.totalCount() - 1);
-
-  ngOnInit(): void {
-    const window = this.windowService.registerWindow(this.windowId);
-    this.currentZIndex.set(window.zIndex);
-  }
-
-  ngOnDestroy(): void {
-    this.windowService.unregisterWindow(this.windowId);
-    // Clean up event listeners
-    document.removeEventListener('mousemove', this.onMouseMove);
-    document.removeEventListener('mouseup', this.onMouseUp);
-  }
-
-  /**
-   * Bring window to front when clicked
-   */
-  onWindowClick(): void {
-    const newZIndex = this.windowService.bringToFront(this.windowId);
-    this.currentZIndex.set(newZIndex);
-  }
-
-  /**
-   * Start dragging the window
-   */
-  onDragStart(event: MouseEvent): void {
-    // Only drag from header, not from buttons
-    if ((event.target as HTMLElement).closest('button')) {
-      return;
-    }
-
-    event.preventDefault();
-    this.isDragging.set(true);
-    this.dragStartPos = { x: event.clientX, y: event.clientY };
-    this.windowStartPos = { ...this.position() };
-
-    // Bring to front
-    this.onWindowClick();
-
-    document.addEventListener('mousemove', this.onMouseMove);
-    document.addEventListener('mouseup', this.onMouseUp);
-  }
-
-  private onMouseMove = (event: MouseEvent): void => {
-    if (!this.isDragging()) return;
-
-    const deltaX = event.clientX - this.dragStartPos.x;
-    const deltaY = event.clientY - this.dragStartPos.y;
-
-    this.position.set({
-      x: this.windowStartPos.x + deltaX,
-      y: this.windowStartPos.y + deltaY
-    });
-  };
-
-  private onMouseUp = (): void => {
-    this.isDragging.set(false);
-    this.windowService.updatePosition(this.windowId, this.position());
-    document.removeEventListener('mousemove', this.onMouseMove);
-    document.removeEventListener('mouseup', this.onMouseUp);
-  };
 
   /**
    * Navigate to previous form

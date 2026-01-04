@@ -1,5 +1,5 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
-import { BehaviorSubject, forkJoin, map, Observable, Subject, take, tap } from 'rxjs';
+import { BehaviorSubject, forkJoin, map, Observable, Subject, tap } from 'rxjs';
 import { FileDto } from '../models/file/file.model';
 import { EquipmentDto } from '../models/equipment/equipment.model';
 import { SpringApiResponse } from '../models/api/spring-api-response.model';
@@ -7,6 +7,7 @@ import { LotoPointDto } from '../models/loto/loto-point.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FileService } from './file.service';
 import { EquipmentService } from './equipment.service';
+import { RfLotoPointApiService } from '../features/loto-points/refactored/services/rf-loto-point-api.service';
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +15,7 @@ import { EquipmentService } from './equipment.service';
 export class CurrentFileService {
     private fileService = inject(FileService);
     private equipmentService = inject(EquipmentService);
+    private lotoPointApiService = inject(RfLotoPointApiService);
     private destroyRef = inject(DestroyRef);
     private currentFileSubject = new BehaviorSubject<FileDto | null>(null);
     currentFile$: Observable<FileDto | null> = this.currentFileSubject.asObservable();
@@ -53,6 +55,7 @@ export class CurrentFileService {
     constructor() {
       this.loadAllFilesByType();
       this.subscribeToEquipmentUpdates();
+      this.subscribeToLotoPointUpdates();
     }
 
     /**
@@ -73,6 +76,57 @@ export class CurrentFileService {
           console.log('[CurrentFileService] Equipment deleted:', deletedId);
           this.removeEquipmentFromList(deletedId);
         });
+    }
+
+    /**
+     * Subscribe to LOTO point updates from RfLotoPointApiService
+     * This ensures all components displaying LOTO points get updated when any component saves changes
+     */
+    private subscribeToLotoPointUpdates(): void {
+      this.lotoPointApiService.lotoPointUpdated$
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(updatedLotoPoint => {
+          console.log('[CurrentFileService] LOTO point updated:', updatedLotoPoint.id);
+          this.updateAssociatedLotoPoint(updatedLotoPoint);
+        });
+
+      this.lotoPointApiService.lotoPointDeleted$
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(deletedId => {
+          console.log('[CurrentFileService] LOTO point deleted:', deletedId);
+          this.removeLotoPointFromEquipment(deletedId);
+        });
+    }
+
+    /**
+     * Remove LOTO point from all equipment lists by ID
+     */
+    private removeLotoPointFromEquipment(lotoPointId: number): void {
+      const updateEquipmentList = (equipmentList: EquipmentDto[]): EquipmentDto[] => {
+        return equipmentList.map(equipment => {
+          if (equipment.lotoPoints?.some(lp => lp.id === lotoPointId)) {
+            return new EquipmentDto({
+              ...equipment,
+              lotoPoints: equipment.lotoPoints.filter(lp => lp.id !== lotoPointId)
+            });
+          }
+          return equipment;
+        });
+      };
+
+      this.elementsSubject.next(updateEquipmentList(this.elementsSubject.getValue()));
+      this.elementsToRenderSubject.next(updateEquipmentList(this.elementsToRenderSubject.getValue()));
+
+      // Update the current file if it exists
+      const currentFile = this.currentFileSubject.getValue();
+      if (currentFile && currentFile.points) {
+        const updatedPoints = updateEquipmentList(currentFile.points);
+        this.currentFileSubject.next(new FileDto({...currentFile, points: updatedPoints}));
+      }
+
+      // Update associatedLotoPointsSubject
+      const currentLotoPoints = this.associatedLotoPointsSubject.getValue();
+      this.associatedLotoPointsSubject.next(currentLotoPoints.filter(lp => lp.id !== lotoPointId));
     }
 
     /**
@@ -132,11 +186,19 @@ export class CurrentFileService {
             return;
         }
 
+        // Check if switching to a different file - clear equipment immediately
+        const currentFileId = this.currentFileSubject.getValue()?.id;
+        if (currentFileId && currentFileId !== file.id) {
+            this.elementsSubject.next([]);
+            this.elementsToRenderSubject.next([]);
+        }
+
         // Check if file has incomplete data (missing points but has an ID)
         const isIncompleteDto = file.id && (!file.points || file.points.length === 0);
 
         if (isIncompleteDto) {
-            console.log('Incomplete file DTO detected, fetching complete data from server for file ID:', file.id);
+            // Update current file immediately (before async fetch) so components know which file we're on
+            this.currentFileSubject.next(file);
 
             // Fetch the complete file data from server
             this.fileService.getFileById(file.id.toString()).pipe(
@@ -144,7 +206,6 @@ export class CurrentFileService {
                 map(response => FileDto.fromJson(response.responseData))
             ).subscribe({
                 next: (completeFile) => {
-                    console.log('Complete file data fetched successfully:', completeFile);
                     this.setFileData(completeFile);
                 },
                 error: (error) => {
@@ -334,33 +395,40 @@ export class CurrentFileService {
     }
 
     updateEquipmentInList(updatedEquipment: EquipmentDto) {
+      const currentFileId = this.currentFileSubject.getValue()?.id;
+      const equipmentFileId = updatedEquipment.mainFileId || updatedEquipment.mainFileObject?.id;
+
+      // Only process if equipment belongs to current file
+      if (currentFileId && equipmentFileId !== currentFileId) {
+        return;
+      }
+
+      // Helper to update or add equipment in a list
+      const updateOrAddEquipment = (equipmentList: EquipmentDto[]): EquipmentDto[] => {
+        const existingIndex = equipmentList.findIndex(item => item.id === updatedEquipment.id);
+        if (existingIndex >= 0) {
+          // Update existing
+          return equipmentList.map(item =>
+            item.id === updatedEquipment.id ? updatedEquipment : item
+          );
+        } else {
+          // Add new equipment
+          return [...equipmentList, updatedEquipment];
+        }
+      };
+
       // Update elementsSubject
-      this.elementsSubject.pipe(
-        takeUntilDestroyed(this.destroyRef),
-        take(1),
-        map(equipmentList => equipmentList.map(item => 
-          item.id === updatedEquipment.id ? updatedEquipment : item
-        ))
-      ).subscribe(updatedList => {
-        this.elementsSubject.next(updatedList);
-      });
-    
+      const currentElements = this.elementsSubject.getValue();
+      this.elementsSubject.next(updateOrAddEquipment(currentElements));
+
       // Update elementsToRender$
-      this.elementsToRender$.pipe(
-        take(1),
-        map(equipmentList => equipmentList.map(item => 
-          item.id === updatedEquipment.id ? updatedEquipment : item
-        ))
-      ).subscribe(updatedList => {
-        this.elementsToRenderSubject.next(updatedList);
-      });
-    
+      const currentToRender = this.elementsToRenderSubject.getValue();
+      this.elementsToRenderSubject.next(updateOrAddEquipment(currentToRender));
+
       // Update the current file if it exists
       const currentFile = this.currentFileSubject.getValue();
       if (currentFile && currentFile.points) {
-        const updatedPoints = currentFile.points.map(item => 
-          item.id === updatedEquipment.id ? updatedEquipment : item
-        );
+        const updatedPoints = updateOrAddEquipment(currentFile.points);
         this.currentFileSubject.next(new FileDto({...currentFile, points: updatedPoints}));
       }
     }

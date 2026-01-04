@@ -103,7 +103,9 @@
 .panel-content app-rf-file-table,
 .panel-content app-rf-loto-point-table,
 .panel-content app-rf-file-left-menu,
-.panel-content app-rf-loto-point-left-menu {
+.panel-content app-rf-loto-point-left-menu,
+.panel-content app-loto-builder-file-table,
+.panel-content app-loto-builder-loto-point-table {
   width: 100%;
   height: 100%;
   display: flex;

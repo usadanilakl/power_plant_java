@@ -3,11 +3,10 @@ import { CommonModule } from '@angular/common';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { RfFileLeftMenuComponent } from '../../../../files/refactored/rf-file-left-menu/rf-file-left-menu.component';
 import { RfLotoPointLeftMenuComponent } from '../../../../loto-points/refactored/rf-loto-point-left-menu/rf-loto-point-left-menu.component';
-import { RfFileTableComponent } from '../../../../files/refactored/rf-file-table/rf-file-table.component';
-import { RfLotoPointTableComponent } from '../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
+import { LotoBuilderFileTableComponent } from './loto-builder-file-table/loto-builder-file-table.component';
+import { LotoBuilderLotoPointTableComponent } from './loto-builder-loto-point-table/loto-builder-loto-point-table.component';
 import { TableSelectionService } from '../../../../../shared/table/refactored/services/table-selection.service';
 import { TableDragService } from '../../../../../shared/table/refactored/services/table-drag.service';
-import { TableClickService } from '../../../../../shared/table/refactored/services/table-click.service';
 import { TableControlsService } from '../../../../../shared/table/refactored/services/table-controls.service';
 import { TableStateService } from '../../../../../shared/table/refactored/services/table-state.service';
 import { TableDataService } from '../../../../../shared/table/refactored/services/table-data.service';
@@ -25,13 +24,12 @@ import { RfLotoPointTableDataService } from '../../../../loto-points/refactored/
     CommonModule,
     RfFileLeftMenuComponent,
     RfLotoPointLeftMenuComponent,
-    RfFileTableComponent,
-    RfLotoPointTableComponent,
+    LotoBuilderFileTableComponent,
+    LotoBuilderLotoPointTableComponent,
   ],
   providers: [
     TableSelectionService,
     TableDragService,
-    TableClickService,
     TableControlsService,
     TableStateService,
     TableDataService,

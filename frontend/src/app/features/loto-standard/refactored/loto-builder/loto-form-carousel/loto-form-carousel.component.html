@@ -1,25 +1,13 @@
-<div
-  class="carousel-container"
-  [class.dragging]="isDragging()"
-  (mousedown)="onWindowClick()"
+<app-rf-floating-window
+  [windowId]="windowId"
+  [initialPosition]="initialPosition"
+  [initialSize]="initialSize"
+  [minSize]="minSize"
 >
-  <!-- Saving overlay -->
-  @if (isSaving()) {
-    <div class="saving-overlay">
-      <div class="saving-content">
-        <span class="spinner"></span>
-        <span>Saving...</span>
-      </div>
-    </div>
-  }
-
-  <!-- Header with navigation and close - also drag handle -->
-  <div
-    class="carousel-header"
-    (mousedown)="onDragStart($event)"
-  >
+  <!-- Header content -->
+  <div window-header class="header-content">
     <div class="carousel-title">
-      <span class="drag-handle" title="Drag to move">⋮⋮</span>
+      <span class="drag-handle" title="Drag to move">&#8942;&#8942;</span>
       <h2>LOTO Standards Editor</h2>
       @if (hasMultiple()) {
         <span class="carousel-counter">{{ activeIndex() + 1 }} / {{ totalCount() }}</span>
@@ -41,65 +29,78 @@
         (click)="onClose()"
         title="Close carousel"
       >
-        ✕
+        &#10005;
       </button>
     </div>
   </div>
 
-  <!-- Navigation arrows (only show if multiple standards) -->
-  @if (hasMultiple()) {
-    <div class="carousel-navigation">
-      <button
-        type="button"
-        class="nav-button prev"
-        [disabled]="!canGoPrevious()"
-        (click)="goToPrevious()"
-        title="Previous standard"
-      >
-        ‹
-      </button>
-      <button
-        type="button"
-        class="nav-button next"
-        [disabled]="!canGoNext()"
-        (click)="goToNext()"
-        title="Next standard"
-      >
-        ›
-      </button>
-    </div>
-  }
+  <!-- Main content -->
+  <div class="carousel-wrapper">
+    <!-- Saving overlay -->
+    @if (isSaving()) {
+      <div class="saving-overlay">
+        <div class="saving-content">
+          <span class="spinner"></span>
+          <span>Saving...</span>
+        </div>
+      </div>
+    }
 
-  <!-- Carousel content area -->
-  <div class="carousel-content">
-    @if (activeStandard()) {
-      <app-simple-loto-form
-        [lotoStandard]="activeStandard()!"
-        [isActive]="true"
-        (nameChanged)="onNameChanged($event)"
-        (descriptionChanged)="onDescriptionChanged($event)"
-        (removePoint)="onRemovePoint($event)"
-        (submit)="onSubmit($event)"
-        (cancel)="onCancel()"
-      ></app-simple-loto-form>
-    } @else {
-      <div class="empty-carousel">
-        <p class="empty-message">No LOTO standards to display</p>
-        <p class="empty-hint">Add a new standard or select an existing one</p>
+    <!-- Navigation arrows (only show if multiple standards) -->
+    @if (hasMultiple()) {
+      <div class="carousel-navigation">
         <button
           type="button"
-          class="add-new-button large"
-          (click)="onAddNew()"
+          class="nav-button prev"
+          [disabled]="!canGoPrevious()"
+          (click)="goToPrevious()"
+          title="Previous standard"
         >
-          + Add LOTO Standard
+          &#8249;
+        </button>
+        <button
+          type="button"
+          class="nav-button next"
+          [disabled]="!canGoNext()"
+          (click)="goToNext()"
+          title="Next standard"
+        >
+          &#8250;
         </button>
       </div>
     }
+
+    <!-- Carousel content area -->
+    <div class="carousel-content">
+      @if (activeStandard()) {
+        <app-simple-loto-form
+          [lotoStandard]="activeStandard()!"
+          [isActive]="true"
+          (nameChanged)="onNameChanged($event)"
+          (descriptionChanged)="onDescriptionChanged($event)"
+          (removePoint)="onRemovePoint($event)"
+          (submit)="onSubmit($event)"
+          (cancel)="onCancel()"
+        ></app-simple-loto-form>
+      } @else {
+        <div class="empty-carousel">
+          <p class="empty-message">No LOTO standards to display</p>
+          <p class="empty-hint">Add a new standard or select an existing one</p>
+          <button
+            type="button"
+            class="add-new-button large"
+            (click)="onAddNew()"
+          >
+            + Add LOTO Standard
+          </button>
+        </div>
+      }
+    </div>
   </div>
 
-  <!-- Dot indicators (only show if multiple standards) -->
+  <!-- Footer with indicators -->
   @if (hasMultiple()) {
-    <div class="carousel-indicators">
+    <div window-footer class="carousel-indicators">
       @for (standard of lotoStandards(); track standard.id; let i = $index) {
         <button
           type="button"
@@ -111,4 +112,4 @@
       }
     </div>
   }
-</div>
+</app-rf-floating-window>

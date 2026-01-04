@@ -227,6 +227,9 @@ export class LotoBuilderFormPopupComponent {
         takeUntilDestroyed(this.destroyRef),
         tap((response) => {
           if (response.responseData) {
+            const savedLotoPoint = LotoPointDto.fromJson(response.responseData);
+            // Update the local equipment state to include this LOTO point
+            this.updateEquipmentWithLotoPoint(equipment, savedLotoPoint);
             this.messageService.showSuccess('LOTO Point associated with equipment successfully');
             this.close();
           }
@@ -240,6 +243,29 @@ export class LotoBuilderFormPopupComponent {
         })
       )
       .subscribe();
+  }
+
+  /**
+   * Update local equipment state to include the associated LOTO point
+   */
+  private updateEquipmentWithLotoPoint(equipment: EquipmentDto, lotoPoint: LotoPointDto): void {
+    const currentEquipment = this.builderState.currentEquipment();
+
+    const updatedEquipmentList = currentEquipment.map(eq => {
+      if (eq.id === equipment.id) {
+        const existingLotoPoints = eq.lotoPoints || [];
+        // Add the LOTO point if not already present
+        if (!existingLotoPoints.some(lp => lp.id === lotoPoint.id)) {
+          return new EquipmentDto({
+            ...eq,
+            lotoPoints: [...existingLotoPoints, lotoPoint]
+          });
+        }
+      }
+      return eq;
+    });
+
+    this.builderState.setCurrentEquipment(updatedEquipmentList);
   }
 
   /**
@@ -262,6 +288,9 @@ export class LotoBuilderFormPopupComponent {
           takeUntilDestroyed(this.destroyRef),
           tap((response) => {
             if (response.responseData) {
+              const savedLotoPoint = LotoPointDto.fromJson(response.responseData);
+              // Update the local equipment state to include this LOTO point
+              this.updateEquipmentWithLotoPoint(equipment, savedLotoPoint);
               const action = lotoPoint.id ? 'updated' : 'created';
               this.messageService.showSuccess(`LOTO Point ${action} and associated with equipment successfully`);
               this.close();

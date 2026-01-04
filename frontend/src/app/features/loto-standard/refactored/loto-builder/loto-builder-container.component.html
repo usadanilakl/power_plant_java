@@ -25,18 +25,16 @@
         ></app-loto-builder-right-panel>
       </div>
 
-      <!-- Popups (overlays) -->
+      <!-- Form Popup (overlay) -->
       <app-loto-builder-form-popup></app-loto-builder-form-popup>
+
+      <!-- LOTO Points Table (floating window) -->
       <app-loto-builder-table-popup></app-loto-builder-table-popup>
 
       <!-- LOTO Standards Carousel (floating window) -->
       @if (builderState.isCarouselVisible()) {
         <app-loto-form-carousel
-          #carouselRef
-          class="carousel-window"
           [lotoStandards]="builderState.selectedLotoStandards()"
-          [style.z-index]="carouselRef.currentZIndex()"
-          [style.transform]="'translate(' + carouselRef.position().x + 'px, ' + carouselRef.position().y + 'px)'"
           (standardUpdated)="onCarouselStandardUpdated($event)"
           (standardSubmitted)="onCarouselStandardSubmitted($event)"
           (standardCancelled)="onCarouselStandardCancelled($event)"

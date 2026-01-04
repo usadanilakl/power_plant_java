@@ -1,19 +1,18 @@
 @if (isVisible()) {
-  <div
-    class="selector-window"
-    [class.dragging]="isDragging()"
-    [style.z-index]="currentZIndex()"
-    [style.transform]="'translate(' + position().x + 'px, ' + position().y + 'px)'"
-    (mousedown)="onWindowClick()"
+  <app-rf-floating-window
+    [windowId]="windowId"
+    [initialPosition]="initialPosition"
+    [initialSize]="initialSize"
+    [minSize]="minSize"
   >
-    <!-- Header - Drag Handle -->
-    <div class="selector-header" (mousedown)="onDragStart($event)">
+    <!-- Header content -->
+    <div window-header class="header-content">
       <div class="header-title">
-        <span class="drag-handle" title="Drag to move">⋮⋮</span>
+        <span class="drag-handle" title="Drag to move">&#8942;&#8942;</span>
         <h2>Select LOTO Standards</h2>
       </div>
       <button type="button" class="close-button" (click)="onCancel()" title="Close">
-        ✕
+        &#10005;
       </button>
     </div>
 
@@ -131,7 +130,7 @@
     </div>
 
     <!-- Footer -->
-    <div class="selector-footer">
+    <div window-footer class="selector-footer">
       @if (!showCreateNew()) {
         <button type="button" class="button button-secondary" (click)="showCreateNewForm()">
           + Create New Standard
@@ -151,5 +150,5 @@
         </div>
       }
     </div>
-  </div>
+  </app-rf-floating-window>
 }

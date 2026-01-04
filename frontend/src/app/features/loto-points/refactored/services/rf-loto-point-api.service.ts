@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, Subject, tap } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { SpringPaginatedResponse } from '../../../../models/api/spring-pagenated.response.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
@@ -16,6 +16,14 @@ import { LotoPointSummaryDto } from '../../../../models/loto/loto-point-summary.
 })
 export class RfLotoPointApiService {
   private apiUrl = `${environment.apiUrl}/loto-points`;
+
+  // Subject to broadcast LOTO point updates to all listening components
+  private lotoPointUpdatedSubject = new Subject<LotoPointDto>();
+  lotoPointUpdated$ = this.lotoPointUpdatedSubject.asObservable();
+
+  // Subject to broadcast LOTO point deletions
+  private lotoPointDeletedSubject = new Subject<number>();
+  lotoPointDeleted$ = this.lotoPointDeletedSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
@@ -121,13 +129,22 @@ export class RfLotoPointApiService {
 
   /**
    * Save LOTO point - creates if new, updates if existing
+   * Broadcasts the update to all listening components
    */
   saveLotoPoint(lotoPoint: LotoPointDto): Observable<SpringApiResponse<LotoPointDto>> {
-    if (lotoPoint.id) {
-      return this.updateLotoPoint(lotoPoint);
-    } else {
-      return this.createLotoPoint(lotoPoint);
-    }
+    const saveObservable = lotoPoint.id
+      ? this.updateLotoPoint(lotoPoint)
+      : this.createLotoPoint(lotoPoint);
+
+    return saveObservable.pipe(
+      tap(response => {
+        if (response.responseData) {
+          // Broadcast the updated LOTO point to all listeners
+          const updatedLotoPoint = LotoPointDto.fromJson(response.responseData);
+          this.lotoPointUpdatedSubject.next(updatedLotoPoint);
+        }
+      })
+    );
   }
 
   // Type guard function
@@ -151,7 +168,12 @@ export class RfLotoPointApiService {
   }
 
   deleteLotoPoint(id: string): Observable<SpringApiResponse<void>> {
-    return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`);
+    return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`).pipe(
+      tap(() => {
+        // Broadcast the deletion to all listeners
+        this.lotoPointDeletedSubject.next(parseInt(id, 10));
+      })
+    );
   }
 
   getLotoPointsByFileId(

@@ -205,9 +205,8 @@ export class InteractiveImageComponent {
     // Effect to load shapes from input when they change
     effect(() => {
       const inputShapes = this.shapesInput();
-      if (inputShapes && inputShapes.length > 0) {
-        this.shapeManager.setShapes(inputShapes);
-      }
+      // Always update shapes, including when empty array is passed (to clear shapes)
+      this.shapeManager.setShapes(inputShapes || []);
     });
 
     // Effect to redraw canvas when shapes change

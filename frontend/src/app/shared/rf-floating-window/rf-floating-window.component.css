@@ -1,0 +1,161 @@
+:host {
+  display: block;
+  position: absolute;
+}
+
+/* Main floating window container */
+.floating-window {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--primary-background, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  min-width: 200px;
+  min-height: 150px;
+}
+
+/* Dragging state */
+.floating-window.dragging {
+  user-select: none;
+  cursor: grabbing;
+  opacity: 0.95;
+}
+
+.floating-window.dragging .window-header {
+  cursor: grabbing;
+}
+
+/* Resizing state */
+.floating-window.resizing {
+  user-select: none;
+  opacity: 0.95;
+}
+
+/* Header - draggable area */
+.window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+  color: white;
+  flex-shrink: 0;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  gap: 12px;
+}
+
+.window-header:active {
+  cursor: grabbing;
+}
+
+/* Content area */
+.window-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ========== Resize Handles ========== */
+
+.resize-handle {
+  position: absolute;
+  background: transparent;
+  z-index: 10;
+}
+
+/* Edge handles */
+.resize-n {
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-s {
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-e {
+  right: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.resize-w {
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+/* Corner handles */
+.resize-ne {
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+}
+
+.resize-nw {
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+}
+
+.resize-se {
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+}
+
+.resize-sw {
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+}
+
+/* Visual indicator on corner handles */
+.resize-se::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(0, 0, 0, 0.2);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Hover states for resize handles */
+.resize-handle:hover {
+  background: rgba(25, 118, 210, 0.1);
+}
+
+.resize-se:hover::after,
+.resize-sw:hover::after,
+.resize-ne:hover::after,
+.resize-nw:hover::after {
+  border-color: rgba(25, 118, 210, 0.6);
+}
