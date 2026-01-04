@@ -191,6 +191,19 @@ public interface FlexibleQueryInterface {
     }
 
 
+    /**
+     * Returns the list of columns to search for global search.
+     * Override this method in your service to provide entity-specific columns.
+     * Supports nested paths like "location.name".
+     *
+     * @return List of column names/paths to search
+     */
+    default List<String> getGlobalSearchColumns() {
+        // Default: empty list (no global search columns defined)
+        // Services should override this to provide their searchable columns
+        return Collections.emptyList();
+    }
+
     default <T extends BaseIdEntity> Specification<T> buildComplexSpecification(SearchCriteria criteria, boolean andLogicIsEnabled, SearchCriteria baseCriteria) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -207,7 +220,8 @@ public interface FlexibleQueryInterface {
                     && !criteria.getQuery().trim().isEmpty()) {
                 // Determine global filter logic (default to AND if not specified)
                 boolean useAndLogicForGlobal = !"OR".equalsIgnoreCase(criteria.getGlobalFilterLogic());
-                Predicate globalPredicate = buildGlobalSearchPredicate(root, criteriaBuilder, criteria.getQuery(), useAndLogicForGlobal);
+                List<String> searchColumns = getGlobalSearchColumns();
+                Predicate globalPredicate = buildGlobalSearchPredicate(root, criteriaBuilder, criteria.getQuery(), useAndLogicForGlobal, searchColumns);
                 if (globalPredicate != null) {
                     predicates.add(globalPredicate);
                 }
@@ -244,40 +258,31 @@ public interface FlexibleQueryInterface {
     }
 
     /**
-     * Builds a predicate for global search that applies the query across all searchable String columns.
+     * Builds a predicate for global search that applies the query across specified searchable columns.
      * Supports both simple columns (e.g., "tagNumber") and nested paths (e.g., "location.name").
      *
      * @param root The root entity
      * @param cb The CriteriaBuilder
      * @param queryValue The search query string
-     * @param useAndLogic If true (AND): all tokens must match somewhere across any column.
-     *                    If false (OR): at least one token must match somewhere across any column.
+     * @param useAndLogic If true (AND): at least one column must contain ALL tokens (strict).
+     *                    If false (OR): all tokens must be found across the row (can be in different columns).
+     * @param searchableColumns List of column paths to search (e.g., "tagNumber", "location.name")
      * @return A predicate for the global search, or null if no valid predicate can be built
      */
-    default Predicate buildGlobalSearchPredicate(Root<?> root, CriteriaBuilder cb, String queryValue, boolean useAndLogic) {
+    default Predicate buildGlobalSearchPredicate(Root<?> root, CriteriaBuilder cb, String queryValue, boolean useAndLogic, List<String> searchableColumns) {
         String trimmed = queryValue.trim();
-        if (trimmed.isEmpty()) {
+        if (trimmed.isEmpty() || searchableColumns == null || searchableColumns.isEmpty()) {
             return null;
         }
 
         String[] tokens = trimmed.toLowerCase().split("\\s+");
 
-        // Define searchable columns for global search (supports nested paths like "location.name")
-        List<String> searchableColumns = Arrays.asList(
-                "tagNumber", "description", "specificLocation", "unit", "system",
-                "location.name", "isoPos.name", "normPos.name"
-        );
-
         // Cache joins to avoid creating multiple joins for the same relation
         Map<String, Join<?, ?>> joinCache = new HashMap<>();
 
-        // For each token, build a predicate that checks if it matches ANY column
-        List<Predicate> tokenPredicates = new ArrayList<>();
-
-        for (String token : tokens) {
-            if (token.isEmpty()) continue;
-
-            List<Predicate> columnMatchesForToken = new ArrayList<>();
+        if (useAndLogic) {
+            // AND logic: at least one column must contain ALL tokens
+            List<Predicate> columnPredicates = new ArrayList<>();
 
             for (String columnPath : searchableColumns) {
                 try {
@@ -285,37 +290,64 @@ public interface FlexibleQueryInterface {
                     if (path == null) continue;
 
                     Class<?> fieldType = path.getJavaType();
-
-                    // Only search String columns
-                    if (!String.class.isAssignableFrom(fieldType)) {
-                        continue;
-                    }
+                    if (!String.class.isAssignableFrom(fieldType)) continue;
 
                     Expression<String> fieldExpr = cb.lower(path.as(String.class));
-                    columnMatchesForToken.add(cb.like(fieldExpr, "%" + token + "%"));
+
+                    // All tokens must be in this single column
+                    List<Predicate> allTokensInColumn = new ArrayList<>();
+                    for (String token : tokens) {
+                        if (token.isEmpty()) continue;
+                        allTokensInColumn.add(cb.like(fieldExpr, "%" + token + "%"));
+                    }
+                    if (!allTokensInColumn.isEmpty()) {
+                        columnPredicates.add(cb.and(allTokensInColumn.toArray(new Predicate[0])));
+                    }
                 } catch (IllegalArgumentException e) {
-                    // Column doesn't exist on this entity, skip it
                     System.out.println("Skipping column for global search: " + columnPath);
                 }
             }
 
-            if (!columnMatchesForToken.isEmpty()) {
-                // OR between columns: token can match in any column
-                Predicate tokenMatchesAnyColumn = cb.or(columnMatchesForToken.toArray(new Predicate[0]));
-                tokenPredicates.add(tokenMatchesAnyColumn);
-            }
-        }
+            if (columnPredicates.isEmpty()) return null;
 
-        if (tokenPredicates.isEmpty()) {
-            return null;
-        }
+            // OR between columns: at least one column must have all tokens
+            return cb.or(columnPredicates.toArray(new Predicate[0]));
 
-        // AND logic: all tokens must match (each in any column)
-        // OR logic: at least one token must match (in any column)
-        if (useAndLogic) {
-            return cb.and(tokenPredicates.toArray(new Predicate[0]));
         } else {
-            return cb.or(tokenPredicates.toArray(new Predicate[0]));
+            // OR logic: all tokens must be found somewhere in the row (can be in different columns)
+            List<Predicate> tokenPredicates = new ArrayList<>();
+
+            for (String token : tokens) {
+                if (token.isEmpty()) continue;
+
+                // For this token, check if it exists in ANY column
+                List<Predicate> tokenInAnyColumn = new ArrayList<>();
+
+                for (String columnPath : searchableColumns) {
+                    try {
+                        Path<?> path = resolvePathForGlobalSearch(root, columnPath, joinCache);
+                        if (path == null) continue;
+
+                        Class<?> fieldType = path.getJavaType();
+                        if (!String.class.isAssignableFrom(fieldType)) continue;
+
+                        Expression<String> fieldExpr = cb.lower(path.as(String.class));
+                        tokenInAnyColumn.add(cb.like(fieldExpr, "%" + token + "%"));
+                    } catch (IllegalArgumentException e) {
+                        System.out.println("Skipping column for global search: " + columnPath);
+                    }
+                }
+
+                if (!tokenInAnyColumn.isEmpty()) {
+                    // This token must be found in at least one column
+                    tokenPredicates.add(cb.or(tokenInAnyColumn.toArray(new Predicate[0])));
+                }
+            }
+
+            if (tokenPredicates.isEmpty()) return null;
+
+            // AND between tokens: all tokens must be found (each in any column)
+            return cb.and(tokenPredicates.toArray(new Predicate[0]));
         }
     }
 

@@ -74,6 +74,18 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     /**
+     * Define columns to search for global search in LotoPoint entity.
+     * Supports nested paths like "location.name".
+     */
+    @Override
+    public List<String> getGlobalSearchColumns() {
+        return Arrays.asList(
+                "tagNumber", "description", "specificLocation", "unit", "system",
+                "location.name", "isoPos.name", "normPos.name"
+        );
+    }
+
+    /**
      * Override to use eager loading for equipment list
      */
     @Override

@@ -51,16 +51,15 @@ export class TableSearchService {
     const tokens = query.toLowerCase().trim().split(/\s+/);
     const useAndLogic = this.dataService.globalFilterLogic === 'AND';
 
-    // AND logic: all tokens must match somewhere across any column
-    // OR logic: at least one token must match somewhere across any column
     if (useAndLogic) {
-      return tokens.every((token) =>
-        Object.values(item).some((value) =>
-          String(value).toLowerCase().includes(token)
-        )
-      );
+      // AND logic: at least one column must contain ALL tokens
+      return Object.values(item).some((value) => {
+        const strValue = String(value).toLowerCase();
+        return tokens.every((token) => strValue.includes(token));
+      });
     } else {
-      return tokens.some((token) =>
+      // OR logic: all tokens must be found somewhere in the row (can be in different columns)
+      return tokens.every((token) =>
         Object.values(item).some((value) =>
           String(value).toLowerCase().includes(token)
         )
