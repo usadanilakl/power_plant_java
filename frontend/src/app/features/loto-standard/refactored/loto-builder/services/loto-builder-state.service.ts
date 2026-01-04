@@ -316,6 +316,15 @@ export class LotoBuilderStateService {
     this.selectedLotoStandards.update(standards => [...standards, standard]);
     // Set active index to the newly added standard
     this.activeLotoStandardIndex.set(this.selectedLotoStandards().length - 1);
+    // Enable building mode to show the carousel
+    this.isLotoBuildingMode.set(true);
+
+    // If there's a pending LOTO point, add it to this new standard
+    const pendingPoint = this.currentLotoPoint();
+    if (pendingPoint) {
+      this.addLotoPointToActiveStandard(pendingPoint);
+      this.setCurrentLotoPoint(null); // Clear the pending point
+    }
   }
 
   /**

@@ -1,16 +1,17 @@
 
-<div 
-  *ngIf="isVisible()" 
+<div
+  *ngIf="isVisible()"
   class="context-menu-backdrop"
-  (click)="onBackdropClick()"
+  (contextmenu)="$event.preventDefault(); $event.stopPropagation(); false"
 ></div>
 
-<div 
+<div
   #menuContainer
-  *ngIf="isVisible()" 
+  *ngIf="isVisible()"
   class="context-menu"
   [style.left.px]="position().x"
   [style.top.px]="position().y"
+  (contextmenu)="$event.preventDefault(); $event.stopPropagation(); false"
 >
   <div class="context-menu-content">
     <ng-container *ngFor="let action of actions(); let last = last">
@@ -20,6 +21,7 @@
         [class.disabled]="action.disabled"
         [disabled]="action.disabled"
         (click)="onActionClick(action)"
+        (contextmenu)="$event.preventDefault(); $event.stopPropagation(); false"
         type="button"
       >
         <span *ngIf="action.icon" class="context-menu-icon">
@@ -27,9 +29,9 @@
         </span>
         <span class="context-menu-label">{{ action.label }}</span>
       </button>
-      
-      <div 
-        *ngIf="action.divider && !last" 
+
+      <div
+        *ngIf="action.divider && !last"
         class="context-menu-divider"
       ></div>
     </ng-container>

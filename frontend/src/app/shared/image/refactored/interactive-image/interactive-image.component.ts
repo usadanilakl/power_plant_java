@@ -66,6 +66,9 @@ export class InteractiveImageComponent {
   config = input<InteractiveImageConfig>();
   preset = input<keyof typeof INTERACTIVE_IMAGE_PRESETS>();
 
+  // Custom context menu actions - if provided, will replace default actions
+  customContextMenuActions = input<ContextMenuAction[] | undefined>();
+
   // Computed configuration: use preset if provided, otherwise use config, otherwise default to VIEW_ONLY
   activeConfig = computed(() => {
     const presetName = this.preset();
@@ -293,9 +296,15 @@ export class InteractiveImageComponent {
         }
       });
 
-    fromEvent<MouseEvent>(this.zoomElement, 'contextmenu')
+    // Prevent contextmenu on imageContainer with capture phase (catches event before it reaches children)
+    fromEvent<MouseEvent>(this.imageContainer.nativeElement, 'contextmenu', { capture: true })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((event) => event.preventDefault());
+      .subscribe((event) => {
+        console.log('Browser contextmenu event fired on imageContainer - preventing default');
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      });
   }
 
   // ==================================================Zooming Events==========================================
@@ -543,8 +552,27 @@ export class InteractiveImageComponent {
     console.log('middle click');
   }
 
-  onRightClick(event: MouseEvent): void {
+  preventContextMenu(event: Event): boolean {
+    console.log('preventContextMenu called - blocking browser context menu');
     event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    return false;
+  }
+
+  onRightClick(event: MouseEvent): void {
+    console.log('onRightClick called', event.type);
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Also prevent the contextmenu event if it hasn't fired yet
+    const preventContextMenu = (e: Event) => {
+      console.log('Preventing contextmenu from onRightClick');
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    event.target?.addEventListener('contextmenu', preventContextMenu, { once: true });
+
     const config = this.activeConfig();
 
     // First check if we clicked on a shape
@@ -1226,6 +1254,29 @@ export class InteractiveImageComponent {
     const shape = this.shapeManager.getShapeById(shapeId);
     if (!shape) return;
 
+    // Close any existing context menu first
+    this.closeContextMenu();
+
+    // If custom context menu actions are provided, use them instead of defaults
+    const customActions = this.customContextMenuActions();
+    console.log('Custom context menu actions:', customActions);
+    if (customActions && customActions.length > 0) {
+      console.log('Using custom context menu actions');
+      // Use setTimeout to ensure the old menu is closed before opening new one
+      setTimeout(() => {
+        this.contextMenu = {
+          visible: true,
+          x: event.clientX,
+          y: event.clientY,
+          actions: customActions,
+          selectedItem: shape,
+        };
+      }, 0);
+      return;
+    }
+    console.log('Using default context menu actions');
+
+    // Otherwise, use default context menu actions
     const actions: ContextMenuAction[] = [];
 
     if (shape.type === 'rectangle') {
@@ -1254,13 +1305,16 @@ export class InteractiveImageComponent {
       { id: 'delete', label: 'Delete', action: () => this.shapeManager.deleteShapes([shapeId]) }
     );
 
-    this.contextMenu = {
-      visible: true,
-      x: event.clientX,
-      y: event.clientY,
-      actions: actions,
-      selectedItem: shape,
-    };
+    // Use setTimeout to ensure the old menu is closed before opening new one
+    setTimeout(() => {
+      this.contextMenu = {
+        visible: true,
+        x: event.clientX,
+        y: event.clientY,
+        actions: actions,
+        selectedItem: shape,
+      };
+    }, 0);
   }
 
   private duplicateShape(shapeId: number): void {

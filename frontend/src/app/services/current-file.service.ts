@@ -6,7 +6,6 @@ import { SpringApiResponse } from '../models/api/spring-api-response.model';
 import { LotoPointDto } from '../models/loto/loto-point.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FileService } from './file.service';
-import { subscribe } from 'diagnostics_channel';
 
 @Injectable({
   providedIn: 'root'
@@ -29,7 +28,7 @@ export class CurrentFileService {
     private uniqueEquipmentTypesSubject = new BehaviorSubject<string[]>([]);
     uniqueEquipmentTypes$ = this.uniqueEquipmentTypesSubject.asObservable();
 
-    private equipmentNotSelectedByDefault = ['connector', 'instrument', 'line'];
+    private equipmentNotSelectedByDefault = [];
 
     fileTypes = [
       'pid',
@@ -365,10 +364,15 @@ export class CurrentFileService {
     }
     private filterByEquipmentType(exclude: string[]): EquipmentDto[] {
       const currentElements = this.elementsSubject.getValue();
-      return currentElements.filter(element => 
-        element && element.eqType && element.eqType.name && 
-        !exclude.includes(element.eqType.name.toLowerCase())
-      );
+      return currentElements.filter(element => {
+        if (!element) return false;
+
+        // If equipment has no eqType or eqType.name, include it (don't filter it out)
+        if (!element.eqType || !element.eqType.name) return true;
+
+        // Only exclude if the type is in the exclude list
+        return !exclude.includes(element.eqType.name.toLowerCase());
+      });
     }
     
     // Public method for components to call

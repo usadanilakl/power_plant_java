@@ -5,6 +5,8 @@ import { catchError, of, tap } from 'rxjs';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { InteractiveImageComponent } from '../../../../../shared/image/refactored/interactive-image/interactive-image.component';
 import { LotoBuilderInfoWindowComponent } from '../loto-builder-info-window/loto-builder-info-window.component';
+import { ContextMenuAction } from '../../../../../shared/menu/context-menu/context-menu.component';
+import { getPreset, InteractiveImageConfig } from '../../../../../shared/image/refactored/models/interactive-image-config.model';
 import { CurrentFileService } from '../../../../../services/current-file.service';
 import { EquipmentMapperService } from '../../../../equipment/refactored/services/equipment-mapper.service';
 import { EquipmentService } from '../../../../../services/equipment.service';
@@ -37,6 +39,33 @@ export class LotoBuilderRightPanelComponent {
 
   // Output event for close button
   closeRequested = output<void>();
+
+  /**
+   * Interactive image configuration - use FILE_EDITOR preset
+   */
+  imageConfig = computed<InteractiveImageConfig>(() => {
+    return getPreset('FILE_EDITOR');
+  });
+
+  /**
+   * Custom context menu actions for shapes
+   */
+  customContextMenuActions = computed<ContextMenuAction[]>(() => {
+    return [
+      {
+        id: 'edit',
+        label: 'Edit',
+        icon: '✏️',
+        action: (shape: RfShape) => this.handleEditAction(shape)
+      },
+      {
+        id: 'addToLoto',
+        label: 'Add to LOTO',
+        icon: '➕',
+        action: (shape: RfShape) => this.handleAddToLotoAction(shape)
+      }
+    ];
+  });
 
   /**
    * Get current file's image URL
@@ -158,9 +187,18 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle shape right click - open context menu / LOTO point form
+   * Handle shape right click - context menu is now handled by interactive-image
+   * This output is no longer needed but kept for backwards compatibility
    */
   onShapeRightClicked(shape: RfShape): void {
+    // Context menu is now handled by interactive-image component
+    // using customContextMenuActions input
+  }
+
+  /**
+   * Handle Edit action from context menu
+   */
+  private handleEditAction(shape: RfShape): void {
     const equipment = this.builderState.currentEquipment();
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
 
@@ -174,6 +212,32 @@ export class LotoBuilderRightPanelComponent {
       if (matchingEquipment) {
         this.builderState.setPendingEquipment(matchingEquipment);
       }
+    }
+  }
+
+  /**
+   * Handle Add to LOTO action from context menu
+   */
+  private handleAddToLotoAction(shape: RfShape): void {
+    const equipment = this.builderState.currentEquipment();
+    const matchingEquipment = equipment.find(eq => eq.id === shape.id);
+
+    if (!matchingEquipment?.lotoPoints || matchingEquipment.lotoPoints.length === 0) {
+      console.warn('No LOTO point associated with this equipment');
+      return;
+    }
+
+    const lotoPoint = matchingEquipment.lotoPoints[0];
+
+    // Check if carousel is visible (LOTO building mode is active)
+    if (this.builderState.isCarouselVisible()) {
+      // Add to currently active LOTO standard
+      this.builderState.addLotoPointToActiveStandard(lotoPoint);
+    } else {
+      // Open LOTO standards selector popup
+      this.builderState.openLotoStandardsPopup();
+      // Store the LOTO point to add after user selects standards
+      this.builderState.setCurrentLotoPoint(lotoPoint);
     }
   }
 

@@ -20,10 +20,10 @@
     (symbolPaletteToggled)="toggleSymbolPalette()"
   ></app-unified-toolbar>
     <!-- Image Container -->
-    <div #imageContainer class="image-container">
+    <div #imageContainer class="image-container" (contextmenu)="preventContextMenu($event)">
       <div #zoomOuter class="zoom-outer">
         <div #zoomElement class="zoom-element">
-          <img 
+          <img
             #imageElement
             [src]="pngUrl()"
             [alt]="imageName()"
@@ -33,12 +33,13 @@
             (mousedown)="onMouseDown($event)"
             (mousemove)="onMouseMove($event)"
             (mouseup)="onMouseUp($event)"
-
+            (contextmenu)="preventContextMenu($event)"
             [style.cursor]="cursor"
           />
-          <canvas 
+          <canvas
             #canvasElement
-            class="shape-canvas">
+            class="shape-canvas"
+            (contextmenu)="preventContextMenu($event)">
           </canvas>
         </div>
       </div>
