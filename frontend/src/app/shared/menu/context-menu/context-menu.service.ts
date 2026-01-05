@@ -1,12 +1,12 @@
 import { computed, inject, Injectable, signal } from "@angular/core";
 import { ContextMenuAction } from "./context-menu.component";
 import { ClipboardService } from "../../clipboard/clipboard.service";
+import { ContextMenuRegistryService } from "./context-menu-registry.service";
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class ContextMenuService {
   protected clibpoardService = inject(ClipboardService);
+  protected registry = inject(ContextMenuRegistryService);
   // Context menu state
   contextMenuVisible = signal<boolean>(false);
   contextMenuPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -96,6 +96,9 @@ export class ContextMenuService {
    * Show context menu at specified position
    */
   showContextMenu(item: any, event?: MouseEvent): void {
+    // Register this service as the active one (closes any other open context menu)
+    this.registry.setActive(this);
+
     if (event) {
       this.contextMenuPosition.set({ x: event.clientX, y: event.clientY });
       event.preventDefault();

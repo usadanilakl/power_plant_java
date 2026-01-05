@@ -25,14 +25,12 @@ import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { TableUtilService } from '../../../../shared/table/refactored/services/table-util.service';
 import { LotoStandardContextMenuService } from '../services/loto-standard-context-menu.service';
-import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
 import { LotoStandardBulkEditFormComponent } from '../loto-standard-bulk-edit-form/loto-standard-bulk-edit-form.component';
 
 @Component({
   selector: 'app-rf-loto-standard-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, ContextMenuComponent, LotoStandardBulkEditFormComponent],
-  providers: [ContextMenuComponent],
+  imports: [CommonModule, TableComponent, LotoStandardBulkEditFormComponent],
   templateUrl: './rf-loto-standard-table.component.html',
   styleUrl: './rf-loto-standard-table.component.css',
 })

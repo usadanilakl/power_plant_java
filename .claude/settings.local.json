@@ -13,7 +13,8 @@
       "Bash(export PATH=\"$PATH:/home/dk-power/.nvm/versions/node/v22.20.0/bin\")",
       "Bash(npm run build:dev:*)",
       "Bash(export PATH=\"$PATH:/home/dk-power/.nvm/versions/node/v22.20.0/bin:/usr/bin\")",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(npx ng build)"
     ]
   }
 }

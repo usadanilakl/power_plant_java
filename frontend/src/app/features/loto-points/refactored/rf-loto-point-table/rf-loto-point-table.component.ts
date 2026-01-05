@@ -24,7 +24,6 @@ import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { Column } from '../../../../models/column.model';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
-import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
 import { TableUtilService } from '../../../../shared/table/refactored/services/table-util.service';
 import { LotoPointBulkEditFormComponent } from '../loto-point-bulk-edit-form/loto-point-bulk-edit-form.component';
 import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
@@ -33,10 +32,10 @@ import { RfLotoPointClickService } from './rf-loto-point-click.service';
 @Component({
   selector: 'app-rf-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, ContextMenuComponent, LotoPointBulkEditFormComponent],
-  providers: [
-    { provide: TableClickService, useClass: RfLotoPointClickService }
-  ],
+  imports: [CommonModule, TableComponent, LotoPointBulkEditFormComponent],
+  // providers: [
+  //   { provide: TableClickService, useClass: RfLotoPointClickService }
+  // ],
   templateUrl: './rf-loto-point-table.component.html',
   styleUrl: './rf-loto-point-table.component.css',
 })

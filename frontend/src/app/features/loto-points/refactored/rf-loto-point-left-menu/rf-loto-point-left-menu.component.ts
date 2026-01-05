@@ -6,13 +6,12 @@ import { NestedItem } from '../../../../models/ui/nested-item.model';
 import { RfLotoPointLeftMenuService, GroupingCriteria } from '../services/rf-loto-point-left-menu.service';
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
-import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
 import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
 
 @Component({
   selector: 'app-rf-loto-point-left-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, RfToggleMenuComponent, ContextMenuComponent],
+  imports: [CommonModule, MatIconModule, RfToggleMenuComponent],
   templateUrl: './rf-loto-point-left-menu.component.html',
   styleUrl: './rf-loto-point-left-menu.component.css'
 })

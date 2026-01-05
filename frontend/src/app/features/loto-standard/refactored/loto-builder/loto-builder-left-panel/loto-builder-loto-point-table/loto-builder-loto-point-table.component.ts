@@ -3,8 +3,17 @@ import { CommonModule } from '@angular/common';
 import { RfLotoPointTableComponent } from '../../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
 import { TableClickService } from '../../../../../../shared/table/refactored/services/table-click.service';
 import { LotoBuilderLotoPointTableClickService } from './loto-builder-loto-point-table-click.service';
-import { ContextMenuService } from '../../../../../../shared/menu/context-menu/context-menu.service';
-import { LotoPointContextMenuService } from '../../../../../loto-points/refactored/services/loto-point-context-menu.service';
+import { TableSelectionService } from '../../../../../../shared/table/refactored/services/table-selection.service';
+import { TableDragService } from '../../../../../../shared/table/refactored/services/table-drag.service';
+import { TableControlsService } from '../../../../../../shared/table/refactored/services/table-controls.service';
+import { TableStateService } from '../../../../../../shared/table/refactored/services/table-state.service';
+import { TableDataService } from '../../../../../../shared/table/refactored/services/table-data.service';
+import { TableSearchService } from '../../../../../../shared/table/refactored/services/table-search.service';
+import { TableSortService } from '../../../../../../shared/table/refactored/services/table-sort.service';
+import { TableResizeService } from '../../../../../../shared/table/refactored/services/table-resize.service';
+import { TableSyncService } from '../../../../../../shared/table/refactored/services/table-sync.service';
+import { LotoPointBulkEditService } from '../../../../../loto-points/refactored/services/loto-point-bulk-edit.service';
+import { RfLotoPointTableDataService } from '../../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table-data.service';
 
 /**
  * Wrapper component for LOTO point table in LOTO builder.
@@ -16,8 +25,18 @@ import { LotoPointContextMenuService } from '../../../../../loto-points/refactor
   standalone: true,
   imports: [CommonModule, RfLotoPointTableComponent],
   providers: [
+    TableSelectionService,
+    TableDragService,
+    TableControlsService,
+    TableStateService,
+    TableDataService,
+    TableSearchService,
+    TableSortService,
+    TableResizeService,
+    TableSyncService,
+    LotoPointBulkEditService,
+    RfLotoPointTableDataService,
     { provide: TableClickService, useClass: LotoBuilderLotoPointTableClickService },
-    { provide: ContextMenuService, useExisting: LotoPointContextMenuService }
   ],
   template: `
     <app-rf-loto-point-table

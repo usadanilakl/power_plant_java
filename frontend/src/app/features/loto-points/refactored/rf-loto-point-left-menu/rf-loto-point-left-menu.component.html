@@ -47,11 +47,3 @@
     ></app-rf-toggle-menu>
   }
 </div>
-
-<app-context-menu
-  [selectedItem]="contextMenuService.contextMenuSelectedItem()"
-  [isVisible]="contextMenuService.contextMenuVisible()"
-  [position]="contextMenuService.contextMenuPosition()"
-  [actions]="contextMenuService.contextMenuActions"
-  (closeMenu)="contextMenuService.closeContextMenu()"
-></app-context-menu>
