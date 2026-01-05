@@ -1,6 +1,6 @@
 
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { SpringPaginatedResponse } from '../../../../models/api/spring-pagenated.response.model';
@@ -63,11 +63,16 @@ export class RfFileApiService {
   updateFile(
     file: Partial<FileDto>
   ): Observable<SpringApiResponse<FileDto>> {
-    const headers = new HttpHeaders().set('Content-Type', 'application/json');
+    // Backend expects multipart/form-data with fileDto as a JSON blob
+    const formData = new FormData();
+    const fileDto = new FileDto(file);
+    formData.append('fileDto', new Blob([JSON.stringify(fileDto.toIdModel())], {
+      type: 'application/json'
+    }));
+    // No file attached, just the metadata
     return this.http.put<SpringApiResponse<FileDto>>(
-      `${this.apiUrl}`,
-      file,
-      { headers }
+      this.apiUrl,
+      formData
     );
   }
 

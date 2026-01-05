@@ -160,14 +160,15 @@ export class TableSearchService {
       .filter((item) => !this.dataService.excludedItemIds.has(item.id));
 
     // Apply global and column-specific search queries.
+    let filteredResult: any[];
     if (this.dataService.isTableIsolated()) {
-      this.dataService.filteredItems = this.performSearch(
+      filteredResult = this.performSearch(
         itemsToFilter,
         this.dataService.globalSearchQuery,
         this.dataService.columnFilters()
       );
     } else {
-      this.dataService.filteredItems = itemsToFilter;
+      filteredResult = itemsToFilter;
     }
 
     // Re-apply the current sort order to the newly filtered list.
@@ -182,7 +183,10 @@ export class TableSearchService {
     }
 
     // Update the indices for virtual scrolling.
-    this.utilService.updateItemIndices(this.dataService.filteredItems);
+    this.utilService.updateItemIndices(filteredResult);
+
+    // Set the filtered items signal
+    this.dataService.filteredItems.set(filteredResult);
 
     // Use a small timeout to ensure the DOM has updated before syncing widths.
     // This is crucial for accurate width calculation after filtering/sorting.

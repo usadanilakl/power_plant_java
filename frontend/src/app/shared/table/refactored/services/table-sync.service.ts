@@ -60,7 +60,7 @@ export class TableSyncService {
     if (!this.dataService.viewport()) return;
 
     const end = this.dataService.viewport()!.getRenderedRange().end;
-    const total = this.dataService.filteredItems.length;
+    const total = this.dataService.filteredItems().length;
 
     if (end >= total - 5 && total > 0) {
       // Trigger load more when within 5 items of the end
@@ -141,7 +141,7 @@ export class TableSyncService {
       this.detectRowHeight();
       this.calculateInitialColumnWidths();
       this.synchronizeColumnWidths();
-      this.utilServce.updateItemIndices(this.dataService.filteredItems);
+      this.utilServce.updateItemIndices(this.dataService.filteredItems());
     });
   }
 

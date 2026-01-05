@@ -24,7 +24,7 @@ export class TableDataService {
   });
 
   //Calculated Values
-  filteredItems: any[] = [];
+  filteredItems = signal<any[]>([]);
   globalSearchQuery: string = '';
   columnFilters = signal<{ [key: string]: string }>({});
   columnFilterLogic: { [key: string]: filterLogic } = {};

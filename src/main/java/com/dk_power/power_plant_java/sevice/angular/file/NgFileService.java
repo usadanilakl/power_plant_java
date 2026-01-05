@@ -207,6 +207,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         String fileExtension = FileUtil.getFileExtension(originalFilename);
         String fileName = fileNumber != null && !fileNumber.isEmpty() ? fileNumber : originalFilename;
         FileObject fileObject = convertIdDtoToEntity(fileDto);
+        fileObject.setBaseLink(filesRelativePath);
         fileObject.setExtension(fileExtension);
         String fileLink = fileObject.buildFileLink();
         String folder = fileObject.buildFolder();
@@ -233,6 +234,7 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 newFile.setName(fileObject.getName());
                 newFile.setFileType(fileObject.getFileType());
                 newFile.setVendor(fileObject.getVendor());
+                newFile.setBaseLink(filesRelativePath);
                 newFile.setExtension(FileUtil.getFileExtension(path));
                 newFile.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
                 newFile.buildFolder();

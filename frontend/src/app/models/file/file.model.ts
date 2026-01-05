@@ -106,18 +106,26 @@ export class FileDto extends BaseDto implements FileModel {
       }
 
       toIdModel(): FileIdDto {
+        // Helper to extract ID from value (handles both object with id and raw number)
+        const extractId = (value: any): number => {
+          if (value == null) return 0;
+          if (typeof value === 'number') return value;
+          if (typeof value === 'object' && value.id != null) return value.id;
+          return 0;
+        };
+
         return new FileIdDto({
           id: this.id,
           name: this.name,
-          fileType: this.fileType?.id || 0,
+          fileType: extractId(this.fileType),
           fileLink: this.fileLink,
           baseLink: this.baseLink,
           folder: this.folder,
-          system: this.system?.id || 0,
+          system: extractId(this.system),
           relatedSystems: this.relatedSystems,
           fileNumber: this.fileNumber,
-          vendor: this.vendor?.id || 0,
-          points: this.points.map(point => point.id),
+          vendor: extractId(this.vendor),
+          points: this.points?.map(point => typeof point === 'number' ? point : point.id) || [],
           objectType: this.objectType,
           extension: this.extension,
           extensions: this.extensions,

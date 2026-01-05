@@ -63,12 +63,12 @@ export class TableSortService {
         : true;
     this.dataService.currentSortColumn = columnKey;
 
-    this.dataService.filteredItems = this.sortItems(
-      this.dataService.filteredItems,
+    this.dataService.filteredItems.set(this.sortItems(
+      this.dataService.filteredItems(),
       column,
       this.dataService.isAscending,
       (obj, path) => this.utilService.getNestedProperty(obj, path)
-    );
+    ));
 
     if (emit)
       this.dataService.sortChanged.set({

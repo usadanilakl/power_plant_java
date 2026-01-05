@@ -54,10 +54,10 @@
         }
 
         <div class="dialog-actions">
-          <button (click)="saveValue()" [disabled]="!dialogValueName" class="save-btn">
+          <button type="button" (click)="saveValue()" [disabled]="!dialogValueName" class="save-btn">
             Save
           </button>
-          <button (click)="closeDialog()" class="cancel-btn">
+          <button type="button" (click)="closeDialog()" class="cancel-btn">
             Cancel
           </button>
         </div>
@@ -90,10 +90,10 @@
         }
 
         <div class="dialog-actions">
-          <button (click)="confirmDelete()" class="delete-btn-confirm">
+          <button type="button" (click)="confirmDelete()" class="delete-btn-confirm">
             Delete
           </button>
-          <button (click)="closeDeleteDialog()" class="cancel-btn">
+          <button type="button" (click)="closeDeleteDialog()" class="cancel-btn">
             Cancel
           </button>
         </div>

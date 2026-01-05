@@ -63,7 +63,7 @@ export class TableDragService {
     if (this.dataService.isDragAndDropEnabled()) {
       // Ensure item has index property before starting drag
       if (!item.hasOwnProperty('index')) {
-        const itemIndex = this.dataService.filteredItems.indexOf(item);
+        const itemIndex = this.dataService.filteredItems().indexOf(item);
         item.index = itemIndex;
       }
       this.startDrag(item, { x: event.clientX, y: event.clientY });
@@ -76,7 +76,7 @@ export class TableDragService {
     if (dragState.isDragging && dragState.startIndex !== null) {
       const hovered = this.dataService.hoveredRow();
       if (hovered) {
-        const toIndex = this.dataService.filteredItems.findIndex(
+        const toIndex = this.dataService.filteredItems().findIndex(
           (item) => item === hovered
         );
         if (toIndex !== -1) {
@@ -92,7 +92,7 @@ export class TableDragService {
   private moveItem(fromIndex: number, toIndex: number): void {
     requestAnimationFrame(() => {
       // Find the actual item from filteredItems
-      const movedItem = this.dataService.filteredItems[fromIndex];
+      const movedItem = this.dataService.filteredItems()[fromIndex];
 
       // Find the original index in the master _items array
       const originalFromIndex = this.dataService
@@ -100,7 +100,7 @@ export class TableDragService {
         .findIndex((i) => i === movedItem);
 
       // Find the target item in filteredItems to determine where to move in _items
-      const targetItem = this.dataService.filteredItems[toIndex];
+      const targetItem = this.dataService.filteredItems()[toIndex];
       const originalToIndex = this.dataService
         .items()
         .findIndex((i) => i === targetItem);

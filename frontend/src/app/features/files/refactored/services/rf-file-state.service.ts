@@ -56,6 +56,25 @@ export class RfFileStateService {
     this.allLoadedFilesSubject.next([...current, ...items]);
   }
 
+  /**
+   * Update or add a file in the loaded files list
+   * If the file exists (by id), it will be updated; otherwise, it will be added to the beginning
+   */
+  updateOrAddFile(file: FileDto): void {
+    const current = this.allLoadedFilesSubject.value;
+    const existingIndex = current.findIndex(f => f.id === file.id);
+
+    if (existingIndex !== -1) {
+      // Update existing file
+      const updated = [...current];
+      updated[existingIndex] = file;
+      this.allLoadedFilesSubject.next(updated);
+    } else {
+      // Add new file to the beginning
+      this.allLoadedFilesSubject.next([file, ...current]);
+    }
+  }
+
   clearFiles(): void {
     this.allLoadedFilesSubject.next([]);
     this.currentPage = 1;
@@ -90,8 +109,12 @@ export class RfFileStateService {
         tap((response) => {
           // Clear the draft after successful save
           this.clearDraftForItem(fileId || null);
+          // Create the updated file DTO
+          const savedFile = new FileDto(response.responseData);
           // Update the selected item with the saved data
-          this.setSelectedItem(new FileDto(response.responseData));
+          this.setSelectedItem(savedFile);
+          // Update the files list so the left menu reflects the changes
+          this.updateOrAddFile(savedFile);
           // Show success message
           const action = isNew ? 'created' : 'updated';
           this.messageService.showSuccess(`File ${action} successfully`);
@@ -131,7 +154,11 @@ export class RfFileStateService {
         tap((response) => {
           // Clear the draft after successful save
           this.clearDraftForItem(fileId);
-          this.setSelectedItem(new FileDto(response.responseData));
+          // Create the saved file DTO
+          const savedFile = new FileDto(response.responseData);
+          this.setSelectedItem(savedFile);
+          // Update the files list so the left menu reflects the changes
+          this.updateOrAddFile(savedFile);
           this.messageService.showSuccess('File uploaded successfully');
           this.closeForm();
         }),

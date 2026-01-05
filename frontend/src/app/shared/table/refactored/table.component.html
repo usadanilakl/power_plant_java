@@ -74,7 +74,7 @@
       <table #bodyTable class="table table-body" [style.width.px]="dataService.totalTableWidth()">
         <tbody>
           <tr
-            *cdkVirtualFor="let item of dataService.filteredItems; trackBy: utilService.trackByItemId"
+            *cdkVirtualFor="let item of dataService.filteredItems(); trackBy: utilService.trackByItemId"
             [class.drag-hover-top]="item === dataService.hoveredRow() && dragService.dragState().isDragging"
             [class.selected]="selectionService.isItemSelected(item)"
             [class.dragged]="dragService.isItemDragged(item)"
@@ -113,7 +113,7 @@
     </cdk-virtual-scroll-viewport>
   </div>
 
-  <div *ngIf="dataService.filteredItems.length === 0" class="empty-state">
+  <div *ngIf="dataService.filteredItems().length === 0" class="empty-state">
     <p>No items found</p>
   </div>
 
