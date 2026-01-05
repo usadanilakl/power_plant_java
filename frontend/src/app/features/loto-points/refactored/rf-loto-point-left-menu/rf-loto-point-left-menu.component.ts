@@ -6,11 +6,13 @@ import { NestedItem } from '../../../../models/ui/nested-item.model';
 import { RfLotoPointLeftMenuService, GroupingCriteria } from '../services/rf-loto-point-left-menu.service';
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
+import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
+import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
 
 @Component({
   selector: 'app-rf-loto-point-left-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, RfToggleMenuComponent],
+  imports: [CommonModule, MatIconModule, RfToggleMenuComponent, ContextMenuComponent],
   templateUrl: './rf-loto-point-left-menu.component.html',
   styleUrl: './rf-loto-point-left-menu.component.css'
 })
@@ -18,6 +20,7 @@ export class RfLotoPointLeftMenuComponent implements OnInit {
   private menuService = inject(RfLotoPointLeftMenuService);
   private stateService = inject(RfLotoPointStateService);
   private destroyRef = inject(DestroyRef);
+  protected contextMenuService = inject(LotoPointContextMenuService);
 
   // UI State
   menuItems = signal<NestedItem[]>([]);
@@ -109,8 +112,13 @@ export class RfLotoPointLeftMenuComponent implements OnInit {
    * Handle item right click - show context menu
    */
   onItemRightClick(event: { event: MouseEvent; item: NestedItem }): void {
-    // TODO: Implement context menu for LOTO points
-    console.log('Right click on item:', event.item);
+    // Only show context menu for leaf nodes (actual LOTO points, not groups)
+    if (event.item.values && event.item.values.length > 0) {
+      return;
+    }
+
+    // Show context menu with the item data
+    this.contextMenuService.showContextMenu(event.item, event.event);
   }
 
   /**

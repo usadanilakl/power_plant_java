@@ -6,6 +6,7 @@ import { LotoBuilderStateService } from '../../services/loto-builder-state.servi
 import { RfLotoPointApiService } from '../../../../../loto-points/refactored/services/rf-loto-point-api.service';
 import { LotoPointDto } from '../../../../../../models/loto/loto-point.model';
 import { FileDto } from '../../../../../../models/file/file.model';
+import { RfLotoPointClickService } from '../../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-click.service';
 
 /**
  * Custom click service for LOTO point table in LOTO builder.
@@ -13,7 +14,7 @@ import { FileDto } from '../../../../../../models/file/file.model';
  * opens that file, and highlights the clicked point.
  */
 @Injectable()
-export class LotoBuilderLotoPointTableClickService extends TableClickService {
+export class LotoBuilderLotoPointTableClickService extends RfLotoPointClickService {
   private currentFileService = inject(CurrentFileService);
   private builderState = inject(LotoBuilderStateService);
   private lotoPointApiService = inject(RfLotoPointApiService);

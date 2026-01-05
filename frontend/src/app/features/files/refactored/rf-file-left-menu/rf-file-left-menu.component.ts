@@ -8,16 +8,19 @@ import { FileService } from '../../../../services/file.service';
 import { RouteService } from '../../../../services/util/rout.service';
 import { CurrentFileService } from '../../../../services/current-file.service';
 import { RfToggleMenuComponent } from "../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component";
+import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
+import { FileContextMenuService } from '../services/file-context-menu.service';
 import { tap } from 'rxjs';
 
 @Component({
   selector: 'app-rf-file-left-menu',
   standalone: true,
-  imports: [CommonModule, RfToggleMenuComponent],
+  imports: [CommonModule, RfToggleMenuComponent, ContextMenuComponent],
   templateUrl: './rf-file-left-menu.component.html',
   styleUrl: './rf-file-left-menu.component.css',
 })
 export class RfFileLeftMenuComponent implements OnInit{
+  protected contextMenuService = inject(FileContextMenuService);
 
   menuItems = signal<NestedItem[]>([]);
   isLoading = signal(false);
@@ -154,6 +157,16 @@ constructor(
   onItemDoubleClick(item: NestedItem): void {
     this.onItemClick(item)
     this.isFileFormOpen.set(true);
+  }
+
+  onItemRightClick(event: { event: MouseEvent; item: NestedItem }): void {
+    // Only show context menu for leaf nodes (actual files, not groups)
+    if (event.item.values && event.item.values.length > 0) {
+      return;
+    }
+
+    // Show context menu with the item data
+    this.contextMenuService.showContextMenu(event.item, event.event);
   }
 
   onFormSubmit(formData: any) {
