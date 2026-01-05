@@ -10,6 +10,7 @@ import { RfFormField } from "../../../../models/ui/form-field.model";
 import { RfFileApiService } from "./rf-file-api.service";
 import { FileLocalStorageService } from "./rf-file-local-storage.service";
 import { GlobalMessageService } from "../../../../shared/global-message/global-message.service";
+import { CurrentFileService } from "../../../../services/current-file.service";
 
 @Injectable({
   providedIn: 'root'
@@ -19,6 +20,7 @@ export class RfFileStateService {
   private localStorage = inject(FileLocalStorageService);
   private destroyRef = inject(DestroyRef);
   private messageService = inject(GlobalMessageService);
+  private currentFileService = inject(CurrentFileService);
 
   private pageSize = 50;
   private currentPage = 1;
@@ -59,6 +61,7 @@ export class RfFileStateService {
   /**
    * Update or add a file in the loaded files list
    * If the file exists (by id), it will be updated; otherwise, it will be added to the beginning
+   * Also notifies CurrentFileService to update the left menu
    */
   updateOrAddFile(file: FileDto): void {
     const current = this.allLoadedFilesSubject.value;
@@ -72,6 +75,22 @@ export class RfFileStateService {
     } else {
       // Add new file to the beginning
       this.allLoadedFilesSubject.next([file, ...current]);
+    }
+
+    // Notify CurrentFileService to update the left menu
+    // Use saveFile method which handles updating the file map and triggering filesUpdated$
+    this.notifyFileUpdate(file);
+  }
+
+  /**
+   * Notify CurrentFileService about file updates so the left menu refreshes
+   */
+  private notifyFileUpdate(file: FileDto): void {
+    // Update the file map in CurrentFileService
+    // This triggers filesUpdated$ which the left menu listens to
+    const fileTypeName = file.fileType?.name ?? '';
+    if (fileTypeName) {
+      this.currentFileService.updateMapByType(fileTypeName, file);
     }
   }
 

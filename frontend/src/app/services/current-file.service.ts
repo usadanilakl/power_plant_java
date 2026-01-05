@@ -253,7 +253,11 @@ export class CurrentFileService {
       );
     }
 
-    private updateMapByType(type: string, file: FileDto): void {
+    /**
+     * Update the file map by type and notify listeners
+     * Public method to allow other services to trigger file list updates
+     */
+    updateMapByType(type: string, file: FileDto): void {
       const partualType = this.fileTypes.find(t => type.toLowerCase().includes(t.toLowerCase()));
       if (!partualType) {
           return;
@@ -265,7 +269,7 @@ export class CurrentFileService {
       const currentMap = this.fileMapByTypeSubject.getValue();
       const newMap = new Map(currentMap);
       newMap.set(partualType, updatedFilesByType);
-      
+
       this.fileMapByTypeSubject.next(newMap);
       this.filesUpdtedSubject.next();
     }

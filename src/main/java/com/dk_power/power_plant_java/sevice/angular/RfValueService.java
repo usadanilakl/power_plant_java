@@ -7,8 +7,12 @@ import com.dk_power.power_plant_java.entities.categories.Value;
 import com.dk_power.power_plant_java.repository.categories.CategoryRepo;
 import com.dk_power.power_plant_java.repository.categories.ValueRepo;
 import com.dk_power.power_plant_java.repository.equipment.EquipmentRepo;
+import com.dk_power.power_plant_java.repository.file.FileRepo;
 import com.dk_power.power_plant_java.repository.loto.LotoPointRepo;
+import com.dk_power.power_plant_java.sevice.angular.file.NgFileService;
+import com.dk_power.power_plant_java.entities.files.FileObject;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +33,9 @@ public class RfValueService {
     private final NgValueService ngValueService; // Reuse for backward compatibility
     private final EquipmentRepo equipmentRepo;
     private final LotoPointRepo lotoPointRepo;
+    private final FileRepo fileRepo;
+    @Lazy
+    private final NgFileService ngFileService;
 
     // ==================== VALUE CRUD OPERATIONS ====================
 
@@ -66,14 +73,49 @@ public class RfValueService {
         Value value = valueRepo.findById(valueId)
                 .orElseThrow(() -> new IllegalArgumentException("Value not found: " + valueId));
 
+        String oldName = value.getName();
+        boolean nameChanged = !oldName.equals(newName);
+
         // Check if new name conflicts with existing value in same category
-        if (!value.getName().equals(newName)) {
+        if (nameChanged) {
             boolean nameExists = value.getCategory().getValues().stream()
                     .anyMatch(v -> !v.getId().equals(valueId) && v.getName().equalsIgnoreCase(newName));
 
             if (nameExists) {
                 throw new IllegalArgumentException("Value '" + newName + "' already exists in this category");
             }
+        }
+
+        // If this is a Vendor or File Type value and name changed, update file structure
+        Category category = value.getCategory();
+        if (nameChanged && category != null &&
+            (category.getName().equals("Vendor") || category.getName().equals("File Type"))) {
+
+            // First rename the folders on disk
+            ngFileService.updateFileStructureWithNewValue(value, newName);
+
+            // Now update the value name
+            value.setName(newName);
+
+            // Update all affected files' links in database
+            if (category.getName().equals("Vendor")) {
+                List<FileObject> affectedFiles = fileRepo.findByVendor(value);
+                for (FileObject file : affectedFiles) {
+                    // Rebuild file link and folder with new vendor name
+                    file.buildFileLink();
+                    file.buildFolder();
+                    fileRepo.save(file);
+                }
+            } else if (category.getName().equals("File Type")) {
+                List<FileObject> affectedFiles = fileRepo.findByFileType(value);
+                for (FileObject file : affectedFiles) {
+                    // Rebuild file link and folder with new file type name
+                    file.buildFileLink();
+                    file.buildFolder();
+                    fileRepo.save(file);
+                }
+            }
+        } else if (nameChanged) {
             value.setName(newName);
         }
 

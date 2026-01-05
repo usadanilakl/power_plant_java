@@ -395,9 +395,17 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
             for (File f : filesWithAllExtensions) {
                 String extension = FileUtil.getFileExtension(f.getName());
                 try {
-                    FileUtil.moveFileAndCleanup(f.toPath(), Paths.get(projectRootPath, newPath.replaceAll(currentExtension, extension)));
+                    Path targetPath = Paths.get(projectRootPath, newPath.replaceAll(currentExtension, extension));
+                    // Only try to move if source file exists
+                    if (f.exists()) {
+                        FileUtil.moveFileAndCleanup(f.toPath(), targetPath);
+                    } else {
+                        logger.warn("Source file does not exist, skipping move: {}", f.getPath());
+                    }
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    String errorMsg = e.getMessage() != null ? e.getMessage() : "Failed to move file: " + f.getName();
+                    logger.error("Error moving file {} to new location: {}", f.getName(), errorMsg);
+                    throw new RuntimeException("Failed to transfer file '" + f.getName() + "': " + errorMsg, e);
                 }
             }
 
