@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RfLotoPointTableComponent } from '../../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
 import { TableClickService } from '../../../../../../shared/table/refactored/services/table-click.service';
 import { LotoBuilderLotoPointTableClickService } from './loto-builder-loto-point-table-click.service';
+import { ContextMenuService } from '../../../../../../shared/menu/context-menu/context-menu.service';
+import { LotoPointContextMenuService } from '../../../../../loto-points/refactored/services/loto-point-context-menu.service';
 
 /**
  * Wrapper component for LOTO point table in LOTO builder.
@@ -14,7 +16,8 @@ import { LotoBuilderLotoPointTableClickService } from './loto-builder-loto-point
   standalone: true,
   imports: [CommonModule, RfLotoPointTableComponent],
   providers: [
-    { provide: TableClickService, useClass: LotoBuilderLotoPointTableClickService }
+    { provide: TableClickService, useClass: LotoBuilderLotoPointTableClickService },
+    { provide: ContextMenuService, useExisting: LotoPointContextMenuService }
   ],
   template: `
     <app-rf-loto-point-table

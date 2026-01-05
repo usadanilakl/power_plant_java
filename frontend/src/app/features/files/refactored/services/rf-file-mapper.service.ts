@@ -225,17 +225,8 @@ export class FileMapperService {
       'name',
       'fileType',
       'fileNumber',
-      'system',
-      'relatedSystems',
       'vendor',
-      'extension',
-      'extensions',
-      'folder',
-      'fileLink',
-      'baseLink',
-      'objectType',
-      'docNum',
-      'bulkEditStep',
+      'isVerified',
     ]
   ): RfFormField[] {
     const allFields: { [key in keyof FileDto]?: RfFormField } = {
@@ -249,7 +240,7 @@ export class FileMapperService {
       fileType: {
         name: 'fileType',
         label: 'File Type',
-        type: 'select',
+        type: 'value-select',
         options: this.fileTypeOptions(),
         validators: [Validators.required],
         initialValue: file.fileType?.id || null,
@@ -257,7 +248,7 @@ export class FileMapperService {
       fileNumber: {
         name: 'fileNumber',
         label: 'File Number',
-        type: 'multi-select',
+        type: 'multi-value-select',
         validators: [Validators.required],
         initialValue: file.fileNumber || [],
       },
@@ -278,7 +269,7 @@ export class FileMapperService {
       vendor: {
         name: 'vendor',
         label: 'Vendor',
-        type: 'select',
+        type: 'value-select',
         options: this.vendorOptions(),
         initialValue: file.vendor?.id || null,
       },

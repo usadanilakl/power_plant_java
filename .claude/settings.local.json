@@ -9,7 +9,11 @@
       "Bash(git checkout:*)",
       "Bash(npx tsc:*)",
       "Bash(npx ng build --configuration=development)",
-      "Bash(./node_modules/.bin/ng build:*)"
+      "Bash(./node_modules/.bin/ng build:*)",
+      "Bash(export PATH=\"$PATH:/home/dk-power/.nvm/versions/node/v22.20.0/bin\")",
+      "Bash(npm run build:dev:*)",
+      "Bash(export PATH=\"$PATH:/home/dk-power/.nvm/versions/node/v22.20.0/bin:/usr/bin\")",
+      "Bash(npm run:*)"
     ]
   }
 }

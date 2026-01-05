@@ -65,8 +65,8 @@ export class ContextMenuService {
    * Context menu action handlers
    */
   public handleViewDetails(item: any): void {
-    console.log('Viewing details for:', item);
-    // Implement view details logic
+    console.log('[ContextMenuService BASE] handleViewDetails called for:', item);
+    // Implement view details logic - override in child classes
   }
 
   public handleEdit(item: any): void {

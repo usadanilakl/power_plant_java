@@ -68,7 +68,6 @@ export class TableClickService {
     if (this.singleClickTimeout) {
       clearTimeout(this.singleClickTimeout);
       this.singleClickTimeout = null;
-      console.log('Single click cancelled - double click detected in mode: ', this.stateService.tableMode());
       if(this.stateService.tableMode()==='row') this.handleRowDoubleClick(item, event);
       else if(this.stateService.tableMode()==='cell') this.handleCellDoubleClick(item, this.lastClickedCell()?.column!);
       return;
@@ -76,7 +75,6 @@ export class TableClickService {
 
     this.singleClickTimeout = setTimeout(() => {
       this.singleClickTimeout = null;
-      console.log('Single click executed');
       if(this.stateService.tableMode()==='row') this.handleRowLeftClick(item, event);
       else this.handleCellClick(item, this.lastClickedCell()?.column!);
     }, this.doubleClickWindow);
@@ -168,7 +166,6 @@ export class TableClickService {
    */
     protected handleRowLeftClick(item: any, event: MouseEvent): void {
       const normalizedItem = this.normalizeItem(item);
-      // console.log('🔴 Default: Single click detected on item:', normalizedItem);
 
       if (event.ctrlKey) {
         this.selectionService.toggleItem(normalizedItem);
@@ -194,8 +191,6 @@ export class TableClickService {
    */
   protected handleRowDoubleClick(item: any, event: MouseEvent): void {
     const normalizedItem = this.normalizeItem(item);
-    console.log('🟢 Default: Double click detected on item:', normalizedItem);
-    console.log(`🆔 [${this.debugInstanceId}] Base double click:`, item);
 
     if (this.stateService.tableMode() === 'cell') {
       const lastCell = this.lastClickedCell();
@@ -210,7 +205,6 @@ export class TableClickService {
    */
   protected handleRowRightClick(item: any, event: MouseEvent): void {
     const normalizedItem = this.normalizeItem(item);
-    console.log('🔵 Default: Right click detected on item:', normalizedItem);
 
     if (this.stateService.tableMode() === 'cell') {
       const lastCell = this.lastClickedCell();
@@ -225,7 +219,6 @@ export class TableClickService {
    */
   protected handleRowMiddleClick(item: any, event: MouseEvent): void {
     const normalizedItem = this.normalizeItem(item);
-    console.log('🟡 Default: Middle click detected on item:', normalizedItem);
   }
 
   /**
@@ -233,7 +226,6 @@ export class TableClickService {
    */
   protected handleCellClick(item: any, column: Column): void {
     const normalizedItem = this.normalizeItem(item);
-    console.log('Default: Cell clicked -', normalizedItem, column);
   }
 
   /**
@@ -241,7 +233,6 @@ export class TableClickService {
    */
   protected handleCellDoubleClick(item: any, column: Column): void {
     const normalizedItem = this.normalizeItem(item);
-    console.log('Default: Cell double clicked -', normalizedItem, column);
   }
 
   /**
@@ -249,7 +240,6 @@ export class TableClickService {
    */
   protected handleCellRightClick(item: any, column: Column): void {
     const normalizedItem = this.normalizeItem(item);
-    console.log('Default: Cell right clicked -', normalizedItem, column);
   }
 
   /**
@@ -257,7 +247,6 @@ export class TableClickService {
    */
   protected handleCellMiddleClick(item: any, column: Column): void {
     const normalizedItem = this.normalizeItem(item);
-    console.log('Default: Cell middle clicked -', normalizedItem, column);
   }
 
   // ==================== HOVER HANDLERS ====================

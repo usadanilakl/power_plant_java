@@ -26,12 +26,16 @@ import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { FileContextMenuService } from '../services/file-context-menu.service';
 import { ContextMenuComponent } from '../../../../shared/menu/context-menu/context-menu.component';
 import { TableUtilService } from '../../../../shared/table/refactored/services/table-util.service';
+import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
+import { RfFileClickService } from './rf-file-click.service';
 
 @Component({
   selector: 'app-rf-file-table',
   standalone: true,
   imports: [CommonModule, TableComponent, ContextMenuComponent],
-  providers: [ContextMenuComponent],
+  providers: [
+    { provide: TableClickService, useClass: RfFileClickService }
+  ],
   templateUrl: './rf-file-table.component.html',
   styleUrl: './rf-file-table.component.css',
 })

@@ -7,6 +7,10 @@ import { RfLotoStandardFormComponent } from "../rf-loto-standard-form/rf-loto-st
 import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.service';
 import { RfLotoStandardLeftMenuComponent } from "../rf-loto-standard-left-menu/rf-loto-standard-left-menu.component";
 import { LotoBuilderContainerComponent } from "../loto-builder/loto-builder-container.component";
+import { RfLotoPointFormComponent } from "../../../loto-points/refactored/rf-loto-point-form/rf-loto-point-form.component";
+import { RfLotoPointStateService } from "../../../loto-points/refactored/services/rf-loto-point-state.service";
+import { RfFileFormComponent } from "../../../files/refactored/rf-file-form/rf-file-form.component";
+import { RfFileStateService } from "../../../files/refactored/services/rf-file-state.service";
 
 @Component({
   selector: 'app-rf-loto-standard-page',
@@ -18,11 +22,15 @@ import { LotoBuilderContainerComponent } from "../loto-builder/loto-builder-cont
     RfPopupProjectionComponent,
     RfLotoStandardFormComponent,
     RfLotoStandardLeftMenuComponent,
-    LotoBuilderContainerComponent
-],
+    LotoBuilderContainerComponent,
+    RfLotoPointFormComponent,
+    RfFileFormComponent
+  ],
   templateUrl: './rf-loto-standard-page.component.html',
   styleUrl: './rf-loto-standard-page.component.css',
 })
 export class RfLotoStandardPageComponent {
   stateService = inject(RfLotoStandardStateService);
+  lotoPointStateService = inject(RfLotoPointStateService);
+  fileStateService = inject(RfFileStateService);
 }

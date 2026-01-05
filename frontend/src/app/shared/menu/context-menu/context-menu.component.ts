@@ -97,11 +97,16 @@ export class ContextMenuComponent implements AfterViewInit {
   }
 
   onActionClick(action: ContextMenuAction): void {
+    console.log('[ContextMenu] onActionClick - action:', action.id, action.label);
     const item = this.selectedItem();
+    console.log('[ContextMenu] onActionClick - selectedItem:', item);
     if (item && !action.disabled) {
+      console.log('[ContextMenu] Executing action...');
       action.action(item);
       this.actionSelected.emit({ action, item });
       this.closeMenu.emit();
+    } else {
+      console.log('[ContextMenu] Action skipped - item:', !!item, 'disabled:', action.disabled);
     }
   }
 }

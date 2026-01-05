@@ -38,7 +38,6 @@ export class TableDragService {
       ...state,
       ghostRowIndex: rowIndex,
     }));
-    console.log('Updated ghost row:', rowIndex);
   }
   /**
    * Resets the drag state to its initial values, effectively ending the drag operation.
@@ -66,7 +65,6 @@ export class TableDragService {
       if (!item.hasOwnProperty('index')) {
         const itemIndex = this.dataService.filteredItems.indexOf(item);
         item.index = itemIndex;
-        console.log('Item index updated:', item);
       }
       this.startDrag(item, { x: event.clientX, y: event.clientY });
       event.preventDefault();
@@ -74,30 +72,21 @@ export class TableDragService {
   }
 
   onMouseUp(event: MouseEvent): void {
-    console.log('onMouseUp triggered');
     const dragState = this.getDragState();
-    console.log('Drag state:', dragState);
     if (dragState.isDragging && dragState.startIndex !== null) {
-      console.log('Item was being dragged. Start index:', dragState.startIndex);
       const hovered = this.dataService.hoveredRow();
-      console.log('Hovered item:', hovered);
       if (hovered) {
         const toIndex = this.dataService.filteredItems.findIndex(
           (item) => item === hovered
         );
-        // console.log('Calculated toIndex:', toIndex);
         if (toIndex !== -1) {
-          // console.log(`Moving item from ${dragState.startIndex} to ${toIndex}`);
           this.moveItem(dragState.startIndex, toIndex);
         } else {
-          console.log('Hovered item not found in filteredItems, not moving.');
         }
       } else {
-        console.log('No item was hovered, not moving.');
       }
     }
     this.endDrag();
-    // console.log('Drag ended.');
   }
 
   private moveItem(fromIndex: number, toIndex: number): void {

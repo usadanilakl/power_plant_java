@@ -20,13 +20,29 @@
   </ng-container>
 </app-main-layout>
 
-<!-- Form Popup -->
+<!-- LOTO Standard Form Popup -->
 <app-rf-popup-projection
   [isOpen]="stateService.isLotoStandardFormOpen()"
   [size]="'auto'"
   (close)="stateService.closeForm()"
 >
   <app-rf-loto-standard-form [fieldsInput]="stateService.formFields()"></app-rf-loto-standard-form>
+</app-rf-popup-projection>
+
+<!-- LOTO Point Form Popup -->
+<app-rf-popup-projection
+  [isOpen]="lotoPointStateService.isLotoPointFormOpen()"
+  (close)="lotoPointStateService.closeForm()"
+>
+  <app-rf-loto-point-form [fieldsInput]="lotoPointStateService.formFields()"></app-rf-loto-point-form>
+</app-rf-popup-projection>
+
+<!-- File Form Popup -->
+<app-rf-popup-projection
+  [isOpen]="fileStateService.isFileFormOpen()"
+  (close)="fileStateService.closeForm()"
+>
+  <app-rf-file-form></app-rf-file-form>
 </app-rf-popup-projection>
 
 <!-- LOTO Builder Popup -->

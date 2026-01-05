@@ -14,7 +14,58 @@ export class LotoPointContextMenuService extends ContextMenuService {
   private stateService = inject(RfLotoPointStateService);
   private apiService = inject(RfLotoPointApiService);
 
-  customMenuActions: ContextMenuAction[] = [
+  constructor() {
+    super();
+    console.log('[LotoPointContextMenuService] Constructor called');
+    // Initialize actions in constructor to ensure proper this binding
+    this.contextMenuActions = this.buildContextMenuActions();
+  }
+
+  private buildContextMenuActions(): ContextMenuAction[] {
+    return [
+      {
+        id: 'view',
+        label: 'View Details',
+        icon: '👁️',
+        action: (item) => this.handleViewDetails(item),
+      },
+      {
+        id: 'edit',
+        label: 'Edit',
+        icon: '✏️',
+        action: (item) => this.handleEdit(item),
+      },
+      {
+        id: 'clipboard',
+        label: 'Add to Clipboard',
+        icon: '📋',
+        action: (item) => this.handleClipboard(item),
+      },
+      {
+        id: 'divider1',
+        label: '',
+        divider: true,
+        action: () => {},
+      },
+      {
+        id: 'verify',
+        label: 'Mark as Verified',
+        icon: '✓',
+        action: (item) => this.handleVerify(item),
+      },
+      {
+        id: 'divider2',
+        label: '',
+        divider: true,
+        action: () => {},
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        icon: '🗑️',
+        action: (item) => this.handleDelete(item),
+      },
+      // Custom LOTO Point actions
       {
         id:'inspect',
         label: 'Inspect',
@@ -22,7 +73,7 @@ export class LotoPointContextMenuService extends ContextMenuService {
         action: (item) => this.handleInspect(item),
       },
       {
-        id: 'divider2',
+        id: 'divider3',
         label: '',
         divider: true,
         action: () => {},
@@ -34,7 +85,7 @@ export class LotoPointContextMenuService extends ContextMenuService {
         action: (item) => this.handlePrint(item),
       },
       {
-        id: 'divider3',
+        id: 'divider4',
         label: '',
         divider: true,
         action: () => {},
@@ -45,22 +96,21 @@ export class LotoPointContextMenuService extends ContextMenuService {
         icon: '🔓',
         action: (item) => this.handleRelease(item),
       },
-  ]
-
-  override contextMenuActions: ContextMenuAction[] = [
-    ...this.contextDefaultMenuActions,
-    ...this.customMenuActions,
-  ]
+    ];
+  }
 
   override clipboardFormatter(items: LotoPointModel[]): LotoPointClipboardItem[] {
     return items.map(i=>new LotoPointClipboardItem(i))
   }
 
   override handleViewDetails(item: any): void {
-    // Fetch full entity from server instead of using incomplete table data
+    console.log('[LotoPointContextMenu] handleViewDetails called with item:', item);
     if (item?.id) {
+      console.log('[LotoPointContextMenu] Loading item by ID:', item.id);
       this.stateService.loadItemById(item.id);
+      console.log('[LotoPointContextMenu] Calling openForm()');
       this.stateService.openForm();
+      console.log('[LotoPointContextMenu] isLotoPointFormOpen after openForm:', this.stateService.isLotoPointFormOpen());
     } else {
       console.warn('Cannot view details: item has no ID', item);
     }
