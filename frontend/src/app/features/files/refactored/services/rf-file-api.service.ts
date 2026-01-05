@@ -119,8 +119,8 @@ export class RfFileApiService {
   }
 
   uploadFile(formData: FormData): Observable<SpringApiResponse<FileDto>> {
-    return this.http.post<SpringApiResponse<FileDto>>(
-      `${this.apiUrl}/upload`,
+    return this.http.put<SpringApiResponse<FileDto>>(
+      this.apiUrl,
       formData
     );
   }

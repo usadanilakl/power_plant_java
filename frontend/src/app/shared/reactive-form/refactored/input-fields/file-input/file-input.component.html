@@ -1,21 +1,25 @@
-<div class="file-input-container" 
-     [class.dragover]="isDragover">
-  <div class="drop-zone">
-    <p>Drag and drop a file here, or</p>
-    <label class="file-input-label">
-      {{ label }}
-      <input 
-        type="file" 
-        [accept]="accept"
-        (change)="onFileSelected($event)"
-        class="file-input"
-      >
-    </label>
+<div class="file-input-wrapper">
+  <div class="label-container">
+    <label class="field-label">{{ label }}</label>
   </div>
-  @if (file) {
-    <div class="file-info">
-      <span class="file-name">{{ file.name }}</span>
-      <button class="remove-file" (click)="handleFile(null)">Remove</button>
+  <div class="file-input-container" [class.dragover]="isDragover">
+    <div class="drop-zone">
+      <p>Drag and drop a file here, or</p>
+      <label class="file-input-button">
+        Choose File
+        <input
+          type="file"
+          [accept]="accept"
+          (change)="onFileSelected($event)"
+          class="file-input"
+        >
+      </label>
     </div>
-  }
+    @if (file) {
+      <div class="file-info">
+        <span class="file-name">{{ file.name }}</span>
+        <button type="button" class="remove-file" (click)="handleFile(null)">Remove</button>
+      </div>
+    }
+  </div>
 </div>

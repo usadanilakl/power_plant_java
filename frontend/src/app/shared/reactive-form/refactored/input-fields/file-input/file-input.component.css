@@ -1,3 +1,17 @@
+.file-input-wrapper {
+  margin-bottom: 1rem;
+}
+
+.file-input-wrapper .label-container {
+  margin-bottom: 0.5rem;
+}
+
+.file-input-wrapper .field-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--primary-text);
+}
+
 .file-input-container {
   border: 2px dashed var(--border-color);
   border-radius: 4px;
@@ -45,10 +59,23 @@
 }
 
 .remove-file {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  padding: 5px 10px;
+  background-color: transparent;
+  color: var(--error-text, #d32f2f);
+  border: 1px solid var(--error-text, #d32f2f);
+  padding: 0.4rem 0.75rem;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.remove-file:hover {
+  background-color: var(--error-background, #ffebee);
+  color: var(--error-text, #c62828);
+}
+
+/* Add hover state for file input label */
+.file-input-label:hover {
+  background-color: var(--accent-color-hover);
 }

@@ -15,20 +15,20 @@
 <div class="form-input" [ngStyle]="customStyle">
   @if (label && label!=='') {
   <div class="label-container">
-    <label>{{ label }}</label>
+    <label class="field-label">{{ label }}</label>
   </div>
   }
   @if (type === 'textarea') {
-    <textarea 
-      [value]="value" 
+    <textarea
+      [value]="value"
       [readonly]="readonly"
       (input)="onInputChange($event)"
       class="form-input-element">
     </textarea>
   } @else {
-    <input 
-      [type]="type" 
-      [value]="value" 
+    <input
+      [type]="type"
+      [value]="value"
       [readonly]="readonly"
       (input)="onInputChange($event)"
       class="form-input-element">

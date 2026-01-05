@@ -88,6 +88,8 @@ export class RfFileStateService {
     saveObs
       .pipe(
         tap((response) => {
+          // Clear the draft after successful save
+          this.clearDraftForItem(fileId || null);
           // Update the selected item with the saved data
           this.setSelectedItem(new FileDto(response.responseData));
           // Show success message
@@ -108,15 +110,71 @@ export class RfFileStateService {
       .subscribe();
   }
 
+  submitFormWithFile(item: Partial<FileDto>, file: File, overrideFile: string): void {
+    const fileId = item.id || null;
+    const formData = new FormData();
+
+    // Append the file
+    formData.append('file', file);
+
+    // Append the FileDto as JSON blob
+    const fileDto = new FileDto(item);
+    formData.append('fileDto', new Blob([JSON.stringify(fileDto.toIdModel())], {
+      type: 'application/json'
+    }));
+
+    // Append the override/revision flag
+    formData.append('overrideFile', overrideFile);
+
+    this.apiService.uploadFile(formData)
+      .pipe(
+        tap((response) => {
+          // Clear the draft after successful save
+          this.clearDraftForItem(fileId);
+          this.setSelectedItem(new FileDto(response.responseData));
+          this.messageService.showSuccess('File uploaded successfully');
+          this.closeForm();
+        }),
+        catchError((error) => {
+          console.error('Error uploading file:', error);
+          const errorMsg = error.error?.message || error.message || 'Unknown error';
+          this.messageService.showError(`Failed to upload file: ${errorMsg}`);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
   saveDraft(item: FileDto): void {
     this.localStorage.saveDraft(item);
   }
 
+  /**
+   * Load draft for a specific file or new item
+   * Returns the draft metadata if found
+   */
+  loadDraftForItem(fileId: number | null = null) {
+    return this.localStorage.loadDraft(fileId);
+  }
+
+  /**
+   * Check if draft exists for specific file
+   */
+  hasDraftForItem(fileId: number | null = null): boolean {
+    return this.localStorage.hasDraft(fileId);
+  }
+
+  /**
+   * Clear draft for specific file
+   */
+  clearDraftForItem(fileId: number | null = null): void {
+    this.localStorage.clearDraft(fileId);
+  }
+
   loadFromLocalStorage(): void {
-    const draft = this.localStorage.loadDraft();
-    if (draft) {
-      this.selectedItem.set(new FileDto({...draft, id: +draft.id }));
-    }
+    // This is now handled by the form component's effect
+    // that checks for drafts when entity changes
   }
 
   resetPage(): void {

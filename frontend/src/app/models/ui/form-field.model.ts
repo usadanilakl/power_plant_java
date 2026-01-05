@@ -112,6 +112,7 @@ export interface RfFormField {
   options?: Option[] | Signal<Option[]>;
   categoryAlias?: string; // For value-select and multi-value-select types
   canManageValues?: boolean; // For value-select and multi-value-select types
+  accept?: string; // For file input - accepted file types
   initialValue?: any;
   currentValue?: any;
   question?: Question;

@@ -1,17 +1,22 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
 .form-group-container {
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 1rem;
   margin-bottom: 1rem;
-  background-color: #f9f9f9;
+  background-color: var(--secondary-background);
 }
 
 .form-group-label {
   display: block;
-  font-weight: bold;
+  font-weight: 600;
   margin-bottom: 0.75rem;
-  font-size: 1.1rem;
-  color: #333;
+  font-size: 1rem;
+  color: var(--primary-text);
 }
 
 .form-group-fields {
@@ -40,23 +45,35 @@
 }
 
 .field-label {
-  font-weight: 500;
-  margin-bottom: 0.25rem;
-  color: #555;
-  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--primary-text);
+  font-size: 0.875rem;
 }
 
 .form-control {
   padding: 0.5rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 1rem;
+  background-color: var(--primary-background);
+  color: var(--primary-text);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-shadow);
+}
+
+.form-control::placeholder {
+  color: var(--secondary-text);
+}
+
+.form-control[readonly] {
+  background-color: var(--secondary-background);
+  cursor: not-allowed;
 }
 
 .checkbox-field {
@@ -68,10 +85,11 @@
 .checkbox-field input[type="checkbox"] {
   width: auto;
   margin: 0;
+  accent-color: var(--accent-color);
 }
 
 .checkbox-field label {
   margin: 0;
   font-weight: 500;
-  color: #555;
+  color: var(--primary-text);
 }

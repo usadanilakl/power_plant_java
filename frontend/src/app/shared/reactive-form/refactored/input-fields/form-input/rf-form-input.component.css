@@ -68,26 +68,28 @@
   margin-bottom: 0.5rem;
 }
 
-label {
-  font-weight: bold;
+.form-input .field-label {
+  font-weight: 600;
+  font-size: 0.875rem;
   color: var(--primary-text);
 }
 
 .form-input-element {
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   background-color: var(--primary-background);
   color: var(--primary-text);
-  font-size: 1rem;
+  font-size: 0.875rem;
   width: 100%;
   box-sizing: border-box;
-  transition: border-color 0.2s ease-in-out;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-input-element:focus {
   outline: none;
-  border-color: var(--primary-accent);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-shadow);
 }
 
 .form-input-element[readonly] {

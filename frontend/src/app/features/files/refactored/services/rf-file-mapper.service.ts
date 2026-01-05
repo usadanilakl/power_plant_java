@@ -1,46 +1,13 @@
-
-import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { Validators } from '@angular/forms';
 import { FileDto } from '../../../../models/file/file.model';
 import { Column } from '../../../../models/column.model';
 import { RfFormField } from '../../../../models/ui/form-field.model';
-import { Option } from '../../../../models/option.model';
-import { CurrentValueService } from '../../../../services/current-value.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FileMapperService {
-  valueService = inject(CurrentValueService);
-  destroyRef = inject(DestroyRef);
-
-  fileTypeOptions = signal<Option[]>([]);
-  systemOptions = signal<Option[]>([]);
-  vendorOptions = signal<Option[]>([]);
-
-  constructor() {
-    this.loadAllOptions();
-  }
-
-  private loadAllOptions() {
-    this.loadOptions('fileType', this.fileTypeOptions);
-    this.loadOptions('system', this.systemOptions);
-    this.loadOptions('vendor', this.vendorOptions);
-  }
-
-  private loadOptions(
-    category: string,
-    optionsSignal: ReturnType<typeof signal<Option[]>>
-  ) {
-    this.valueService
-      .getOptionsByCategory(category)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((options) => {
-        optionsSignal.set(options);
-      });
-  }
-
   /**
    * Maps FileDto fields to table columns
    * @param fields - Array of field names to include in columns
@@ -144,8 +111,7 @@ export class FileMapperService {
       extensions: {
         id: 'extensions',
         header: 'Available Extensions',
-        accessorFn: (item: FileDto) =>
-          this.formatExtensions(item.extensions),
+        accessorFn: (item: FileDto) => this.formatExtensions(item.extensions),
         width: 180,
         filterable: false,
         sortable: false,
@@ -221,15 +187,17 @@ export class FileMapperService {
    */
   toFormFields(
     file: FileDto,
-    fields: (keyof FileDto)[] = [
+    fields: (keyof FileDto | 'file' | 'overrideFile')[] = [
       'name',
       'fileType',
       'fileNumber',
       'vendor',
+      'file',
+      'overrideFile',
       'isVerified',
     ]
   ): RfFormField[] {
-    const allFields: { [key in keyof FileDto]?: RfFormField } = {
+    const allFields: { [key: string]: RfFormField } = {
       name: {
         name: 'name',
         label: 'File Name',
@@ -241,22 +209,24 @@ export class FileMapperService {
         name: 'fileType',
         label: 'File Type',
         type: 'value-select',
-        options: this.fileTypeOptions(),
+        categoryAlias: 'fileType',
+        canManageValues: true,
         validators: [Validators.required],
         initialValue: file.fileType?.id || null,
       },
       fileNumber: {
         name: 'fileNumber',
         label: 'File Number',
-        type: 'multi-value-select',
+        type: 'multi-input',
         validators: [Validators.required],
         initialValue: file.fileNumber || [],
       },
       system: {
         name: 'system',
         label: 'System',
-        type: 'select',
-        options: this.systemOptions(),
+        type: 'value-select',
+        categoryAlias: 'system',
+        canManageValues: true,
         validators: [Validators.required],
         initialValue: file.system?.id || null,
       },
@@ -270,7 +240,8 @@ export class FileMapperService {
         name: 'vendor',
         label: 'Vendor',
         type: 'value-select',
-        options: this.vendorOptions(),
+        categoryAlias: 'vendor',
+        canManageValues: true,
         initialValue: file.vendor?.id || null,
       },
       extension: {
@@ -329,6 +300,32 @@ export class FileMapperService {
         label: 'LOTO Points',
         type: 'multi-select',
         initialValue: file.points?.map((p) => p.id) || [],
+      },
+      file: {
+        name: 'file',
+        label: 'Upload File',
+        type: 'file',
+        initialValue: null,
+      },
+      overrideFile: {
+        name: 'overrideFile',
+        label: 'If file already exists:',
+        type: 'radio-group',
+        options: [
+          { value: 'false', label: 'Revise (create new revision)' },
+          { value: 'true', label: 'Override (replace existing)' },
+        ],
+        initialValue: 'false',
+      },
+      isVerified: {
+        name: 'isVerified',
+        label: 'Is Verified',
+        type: 'select',
+        options: [
+          { value: 'true', label: 'Yes' },
+          { value: 'false', label: 'No' },
+        ],
+        initialValue: file.isVerified ? 'true' : 'false',
       },
     };
 

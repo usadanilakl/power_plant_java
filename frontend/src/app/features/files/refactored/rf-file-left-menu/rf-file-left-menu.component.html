@@ -1,19 +1,62 @@
 <div class="file-menu-container">
-  <h2>File Menu</h2>
-  <div class="file-menu-controls">
-    <button class="file-menu-button" (click)="loadFiles('pid')">PID</button>
-    <button class="file-menu-button" (click)="loadFiles('elect')">Electrical</button>
-    <button class="file-menu-button" (click)="loadFiles('ht panel')">Heat Trace</button>
-    <button class="file-menu-button" (click)="loadFiles('iso')">Isometrics</button>
+  <div class="menu-header">
+    <h2>Files</h2>
+    <div class="header-actions">
+      <button class="icon-button add-button" (click)="onAddNewFile()" title="Add New File">
+        <span class="icon">+</span>
+      </button>
+      <button class="icon-button refresh-button" (click)="refresh()" [disabled]="isLoading()" title="Refresh">
+        <span class="icon">↻</span>
+      </button>
+    </div>
   </div>
-  
+
+  <div class="file-type-controls">
+    <label class="controls-label">File Type:</label>
+    <div class="file-type-buttons">
+      <button
+        class="type-button"
+        [class.active]="selectedType() === 'pid'"
+        (click)="loadFiles('pid')"
+        [disabled]="isLoading()"
+      >PID</button>
+      <button
+        class="type-button"
+        [class.active]="selectedType() === 'elect'"
+        (click)="loadFiles('elect')"
+        [disabled]="isLoading()"
+      >Electrical</button>
+      <button
+        class="type-button"
+        [class.active]="selectedType() === 'ht panel'"
+        (click)="loadFiles('ht panel')"
+        [disabled]="isLoading()"
+      >Heat Trace</button>
+      <button
+        class="type-button"
+        [class.active]="selectedType() === 'iso'"
+        (click)="loadFiles('iso')"
+        [disabled]="isLoading()"
+      >Isometrics</button>
+    </div>
+  </div>
+
   @if (isLoading()) {
-    <div>Loading...</div>
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Loading files...</span>
+    </div>
   } @else if (error()) {
-    <div>Error: {{ error() }}</div>
+    <div class="error-state">
+      <span class="error-icon">⚠️</span>
+      <span class="error-message">{{ error() }}</span>
+      <button class="retry-button" (click)="refresh()">Retry</button>
+    </div>
   } @else {
     <app-rf-toggle-menu
       [menuItems]="menuItems()"
+      [enableSearch]="true"
+      [searchPlaceholder]="'Search files...'"
       (itemDblClick)="onItemDoubleClick($event)"
       (itemClick)="onItemClick($event)"
       (itemRightClick)="onItemRightClick($event)"

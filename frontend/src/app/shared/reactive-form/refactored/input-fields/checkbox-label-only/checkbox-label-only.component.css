@@ -46,10 +46,11 @@ label.checked {
 }
 
 label.disabled {
-  background-color: #e9ecef; /* Using a standard disabled color as no theme variable exists */
-  color: #6c757d;
+  background-color: var(--disabled-background, #e9ecef);
+  color: var(--secondary-text);
   cursor: not-allowed;
-  border-color: #ced4da;
+  border-color: var(--border-color);
+  opacity: 0.6;
 }
 
 /* When the input is disabled, make sure its cursor doesn't interfere */

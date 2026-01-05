@@ -9,6 +9,7 @@ import { RouteService } from '../../../../services/util/rout.service';
 import { CurrentFileService } from '../../../../services/current-file.service';
 import { RfToggleMenuComponent } from "../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component";
 import { FileContextMenuService } from '../services/file-context-menu.service';
+import { RfFileStateService } from '../services/rf-file-state.service';
 import { tap } from 'rxjs';
 
 @Component({
@@ -20,6 +21,7 @@ import { tap } from 'rxjs';
 })
 export class RfFileLeftMenuComponent implements OnInit{
   protected contextMenuService = inject(FileContextMenuService);
+  protected stateService = inject(RfFileStateService);
 
   menuItems = signal<NestedItem[]>([]);
   isLoading = signal(false);
@@ -88,9 +90,20 @@ constructor(
 
 
   loadFiles(type: string = 'pid'): void {
-        const criteria = type==='pid' ? 'vendor' : 'fileType';
-        const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
-        this.menuItems.set(nestedItems);
+    this.selectedType.set(type);
+    const criteria = type === 'pid' ? 'vendor' : 'fileType';
+    const nestedItems = this.createListOfNestedItems(this.currentFileService.getFilesByType(type), criteria);
+    this.menuItems.set(nestedItems);
+  }
+
+  refresh(): void {
+    this.loadFiles(this.selectedType());
+  }
+
+  onAddNewFile(): void {
+    // Create a new empty FileDto and open the form
+    this.stateService.setSelectedItem(new FileDto());
+    this.stateService.openForm();
   }
 
   private createListOfNestedItems(data: FileDto[], groupBy: 'vendor' | 'system' | 'fileType'): NestedItem[] {

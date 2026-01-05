@@ -1,23 +1,21 @@
-
-
 <div class="multi-input-container">
   <div class="label-container">
     <label>{{ label }}</label>
   </div>
-    <div class="input-values">
-      @for (value of values; track $index) {
-        <div class="input-value">
-          <input
-            appCopyPaste
-            [type]="type"
-            [(ngModel)]="values[$index]"
-            (ngModelChange)="onValueChange($index, $event)"
-            (blur)="onInputBlur()"
-          >
-          <button type="button" (click)="removeValue($index)">X</button>
-        </div>
-      }
-    </div>
-    <button type="button" (click)="addValue()">Add</button>
+  <div class="input-values">
+    @for (value of values; track $index) {
+      <div class="input-value">
+        <input
+          appCopyPaste
+          [type]="type"
+          [placeholder]="'Enter value...'"
+          [(ngModel)]="values[$index]"
+          (ngModelChange)="onValueChange($index, $event)"
+          (blur)="onInputBlur()"
+        >
+        <button type="button" (click)="removeValue($index)" title="Remove">X</button>
+      </div>
+    }
   </div>
-
+  <button type="button" class="add-button" (click)="addValue()">+ Add</button>
+</div>
