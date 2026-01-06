@@ -371,3 +371,291 @@
 .form-content ::ng-deep .form-fields {
   gap: 12px;
 }
+
+/* Counterpart Status Indicators */
+.counterpart-status {
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.status-badge.linked {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #A5D6A7;
+}
+
+.status-badge.found {
+  background: #FFF3E0;
+  color: #E65100;
+  border: 1px solid #FFCC80;
+}
+
+.status-badge.suggested {
+  background: #E3F2FD;
+  color: #1565C0;
+  border: 1px solid #90CAF9;
+}
+
+/* Link Controls */
+.link-controls {
+  display: flex;
+  justify-content: center;
+}
+
+.link-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.link-btn.link {
+  background: #4CAF50;
+  color: white;
+}
+
+.link-btn.link:hover:not(:disabled) {
+  background: #43A047;
+}
+
+.link-btn.unlink {
+  background: #FF5722;
+  color: white;
+}
+
+.link-btn.unlink:hover:not(:disabled) {
+  background: #E64A19;
+}
+
+.link-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Linked Badge */
+.linked-badge {
+  font-size: 14px;
+}
+
+.suggestion-badge {
+  background: #E3F2FD;
+  color: #1565C0;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Counterpart Panel States */
+.counterpart-panel.is-linked {
+  border-left: 3px solid #4CAF50;
+}
+
+.counterpart-panel.is-suggestion {
+  border-left: 3px solid #2196F3;
+}
+
+/* Empty Sync Controls */
+.sync-controls-empty {
+  opacity: 0.6;
+}
+
+.sync-header.disabled {
+  background: var(--secondary-text, #999);
+}
+
+.sync-placeholder {
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--secondary-text, #666);
+}
+
+/* Empty Counterpart Panel */
+.counterpart-panel-empty {
+  background: var(--secondary-background, #f5f5f5);
+}
+
+.counterpart-options-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  text-align: center;
+  height: 100%;
+  min-height: 300px;
+}
+
+.options-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--border-color, #e0e0e0);
+  color: var(--secondary-text, #666);
+  font-size: 32px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.counterpart-options-inline h4 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--primary-text, #333);
+}
+
+.counterpart-options-inline p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--secondary-text, #666);
+}
+
+.options-buttons {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.option-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px;
+  border: 2px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  background: var(--primary-background, #ffffff);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.option-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.option-btn .btn-icon {
+  font-size: 24px;
+}
+
+.option-btn.create-btn {
+  border-color: #4CAF50;
+  color: #2E7D32;
+}
+
+.option-btn.create-btn:hover {
+  background: #E8F5E9;
+}
+
+.option-btn.search-btn {
+  border-color: #2196F3;
+  color: #1565C0;
+}
+
+.option-btn.search-btn:hover {
+  background: #E3F2FD;
+}
+
+.options-hint {
+  font-size: 11px;
+  color: var(--secondary-text, #999);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* No Counterpart Options (legacy - keeping for backwards compat) */
+.no-counterpart h3 {
+  margin: 0 0 16px;
+  color: var(--primary-text, #333);
+}
+
+.no-counterpart-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  margin-top: 24px;
+}
+
+.no-counterpart-options .action-btn {
+  min-width: 200px;
+}
+
+.create-btn {
+  background: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+.create-btn:hover:not(:disabled) {
+  background: #43A047;
+  border-color: #43A047;
+}
+
+.search-btn {
+  background: #2196F3;
+  color: white;
+  border-color: #2196F3;
+}
+
+.search-btn:hover:not(:disabled) {
+  background: #1976D2;
+  border-color: #1976D2;
+}
+
+/* Manual Search Overlay */
+.manual-search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.manual-search-panel {
+  background: var(--primary-background, #ffffff);
+  padding: 24px;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.manual-search-panel h3 {
+  margin: 0 0 16px;
+}
+
+.search-hint {
+  color: var(--secondary-text, #666);
+  font-style: italic;
+}
+
+.manual-search-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+}

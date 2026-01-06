@@ -38,4 +38,5 @@ public class LotoPointIdDto extends BaseDto {
     private Long location;
     private Long eqType;
     private Set<Long> relatedLotoPointIds;
+    private Long counterpartId;
 }

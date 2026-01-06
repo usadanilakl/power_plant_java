@@ -297,8 +297,14 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
      * Returns a map with:
      * - "counterpart": LotoPointDto (existing or suggested)
      * - "isNew": boolean indicating if counterpart needs to be created
+     * - "isLinked": boolean indicating if counterpartId is already set
      * - "sourceUnit": the source unit prefix (01 or 02)
      * - "targetUnit": the target unit prefix (02 or 01)
+     *
+     * Lookup order:
+     * 1. Check if counterpartId is set -> fetch by ID
+     * 2. If not, search by tag pattern
+     * 3. If not found, generate suggestion
      */
     public Map<String, Object> findUnitCounterpart(Long id) {
         LotoPoint sourcePoint = getEntityById(id);
@@ -319,19 +325,88 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         result.put("sourceUnit", fromUnit);
         result.put("targetUnit", toUnit);
 
+        // First, check if counterpartId is already set
+        if (sourcePoint.getCounterpartId() != null) {
+            LotoPoint counterpart = lotoPointRepo.findByIdWithEquipment(sourcePoint.getCounterpartId());
+            if (counterpart != null) {
+                result.put("counterpart", toDto(counterpart));
+                result.put("isNew", false);
+                result.put("isLinked", true);
+                return result;
+            }
+        }
+
+        // If counterpartId not set or invalid, search by tag pattern
         List<LotoPoint> existingPoints = lotoPointRepo.findByTagNumber(destTag);
 
         if (existingPoints != null && !existingPoints.isEmpty()) {
-            // Return existing counterpart
+            // Return existing counterpart (but not linked yet)
             result.put("counterpart", toDto(existingPoints.get(0)));
             result.put("isNew", false);
+            result.put("isLinked", false);
         } else {
             // Generate suggested counterpart DTO (not saved)
             result.put("counterpart", generateCounterpartDto(sourcePoint, fromUnit, toUnit));
             result.put("isNew", true);
+            result.put("isLinked", false);
         }
 
         return result;
+    }
+
+    /**
+     * Link two LOTO points as counterparts (bidirectional).
+     * Sets counterpartId on both points.
+     */
+    @Transactional
+    public void linkCounterparts(Long point1Id, Long point2Id) {
+        LotoPoint point1 = getEntityById(point1Id);
+        LotoPoint point2 = getEntityById(point2Id);
+
+        if (point1 == null || point2 == null) {
+            throw new RuntimeException("One or both LOTO points not found");
+        }
+
+        point1.setCounterpartId(point2Id);
+        point2.setCounterpartId(point1Id);
+
+        lotoPointRepo.save(point1);
+        lotoPointRepo.save(point2);
+    }
+
+    /**
+     * Unlink counterpart relationship (bidirectional).
+     * Removes counterpartId from both points.
+     */
+    @Transactional
+    public void unlinkCounterparts(Long pointId) {
+        LotoPoint point = getEntityById(pointId);
+        if (point == null) {
+            throw new RuntimeException("LOTO point not found");
+        }
+
+        Long counterpartId = point.getCounterpartId();
+        if (counterpartId != null) {
+            LotoPoint counterpart = getEntityById(counterpartId);
+            if (counterpart != null) {
+                counterpart.setCounterpartId(null);
+                lotoPointRepo.save(counterpart);
+            }
+        }
+
+        point.setCounterpartId(null);
+        lotoPointRepo.save(point);
+    }
+
+    /**
+     * Get counterpart by ID directly (for quick lookups when counterpartId is known).
+     */
+    public LotoPointDto getCounterpartById(Long counterpartId) {
+        if (counterpartId == null) {
+            return null;
+        }
+        LotoPoint counterpart = lotoPointRepo.findByIdWithEquipment(counterpartId);
+        return counterpart != null ? toDto(counterpart) : null;
     }
 
     /**

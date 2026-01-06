@@ -23,9 +23,13 @@ import { GlobalMessageService } from '../../../../shared/global-message/global-m
 interface CounterpartResponse {
   counterpart: LotoPointDto;
   isNew: boolean;
+  isLinked: boolean;
   sourceUnit: string;
   targetUnit: string;
 }
+
+/** Counterpart status for UI display */
+type CounterpartStatus = 'linked' | 'found' | 'suggested' | 'not-found';
 
 /** Fields that can be synced between units */
 type SyncableField = 'tagNumber' | 'description' | 'specificLocation' | 'isoPos' | 'normPos' | 'zeroEnergy' | 'eqType' | 'location';
@@ -65,12 +69,18 @@ export class LotoPointDualFormComponent {
   // State
   counterpartLotoPoint = signal<LotoPointDto | null>(null);
   isCounterpartNew = signal<boolean>(false);
+  isCounterpartLinked = signal<boolean>(false);
+  counterpartStatus = signal<CounterpartStatus>('not-found');
   sourceUnit = signal<string>('01');
   targetUnit = signal<string>('02');
   isLoading = signal<boolean>(false);
   isSavingPrimary = signal<boolean>(false);
   isSavingCounterpart = signal<boolean>(false);
   isSavingBoth = signal<boolean>(false);
+  isLinking = signal<boolean>(false);
+
+  // For manual search mode
+  showManualSearch = signal<boolean>(false);
 
   // Track form values for syncing
   currentPrimaryValues = signal<LotoPointDto | null>(null);
@@ -79,10 +89,13 @@ export class LotoPointDualFormComponent {
   // Track which fields are different between forms
   differentFields = signal<Set<string>>(new Set());
 
-  // Computed: Check if primary tag starts with 01 or 02
+  // Computed: Check if primary tag or unit starts with 01 or 02
   isUnitSpecific = computed(() => {
-    const tag = this.primaryLotoPoint()?.tagNumber;
-    return tag?.startsWith('01') || tag?.startsWith('02');
+    const primary = this.primaryLotoPoint();
+    const tag = primary?.tagNumber;
+    const unit = primary?.unit;
+    return tag?.startsWith('01') || tag?.startsWith('02') ||
+           unit?.startsWith('01') || unit?.startsWith('02');
   });
 
   // Computed: Form fields for primary
@@ -114,10 +127,23 @@ export class LotoPointDualFormComponent {
     // Load counterpart when primary changes
     effect(() => {
       const primary = this.primaryLotoPoint();
-      if (primary?.id && this.isUnitSpecific()) {
-        this.loadCounterpart(primary.id);
+      if (!this.isUnitSpecific()) {
+        // Not unit-specific, nothing to load
+        return;
       }
-    });
+
+      if (primary?.id) {
+        // Existing item: load counterpart by ID
+        this.loadCounterpart(primary.id);
+      } else if (primary?.tagNumber) {
+        // New item: try to find counterpart by tag number
+        this.loadCounterpartByTagNumber(primary.tagNumber);
+      } else if (primary?.unit) {
+        // New item with only unit field set - use unit as the tag prefix
+        // This happens when user types in unit field first
+        this.loadCounterpartByTagNumber(primary.unit);
+      }
+    }, { allowSignalWrites: true });
   }
 
   /**
@@ -125,9 +151,63 @@ export class LotoPointDualFormComponent {
    */
   private loadCounterpart(primaryId: number): void {
     this.isLoading.set(true);
+    this.showManualSearch.set(false);
 
     this.apiService
       .getUnitCounterpart(primaryId)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((response) => {
+          if (response.responseData) {
+            const data = response.responseData as any;
+            const counterpart = LotoPointDto.fromJson(data.counterpart);
+            this.counterpartLotoPoint.set(counterpart);
+            this.currentCounterpartValues.set(counterpart);
+            this.isCounterpartNew.set(data.isNew);
+            this.isCounterpartLinked.set(data.isLinked ?? false);
+            this.sourceUnit.set(data.sourceUnit);
+            this.targetUnit.set(data.targetUnit);
+
+            // Set status based on response
+            if (data.isLinked) {
+              this.counterpartStatus.set('linked');
+            } else if (!data.isNew) {
+              this.counterpartStatus.set('found');
+            } else {
+              this.counterpartStatus.set('suggested');
+            }
+
+            this.updateDifferentFields();
+          } else {
+            // No counterpart data returned
+            this.counterpartStatus.set('not-found');
+          }
+          this.isLoading.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error loading counterpart:', error);
+          this.messageService.showError('Failed to load unit counterpart');
+          this.counterpartStatus.set('not-found');
+          this.isLoading.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Load counterpart by tag number (for new items)
+   */
+  loadCounterpartByTagNumber(tagNumber: string): void {
+    if (!tagNumber || (!tagNumber.startsWith('01') && !tagNumber.startsWith('02'))) {
+      this.counterpartStatus.set('not-found');
+      return;
+    }
+
+    this.isLoading.set(true);
+
+    this.apiService
+      .getCounterpartByTagNumber(tagNumber)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         tap((response) => {
@@ -137,20 +217,82 @@ export class LotoPointDualFormComponent {
             this.counterpartLotoPoint.set(counterpart);
             this.currentCounterpartValues.set(counterpart);
             this.isCounterpartNew.set(data.isNew);
+            this.isCounterpartLinked.set(false); // New items are never linked yet
             this.sourceUnit.set(data.sourceUnit);
             this.targetUnit.set(data.targetUnit);
+
+            this.counterpartStatus.set(data.isNew ? 'suggested' : 'found');
             this.updateDifferentFields();
           }
           this.isLoading.set(false);
         }),
         catchError((error) => {
-          console.error('Error loading counterpart:', error);
-          this.messageService.showError('Failed to load unit counterpart');
+          console.error('Error loading counterpart by tag:', error);
+          this.counterpartStatus.set('not-found');
           this.isLoading.set(false);
           return of(null);
         })
       )
       .subscribe();
+  }
+
+  /**
+   * Set counterpart manually (from external selection like a table)
+   */
+  setCounterpartManually(lotoPoint: LotoPointDto): void {
+    this.counterpartLotoPoint.set(lotoPoint);
+    this.currentCounterpartValues.set(lotoPoint);
+    this.isCounterpartNew.set(false);
+    this.isCounterpartLinked.set(false);
+    this.counterpartStatus.set('found');
+    this.showManualSearch.set(false);
+    this.updateDifferentFields();
+  }
+
+  /**
+   * Create a new counterpart (empty form)
+   */
+  createNewCounterpart(): void {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    if (!primary?.tagNumber) return;
+
+    const fromUnit = primary.tagNumber.startsWith('01') ? '01' : '02';
+    const toUnit = fromUnit === '01' ? '02' : '01';
+
+    // Create new counterpart with transformed tag number
+    const newCounterpart = new LotoPointDto({
+      tagNumber: toUnit + primary.tagNumber.substring(2),
+      description: this.transformUnitText(primary.description, fromUnit, toUnit),
+      specificLocation: this.transformUnitText(primary.specificLocation, fromUnit, toUnit),
+      isoPos: primary.isoPos,
+      normPos: primary.normPos,
+      zeroEnergy: primary.zeroEnergy,
+      eqType: primary.eqType,
+      location: primary.location,
+      unit: toUnit === '01' ? 'Unit 1' : 'Unit 2',
+    });
+
+    this.counterpartLotoPoint.set(newCounterpart);
+    this.currentCounterpartValues.set(newCounterpart);
+    this.isCounterpartNew.set(true);
+    this.isCounterpartLinked.set(false);
+    this.counterpartStatus.set('suggested');
+    this.showManualSearch.set(false);
+    this.updateDifferentFields();
+  }
+
+  /**
+   * Show manual search UI
+   */
+  openManualSearch(): void {
+    this.showManualSearch.set(true);
+  }
+
+  /**
+   * Hide manual search UI
+   */
+  closeManualSearch(): void {
+    this.showManualSearch.set(false);
   }
 
   /**
@@ -411,7 +553,7 @@ export class LotoPointDualFormComponent {
   }
 
   /**
-   * Save both LOTO points
+   * Save both LOTO points and link them
    */
   saveBoth(): void {
     const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
@@ -442,10 +584,18 @@ export class LotoPointDualFormComponent {
                     this.counterpartLotoPoint.set(savedCounterpart);
                     this.currentCounterpartValues.set(savedCounterpart);
                     this.isCounterpartNew.set(false);
-                    this.bothSaved.emit({ primary: savedPrimary, counterpart: savedCounterpart });
-                    this.messageService.showSuccess('Both LOTO points saved successfully');
+
+                    // Link counterparts if not already linked
+                    if (!this.isCounterpartLinked() && savedPrimary.id && savedCounterpart.id) {
+                      this.linkCounterpartsAfterSave(savedPrimary, savedCounterpart);
+                    } else {
+                      this.bothSaved.emit({ primary: savedPrimary, counterpart: savedCounterpart });
+                      this.messageService.showSuccess('Both LOTO points saved successfully');
+                      this.isSavingBoth.set(false);
+                    }
+                  } else {
+                    this.isSavingBoth.set(false);
                   }
-                  this.isSavingBoth.set(false);
                 }),
                 catchError((error) => {
                   console.error('Error saving counterpart:', error);
@@ -461,6 +611,126 @@ export class LotoPointDualFormComponent {
           console.error('Error saving primary:', error);
           this.messageService.showError('Failed to save primary LOTO point');
           this.isSavingBoth.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Link counterparts after both are saved
+   */
+  private linkCounterpartsAfterSave(primary: LotoPointDto, counterpart: LotoPointDto): void {
+    if (!primary.id || !counterpart.id) {
+      this.bothSaved.emit({ primary, counterpart });
+      this.messageService.showSuccess('Both LOTO points saved (linking skipped - missing IDs)');
+      this.isSavingBoth.set(false);
+      return;
+    }
+
+    this.apiService
+      .linkCounterparts(primary.id, counterpart.id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap(() => {
+          // Update local state with counterpartIds
+          primary.counterpartId = counterpart.id;
+          counterpart.counterpartId = primary.id;
+          this.currentPrimaryValues.set(primary);
+          this.currentCounterpartValues.set(counterpart);
+          this.counterpartLotoPoint.set(counterpart);
+          this.isCounterpartLinked.set(true);
+          this.counterpartStatus.set('linked');
+
+          this.bothSaved.emit({ primary, counterpart });
+          this.messageService.showSuccess('Both LOTO points saved and linked');
+          this.isSavingBoth.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error linking counterparts:', error);
+          this.bothSaved.emit({ primary, counterpart });
+          this.messageService.showWarning('Both saved, but linking failed. You may need to link manually.');
+          this.isSavingBoth.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Manually link current primary and counterpart
+   */
+  linkCounterparts(): void {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+
+    if (!primary?.id || !counterpart?.id) {
+      this.messageService.showError('Both LOTO points must be saved before linking');
+      return;
+    }
+
+    this.isLinking.set(true);
+
+    this.apiService
+      .linkCounterparts(primary.id, counterpart.id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap(() => {
+          primary.counterpartId = counterpart.id;
+          counterpart.counterpartId = primary.id;
+          this.currentPrimaryValues.set(primary);
+          this.currentCounterpartValues.set(counterpart);
+          this.counterpartLotoPoint.set(counterpart);
+          this.isCounterpartLinked.set(true);
+          this.counterpartStatus.set('linked');
+          this.messageService.showSuccess('LOTO points linked successfully');
+          this.isLinking.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error linking counterparts:', error);
+          this.messageService.showError('Failed to link counterparts');
+          this.isLinking.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Unlink current counterpart
+   */
+  unlinkCounterpart(): void {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+
+    if (!primary?.id) {
+      this.messageService.showError('Primary LOTO point must be saved');
+      return;
+    }
+
+    this.isLinking.set(true);
+
+    this.apiService
+      .unlinkCounterpart(primary.id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap(() => {
+          primary.counterpartId = null;
+          const counterpart = this.counterpartLotoPoint();
+          if (counterpart) {
+            counterpart.counterpartId = null;
+            this.counterpartLotoPoint.set(counterpart);
+            this.currentCounterpartValues.set(counterpart);
+          }
+          this.currentPrimaryValues.set(primary);
+          this.isCounterpartLinked.set(false);
+          this.counterpartStatus.set('found');
+          this.messageService.showSuccess('Counterpart unlinked');
+          this.isLinking.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error unlinking counterpart:', error);
+          this.messageService.showError('Failed to unlink counterpart');
+          this.isLinking.set(false);
           return of(null);
         })
       )

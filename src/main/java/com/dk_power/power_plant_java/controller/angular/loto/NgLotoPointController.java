@@ -470,4 +470,68 @@ public class NgLotoPointController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
+    /**
+     * Get counterpart by ID directly (when counterpartId is already known).
+     */
+    @GetMapping("/counterpart/{counterpartId}")
+    public ResponseEntity<NgApiResponse<LotoPointDto>> getCounterpartById(@PathVariable Long counterpartId) {
+        try {
+            LotoPointDto counterpart = ngLotoPointService.getCounterpartById(counterpartId);
+
+            if (counterpart == null) {
+                return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                        .body(new NgApiResponse<>(null, "Counterpart not found"));
+            }
+
+            NgApiResponse<LotoPointDto> response = new NgApiResponse<>(
+                    counterpart,
+                    "Counterpart retrieved successfully"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Link two LOTO points as counterparts (bidirectional).
+     * Sets counterpartId on both points.
+     */
+    @PostMapping("/link-counterparts")
+    public ResponseEntity<NgApiResponse<String>> linkCounterparts(
+            @RequestParam Long point1Id,
+            @RequestParam Long point2Id) {
+        try {
+            ngLotoPointService.linkCounterparts(point1Id, point2Id);
+            NgApiResponse<String> response = new NgApiResponse<>(
+                    "success",
+                    "LOTO points linked successfully"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Unlink counterpart relationship (bidirectional).
+     * Removes counterpartId from both points.
+     */
+    @PostMapping("/{id}/unlink-counterpart")
+    public ResponseEntity<NgApiResponse<String>> unlinkCounterpart(@PathVariable Long id) {
+        try {
+            ngLotoPointService.unlinkCounterparts(id);
+            NgApiResponse<String> response = new NgApiResponse<>(
+                    "success",
+                    "Counterpart relationship removed successfully"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }

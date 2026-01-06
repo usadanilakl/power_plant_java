@@ -35,6 +35,7 @@ export interface LotoPointModel extends BaseModel {
   relatedLotoPointIds: number[] | null;
   location: ValueDto | null;
   eqType: ValueDto | null;
+  counterpartId: number | null;
 }
 
 export interface LotoPointFormField {
@@ -71,6 +72,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
   relatedLotoPointIds: number[] | null;
   location: ValueDto | null;
   eqType: ValueDto | null;
+  counterpartId: number | null;
 
   constructor(data: Partial<LotoPointModel> = {}) {
     super(data); // This should handle id, name, objectType, and isVerified
@@ -106,6 +108,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
     this.relatedLotoPointIds = data.relatedLotoPointIds ?? null;
     this.location = super.setNestedObjectById(data.location, new ValueDto());
     this.eqType = super.setNestedObjectById(data.eqType, new ValueDto());
+    this.counterpartId = data.counterpartId ?? null;
   }
 
   // Serialization method
@@ -142,6 +145,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       relatedLotoPointIds: this.relatedLotoPointIds || [],
       location: this.location?.toJson() || null,
       eqType: this.eqType?.toJson() || null,
+      counterpartId: this.counterpartId || null,
     };
   }
 
@@ -225,6 +229,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         ? ValueDto.fromJson(json.location)
         : new ValueDto(),
       eqType: json.eqType ? ValueDto.fromJson(json.eqType) : new ValueDto(),
+      counterpartId: json.counterpartId || null,
     });
   }
 
@@ -410,6 +415,12 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         options: [],
         initialValue: dto.eqType?.id || null,
       },
+      counterpartId: {
+        name: 'counterpartId',
+        label: 'Counterpart ID',
+        type: 'text',
+        initialValue: dto.counterpartId?.toString() || null,
+      },
     };
 
     return fields.map((fieldName) => allFields[fieldName]);
@@ -542,6 +553,11 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
         header: 'Equipment Type',
         accessorKey: 'eqType.name',
       },
+      counterpartId: {
+        id: 'counterpartId',
+        header: 'Counterpart ID',
+        accessorKey: 'counterpartId',
+      },
     };
 
     return fields.map((fieldName) => allColumns[fieldName]);
@@ -571,6 +587,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       'lotos',
       'isVerified',
       'zeroEnergyMethod',
+      'counterpartId',
     ];
     return validKeys.includes(key as keyof LotoPointModel);
   }
@@ -614,6 +631,7 @@ export class LotoPointDto extends BaseDto implements LotoPointModel {
       } : null,
       location: this.location?.id || null,
       eqType: this.eqType?.id || null,
+      counterpartId: this.counterpartId || null,
     });
   }
   toOption(): Option {

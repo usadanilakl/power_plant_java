@@ -4,6 +4,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   ViewChild,
 } from '@angular/core';
@@ -66,6 +67,9 @@ export class RfLotoPointFormComponent {
   entityInput = input<LotoPointDto>();
   fieldsInput = input<LotoPointFieldName[]>([]);
 
+  // Output for form value changes (passthrough from reactive form)
+  formValueChange = output<LotoPointDto>();
+
   private entityFromState = this.stateService.selectedItem;
 
   // Draft management - now using actual entities
@@ -81,11 +85,35 @@ export class RfLotoPointFormComponent {
     () => this.entityInput() ?? this.entityFromState() ?? new LotoPointDto()
   );
 
+  // Track whether we've already checked for drafts to avoid infinite loops
+  private draftCheckDone = signal<boolean>(false);
+  // Track the last entity ID we checked drafts for
+  private lastEntityIdChecked = signal<number | null | undefined>(undefined);
+
+  // Reset draft check when entity ID changes
+  private resetDraftCheck = effect(() => {
+    const currentEntity = this.entity();
+    const currentId = currentEntity?.id ?? null;
+    const lastId = this.lastEntityIdChecked();
+
+    // If entity ID changed, reset the draft check flag
+    if (lastId !== undefined && currentId !== lastId) {
+      this.draftCheckDone.set(false);
+    }
+    this.lastEntityIdChecked.set(currentId);
+  }, { allowSignalWrites: true });
+
   // Check for drafts when entity changes
   private checkForDrafts = effect(() => {
     const currentEntity = this.entity();
 
-    if (currentEntity && (currentEntity.id || this.isNewItem(currentEntity))) {
+    // Check for existing item (has ID) or new item that has data
+    const isExistingItem = currentEntity && currentEntity.id;
+    const isNewItemWithData = currentEntity && this.isNewItem(currentEntity);
+    // Also check for completely new items (blank form) - check for new item drafts
+    const isBlankNewItem = currentEntity && !currentEntity.id && !currentEntity.tagNumber && !currentEntity.description;
+
+    if (isExistingItem || isNewItemWithData || isBlankNewItem) {
       const lotoPointId = currentEntity.id || null;
       const draft = this.stateService.loadDraftForItem(lotoPointId);
 
@@ -109,8 +137,11 @@ export class RfLotoPointFormComponent {
             console.log('Draft has no real differences from server version, clearing silently');
             this.stateService.clearDraftForItem(lotoPointId);
           }
-        } else {
-          // For new items, auto-load draft
+        } else if (!this.draftCheckDone()) {
+          // For new items (including blank forms), auto-load draft
+          // Only do this once to prevent infinite loops
+          this.draftCheckDone.set(true);
+          console.log('Loading draft for new item:', draftData);
           this.stateService.setSelectedItem(draftData);
         }
       } else {
@@ -118,7 +149,7 @@ export class RfLotoPointFormComponent {
         this.originalServerVersion.set(currentEntity);
       }
     }
-  });
+  }, { allowSignalWrites: true });
 
   /**
    * Check if there are real differences between server and draft versions
@@ -212,15 +243,16 @@ export class RfLotoPointFormComponent {
   onAnyValueChange(item: LotoPointDto) {
     const originalVersion = this.originalServerVersion();
 
+    // Emit form value change for parent components
+    this.formValueChange.emit(item);
+
     // Only save draft if there are real differences from the original server version
     if (originalVersion && this.hasRealDifferences(originalVersion, item)) {
-      console.log('Saving draft - changes detected');
       this.stateService.saveDraft(item);
     } else {
       // No real changes - clear any existing draft
       const lotoPointId = item.id || null;
       if (this.stateService.hasDraftForItem(lotoPointId)) {
-        console.log('Clearing draft - no real changes detected');
         this.stateService.clearDraftForItem(lotoPointId);
       }
     }

@@ -312,4 +312,39 @@ export class RfLotoPointApiService {
       targetUnit: string;
     }>>(`${this.apiUrl}/counterpart-by-tag`, { params });
   }
+
+  /**
+   * Get counterpart by ID directly (when counterpartId is already known).
+   */
+  getCounterpartById(counterpartId: number): Observable<SpringApiResponse<LotoPointDto>> {
+    return this.http.get<SpringApiResponse<LotoPointDto>>(
+      `${this.apiUrl}/counterpart/${counterpartId}`
+    );
+  }
+
+  /**
+   * Link two LOTO points as counterparts (bidirectional).
+   * Sets counterpartId on both points.
+   */
+  linkCounterparts(point1Id: number, point2Id: number): Observable<SpringApiResponse<string>> {
+    const params = new HttpParams()
+      .set('point1Id', point1Id.toString())
+      .set('point2Id', point2Id.toString());
+    return this.http.post<SpringApiResponse<string>>(
+      `${this.apiUrl}/link-counterparts`,
+      null,
+      { params }
+    );
+  }
+
+  /**
+   * Unlink counterpart relationship (bidirectional).
+   * Removes counterpartId from both points.
+   */
+  unlinkCounterpart(pointId: number): Observable<SpringApiResponse<string>> {
+    return this.http.post<SpringApiResponse<string>>(
+      `${this.apiUrl}/${pointId}/unlink-counterpart`,
+      null
+    );
+  }
 }

@@ -1,0 +1,129 @@
+<div class="dialog-overlay" (click)="close()">
+  <div class="dialog-container" (click)="$event.stopPropagation()">
+    <div class="dialog-header">
+      <h2>Select Counterpart for Unit {{ targetUnit() }}</h2>
+      <button class="close-btn" (click)="close()">✕</button>
+    </div>
+
+    <!-- Tab Buttons -->
+    <div class="dialog-tabs">
+      @if (suggestedCounterpart()) {
+        <button
+          class="tab-btn"
+          [class.active]="activeTab() === 'suggested'"
+          (click)="setActiveTab('suggested')"
+        >
+          Suggested
+        </button>
+      }
+      <button
+        class="tab-btn"
+        [class.active]="activeTab() === 'search'"
+        (click)="setActiveTab('search')"
+      >
+        Search Existing
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab() === 'create'"
+        (click)="setActiveTab('create')"
+      >
+        Create New
+      </button>
+    </div>
+
+    <div class="dialog-content">
+      <!-- Suggested Tab -->
+      @if (activeTab() === 'suggested' && suggestedCounterpart()) {
+        <div class="suggested-content">
+          <div class="suggested-info">
+            <div class="info-label">Auto-detected counterpart:</div>
+            <div class="info-tag">{{ suggestedCounterpart()!.tagNumber }}</div>
+            <div class="info-desc">{{ suggestedCounterpart()!.description }}</div>
+          </div>
+          <p class="suggested-hint">
+            This LOTO point was found by matching the tag number pattern.
+          </p>
+        </div>
+      }
+
+      <!-- Search Tab -->
+      @if (activeTab() === 'search') {
+        <div class="search-content">
+          <p class="search-hint">
+            Search and select an existing LOTO point for Unit {{ targetUnit() }}.
+          </p>
+          <div class="search-table-wrapper">
+            <app-rf-loto-point-table
+              [tableId]="'counterpart-dialog-search'"
+              [fieldsToDisplay]="['tagNumber', 'description', 'unit']"
+              [initialSearchCriteria]="searchCriteria()"
+              (selectedItemsEvent)="onSearchSelected($event)"
+              (rowDoubleClickedEvent)="onSearchDoubleClicked($event)"
+            ></app-rf-loto-point-table>
+          </div>
+          @if (selectedFromSearch()) {
+            <div class="selected-info">
+              <span class="selected-label">Selected:</span>
+              <strong>{{ selectedFromSearch()!.tagNumber }}</strong>
+              <span>{{ selectedFromSearch()!.description }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Create New Tab -->
+      @if (activeTab() === 'create') {
+        <div class="create-content">
+          <p class="create-hint">
+            Create a new LOTO point for Unit {{ targetUnit() }}. Values have been pre-filled from the primary form.
+          </p>
+          @if (newCounterpartData()) {
+            <div class="create-form-wrapper">
+              <app-rf-reactive-form
+                [entity]="newCounterpartData()!"
+                [fields]="createFormFields()"
+                [title]="''"
+                [showSubmitButton]="false"
+                (formValueChange)="onCreateFormChange($event)"
+              ></app-rf-reactive-form>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="dialog-footer">
+      <button class="action-btn cancel-btn" (click)="close()">
+        Cancel
+      </button>
+      @if (activeTab() === 'suggested') {
+        <button
+          class="action-btn primary-btn"
+          (click)="submitSuggested()"
+          [disabled]="!suggestedCounterpart()"
+        >
+          Use Suggested
+        </button>
+      }
+      @if (activeTab() === 'search') {
+        <button
+          class="action-btn primary-btn"
+          (click)="submitSearch()"
+          [disabled]="!selectedFromSearch()"
+        >
+          Use Selected
+        </button>
+      }
+      @if (activeTab() === 'create') {
+        <button
+          class="action-btn primary-btn"
+          (click)="submitCreate()"
+          [disabled]="!newCounterpartData()"
+        >
+          Use New
+        </button>
+      }
+    </div>
+  </div>
+</div>
