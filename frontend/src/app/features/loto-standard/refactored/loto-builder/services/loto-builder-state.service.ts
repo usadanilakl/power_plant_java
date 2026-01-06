@@ -92,10 +92,21 @@ export class LotoBuilderStateService {
   /** Pre-filter search term for loto point table (from text recognition) */
   tableSearchTerm = signal<string | null>(null);
 
+  // ========== Processing State ==========
+
+  /** Whether a shape is being processed (saved/OCR) */
+  isProcessingShape = signal<boolean>(false);
+
+  /** Processing message to display */
+  processingMessage = signal<string>('');
+
   // ========== Form/Table View State ==========
 
   /** Current view mode in loto point popup (form or table) */
   lotoPointPopupView = signal<LotoPointPopupView>('form');
+
+  /** Whether we are editing an existing LOTO point (vs creating new) */
+  isEditMode = signal<boolean>(false);
 
   // ========== Computed Values ==========
 
@@ -188,6 +199,12 @@ export class LotoBuilderStateService {
    */
   openLotoPointForm(lotoPoint: LotoPointDto | null = null): void {
     this.selectedLotoPointForEdit.set(lotoPoint);
+    // Set edit mode if we have an existing LOTO point
+    this.isEditMode.set(lotoPoint !== null);
+    // Always start with form view when editing an existing LOTO point
+    if (lotoPoint !== null) {
+      this.lotoPointPopupView.set('form');
+    }
     this.isLotoPointFormOpen.set(true);
   }
 
@@ -197,6 +214,7 @@ export class LotoBuilderStateService {
   closeLotoPointForm(): void {
     this.isLotoPointFormOpen.set(false);
     this.selectedLotoPointForEdit.set(null);
+    this.isEditMode.set(false);
   }
 
   /**
@@ -268,6 +286,22 @@ export class LotoBuilderStateService {
   }
 
   /**
+   * Start processing state with message
+   */
+  startProcessing(message: string): void {
+    this.isProcessingShape.set(true);
+    this.processingMessage.set(message);
+  }
+
+  /**
+   * Stop processing state
+   */
+  stopProcessing(): void {
+    this.isProcessingShape.set(false);
+    this.processingMessage.set('');
+  }
+
+  /**
    * Switch popup view to form
    */
   switchToFormView(): void {
@@ -295,6 +329,7 @@ export class LotoBuilderStateService {
   openLotoPointTableWithSearch(searchTerm: string, equipment: EquipmentDto): void {
     this.setPendingEquipment(equipment);
     this.setTableSearchTerm(searchTerm);
+    this.isEditMode.set(false);
     this.lotoPointPopupView.set('table');
     this.isLotoPointFormOpen.set(true);
   }
@@ -305,6 +340,7 @@ export class LotoBuilderStateService {
   openLotoPointFormForNewEquipment(equipment: EquipmentDto): void {
     this.setPendingEquipment(equipment);
     this.selectedLotoPointForEdit.set(null);
+    this.isEditMode.set(false);
     this.lotoPointPopupView.set('form');
     this.isLotoPointFormOpen.set(true);
   }

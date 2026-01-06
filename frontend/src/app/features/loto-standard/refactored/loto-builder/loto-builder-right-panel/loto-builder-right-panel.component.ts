@@ -364,6 +364,9 @@ export class LotoBuilderRightPanelComponent {
       return;
     }
 
+    // Start processing - show loading indicator
+    this.builderState.startProcessing('Saving equipment...');
+
     // Create new equipment from shape
     const newEquipment = new EquipmentDto({
       coordinates: JSON.stringify({
@@ -394,12 +397,14 @@ export class LotoBuilderRightPanelComponent {
           if (this.builderState.isTextRecognitionEnabled()) {
             this.performTextRecognitionAndOpenPopup(shape, savedEquipment);
           } else {
-            // Open empty LOTO point form
+            // Stop processing and open empty LOTO point form
+            this.builderState.stopProcessing();
             this.builderState.openLotoPointFormForNewEquipment(savedEquipment);
           }
         },
         error: (error: any) => {
           console.error('Error creating equipment:', error);
+          this.builderState.stopProcessing();
         }
       });
   }
@@ -412,14 +417,21 @@ export class LotoBuilderRightPanelComponent {
 
     if (!filePath) {
       console.warn('No file path available for text recognition');
+      this.builderState.stopProcessing();
       this.builderState.openLotoPointFormForNewEquipment(equipment);
       return;
     }
+
+    // Update processing message for OCR
+    this.builderState.processingMessage.set('Recognizing text...');
 
     this.imageService.getTextFromRfShape(filePath, shape)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         tap((text: string) => {
+          // Stop processing before opening popup
+          this.builderState.stopProcessing();
+
           if (text && text.trim()) {
             const recognizedText = text.trim();
             console.log('Text recognized:', recognizedText);
@@ -433,7 +445,8 @@ export class LotoBuilderRightPanelComponent {
         }),
         catchError((error) => {
           console.error('Error during text recognition:', error);
-          // On error, fall back to opening empty form
+          // Stop processing and fall back to opening empty form
+          this.builderState.stopProcessing();
           this.builderState.openLotoPointFormForNewEquipment(equipment);
           return of(null);
         })

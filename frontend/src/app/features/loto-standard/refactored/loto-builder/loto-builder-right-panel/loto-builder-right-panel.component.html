@@ -1,4 +1,14 @@
 <div class="right-panel-container">
+  <!-- Processing Overlay -->
+  @if (builderState.isProcessingShape()) {
+    <div class="processing-overlay">
+      <div class="processing-content">
+        <div class="processing-spinner"></div>
+        <span class="processing-message">{{ builderState.processingMessage() }}</span>
+      </div>
+    </div>
+  }
+
   <!-- Image Viewer Area -->
   <div class="image-area">
     @if (currentImageUrl()) {

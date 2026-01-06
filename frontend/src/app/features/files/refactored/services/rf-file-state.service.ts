@@ -452,4 +452,17 @@ export class RfFileStateService {
     this.isProcessing.set(false);
     this.processingMessage.set('');
   }
+
+  /**
+   * Handle multi-upload dialog
+   */
+  isMultiUploadOpen = signal<boolean>(false);
+
+  openMultiUpload(): void {
+    this.isMultiUploadOpen.set(true);
+  }
+
+  closeMultiUpload(): void {
+    this.isMultiUploadOpen.set(false);
+  }
 }

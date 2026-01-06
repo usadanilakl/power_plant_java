@@ -8,6 +8,10 @@ import { LotoBuilderTablePopupComponent } from './loto-builder-table-popup/loto-
 import { LotoFormCarouselComponent } from './loto-form-carousel/loto-form-carousel.component';
 import { LotoStandardsSelectorComponent } from './loto-standards-selector/loto-standards-selector.component';
 import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
+import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/rf-popup-projection.component';
+import { RfFileFormComponent } from '../../../files/refactored/rf-file-form/rf-file-form.component';
+import { RfMultiUploadComponent } from '../../../files/refactored/rf-multi-upload/rf-multi-upload.component';
+import { RfFileStateService } from '../../../files/refactored/services/rf-file-state.service';
 
 @Component({
   selector: 'app-loto-builder-container',
@@ -20,12 +24,16 @@ import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
     LotoBuilderTablePopupComponent,
     LotoFormCarouselComponent,
     LotoStandardsSelectorComponent,
+    RfPopupProjectionComponent,
+    RfFileFormComponent,
+    RfMultiUploadComponent,
   ],
   templateUrl: './loto-builder-container.component.html',
   styleUrl: './loto-builder-container.component.css',
 })
 export class LotoBuilderContainerComponent {
   protected builderState = inject(LotoBuilderStateService);
+  protected fileStateService = inject(RfFileStateService);
 
   // Resizing state
   isResizing = signal<boolean>(false);

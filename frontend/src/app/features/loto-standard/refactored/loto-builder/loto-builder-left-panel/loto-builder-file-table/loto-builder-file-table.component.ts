@@ -12,6 +12,7 @@ import { TableSearchService } from '../../../../../../shared/table/refactored/se
 import { TableSortService } from '../../../../../../shared/table/refactored/services/table-sort.service';
 import { TableResizeService } from '../../../../../../shared/table/refactored/services/table-resize.service';
 import { TableSyncService } from '../../../../../../shared/table/refactored/services/table-sync.service';
+import { FileTableControlService } from '../../../../../files/refactored/rf-file-table/rf-file-table-control.service';
 
 /**
  * Wrapper component for file table in LOTO builder.
@@ -24,14 +25,14 @@ import { TableSyncService } from '../../../../../../shared/table/refactored/serv
   providers: [
       TableSelectionService,
       TableDragService,
-      TableControlsService,
       TableStateService,
       TableDataService,
       TableSearchService,
       TableSortService,
       TableResizeService,
       TableSyncService,
-    { provide: TableClickService, useClass: LotoBuilderFileTableClickService }
+    { provide: TableClickService, useClass: LotoBuilderFileTableClickService },
+    { provide: TableControlsService, useClass: FileTableControlService },
   ],
   template: `
     <app-rf-file-table

@@ -9,6 +9,7 @@ import { RfPopupProjectionComponent } from '../../../../shared/popup-projection/
 import { RfFileStateService } from '../services/rf-file-state.service';
 import { RfFileFormComponent } from '../rf-file-form/rf-file-form.component';
 import { RfFileLeftMenuComponent } from '../rf-file-left-menu/rf-file-left-menu.component';
+import { RfMultiUploadComponent } from '../rf-multi-upload/rf-multi-upload.component';
 
 @Component({
   selector: 'app-rf-file-page',
@@ -20,8 +21,9 @@ import { RfFileLeftMenuComponent } from '../rf-file-left-menu/rf-file-left-menu.
     RouterMenuComponent,
     RfFileLeftMenuComponent,
     RfPopupProjectionComponent,
-    RfFileFormComponent
-],
+    RfFileFormComponent,
+    RfMultiUploadComponent,
+  ],
   templateUrl: './rf-file-page.component.html',
   styleUrl: './rf-file-page.component.css',
 })

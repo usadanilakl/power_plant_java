@@ -45,6 +45,22 @@
 
       <!-- LOTO Standards Selector Popup -->
       <app-loto-standards-selector></app-loto-standards-selector>
+
+      <!-- File Form Popup -->
+      <app-rf-popup-projection
+        [isOpen]="fileStateService.isFileFormOpen()"
+        (close)="fileStateService.closeForm()"
+      >
+        <app-rf-file-form></app-rf-file-form>
+      </app-rf-popup-projection>
+
+      <!-- Multi-Upload Popup -->
+      <app-rf-popup-projection
+        [isOpen]="fileStateService.isMultiUploadOpen()"
+        (close)="fileStateService.closeMultiUpload()"
+      >
+        <app-rf-multi-upload (close)="fileStateService.closeMultiUpload()"></app-rf-multi-upload>
+      </app-rf-popup-projection>
     </div>
   </div>
 }

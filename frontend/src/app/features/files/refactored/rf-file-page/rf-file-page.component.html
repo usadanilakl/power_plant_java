@@ -28,5 +28,12 @@
   [isOpen]="stateService.isFileFormOpen()"
   (close)="stateService.closeForm()"
 >
-  <app-rf-file-form ></app-rf-file-form>
+  <app-rf-file-form></app-rf-file-form>
+</app-rf-popup-projection>
+
+<app-rf-popup-projection
+  [isOpen]="stateService.isMultiUploadOpen()"
+  (close)="stateService.closeMultiUpload()"
+>
+  <app-rf-multi-upload (close)="stateService.closeMultiUpload()"></app-rf-multi-upload>
 </app-rf-popup-projection>
