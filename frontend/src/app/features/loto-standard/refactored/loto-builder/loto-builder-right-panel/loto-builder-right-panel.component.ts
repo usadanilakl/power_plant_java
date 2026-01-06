@@ -138,7 +138,8 @@ export class LotoBuilderRightPanelComponent {
 
             // Update if the equipment belongs to the current builder file
             if (equipmentFileId === currentBuilderFileId) {
-              this.builderState.setCurrentEquipment(equipment);
+              // Merge with existing equipment to preserve local LOTO point associations
+              this.mergeEquipmentWithLocalState(equipment);
             }
           } else if (equipment && equipment.length === 0) {
             // Always clear equipment when empty array is received
@@ -576,5 +577,66 @@ export class LotoBuilderRightPanelComponent {
         this.builderState.setCurrentEquipment([...currentEquipment, equipment]);
       }
     }
+  }
+
+  /**
+   * Merge incoming equipment with local state to preserve LOTO point associations
+   * that may have been added locally but not yet reflected in the server response
+   */
+  private mergeEquipmentWithLocalState(incomingEquipment: EquipmentDto[]): void {
+    const currentEquipment = this.builderState.currentEquipment();
+
+    // If no current equipment, just set the incoming
+    if (!currentEquipment || currentEquipment.length === 0) {
+      this.builderState.setCurrentEquipment(incomingEquipment);
+      return;
+    }
+
+    // Create a map of current equipment with their LOTO points
+    const localLotoPointsMap = new Map<number, LotoPointDto[]>();
+    currentEquipment.forEach(eq => {
+      if (eq.id && eq.lotoPoints && eq.lotoPoints.length > 0) {
+        localLotoPointsMap.set(eq.id, eq.lotoPoints);
+      }
+    });
+
+    // Merge incoming equipment with local LOTO point associations
+    const mergedEquipment = incomingEquipment.map(incomingEq => {
+      const localLotoPoints = localLotoPointsMap.get(incomingEq.id);
+      const incomingLotoPoints = incomingEq.lotoPoints || [];
+
+      // If we have local LOTO points that aren't in the incoming data, preserve them
+      if (localLotoPoints && localLotoPoints.length > 0) {
+        // Merge: use incoming as base, but add any local LOTO points not already present
+        const mergedLotoPoints = [...incomingLotoPoints];
+
+        localLotoPoints.forEach(localLp => {
+          if (!mergedLotoPoints.some(lp => lp.id === localLp.id)) {
+            mergedLotoPoints.push(localLp);
+          }
+        });
+
+        if (mergedLotoPoints.length > incomingLotoPoints.length) {
+          console.log('[LOTO Builder] Preserving local LOTO points for equipment:', incomingEq.id);
+          return new EquipmentDto({
+            ...incomingEq,
+            lotoPoints: mergedLotoPoints
+          });
+        }
+      }
+
+      return incomingEq;
+    });
+
+    // Also add any equipment that exists locally but not in the incoming data
+    // (newly created equipment that hasn't been included in the response yet)
+    currentEquipment.forEach(localEq => {
+      if (localEq.id && !mergedEquipment.some(eq => eq.id === localEq.id)) {
+        console.log('[LOTO Builder] Preserving locally-added equipment:', localEq.id);
+        mergedEquipment.push(localEq);
+      }
+    });
+
+    this.builderState.setCurrentEquipment(mergedEquipment);
   }
 }

@@ -177,10 +177,12 @@ export class TableClickService {
           this.selectionService.selectRange(this.allItems(), lastItem, normalizedItem);
         }
       } else {
+        // Clear previous selection and select the clicked item
         this.selectionService.clearSelection();
         if (this.stateService.tableMode() === 'cell' && this.lastClickedCell()) {
           // Cell mode - handled by cellClicked
         } else {
+          this.selectionService.selectItem(normalizedItem);
           this.lastClickedRow.set({ item: normalizedItem, event });
         }
       }

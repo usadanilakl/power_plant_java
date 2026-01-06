@@ -1,4 +1,4 @@
-import { Component, inject, computed, DestroyRef, signal, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, inject, computed, DestroyRef, signal, ElementRef, ViewChild, AfterViewInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tap, catchError } from 'rxjs/operators';
@@ -64,6 +64,7 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
   protected builderState = inject(LotoBuilderStateService);
   private apiService = inject(RfLotoPointApiService);
   private lotoPointStateService = inject(RfLotoPointStateService);
+  private tableSelectionService = inject(TableSelectionService);
   private messageService = inject(GlobalMessageService);
   private destroyRef = inject(DestroyRef);
 
@@ -72,6 +73,27 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
 
   // Selected LOTO point from table
   selectedLotoPointFromTable = signal<LotoPointDto | null>(null);
+
+  // Track previous visibility state to detect when popup opens
+  private wasVisible = false;
+
+  constructor() {
+    // Effect to clear table state when popup opens
+    effect(() => {
+      const isNowVisible = this.builderState.isLotoPointFormOpen();
+
+      if (isNowVisible && !this.wasVisible) {
+        // Popup just opened - clear table state
+        this.lotoPointStateService.clearLotoPoints();
+        this.lotoPointStateService.resetPage();
+        this.lotoPointStateService.clearSortState();
+        this.tableSelectionService.clearSelection();
+        this.selectedLotoPointFromTable.set(null);
+      }
+
+      this.wasVisible = isNowVisible;
+    });
+  }
 
   // Drag state
   private isDragging = false;
@@ -154,6 +176,13 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
    */
   tableTabLabel = computed(() => {
     return this.isEditMode() ? 'Replace with Existing' : 'Select Existing';
+  });
+
+  /**
+   * Check if a LOTO point is selected from the table (computed for reactivity)
+   */
+  hasSelectedLotoPoint = computed(() => {
+    return this.selectedLotoPointFromTable() !== null;
   });
 
   ngAfterViewInit(): void {
@@ -273,13 +302,6 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
 
     // Store the selected LOTO point for later association
     this.selectedLotoPointFromTable.set(lotoPoints[0]);
-  }
-
-  /**
-   * Check if a LOTO point is selected from the table
-   */
-  hasSelectedLotoPoint(): boolean {
-    return this.selectedLotoPointFromTable() !== null;
   }
 
   /**
