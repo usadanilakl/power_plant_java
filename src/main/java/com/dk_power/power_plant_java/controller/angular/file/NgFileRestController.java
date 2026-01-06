@@ -195,6 +195,41 @@ public class NgFileRestController {
         }
     }
 
+    /**
+     * Upload multiple PDF files at once
+     * All files share the same fileType and vendor
+     * File number and name are derived from the original filename (without extension)
+     */
+    @PostMapping("/multi-upload")
+    public ResponseEntity<NgApiResponse<List<FileDto>>> uploadMultipleFiles(
+            @RequestPart("files") List<MultipartFile> files,
+            @RequestParam("fileTypeId") Long fileTypeId,
+            @RequestParam("vendorId") Long vendorId) {
+        try {
+            if (files == null || files.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new NgApiResponse<>(null, "No files provided"));
+            }
+
+            // Validate all files are PDFs
+            for (MultipartFile file : files) {
+                String filename = file.getOriginalFilename();
+                if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
+                    return ResponseEntity.badRequest()
+                            .body(new NgApiResponse<>(null, "Only PDF files are allowed. Invalid file: " + filename));
+                }
+            }
+
+            List<FileDto> uploadedFiles = ngFileService.processMultiplePdfFiles(files, fileTypeId, vendorId);
+            return ResponseEntity.ok(new NgApiResponse<>(uploadedFiles,
+                    "Successfully uploaded " + uploadedFiles.size() + " files", LocalDateTime.now()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(new NgApiResponse<>(null, "Error uploading files: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/eq-by-file")
     public ResponseEntity<NgApiResponse<List<EquipmentDto>>> getEquipmentByFile(@RequestBody Map<String, String> fileId) {
         try {

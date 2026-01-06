@@ -10,12 +10,13 @@ import { CurrentFileService } from '../../../../services/current-file.service';
 import { RfToggleMenuComponent } from "../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component";
 import { FileContextMenuService } from '../services/file-context-menu.service';
 import { RfFileStateService } from '../services/rf-file-state.service';
+import { RfMultiUploadComponent } from '../rf-multi-upload/rf-multi-upload.component';
 import { tap } from 'rxjs';
 
 @Component({
   selector: 'app-rf-file-left-menu',
   standalone: true,
-  imports: [CommonModule, RfToggleMenuComponent],
+  imports: [CommonModule, RfToggleMenuComponent, RfMultiUploadComponent],
   templateUrl: './rf-file-left-menu.component.html',
   styleUrl: './rf-file-left-menu.component.css',
 })
@@ -30,6 +31,7 @@ export class RfFileLeftMenuComponent implements OnInit{
   isFileFormOpen = signal(false);
   isProcessingFile = signal(false);
   fileSubmitMessage = signal<string>("");
+  showMultiUpload = signal<boolean>(false);
 
   currentRoute = signal("");
 
@@ -104,6 +106,20 @@ constructor(
     // Create a new empty FileDto and open the form
     this.stateService.setSelectedItem(new FileDto());
     this.stateService.openForm();
+  }
+
+  onMultiUpload(): void {
+    this.showMultiUpload.set(true);
+  }
+
+  onMultiUploadClose(): void {
+    this.showMultiUpload.set(false);
+  }
+
+  onMultiUploadComplete(files: FileDto[]): void {
+    // Refresh the file list after successful upload
+    this.currentFileService.refreshFiles();
+    this.showMultiUpload.set(false);
   }
 
   private createListOfNestedItems(data: FileDto[], groupBy: 'vendor' | 'system' | 'fileType'): NestedItem[] {

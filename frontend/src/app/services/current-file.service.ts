@@ -174,6 +174,15 @@ export class CurrentFileService {
       return this.fileMapByTypeSubject.getValue().get(type) || [];
     }
 
+    /**
+     * Public method to refresh all files from the server
+     * Reloads all file types and notifies listeners
+     */
+    refreshFiles(): void {
+      this.filesLoadedSubject.next(false);
+      this.loadAllFilesByType();
+    }
+
   
 
     setCurrentFile(file: FileDto | null): void {

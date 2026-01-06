@@ -5,6 +5,9 @@
       <button class="icon-button add-button" (click)="onAddNewFile()" title="Add New File">
         <span class="icon">+</span>
       </button>
+      <button class="icon-button multi-upload-button" (click)="onMultiUpload()" title="Upload Multiple Files">
+        <span class="icon">📁</span>
+      </button>
       <button class="icon-button refresh-button" (click)="refresh()" [disabled]="isLoading()" title="Refresh">
         <span class="icon">↻</span>
       </button>
@@ -63,3 +66,11 @@
     ></app-rf-toggle-menu>
   }
 </div>
+
+<!-- Multi-Upload Dialog -->
+@if (showMultiUpload()) {
+  <app-rf-multi-upload
+    (close)="onMultiUploadClose()"
+    (uploadComplete)="onMultiUploadComplete($event)"
+  ></app-rf-multi-upload>
+}

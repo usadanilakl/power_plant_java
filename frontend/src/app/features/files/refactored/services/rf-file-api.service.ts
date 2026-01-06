@@ -136,4 +136,31 @@ export class RfFileApiService {
       { responseType: 'blob' }
     );
   }
+
+  /**
+   * Upload multiple PDF files at once
+   * All files share the same fileType and vendor
+   */
+  uploadMultipleFiles(
+    files: File[],
+    fileTypeId: number,
+    vendorId: number
+  ): Observable<SpringApiResponse<FileDto[]>> {
+    const formData = new FormData();
+
+    // Append each file with the same key 'files'
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+
+    const params = new HttpParams()
+      .set('fileTypeId', fileTypeId.toString())
+      .set('vendorId', vendorId.toString());
+
+    return this.http.post<SpringApiResponse<FileDto[]>>(
+      `${this.apiUrl}/multi-upload`,
+      formData,
+      { params }
+    );
+  }
 }

@@ -1,0 +1,138 @@
+<div class="multi-upload-overlay" (click)="onClose()">
+  <div class="multi-upload-dialog" (click)="$event.stopPropagation()">
+    <div class="dialog-header">
+      <h2>Upload Multiple Files</h2>
+      <button class="close-btn" (click)="onClose()" [disabled]="isUploading()">
+        &times;
+      </button>
+    </div>
+
+    <div class="dialog-content">
+      <!-- File Type and Vendor Selection -->
+      <div class="form-row">
+        <div class="form-group">
+          <app-rf-value-select
+            categoryAlias="fileType"
+            label="File Type"
+            [canManageValues]="false"
+            (ngModelChange)="onFileTypeChange($event)"
+            [ngModel]="fileTypeId()"
+          ></app-rf-value-select>
+        </div>
+        <div class="form-group">
+          <app-rf-value-select
+            categoryAlias="vendor"
+            label="Vendor"
+            [canManageValues]="false"
+            (ngModelChange)="onVendorChange($event)"
+            [ngModel]="vendorId()"
+          ></app-rf-value-select>
+        </div>
+      </div>
+
+      <!-- Drop Zone -->
+      <div
+        class="drop-zone"
+        [class.drag-over]="isDragOver()"
+        [class.has-files]="selectedFiles().length > 0"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)"
+      >
+        @if (selectedFiles().length === 0) {
+          <div class="drop-zone-content">
+            <span class="drop-icon">📄</span>
+            <p>Drag & drop PDF files here</p>
+            <p class="drop-hint">or</p>
+            <label class="browse-btn">
+              Browse Files
+              <input
+                type="file"
+                accept=".pdf"
+                multiple
+                (change)="onFileSelect($event)"
+                hidden
+              />
+            </label>
+          </div>
+        } @else {
+          <div class="file-list-header">
+            <span>{{ selectedFiles().length }} file(s) selected</span>
+            <div class="header-actions">
+              <label class="add-more-btn">
+                + Add More
+                <input
+                  type="file"
+                  accept=".pdf"
+                  multiple
+                  (change)="onFileSelect($event)"
+                  hidden
+                />
+              </label>
+              <button class="clear-btn" (click)="clearAllFiles()" [disabled]="isUploading()">
+                Clear All
+              </button>
+            </div>
+          </div>
+          <div class="file-list">
+            @for (item of selectedFiles(); track item.name; let i = $index) {
+              <div class="file-item" [class.uploading]="item.status === 'uploading'"
+                   [class.success]="item.status === 'success'"
+                   [class.error]="item.status === 'error'">
+                <span class="file-icon">
+                  @switch (item.status) {
+                    @case ('pending') { 📄 }
+                    @case ('uploading') { ⏳ }
+                    @case ('success') { ✅ }
+                    @case ('error') { ❌ }
+                  }
+                </span>
+                <div class="file-info">
+                  <span class="file-name">{{ item.name }}</span>
+                  <span class="file-size">{{ formatFileSize(item.file.size) }}</span>
+                  @if (item.errorMessage) {
+                    <span class="file-error">{{ item.errorMessage }}</span>
+                  }
+                </div>
+                @if (item.status === 'pending' && !isUploading()) {
+                  <button class="remove-btn" (click)="removeFile(i)">&times;</button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Messages -->
+      @if (errorMessage()) {
+        <div class="message error">{{ errorMessage() }}</div>
+      }
+      @if (successMessage()) {
+        <div class="message success">{{ successMessage() }}</div>
+      }
+      @if (uploadProgress()) {
+        <div class="message info">
+          <span class="spinner"></span>
+          {{ uploadProgress() }}
+        </div>
+      }
+    </div>
+
+    <div class="dialog-footer">
+      <button class="cancel-btn" (click)="onClose()" [disabled]="isUploading()">
+        Cancel
+      </button>
+      <button
+        class="upload-btn"
+        (click)="upload()"
+        [disabled]="!canUpload()"
+      >
+        @if (isUploading()) {
+          Uploading...
+        } @else {
+          Upload {{ selectedFiles().length }} File(s)
+        }
+      </button>
+    </div>
+  </div>
+</div>

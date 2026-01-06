@@ -248,6 +248,95 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return fileDtos;
     }
 
+    /**
+     * Process multiple PDF files at once.
+     * All files share the same fileType and vendor.
+     * File number and name are derived from the original filename (without extension).
+     */
+    public List<FileDto> processMultiplePdfFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId) throws IOException {
+        if (files == null || files.isEmpty()) {
+            throw new RuntimeException("No files provided");
+        }
+
+        // Get the Value entities for fileType and vendor
+        var fileType = valueRepo.findById(fileTypeId)
+                .orElseThrow(() -> new RuntimeException("File type not found with id: " + fileTypeId));
+        var vendor = valueRepo.findById(vendorId)
+                .orElseThrow(() -> new RuntimeException("Vendor not found with id: " + vendorId));
+
+        List<FileDto> uploadedFiles = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                logger.warn("Skipping file with null filename");
+                continue;
+            }
+
+            // Extract file name without extension to use as fileNumber and name
+            String fileNameWithoutExtension = FileUtil.getNameFromPathWithoutExtension(originalFilename);
+
+            // Create new FileObject
+            FileObject fileObject = new FileObject();
+            fileObject.setName(fileNameWithoutExtension);
+            fileObject.setFileNumber(fileNameWithoutExtension);
+            fileObject.setFileType(fileType);
+            fileObject.setVendor(vendor);
+            fileObject.setBaseLink(filesRelativePath);
+            fileObject.setExtension("pdf");
+
+            // Build paths
+            String fileLink = fileObject.buildFileLink();
+            fileObject.buildFolder();
+
+            // Rename the file to use the extracted name
+            MultipartFile renamedFile = new RenamedMultipartFile(file, fileNameWithoutExtension + ".pdf");
+
+            // Process the file (convert to jpg, etc.)
+            List<String> processedPaths = separateAndUploadPdfFileWithConversion(renamedFile, fileLink, false);
+
+            // For single-page PDFs, update the existing fileObject
+            // For multi-page PDFs, create separate FileObjects for each page
+            if (processedPaths.size() == 1) {
+                String path = processedPaths.get(0);
+                String nameFromPath = FileUtil.getNameFromPath(path);
+                fileObject.setExtension(FileUtil.getFileExtension(path));
+                fileObject.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
+                fileObject.buildFolder();
+                fileObject.buildFileLink();
+                fileObject.addExtension("pdf");
+                fileObject.addExtension("jpg");
+                FileObject saved = save(fileObject);
+                uploadedFiles.add(toDto(saved));
+            } else {
+                // Multi-page PDF - create separate entries for each page
+                for (String path : processedPaths) {
+                    String nameFromPath = FileUtil.getNameFromPath(path);
+                    FileObject newFile = new FileObject();
+                    newFile.setName(fileNameWithoutExtension);
+                    newFile.setFileType(fileType);
+                    newFile.setVendor(vendor);
+                    newFile.setBaseLink(filesRelativePath);
+                    newFile.setExtension(FileUtil.getFileExtension(path));
+                    newFile.setFileNumber(FileUtil.getNameFromPathWithoutExtension(nameFromPath));
+                    newFile.buildFolder();
+                    newFile.buildFileLink();
+                    newFile.addExtension("pdf");
+                    newFile.addExtension("jpg");
+                    FileObject saved = save(newFile);
+                    uploadedFiles.add(toDto(saved));
+                }
+            }
+
+            logger.info("Processed file: {} -> {} file objects", originalFilename,
+                    processedPaths.size() == 1 ? 1 : processedPaths.size());
+        }
+
+        logger.info("Multi-upload completed: {} files uploaded, {} file objects created",
+                files.size(), uploadedFiles.size());
+        return uploadedFiles;
+    }
+
     public FileDto updateFileObject(FileIdDto file) {
         if (file.getId() == null || file.getId() == 0) throw new RuntimeException("Id is required");
 
