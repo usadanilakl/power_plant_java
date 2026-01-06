@@ -73,6 +73,58 @@
   flex-direction: column;
 }
 
+/* Shared File Name Section */
+.shared-name-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #2196f3;
+}
+
+.toggle-text {
+  font-size: 14px;
+  color: #333;
+}
+
+.shared-name-input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.shared-name-input:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+.shared-name-hint {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
 /* Drop Zone */
 .drop-zone {
   border: 2px dashed #ccc;

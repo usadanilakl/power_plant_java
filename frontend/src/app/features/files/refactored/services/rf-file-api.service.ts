@@ -140,11 +140,13 @@ export class RfFileApiService {
   /**
    * Upload multiple PDF files at once
    * All files share the same fileType and vendor
+   * @param sharedFileName - Optional shared file name to use for all files (if not provided, uses original filename)
    */
   uploadMultipleFiles(
     files: File[],
     fileTypeId: number,
-    vendorId: number
+    vendorId: number,
+    sharedFileName?: string
   ): Observable<SpringApiResponse<FileDto[]>> {
     const formData = new FormData();
 
@@ -153,9 +155,14 @@ export class RfFileApiService {
       formData.append('files', file);
     });
 
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('fileTypeId', fileTypeId.toString())
       .set('vendorId', vendorId.toString());
+
+    // Add shared file name if provided
+    if (sharedFileName && sharedFileName.trim()) {
+      params = params.set('sharedFileName', sharedFileName.trim());
+    }
 
     return this.http.post<SpringApiResponse<FileDto[]>>(
       `${this.apiUrl}/multi-upload`,

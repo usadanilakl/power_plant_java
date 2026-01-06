@@ -251,9 +251,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
     /**
      * Process multiple PDF files at once.
      * All files share the same fileType and vendor.
-     * File number and name are derived from the original filename (without extension).
+     * File number is derived from the original filename (without extension).
+     * File name uses sharedFileName if provided, otherwise uses original filename.
      */
-    public List<FileDto> processMultiplePdfFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId) throws IOException {
+    public List<FileDto> processMultiplePdfFiles(List<MultipartFile> files, Long fileTypeId, Long vendorId, String sharedFileName) throws IOException {
         if (files == null || files.isEmpty()) {
             throw new RuntimeException("No files provided");
         }
@@ -264,6 +265,10 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         var vendor = valueRepo.findById(vendorId)
                 .orElseThrow(() -> new RuntimeException("Vendor not found with id: " + vendorId));
 
+        // Determine if we should use a shared file name
+        boolean useSharedName = sharedFileName != null && !sharedFileName.trim().isEmpty();
+        String effectiveSharedName = useSharedName ? sharedFileName.trim() : null;
+
         List<FileDto> uploadedFiles = new ArrayList<>();
 
         for (MultipartFile file : files) {
@@ -273,12 +278,14 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                 continue;
             }
 
-            // Extract file name without extension to use as fileNumber and name
+            // Extract file name without extension to use as fileNumber (always from original filename)
             String fileNameWithoutExtension = FileUtil.getNameFromPathWithoutExtension(originalFilename);
+            // Use shared name for "name" field if provided, otherwise use original filename
+            String effectiveName = useSharedName ? effectiveSharedName : fileNameWithoutExtension;
 
             // Create new FileObject
             FileObject fileObject = new FileObject();
-            fileObject.setName(fileNameWithoutExtension);
+            fileObject.setName(effectiveName);
             fileObject.setFileNumber(fileNameWithoutExtension);
             fileObject.setFileType(fileType);
             fileObject.setVendor(vendor);

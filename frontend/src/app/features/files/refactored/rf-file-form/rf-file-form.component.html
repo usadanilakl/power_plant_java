@@ -1,10 +1,36 @@
 <div class="file-form-wrapper">
+  <!-- File Auto-Fill Toggles -->
+  <div class="file-autofill-section">
+    <div class="toggle-row">
+      <label class="toggle-label">
+        <input
+          type="checkbox"
+          [checked]="useFileNameAsFileNumber()"
+          (change)="onUseFileNumberToggle($any($event.target).checked)"
+        />
+        <span class="toggle-text">Add file name to "File Number"</span>
+      </label>
+      <label class="toggle-label">
+        <input
+          type="checkbox"
+          [checked]="useFileNameAsName()"
+          (change)="onUseFileNameToggle($any($event.target).checked)"
+        />
+        <span class="toggle-text">Use file name as "File Name"</span>
+      </label>
+    </div>
+    @if (selectedFileName()) {
+      <span class="selected-file-hint">Selected file: {{ selectedFileName() }}</span>
+    }
+  </div>
+
   <app-rf-reactive-form
     [entity]="entity()"
     [fields]="fields()"
     [title]="'File Form'"
     (formValueChange)="onAnyValueChange($event)"
     (formSubmit)="onSubmit($event)"
+    (fileSelected)="onFileSelected($event)"
   >
     <ng-container extra-buttons>
       <app-clipboard-form

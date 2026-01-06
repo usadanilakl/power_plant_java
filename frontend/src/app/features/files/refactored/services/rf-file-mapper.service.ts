@@ -204,6 +204,7 @@ export class FileMapperService {
         type: 'text',
         validators: [Validators.required],
         initialValue: file.name || '',
+        tooltip: 'Use the toggle above to automatically set this field to the uploaded file\'s name (without extension)',
       },
       fileType: {
         name: 'fileType',
@@ -220,6 +221,7 @@ export class FileMapperService {
         type: 'multi-input',
         validators: [Validators.required],
         initialValue: file.fileNumber || [],
+        tooltip: 'Use the toggle above to automatically add the uploaded file\'s name (without extension) to this list',
       },
       system: {
         name: 'system',

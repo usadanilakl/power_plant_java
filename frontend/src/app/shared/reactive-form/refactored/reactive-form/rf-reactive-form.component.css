@@ -170,6 +170,44 @@ button[type="button"]:hover {
   margin-top: 5px;
 }
 
+/* Field Tooltip Styles */
+.field-wrapper {
+  position: relative;
+}
+
+.field-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  background-color: #333;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  border-radius: 6px;
+  width: 280px;
+  max-width: 90vw;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.field-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 20px;
+  border: 6px solid transparent;
+  border-top-color: #333;
+}
+
+.field-wrapper:hover .field-tooltip {
+  display: block;
+}
+
 @media (max-width: 900px) {
   .form-layout-grid {
     grid-template-columns: repeat(2, 1fr);

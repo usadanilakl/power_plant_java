@@ -198,13 +198,15 @@ public class NgFileRestController {
     /**
      * Upload multiple PDF files at once
      * All files share the same fileType and vendor
-     * File number and name are derived from the original filename (without extension)
+     * File number is derived from the original filename (without extension)
+     * File name uses sharedFileName if provided, otherwise uses original filename
      */
     @PostMapping("/multi-upload")
     public ResponseEntity<NgApiResponse<List<FileDto>>> uploadMultipleFiles(
             @RequestPart("files") List<MultipartFile> files,
             @RequestParam("fileTypeId") Long fileTypeId,
-            @RequestParam("vendorId") Long vendorId) {
+            @RequestParam("vendorId") Long vendorId,
+            @RequestParam(value = "sharedFileName", required = false) String sharedFileName) {
         try {
             if (files == null || files.isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -220,7 +222,7 @@ public class NgFileRestController {
                 }
             }
 
-            List<FileDto> uploadedFiles = ngFileService.processMultiplePdfFiles(files, fileTypeId, vendorId);
+            List<FileDto> uploadedFiles = ngFileService.processMultiplePdfFiles(files, fileTypeId, vendorId, sharedFileName);
             return ResponseEntity.ok(new NgApiResponse<>(uploadedFiles,
                     "Successfully uploaded " + uploadedFiles.size() + " files", LocalDateTime.now()));
         } catch (Exception e) {

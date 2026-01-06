@@ -30,6 +30,10 @@ export class RfMultiUploadComponent {
   vendorId = signal<number | null>(null);
   selectedFiles = signal<UploadFileItem[]>([]);
 
+  // Shared file name option
+  useSharedFileName = signal<boolean>(false);
+  sharedFileName = signal<string>('');
+
   // UI state
   isUploading = signal<boolean>(false);
   uploadProgress = signal<string>('');
@@ -115,12 +119,28 @@ export class RfMultiUploadComponent {
     );
   }
 
+  onSharedFileNameToggle(enabled: boolean): void {
+    this.useSharedFileName.set(enabled);
+    if (!enabled) {
+      this.sharedFileName.set('');
+    }
+  }
+
+  onSharedFileNameChange(value: string): void {
+    this.sharedFileName.set(value);
+  }
+
   upload(): void {
     if (!this.canUpload()) return;
 
     const fileTypeId = this.fileTypeId()!;
     const vendorId = this.vendorId()!;
     const files = this.selectedFiles().map(item => item.file);
+
+    // Get shared file name if enabled and provided
+    const sharedFileName = this.useSharedFileName() && this.sharedFileName().trim()
+      ? this.sharedFileName().trim()
+      : undefined;
 
     this.isUploading.set(true);
     this.errorMessage.set('');
@@ -132,7 +152,7 @@ export class RfMultiUploadComponent {
       items.map(item => ({ ...item, status: 'uploading' as const }))
     );
 
-    this.apiService.uploadMultipleFiles(files, fileTypeId, vendorId).subscribe({
+    this.apiService.uploadMultipleFiles(files, fileTypeId, vendorId, sharedFileName).subscribe({
       next: (response) => {
         this.isUploading.set(false);
         this.uploadProgress.set('');

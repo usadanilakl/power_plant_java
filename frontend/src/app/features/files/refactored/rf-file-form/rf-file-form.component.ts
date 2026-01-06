@@ -6,6 +6,7 @@ import {
   inject,
   input,
   signal,
+  ViewChild,
 } from '@angular/core';
 import { RfFileStateService } from '../services/rf-file-state.service';
 import { FileDto } from '../../../../models/file/file.model';
@@ -327,6 +328,73 @@ export class RfFileFormComponent {
     if (item) {
       console.log('Loading item from clipboard (id excluded):', item);
       this.stateService.setSelectedItem(new FileDto(item));
+    }
+  }
+
+  //===========================FILE SELECTION AUTO-FILL===========================
+  useFileNameAsFileNumber = signal<boolean>(true);
+  useFileNameAsName = signal<boolean>(true);
+  selectedFileName = signal<string>('');
+
+  @ViewChild(RfReactiveFormComponent) reactiveForm!: RfReactiveFormComponent;
+
+  onFileSelected(event: { file: File; nameWithoutExtension: string }): void {
+    const { nameWithoutExtension } = event;
+    this.selectedFileName.set(nameWithoutExtension);
+
+    const currentEntity = this.entity();
+    let updatedEntity = { ...currentEntity };
+    let hasChanges = false;
+
+    // Add to file number array if toggle is enabled
+    if (this.useFileNameAsFileNumber()) {
+      const currentFileNumbers = currentEntity.fileNumber || [];
+      // Only add if not already in the array
+      if (!currentFileNumbers.includes(nameWithoutExtension)) {
+        updatedEntity.fileNumber = [...currentFileNumbers, nameWithoutExtension];
+        hasChanges = true;
+      }
+    }
+
+    // Set file name if toggle is enabled
+    if (this.useFileNameAsName()) {
+      updatedEntity.name = nameWithoutExtension;
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
+      this.stateService.setSelectedItem(new FileDto(updatedEntity));
+    }
+  }
+
+  onUseFileNumberToggle(enabled: boolean): void {
+    this.useFileNameAsFileNumber.set(enabled);
+
+    // If toggle is enabled and we have a selected file name, add it to file numbers
+    if (enabled && this.selectedFileName()) {
+      const currentEntity = this.entity();
+      const currentFileNumbers = currentEntity.fileNumber || [];
+      if (!currentFileNumbers.includes(this.selectedFileName())) {
+        const updatedEntity = new FileDto({
+          ...currentEntity,
+          fileNumber: [...currentFileNumbers, this.selectedFileName()],
+        });
+        this.stateService.setSelectedItem(updatedEntity);
+      }
+    }
+  }
+
+  onUseFileNameToggle(enabled: boolean): void {
+    this.useFileNameAsName.set(enabled);
+
+    // If toggle is enabled and we have a selected file name, update the name field
+    if (enabled && this.selectedFileName()) {
+      const currentEntity = this.entity();
+      const updatedEntity = new FileDto({
+        ...currentEntity,
+        name: this.selectedFileName(),
+      });
+      this.stateService.setSelectedItem(updatedEntity);
     }
   }
 }

@@ -61,6 +61,8 @@ export class RfReactiveFormComponent {
   formDelete = output<void>();
   addNewSelectOption = output<string>();
   formValueChange = output<any>();
+  fileSelected = output<{ file: File; nameWithoutExtension: string }>();
+  helperCheckboxChange = output<{ fieldName: string; checkboxId: string; checked: boolean }>();
 
   // Services
   private formBuilderService = inject(FormBuilderService);
@@ -352,5 +354,10 @@ export class RfReactiveFormComponent {
   getGroupInputLayout(): 'row' | 'column' | 'grid' {
     const layout = this.groupLayout();
     return layout === 'reactive' ? 'column' : layout;
+  }
+
+  // Handle file selection from file input component
+  onFileSelected(event: { file: File; nameWithoutExtension: string }): void {
+    this.fileSelected.emit(event);
   }
 }

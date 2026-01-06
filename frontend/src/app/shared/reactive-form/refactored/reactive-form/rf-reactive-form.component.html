@@ -20,11 +20,12 @@
       } @for (field of groupedFields()[groupLabel]; track field.name) { @if
       (shouldShowField(field)) {
       <div
-        [class]="
-          'form-field-layout-' +
-          (groupLabel === 'Ungrouped' ? layout() : groupLayout())
-        "
+        class="field-wrapper"
+        [class]="'form-field-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())"
       >
+        @if (field.tooltip) {
+          <div class="field-tooltip">{{ field.tooltip }}</div>
+        }
         @switch (field.type) { @case ('select') {
         <app-searchable-select-input
           [label]="field.label"
@@ -66,6 +67,7 @@
           [formControl]="getFormControl(field.name)"
           [label]="field.label"
           [accept]="field.accept ?? '.pdf,.doc,.docx,.img,.jpg,.jpeg,.png'"
+          (fileSelected)="onFileSelected($event)"
         >
         </app-file-input>
         } @case('multi-input'){

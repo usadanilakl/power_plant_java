@@ -83,6 +83,12 @@ export interface FormFieldGroup {
 }
 
 
+export interface FieldHelperCheckbox {
+  id: string;           // Unique identifier for the checkbox
+  label: string;        // Label text displayed next to checkbox
+  checked?: boolean;    // Initial/current checked state
+}
+
 export interface RfFormField {
   name: string;
   label: string;
@@ -113,6 +119,8 @@ export interface RfFormField {
   categoryAlias?: string; // For value-select and multi-value-select types
   canManageValues?: boolean; // For value-select and multi-value-select types
   accept?: string; // For file input - accepted file types
+  helperCheckbox?: FieldHelperCheckbox; // Optional checkbox displayed under the field
+  tooltip?: string; // Tooltip text shown on hover
   initialValue?: any;
   currentValue?: any;
   question?: Question;

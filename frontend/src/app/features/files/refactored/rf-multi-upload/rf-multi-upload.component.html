@@ -30,6 +30,31 @@
         </div>
       </div>
 
+      <!-- Shared File Name Option -->
+      <div class="shared-name-section">
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            [checked]="useSharedFileName()"
+            (change)="onSharedFileNameToggle($any($event.target).checked)"
+          />
+          <span class="toggle-text">Use shared file name for all files</span>
+        </label>
+        @if (useSharedFileName()) {
+          <input
+            type="text"
+            class="shared-name-input"
+            placeholder="Enter shared file name..."
+            [value]="sharedFileName()"
+            (input)="onSharedFileNameChange($any($event.target).value)"
+          />
+          <span class="shared-name-hint">
+            If provided, this name will be used as "File Name" for all uploaded files.
+            File numbers will still use original filenames.
+          </span>
+        }
+      </div>
+
       <!-- Drop Zone -->
       <div
         class="drop-zone"

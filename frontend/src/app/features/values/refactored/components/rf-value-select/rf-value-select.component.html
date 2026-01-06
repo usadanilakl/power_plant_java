@@ -5,23 +5,14 @@
       [label]="label()"
       [options]="options()"
       [categoryName]="canManageValues() ? categoryAlias() : ''"
+      [showDelete]="canManageValues() && !!value()"
       (addNewOption)="onAddNew()"
       (editOption)="onEdit()"
+      (deleteOption)="openDeleteDialog()"
       #selectInput
     >
     </app-searchable-select-input>
   </div>
-
-  <!-- Delete button (only shown when value is selected and can manage) -->
-  @if (canManageValues() && value()) {
-    <button
-      type="button"
-      (click)="openDeleteDialog()"
-      class="delete-btn"
-      title="Delete {{ label() }}">
-      🗑 Delete
-    </button>
-  }
 
   <!-- Add/Edit Dialog -->
   @if (showDialog()) {

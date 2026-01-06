@@ -6,23 +6,6 @@
   gap: 8px;
 }
 
-.delete-btn {
-  padding: 6px 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: white;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-  align-self: flex-start;
-}
-
-.delete-btn:hover {
-  background: #ffebee;
-  border-color: #f44336;
-  color: #f44336;
-}
-
 /* Dialog styles */
 .dialog-overlay {
   position: fixed;

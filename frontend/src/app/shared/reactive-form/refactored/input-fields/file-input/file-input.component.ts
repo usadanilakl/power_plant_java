@@ -1,4 +1,4 @@
-import { Component, ElementRef, forwardRef, HostListener, Input } from '@angular/core';
+import { Component, ElementRef, EventEmitter, forwardRef, HostListener, Input, Output } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
@@ -18,6 +18,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 export class FileInputComponent implements ControlValueAccessor {
   @Input() label: string = 'Choose File';
   @Input() accept: string = '*/*';
+  @Output() fileSelected = new EventEmitter<{ file: File; nameWithoutExtension: string }>();
 
   file: File | null = null;
   onChange: Function = () => {};
@@ -80,5 +81,16 @@ export class FileInputComponent implements ControlValueAccessor {
     this.file = file;
     this.onChange(file);
     this.onTouched();
+
+    // Emit file selection event with the filename (without extension)
+    if (file) {
+      const nameWithoutExtension = this.getNameWithoutExtension(file.name);
+      this.fileSelected.emit({ file, nameWithoutExtension });
+    }
+  }
+
+  private getNameWithoutExtension(filename: string): string {
+    const lastDotIndex = filename.lastIndexOf('.');
+    return lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
   }
 }

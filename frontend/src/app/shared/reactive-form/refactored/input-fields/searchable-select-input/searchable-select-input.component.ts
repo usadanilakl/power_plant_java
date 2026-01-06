@@ -56,9 +56,13 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
   isDisabled = signal<boolean>(false);
   private optionsSubscription: Subscription | null = null;
 
+  // Input to control delete button visibility
+  showDelete = input<boolean>(false);
+
   // Outputs
   addNewOption = output<string>();
   editOption = output<string>();
+  deleteOption = output<void>();
   valueChange = output<any>();
 
   // CVA callbacks
@@ -249,6 +253,12 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
   onEditOption(event: MouseEvent): void {
     event.stopPropagation();
     this.editOption.emit(this.categoryName());
+    this.closeDropdown();
+  }
+
+  onDeleteOption(event: MouseEvent): void {
+    event.stopPropagation();
+    this.deleteOption.emit();
     this.closeDropdown();
   }
 }
