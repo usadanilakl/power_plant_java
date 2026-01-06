@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { RfLotoPointFormComponent } from '../../../../loto-points/refactored/rf-loto-point-form/rf-loto-point-form.component';
 import { RfLotoPointTableComponent } from '../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
+import { LotoPointDualFormComponent } from '../../../../loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component';
 import { RfLotoPointApiService } from '../../../../loto-points/refactored/services/rf-loto-point-api.service';
 import { RfLotoPointStateService } from '../../../../loto-points/refactored/services/rf-loto-point-state.service';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
@@ -33,6 +34,7 @@ import { RfLotoPointTableDataService } from '../../../../loto-points/refactored/
     CommonModule,
     RfLotoPointFormComponent,
     RfLotoPointTableComponent,
+    LotoPointDualFormComponent,
   ],
   providers: [
     // Provide a separate instance of RfLotoPointStateService for this popup
@@ -183,6 +185,27 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
    */
   hasSelectedLotoPoint = computed(() => {
     return this.selectedLotoPointFromTable() !== null;
+  });
+
+  /**
+   * Check if the current LOTO point is unit-specific (tag starts with 01 or 02)
+   */
+  isUnitSpecific = computed(() => {
+    const lp = this.lotoPoint();
+    if (!lp?.tagNumber) return false;
+    return lp.tagNumber.startsWith('01') || lp.tagNumber.startsWith('02');
+  });
+
+  /**
+   * Whether dual form mode is enabled (user toggle)
+   */
+  isDualFormEnabled = signal<boolean>(true);
+
+  /**
+   * Should show dual form (unit-specific AND in edit mode AND dual form enabled)
+   */
+  shouldShowDualForm = computed(() => {
+    return this.isEditMode() && this.isUnitSpecific() && this.isDualFormEnabled();
   });
 
   ngAfterViewInit(): void {
@@ -452,5 +475,48 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
       page: 1,
       pageSize: 50
     };
+  }
+
+  /**
+   * Toggle dual form mode
+   */
+  toggleDualFormMode(): void {
+    this.isDualFormEnabled.update(v => !v);
+  }
+
+  /**
+   * Handle primary LOTO point saved from dual form
+   */
+  onPrimarySaved(lotoPoint: LotoPointDto): void {
+    const equipment = this.pendingEquipment();
+    if (equipment) {
+      this.updateEquipmentWithLotoPoint(equipment, lotoPoint);
+    }
+  }
+
+  /**
+   * Handle counterpart LOTO point saved from dual form
+   */
+  onCounterpartSaved(lotoPoint: LotoPointDto): void {
+    // Counterpart is saved independently, no equipment association needed
+    console.log('Counterpart saved:', lotoPoint.tagNumber);
+  }
+
+  /**
+   * Handle both LOTO points saved from dual form
+   */
+  onBothSaved(data: { primary: LotoPointDto; counterpart: LotoPointDto }): void {
+    const equipment = this.pendingEquipment();
+    if (equipment) {
+      this.updateEquipmentWithLotoPoint(equipment, data.primary);
+    }
+    this.close();
+  }
+
+  /**
+   * Handle dual form closed
+   */
+  onDualFormClosed(): void {
+    this.close();
   }
 }

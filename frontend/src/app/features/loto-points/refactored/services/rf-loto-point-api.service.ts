@@ -267,4 +267,49 @@ export class RfLotoPointApiService {
       `${this.apiUrl}/summary`
     );
   }
+
+  /**
+   * Get the unit counterpart for a LOTO point by ID.
+   * Returns counterpart data including:
+   * - counterpart: LotoPointDto (existing or suggested)
+   * - isNew: boolean indicating if counterpart needs to be created
+   * - sourceUnit: the source unit prefix (01 or 02)
+   * - targetUnit: the target unit prefix (02 or 01)
+   */
+  getUnitCounterpart(id: number): Observable<SpringApiResponse<{
+    counterpart: LotoPointDto;
+    isNew: boolean;
+    sourceUnit: string;
+    targetUnit: string;
+  }>> {
+    return this.http.get<SpringApiResponse<{
+      counterpart: LotoPointDto;
+      isNew: boolean;
+      sourceUnit: string;
+      targetUnit: string;
+    }>>(`${this.apiUrl}/${id}/counterpart`);
+  }
+
+  /**
+   * Get the unit counterpart by tag number (for new items being created).
+   * Returns counterpart data including:
+   * - counterpart: LotoPointDto (existing or suggested)
+   * - isNew: boolean indicating if counterpart needs to be created
+   * - sourceUnit: the source unit prefix (01 or 02)
+   * - targetUnit: the target unit prefix (02 or 01)
+   */
+  getCounterpartByTagNumber(tagNumber: string): Observable<SpringApiResponse<{
+    counterpart: LotoPointDto;
+    isNew: boolean;
+    sourceUnit: string;
+    targetUnit: string;
+  }>> {
+    const params = new HttpParams().set('tagNumber', tagNumber);
+    return this.http.get<SpringApiResponse<{
+      counterpart: LotoPointDto;
+      isNew: boolean;
+      sourceUnit: string;
+      targetUnit: string;
+    }>>(`${this.apiUrl}/counterpart-by-tag`, { params });
+  }
 }

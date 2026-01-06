@@ -292,6 +292,105 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
                 .replaceAll("U" + fromUnit.charAt(1), "U" + toUnit.charAt(1));
     }
 
+    /**
+     * Find the unit counterpart for a given LOTO point.
+     * Returns a map with:
+     * - "counterpart": LotoPointDto (existing or suggested)
+     * - "isNew": boolean indicating if counterpart needs to be created
+     * - "sourceUnit": the source unit prefix (01 or 02)
+     * - "targetUnit": the target unit prefix (02 or 01)
+     */
+    public Map<String, Object> findUnitCounterpart(Long id) {
+        LotoPoint sourcePoint = getEntityById(id);
+        if (sourcePoint == null) {
+            return null;
+        }
+
+        String sourceTag = sourcePoint.getTagNumber();
+        if (sourceTag == null || (!sourceTag.startsWith("01") && !sourceTag.startsWith("02"))) {
+            return null; // Not a unit-specific point
+        }
+
+        String fromUnit = sourceTag.startsWith("01") ? "01" : "02";
+        String toUnit = fromUnit.equals("01") ? "02" : "01";
+        String destTag = toUnit + sourceTag.substring(2);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("sourceUnit", fromUnit);
+        result.put("targetUnit", toUnit);
+
+        List<LotoPoint> existingPoints = lotoPointRepo.findByTagNumber(destTag);
+
+        if (existingPoints != null && !existingPoints.isEmpty()) {
+            // Return existing counterpart
+            result.put("counterpart", toDto(existingPoints.get(0)));
+            result.put("isNew", false);
+        } else {
+            // Generate suggested counterpart DTO (not saved)
+            result.put("counterpart", generateCounterpartDto(sourcePoint, fromUnit, toUnit));
+            result.put("isNew", true);
+        }
+
+        return result;
+    }
+
+    /**
+     * Find counterpart by tag number (for new items being created).
+     * Returns a map with counterpart info or null if not a unit-specific tag.
+     */
+    public Map<String, Object> findCounterpartByTagNumber(String tagNumber) {
+        if (tagNumber == null || (!tagNumber.startsWith("01") && !tagNumber.startsWith("02"))) {
+            return null; // Not a unit-specific tag
+        }
+
+        String fromUnit = tagNumber.startsWith("01") ? "01" : "02";
+        String toUnit = fromUnit.equals("01") ? "02" : "01";
+        String destTag = toUnit + tagNumber.substring(2);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("sourceUnit", fromUnit);
+        result.put("targetUnit", toUnit);
+
+        List<LotoPoint> existingPoints = lotoPointRepo.findByTagNumber(destTag);
+
+        if (existingPoints != null && !existingPoints.isEmpty()) {
+            // Return existing counterpart
+            result.put("counterpart", toDto(existingPoints.get(0)));
+            result.put("isNew", false);
+        } else {
+            // Generate empty counterpart DTO with just the tag number
+            LotoPointDto suggested = new LotoPointDto();
+            suggested.setTagNumber(destTag);
+            result.put("counterpart", suggested);
+            result.put("isNew", true);
+        }
+
+        return result;
+    }
+
+    /**
+     * Generate a counterpart DTO from a source LotoPoint with transformed data.
+     */
+    private LotoPointDto generateCounterpartDto(LotoPoint source, String fromUnit, String toUnit) {
+        LotoPointDto suggested = new LotoPointDto();
+        suggested.setTagNumber(toUnit + source.getTagNumber().substring(2));
+        suggested.setDescription(processDescription(source.getDescription(), fromUnit, toUnit));
+        suggested.setSpecificLocation(processDescription(source.getSpecificLocation(), fromUnit, toUnit));
+
+        // Copy non-transformed fields from source DTO
+        LotoPointDto sourceDto = toDto(source);
+        suggested.setIsoPos(sourceDto.getIsoPos());
+        suggested.setNormPos(sourceDto.getNormPos());
+        suggested.setZeroEnergy(sourceDto.getZeroEnergy());
+        suggested.setEqType(sourceDto.getEqType());
+        suggested.setLocation(sourceDto.getLocation());
+        suggested.setUnit(toUnit.equals("01") ? "Unit 1" : "Unit 2");
+        suggested.setSystem(sourceDto.getSystem());
+
+        // Don't copy equipment associations - they are unit-specific
+        return suggested;
+    }
+
     public List<FileDto> getRelatedFiles(Long id) {
         Optional<LotoPoint> byId = findById(id);
         if (byId.isPresent()) {

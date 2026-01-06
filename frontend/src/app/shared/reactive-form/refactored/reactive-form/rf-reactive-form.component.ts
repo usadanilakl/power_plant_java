@@ -55,6 +55,7 @@ export class RfReactiveFormComponent {
   title = input<string>('');
   submitButtonText = input<string>('Submit');
   deleteButtonText = input<string>('');
+  showSubmitButton = input<boolean>(true);
 
   // Outputs
   formSubmit = output<any>();

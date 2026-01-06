@@ -4,6 +4,7 @@
       #popupElement
       class="form-popup"
       [class.table-view]="isTableView()"
+      [class.dual-form-view]="shouldShowDualForm()"
       [class.is-dragged]="popupPosition() !== null"
       [style.left.px]="popupPosition()?.x"
       [style.top.px]="popupPosition()?.y"
@@ -35,6 +36,18 @@
           </button>
         </div>
 
+        <!-- Dual Form Toggle (only for unit-specific LOTO points in edit mode) -->
+        @if (isEditMode() && isUnitSpecific() && isFormView()) {
+          <button
+            class="dual-form-toggle"
+            [class.active]="isDualFormEnabled()"
+            (click)="toggleDualFormMode()"
+            title="Toggle side-by-side unit comparison"
+          >
+            {{ isDualFormEnabled() ? 'Single Form' : 'Dual Form' }}
+          </button>
+        }
+
         <button class="close-button" (click)="close()" title="Close">
           ✕
         </button>
@@ -49,8 +62,19 @@
       }
 
       <div class="form-content">
-        <!-- Form View -->
-        @if (isFormView()) {
+        <!-- Dual Form View (for unit-specific LOTO points in edit mode) -->
+        @if (shouldShowDualForm() && lotoPoint()) {
+          <app-loto-point-dual-form
+            [primaryLotoPoint]="lotoPoint()!"
+            (primarySaved)="onPrimarySaved($event)"
+            (counterpartSaved)="onCounterpartSaved($event)"
+            (bothSaved)="onBothSaved($event)"
+            (formClosed)="onDualFormClosed()"
+          ></app-loto-point-dual-form>
+        }
+
+        <!-- Single Form View -->
+        @if (isFormView() && !shouldShowDualForm()) {
           <app-rf-loto-point-form
             [entityInput]="lotoPoint() || undefined"
           ></app-rf-loto-point-form>
@@ -84,26 +108,29 @@
         }
       </div>
 
-      <div class="form-footer">
-        <button class="action-button" (click)="close()">
-          Cancel
-        </button>
-        @if (isTableView()) {
-          <button
-            class="action-button"
-            (click)="switchToForm()"
-          >
-            Create New Instead
+      <!-- Footer (hidden when dual form is shown - dual form has its own footer) -->
+      @if (!shouldShowDualForm()) {
+        <div class="form-footer">
+          <button class="action-button" (click)="close()">
+            Cancel
           </button>
-          <button
-            class="action-button primary"
-            [disabled]="!hasSelectedLotoPoint()"
-            (click)="associateSelectedLotoPoint()"
-          >
-            Associate Selected
-          </button>
-        }
-      </div>
+          @if (isTableView()) {
+            <button
+              class="action-button"
+              (click)="switchToForm()"
+            >
+              Create New Instead
+            </button>
+            <button
+              class="action-button primary"
+              [disabled]="!hasSelectedLotoPoint()"
+              (click)="associateSelectedLotoPoint()"
+            >
+              Associate Selected
+            </button>
+          }
+        </div>
+      }
     </div>
   </div>
 }

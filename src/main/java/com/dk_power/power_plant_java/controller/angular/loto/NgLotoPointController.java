@@ -414,4 +414,60 @@ public class NgLotoPointController {
             return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
         }
     }
+
+    /**
+     * Get the unit counterpart for a LOTO point.
+     * For tag numbers starting with 01 or 02, finds or generates the counterpart.
+     * Response includes:
+     * - counterpart: LotoPointDto (existing or pre-populated suggestion)
+     * - isNew: boolean indicating if the counterpart needs to be created
+     * - sourceUnit: the source unit prefix (01 or 02)
+     * - targetUnit: the target unit prefix (02 or 01)
+     */
+    @GetMapping("/{id}/counterpart")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> getUnitCounterpart(@PathVariable Long id) {
+        try {
+            Map<String, Object> counterpartData = ngLotoPointService.findUnitCounterpart(id);
+
+            if (counterpartData == null) {
+                return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                        .body(new NgApiResponse<>(null, "LOTO point is not unit-specific (tag must start with 01 or 02)"));
+            }
+
+            NgApiResponse<Map<String, Object>> response = new NgApiResponse<>(
+                    counterpartData,
+                    "Unit counterpart retrieved successfully"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Get unit counterpart by tag number (for new LOTO points being created).
+     * Used when creating a new LOTO point to check if a counterpart exists.
+     */
+    @GetMapping("/counterpart-by-tag")
+    public ResponseEntity<NgApiResponse<Map<String, Object>>> getCounterpartByTagNumber(
+            @RequestParam String tagNumber) {
+        try {
+            Map<String, Object> counterpartData = ngLotoPointService.findCounterpartByTagNumber(tagNumber);
+
+            if (counterpartData == null) {
+                return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                        .body(new NgApiResponse<>(null, "Tag number is not unit-specific (must start with 01 or 02)"));
+            }
+
+            NgApiResponse<Map<String, Object>> response = new NgApiResponse<>(
+                    counterpartData,
+                    "Unit counterpart retrieved successfully"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
 }
