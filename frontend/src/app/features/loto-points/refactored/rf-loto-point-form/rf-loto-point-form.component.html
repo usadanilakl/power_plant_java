@@ -57,8 +57,11 @@
               <app-clipboard-form
                 [entityType]="'LotoPoint'"
                 [initialEntity]="initialEntity()"
+                [currentEntity]="entity()"
                 [hasValidData]="hasValidData"
                 [getItemSummary]="getItemSummary"
+                [clipboardFormatter]="clipboardFormatter"
+                [excludeIdOnPaste]="true"
                 (itemSelected)="onClipboardItemSelected($event)"
               ></app-clipboard-form>
             </ng-container>

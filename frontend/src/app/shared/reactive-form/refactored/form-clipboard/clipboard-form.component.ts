@@ -17,15 +17,20 @@ import { ClipboardService } from '../../../clipboard/clipboard.service';
   templateUrl: './clipboard-form.component.html',
   styleUrls: ['./clipboard-form.component.css'],
 })
-export class ClipboardFormComponent<T> {
+export class ClipboardFormComponent<T extends { id?: number | null; objectType?: string }> {
   private clipboardService = inject(ClipboardService);
 
   entityType = input.required<string>();
   initialEntity = input.required<T>();
+  currentEntity = input<T>(); // Current form entity for "Add to Clipboard"
   hasValidData = input.required<(entity: T) => boolean>();
   getItemSummary = input<(item: T) => string>(
     (item: T) => JSON.stringify(item).substring(0, 50) + '...'
   );
+  // Formatter function to transform entity before adding to clipboard
+  clipboardFormatter = input<(entity: T) => any>((entity: T) => entity);
+  // Whether to exclude id when pasting from clipboard
+  excludeIdOnPaste = input<boolean>(true);
 
   itemSelected = output<T>();
 
@@ -62,7 +67,14 @@ export class ClipboardFormComponent<T> {
   }
 
   onItemClick(item: T): void {
-    this.itemSelected.emit(item);
+    // If excludeIdOnPaste is true, create a copy without the id
+    if (this.excludeIdOnPaste()) {
+      const itemWithoutId = { ...item };
+      delete (itemWithoutId as any).id;
+      this.itemSelected.emit(itemWithoutId as T);
+    } else {
+      this.itemSelected.emit(item);
+    }
   }
 
   getItemLabel(item: T, index: number): string {
@@ -70,6 +82,35 @@ export class ClipboardFormComponent<T> {
       return `[Initial] ${this.getItemSummary()(item)}`;
     }
     return this.getItemSummary()(item);
+  }
+
+  /**
+   * Add current form entity to clipboard
+   */
+  addCurrentToClipboard(): void {
+    const entity = this.currentEntity();
+    if (!entity) {
+      console.warn('No current entity to add to clipboard');
+      return;
+    }
+
+    const hasValid = this.hasValidData();
+    if (!hasValid(entity)) {
+      console.warn('Current entity does not have valid data');
+      return;
+    }
+
+    // Apply formatter and ensure objectType is set
+    const formatter = this.clipboardFormatter();
+    const formattedEntity = formatter(entity);
+
+    // Ensure objectType is set for clipboard section management
+    if (!formattedEntity.objectType) {
+      formattedEntity.objectType = this.entityType();
+    }
+
+    this.clipboardService.addItem(formattedEntity);
+    console.log('Added entity to clipboard:', formattedEntity);
   }
 }
 

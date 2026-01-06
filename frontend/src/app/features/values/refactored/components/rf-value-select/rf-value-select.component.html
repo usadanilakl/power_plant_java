@@ -67,33 +67,44 @@
 
   <!-- Delete Confirmation Dialog -->
   @if (showDeleteConfirm()) {
-    <div class="dialog-overlay" (click)="closeDeleteDialog()">
+    <div class="dialog-overlay" (click)="isDeleting() ? null : closeDeleteDialog()">
       <div class="dialog-content" (click)="$event.stopPropagation()">
         <h3>Delete {{ label() }}?</h3>
 
-        <p>Are you sure you want to delete "{{ selectedValueName() }}"?</p>
-
-        @if (transferOptions().length > 0) {
-          <div class="form-group">
-            <label>Transfer references to:</label>
-            <select [(ngModel)]="transferToValueId" class="input-field">
-              <option [value]="null">-- Select replacement --</option>
-              @for (option of transferOptions(); track option.value) {
-                <option [value]="option.value">{{ option.label }}</option>
-              }
-            </select>
+        @if (isDeleting()) {
+          <div class="loading-message">
+            <span class="spinner"></span>
+            Deleting and transferring references... Please wait.
           </div>
-        }
+        } @else {
+          <p>Are you sure you want to delete "{{ selectedValueName() }}"?</p>
 
-        @if (errorMessage()) {
-          <div class="error-message">{{ errorMessage() }}</div>
+          @if (transferOptions().length > 0) {
+            <div class="form-group">
+              <label>Transfer references to:</label>
+              <select [(ngModel)]="transferToValueId" class="input-field">
+                <option [value]="null">-- Select replacement --</option>
+                @for (option of transferOptions(); track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </div>
+          }
+
+          @if (errorMessage()) {
+            <div class="error-message">{{ errorMessage() }}</div>
+          }
         }
 
         <div class="dialog-actions">
-          <button type="button" (click)="confirmDelete()" class="delete-btn-confirm">
-            Delete
+          <button type="button" (click)="confirmDelete()" class="delete-btn-confirm" [disabled]="isDeleting()">
+            @if (isDeleting()) {
+              Deleting...
+            } @else {
+              Delete
+            }
           </button>
-          <button type="button" (click)="closeDeleteDialog()" class="cancel-btn">
+          <button type="button" (click)="closeDeleteDialog()" class="cancel-btn" [disabled]="isDeleting()">
             Cancel
           </button>
         </div>

@@ -2,6 +2,7 @@ import { inject, Injectable } from "@angular/core";
 import { ContextMenuService } from "../../../../shared/menu/context-menu/context-menu.service";
 import { ContextMenuAction } from "../../../../shared/menu/context-menu/context-menu.component";
 import { FileDto } from "../../../../models/file/file.model";
+import { FileClipboardItem } from "../../../../models/file/file-clipboard.model";
 import { RfFileStateService } from "./rf-file-state.service";
 import { RfFileApiService } from "./rf-file-api.service";
 import { map } from "rxjs";
@@ -51,14 +52,8 @@ export class FileContextMenuService extends ContextMenuService {
     ...this.customMenuActions,
   ]
 
-  override clipboardFormatter(items: FileDto[]): any[] {
-    return items.map(i => ({
-      id: i.id,
-      name: i.name,
-      fileType: i.fileType?.name,
-      system: i.system?.name,
-      folder: i.folder,
-    }))
+  override clipboardFormatter(items: FileDto[]): FileClipboardItem[] {
+    return items.map(i => new FileClipboardItem(i));
   }
 
   override handleViewDetails(item: any): void {

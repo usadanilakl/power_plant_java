@@ -52,6 +52,7 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
   transferToValueId: number | null = null;
   selectedValueName = signal<string>('');
   transferOptions = signal<any[]>([]);
+  isDeleting = signal<boolean>(false);
 
   // ControlValueAccessor
   private onChange = (value: any) => {};
@@ -225,6 +226,7 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
     this.showDeleteConfirm.set(false);
     this.transferToValueId = null;
     this.errorMessage.set('');
+    this.isDeleting.set(false);
   }
 
   confirmDelete(): void {
@@ -232,18 +234,29 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
     if (!valueId) return;
 
     const alias = this.categoryAlias();
+    const transferId = this.transferToValueId;
 
-    this.valueService.deleteValue(valueId, alias, this.transferToValueId || undefined)
+    // Show loading state
+    this.isDeleting.set(true);
+    this.errorMessage.set('');
+
+    this.valueService.deleteValue(valueId, alias, transferId || undefined)
       .subscribe({
         next: () => {
+          this.isDeleting.set(false);
           this.closeDeleteDialog();
-          // Clear selection
-          this.value.set(null);
-          this.onChange(null);
+          // Set selection to the transfer value (or null if none selected)
+          const newValue = transferId || null;
+          this.value.set(newValue);
+          this.onChange(newValue);
+          if (this.selectInput) {
+            this.selectInput.writeValue(newValue);
+          }
           // Refresh options
           this.valueService.refreshCategory(alias);
         },
         error: (error) => {
+          this.isDeleting.set(false);
           this.errorMessage.set(error.error?.message || 'Error deleting value');
         }
       });

@@ -385,20 +385,60 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
 
     @Override
     public List<FileObject> refactorValues(com.dk_power.power_plant_java.entities.categories.Value oldValue, com.dk_power.power_plant_java.entities.categories.Value newValue) {
-        List<FileObject> fileObjects = NgCrudService.super.refactorValues(oldValue, newValue);
+        logger.info("refactorValues called: oldValue={} (id={}), newValue={} (id={})",
+            oldValue.getName(), oldValue.getId(), newValue.getName(), newValue.getId());
 
+        // First, find all files that will be affected and capture their OLD paths before updating
+        List<FileObject> filesToUpdate = findByValue(oldValue);
+        logger.info("Found {} files to update", filesToUpdate.size());
+
+        Map<Long, String> oldFileLinks = new HashMap<>();
+        Map<Long, List<String>> fileExtensions = new HashMap<>();
+
+        for (FileObject file : filesToUpdate) {
+            // Use the stored fileLink field directly, not getFileLink() which rebuilds it
+            // If stored fileLink is null, fall back to building it
+            String storedLink = file.getStoredFileLink();
+            String builtLink = file.getFileLink();
+            String oldLink = (storedLink != null && !storedLink.isEmpty()) ? storedLink : builtLink;
+            oldFileLinks.put(file.getId(), oldLink);
+            fileExtensions.put(file.getId(), file.getExtensionsArray());
+            logger.info("Captured for file {}: storedLink={}, builtLink={}, using={}",
+                file.getId(), storedLink, builtLink, oldLink);
+        }
+
+        // Now update the entity references (this changes vendor/fileType to newValue)
+        List<FileObject> fileObjects = NgCrudService.super.refactorValues(oldValue, newValue);
+        logger.info("After refactorValues, {} files were updated", fileObjects.size());
+
+        // Move the actual files using the captured OLD paths
         for (FileObject file : fileObjects) {
-            String oldLink = file.getFileLink();
-            String newPath = oldLink.replace(oldValue.getName(), newValue.getName());
+            String oldLink = oldFileLinks.get(file.getId());
+            if (oldLink == null) {
+                logger.warn("No old link found for file {}, skipping", file.getId());
+                continue;
+            }
+
+            // Build the new path based on the updated entity
+            String newPath = file.buildFileLink();
+            logger.info("File {}: oldLink={}, newPath={}", file.getId(), oldLink, newPath);
+
             String currentExtension = FileUtil.getFileExtension(oldLink);
-            List<File> filesWithAllExtensions = getFilesWithAllExtensions(oldLink, file.getExtensionsArray());
+            List<String> extensions = fileExtensions.get(file.getId());
+            logger.info("File {}: extensions={}", file.getId(), extensions);
+
+            List<File> filesWithAllExtensions = getFilesWithAllExtensions(oldLink, extensions);
+            logger.info("File {}: found {} physical files to move", file.getId(), filesWithAllExtensions.size());
+
             for (File f : filesWithAllExtensions) {
                 String extension = FileUtil.getFileExtension(f.getName());
                 try {
                     Path targetPath = Paths.get(projectRootPath, newPath.replaceAll(currentExtension, extension));
+                    logger.info("Moving file from {} to {}", f.toPath(), targetPath);
                     // Only try to move if source file exists
                     if (f.exists()) {
                         FileUtil.moveFileAndCleanup(f.toPath(), targetPath);
+                        logger.info("Successfully moved file to {}", targetPath);
                     } else {
                         logger.warn("Source file does not exist, skipping move: {}", f.getPath());
                     }
@@ -408,8 +448,6 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
                     throw new RuntimeException("Failed to transfer file '" + f.getName() + "': " + errorMsg, e);
                 }
             }
-
-
         }
 
         return fileObjects.stream().map(file -> {

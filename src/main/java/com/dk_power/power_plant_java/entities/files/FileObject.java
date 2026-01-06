@@ -139,6 +139,14 @@ public class FileObject extends BaseAuditEntity implements Referenceable {
         return this.buildFileLink(ext);
     }
 
+    /**
+     * Returns the stored fileLink value without rebuilding it.
+     * Useful when you need the actual stored path before entity changes.
+     */
+    public String getStoredFileLink() {
+        return this.fileLink;
+    }
+
     public String getFileNumber() {
         return fileNumber;
     }

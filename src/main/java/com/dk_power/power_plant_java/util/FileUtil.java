@@ -307,7 +307,10 @@ public class FileUtil {
 
     public static String getNameFromPathWithoutExtension(String path) {
         String extension = getFileExtension(path);
-        int lastIndex = path.lastIndexOf(File.separator);
+        // Handle both forward slash and backslash separators
+        int lastForwardSlash = path.lastIndexOf('/');
+        int lastBackSlash = path.lastIndexOf('\\');
+        int lastIndex = Math.max(lastForwardSlash, lastBackSlash);
         return (lastIndex != -1) ? path.substring(lastIndex + 1).replace("." + extension, "") : path.replace("." + extension, "");
     }
 

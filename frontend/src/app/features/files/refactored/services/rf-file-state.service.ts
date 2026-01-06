@@ -119,6 +119,10 @@ export class RfFileStateService {
     const fileId = item.id;
     const isNew = !fileId;
 
+    // Set processing state
+    this.isProcessing.set(true);
+    this.processingMessage.set(isNew ? 'Creating file...' : 'Updating file...');
+
     const saveObs = isNew
       ? this.apiService.createFile(item)
       : this.apiService.updateFile(item);
@@ -137,11 +141,14 @@ export class RfFileStateService {
           // Show success message
           const action = isNew ? 'created' : 'updated';
           this.messageService.showSuccess(`File ${action} successfully`);
-          // Close the form
+          // Close the form (this also clears processing state)
           this.closeForm();
         }),
         catchError((error) => {
           console.error('Error saving File:', error);
+          // Clear processing state on error
+          this.isProcessing.set(false);
+          this.processingMessage.set('');
           // Show error message
           const errorMsg = error.error?.message || error.message || 'Unknown error';
           this.messageService.showError(`Failed to save File: ${errorMsg}`);
@@ -154,6 +161,12 @@ export class RfFileStateService {
 
   submitFormWithFile(item: Partial<FileDto>, file: File, overrideFile: string): void {
     const fileId = item.id || null;
+    const isNew = !fileId;
+
+    // Set processing state
+    this.isProcessing.set(true);
+    this.processingMessage.set(isNew ? 'Uploading file...' : 'Updating file...');
+
     const formData = new FormData();
 
     // Append the file
@@ -179,10 +192,14 @@ export class RfFileStateService {
           // Update the files list so the left menu reflects the changes
           this.updateOrAddFile(savedFile);
           this.messageService.showSuccess('File uploaded successfully');
+          // Close the form (this also clears processing state)
           this.closeForm();
         }),
         catchError((error) => {
           console.error('Error uploading file:', error);
+          // Clear processing state on error
+          this.isProcessing.set(false);
+          this.processingMessage.set('');
           const errorMsg = error.error?.message || error.message || 'Unknown error';
           this.messageService.showError(`Failed to upload file: ${errorMsg}`);
           return of(null);
@@ -421,6 +438,8 @@ export class RfFileStateService {
    */
   formFields = signal<RfFormField[]>([]);
   isFileFormOpen = signal<boolean>(false);
+  isProcessing = signal<boolean>(false);
+  processingMessage = signal<string>('');
 
   openForm(fields: RfFormField[] = []): void {
     this.formFields.set(fields);
@@ -430,5 +449,7 @@ export class RfFileStateService {
   closeForm(): void {
     this.isFileFormOpen.set(false);
     this.selectedItem.set(null);
+    this.isProcessing.set(false);
+    this.processingMessage.set('');
   }
 }

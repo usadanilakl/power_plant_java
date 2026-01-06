@@ -100,8 +100,10 @@ public class RfValueController {
             return ResponseEntity.badRequest()
                     .body(new NgApiResponse<>(null, e.getMessage()));
         } catch (Exception e) {
+            e.printStackTrace();
+            String errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
             return ResponseEntity.internalServerError()
-                    .body(new NgApiResponse<>(null, "Error deleting value: " + e.getMessage()));
+                    .body(new NgApiResponse<>(null, "Error deleting value: " + errorMsg));
         }
     }
 

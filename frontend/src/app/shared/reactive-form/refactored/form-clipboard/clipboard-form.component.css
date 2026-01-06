@@ -45,6 +45,36 @@
   border-radius: 12px;
 }
 
+.clipboard-actions {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--secondary-background);
+}
+
+.add-to-clipboard-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: var(--accent-color);
+  color: var(--header-text);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.add-to-clipboard-btn:hover:not(:disabled) {
+  background-color: var(--accent-color-hover);
+}
+
+.add-to-clipboard-btn:disabled {
+  background-color: var(--secondary-background);
+  color: var(--secondary-text);
+  cursor: not-allowed;
+  border: 1px solid var(--border-color);
+}
+
 .collapse-btn {
   background: none;
   border: none;

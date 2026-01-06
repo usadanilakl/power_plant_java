@@ -1,20 +1,35 @@
-<app-rf-reactive-form
-  [entity]="entity()"
-  [fields]="fields()"
-  [title]="'File Form'"
-  (formValueChange)="onAnyValueChange($event)"
-  (formSubmit)="onSubmit($event)"
->
-  <ng-container extra-buttons>
-    <app-clipboard-form
-      [entityType]="'File'"
-      [initialEntity]="initialEntity()"
-      [hasValidData]="hasValidData"
-      [getItemSummary]="getItemSummary"
-      (itemSelected)="onClipboardItemSelected($event)"
-    ></app-clipboard-form>
-  </ng-container>
-</app-rf-reactive-form>
+<div class="file-form-wrapper">
+  <app-rf-reactive-form
+    [entity]="entity()"
+    [fields]="fields()"
+    [title]="'File Form'"
+    (formValueChange)="onAnyValueChange($event)"
+    (formSubmit)="onSubmit($event)"
+  >
+    <ng-container extra-buttons>
+      <app-clipboard-form
+        [entityType]="'File'"
+        [initialEntity]="initialEntity()"
+        [currentEntity]="entity()"
+        [hasValidData]="hasValidData"
+        [getItemSummary]="getItemSummary"
+        [clipboardFormatter]="clipboardFormatter"
+        [excludeIdOnPaste]="true"
+        (itemSelected)="onClipboardItemSelected($event)"
+      ></app-clipboard-form>
+    </ng-container>
+  </app-rf-reactive-form>
+
+  <!-- Processing Overlay -->
+  @if (isProcessing()) {
+    <div class="processing-overlay">
+      <div class="processing-content">
+        <div class="spinner"></div>
+        <span class="processing-message">{{ processingMessage() }}</span>
+      </div>
+    </div>
+  }
+</div>
 
 <!-- Draft Comparison Dialog -->
 @if (showDraftDialog() && serverEntity() && draftEntity()) {

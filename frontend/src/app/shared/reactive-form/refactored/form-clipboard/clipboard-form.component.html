@@ -1,7 +1,7 @@
 <div class="clipboard-form-container">
   <div class="clipboard-header" (click)="toggleCollapse()">
     <div class="header-content">
-      <h3>Clipboard Items</h3>
+      <h3>Clipboard</h3>
       <span class="item-count">{{ displayItems().length }} items</span>
     </div>
     <button class="collapse-btn" type="button" [class.collapsed]="isCollapsed()">
@@ -10,6 +10,18 @@
   </div>
 
   @if (!isCollapsed()) {
+    <div class="clipboard-actions">
+      <button
+        type="button"
+        class="add-to-clipboard-btn"
+        (click)="addCurrentToClipboard(); $event.stopPropagation()"
+        [disabled]="!currentEntity() || !hasValidData()(currentEntity()!)"
+        title="Add current form data to clipboard"
+      >
+        + Add to Clipboard
+      </button>
+    </div>
+
     @if (displayItems().length > 0) {
       <div class="clipboard-list">
         @for (item of displayItems(); track $index) {
@@ -17,6 +29,7 @@
             class="clipboard-item"
             (click)="onItemClick(item)"
             type="button"
+            title="Click to paste (ID will be excluded)"
           >
             {{ getItemLabel(item, $index) }}
           </button>

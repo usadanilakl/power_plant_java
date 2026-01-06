@@ -38,14 +38,6 @@ public class Value extends BaseAuditEntity implements Referenceable {
 
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Value other = (Value) obj;
-        return name != null ? name.equalsIgnoreCase(other.getName().trim()) : other.getName() == null;
-    }
-
-    @Override
     public String toString() {
         return "Value{" +
                 "id='" + getId() + '\'' +

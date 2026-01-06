@@ -1,18 +1,36 @@
 <div class="clipboard-wrapper">
   <!-- Collapsed Icon View -->
-  <button
+  <div
     *ngIf="!isExpanded()"
-    class="clipboard-icon-button"
-    (click)="toggleClipboard()"
-    [matTooltip]="'Clipboard (' + itemCount() + ' items)'"
+    class="clipboard-icon-wrapper"
+    [style.right.px]="iconPosition().x"
+    [style.bottom.px]="iconPosition().y"
+    (mousedown)="onDragStart($event, 'icon')"
+    (click)="onIconClick()"
   >
-    <mat-icon>assignment</mat-icon>
-    <span class="item-badge" *ngIf="itemCount() > 0">{{ itemCount() }}</span>
-  </button>
+    <div
+      class="clipboard-icon-button"
+      [matTooltip]="'Clipboard (' + totalItemCount() + ' items)'"
+    >
+      <mat-icon>assignment</mat-icon>
+      <span class="item-badge" *ngIf="totalItemCount() > 0">{{ totalItemCount() }}</span>
+    </div>
+  </div>
 
   <!-- Expanded Clipboard View -->
-  <div *ngIf="isExpanded()" class="clipboard-container">
-    <div class="clipboard-header">
+  <div
+    *ngIf="isExpanded()"
+    class="clipboard-container"
+    [style.right.px]="windowPosition().x"
+    [style.bottom.px]="windowPosition().y"
+  >
+    <div
+      class="clipboard-header"
+      (mousedown)="onDragStart($event, 'window')"
+    >
+      <div class="drag-handle">
+        <mat-icon>drag_indicator</mat-icon>
+      </div>
       <h3>Clipboard</h3>
       <button class="close-button" (click)="toggleClipboard()">
         <mat-icon>close</mat-icon>
@@ -57,11 +75,12 @@
           <div
             *ngFor="let item of activeSection()!.items; let i = index"
             class="clipboard-item"
+            (click)="openItemDialog(item)"
           >
-            <div class="item-content">
-              <pre>{{ item | json }}</pre>
+            <div class="item-summary">
+              <span class="item-title">{{ getItemSummary(item) }}</span>
             </div>
-            <div class="item-actions">
+            <div class="item-actions" (click)="$event.stopPropagation()">
               <button
                 (click)="copyToClipboard(item)"
                 class="item-action-button"
@@ -89,6 +108,39 @@
       <div *ngIf="!activeSection()" class="empty-state">
         <mat-icon>inbox</mat-icon>
         <p>No sections yet</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Item Detail Dialog -->
+  <div *ngIf="showItemDialog()" class="item-dialog-overlay" (click)="closeItemDialog()">
+    <div class="item-dialog" (click)="$event.stopPropagation()">
+      <div class="item-dialog-header">
+        <h4>{{ getItemSummary(selectedItem()) }}</h4>
+        <button class="close-button" (click)="closeItemDialog()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="item-dialog-content">
+        <div class="item-properties">
+          <div
+            *ngFor="let prop of getFormattedItemProperties(selectedItem())"
+            class="property-row"
+            [class.nested]="prop.isNested"
+          >
+            <span class="property-label">{{ prop.key }}</span>
+            <span class="property-value">{{ prop.value }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="item-dialog-actions">
+        <button class="dialog-button" (click)="copyToClipboard(selectedItem())">
+          <mat-icon>content_copy</mat-icon>
+          Copy JSON
+        </button>
+        <button class="dialog-button secondary" (click)="closeItemDialog()">
+          Close
+        </button>
       </div>
     </div>
   </div>

@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { RfFileStateService } from '../services/rf-file-state.service';
 import { FileDto } from '../../../../models/file/file.model';
+import { FileClipboardItem } from '../../../../models/file/file-clipboard.model';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { ClipboardFormComponent } from '../../../../shared/reactive-form/refactored/form-clipboard/clipboard-form.component';
 import { ClipboardService } from '../../../../shared/clipboard/clipboard.service';
@@ -280,6 +281,10 @@ export class RfFileFormComponent {
     this.draftTimestamp.set('');
   }
 
+  //===========================PROCESSING STATE===========================
+  isProcessing = this.stateService.isProcessing;
+  processingMessage = this.stateService.processingMessage;
+
   //===========================CLIPBOARD===========================
   initialEntity = signal<FileDto>(new FileDto());
 
@@ -306,13 +311,21 @@ export class RfFileFormComponent {
   };
 
   getItemSummary = (item: FileDto): string => {
-    return `${item.name || item.fileNumber.join(',') || 'N/A'} - ${
+    return `${item.name || item.fileNumber?.join(',') || 'N/A'} - ${
       item.fileType?.name || 'No type'
     }`;
   };
 
+  /**
+   * Formatter to transform FileDto to FileClipboardItem before adding to clipboard
+   */
+  clipboardFormatter = (entity: FileDto): FileClipboardItem => {
+    return new FileClipboardItem(entity);
+  };
+
   onClipboardItemSelected(item: FileDto): void {
     if (item) {
+      console.log('Loading item from clipboard (id excluded):', item);
       this.stateService.setSelectedItem(new FileDto(item));
     }
   }

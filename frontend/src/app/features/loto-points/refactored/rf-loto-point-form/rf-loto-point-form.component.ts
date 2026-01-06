@@ -10,6 +10,7 @@ import {
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { LotoPointClipboardItem } from '../../../../models/loto/loto-point-clipboard.model';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { ClipboardFormComponent } from '../../../../shared/reactive-form/refactored/form-clipboard/clipboard-form.component';
 import { ClipboardService } from '../../../../shared/clipboard/clipboard.service';
@@ -304,9 +305,18 @@ export class RfLotoPointFormComponent {
     }`;
   };
 
+  /**
+   * Formatter to transform LotoPointDto to LotoPointClipboardItem before adding to clipboard
+   */
+  clipboardFormatter = (entity: LotoPointDto): LotoPointClipboardItem => {
+    const clipboardItem = new LotoPointClipboardItem(entity);
+    clipboardItem.objectType = 'LotoPoint';
+    return clipboardItem;
+  };
+
   onClipboardItemSelected(item: LotoPointDto): void {
     if (item) {
-      console.log('Loading item from clipboard:', item);
+      console.log('Loading item from clipboard (id excluded):', item);
       this.stateService.setSelectedItem(new LotoPointDto(item));
     }
   }
