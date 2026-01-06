@@ -25,6 +25,12 @@
   position: relative;
 }
 
+/* When popup has been dragged, use absolute positioning */
+.form-popup.is-dragged {
+  position: absolute;
+  margin: 0;
+}
+
 /* Wider popup for table view */
 .form-popup.table-view {
   max-width: 1200px;
@@ -41,6 +47,8 @@
   border-bottom: 2px solid rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
   gap: 16px;
+  cursor: move;
+  user-select: none;
 }
 
 .form-title {

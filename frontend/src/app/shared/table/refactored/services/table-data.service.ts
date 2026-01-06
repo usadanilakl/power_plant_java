@@ -62,5 +62,6 @@ export class TableDataService {
   itemsReordered = signal<any[]>([]);
   loadMoreOptions = signal<{ column: string; filter: string, logic: filterLogic } | null>(null);
   loadInitialOptions = signal<{ column: string; filter: string, logic: filterLogic } | null>(null);
+  rowDoubleClicked = signal<any | null>(null);
 
 }

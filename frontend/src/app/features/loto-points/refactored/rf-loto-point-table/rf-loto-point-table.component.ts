@@ -64,6 +64,7 @@ export class RfLotoPointTableComponent implements OnInit {
   selectedItemsEvent = output<LotoPointDto[]>();
   itemsReorderedEvent = output<LotoPointDto[]>();
   rowHoveredEvent = output<LotoPointDto | null>();
+  rowDoubleClickedEvent = output<LotoPointDto>();
 
   // State
   items$ = toSignal(this.stateService.allLoadedLotoPoints$, {

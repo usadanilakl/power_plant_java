@@ -106,6 +106,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   sortChanged = output<{ column: Column; isAscending: boolean }>();
   loadMoreOptions = output<{ column: string; filter: string, logic: filterLogic }>();
   loadInitialOptions = output<{ column: string; filter: string, logic: filterLogic }>();
+  rowDoubleClicked = output<any>();
 
   headerContainer = viewChild<ElementRef<HTMLDivElement>>('headerContainer');
   headerTable = viewChild<ElementRef<HTMLTableElement>>('headerTable');
@@ -240,6 +241,14 @@ export class TableComponent implements OnInit, AfterViewInit {
     effect(() => {
       if (this.dataService.loadMoreOptions()) {
         this.loadMoreOptions.emit(this.dataService.loadMoreOptions()!);
+      }
+    });
+    effect(() => {
+      const value = this.dataService.rowDoubleClicked();
+      if (value) {
+        this.rowDoubleClicked.emit(value);
+        // Reset to avoid emitting the same item again
+        this.dataService.rowDoubleClicked.set(null);
       }
     });
   }

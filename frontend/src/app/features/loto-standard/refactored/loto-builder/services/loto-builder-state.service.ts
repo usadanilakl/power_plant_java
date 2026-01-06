@@ -486,5 +486,6 @@ export class LotoBuilderStateService {
     this.recognizedText.set(null);
     this.tableSearchTerm.set(null);
     this.lotoPointPopupView.set('form');
+    this.isEditMode.set(false);
   }
 }

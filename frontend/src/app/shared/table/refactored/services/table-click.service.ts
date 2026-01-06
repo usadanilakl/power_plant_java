@@ -198,6 +198,9 @@ export class TableClickService {
         console.warn('Cell mode active but no cell was clicked');
       }
     }
+
+    // Emit double-click event through data service
+    this.dataService.rowDoubleClicked.set(normalizedItem);
   }
 
   /**

@@ -1,7 +1,18 @@
 @if (isVisible()) {
   <div class="form-overlay" (click)="onBackdropClick($event)">
-    <div class="form-popup" [class.table-view]="isTableView()">
-      <div class="form-header">
+    <div
+      #popupElement
+      class="form-popup"
+      [class.table-view]="isTableView()"
+      [class.is-dragged]="popupPosition() !== null"
+      [style.left.px]="popupPosition()?.x"
+      [style.top.px]="popupPosition()?.y"
+    >
+      <div
+        #headerElement
+        class="form-header"
+        (mousedown)="onHeaderMouseDown($event)"
+      >
         <h2 class="form-title">{{ popupTitle() }}</h2>
 
         <!-- View Toggle Buttons -->
@@ -10,17 +21,17 @@
             class="toggle-btn"
             [class.active]="isFormView()"
             (click)="switchToForm()"
-            title="Create New LOTO Point"
+            [title]="isEditMode() ? 'Edit LOTO Point' : 'Create New LOTO Point'"
           >
-            New
+            {{ formTabLabel() }}
           </button>
           <button
             class="toggle-btn"
             [class.active]="isTableView()"
             (click)="switchToTable()"
-            title="Select Existing LOTO Point"
+            [title]="isEditMode() ? 'Replace with Existing LOTO Point' : 'Select Existing LOTO Point'"
           >
-            Select Existing
+            {{ tableTabLabel() }}
           </button>
         </div>
 
@@ -67,6 +78,7 @@
               [fieldsToDisplay]="['tagNumber', 'description', 'normPos', 'zeroEnergyMethod']"
               [initialSearchCriteria]="getInitialSearchCriteria()"
               (selectedItemsEvent)="onLotoPointSelected($event)"
+              (rowDoubleClickedEvent)="onRowDoubleClicked($event)"
             ></app-rf-loto-point-table>
           </div>
         }

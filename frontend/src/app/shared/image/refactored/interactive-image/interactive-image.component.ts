@@ -188,6 +188,10 @@ export class InteractiveImageComponent {
   // Clipboard for copy/paste
   private clipboard: RfShape[] = [];
 
+  // Flag to suppress context menu after drawing ends
+  private suppressContextMenu = false;
+  private suppressContextMenuTimer: any = null;
+
   //Symbol palette
   private _symbolPaletteVisible = signal<boolean>(true);
   showSymbolPalette = computed(() => {
@@ -560,7 +564,7 @@ export class InteractiveImageComponent {
   }
 
   preventContextMenu(event: Event): boolean {
-    console.log('preventContextMenu called - blocking browser context menu');
+    // Always prevent context menu - this handles all cases including after drawing
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
@@ -788,6 +792,39 @@ export class InteractiveImageComponent {
     }
 
     this.cursor = 'default';
+
+    // Suppress context menu that fires after right-button mouseup during drawing
+    this.suppressContextMenuTemporarily();
+  }
+
+  /**
+   * Temporarily suppress browser context menu after drawing ends.
+   * This is needed because the browser fires contextmenu after mouseup on right-click.
+   */
+  private suppressContextMenuTemporarily(): void {
+    this.suppressContextMenu = true;
+
+    // Clear any existing timer
+    if (this.suppressContextMenuTimer) {
+      clearTimeout(this.suppressContextMenuTimer);
+    }
+
+    // Add a temporary window-level listener to catch the contextmenu event
+    const suppressHandler = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+
+    window.addEventListener('contextmenu', suppressHandler, { capture: true, once: true });
+
+    // Clear the flag after a short delay (context menu fires almost immediately after mouseup)
+    this.suppressContextMenuTimer = setTimeout(() => {
+      this.suppressContextMenu = false;
+      this.suppressContextMenuTimer = null;
+      // Remove listener if it wasn't triggered
+      window.removeEventListener('contextmenu', suppressHandler, { capture: true });
+    }, 100);
   }
 
   //==================================================Image Shape Methods==================================================
