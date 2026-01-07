@@ -1,0 +1,255 @@
+<div class="admin-container">
+  <header class="full-width-header">
+    <app-router-menu [layout]="'row'"></app-router-menu>
+  </header>
+  <h2>Admin Functionalities</h2>
+
+  <!-- 1. File Integrity Check -->
+  <div class="admin-section">
+    <h3>1. File Integrity Check</h3>
+    <p class="description">
+      Compares physical files in the uploads folder with database entries.
+      Identifies orphaned files (no database entry) and missing files (database entry but no physical file).
+    </p>
+    <div class="button-group">
+      <button (click)="checkFileIntegrity(true)" [disabled]="loading.fileIntegrity">
+        {{ loading.fileIntegrity ? 'Checking...' : 'Check (Dry Run)' }}
+      </button>
+    </div>
+
+    <div class="error" *ngIf="errors.fileIntegrity">{{ errors.fileIntegrity }}</div>
+
+    <div class="result" *ngIf="fileIntegrityResult">
+      <div class="result-summary">
+        <span class="badge">Files Scanned: {{ fileIntegrityResult.filesScanned }}</span>
+        <span class="badge">Entities Checked: {{ fileIntegrityResult.entitiesChecked }}</span>
+        <span class="badge warning" *ngIf="fileIntegrityResult.orphanedCount > 0">
+          Orphaned Files: {{ fileIntegrityResult.orphanedCount }}
+        </span>
+        <span class="badge success" *ngIf="fileIntegrityResult.orphanedCount === 0">
+          Orphaned Files: 0
+        </span>
+        <span class="badge warning" *ngIf="fileIntegrityResult.missingCount > 0">
+          Missing Files: {{ fileIntegrityResult.missingCount }}
+        </span>
+        <span class="badge success" *ngIf="fileIntegrityResult.missingCount === 0">
+          Missing Files: 0
+        </span>
+      </div>
+
+      <!-- Orphaned Files -->
+      <div class="details-section" *ngIf="fileIntegrityResult.orphanedCount > 0">
+        <button class="toggle-btn" (click)="toggleSection('orphanedFiles')">
+          {{ expandedSections.orphanedFiles ? 'Hide' : 'Show' }} Orphaned Files
+        </button>
+        <div class="details-list" *ngIf="expandedSections.orphanedFiles">
+          <table>
+            <thead>
+              <tr>
+                <th>Path</th>
+                <th>File Number</th>
+                <th>Type</th>
+                <th>Vendor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let file of fileIntegrityResult.orphanedFiles">
+                <td>{{ file.path }}</td>
+                <td>{{ file.fileNumber }}</td>
+                <td>{{ file.fileType }}</td>
+                <td>{{ file.vendor }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Missing Files -->
+      <div class="details-section" *ngIf="fileIntegrityResult.missingCount > 0">
+        <button class="toggle-btn" (click)="toggleSection('missingFiles')">
+          {{ expandedSections.missingFiles ? 'Hide' : 'Show' }} Missing Files
+        </button>
+        <div class="details-list" *ngIf="expandedSections.missingFiles">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>File Number</th>
+                <th>Name</th>
+                <th>Expected Path</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let file of fileIntegrityResult.missingFiles">
+                <td>{{ file.id }}</td>
+                <td>{{ file.fileNumber }}</td>
+                <td>{{ file.name }}</td>
+                <td>{{ file.expectedPath }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Split Equipment -->
+  <div class="admin-section">
+    <h3>2. Split Equipment with Multiple Loto Points</h3>
+    <p class="description">
+      Separates equipment entries that have multiple loto points into individual equipment entries,
+      each with exactly one loto point.
+    </p>
+    <div class="button-group">
+      <button (click)="splitEquipment()" [disabled]="loading.splitEquipment" class="action-btn">
+        {{ loading.splitEquipment ? 'Splitting...' : 'Split Equipment' }}
+      </button>
+    </div>
+
+    <div class="error" *ngIf="errors.splitEquipment">{{ errors.splitEquipment }}</div>
+
+    <div class="result" *ngIf="splitEquipmentResult">
+      <div class="result-summary">
+        <span class="badge" [class.success]="splitEquipmentResult.success">
+          {{ splitEquipmentResult.message }}
+        </span>
+        <span class="badge">Split Count: {{ splitEquipmentResult.splitCount }}</span>
+      </div>
+
+      <div class="details-section" *ngIf="splitEquipmentResult?.splitEquipment?.length && splitEquipmentResult.splitEquipment.length > 0">
+        <button class="toggle-btn" (click)="toggleSection('splitEquipment')">
+          {{ expandedSections.splitEquipment ? 'Hide' : 'Show' }} Split Equipment Details
+        </button>
+        <div class="details-list" *ngIf="expandedSections.splitEquipment">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tag Number</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let eq of splitEquipmentResult.splitEquipment">
+                <td>{{ eq.id }}</td>
+                <td>{{ eq.tagNumber }}</td>
+                <td>{{ eq.description }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Assign Equipment Attributes -->
+  <div class="admin-section">
+    <h3>3. Assign Equipment Attributes to Loto Points</h3>
+    <p class="description">
+      Copies Location and Equipment Type from Equipment to their associated Loto Points
+      (only for loto points that don't already have these values set).
+    </p>
+    <div class="button-group">
+      <button (click)="assignAttributes()" [disabled]="loading.assignAttributes" class="action-btn">
+        {{ loading.assignAttributes ? 'Assigning...' : 'Assign Attributes' }}
+      </button>
+    </div>
+
+    <div class="error" *ngIf="errors.assignAttributes">{{ errors.assignAttributes }}</div>
+
+    <div class="result" *ngIf="assignAttributesResult">
+      <div class="result-summary">
+        <span class="badge" [class.success]="assignAttributesResult.success">
+          {{ assignAttributesResult.message }}
+        </span>
+        <span class="badge">Points Updated: {{ assignAttributesResult.pointsUpdated }}</span>
+        <span class="badge">Before: {{ assignAttributesResult.pointsWithoutAttributesBefore }}</span>
+        <span class="badge">After: {{ assignAttributesResult.pointsWithoutAttributesAfter }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Associate Counterparts -->
+  <div class="admin-section">
+    <h3>4. Associate Loto Point Counterparts (U1/U2)</h3>
+    <p class="description">
+      Links loto points with their counterparts from the other unit.
+      Finds points starting with "01" and matches them with corresponding "02" points.
+    </p>
+    <div class="button-group">
+      <button (click)="associateCounterparts(true)" [disabled]="loading.counterparts">
+        {{ loading.counterparts ? 'Checking...' : 'Preview (Dry Run)' }}
+      </button>
+      <button (click)="associateCounterparts(false)" [disabled]="loading.counterparts" class="action-btn">
+        {{ loading.counterparts ? 'Linking...' : 'Link Counterparts' }}
+      </button>
+    </div>
+
+    <div class="error" *ngIf="errors.counterparts">{{ errors.counterparts }}</div>
+
+    <div class="result" *ngIf="counterpartResult">
+      <div class="result-summary">
+        <span class="badge" [class.info]="counterpartResult.dryRun">
+          {{ counterpartResult.dryRun ? 'DRY RUN' : 'EXECUTED' }}
+        </span>
+        <span class="badge">Processed: {{ counterpartResult.processedCount }}</span>
+        <span class="badge success">Linked: {{ counterpartResult.linkedCount }}</span>
+        <span class="badge warning" *ngIf="counterpartResult.skippedCount > 0">
+          Skipped: {{ counterpartResult.skippedCount }}
+        </span>
+      </div>
+
+      <!-- Linked Pairs -->
+      <div class="details-section" *ngIf="counterpartResult?.linkedPairs?.length && counterpartResult.linkedPairs.length > 0">
+        <button class="toggle-btn" (click)="toggleSection('linkedPairs')">
+          {{ expandedSections.linkedPairs ? 'Hide' : 'Show' }} Linked Pairs
+        </button>
+        <div class="details-list" *ngIf="expandedSections.linkedPairs">
+          <table>
+            <thead>
+              <tr>
+                <th>Unit 1 ID</th>
+                <th>Unit 1 Tag</th>
+                <th>Unit 2 ID</th>
+                <th>Unit 2 Tag</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let pair of counterpartResult.linkedPairs">
+                <td>{{ pair.point1Id }}</td>
+                <td>{{ pair.point1Tag }}</td>
+                <td>{{ pair.point2Id }}</td>
+                <td>{{ pair.point2Tag }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Skipped Points -->
+      <div class="details-section" *ngIf="counterpartResult?.skippedPoints?.length && counterpartResult.skippedPoints.length > 0">
+        <button class="toggle-btn" (click)="toggleSection('skippedPoints')">
+          {{ expandedSections.skippedPoints ? 'Hide' : 'Show' }} Skipped Points
+        </button>
+        <div class="details-list" *ngIf="expandedSections.skippedPoints">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tag Number</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let point of counterpartResult.skippedPoints">
+                <td>{{ point.id }}</td>
+                <td>{{ point.tagNumber }}</td>
+                <td>{{ point.reason }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

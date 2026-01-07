@@ -43,6 +43,7 @@ import { RfLotoStandardPageComponent } from './features/loto-standard/refactored
 import { RfLotoStandardMainTableViewComponent } from './features/loto-standard/refactored/rf-loto-standard-page/rf-loto-standard-main-table-view.component';
 import { LotoBuilderContainerComponent } from './features/loto-standard/refactored/loto-builder/loto-builder-container.component';
 import { SourceLotoPointTableComponent } from './features/loto-points/refactored/double-loto-point-table/source-loto-point-table/source-loto-point-table.component';
+import { AdminFunctionalitiesComponent } from './pages/admin/admin-functionalities.component';
 
 export const routes: Routes = [
     // {path: '', component: HomeComponent, data: {menuType: 'main'}},
@@ -116,6 +117,7 @@ export const routes: Routes = [
     {path: 'tag-number', component: TagNumberComponent},
     {path: 'print', component: PrintComponent},
     {path: 'backup', component: BackupComponent},
+    {path: 'admin', component: AdminFunctionalitiesComponent},
 
 
     {
