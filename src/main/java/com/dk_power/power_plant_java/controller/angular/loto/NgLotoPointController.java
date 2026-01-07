@@ -2,6 +2,7 @@ package com.dk_power.power_plant_java.controller.angular.loto;
 
 import com.dk_power.power_plant_java.controller.angular.NgApiResponse;
 import com.dk_power.power_plant_java.dto.SearchCriteria;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import com.dk_power.power_plant_java.dto.files.FileDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointDto;
 import com.dk_power.power_plant_java.dto.permits.loto_point.LotoPointIdDto;
@@ -527,6 +528,52 @@ public class NgLotoPointController {
             NgApiResponse<String> response = new NgApiResponse<>(
                     "success",
                     "Counterpart relationship removed successfully"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
+     * Look up counterpart equipment for ZeroEnergy transfer.
+     *
+     * Transfer logic for zeroEnergy templateEquipment:
+     * For each source equipment ID:
+     * 1. Find the equipment entity
+     * 2. Get the first LOTO point from that equipment
+     * 3. Find the LOTO point's counterpart for the other unit
+     * 4. Get the first equipment from that counterpart's equipment list
+     * 5. Return full EquipmentDto
+     *
+     * @param requestBody Contains sourceEquipmentIds (list of equipment IDs) and sourceUnit ("01" or "02")
+     * @return List of counterpart EquipmentDto objects
+     */
+    @PostMapping("/lookup-counterpart-equipment")
+    public ResponseEntity<NgApiResponse<List<EquipmentDto>>> lookupCounterpartEquipment(
+            @RequestBody Map<String, Object> requestBody) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Integer> sourceIdsRaw = (List<Integer>) requestBody.get("sourceEquipmentIds");
+            String sourceUnit = (String) requestBody.get("sourceUnit");
+
+            if (sourceUnit == null || (!sourceUnit.equals("01") && !sourceUnit.equals("02"))) {
+                return ResponseEntity.badRequest().body(
+                        new NgApiResponse<>(null, "sourceUnit must be '01' or '02'"));
+            }
+
+            // Convert Integer list to Long list
+            List<Long> sourceEquipmentIds = sourceIdsRaw != null
+                    ? sourceIdsRaw.stream().map(Integer::longValue).toList()
+                    : new ArrayList<>();
+
+            List<EquipmentDto> counterpartEquipment = ngZeroEnergyService.lookupCounterpartEquipment(
+                    sourceEquipmentIds, sourceUnit);
+
+            NgApiResponse<List<EquipmentDto>> response = new NgApiResponse<>(
+                    counterpartEquipment,
+                    "Counterpart equipment retrieved successfully"
             );
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
         } catch (Exception e) {

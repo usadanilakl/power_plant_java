@@ -9,6 +9,7 @@ import { SpringApiResponse } from '../../../../models/api/spring-api-response.mo
 import { LotoPointIdDto } from '../../../../models/loto/loto-point-id.model';
 import { FileDto } from '../../../../models/file/file.model';
 import { LotoPointSummaryDto } from '../../../../models/loto/loto-point-summary.model';
+import { EquipmentDto } from '../../../../models/equipment/equipment.model';
 
 
 @Injectable({
@@ -345,6 +346,27 @@ export class RfLotoPointApiService {
     return this.http.post<SpringApiResponse<string>>(
       `${this.apiUrl}/${pointId}/unlink-counterpart`,
       null
+    );
+  }
+
+  /**
+   * Look up counterpart equipment for ZeroEnergy transfer.
+   * For each source equipment ID, finds the counterpart equipment for the target unit.
+   *
+   * @param sourceEquipmentIds List of equipment IDs from the source unit
+   * @param sourceUnit The source unit prefix ("01" or "02")
+   * @returns Observable with list of counterpart EquipmentDto objects
+   */
+  lookupCounterpartEquipment(
+    sourceEquipmentIds: number[],
+    sourceUnit: string
+  ): Observable<SpringApiResponse<EquipmentDto[]>> {
+    return this.http.post<SpringApiResponse<EquipmentDto[]>>(
+      `${this.apiUrl}/lookup-counterpart-equipment`,
+      {
+        sourceEquipmentIds,
+        sourceUnit
+      }
     );
   }
 }

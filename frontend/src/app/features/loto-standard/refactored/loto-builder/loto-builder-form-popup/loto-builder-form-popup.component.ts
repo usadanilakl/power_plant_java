@@ -962,41 +962,156 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
 
   /**
    * Generate counterpart form data based on primary form
-   * Transfers: tag number (with 01/02 swap), all other fields
-   * zeroEnergy: transfers the template (phrase) but clears equipment (to be set manually)
-   * equipmentList: starts empty (to be set manually)
+   * Transfer rules:
+   * 1. tagNumber: swap 01<->02 prefix
+   * 2. unit, description, specificLocation: transform unit text patterns (U1<->U2, Unit1<->Unit2, etc.)
+   * 3. isoPos, normPos, eqType, location: copy as-is (value-select fields)
+   * 4. zeroEnergy: keep template, lookup counterpart equipment IDs via API
+   * 5. equipmentList: starts empty (to be set manually)
    */
   private generateCounterpartFormData(): void {
     const primary = this.currentFormValues() || this.lotoPoint();
     if (!primary) return;
 
+    const sourceUnit = this.sourceUnit();
     const targetUnit = this.targetUnit();
-    const counterpartTag = primary.tagNumber ? this.convertTagToCounterpart(primary.tagNumber) : '';
 
-    // Transfer zeroEnergy with template but clear equipment
-    // The template (phrase) can be reused, but equipment needs to be set manually
-    let counterpartZeroEnergy: ZeroEnergyDto | null = null;
-    if (primary.zeroEnergy) {
-      counterpartZeroEnergy = new ZeroEnergyDto({
-        // Keep the template (phrase) - can be reused
-        zeroEnergyTemplate: primary.zeroEnergy.zeroEnergyTemplate,
-        method: primary.zeroEnergy.method,
-        // Clear equipment - will be set manually for counterpart
-        templateEquipment: [],
-        templateEquipmentIds: [],
-      });
+    // 1. Transform tag number (swap 01<->02 prefix)
+    const counterpartTag = primary.tagNumber ? this.convertTagToCounterpart(primary.tagNumber) || '' : '';
+
+    // 2. Transform text fields with unit patterns
+    const counterpartDescription = this.transformUnitText(primary.description, sourceUnit, targetUnit);
+    const counterpartSpecificLocation = this.transformUnitText(primary.specificLocation, sourceUnit, targetUnit);
+
+    // 4. Transfer zeroEnergy with template
+    // If there are equipment IDs, call API to lookup counterpart equipment
+    if (primary.zeroEnergy && primary.zeroEnergy.templateEquipmentIds && primary.zeroEnergy.templateEquipmentIds.length > 0) {
+      // Async lookup - create initial counterpart without zeroEnergy, then update
+      this.createCounterpartWithZeroEnergyLookup(
+        primary,
+        counterpartTag,
+        counterpartDescription,
+        counterpartSpecificLocation,
+        sourceUnit,
+        targetUnit
+      );
+    } else {
+      // No equipment to lookup, create counterpart with zeroEnergy template only
+      let counterpartZeroEnergy: ZeroEnergyDto | null = null;
+      if (primary.zeroEnergy) {
+        counterpartZeroEnergy = new ZeroEnergyDto({
+          zeroEnergyTemplate: primary.zeroEnergy.zeroEnergyTemplate,
+          method: primary.zeroEnergy.method,
+          templateEquipment: [],
+          templateEquipmentIds: [],
+        });
+      }
+
+      this.setCounterpartFormData(
+        primary,
+        counterpartTag,
+        counterpartDescription,
+        counterpartSpecificLocation,
+        targetUnit,
+        counterpartZeroEnergy
+      );
     }
+  }
 
-    // Create counterpart with converted values
+  /**
+   * Create counterpart with ZeroEnergy equipment lookup via API
+   */
+  private createCounterpartWithZeroEnergyLookup(
+    primary: LotoPointDto,
+    counterpartTag: string,
+    counterpartDescription: string,
+    counterpartSpecificLocation: string,
+    sourceUnit: string,
+    targetUnit: string
+  ): void {
+    const sourceEquipmentIds = primary.zeroEnergy?.templateEquipmentIds || [];
+
+    this.isLoadingCounterpart.set(true);
+
+    this.apiService.lookupCounterpartEquipment(sourceEquipmentIds, sourceUnit)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((response) => {
+          const counterpartEquipment = response.responseData || [];
+          const counterpartEquipmentIds = counterpartEquipment.map(eq => eq.id);
+
+          // Create zeroEnergy with counterpart equipment from server
+          const counterpartZeroEnergy = new ZeroEnergyDto({
+            zeroEnergyTemplate: primary.zeroEnergy?.zeroEnergyTemplate,
+            method: primary.zeroEnergy?.method,
+            templateEquipment: counterpartEquipment,
+            templateEquipmentIds: counterpartEquipmentIds,
+          });
+
+          this.setCounterpartFormData(
+            primary,
+            counterpartTag,
+            counterpartDescription,
+            counterpartSpecificLocation,
+            targetUnit,
+            counterpartZeroEnergy
+          );
+
+          this.isLoadingCounterpart.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error looking up counterpart equipment:', error);
+          // Fallback: create without equipment
+          const counterpartZeroEnergy = new ZeroEnergyDto({
+            zeroEnergyTemplate: primary.zeroEnergy?.zeroEnergyTemplate,
+            method: primary.zeroEnergy?.method,
+            templateEquipment: [],
+            templateEquipmentIds: [],
+          });
+
+          this.setCounterpartFormData(
+            primary,
+            counterpartTag,
+            counterpartDescription,
+            counterpartSpecificLocation,
+            targetUnit,
+            counterpartZeroEnergy
+          );
+
+          this.isLoadingCounterpart.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Set counterpart form data with all transformed values
+   */
+  private setCounterpartFormData(
+    primary: LotoPointDto,
+    counterpartTag: string,
+    counterpartDescription: string,
+    counterpartSpecificLocation: string,
+    targetUnit: string,
+    counterpartZeroEnergy: ZeroEnergyDto | null
+  ): void {
     const counterpart = new LotoPointDto({
       ...primary,
       id: undefined, // New item
+      // 1. Transformed tag number
       tagNumber: counterpartTag || '',
+      // 2. Transformed text fields
       unit: targetUnit,
+      description: counterpartDescription,
+      specificLocation: counterpartSpecificLocation,
+      // 3. Value-select fields copied as-is (already spread from primary)
+      // isoPos, normPos, eqType, location stay the same
+      // Set counterpart link
       counterpartId: primary.id || undefined,
-      // Transfer zeroEnergy with template but no equipment
+      // 4. Transfer zeroEnergy with counterpart equipment IDs
       zeroEnergy: counterpartZeroEnergy,
-      // Clear equipment list - will be set manually
+      // 5. Clear equipment list - will be set manually
       equipmentList: [],
       equipmentIdList: [],
     });
@@ -1301,11 +1416,131 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
 
     const sourceUnit = this.sourceUnit();
     const targetUnit = this.targetUnit();
+
+    // Special handling for zeroEnergy - need to call API to lookup counterpart equipment
+    if (field === 'zeroEnergy') {
+      this.syncZeroEnergyToCounterpart(primary, counterpart, sourceUnit);
+      return;
+    }
+
     const transformedValue = this.transformFieldValue(primary, field, sourceUnit, targetUnit);
 
     const updatedCounterpart = new LotoPointDto({
       ...counterpart,
       [field]: transformedValue,
+    });
+
+    // Update the appropriate counterpart signal
+    if (this.counterpartLotoPoint()) {
+      this.counterpartLotoPoint.set(updatedCounterpart);
+      this.counterpartFormValues.set(updatedCounterpart);
+    } else if (this.selectedCounterpart()) {
+      this.selectedCounterpart.set(updatedCounterpart);
+    }
+    if (this.counterpartFormData()) {
+      this.counterpartFormData.set(updatedCounterpart);
+    }
+
+    this.updateDifferentFields();
+  }
+
+  /**
+   * Sync zeroEnergy field from primary to counterpart with API lookup for equipment IDs
+   */
+  private syncZeroEnergyToCounterpart(
+    primary: LotoPointDto,
+    _counterpart: LotoPointDto,
+    sourceUnit: string
+  ): void {
+    const sourceZeroEnergy = primary.zeroEnergy;
+
+    // Get fresh counterpart reference
+    const getCurrentCounterpart = () =>
+      this.counterpartLotoPoint() || this.selectedCounterpart() || this.counterpartFormData();
+
+    if (!sourceZeroEnergy) {
+      // No zeroEnergy to sync - clear it on counterpart
+      const currentCounterpart = getCurrentCounterpart();
+      if (currentCounterpart) {
+        this.updateCounterpartZeroEnergy(currentCounterpart, null);
+      }
+      return;
+    }
+
+    const sourceEquipmentIds = sourceZeroEnergy.templateEquipmentIds || [];
+
+    if (sourceEquipmentIds.length === 0) {
+      // No equipment IDs to lookup - just copy template and method
+      const counterpartZeroEnergy = new ZeroEnergyDto({
+        zeroEnergyTemplate: sourceZeroEnergy.zeroEnergyTemplate,
+        method: sourceZeroEnergy.method,
+        templateEquipment: [],
+        templateEquipmentIds: [],
+      });
+      const currentCounterpart = getCurrentCounterpart();
+      if (currentCounterpart) {
+        this.updateCounterpartZeroEnergy(currentCounterpart, counterpartZeroEnergy);
+      }
+      return;
+    }
+
+    // Call API to lookup counterpart equipment
+    this.isLoadingCounterpart.set(true);
+
+    this.apiService.lookupCounterpartEquipment(sourceEquipmentIds, sourceUnit)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((response) => {
+          const counterpartEquipment = response.responseData || [];
+          const counterpartEquipmentIds = counterpartEquipment.map(eq => eq.id);
+
+          const counterpartZeroEnergy = new ZeroEnergyDto({
+            zeroEnergyTemplate: sourceZeroEnergy.zeroEnergyTemplate,
+            method: sourceZeroEnergy.method,
+            templateEquipment: counterpartEquipment,
+            templateEquipmentIds: counterpartEquipmentIds,
+          });
+
+          // Get fresh counterpart reference after async operation
+          const currentCounterpart = getCurrentCounterpart();
+          if (currentCounterpart) {
+            this.updateCounterpartZeroEnergy(currentCounterpart, counterpartZeroEnergy);
+          }
+          this.isLoadingCounterpart.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error looking up counterpart equipment:', error);
+
+          // Fallback: copy template without equipment
+          const counterpartZeroEnergy = new ZeroEnergyDto({
+            zeroEnergyTemplate: sourceZeroEnergy.zeroEnergyTemplate,
+            method: sourceZeroEnergy.method,
+            templateEquipment: [],
+            templateEquipmentIds: [],
+          });
+
+          // Get fresh counterpart reference after async operation
+          const currentCounterpart = getCurrentCounterpart();
+          if (currentCounterpart) {
+            this.updateCounterpartZeroEnergy(currentCounterpart, counterpartZeroEnergy);
+          }
+          this.isLoadingCounterpart.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Helper to update counterpart zeroEnergy in all relevant signals
+   */
+  private updateCounterpartZeroEnergy(
+    currentCounterpart: LotoPointDto,
+    zeroEnergy: ZeroEnergyDto | null
+  ): void {
+    const updatedCounterpart = new LotoPointDto({
+      ...currentCounterpart,
+      zeroEnergy: zeroEnergy,
     });
 
     // Update the appropriate counterpart signal
@@ -1333,6 +1568,13 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
 
     const sourceUnit = this.targetUnit(); // counterpart is source
     const targetUnit = this.sourceUnit(); // primary is target
+
+    // Special handling for zeroEnergy - need to call API to lookup counterpart equipment
+    if (field === 'zeroEnergy') {
+      this.syncZeroEnergyToPrimary(primary, counterpart, sourceUnit);
+      return;
+    }
+
     const transformedValue = this.transformFieldValue(counterpart, field, sourceUnit, targetUnit);
 
     const updatedPrimary = new LotoPointDto({
@@ -1346,7 +1588,115 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
   }
 
   /**
+   * Sync zeroEnergy field from counterpart to primary with API lookup for equipment IDs
+   */
+  private syncZeroEnergyToPrimary(
+    _primary: LotoPointDto,
+    counterpart: LotoPointDto,
+    sourceUnit: string
+  ): void {
+    const sourceZeroEnergy = counterpart.zeroEnergy;
+
+    // Get fresh primary reference
+    const getCurrentPrimary = () => this.currentPrimaryValues();
+
+    if (!sourceZeroEnergy) {
+      // No zeroEnergy to sync - clear it on primary
+      const currentPrimary = getCurrentPrimary();
+      if (currentPrimary) {
+        this.updatePrimaryZeroEnergy(currentPrimary, null);
+      }
+      return;
+    }
+
+    const sourceEquipmentIds = sourceZeroEnergy.templateEquipmentIds || [];
+
+    if (sourceEquipmentIds.length === 0) {
+      // No equipment IDs to lookup - just copy template and method
+      const primaryZeroEnergy = new ZeroEnergyDto({
+        zeroEnergyTemplate: sourceZeroEnergy.zeroEnergyTemplate,
+        method: sourceZeroEnergy.method,
+        templateEquipment: [],
+        templateEquipmentIds: [],
+      });
+      const currentPrimary = getCurrentPrimary();
+      if (currentPrimary) {
+        this.updatePrimaryZeroEnergy(currentPrimary, primaryZeroEnergy);
+      }
+      return;
+    }
+
+    // Call API to lookup counterpart equipment
+    this.isLoadingCounterpart.set(true);
+
+    this.apiService.lookupCounterpartEquipment(sourceEquipmentIds, sourceUnit)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((response) => {
+          const primaryEquipment = response.responseData || [];
+          const primaryEquipmentIds = primaryEquipment.map(eq => eq.id);
+
+          const primaryZeroEnergy = new ZeroEnergyDto({
+            zeroEnergyTemplate: sourceZeroEnergy.zeroEnergyTemplate,
+            method: sourceZeroEnergy.method,
+            templateEquipment: primaryEquipment,
+            templateEquipmentIds: primaryEquipmentIds,
+          });
+
+          // Get fresh primary reference after async operation
+          const currentPrimary = getCurrentPrimary();
+          if (currentPrimary) {
+            this.updatePrimaryZeroEnergy(currentPrimary, primaryZeroEnergy);
+          }
+          this.isLoadingCounterpart.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error looking up counterpart equipment:', error);
+
+          // Fallback: copy template without equipment
+          const primaryZeroEnergy = new ZeroEnergyDto({
+            zeroEnergyTemplate: sourceZeroEnergy.zeroEnergyTemplate,
+            method: sourceZeroEnergy.method,
+            templateEquipment: [],
+            templateEquipmentIds: [],
+          });
+
+          // Get fresh primary reference after async operation
+          const currentPrimary = getCurrentPrimary();
+          if (currentPrimary) {
+            this.updatePrimaryZeroEnergy(currentPrimary, primaryZeroEnergy);
+          }
+          this.isLoadingCounterpart.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Helper to update primary zeroEnergy
+   */
+  private updatePrimaryZeroEnergy(
+    currentPrimary: LotoPointDto,
+    zeroEnergy: ZeroEnergyDto | null
+  ): void {
+    const updatedPrimary = new LotoPointDto({
+      ...currentPrimary,
+      zeroEnergy: zeroEnergy,
+    });
+
+    this.currentFormValues.set(updatedPrimary);
+    this.primaryFormValues.set(updatedPrimary);
+    this.updateDifferentFields();
+  }
+
+  /**
    * Transform field value for syncing between units
+   * Transfer rules:
+   * 1. tagNumber: swap 01<->02 prefix
+   * 2. unit, description, specificLocation: transform unit text patterns
+   * 3. isoPos, normPos, eqType, location: copy as-is (value-select fields)
+   * 4. zeroEnergy: keep template but clear equipment
    */
   private transformFieldValue(
     source: LotoPointDto,
@@ -1356,17 +1706,40 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
   ): any {
     const value = (source as any)[field];
 
+    // 1. Transform tag number prefix (01<->02)
     if (field === 'tagNumber') {
-      // Transform tag number prefix
       if (typeof value === 'string' && value.startsWith(fromUnit)) {
         return toUnit + value.substring(fromUnit.length);
       }
       return value;
     }
 
+    // 2. Transform text fields with unit patterns
+    if (field === 'unit') {
+      // Unit field is just the unit value
+      return toUnit;
+    }
+
     if (field === 'description' || field === 'specificLocation') {
-      // Transform unit references in text
+      // Transform unit references in text (U1<->U2, Unit1<->Unit2, etc.)
       return this.transformUnitText(value, fromUnit, toUnit);
+    }
+
+    // 3. Value-select fields - copy as-is
+    if (field === 'isoPos' || field === 'normPos' || field === 'eqType' || field === 'location') {
+      return value;
+    }
+
+    // 4. ZeroEnergy - keep template, pass source equipment IDs for backend lookup
+    if (field === 'zeroEnergy') {
+      if (!value) return null;
+      return new ZeroEnergyDto({
+        zeroEnergyTemplate: value.zeroEnergyTemplate,
+        method: value.method,
+        // Pass source equipment IDs - backend will lookup counterpart equipment
+        templateEquipment: [],
+        templateEquipmentIds: value.templateEquipmentIds || [],
+      });
     }
 
     // For other fields, copy as-is
@@ -1375,23 +1748,36 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
 
   /**
    * Transform unit references in text (01<->02, Unit1<->Unit2, etc.)
+   * Handles: U1, U 1, Unit1, Unit 1, u1, u 1, unit1, unit 1, UNIT1, UNIT 1
    */
   private transformUnitText(text: string | null | undefined, fromUnit: string, toUnit: string): string {
     if (!text) return '';
 
     let result = text;
 
-    // Transform common patterns
+    // Get numeric versions (1 or 2) from unit strings (01 or 02)
     const fromNum = fromUnit.replace(/^0/, '');
     const toNum = toUnit.replace(/^0/, '');
 
-    // Unit 01 <-> Unit 02
-    result = result.replace(new RegExp(`Unit ${fromUnit}`, 'gi'), `Unit ${toUnit}`);
-    result = result.replace(new RegExp(`Unit${fromNum}`, 'gi'), `Unit${toNum}`);
-    result = result.replace(new RegExp(`U${fromNum}`, 'gi'), `U${toNum}`);
-    result = result.replace(new RegExp(`#${fromNum}`, 'gi'), `#${toNum}`);
+    // Replace patterns in order of specificity (longer patterns first to avoid partial replacements)
+    // Using a placeholder approach to avoid replacing already-replaced text
 
-    // Standalone unit prefixes at word boundaries
+    // Pattern: "Unit 1" or "Unit 2" (with space)
+    result = result.replace(new RegExp(`(Unit\\s+)${fromNum}\\b`, 'gi'), `$1${toNum}`);
+
+    // Pattern: "Unit1" or "Unit2" (no space)
+    result = result.replace(new RegExp(`(Unit)${fromNum}\\b`, 'gi'), `$1${toNum}`);
+
+    // Pattern: "U 1" or "U 2" (with space)
+    result = result.replace(new RegExp(`(U\\s+)${fromNum}\\b`, 'gi'), `$1${toNum}`);
+
+    // Pattern: "U1" or "U2" (no space)
+    result = result.replace(new RegExp(`\\bU${fromNum}\\b`, 'gi'), `U${toNum}`);
+
+    // Pattern: "#1" or "#2"
+    result = result.replace(new RegExp(`#${fromNum}\\b`, 'g'), `#${toNum}`);
+
+    // Pattern: Standalone "01" or "02" at word boundaries (for tag-like references)
     result = result.replace(new RegExp(`\\b${fromUnit}\\b`, 'g'), toUnit);
 
     return result;

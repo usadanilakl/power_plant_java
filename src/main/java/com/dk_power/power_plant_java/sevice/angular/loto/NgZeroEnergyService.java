@@ -9,8 +9,13 @@ import com.dk_power.power_plant_java.mappers.ZeroEnergyMapper;
 import com.dk_power.power_plant_java.repository.loto.ZeroEnergyRepo;
 import com.dk_power.power_plant_java.sevice.angular.base.FuzzySearchService;
 import com.dk_power.power_plant_java.sevice.angular.base.NgCrudService;
+import com.dk_power.power_plant_java.sevice.angular.NgEquipmentService;
+import com.dk_power.power_plant_java.entities.equipment.Equipment;
+import com.dk_power.power_plant_java.entities.loto.LotoPoint;
+import com.dk_power.power_plant_java.dto.equipment.EquipmentDto;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.hibernate.SessionFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -31,6 +36,8 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
     private final EntityManager entityManager;
     private final ZeroEnergyMapper zeroEnergyMapper;
     private final FuzzySearchService fuzzySearchService;
+    @Lazy
+    private final NgEquipmentService ngEquipmentService;
 
     @Override
     public ZeroEnergyRepo getRepo() {
@@ -376,5 +383,149 @@ public class NgZeroEnergyService implements NgCrudService<ZeroEnergy, ZeroEnergy
 
         System.out.println("Migration complete. Updated " + updatedCount + " ZeroEnergy records.");
         return updatedCount;
+    }
+
+    /**
+     * Looks up counterpart equipment DTOs for the other unit.
+     *
+     * Transfer logic for zeroEnergy templateEquipment:
+     * For each source equipment ID:
+     * 1. Find the equipment entity
+     * 2. Get the first LOTO point from that equipment
+     * 3. Find the LOTO point's counterpart for the other unit
+     * 4. Get the first equipment from that counterpart's equipment list
+     * 5. Return full EquipmentDto
+     *
+     * @param sourceEquipmentIds List of equipment IDs from the source unit
+     * @param sourceUnit The source unit prefix ("01" or "02")
+     * @return List of counterpart EquipmentDto for the target unit
+     */
+    public List<EquipmentDto> lookupCounterpartEquipment(List<Long> sourceEquipmentIds, String sourceUnit) {
+        if (sourceEquipmentIds == null || sourceEquipmentIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        String targetUnit = "01".equals(sourceUnit) ? "02" : "01";
+        List<EquipmentDto> counterpartEquipmentList = new ArrayList<>();
+
+        for (Long equipmentId : sourceEquipmentIds) {
+            if (equipmentId == null || equipmentId <= 0) {
+                continue;
+            }
+
+            try {
+                // Step 1: Find the equipment entity
+                Optional<Equipment> equipmentOpt = ngEquipmentService.findById(equipmentId);
+                if (equipmentOpt.isEmpty()) {
+                    System.out.println("Equipment not found for ID: " + equipmentId);
+                    continue;
+                }
+                Equipment equipment = equipmentOpt.get();
+
+                // Step 2: Get the first LOTO point from the equipment
+                Set<LotoPoint> lotoPoints = equipment.getLotoPoints();
+                if (lotoPoints == null || lotoPoints.isEmpty()) {
+                    System.out.println("No LOTO points found for equipment ID: " + equipmentId);
+                    continue;
+                }
+                LotoPoint sourceLotoPoint = lotoPoints.iterator().next();
+
+                // Step 3: Find the counterpart LOTO point for the other unit
+                LotoPoint counterpartLotoPoint = findCounterpartLotoPoint(sourceLotoPoint, targetUnit);
+                if (counterpartLotoPoint == null) {
+                    System.out.println("No counterpart LOTO point found for: " + sourceLotoPoint.getTagNumber());
+                    continue;
+                }
+
+                // Step 4: Get the first equipment from the counterpart's equipment list
+                Set<Equipment> counterpartEquipmentSet = counterpartLotoPoint.getEquipmentList();
+                if (counterpartEquipmentSet == null || counterpartEquipmentSet.isEmpty()) {
+                    System.out.println("No equipment found for counterpart LOTO point: " + counterpartLotoPoint.getTagNumber());
+                    continue;
+                }
+                Equipment counterpartEquipment = counterpartEquipmentSet.iterator().next();
+
+                // Step 5: Convert to DTO and add to list
+                EquipmentDto counterpartDto = ngEquipmentService.toDto(counterpartEquipment);
+                counterpartEquipmentList.add(counterpartDto);
+                System.out.println("Mapped equipment " + equipmentId + " -> " + counterpartEquipment.getId());
+
+            } catch (Exception e) {
+                System.out.println("Error looking up counterpart for equipment ID " + equipmentId + ": " + e.getMessage());
+            }
+        }
+
+        return counterpartEquipmentList;
+    }
+
+    /**
+     * Finds the counterpart LOTO point for the target unit.
+     * First checks counterpartId, then searches by tag number pattern.
+     */
+    private LotoPoint findCounterpartLotoPoint(LotoPoint sourceLotoPoint, String targetUnit) {
+        // First, check if counterpartId is set
+        if (sourceLotoPoint.getCounterpartId() != null) {
+            // Use entity manager to load the counterpart
+            LotoPoint counterpart = entityManager.find(LotoPoint.class, sourceLotoPoint.getCounterpartId());
+            if (counterpart != null) {
+                return counterpart;
+            }
+        }
+
+        // If no counterpartId, search by tag number pattern
+        String sourceTag = sourceLotoPoint.getTagNumber();
+        if (sourceTag == null || sourceTag.length() < 2) {
+            return null;
+        }
+
+        // Convert tag: 01XXX -> 02XXX or 02XXX -> 01XXX
+        String counterpartTag = targetUnit + sourceTag.substring(2);
+
+        // Use a native query to find by tag number
+        try {
+            List<LotoPoint> results = entityManager
+                .createQuery("SELECT lp FROM LotoPoint lp WHERE lp.tagNumber = :tagNumber", LotoPoint.class)
+                .setParameter("tagNumber", counterpartTag)
+                .getResultList();
+
+            if (!results.isEmpty()) {
+                return results.get(0);
+            }
+        } catch (Exception e) {
+            System.out.println("Error searching for counterpart by tag number: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Creates a counterpart ZeroEnergy with equipment IDs mapped to the target unit.
+     *
+     * @param sourceZeroEnergyIdDto The source ZeroEnergy ID DTO
+     * @param sourceUnit The source unit prefix ("01" or "02")
+     * @return The created counterpart ZeroEnergy entity, or null if source is null
+     */
+    @Transactional
+    public ZeroEnergy createCounterpartZeroEnergy(ZeroEnergyIdDto sourceZeroEnergyIdDto, String sourceUnit) {
+        if (sourceZeroEnergyIdDto == null) {
+            return null;
+        }
+
+        // Look up counterpart equipment
+        List<Long> sourceEquipmentIds = sourceZeroEnergyIdDto.getTemplateEquipmentIds();
+        List<EquipmentDto> counterpartEquipment = lookupCounterpartEquipment(sourceEquipmentIds, sourceUnit);
+
+        // Extract IDs from DTOs
+        List<Long> counterpartEquipmentIds = counterpartEquipment.stream()
+                .map(EquipmentDto::getId)
+                .collect(Collectors.toList());
+
+        // Create new ZeroEnergy with counterpart equipment IDs
+        ZeroEnergyIdDto counterpartIdDto = new ZeroEnergyIdDto();
+        counterpartIdDto.setZeroEnergyTemplateId(sourceZeroEnergyIdDto.getZeroEnergyTemplateId());
+        counterpartIdDto.setTemplateEquipmentIds(counterpartEquipmentIds);
+        // Don't copy the ID - this is a new entity
+
+        return findOrCreate(counterpartIdDto);
     }
 }
