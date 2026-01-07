@@ -53,4 +53,13 @@ export class FormGroupInputComponent {
     const control = this.formGroup().get(name);
     return control?.value || [];
   }
+
+  // Handle clipboard paste for zero-energy-phrase-builder - updates templateEquipment field
+  onZeroEnergyClipboardPaste(event: { phraseId: number; templateEquipment: any[]; templateEquipmentIds: number[] }): void {
+    const templateEquipmentControl = this.formGroup().get('templateEquipment');
+    if (templateEquipmentControl && event.templateEquipment) {
+      templateEquipmentControl.setValue(event.templateEquipment);
+      templateEquipmentControl.markAsDirty();
+    }
+  }
 }

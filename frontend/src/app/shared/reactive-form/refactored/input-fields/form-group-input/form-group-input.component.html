@@ -45,6 +45,7 @@
               [canManageValues]="field.canManageValues ?? true"
               [selectedEquipment]="getFieldValue('templateEquipment')"
               [formControl]="getFormControl(field.name)"
+              (clipboardItemSelected)="onZeroEnergyClipboardPaste($event)"
             >
             </app-zero-energy-phrase-builder>
           }
