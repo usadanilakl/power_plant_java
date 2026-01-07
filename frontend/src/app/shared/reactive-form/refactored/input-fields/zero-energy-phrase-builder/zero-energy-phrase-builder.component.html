@@ -56,6 +56,50 @@
       </button>
     </div>
   }
+
+  <!-- Clipboard Section -->
+  <div class="clipboard-container">
+    <div class="clipboard-header" (click)="toggleClipboardCollapse()">
+      <div class="clipboard-header-content">
+        <span class="clipboard-title">Clipboard</span>
+        <span class="clipboard-count">{{ displayClipboardItems().length }} items</span>
+      </div>
+      <button class="clipboard-collapse-btn" type="button" [class.collapsed]="isClipboardCollapsed()">
+        <span class="collapse-icon">{{ isClipboardCollapsed() ? '▶' : '▼' }}</span>
+      </button>
+    </div>
+
+    @if (!isClipboardCollapsed()) {
+      <div class="clipboard-actions">
+        <button
+          type="button"
+          class="clipboard-add-btn"
+          (click)="addToClipboard(); $event.stopPropagation()"
+          [disabled]="!hasValidClipboardData()"
+          title="Add current selection to clipboard"
+        >
+          + Add to Clipboard
+        </button>
+      </div>
+
+      @if (displayClipboardItems().length > 0) {
+        <div class="clipboard-list">
+          @for (item of displayClipboardItems(); track $index) {
+            <button
+              class="clipboard-item"
+              (click)="onClipboardItemClick(item)"
+              type="button"
+              title="Click to paste"
+            >
+              {{ getClipboardItemLabel(item, $index) }}
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="clipboard-empty">No clipboard items available</div>
+      }
+    }
+  </div>
 </div>
 
 <!-- Add/Edit Phrase Dialog -->

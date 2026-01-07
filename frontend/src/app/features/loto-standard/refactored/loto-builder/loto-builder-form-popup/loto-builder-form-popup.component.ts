@@ -1387,20 +1387,36 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
 
   /**
    * Sync all fields from primary to counterpart
+   * zeroEnergy is synced last because it's async and needs the updated counterpart state
    */
   syncAllToCounterpart(): void {
+    // Sync all non-async fields first
     for (const field of this.syncableFields) {
-      this.syncFieldToCounterpart(field);
+      if (field !== 'zeroEnergy') {
+        this.syncFieldToCounterpart(field);
+      }
+    }
+    // Sync zeroEnergy last (async operation)
+    if (this.syncableFields.includes('zeroEnergy')) {
+      this.syncFieldToCounterpart('zeroEnergy');
     }
     this.messageService.showSuccess(`All fields synced to Unit ${this.targetUnit()}`);
   }
 
   /**
    * Sync all fields from counterpart to primary
+   * zeroEnergy is synced last because it's async and needs the updated primary state
    */
   syncAllToPrimary(): void {
+    // Sync all non-async fields first
     for (const field of this.syncableFields) {
-      this.syncFieldToPrimary(field);
+      if (field !== 'zeroEnergy') {
+        this.syncFieldToPrimary(field);
+      }
+    }
+    // Sync zeroEnergy last (async operation)
+    if (this.syncableFields.includes('zeroEnergy')) {
+      this.syncFieldToPrimary('zeroEnergy');
     }
     this.messageService.showSuccess(`All fields synced to Unit ${this.sourceUnit()}`);
   }

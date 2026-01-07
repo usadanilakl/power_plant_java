@@ -1,10 +1,12 @@
-import { Component, signal, inject, computed, input, ViewChild, AfterViewInit, Injector, effect } from '@angular/core';
+import { Component, signal, inject, computed, input, ViewChild, AfterViewInit, Injector, effect, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { RfValueService } from '../../../../../features/values/refactored/services/rf-value.service';
 import { SearchableSelectInputComponent } from '../searchable-select-input/searchable-select-input.component';
 import { ValueDto } from '../../../../../models/value.model';
+import { ClipboardService } from '../../../../clipboard/clipboard.service';
+import { ZeroEnergyPhraseClipboardItem } from '../../../../../models/loto/zero-energy-phrase-clipboard.model';
 
 export interface PhraseSegment {
   type: 'text' | 'placeholder';
@@ -36,6 +38,7 @@ export interface ZeroEnergyPhrase {
 export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, AfterViewInit {
   private valueService = inject(RfValueService);
   private injector = inject(Injector);
+  private clipboardService = inject(ClipboardService);
 
   @ViewChild('selectInput') selectInput!: SearchableSelectInputComponent;
 
@@ -44,6 +47,9 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
   categoryAlias = input<string>('zeroEnergyPhrase');
   canManageValues = input<boolean>(true);
   selectedEquipment = input<any[]>([]); // Array of selected equipment/LOTO points for placeholder substitution
+
+  // Output for clipboard item selection - includes full equipment objects for proper form population
+  clipboardItemSelected = output<{ phraseId: number; templateEquipment: any[]; templateEquipmentIds: number[] }>();
 
   // State
   selectedPhraseId = signal<number | null>(null);
@@ -466,5 +472,106 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
           this.errorMessage.set(error.error?.message || 'Error deleting phrase');
         }
       });
+  }
+
+  // ==================== Clipboard Methods ====================
+
+  isClipboardCollapsed = signal<boolean>(true);
+  private capturedInitialPhrase = signal<ZeroEnergyPhraseClipboardItem | null>(null);
+
+  // Capture initial phrase when component has valid data
+  private captureInitialEffect = effect(() => {
+    const phraseId = this.selectedPhraseId();
+    const equipment = this.selectedEquipment();
+
+    if (phraseId && !this.capturedInitialPhrase()) {
+      const clipboardItem = new ZeroEnergyPhraseClipboardItem({
+        zeroEnergyTemplate: { id: phraseId } as any,
+        templateEquipment: equipment,
+        templateEquipmentIds: equipment.map((e: any) => e.id).filter((id: number) => id)
+      });
+      this.capturedInitialPhrase.set(clipboardItem);
+    }
+  }, { allowSignalWrites: true });
+
+  clipboardItems = computed(() => {
+    const section = this.clipboardService.getSectionByType('ZeroEnergyPhrase');
+    return section?.items ?? [];
+  });
+
+  displayClipboardItems = computed(() => {
+    const items = this.clipboardItems();
+    const initial = this.capturedInitialPhrase();
+
+    if (initial && initial.zeroEnergyTemplate?.id) {
+      return [initial, ...items];
+    }
+    return items;
+  });
+
+  toggleClipboardCollapse(): void {
+    this.isClipboardCollapsed.update(value => !value);
+  }
+
+  hasValidClipboardData(): boolean {
+    const phraseId = this.selectedPhraseId();
+    return !!phraseId;
+  }
+
+  getClipboardItemSummary = (item: ZeroEnergyPhraseClipboardItem): string => {
+    const templateName = item.zeroEnergyTemplate?.name || `Template #${item.zeroEnergyTemplate?.id}`;
+    const equipCount = item.templateEquipment?.length || item.templateEquipmentIds?.length || 0;
+    return `${templateName} (${equipCount} equipment)`;
+  };
+
+  addToClipboard(): void {
+    const phraseId = this.selectedPhraseId();
+    if (!phraseId) {
+      console.warn('No phrase selected to add to clipboard');
+      return;
+    }
+
+    // Get phrase name from options
+    const selectedOption = this.options().find((opt: any) => opt.value === phraseId);
+    const phraseName = selectedOption?.label || `Template #${phraseId}`;
+    const equipment = this.selectedEquipment();
+
+    const clipboardItem = new ZeroEnergyPhraseClipboardItem({
+      zeroEnergyTemplate: { id: phraseId, name: phraseName } as any,
+      templateEquipment: equipment,
+      templateEquipmentIds: equipment.map((e: any) => e.id).filter((id: number) => id)
+    });
+
+    this.clipboardService.addItem(clipboardItem);
+    console.log('Added zero energy phrase to clipboard:', clipboardItem);
+  }
+
+  onClipboardItemClick(item: ZeroEnergyPhraseClipboardItem): void {
+    if (item && item.zeroEnergyTemplate?.id) {
+      console.log('Loading zero energy phrase from clipboard:', item);
+
+      // Update the selected phrase
+      this.selectedPhraseId.set(item.zeroEnergyTemplate.id);
+      this.onChange({ id: item.zeroEnergyTemplate.id });
+
+      // Update the child select component
+      if (this.selectInput) {
+        this.selectInput.writeValue(item.zeroEnergyTemplate.id);
+      }
+
+      // Emit event so parent can update equipment selection - includes full equipment objects
+      this.clipboardItemSelected.emit({
+        phraseId: item.zeroEnergyTemplate.id,
+        templateEquipment: item.templateEquipment || [],
+        templateEquipmentIds: item.templateEquipmentIds || []
+      });
+    }
+  }
+
+  getClipboardItemLabel(item: ZeroEnergyPhraseClipboardItem, index: number): string {
+    if (index === 0 && this.capturedInitialPhrase() === item) {
+      return `[Initial] ${this.getClipboardItemSummary(item)}`;
+    }
+    return this.getClipboardItemSummary(item);
   }
 }

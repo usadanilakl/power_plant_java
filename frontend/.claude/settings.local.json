@@ -12,7 +12,9 @@
       "Bash([ -s \"$NVM_DIR/nvm.sh\" ])",
       "Bash(. \"$NVM_DIR/nvm.sh\")",
       "Bash(npx ng build)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
