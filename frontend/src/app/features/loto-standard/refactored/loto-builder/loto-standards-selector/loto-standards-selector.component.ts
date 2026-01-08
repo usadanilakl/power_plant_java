@@ -78,7 +78,11 @@ export class LotoStandardsSelectorComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          this.availableStandards.set(response.responseData?.content || []);
+          // Properly deserialize the standards to ensure they have the correct class structure
+          const standards = (response.responseData?.content || []).map(
+            (item: any) => LotoStandardDto.fromJson(item)
+          );
+          this.availableStandards.set(standards);
           this.isLoading.set(false);
         },
         error: (error) => {

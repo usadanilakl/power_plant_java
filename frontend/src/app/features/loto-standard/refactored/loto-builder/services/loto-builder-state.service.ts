@@ -1,9 +1,11 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FileDto } from '../../../../../models/file/file.model';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { LotoStandardDto } from '../../../../../models/loto/loto-standard.model';
 import { RfShape } from '../../../../../shared/image/refactored/models/fr-shape.model';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
+import { RfLotoStandardApiService } from '../../services/rf-loto-standard-api.service';
 
 export type LeftMenuTab = 'file' | 'loto-point';
 export type DisplayMode = 'table' | 'toggle-menu';
@@ -13,6 +15,8 @@ export type LotoPointPopupView = 'form' | 'table';
   providedIn: 'root'
 })
 export class LotoBuilderStateService {
+  private apiService = inject(RfLotoStandardApiService);
+  private destroyRef = inject(DestroyRef);
   // ========== Left Panel State ==========
 
   /** Current active tab in left panel */
@@ -423,6 +427,15 @@ export class LotoBuilderStateService {
       });
 
       this.updateLotoStandard(index, updatedStandard);
+
+      // If standard is saved (has ID), immediately persist to server
+      if (standard.id && lotoPoint.id) {
+        this.apiService.addLotoPointToStandard(standard.id, lotoPoint.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            error: (err) => console.error('Failed to add LOTO point to standard:', err)
+          });
+      }
     }
   }
 
