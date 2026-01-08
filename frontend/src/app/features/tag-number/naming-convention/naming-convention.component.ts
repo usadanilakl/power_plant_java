@@ -32,7 +32,7 @@ export class NamingConventionComponent {
     { keyword: 'DRAIN', description: 'Drain valve' },
     { keyword: 'VENT', description: 'Vent valve' },
     { keyword: 'EQ', description: 'Equalizing valve' },
-    { keyword: 'ROOT', description: 'Root valve (instrument)' },
+    { keyword: 'ROOT', description: 'Root valve' },
     { keyword: 'BLOCK', description: 'Block valve' },
     { keyword: 'LO SIDE', description: 'Low pressure side' },
     { keyword: 'HI SIDE', description: 'High pressure side' },
