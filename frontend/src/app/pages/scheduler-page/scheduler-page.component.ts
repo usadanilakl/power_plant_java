@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { MainLayoutComponent } from "../../layout/main-layout.component";
+import { MainLayoutComponent } from "../../layout/refactored/main-layout.component";
 import { RouterMenuComponent } from "../../shared/menu/router-menu/router-menu.component";
 import { BottomMenuOutletComponent } from "../../shared/bottom-menu-outlet/bottom-menu-outlet.component";
 import { RouterModule } from '@angular/router';

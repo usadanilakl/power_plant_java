@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { MainLayoutComponent } from './layout/main-layout.component';
+import { MainLayoutComponent } from './layout/refactored/main-layout.component';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { PrintLayoutComponent } from "./features/form-designer/printable-form/print-layout/print-layout.component";
 import { GlobalMessageComponent } from "./shared/global-message/global-message.component";

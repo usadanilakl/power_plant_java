@@ -1,0 +1,12 @@
+<a [routerLink]="card().route" class="nav-card" [style.--card-color]="card().color || '#3498db'">
+  <div class="card-icon">
+    <span class="material-icons">{{ card().icon }}</span>
+  </div>
+  <div class="card-content">
+    <h3 class="card-title">{{ card().title }}</h3>
+    <p class="card-description">{{ card().description }}</p>
+  </div>
+  <div class="card-arrow">
+    <span class="material-icons">chevron_right</span>
+  </div>
+</a>

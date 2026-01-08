@@ -1,4 +1,3 @@
-
 <app-main-layout>
   <ng-container header>
     <div class="header-menus">
@@ -11,22 +10,9 @@
     </div>
   </ng-container>
   <ng-container left-menu>
-    @if(currentRoute === 'loto-standard'){
-      <app-loto-standard-side-menu></app-loto-standard-side-menu>
-    }@else if(currentRoute === 'loto'){
-      <app-loto-side-menu></app-loto-side-menu>
-    }
-     <!-- <app-left-menu-outlet></app-left-menu-outlet> -->
+    <app-left-menu-outlet></app-left-menu-outlet>
   </ng-container>
   <ng-container main-content>
     <router-outlet></router-outlet>
-  </ng-container>
-  <ng-container bottom-menu>
-    <!-- <app-bottom-menu-outlet></app-bottom-menu-outlet> -->
-    @if(currentRoute === 'loto-standard'){
-      <!-- <app-loto-standard-side-menu></app-loto-standard-side-menu> -->
-    }@else if(currentRoute === 'loto'){
-      <!-- <app-loto-table></app-loto-table> -->
-    }
   </ng-container>
 </app-main-layout>

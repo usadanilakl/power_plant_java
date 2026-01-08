@@ -3,7 +3,7 @@ import { FORM_DESIGNER_NAV_MENU_ITEMS, RouterMenuItems } from '../../models/ui/r
 import { ActivatedRoute, NavigationEnd, RouterModule, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import { RouterMenuComponent } from '../../shared/menu/router-menu/router-menu.component';
-import { MainLayoutComponent } from "../../layout/main-layout.component";
+import { MainLayoutComponent } from "../../layout/refactored/main-layout.component";
 import { PrintableFormSideMenuComponent } from "../../features/form-designer/printable-form/printable-form-side-menu/printable-form-side-menu.component";
 
 @Component({

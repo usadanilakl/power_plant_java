@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { MainLayoutComponent } from "../../layout/main-layout.component";
+import { MainLayoutComponent } from "../../layout/refactored/main-layout.component";
 import { RouterMenuComponent } from "../../shared/menu/router-menu/router-menu.component";
 import { RouterModule } from '@angular/router';
 import { RouterMenuItems } from '../../models/ui/router-menu.model';

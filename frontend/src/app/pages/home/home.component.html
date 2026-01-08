@@ -2,15 +2,17 @@
   <ng-container header>
     <app-router-menu [layout]="'row'"></app-router-menu>
   </ng-container>
-  <ng-container left-menu>
-
-  </ng-container>
   <ng-container main-content>
-    <app-image-carousel 
-    [images]="imageUrls" 
-    (imageClick)="onImageClick($event)">
-    </app-image-carousel>
-    <router-outlet></router-outlet>
+    <div class="home-container">
+      <div class="home-header">
+        <h1>Power Plant Management</h1>
+        <p>Select a module to get started</p>
+      </div>
+      <div class="navigation-grid">
+        @for (card of navigationCards; track card.route) {
+          <app-navigation-card [card]="card"></app-navigation-card>
+        }
+      </div>
+    </div>
   </ng-container>
 </app-main-layout>
-

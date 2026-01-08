@@ -1,0 +1,92 @@
+.nav-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--card-bg, #ffffff);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-color, #e0e0e0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border-color: var(--card-color);
+
+    .card-icon {
+      background: var(--card-color);
+      color: white;
+    }
+
+    .card-arrow {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+.card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card-color) 15%, transparent);
+  color: var(--card-color);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+
+  .material-icons {
+    font-size: 28px;
+  }
+}
+
+.card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.card-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #666);
+  line-height: 1.4;
+}
+
+.card-arrow {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all 0.2s ease;
+  color: var(--card-color);
+
+  .material-icons {
+    font-size: 24px;
+  }
+}
+
+// Dark mode support
+:host-context(.dark-mode) {
+  .nav-card {
+    background: var(--card-bg-dark, #2a2a2a);
+    border-color: var(--border-color-dark, #404040);
+  }
+
+  .card-title {
+    color: var(--text-primary-dark, #f0f0f0);
+  }
+
+  .card-description {
+    color: var(--text-secondary-dark, #aaa);
+  }
+}

@@ -14,7 +14,9 @@
       "Bash(npx ng build)",
       "Bash(tee:*)",
       "Bash(source ~/.nvm/nvm.sh)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(mkdir:*)",
+      "Bash(nvm use default)"
     ]
   }
 }
