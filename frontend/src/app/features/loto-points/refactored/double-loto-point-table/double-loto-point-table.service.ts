@@ -15,6 +15,12 @@ export class DoubleLotoPointTableService {
     style: { 'background-color': 'lightyellow' },
   });
 
+  // Signals to notify parent components of changes
+  // These are set by the component and called when changes occur
+  lastAddedItem = signal<LotoPointDto | null>(null);
+  lastRemovedItem = signal<LotoPointDto | null>(null);
+  lastReorderedItems = signal<LotoPointDto[] | null>(null);
+
   /**
    * Handle adding multiple items to selected items
    */
@@ -65,6 +71,9 @@ export class DoubleLotoPointTableService {
 
     const updated = [...selected, item];
     this.currentSelectedItems.set(updated);
+
+    // Notify parent component of the added item
+    this.lastAddedItem.set(item);
   }
 
   /**
@@ -74,7 +83,14 @@ export class DoubleLotoPointTableService {
     const selected = this.currentSelectedItems();
     const updated = selected.filter((s) => s.id !== item.id);
 
+    if (updated.length === selected.length) {
+      return; // Item was not in the list
+    }
+
     this.currentSelectedItems.set(updated);
+
+    // Notify parent component of the removed item
+    this.lastRemovedItem.set(item);
   }
 
   /**
@@ -82,5 +98,17 @@ export class DoubleLotoPointTableService {
    */
   onSelectedItemsReordered(items: LotoPointDto[]): void {
     this.currentSelectedItems.set(items);
+
+    // Notify parent component of the reordered items
+    this.lastReorderedItems.set(items);
+  }
+
+  /**
+   * Reset notification signals (call after handling)
+   */
+  clearNotifications(): void {
+    this.lastAddedItem.set(null);
+    this.lastRemovedItem.set(null);
+    this.lastReorderedItems.set(null);
   }
 }

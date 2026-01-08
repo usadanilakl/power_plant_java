@@ -1,6 +1,7 @@
 import {
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
@@ -9,8 +10,10 @@ import {
 } from '@angular/core';
 import { RfLotoStandardStateService } from '../services/rf-loto-standard-state.service';
 import { LotoStandardMapperService } from '../services/rf-loto-standard-mapper.service';
+import { RfLotoStandardApiService } from '../services/rf-loto-standard-api.service';
 import { LotoStandardDto } from '../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { DoubleLotoPointTableComponent } from '../../../loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
 import { LotoStandardImageViewerComponent } from '../loto-standard-image-viewer/loto-standard-image-viewer.component';
@@ -33,6 +36,8 @@ export class RfLotoStandardFormComponent {
 
   protected stateService = inject(RfLotoStandardStateService);
   protected mapperService = inject(LotoStandardMapperService);
+  private apiService = inject(RfLotoStandardApiService);
+  private destroyRef = inject(DestroyRef);
 
   entityInput = input<LotoStandardDto>();
   fieldsInput = input<LotoStandardFieldName[]>([]);
@@ -226,16 +231,74 @@ export class RfLotoStandardFormComponent {
    * Handle loto points reordered from double table
    */
   onLotoPointsReordered(reorderedLotoPoints: LotoPointDto[]): void {
+    const currentEntity = this.entity();
 
     // Update the entity with new loto points order
     const updatedEntity = new LotoStandardDto({
-      ...this.entity(),
+      ...currentEntity,
       lotoPoints: reorderedLotoPoints
     });
 
-    // Update state and trigger draft save
+    // Update state
     this.stateService.setSelectedItem(updatedEntity);
-    this.onAnyValueChange(updatedEntity);
+
+    // If entity is saved (has ID), immediately persist to server
+    if (currentEntity.id) {
+      const lotoPointIds = reorderedLotoPoints.map(lp => lp.id!);
+      this.apiService.reorderLotoPoints(currentEntity.id, lotoPointIds)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          error: (err) => console.error('Failed to reorder LOTO points:', err)
+        });
+    }
+  }
+
+  /**
+   * Handle loto point added from double table
+   */
+  onLotoPointAdded(addedPoint: LotoPointDto): void {
+    const currentEntity = this.entity();
+
+    // Update local state
+    const currentPoints = currentEntity.lotoPoints || [];
+    const updatedEntity = new LotoStandardDto({
+      ...currentEntity,
+      lotoPoints: [...currentPoints, addedPoint]
+    });
+    this.stateService.setSelectedItem(updatedEntity);
+
+    // If entity is saved (has ID), immediately persist to server
+    if (currentEntity.id && addedPoint.id) {
+      this.apiService.addLotoPointToStandard(currentEntity.id, addedPoint.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          error: (err) => console.error('Failed to add LOTO point:', err)
+        });
+    }
+  }
+
+  /**
+   * Handle loto point removed from double table
+   */
+  onLotoPointRemoved(removedPoint: LotoPointDto): void {
+    const currentEntity = this.entity();
+
+    // Update local state
+    const currentPoints = currentEntity.lotoPoints || [];
+    const updatedEntity = new LotoStandardDto({
+      ...currentEntity,
+      lotoPoints: currentPoints.filter(lp => lp.id !== removedPoint.id)
+    });
+    this.stateService.setSelectedItem(updatedEntity);
+
+    // If entity is saved (has ID), immediately persist to server
+    if (currentEntity.id && removedPoint.id) {
+      this.apiService.removeLotoPointFromStandard(currentEntity.id, removedPoint.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          error: (err) => console.error('Failed to remove LOTO point:', err)
+        });
+    }
   }
 
   /**

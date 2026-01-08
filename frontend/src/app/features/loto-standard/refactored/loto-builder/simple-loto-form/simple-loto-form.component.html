@@ -33,16 +33,20 @@
 
     <!-- LOTO Points List -->
     <div class="form-field">
-      <label>LOTO Points</label>
-      <div class="points-list">
+      <label>LOTO Points <span class="reorder-hint">(drag to reorder)</span></label>
+      <div class="points-list" cdkDropList (cdkDropListDropped)="onDrop($event)">
         @if (lotoPoints().length === 0) {
           <div class="empty-state">
             <p class="empty-message">No LOTO points added yet</p>
             <p class="empty-hint">Add points from the builder to populate this list</p>
           </div>
         } @else {
-          @for (point of lotoPoints(); track point.id) {
-            <div class="point-item">
+          @for (point of lotoPoints(); track point.id; let i = $index) {
+            <div class="point-item" cdkDrag>
+              <div class="drag-handle" cdkDragHandle title="Drag to reorder">
+                <span class="drag-icon">⋮⋮</span>
+                <span class="point-number">{{ i + 1 }}</span>
+              </div>
               <div class="point-info">
                 <span class="point-tag">{{ point.tagNumber || 'N/A' }}</span>
                 <span class="point-description">{{ point.description || '' }}</span>
@@ -55,6 +59,8 @@
               >
                 ✕
               </button>
+              <!-- Drag placeholder -->
+              <div class="point-item-placeholder" *cdkDragPlaceholder></div>
             </div>
           }
         }

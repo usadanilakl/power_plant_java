@@ -9,6 +9,7 @@
       [inputItems]="doubleTableService.currentSelectedItems()"
       [isTableIsolated]="true"
       [enableDragDrop]="true"
-      [loadMoreEnabled]="false">
+      [loadMoreEnabled]="false"
+      (itemsReorderedEvent)="onItemsReordered($event)">
     </app-rf-loto-point-table>
   </div>

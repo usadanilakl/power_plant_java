@@ -82,14 +82,17 @@ export class RfLotoStandardApiService {
 
   /**
    * Update existing loto standard
+   * Note: lotoPoints are excluded from updates as they are managed separately via
+   * addLotoPointToStandard, removeLotoPointFromStandard, and reorderLotoPoints
    */
   updateLotoStandard(
     lotoStandard: Partial<LotoStandardIdDto | LotoStandardDto>
   ): Observable<SpringApiResponse<LotoStandardDto>> {
-    const lotoStandardIdDto = this.mapper.toIdDto(lotoStandard);
+    // Exclude lotoPoints from update - they are managed separately
+    const lotoStandardIdDto = this.mapper.toIdDto(lotoStandard, true);
 
     console.log('updateLotoStandard received:', lotoStandard);
-    console.log('Sending to backend:', lotoStandardIdDto);
+    console.log('Sending to backend (lotoPoints excluded):', lotoStandardIdDto);
 
     const headers = new HttpHeaders().set('Content-Type', 'application/json');
     return this.http.put<SpringApiResponse<LotoStandardDto>>(
@@ -150,6 +153,41 @@ export class RfLotoStandardApiService {
     return this.http.get<SpringApiResponse<{ [key: string]: LotoStandardDto[] }>>(
       `${this.apiUrl}/grouped`,
       { params }
+    );
+  }
+
+  /**
+   * Add a LOTO point to a standard
+   * @param standardId The ID of the standard
+   * @param lotoPointId The ID of the LOTO point to add
+   */
+  addLotoPointToStandard(standardId: number, lotoPointId: number): Observable<SpringApiResponse<LotoStandardDto>> {
+    return this.http.post<SpringApiResponse<LotoStandardDto>>(
+      `${this.apiUrl}/${standardId}/add-loto-point/${lotoPointId}`,
+      {}
+    );
+  }
+
+  /**
+   * Remove a LOTO point from a standard
+   * @param standardId The ID of the standard
+   * @param lotoPointId The ID of the LOTO point to remove
+   */
+  removeLotoPointFromStandard(standardId: number, lotoPointId: number): Observable<SpringApiResponse<LotoStandardDto>> {
+    return this.http.delete<SpringApiResponse<LotoStandardDto>>(
+      `${this.apiUrl}/${standardId}/remove-loto-point/${lotoPointId}`
+    );
+  }
+
+  /**
+   * Reorder LOTO points in a standard
+   * @param standardId The ID of the standard
+   * @param lotoPointIds Ordered array of LOTO point IDs
+   */
+  reorderLotoPoints(standardId: number, lotoPointIds: number[]): Observable<SpringApiResponse<LotoStandardDto>> {
+    return this.http.put<SpringApiResponse<LotoStandardDto>>(
+      `${this.apiUrl}/${standardId}/reorder-loto-points`,
+      lotoPointIds
     );
   }
 }

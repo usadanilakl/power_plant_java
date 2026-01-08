@@ -1,8 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RfLotoPointTableComponent } from "../../rf-loto-point-table/rf-loto-point-table.component";
 import { DoubleLotoPointTableService } from '../double-loto-point-table.service';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
-import { ButtonColor } from '../../../../../shared/menu/buttons/buttons.component';
 import { TableClickService } from '../../../../../shared/table/refactored/services/table-click.service';
 import { DestinationLotoPointTableClickService } from './destination-loto-point-table-click.service';
 import { TableSelectionService } from '../../../../../shared/table/refactored/services/table-selection.service';
@@ -51,4 +50,7 @@ import { RfLotoPointTableDataService } from '../../rf-loto-point-table/rf-loto-p
 export class DestinationLotoPointTableComponent {
   doubleTableService = inject(DoubleLotoPointTableService);
 
+  onItemsReordered(items: LotoPointDto[]): void {
+    this.doubleTableService.onSelectedItemsReordered(items);
+  }
 }

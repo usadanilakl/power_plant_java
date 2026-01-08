@@ -3,7 +3,8 @@ import {
   inject,
   input,
   OnInit,
-  effect
+  effect,
+  output
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
@@ -26,13 +27,17 @@ export class DoubleLotoPointTableComponent implements OnInit {
   // Inputs
   selectedItems = input<LotoPointDto[]>([]);
 
+  // Output signals for parent components to react to changes
+  itemAdded = output<LotoPointDto>();
+  itemRemoved = output<LotoPointDto>();
+  itemsReordered = output<LotoPointDto[]>();
+
   constructor() {
     // Sync availableItems with allItems input
     effect(() => {
       const selected = this.doubleTableService.currentSelectedItems();
 
       // Filter out items that are in selected
-      const selectedIds = new Set(selected.map((item) => item.id));
       this.stateService.filterOutItems.set(selected);
       this.doubleTableService.filterOutRules.set({
         action: 'highlight',
@@ -44,6 +49,33 @@ export class DoubleLotoPointTableComponent implements OnInit {
     // Sync currentSelectedItems with selectedItems input
     effect(() => {
       this.doubleTableService.currentSelectedItems.set(this.selectedItems());
+    });
+
+    // Listen for item added and emit output
+    effect(() => {
+      const addedItem = this.doubleTableService.lastAddedItem();
+      if (addedItem) {
+        this.itemAdded.emit(addedItem);
+        this.doubleTableService.lastAddedItem.set(null);
+      }
+    });
+
+    // Listen for item removed and emit output
+    effect(() => {
+      const removedItem = this.doubleTableService.lastRemovedItem();
+      if (removedItem) {
+        this.itemRemoved.emit(removedItem);
+        this.doubleTableService.lastRemovedItem.set(null);
+      }
+    });
+
+    // Listen for items reordered and emit output
+    effect(() => {
+      const reorderedItems = this.doubleTableService.lastReorderedItems();
+      if (reorderedItems) {
+        this.itemsReordered.emit(reorderedItems);
+        this.doubleTableService.lastReorderedItems.set(null);
+      }
     });
   }
 

@@ -257,12 +257,12 @@ public class NgLotoStandardController {
     /**
      * Add LOTO point to standard
      */
-    @PostMapping("/{id}/add-loto-point/{lotoStandardId}")
+    @PostMapping("/{standardId}/add-loto-point/{lotoPointId}")
     public ResponseEntity<NgApiResponse<LotoStandardDto>> addLotoPointToStandard(
-            @PathVariable Long id,
-            @PathVariable String lotoStandardId) {
+            @PathVariable String standardId,
+            @PathVariable Long lotoPointId) {
         try {
-            LotoStandardDto saved = lotoStandardService.addLotoPointToStandard(id, lotoStandardId);
+            LotoStandardDto saved = lotoStandardService.addLotoPointToStandard(lotoPointId, standardId);
             return ResponseEntity.ok(new NgApiResponse<>(saved, "LOTO point added to standard successfully"));
         } catch (Exception e) {
             e.printStackTrace();
@@ -273,12 +273,12 @@ public class NgLotoStandardController {
     /**
      * Remove LOTO point from standard
      */
-    @DeleteMapping("/{id}/remove-loto-point/{lotoStandardId}")
+    @DeleteMapping("/{standardId}/remove-loto-point/{lotoPointId}")
     public ResponseEntity<NgApiResponse<LotoStandardDto>> removeLotoPointFromStandard(
-            @PathVariable Long id,
-            @PathVariable String lotoStandardId) {
+            @PathVariable String standardId,
+            @PathVariable Long lotoPointId) {
         try {
-            LotoStandardDto saved = lotoStandardService.removeLotoPointToStandard(id, lotoStandardId);
+            LotoStandardDto saved = lotoStandardService.removeLotoPointToStandard(lotoPointId, standardId);
             return ResponseEntity.ok(new NgApiResponse<>(saved, "LOTO point removed from standard successfully"));
         } catch (Exception e) {
             e.printStackTrace();

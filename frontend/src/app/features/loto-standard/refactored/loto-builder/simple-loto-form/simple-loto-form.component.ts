@@ -1,13 +1,14 @@
-import { Component, input, output, computed } from '@angular/core';
+import { Component, input, output, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { LotoStandardDto } from '../../../../../models/loto/loto-standard.model';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 
 @Component({
   selector: 'app-simple-loto-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DragDropModule],
   templateUrl: './simple-loto-form.component.html',
   styleUrl: './simple-loto-form.component.css',
 })
@@ -20,12 +21,16 @@ export class SimpleLotoFormComponent {
   nameChanged = output<string>();
   descriptionChanged = output<string>();
   removePoint = output<LotoPointDto>();
+  reorderPoints = output<LotoPointDto[]>();
   submit = output<LotoStandardDto>();
   cancel = output<void>();
 
   // Computed
   lotoPoints = computed(() => this.lotoStandard().lotoPoints || []);
   pointCount = computed(() => this.lotoPoints().length);
+
+  // Drag state
+  draggedIndex = signal<number | null>(null);
 
   /**
    * Handle name change
@@ -60,5 +65,18 @@ export class SimpleLotoFormComponent {
    */
   onCancel(): void {
     this.cancel.emit();
+  }
+
+  /**
+   * Handle drag and drop reorder
+   */
+  onDrop(event: CdkDragDrop<LotoPointDto[]>): void {
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
+
+    const points = [...this.lotoPoints()];
+    moveItemInArray(points, event.previousIndex, event.currentIndex);
+    this.reorderPoints.emit(points);
   }
 }

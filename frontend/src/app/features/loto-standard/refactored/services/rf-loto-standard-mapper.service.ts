@@ -193,17 +193,26 @@ export class LotoStandardMapperService {
   /**
    * Converts any standard object (ID DTO, full DTO, or plain JSON) to LotoStandardIdDto
    * @param lotoStandard - The loto standard object to convert (can be LotoStandardDto, LotoStandardIdDto, or plain object)
+   * @param excludeLotoPoints - If true, excludes lotoPoints from the result (for updates where lotoPoints are managed separately)
    * @returns LotoStandardIdDto ready for API submission
    */
-  toIdDto(lotoStandard: Partial<LotoStandardIdDto | LotoStandardDto>): LotoStandardIdDto {
+  toIdDto(lotoStandard: Partial<LotoStandardIdDto | LotoStandardDto>, excludeLotoPoints: boolean = false): LotoStandardIdDto {
     // If it's already a LotoStandardDto instance with toIdDto method
     if (typeof (lotoStandard as any).toIdDto === 'function') {
-      return (lotoStandard as LotoStandardDto).toIdDto();
+      const idDto = (lotoStandard as LotoStandardDto).toIdDto();
+      if (excludeLotoPoints) {
+        idDto.lotoPoints = null;
+      }
+      return idDto;
     }
 
     // If it's already a LotoStandardIdDto (check if lotoPoints/groups are arrays of numbers)
     if (this.isLotoStandardIdDto(lotoStandard)) {
-      return new LotoStandardIdDto(lotoStandard);
+      const idDto = new LotoStandardIdDto(lotoStandard);
+      if (excludeLotoPoints) {
+        idDto.lotoPoints = null;
+      }
+      return idDto;
     }
 
     // Handle mixed format or plain objects - manually extract IDs
@@ -213,7 +222,7 @@ export class LotoStandardMapperService {
       description: lotoStandard.description,
       objectType: lotoStandard.objectType,
       isVerified: lotoStandard.isVerified,
-      lotoPoints: this.extractIds((lotoStandard as any).lotoPoints),
+      lotoPoints: excludeLotoPoints ? null : this.extractIds((lotoStandard as any).lotoPoints),
       groups: this.extractIds((lotoStandard as any).groups)
     });
 

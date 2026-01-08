@@ -126,6 +126,40 @@ export class LotoFormCarouselComponent {
         lotoPoints: updatedPoints,
       });
       this.standardUpdated.emit({ index, standard: updated });
+
+      // If standard is saved (has ID), immediately persist to server
+      if (standard.id && point.id) {
+        this.apiService.removeLotoPointFromStandard(standard.id, point.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            error: (err) => console.error('Failed to remove LOTO point:', err)
+          });
+      }
+    }
+  }
+
+  /**
+   * Handle points reorder from active standard
+   */
+  onReorderPoints(reorderedPoints: LotoPointDto[]): void {
+    const index = this.activeIndex();
+    const standard = this.lotoStandards()[index];
+    if (standard) {
+      const updated = new LotoStandardDto({
+        ...standard,
+        lotoPoints: reorderedPoints,
+      });
+      this.standardUpdated.emit({ index, standard: updated });
+
+      // If standard is saved (has ID), immediately persist to server
+      if (standard.id) {
+        const lotoPointIds = reorderedPoints.map(p => p.id!);
+        this.apiService.reorderLotoPoints(standard.id, lotoPointIds)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            error: (err) => console.error('Failed to reorder LOTO points:', err)
+          });
+      }
     }
   }
 

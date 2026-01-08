@@ -66,6 +66,9 @@
           <h3>LOTO Points</h3>
           <app-double-loto-point-table
             [selectedItems]="selectedLotoPoints()"
+            (itemAdded)="onLotoPointAdded($event)"
+            (itemRemoved)="onLotoPointRemoved($event)"
+            (itemsReordered)="onLotoPointsReordered($event)"
           ></app-double-loto-point-table>
         </div>
       </div>

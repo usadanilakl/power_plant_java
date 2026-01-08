@@ -25,3 +25,7 @@ Plan
     - /home/dk-power/IdeaProjects/power_plant_java/frontend/src/app/features/loto-standard/refactored/rf-loto-standard-form
     - /home/dk-power/IdeaProjects/power_plant_java/frontend/src/app/features/loto-standard/refactored/loto-builder/simple-loto-form
 9. Verify standard form submit doesn't accidentally override loto point order (should loto point list be removed from form submission since they are handled separately?)
+
+
+Leftovers:
+1. Add reorder functionality to: /home/dk-power/IdeaProjects/power_plant_java/frontend/src/app/features/loto-standard/refactored/loto-builder/simple-loto-form
