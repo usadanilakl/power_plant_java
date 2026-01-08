@@ -1,27 +1,214 @@
-  <div class="naming-convention" style="background-color: #f9f9f9; padding: 15px; border-radius: 4px;">
-    <h3 style="color: #333; margin-bottom: 10px;">Naming Convention:</h3>
-    <p style="margin-bottom: 10px;">Tag Number Format: [Unit]-[Equipment Type]-[System]-[Sequential Number]</p>
-    <ul style="padding-left: 20px;">
-      <li>Unit: 01, 02, 00</li>
-      <li>Equipment Type: 
-        <ul style="padding-left: 20px; list-style-type: none;">
-          @for (eqType of eqTypes(); track eqType.id) {
-            @if(eqType.alias){
-              <li><strong>{{ eqType.alias }}</strong> - {{ eqType.name }}</li>
-            }
-          }
-          <li>If equipment is not in the list, come up with 3 letter name for it</li>
-        </ul>
-      </li>
-      <li>System:</li>
-      <ul style="padding-left: 20px; list-style-type: none;">
-        @for (system of systems(); track system.id) {
-          @if(system.alias){
-            <li><strong>{{ system.alias }}</strong> - {{ system.name }}</li>
-          }
-            <!-- <li><strong>{{ system.alias }}</strong> - {{ system.name }}</li> -->
-        }
-        <li>If system is not in the list, come up with 3 letter name for it</li>
-      </ul>
-    </ul>
+<div class="naming-convention">
+  <h3 class="section-title">Naming Convention Guide</h3>
+
+  <!-- Tab Navigation -->
+  <div class="tab-navigation">
+    <button
+      class="tab-btn"
+      [class.active]="activeTab() === 'valve'"
+      (click)="setActiveTab('valve')">
+      <span class="tab-icon">⚙</span>
+      Valve Naming
+    </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab() === 'breaker'"
+      (click)="setActiveTab('breaker')">
+      <span class="tab-icon">⚡</span>
+      Breaker Naming
+    </button>
   </div>
+
+  <!-- Valve Naming Tab -->
+  @if (activeTab() === 'valve') {
+    <div class="tab-content">
+      <!-- Visual Flow Chart -->
+      <div class="flow-chart">
+        <div class="flow-step">
+          <div class="flow-number">1</div>
+          <div class="flow-content">
+            <div class="flow-title">What it isolates</div>
+            <div class="flow-desc">Equipment or system name</div>
+          </div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-number">2</div>
+          <div class="flow-content">
+            <div class="flow-title">Tag Number (optional)</div>
+            <div class="flow-desc">Of equipment being isolated</div>
+          </div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-number">3</div>
+          <div class="flow-content">
+            <div class="flow-title">Isolation Type</div>
+            <div class="flow-desc">Use standard keyword</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Name Builder -->
+      <div class="name-builder">
+        <div class="builder-title">Try It: Build a Valve Name</div>
+        <div class="builder-inputs">
+          <div class="builder-field">
+            <label>Equipment/System:</label>
+            <input
+              type="text"
+              placeholder="e.g., BFP A SUCTION"
+              [value]="selectedEquipment()"
+              (input)="setEquipment($any($event.target).value)">
+          </div>
+          <div class="builder-field">
+            <label>Select Keyword:</label>
+            <div class="keyword-chips interactive">
+              @for (kw of valveKeywords; track kw.keyword) {
+                <button
+                  class="keyword-chip"
+                  [class.selected]="selectedKeyword() === kw.keyword"
+                  [title]="kw.description"
+                  (click)="selectKeyword(kw.keyword)">
+                  {{ kw.keyword }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+        @if (builtName()) {
+          <div class="builder-result">
+            <span class="result-label">Result:</span>
+            <code class="result-name">{{ builtName() }}</code>
+            <button class="copy-btn small" (click)="copyBuiltName()" title="Copy to clipboard">
+              <span class="copy-icon">📋</span>
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- Examples with Copy -->
+      <div class="examples-section">
+        <div class="examples-header">
+          <span class="examples-label">Examples</span>
+          <span class="examples-hint">Click to copy</span>
+        </div>
+        <div class="examples-grid">
+          @for (example of valveExamples; track example.name; let i = $index) {
+            <div
+              class="example-card"
+              [class.copied]="copiedIndex() === i"
+              (click)="copyToClipboard(example.name, i)">
+              <div class="example-name">{{ example.name }}</div>
+              <div class="example-breakdown">
+                <span class="breakdown-part equipment">{{ example.equipment }}</span>
+                @if (example.tag) {
+                  <span class="breakdown-part tag">({{ example.tag }})</span>
+                }
+                <span class="breakdown-part type">{{ example.type }}</span>
+              </div>
+              <div class="copy-feedback">
+                @if (copiedIndex() === i) {
+                  <span>Copied!</span>
+                } @else {
+                  <span class="copy-icon">📋</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Rules -->
+      <div class="rules-section">
+        <div class="rules-header">Important Rules</div>
+        <div class="rules-cards">
+          <div class="rule-card warning">
+            <span class="rule-icon">⚠</span>
+            <span>Do NOT include unit or tag number in valve name - it's a separate field</span>
+          </div>
+          <div class="rule-card tip">
+            <span class="rule-icon">💡</span>
+            <span>Include tag of equipment valve isolates (e.g., <strong>FIT-BFW704B</strong>) for searchability</span>
+          </div>
+          <div class="rule-card info">
+            <span class="rule-icon">ℹ</span>
+            <span>Extra details go in the <strong>Specific Location</strong> field</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Breaker Naming Tab -->
+  @if (activeTab() === 'breaker') {
+    <div class="tab-content">
+      <!-- Visual Flow Chart for Location -->
+      <div class="flow-chart">
+        <div class="flow-step">
+          <div class="flow-number">1</div>
+          <div class="flow-content">
+            <div class="flow-title">Location</div>
+            <div class="flow-desc">Building or area</div>
+          </div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-number">2</div>
+          <div class="flow-content">
+            <div class="flow-title">Bus Number</div>
+            <div class="flow-desc">Switchgear or MCC ID</div>
+          </div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-number">3</div>
+          <div class="flow-content">
+            <div class="flow-title">Breaker/Cubicle</div>
+            <div class="flow-desc">Specific breaker ID</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Location Examples Table -->
+      <div class="examples-section">
+        <div class="examples-header">
+          <span class="examples-label">Specific Location Examples</span>
+        </div>
+        <div class="location-table">
+          <div class="table-header">
+            <span>Location</span>
+            <span>Bus Number</span>
+            <span>Breaker/Cubicle</span>
+          </div>
+          @for (example of breakerLocationExamples; track example.location) {
+            <div class="table-row">
+              <span class="cell location">{{ example.location }}</span>
+              <span class="cell bus">{{ example.bus }}</span>
+              <span class="cell breaker">{{ example.breaker }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Rules -->
+      <div class="rules-section">
+        <div class="rules-header">Important Rules</div>
+        <div class="rules-cards">
+          <div class="rule-card tip">
+            <span class="rule-icon">💡</span>
+            <span>Use the name that appears physically at the breaker</span>
+          </div>
+          <div class="rule-card warning">
+            <span class="rule-icon">⚠</span>
+            <span>Do NOT put unit/tag number/cubicle number into the name field</span>
+          </div>
+          <div class="rule-card info">
+            <span class="rule-icon">ℹ</span>
+            <span>Use format: <strong>Location, Bus Number, Breaker Number</strong> for Specific Location</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
