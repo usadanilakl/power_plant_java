@@ -1,0 +1,67 @@
+@if (bradyPrinterModalService.isVisible()) {
+  <app-popup-projection
+    [title]="'Brady Printer Manager'"
+    [size]="'medium'"
+    [isOpen]="true"
+    (close)="close()"
+  >
+    @if (state(); as state) {
+      <div class="printer-manager-container">
+        <div class="status-section">
+          <p>
+            <strong>Status:</strong>
+            <span [class.connected]="state.isConnected" [class.disconnected]="!state.isConnected">
+              {{ state.status || 'Not Initialized' }}
+            </span>
+          </p>
+          @if (state.isConnected) {
+            <p><strong>Printer:</strong> {{ state.printerName }} ({{ state.printerModel }})</p>
+          }
+          @if (state.error) {
+            <div class="error-message">
+              <p><strong>Error:</strong> {{ state.error }}</p>
+            </div>
+          }
+        </div>
+
+        <div class="actions-section">
+          @if (!state.isConnected) {
+            <button (click)="scanForPrinters()" class="btn primary">Connect to Printer</button>
+          } @else {
+            <button (click)="testPrint()" class="btn secondary">Test Print</button>
+            <button (click)="disconnect()" class="btn danger">Disconnect</button>
+          }
+        </div>
+
+        @if (state.isConnected) {
+          <hr>
+        }
+
+        <h3>Print a Label</h3>
+
+        <div class="preview-area">
+          <h4>Label Preview</h4>
+          <div #previewContainer class="preview-container"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="line1">Line 1:</label>
+          <input id="line1" type="text" [(ngModel)]="line1" (input)="updatePreview()" />
+        </div>
+        <div class="form-group">
+          <label for="line2">Line 2:</label>
+          <input id="line2" type="text" [(ngModel)]="line2" (input)="updatePreview()" />
+        </div>
+
+        <div class="actions-section">
+          <button (click)="onPrint()" [disabled]="!state.isConnected" class="btn primary">Print Label</button>
+          <button (click)="toggleQr()" class="btn secondary">{{ withQr() ? 'Remove QR' : 'Add QR' }}</button>
+        </div>
+
+        @if (printStatus) {
+          <p class="print-status">{{ printStatus }}</p>
+        }
+      </div>
+    }
+  </app-popup-projection>
+}

@@ -1,0 +1,91 @@
+.printer-manager-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.status-section p, .actions-section p {
+  margin: 0.5rem 0;
+}
+
+.status-section .connected {
+  color: var(--success-color);
+  font-weight: bold;
+}
+
+.status-section .disconnected {
+  color: var(--danger-color);
+  font-weight: bold;
+}
+
+.error-message {
+  color: var(--danger-color);
+  background-color: rgba(255, 0, 0, 0.1);
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.actions-section {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 1rem 0;
+}
+
+.print-section {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.preview-area {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.preview-area h4 {
+  margin-bottom: 0.5rem;
+  color: var(--secondary-text);
+}
+
+.preview-container {
+  width: 300px; /* Adjust width to match your label's aspect ratio */
+  height: 150px; /* Adjust height to match your label's aspect ratio */
+  border: 2px dashed var(--border-color);
+  background-color: #ffffff;
+  margin: 0 auto;
+  border-radius: 4px;
+  overflow: hidden; /* Ensures canvas fits within the border-radius */
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  color: var(--secondary-text);
+}
+
+.form-group input {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--secondary-background);
+  color: var(--primary-text);
+}
+
+.print-status {
+  margin-top: 0.5rem;
+  color: var(--accent-color);
+  text-align: center;
+}

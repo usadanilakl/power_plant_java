@@ -1,0 +1,19 @@
+@if (qrScannerService.isScannerVisible()) {
+  <div class="scanner-overlay">
+    <div class="scanner-container">
+      <button class="close-btn" (click)="close()" title="Close Scanner">&times;</button>
+      <h2>QR Code Scanner</h2>
+      <zxing-scanner #scanner
+                     [formats]="allowedFormats"
+                     (scanSuccess)="onScanSuccess($event)"
+                     (permissionResponse)="onPermissions($event)">
+      </zxing-scanner>
+
+      @if (!hasPermission) {
+        <div class="permission-denied">
+          Camera permission is required. Please grant permission in your browser.
+        </div>
+      }
+    </div>
+  </div>
+}
