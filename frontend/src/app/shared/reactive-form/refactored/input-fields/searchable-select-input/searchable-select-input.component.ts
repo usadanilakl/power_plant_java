@@ -52,6 +52,7 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
   isOpen = signal(false);
   filteredOptions = signal<any[]>([]);
   searchTerm = signal<string>('');
+  searchMode = signal<'and' | 'or'>('and');
   private internalValue = signal<any>(null);
   isDisabled = signal<boolean>(false);
   private optionsSubscription: Subscription | null = null;
@@ -228,19 +229,38 @@ export class SearchableSelectInputComponent implements ControlValueAccessor {
 
   filterOptions(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const filterValue = input.value.toLowerCase();
+    const filterValue = input.value.toLowerCase().trim();
     this.searchTerm.set(filterValue);
+    this.applyFilter(filterValue);
+  }
 
+  toggleSearchMode(): void {
+    this.searchMode.set(this.searchMode() === 'and' ? 'or' : 'and');
+    this.applyFilter(this.searchTerm());
+  }
+
+  private applyFilter(filterValue: string): void {
     const allOptions = Array.isArray(this.options())
       ? (this.options() as any[])
       : this.filteredOptions();
 
+    const searchWords = filterValue.split(/\s+/).filter((word) => word.length > 0);
+
+    if (searchWords.length === 0) {
+      this.filteredOptions.set(allOptions);
+      return;
+    }
+
+    const isAndMode = this.searchMode() === 'and';
+
     this.filteredOptions.set(
-      allOptions.filter((opt) =>
-        (opt.label ?? opt.name ?? opt.value ?? opt.id ?? '')
-          .toLowerCase()
-          .includes(filterValue)
-      )
+      allOptions.filter((opt) => {
+        const optionText = (opt.label ?? opt.name ?? opt.value ?? opt.id ?? '').toLowerCase();
+        // AND mode: every word must match, OR mode: any word must match
+        return isAndMode
+          ? searchWords.every((word) => optionText.includes(word))
+          : searchWords.some((word) => optionText.includes(word));
+      })
     );
   }
 

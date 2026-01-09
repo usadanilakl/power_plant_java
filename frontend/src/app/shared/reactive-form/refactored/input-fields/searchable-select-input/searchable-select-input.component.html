@@ -9,13 +9,24 @@
 
 <ng-template #dropdownTemplate>
   <div class="dropdown-options">
-    <input
-      type="text"
-      [value]="searchTerm()"
-      (input)="filterOptions($event)"
-      placeholder="Search..."
-      (click)="$event.stopPropagation()"
-    />
+    <div class="search-container">
+      <input
+        type="text"
+        [value]="searchTerm()"
+        (input)="filterOptions($event)"
+        placeholder="Search..."
+        (click)="$event.stopPropagation()"
+      />
+      <button
+        type="button"
+        class="search-mode-toggle"
+        [class.or-mode]="searchMode() === 'or'"
+        (click)="toggleSearchMode(); $event.stopPropagation()"
+        title="Toggle AND/OR search mode"
+      >
+        {{ searchMode() | uppercase }}
+      </button>
+    </div>
     @for (option of filteredOptions(); track option.value || $index) {
     <div (click)="selectOption(option, $event)" class="dropdown-option">
       {{ option.label || option.name }}
