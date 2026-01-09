@@ -471,4 +471,150 @@ private void writeDataToSheet(XSSFWorkbook workbook, XSSFSheet sheet, List<LotoP
         cell.setCellStyle(workbook.getCellStyleAt((short)1)); // Use the hyperlink style created earlier
     }
 
+    // ==================== FILE EXPORT ====================
+
+    public void writeFilesToExcel(String filePath, List<com.dk_power.power_plant_java.entities.files.FileObject> data) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            XSSFSheet sheet = workbook.createSheet("Files");
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"File Number", "Name", "File Type", "System", "Related Systems", "Vendor", "File Link"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+            }
+
+            // Create data rows
+            int rowNum = 1;
+            for (com.dk_power.power_plant_java.entities.files.FileObject file : data) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(file.getFileNumber() != null ? file.getFileNumber() : "");
+                row.createCell(1).setCellValue(file.getName() != null ? file.getName() : "");
+                row.createCell(2).setCellValue(file.getFileType() != null ? file.getFileType().getName() : "");
+                row.createCell(3).setCellValue(file.getSystem() != null ? file.getSystem().getName() : "");
+                row.createCell(4).setCellValue(file.getRelatedSystems() != null ? file.getRelatedSystems() : "");
+                row.createCell(5).setCellValue(file.getVendor() != null ? file.getVendor().getName() : "");
+
+                // Add file link as hyperlink
+                Cell linkCell = row.createCell(6);
+                if (file.getFileLink() != null && !file.getFileLink().isEmpty()) {
+                    String fullPath = Paths.get(projectRoot, file.getFileLink()).toUri().toString();
+                    addSingleHyperlink(workbook, (XSSFCell) linkCell, fullPath, "Open File");
+                } else {
+                    linkCell.setCellValue("");
+                }
+            }
+
+            // Create table
+            if (!data.isEmpty()) {
+                XSSFTable table = sheet.createTable(new AreaReference(
+                        new CellReference(0, 0),
+                        new CellReference(data.size(), headers.length - 1),
+                        SpreadsheetVersion.EXCEL2007
+                ));
+                table.setName("FilesTable");
+                table.setDisplayName("FilesTable");
+                table.setStyleName("TableStyleMedium2");
+                table.getCTTable().addNewAutoFilter();
+            }
+
+            // Auto-size columns
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Write file
+            try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+                workbook.write(outputStream);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Open the file
+        openExcelFile(filePath);
+    }
+
+    // ==================== LOTO STANDARD EXPORT ====================
+
+    public void writeLotoStandardsToExcel(String filePath, List<com.dk_power.power_plant_java.entities.loto.LotoStandard> data) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            XSSFSheet sheet = workbook.createSheet("LOTO Standards");
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"ID", "Description", "Groups", "LOTO Points Count"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+            }
+
+            // Create data rows
+            int rowNum = 1;
+            for (com.dk_power.power_plant_java.entities.loto.LotoStandard standard : data) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(standard.getId() != null ? standard.getId().toString() : "");
+                row.createCell(1).setCellValue(standard.getDescription() != null ? standard.getDescription() : "");
+
+                // Groups as comma-separated names
+                String groups = standard.getGroups() != null ?
+                        standard.getGroups().stream()
+                                .map(g -> g.getName() != null ? g.getName() : "")
+                                .filter(name -> !name.isEmpty())
+                                .collect(java.util.stream.Collectors.joining(", ")) : "";
+                row.createCell(2).setCellValue(groups);
+
+                // LOTO points count
+                int lotoPointsCount = standard.getLotoPoints() != null ? standard.getLotoPoints().size() : 0;
+                row.createCell(3).setCellValue(lotoPointsCount);
+            }
+
+            // Create table
+            if (!data.isEmpty()) {
+                XSSFTable table = sheet.createTable(new AreaReference(
+                        new CellReference(0, 0),
+                        new CellReference(data.size(), headers.length - 1),
+                        SpreadsheetVersion.EXCEL2007
+                ));
+                table.setName("LotoStandardsTable");
+                table.setDisplayName("LotoStandardsTable");
+                table.setStyleName("TableStyleMedium2");
+                table.getCTTable().addNewAutoFilter();
+            }
+
+            // Auto-size columns
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Write file
+            try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+                workbook.write(outputStream);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Open the file
+        openExcelFile(filePath);
+    }
+
+    private void openExcelFile(String filePath) {
+        if (Desktop.isDesktopSupported()) {
+            Desktop desktop = Desktop.getDesktop();
+            File file = new File(filePath);
+            if (file.exists()) {
+                try {
+                    Thread.sleep(1000);
+                    desktop.open(file);
+                } catch (IOException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
 }

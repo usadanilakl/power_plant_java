@@ -157,6 +157,26 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
         return lotoPointRepo.findByEquipmentListNotNull();
     }
 
+    /**
+     * Get LOTO points by search criteria for export.
+     * Uses the complex search without pagination to get all matching results.
+     */
+    public List<LotoPoint> getBySearchCriteria(SearchCriteria criteria) {
+        // Get all matching records (large page size to get all)
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE);
+        boolean andLogicEnabled = criteria.getColumnFilterLogic() == null ||
+                !criteria.getColumnFilterLogic().values().stream().anyMatch("OR"::equalsIgnoreCase);
+        Page<LotoPoint> results = complexSearchWithPagination(lotoPointRepo, criteria, pageable, andLogicEnabled);
+        return results.getContent();
+    }
+
+    /**
+     * Get LOTO points by list of IDs for export.
+     */
+    public List<LotoPoint> getByIds(List<Long> ids) {
+        return lotoPointRepo.findAllById(ids);
+    }
+
     @Transactional
     public LotoPoint processLotoPoint(LotoPointIdDto lotoPointDto) {
         System.out.println(lotoPointDto.getIsoPos() + " - Processing LotoPoint");

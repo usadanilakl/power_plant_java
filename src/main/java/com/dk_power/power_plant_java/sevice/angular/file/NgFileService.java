@@ -103,6 +103,24 @@ public class NgFileService implements NgCrudService<FileObject, FileDto, FileRep
         return fileMapper.convertToDto(entity);
     }
 
+    /**
+     * Get files by search criteria for export.
+     * Uses the complex search without pagination to get all matching results.
+     */
+    public List<FileObject> getBySearchCriteria(SearchCriteria criteria) {
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE);
+        boolean andLogicEnabled = criteria.getColumnFilterLogic() == null ||
+                !criteria.getColumnFilterLogic().values().stream().anyMatch("OR"::equalsIgnoreCase);
+        Page<FileObject> results = complexSearchWithPagination(fileRepo, criteria, pageable, andLogicEnabled);
+        return results.getContent();
+    }
+
+    /**
+     * Get files by list of IDs for export.
+     */
+    public List<FileObject> getByIds(List<Long> ids) {
+        return fileRepo.findAllById(ids);
+    }
 
     public Page<FileDto> complexSearch(String searchString, int page, int size) {
         Map<String, String> searchCriteria = new HashMap<>();

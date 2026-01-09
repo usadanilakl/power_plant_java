@@ -10,6 +10,7 @@ import { RfFileStateService } from '../services/rf-file-state.service';
 import { RfFileFormComponent } from '../rf-file-form/rf-file-form.component';
 import { RfFileLeftMenuComponent } from '../rf-file-left-menu/rf-file-left-menu.component';
 import { RfMultiUploadComponent } from '../rf-multi-upload/rf-multi-upload.component';
+import { ExportDialogComponent } from '../../../../shared/export-dialog/export-dialog.component';
 
 @Component({
   selector: 'app-rf-file-page',
@@ -23,6 +24,7 @@ import { RfMultiUploadComponent } from '../rf-multi-upload/rf-multi-upload.compo
     RfPopupProjectionComponent,
     RfFileFormComponent,
     RfMultiUploadComponent,
+    ExportDialogComponent,
   ],
   templateUrl: './rf-file-page.component.html',
   styleUrl: './rf-file-page.component.css',

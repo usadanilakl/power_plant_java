@@ -11,8 +11,6 @@ import { NestedItem } from '../../../../../models/ui/nested-item.model';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { RfLotoPointLeftMenuService, GroupingCriteria } from '../../../../../features/loto-points/refactored/services/rf-loto-point-left-menu.service';
 import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
-import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
-import { FileDto } from '../../../../../models/file/file.model';
 
 @Component({
   selector: 'app-equipment-browser-dialog',

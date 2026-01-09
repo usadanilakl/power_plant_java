@@ -11,6 +11,7 @@ import { RfLotoPointFormComponent } from "../../../loto-points/refactored/rf-lot
 import { RfLotoPointStateService } from "../../../loto-points/refactored/services/rf-loto-point-state.service";
 import { RfFileFormComponent } from "../../../files/refactored/rf-file-form/rf-file-form.component";
 import { RfFileStateService } from "../../../files/refactored/services/rf-file-state.service";
+import { ExportDialogComponent } from "../../../../shared/export-dialog/export-dialog.component";
 
 @Component({
   selector: 'app-rf-loto-standard-page',
@@ -24,7 +25,8 @@ import { RfFileStateService } from "../../../files/refactored/services/rf-file-s
     RfLotoStandardLeftMenuComponent,
     LotoBuilderContainerComponent,
     RfLotoPointFormComponent,
-    RfFileFormComponent
+    RfFileFormComponent,
+    ExportDialogComponent
   ],
   templateUrl: './rf-loto-standard-page.component.html',
   styleUrl: './rf-loto-standard-page.component.css',

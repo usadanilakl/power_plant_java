@@ -6,6 +6,7 @@ import { RouterOutlet } from "@angular/router";
 import { RfPopupProjectionComponent } from "../../../../shared/popup-projection/rf-popup-projection.component";
 import { RfLotoPointFormComponent } from "../rf-loto-point-form/rf-loto-point-form.component";
 import { RfLotoPointStateService } from "../services/rf-loto-point-state.service";
+import { ExportDialogComponent } from "../../../../shared/export-dialog/export-dialog.component";
 
 @Component({
   selector: 'app-rf-loto-point-page',
@@ -15,7 +16,8 @@ import { RfLotoPointStateService } from "../services/rf-loto-point-state.service
     RfLotoPointLeftMenuComponent,
     RouterOutlet,
     RfPopupProjectionComponent,
-    RfLotoPointFormComponent
+    RfLotoPointFormComponent,
+    ExportDialogComponent
   ],
   templateUrl: './rf-loto-point-page.component.html',
   styleUrl: './rf-loto-point-page.component.css',

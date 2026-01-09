@@ -89,6 +89,25 @@ public class NgLotoStandardService implements NgCrudService<LotoStandard, LotoSt
         return lotoStandardRepo.findAll().stream().map(lotoStandardMapper::convertToDto).toList();
     }
 
+    /**
+     * Get LOTO standards by search criteria for export.
+     * Uses the complex search without pagination to get all matching results.
+     */
+    public List<LotoStandard> getBySearchCriteria(SearchCriteria criteria) {
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE);
+        boolean andLogicEnabled = criteria.getColumnFilterLogic() == null ||
+                !criteria.getColumnFilterLogic().values().stream().anyMatch("OR"::equalsIgnoreCase);
+        Page<LotoStandard> results = complexSearchWithPagination(lotoStandardRepo, criteria, pageable, andLogicEnabled);
+        return results.getContent();
+    }
+
+    /**
+     * Get LOTO standards by list of IDs for export.
+     */
+    public List<LotoStandard> getByIds(List<Long> ids) {
+        return lotoStandardRepo.findAllById(ids);
+    }
+
     public LotoStandardDto createStandard(LotoStandardIdDto standard) {
         LotoStandard standardEntity = lotoStandardMapper.convertIdDtoToEntity(standard);
         lotoStandardRepo.save(standardEntity);
