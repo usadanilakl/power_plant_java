@@ -6,6 +6,7 @@ import { LotoPointClipboardItem } from "../../../../models/loto/loto-point-clipb
 import { RfLotoPointStateService } from "./rf-loto-point-state.service";
 import { RfLotoPointApiService } from "./rf-loto-point-api.service";
 import { map } from "rxjs";
+import { BradyPrinterModalService } from "../../../../shared/brady-printer-manager/brady-printer-modal.service";
 
 @Injectable({
     providedIn: "root"
@@ -13,6 +14,7 @@ import { map } from "rxjs";
 export class LotoPointContextMenuService extends ContextMenuService {
   private stateService = inject(RfLotoPointStateService);
   private apiService = inject(RfLotoPointApiService);
+  private bradyModalService = inject(BradyPrinterModalService)
 
   constructor() {
     super();
@@ -150,8 +152,11 @@ export class LotoPointContextMenuService extends ContextMenuService {
     }
   
     private handlePrint(item: LotoPointDto): void {
-      console.log('Printing:', item);
-      // Implement print logic
+      this.bradyModalService.openWithData({
+        line1: item.tagNumber || '',
+        line2: item.description || '',
+        withQr: true
+      });
     }
   
     private handleRelease(item: LotoPointDto): void {

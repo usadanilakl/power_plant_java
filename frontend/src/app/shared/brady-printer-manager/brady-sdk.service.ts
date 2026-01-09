@@ -82,8 +82,14 @@ export class BradySdkService {
 
   /**
    * Automatically connects to a known printer or initiates a scan if not connected.
+   * Initializes the SDK if not already initialized.
    */
   autoConnectOrScan(): void {
+    // Ensure SDK is initialized first
+    if (!this.sdkInstance) {
+      this.initialize();
+    }
+
     if (this.sdkInstance?.isConnected()) {
       this.printerUpdatesCallback(); // Refresh state
     } else {
@@ -104,6 +110,40 @@ export class BradySdkService {
     } else {
       this.updateState({ status: 'Disconnection Failed...', error: 'Failed to disconnect.' });
     }
+  }
+
+  /**
+   * High-level method to print a label with two lines of text and optional QR code.
+   * Handles canvas creation and printing in one call.
+   * @param line1 Top text for the label.
+   * @param line2 Bottom text for the label.
+   * @param options Optional configuration for QR code and offset.
+   * @returns An observable that resolves with the printing status.
+   */
+  printLabel(
+    line1: string,
+    line2: string,
+    options: { withQr?: boolean; qrData?: string; offsetX?: number } = {}
+  ): Observable<boolean> {
+    const { withQr = true, qrData, offsetX = -50 } = options;
+
+    return new Observable<boolean>(observer => {
+      const createCanvas = withQr
+        ? this.createImageFromStringsWithQr(line1, line2, qrData)
+        : Promise.resolve(this.createImageFromStringsNoQr(line1, line2));
+
+      createCanvas
+        .then(canvas => {
+          this.printCanvasWithOffset(canvas, offsetX).subscribe({
+            next: success => {
+              observer.next(success);
+              observer.complete();
+            },
+            error: err => observer.error(err)
+          });
+        })
+        .catch(err => observer.error(err));
+    });
   }
 
   /**
