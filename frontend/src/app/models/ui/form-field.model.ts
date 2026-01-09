@@ -74,6 +74,7 @@ export interface FormField {
   context?: {
     currentLotoPointId?: number;
     currentLotoPointTagNumber?: string;
+    conflictMode?: 'has-association' | 'no-association' | 'none';
   };
 }
 
@@ -163,5 +164,6 @@ export interface RfFormField {
   context?: {
     currentLotoPointId?: number;
     currentLotoPointTagNumber?: string;
+    conflictMode?: 'has-association' | 'no-association' | 'none';
   };
 }

@@ -35,6 +35,7 @@
               [formControl]="getFormControl(field.name)"
               [currentLotoPointId]="field.context?.currentLotoPointId"
               [currentLotoPointTagNumber]="field.context?.currentLotoPointTagNumber"
+              [conflictMode]="field.context?.conflictMode ?? 'has-association'"
             >
             </app-equipment-list-manager>
           }

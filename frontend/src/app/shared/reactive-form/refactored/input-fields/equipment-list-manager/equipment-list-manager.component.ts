@@ -10,6 +10,14 @@ import { RfEquipmentEditorComponent } from "../../../../../features/equipment/re
 import { EquipmentLotoConflictService } from '../services/equipment-loto-conflict.service';
 import { EquipmentConflictDialogComponent, ConflictDialogData } from '../equipment-conflict-dialog/equipment-conflict-dialog.component';
 
+/**
+ * Conflict detection modes:
+ * - 'has-association': Warns when equipment IS associated with another LOTO point (for equipmentList field)
+ * - 'no-association': Warns when equipment is NOT associated with any LOTO point (for zeroEnergy field)
+ * - 'none': Disables conflict detection entirely
+ */
+export type ConflictMode = 'has-association' | 'no-association' | 'none';
+
 interface EquipmentListItem {
   id?: number;
   coordinates?: string;
@@ -47,6 +55,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   @Input() allowDraw: boolean = true;    // Allow drawing new shapes
   @Input() currentLotoPointId?: number;  // For conflict detection exclusion
   @Input() currentLotoPointTagNumber?: string;  // For conflict dialog display
+  @Input() conflictMode: ConflictMode = 'has-association';  // Conflict detection mode
 
   // Services
   private equipmentMapper = inject(EquipmentMapperService);
@@ -128,26 +137,44 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   }
 
   onEquipmentSelected(equipment: EquipmentDto) {
-    // Check for conflicts with existing LOTO points
-    if (equipment.id) {
+    // Skip conflict detection if disabled
+    if (this.conflictMode === 'none' || !equipment.id) {
+      this.addEquipmentToList(equipment);
+      this.closeBrowser();
+      return;
+    }
+
+    // Check for conflicts based on mode
+    if (this.conflictMode === 'has-association') {
+      // Warn if equipment IS already associated with another LOTO point
       const conflicts = this.conflictService.findConflicts(equipment.id, this.currentLotoPointId);
 
       if (conflicts.length > 0) {
-        // Show conflict dialog
-        this.pendingEquipment.set(equipment);
-        this.conflictDialogData.set({
-          equipment,
-          conflicts,
-          currentLotoPointTagNumber: this.currentLotoPointTagNumber
-        });
-        this.isConflictDialogOpen.set(true);
-        this.closeBrowser();
+        this.showConflictDialog(equipment, conflicts, 'has-association');
+        return;
+      }
+    } else if (this.conflictMode === 'no-association') {
+      // Warn if equipment is NOT associated with any LOTO point
+      if (this.conflictService.hasNoAssociation(equipment.id)) {
+        this.showConflictDialog(equipment, [], 'no-association');
         return;
       }
     }
 
     // No conflicts, add directly
     this.addEquipmentToList(equipment);
+    this.closeBrowser();
+  }
+
+  private showConflictDialog(equipment: EquipmentDto, conflicts: any[], conflictType: 'has-association' | 'no-association') {
+    this.pendingEquipment.set(equipment);
+    this.conflictDialogData.set({
+      equipment,
+      conflicts,
+      currentLotoPointTagNumber: this.currentLotoPointTagNumber,
+      conflictType
+    });
+    this.isConflictDialogOpen.set(true);
     this.closeBrowser();
   }
 

@@ -1,6 +1,6 @@
 <app-rf-popup-projection
   [isOpen]="isOpen"
-  title="Equipment Already Associated"
+  [title]="getDialogTitle()"
   size="medium"
   (close)="onCancel()">
 
@@ -10,10 +10,10 @@
 
       <div class="message">
         <p class="primary-message">
-          This equipment is already associated with {{ getConflictSummary() }}.
+          {{ getPrimaryMessage() }}
         </p>
         <p class="secondary-message">
-          Adding it to the current LOTO point will reassign this equipment.
+          {{ getSecondaryMessage() }}
         </p>
       </div>
 
@@ -31,26 +31,28 @@
         }
       </div>
 
-      <div class="conflicts-section">
-        <h4>Currently Associated With</h4>
-        <div class="conflicts-list">
-          @for (conflict of data.conflicts; track conflict.id) {
-            <div class="conflict-item">
-              <div class="conflict-tag">{{ conflict.tagNumber }}</div>
-              <div class="conflict-details">
-                @if (conflict.description) {
-                  <span class="description">{{ conflict.description }}</span>
-                }
-                @if (conflict.location) {
-                  <span class="location">{{ conflict.location }}</span>
-                }
+      @if (!isNoAssociationConflict() && data.conflicts.length > 0) {
+        <div class="conflicts-section">
+          <h4>Currently Associated With</h4>
+          <div class="conflicts-list">
+            @for (conflict of data.conflicts; track conflict.id) {
+              <div class="conflict-item">
+                <div class="conflict-tag">{{ conflict.tagNumber }}</div>
+                <div class="conflict-details">
+                  @if (conflict.description) {
+                    <span class="description">{{ conflict.description }}</span>
+                  }
+                  @if (conflict.location) {
+                    <span class="location">{{ conflict.location }}</span>
+                  }
+                </div>
               </div>
-            </div>
-          }
+            }
+          </div>
         </div>
-      </div>
+      }
 
-      @if (data.currentLotoPointTagNumber) {
+      @if (!isNoAssociationConflict() && data.currentLotoPointTagNumber) {
         <div class="reassign-info">
           <h4>Will Be Reassigned To</h4>
           <div class="reassign-target">{{ data.currentLotoPointTagNumber }}</div>
@@ -59,7 +61,7 @@
 
       <div class="actions">
         <button class="btn-cancel" (click)="onCancel()">Cancel</button>
-        <button class="btn-confirm" (click)="onConfirm()">Confirm & Add</button>
+        <button class="btn-confirm" (click)="onConfirm()">{{ getConfirmButtonText() }}</button>
       </div>
     </div>
   }

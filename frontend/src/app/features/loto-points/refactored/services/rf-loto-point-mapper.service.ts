@@ -481,6 +481,9 @@ export class LotoPointMapperService {
           label: 'Equipment (select on P&ID)',
           type: 'equipment-list-manager',
           initialValue: lotoPoint.zeroEnergy?.templateEquipment || [],
+          context: {
+            conflictMode: 'no-association',
+          },
         },
       ],
     },

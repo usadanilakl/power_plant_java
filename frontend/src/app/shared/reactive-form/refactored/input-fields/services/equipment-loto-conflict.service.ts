@@ -74,4 +74,14 @@ export class EquipmentLotoConflictService {
       }))
       .filter(item => item.conflicts.length > 0);
   }
+
+  /**
+   * Check if equipment has NO association with any LOTO point.
+   * Used for zero energy fields where equipment MUST have a LOTO point.
+   * @param equipmentId The equipment ID to check
+   * @returns true if equipment has NO LOTO point association
+   */
+  hasNoAssociation(equipmentId: number): boolean {
+    return this.findConflicts(equipmentId).length === 0;
+  }
 }

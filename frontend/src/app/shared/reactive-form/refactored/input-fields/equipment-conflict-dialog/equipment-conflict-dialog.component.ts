@@ -1,13 +1,16 @@
-import { Component, Input, output, signal } from '@angular/core';
+import { Component, Input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RfPopupProjectionComponent } from '../../../../popup-projection/rf-popup-projection.component';
 import { LotoPointSummaryDto } from '../../../../../models/loto/loto-point-summary.model';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 
+export type ConflictType = 'has-association' | 'no-association';
+
 export interface ConflictDialogData {
   equipment: EquipmentDto;
   conflicts: LotoPointSummaryDto[];
   currentLotoPointTagNumber?: string;
+  conflictType: ConflictType;
 }
 
 @Component({
@@ -40,5 +43,37 @@ export class EquipmentConflictDialogComponent {
     return count === 1
       ? '1 existing LOTO point'
       : `${count} existing LOTO points`;
+  }
+
+  getDialogTitle(): string {
+    if (this.data?.conflictType === 'no-association') {
+      return 'Equipment Has No LOTO Point';
+    }
+    return 'Equipment Already Associated';
+  }
+
+  getPrimaryMessage(): string {
+    if (this.data?.conflictType === 'no-association') {
+      return 'This equipment is not associated with any LOTO point.';
+    }
+    return `This equipment is already associated with ${this.getConflictSummary()}.`;
+  }
+
+  getSecondaryMessage(): string {
+    if (this.data?.conflictType === 'no-association') {
+      return 'Zero energy verification requires equipment with an existing LOTO point association.';
+    }
+    return 'Adding it to the current LOTO point will reassign this equipment.';
+  }
+
+  getConfirmButtonText(): string {
+    if (this.data?.conflictType === 'no-association') {
+      return 'Add Anyway';
+    }
+    return 'Confirm & Add';
+  }
+
+  isNoAssociationConflict(): boolean {
+    return this.data?.conflictType === 'no-association';
   }
 }
