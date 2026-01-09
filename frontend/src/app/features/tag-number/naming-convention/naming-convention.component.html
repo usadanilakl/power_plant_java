@@ -53,38 +53,54 @@
       <div class="name-builder">
         <div class="builder-title">Try It: Build a Valve Name</div>
         <div class="builder-inputs">
-          <div class="builder-field">
-            <label>Equipment/System:</label>
-            <input
-              type="text"
-              placeholder="e.g., BFP A SUCTION"
-              [value]="selectedEquipment()"
-              (input)="setEquipment($any($event.target).value)">
+          <!-- Main editable input field -->
+          <div class="builder-field main-input-field">
+            <label>Built Name:</label>
+            <div class="input-with-actions">
+              <input
+                type="text"
+                class="main-name-input"
+                placeholder="Select equipment names, type details, click keywords..."
+                [value]="builtName()"
+                (input)="onBuiltNameInput($any($event.target).value)">
+              @if (builtName()) {
+                <button class="clear-btn" (click)="resetBuilder()" title="Clear">X</button>
+                <button class="copy-btn small" (click)="copyBuiltName()" title="Copy to clipboard">
+                  <span class="copy-icon">📋</span>
+                </button>
+              }
+            </div>
+            <span class="field-hint">Type freely or use the selectors below to build the name</span>
           </div>
+
+          <!-- Equipment Name Selector -->
+          <div class="builder-field equipment-name-field">
+            <label>Add Equipment Name:</label>
+            <app-rf-value-select
+              [categoryAlias]="'Equipment Name'"
+              [label]="'Click to add equipment name'"
+              [canManageValues]="true"
+              (valueSelected)="onEquipmentNameSelected($event)">
+            </app-rf-value-select>
+            <span class="field-hint">Select to append equipment name alias to the built name</span>
+          </div>
+
+          <!-- Keywords -->
           <div class="builder-field">
-            <label>Select Keyword:</label>
+            <label>Add Keyword:</label>
             <div class="keyword-chips interactive">
               @for (kw of valveKeywords; track kw.keyword) {
                 <button
                   class="keyword-chip"
-                  [class.selected]="selectedKeyword() === kw.keyword"
                   [title]="kw.description"
-                  (click)="selectKeyword(kw.keyword)">
+                  (click)="appendKeyword(kw.keyword)">
                   {{ kw.keyword }}
                 </button>
               }
             </div>
+            <span class="field-hint">Click to append keyword to the built name</span>
           </div>
         </div>
-        @if (builtName()) {
-          <div class="builder-result">
-            <span class="result-label">Result:</span>
-            <code class="result-name">{{ builtName() }}</code>
-            <button class="copy-btn small" (click)="copyBuiltName()" title="Copy to clipboard">
-              <span class="copy-icon">📋</span>
-            </button>
-          </div>
-        }
       </div>
 
       <!-- Examples with Copy -->

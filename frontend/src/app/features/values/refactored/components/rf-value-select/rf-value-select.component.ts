@@ -1,7 +1,8 @@
-import { Component, input, inject, signal, effect, ViewChild, AfterViewInit, computed, Injector } from '@angular/core';
+import { Component, input, inject, signal, effect, ViewChild, AfterViewInit, computed, Injector, output } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RfValueService } from '../../services/rf-value.service';
+import { RfValueDto } from '../../models/rf-value.model';
 import { SearchableSelectInputComponent } from '../../../../../shared/reactive-form/refactored/input-fields/searchable-select-input/searchable-select-input.component';
 
 @Component({
@@ -26,6 +27,9 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
   categoryAlias = input.required<string>();
   label = input<string>('Value');
   canManageValues = input<boolean>(true);
+
+  // Outputs
+  valueSelected = output<RfValueDto | null>();
 
   // State
   value = signal<any>(null);
@@ -66,6 +70,8 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
       this.selectInput.registerOnChange((val: any) => {
         this.value.set(val);
         this.onChange(val);
+        // Emit full value object
+        this.emitSelectedValue(val);
       });
       this.selectInput.registerOnTouched(() => {
         this.onTouched();
@@ -121,6 +127,19 @@ export class RfValueSelectComponent implements ControlValueAccessor, AfterViewIn
     if (this.selectInput) {
       this.selectInput.setDisabledState(isDisabled);
     }
+  }
+
+  /**
+   * Emit the full RfValueDto object when a value is selected
+   */
+  private emitSelectedValue(valueId: any): void {
+    if (valueId === null || valueId === undefined) {
+      this.valueSelected.emit(null);
+      return;
+    }
+    const values = this.valueService.getValuesByCategory(this.categoryAlias());
+    const selectedValue = values.find(v => v.id === valueId) || null;
+    this.valueSelected.emit(selectedValue);
   }
 
   // ==================== Searchable Select Event Handlers ====================

@@ -177,6 +177,68 @@
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
 }
 
+.field-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #666);
+  margin-top: 0.35rem;
+  font-style: italic;
+}
+
+/* Main input field with actions */
+.main-input-field {
+  background: white;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 2px solid var(--primary-color, #3498db);
+}
+
+.input-with-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.main-name-input {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.main-name-input:focus {
+  outline: none;
+  border-color: var(--primary-color, #3498db);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.clear-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+
+.clear-btn:hover {
+  background: #c0392b;
+}
+
+.equipment-name-field {
+  position: relative;
+}
+
+.equipment-name-field app-rf-value-select {
+  display: block;
+}
+
 .keyword-chips.interactive {
   display: flex;
   flex-wrap: wrap;
@@ -603,4 +665,31 @@
 :host-context(.dark-mode) .keyword-chips.interactive .keyword-chip.selected {
   background: #2196f3;
   color: white;
+}
+
+:host-context(.dark-mode) .field-hint {
+  color: #888;
+}
+
+:host-context(.dark-mode) .main-input-field {
+  background: #2a2a2a;
+  border-color: #64b5f6;
+}
+
+:host-context(.dark-mode) .main-name-input {
+  background: #3a3a3a;
+  border-color: #404040;
+  color: #e0e0e0;
+}
+
+:host-context(.dark-mode) .main-name-input::placeholder {
+  color: #888;
+}
+
+:host-context(.dark-mode) .clear-btn {
+  background: #c0392b;
+}
+
+:host-context(.dark-mode) .clear-btn:hover {
+  background: #a93226;
 }

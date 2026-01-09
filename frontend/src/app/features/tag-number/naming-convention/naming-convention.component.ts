@@ -1,9 +1,11 @@
 import { Component, signal } from '@angular/core';
+import { RfValueSelectComponent } from '../../values/refactored/components/rf-value-select/rf-value-select.component';
+import { RfValueDto } from '../../values/refactored/models/rf-value.model';
 
 @Component({
   selector: 'app-naming-convention',
   standalone: true,
-  imports: [],
+  imports: [RfValueSelectComponent],
   templateUrl: './naming-convention.component.html',
   styleUrl: './naming-convention.component.css'
 })
@@ -11,9 +13,7 @@ export class NamingConventionComponent {
   // Tab state
   activeTab = signal<'valve' | 'breaker'>('valve');
 
-  // Interactive name builder state
-  selectedEquipment = signal<string>('');
-  selectedKeyword = signal<string>('');
+  // Interactive name builder state - single accumulating string 
   builtName = signal<string>('');
 
   // Valve naming examples with breakdown
@@ -55,29 +55,34 @@ export class NamingConventionComponent {
     this.resetBuilder();
   }
 
-  selectKeyword(keyword: string) {
-    this.selectedKeyword.set(keyword);
-    this.updateBuiltName();
-  }
-
-  setEquipment(value: string) {
-    this.selectedEquipment.set(value);
-    this.updateBuiltName();
-  }
-
-  updateBuiltName() {
-    const equipment = this.selectedEquipment();
-    const keyword = this.selectedKeyword();
-    if (equipment || keyword) {
-      this.builtName.set(`${equipment} ${keyword}`.trim());
+  // Append keyword to the built name
+  appendKeyword(keyword: string) {
+    const current = this.builtName().trim();
+    if (current) {
+      this.builtName.set(current + ' ' + keyword);
     } else {
-      this.builtName.set('');
+      this.builtName.set(keyword);
+    }
+  }
+
+  // Handle direct input changes
+  onBuiltNameInput(value: string) {
+    this.builtName.set(value);
+  }
+
+  // Append equipment name alias to the built name
+  onEquipmentNameSelected(value: RfValueDto | null) {
+    if (value && value.alias) {
+      const current = this.builtName().trim();
+      if (current) {
+        this.builtName.set(current + ' ' + value.alias);
+      } else {
+        this.builtName.set(value.alias);
+      }
     }
   }
 
   resetBuilder() {
-    this.selectedEquipment.set('');
-    this.selectedKeyword.set('');
     this.builtName.set('');
   }
 

@@ -1,7 +1,5 @@
 package com.dk_power.power_plant_java.sevice.angular;
 
-import com.dk_power.power_plant_java.sevice.angular.NgValueService;
-import jakarta.persistence.GeneratedValue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +15,7 @@ public class DefaultValueGeneratorService {
         generateUnitValues();
         generateZeroEnergyTemplates();
         generateGroupValues();
+        generateEquipmentNameValues();
     }
 
     private void generateSystems() {
@@ -96,5 +95,13 @@ public class DefaultValueGeneratorService {
         ngValueService.createValue("Group", "Water Side", "WSD");
         ngValueService.createValue("Group", "Unit 1", "U1");
         ngValueService.createValue("Group", "Unit 2", "U2");
+    }
+
+    private void generateEquipmentNameValues(){
+        ngValueService.createValue("Equipment Name", "Strainer", "STR");
+        ngValueService.createValue("Equipment Name", "Terminal Attemperator", "TERM ATTEMP");
+        ngValueService.createValue("Equipment Name", "Interstage Attemperator", "INTERSTAGE ATTEMP");
+        ngValueService.createValue("Equipment Name", "Boiler Feed Pump", "BFP");
+        ngValueService.createValue("Equipment Name", "Condensate Pump", "CND PMP");
     }
 }
