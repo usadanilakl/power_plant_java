@@ -16,7 +16,9 @@
       "Bash(source ~/.nvm/nvm.sh)",
       "Bash(npx tsc:*)",
       "Bash(mkdir:*)",
-      "Bash(nvm use default)"
+      "Bash(nvm use default)",
+      "Bash(npm install:*)",
+      "Bash(cat:*)"
     ]
   }
 }

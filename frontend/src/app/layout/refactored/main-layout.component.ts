@@ -3,10 +3,11 @@ import { ThemeToggleComponent } from "../../shared/theme-toggle/theme-toggle.com
 import { Router } from '@angular/router';
 import { isPlatformBrowser } from '@angular/common';
 import { ClipboardComponent } from "../../shared/clipboard/clipboard.component";
+import { TourTriggerComponent } from "../../shared/tour/tour-trigger.component";
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent, ClipboardComponent],
+  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })
