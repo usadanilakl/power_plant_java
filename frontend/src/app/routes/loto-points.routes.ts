@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { RfLotoPointPageComponent } from '../features/loto-points/refactored/rf-loto-point-page/rf-loto-point-page.component';
-import { DoubleLotoPointTableComponent } from '../features/loto-points/refactored/double-loto-point-table/double-loto-point-table.component';
+import { LotoPointDbTableComponent } from '../features/loto-points/refactored/loto-point-db-table/loto-point-db-table.component';
 import { LotoPointComponent } from '../pages/loto-point/loto-point.component';
 
 export const LOTO_POINTS_ROUTES: Routes = [
@@ -9,7 +9,7 @@ export const LOTO_POINTS_ROUTES: Routes = [
     component: RfLotoPointPageComponent,
     children: [
       { path: '', redirectTo: 'table', pathMatch: 'full' },
-      { path: 'table', component: DoubleLotoPointTableComponent },
+      { path: 'table', component: LotoPointDbTableComponent },
       { path: ':lotoPointId', component: LotoPointComponent }
     ]
   }
