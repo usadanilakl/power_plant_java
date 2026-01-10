@@ -22,6 +22,9 @@
       <div
         class="field-wrapper"
         [class]="'form-field-layout-' + (groupLabel === 'Ungrouped' ? layout() : groupLayout())"
+        [appGuide]="field.guideId || ''"
+        [guideMessage]="field.guideMessage || ''"
+        [guideTooltipOnly]="true"
       >
         @if (field.tooltip) {
           <div class="field-tooltip">{{ field.tooltip }}</div>

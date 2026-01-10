@@ -20,7 +20,7 @@ button {
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 button:disabled {
@@ -107,4 +107,27 @@ button.color-danger:hover:not(:disabled) {
 
 span {
   white-space: nowrap;
+}
+
+/* Guide highlight support */
+button.guide-active,
+button.guide-highlight {
+  position: relative;
+  z-index: 100;
+  outline: 3px solid rgba(25, 118, 210, 0.8);
+  outline-offset: 2px;
+}
+
+/* Pulsing animation using box-shadow */
+button.guide-pulse {
+  animation: guide-button-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes guide-button-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(25, 118, 210, 0);
+  }
 }

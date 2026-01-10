@@ -7,17 +7,18 @@ import { RfLotoPointLeftMenuService, GroupingCriteria } from '../services/rf-lot
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 import { RfToggleMenuComponent } from '../../../../shared/menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 import { LotoPointContextMenuService } from '../services/loto-point-context-menu.service';
+import { GuideDirective } from '../../../../shared/guide/guide.directive';
 
 @Component({
   selector: 'app-rf-loto-point-left-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, RfToggleMenuComponent],
+  imports: [CommonModule, MatIconModule, RfToggleMenuComponent, GuideDirective],
   templateUrl: './rf-loto-point-left-menu.component.html',
   styleUrl: './rf-loto-point-left-menu.component.css'
 })
 export class RfLotoPointLeftMenuComponent implements OnInit {
   private menuService = inject(RfLotoPointLeftMenuService);
-  private stateService = inject(RfLotoPointStateService);
+  protected stateService = inject(RfLotoPointStateService);
   private destroyRef = inject(DestroyRef);
   protected contextMenuService = inject(LotoPointContextMenuService);
 

@@ -208,6 +208,8 @@ button[type="button"]:hover {
   display: block;
 }
 
+/* Form fields use tooltip-only mode - no highlight styles needed */
+
 @media (max-width: 900px) {
   .form-layout-grid {
     grid-template-columns: repeat(2, 1fr);

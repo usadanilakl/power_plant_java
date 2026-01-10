@@ -5,6 +5,10 @@ export interface NavigationCard {
   route: string;
   color?: string;
   children?: NavigationCard[];
+  /** Guide identifier in format "guideId:stepId" for the guide system */
+  guideId?: string;
+  /** Message to show when this card is highlighted by a guide */
+  guideMessage?: string;
 }
 
 export type NavigationCards = NavigationCard[];
@@ -22,21 +26,27 @@ export const HOME_NAVIGATION_CARDS: NavigationCards = [
     description: 'View and edit equipment files and documentation',
     icon: 'folder',
     route: '/file',
-    color: '#3498db'
+    color: '#3498db',
+    guideId: 'manage-files:nav-card',
+    guideMessage: 'Click here to access the file management system'
   },
   {
     title: 'LOTO Points',
     description: 'Manage all LOTO isolation points',
     icon: 'location_on',
     route: '/loto-points',
-    color: '#9b59b6'
+    color: '#9b59b6',
+    guideId: 'create-loto-point:nav-card',
+    guideMessage: 'Click here to navigate to LOTO Points and create a new point'
   },
   {
     title: 'LOTO Standards',
     description: 'View and manage LOTO standard procedures',
     icon: 'description',
     route: '/loto-standard',
-    color: '#e67e22'
+    color: '#e67e22',
+    guideId: 'create-loto-standard:nav-card',
+    guideMessage: 'Click here to navigate to LOTO Standards'
   },
   {
     title: 'LOTO Builder',

@@ -76,6 +76,10 @@ export interface FormField {
     currentLotoPointTagNumber?: string;
     conflictMode?: 'has-association' | 'no-association' | 'none';
   };
+
+  // Guide system support
+  guideId?: string;         // Guide identifier in format "guideId:stepId"
+  guideMessage?: string;    // Message to show when this field is highlighted
 }
 
 export interface FormFieldGroup {
@@ -166,4 +170,8 @@ export interface RfFormField {
     currentLotoPointTagNumber?: string;
     conflictMode?: 'has-association' | 'no-association' | 'none';
   };
+
+  // Guide system support
+  guideId?: string;         // Guide identifier in format "guideId:stepId"
+  guideMessage?: string;    // Message to show when this field is highlighted
 }

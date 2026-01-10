@@ -1,4 +1,8 @@
-<a [routerLink]="card().route" class="nav-card" [style.--card-color]="card().color || '#3498db'">
+<a [routerLink]="card().route"
+   class="nav-card"
+   [style.--card-color]="card().color || '#3498db'"
+   [appGuide]="card().guideId || ''"
+   [guideMessage]="card().guideMessage || ''">
   <div class="card-icon">
     <span class="material-icons">{{ card().icon }}</span>
   </div>

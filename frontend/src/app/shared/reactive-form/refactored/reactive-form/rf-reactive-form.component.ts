@@ -21,6 +21,7 @@ import { FileInputComponent } from '../input-fields/file-input/file-input.compon
 import { FormBuilderService } from '../services/form-builder.service';
 import { FormValidationService } from '../services/form-validation.service';
 import { FormDataService } from '../services/form-data.service';
+import { GuideDirective } from '../../../guide/guide.directive';
 
 @Component({
   selector: 'app-rf-reactive-form',
@@ -42,6 +43,7 @@ import { FormDataService } from '../services/form-data.service';
     RfValueSelectComponent,
     RfMultiValueSelectComponent,
     FileInputComponent,
+    GuideDirective,
   ],
   templateUrl: './rf-reactive-form.component.html',
   styleUrl: './rf-reactive-form.component.css',

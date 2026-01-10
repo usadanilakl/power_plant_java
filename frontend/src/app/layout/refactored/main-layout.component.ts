@@ -4,10 +4,11 @@ import { Router } from '@angular/router';
 import { isPlatformBrowser } from '@angular/common';
 import { ClipboardComponent } from "../../shared/clipboard/clipboard.component";
 import { TourTriggerComponent } from "../../shared/tour/tour-trigger.component";
+import { GuideMenuComponent } from "../../shared/guide/guide-menu.component";
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent],
+  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, GuideMenuComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })

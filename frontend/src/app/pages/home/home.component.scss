@@ -26,6 +26,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.25rem;
+  padding: 8px; // Space for guide outline
+  margin: -8px; // Compensate for padding
+  overflow: visible;
 }
 
 // Responsive adjustments

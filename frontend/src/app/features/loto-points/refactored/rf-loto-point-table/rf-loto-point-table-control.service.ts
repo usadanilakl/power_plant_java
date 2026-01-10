@@ -28,6 +28,8 @@ export class LotoPointTableControlService extends TableControlsService  {
             },
             color: 'accent' as ButtonColor,
             icon: 'add_box',
+            guideId: 'create-loto-point:create-button',
+            guideMessage: 'Click this button to create a new LOTO point',
           },
           {
             name: 'Export to Excel',

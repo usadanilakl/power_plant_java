@@ -10,6 +10,8 @@
     (click)="onButtonClick(button)"
     [matTooltip]="button.tooltip || ''"
     [class.has-icon]="button.icon"
+    [appGuide]="button.guideId || ''"
+    [guideMessage]="button.guideMessage || ''"
   >
     <mat-icon *ngIf="button.icon" class="button-icon">{{
       isString(button.icon) ? button.icon : button.icon()

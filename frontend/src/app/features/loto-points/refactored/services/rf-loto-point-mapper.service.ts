@@ -342,6 +342,8 @@ export class LotoPointMapperService {
         type: 'text',
         validators: [Validators.required],
         initialValue: lotoPoint.tagNumber || '',
+        guideId: 'create-loto-point:field-tag-number',
+        guideMessage: 'Enter a unique tag number for this LOTO point',
       },
       description: {
         name: 'description',
@@ -349,18 +351,24 @@ export class LotoPointMapperService {
         type: 'text',
         validators: [Validators.required],
         initialValue: lotoPoint.description || '',
+        guideId: 'create-loto-point:field-description',
+        guideMessage: 'Provide a clear description of the LOTO point',
       },
       unit: {
         name: 'unit',
         label: 'Unit',
         type: 'text',
         initialValue: lotoPoint.unit || '',
+        guideId: 'create-loto-point:field-unit',
+        guideMessage: 'Specify the unit where this LOTO point is located',
       },
       tagged: {
         name: 'tagged',
         label: 'Tagged',
         type: 'text',
         initialValue: lotoPoint.tagged || '',
+        guideId: 'create-loto-point:field-tagged',
+        guideMessage: 'Indicate the tagging status',
       },
       isoPos: {
         name: 'isoPos',
@@ -370,6 +378,8 @@ export class LotoPointMapperService {
         canManageValues: true,
         validators: [Validators.required],
         initialValue: lotoPoint.isoPos?.id || null,
+        guideId: 'create-loto-point:field-isoPos',
+        guideMessage: 'Select the isolated position for this LOTO point (required)',
       },
       normPos: {
         name: 'normPos',
@@ -379,6 +389,8 @@ export class LotoPointMapperService {
         canManageValues: true,
         validators: [Validators.required],
         initialValue: lotoPoint.normPos?.id || null,
+        guideId: 'create-loto-point:field-normPos',
+        guideMessage: 'Select the normal operating position (required)',
       },
       specificLocation: {
         name: 'specificLocation',
@@ -386,42 +398,56 @@ export class LotoPointMapperService {
         type: 'text',
         validators: [Validators.required],
         initialValue: lotoPoint.specificLocation || '',
+        guideId: 'create-loto-point:field-specificLocation',
+        guideMessage: 'Enter the specific location of this LOTO point (required)',
       },
       standard: {
         name: 'standard',
         label: 'Standard',
         type: 'text',
         initialValue: lotoPoint.standard || '',
+        guideId: 'create-loto-point:field-standard',
+        guideMessage: 'Reference to any applicable standard',
       },
       generalLocation: {
         name: 'generalLocation',
         label: 'General Location',
         type: 'text',
         initialValue: lotoPoint.generalLocation || '',
+        guideId: 'create-loto-point:field-generalLocation',
+        guideMessage: 'Enter the general area or building location',
       },
       equipmentIdList: {
         name: 'equipmentIdList',
         label: 'Equipment IDs',
         type: 'multi-select',
         initialValue: lotoPoint.equipmentIdList || [],
+        guideId: 'create-loto-point:field-equipmentIdList',
+        guideMessage: 'Select equipment IDs associated with this LOTO point',
       },
       normalPosition: {
         name: 'normalPosition',
         label: 'Normal Position',
         type: 'text',
         initialValue: lotoPoint.normalPosition || '',
+        guideId: 'create-loto-point:field-normalPosition',
+        guideMessage: 'Enter the normal position value',
       },
       isolatedPosition: {
         name: 'isolatedPosition',
         label: 'Isolated Position',
         type: 'text',
         initialValue: lotoPoint.isolatedPosition || '',
+        guideId: 'create-loto-point:field-isolatedPosition',
+        guideMessage: 'Enter the isolated position value',
       },
       oldId: {
         name: 'oldId',
         label: 'Old ID',
         type: 'text',
         initialValue: lotoPoint.oldId || '',
+        guideId: 'create-loto-point:field-oldId',
+        guideMessage: 'Legacy ID from previous system (if applicable)',
       },
       isUpdated: {
         name: 'isUpdated',
@@ -432,18 +458,24 @@ export class LotoPointMapperService {
           { value: 'false', label: 'No' },
         ],
         initialValue: lotoPoint.isUpdated?.toString() || 'false',
+        guideId: 'create-loto-point:field-isUpdated',
+        guideMessage: 'Indicates if this LOTO point has been updated',
       },
       fileIds: {
         name: 'fileIds',
         label: 'File IDs',
         type: 'text',
         initialValue: lotoPoint.fileIds || '',
+        guideId: 'create-loto-point:field-fileIds',
+        guideMessage: 'Associated file IDs for documentation',
       },
       conflictStatus: {
         name: 'conflictStatus',
         label: 'Conflict Status',
         type: 'text',
         initialValue: lotoPoint.conflictStatus || '',
+        guideId: 'create-loto-point:field-conflictStatus',
+        guideMessage: 'Current conflict status of the LOTO point',
       },
       zeroEnergyMethod: {
         name: 'zeroEnergyMethod',
@@ -451,6 +483,8 @@ export class LotoPointMapperService {
         type: 'textarea',
         validators: [Validators.required],
         initialValue: lotoPoint.zeroEnergyMethod || '',
+        guideId: 'create-loto-point:field-zeroEnergyMethod',
+        guideMessage: 'Describe the zero energy verification method (required)',
       },
 
       // zeroEnergy: {
@@ -464,6 +498,8 @@ export class LotoPointMapperService {
       name: 'zeroEnergy',
       label: 'Zero Energy',
       type: 'group',
+      guideId: 'create-loto-point:field-zeroEnergy',
+      guideMessage: 'Configure zero energy verification settings',
       fields: [
         {
           name: 'zeroEnergyTemplate',
@@ -492,6 +528,8 @@ export class LotoPointMapperService {
         label: 'Related LOTO Point IDs',
         type: 'multi-select',
         initialValue: lotoPoint.relatedLotoPointIds,
+        guideId: 'create-loto-point:field-relatedLotoPointIds',
+        guideMessage: 'Select any related LOTO point IDs',
       },
       location: {
         name: 'location',
@@ -500,6 +538,8 @@ export class LotoPointMapperService {
         categoryAlias: 'location',
         canManageValues: true,
         initialValue: lotoPoint.location?.id || null,
+        guideId: 'create-loto-point:field-location',
+        guideMessage: 'Select the location category for this LOTO point',
       },
       eqType: {
         name: 'eqType',
@@ -508,6 +548,8 @@ export class LotoPointMapperService {
         categoryAlias: 'eqType',
         canManageValues: true,
         initialValue: lotoPoint.eqType?.id || null,
+        guideId: 'create-loto-point:field-eqType',
+        guideMessage: 'Select the equipment type for this LOTO point',
       },
       equipmentList: {
         name: 'equipmentList',
@@ -518,6 +560,8 @@ export class LotoPointMapperService {
           currentLotoPointId: lotoPoint.id,
           currentLotoPointTagNumber: lotoPoint.tagNumber || undefined,
         },
+        guideId: 'create-loto-point:field-equipmentList',
+        guideMessage: 'Manage the equipment associated with this LOTO point',
       }
 
     };

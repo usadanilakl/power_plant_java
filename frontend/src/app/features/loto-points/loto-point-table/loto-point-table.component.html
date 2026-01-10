@@ -12,7 +12,10 @@
   (search)="onSearch($event)">
   <ng-container table-controls>
     <button (click)="exportToExcel()">Export To Excel</button>
-    <button (click)="onCreateNewPoint()">Create New Loto Point</button>
+    <button
+      (click)="onCreateNewPoint()"
+      appGuide="create-loto-point:create-button"
+      guideMessage="Click this button to open the form for creating a new LOTO point.">Create New Loto Point</button>
   </ng-container>
 </app-shared-table>
 

@@ -13,11 +13,12 @@ import { ExcelService } from '../../../services/excel.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 import { PopupComponent } from "../../../shared/popup/popup.component";
+import { GuideDirective } from '../../../shared/guide/guide.directive';
 
 @Component({
   selector: 'app-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, PopupProjectionComponent, PopupComponent, LotoPointDetailFormComponent],
+  imports: [CommonModule, TableComponent, PopupProjectionComponent, PopupComponent, LotoPointDetailFormComponent, GuideDirective],
   templateUrl: './loto-point-table.component.html',
 })
 export class LotoPointTableComponent implements OnInit {

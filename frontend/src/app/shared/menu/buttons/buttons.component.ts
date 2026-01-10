@@ -2,6 +2,7 @@ import { Component, input, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { GuideDirective } from '../../guide/guide.directive';
 
 export interface ButtonConfig {
   name: string | Signal<string>;
@@ -11,6 +12,10 @@ export interface ButtonConfig {
   icon?: string | Signal<string>;
   tooltip?: string;
   class?: string;
+  /** Guide identifier in format "guideId:stepId" for the guide system */
+  guideId?: string;
+  /** Message to show when this button is highlighted by a guide */
+  guideMessage?: string;
 }
 
 export type ButtonColor = 'primary' | 'accent' | 'warn' | 'success' | 'info' | 'secondary' | 'danger';
@@ -18,7 +23,7 @@ export type ButtonColor = 'primary' | 'accent' | 'warn' | 'success' | 'info' | '
 @Component({
   selector: 'app-buttons',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatTooltipModule],
+  imports: [CommonModule, MatIconModule, MatTooltipModule, GuideDirective],
   templateUrl: './buttons.component.html',
   styleUrl: './buttons.component.css',
 })

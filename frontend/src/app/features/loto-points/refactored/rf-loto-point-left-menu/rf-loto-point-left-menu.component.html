@@ -1,9 +1,19 @@
 <div class="loto-point-menu-container">
   <div class="menu-header">
     <h2>LOTO Points</h2>
-    <button class="refresh-button" (click)="refresh()" [disabled]="isLoading()" title="Refresh">
-      <mat-icon>refresh</mat-icon>
-    </button>
+    <div class="header-actions">
+      <button
+        class="create-button"
+        (click)="stateService.openForm()"
+        title="Create New LOTO Point"
+        appGuide="create-loto-point:create-button"
+        guideMessage="Click this button to create a new LOTO point">
+        <mat-icon>add</mat-icon>
+      </button>
+      <button class="refresh-button" (click)="refresh()" [disabled]="isLoading()" title="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
   </div>
 
   <!-- Grouping Controls -->
