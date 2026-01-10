@@ -1,11 +1,23 @@
 /**
  * Guide System Global Styles
  *
- * These styles are applied globally to support the guide highlighting
- * and tooltip functionality.
- *
- * Import this file in your global styles.css or angular.json
+ * Eye-catching highlighting using inset effects that work
+ * even inside overflow:hidden containers.
  */
+
+/* ===== CSS Variables for Guide System ===== */
+:root {
+  --guide-primary: #2563eb;
+  --guide-primary-bright: #3b82f6;
+  --guide-primary-vivid: #1d4ed8;
+  --guide-bg-light: rgba(37, 99, 235, 0.08);
+  --guide-bg-medium: rgba(37, 99, 235, 0.18);
+  --guide-bg-strong: rgba(37, 99, 235, 0.28);
+  --guide-animation-duration: 1s;
+  --guide-tooltip-bg: #1e293b;
+  --guide-tooltip-text: #f8fafc;
+  --guide-tooltip-secondary: #cbd5e1;
+}
 
 /* ===== Element Highlight Styles ===== */
 
@@ -15,106 +27,25 @@
   z-index: 100;
 }
 
-/* Main pulse animation - applied via host binding */
-.guide-active.guide-pulse {
-  animation: guide-pulse 1.5s ease-in-out infinite !important;
-}
-
-/* Ensure visibility with outline as fallback */
-.guide-active {
-  outline: 3px solid rgba(25, 118, 210, 0.8) !important;
-  outline-offset: 2px;
-}
-
-@keyframes guide-pulse {
-  0% {
-    outline-color: rgba(25, 118, 210, 1);
-    outline-offset: 2px;
-    box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.7);
-  }
-  50% {
-    outline-color: rgba(25, 118, 210, 0.5);
-    outline-offset: 4px;
-    box-shadow: 0 0 0 10px rgba(25, 118, 210, 0);
-  }
-  100% {
-    outline-color: rgba(25, 118, 210, 1);
-    outline-offset: 2px;
-    box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.7);
-  }
-}
-
-/* Alternative: Outline-based pulse for elements where box-shadow doesn't work well */
-.guide-active.guide-pulse-outline {
-  animation: guide-pulse-outline 1.5s ease-in-out infinite;
-}
-
-@keyframes guide-pulse-outline {
-  0% {
-    outline: 3px solid rgba(25, 118, 210, 0.8);
-    outline-offset: 0;
-  }
-  50% {
-    outline: 3px solid rgba(25, 118, 210, 0.4);
-    outline-offset: 4px;
-  }
-  100% {
-    outline: 3px solid rgba(25, 118, 210, 0.8);
-    outline-offset: 0;
-  }
-}
-
-/* Glow effect for cards and larger elements */
-.guide-active.guide-glow {
-  animation: guide-glow 2s ease-in-out infinite;
-}
-
-@keyframes guide-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 5px rgba(25, 118, 210, 0.5),
-      0 0 10px rgba(25, 118, 210, 0.3), 0 0 15px rgba(25, 118, 210, 0.1);
-  }
-  50% {
-    box-shadow: 0 0 10px rgba(25, 118, 210, 0.8),
-      0 0 20px rgba(25, 118, 210, 0.5), 0 0 30px rgba(25, 118, 210, 0.2);
-  }
-}
-
-/* Border flash for form inputs */
-.guide-active.guide-border-flash {
-  animation: guide-border-flash 1s ease-in-out infinite;
-}
-
-@keyframes guide-border-flash {
-  0%,
-  100% {
-    border-color: var(--primary-color, #1976d2);
-  }
-  50% {
-    border-color: rgba(25, 118, 210, 0.3);
-  }
-}
-
 /* ===== Tooltip Styles ===== */
 
 .guide-tooltip {
   position: fixed;
   z-index: 10000;
   max-width: 300px;
-  padding: 12px 16px;
-  background: var(--surface-color, white);
-  border: 1px solid var(--border-color, #e0e0e0);
+  padding: 14px 18px;
+  background: var(--guide-tooltip-bg);
+  border-left: 3px solid var(--guide-primary);
   border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   pointer-events: none;
-  animation: tooltip-fade-in 0.2s ease;
+  animation: tooltip-enter 0.2s ease-out;
 }
 
-@keyframes tooltip-fade-in {
+@keyframes tooltip-enter {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -125,91 +56,62 @@
 .guide-tooltip-title {
   font-weight: 600;
   font-size: 14px;
-  color: var(--text-primary, #333);
-  margin-bottom: 4px;
+  color: var(--guide-tooltip-text);
+  margin-bottom: 6px;
 }
 
 .guide-tooltip-message {
   font-size: 13px;
-  color: var(--text-secondary, #666);
-  line-height: 1.4;
+  color: var(--guide-tooltip-secondary);
+  line-height: 1.5;
 }
 
 .guide-tooltip-arrow {
   position: absolute;
   width: 12px;
   height: 12px;
-  background: var(--surface-color, white);
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-top: none;
-  border-left: none;
+  background: var(--guide-tooltip-bg);
   transform: rotate(45deg);
-  bottom: -7px;
+  bottom: -6px;
   left: 50%;
   margin-left: -6px;
 }
 
 .guide-tooltip-below .guide-tooltip-arrow {
   bottom: auto;
-  top: -7px;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-bottom: none;
-  border-right: none;
-}
-
-/* Dark mode support */
-[data-theme='dark'] .guide-tooltip {
-  background: var(--surface-color, #2d2d2d);
-  border-color: var(--border-color, #555);
-}
-
-[data-theme='dark'] .guide-tooltip-arrow {
-  background: var(--surface-color, #2d2d2d);
-  border-color: var(--border-color, #555);
-}
-
-[data-theme='dark'] .guide-active.guide-pulse {
-  animation-name: guide-pulse-dark;
-}
-
-@keyframes guide-pulse-dark {
-  0% {
-    box-shadow: 0 0 0 0 rgba(100, 181, 246, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(100, 181, 246, 0.3);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(100, 181, 246, 0);
-  }
+  top: -6px;
 }
 
 /* ===== Navigation Card Specific Styles ===== */
 
-/* Fix for navigation cards - apply styles to the anchor inside */
 .nav-card.guide-active,
 .nav-card.guide-highlight {
   position: relative;
   z-index: 100;
   border-radius: 12px;
   overflow: visible;
-  outline: 3px solid rgba(25, 118, 210, 0.6) !important;
+}
+
+.nav-card.guide-active {
+  outline: 3px solid var(--guide-primary) !important;
   outline-offset: 2px;
+  background-color: var(--guide-bg-light) !important;
 }
 
 .nav-card.guide-active.guide-pulse {
-  animation: guide-pulse-card 1.5s ease-in-out infinite !important;
+  animation: guide-pulse-card var(--guide-animation-duration) ease-in-out infinite !important;
 }
 
 @keyframes guide-pulse-card {
-  0% {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 0 rgba(25, 118, 210, 0.7);
+  0%, 100% {
+    outline-color: var(--guide-primary);
+    background-color: var(--guide-bg-light);
+    transform: scale(1);
   }
   50% {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 8px rgba(25, 118, 210, 0.3);
-  }
-  100% {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 0 rgba(25, 118, 210, 0);
+    outline-color: var(--guide-primary-bright);
+    background-color: var(--guide-bg-medium);
+    transform: scale(1.02);
   }
 }
 
@@ -220,74 +122,123 @@ app-navigation-card.guide-active {
 
 /* ===== Button Specific Styles ===== */
 
-/* Use inset box-shadow for buttons - works even with overflow:hidden parents */
+/*
+ * Buttons use multiple techniques for maximum visibility:
+ * - Thick inset border (always visible)
+ * - Background color pulse
+ * - Filter brightness for "glow" effect
+ */
+
 button.guide-active:not(.guide-pulse),
 .mat-mdc-button.guide-active:not(.guide-pulse),
 .mat-mdc-raised-button.guide-active:not(.guide-pulse),
 .mat-mdc-flat-button.guide-active:not(.guide-pulse) {
-  outline: none !important;
-  box-shadow: inset 0 0 0 3px rgba(25, 118, 210, 0.9) !important;
+  box-shadow: inset 0 0 0 4px var(--guide-primary) !important;
+  filter: brightness(1.1) saturate(1.2);
 }
 
 button.guide-active.guide-pulse,
 .mat-mdc-button.guide-active.guide-pulse,
 .mat-mdc-raised-button.guide-active.guide-pulse,
 .mat-mdc-flat-button.guide-active.guide-pulse {
-  outline: none !important;
-  animation: guide-pulse-button 1.2s ease-in-out infinite !important;
+  animation: guide-pulse-button var(--guide-animation-duration) ease-in-out infinite !important;
 }
 
 @keyframes guide-pulse-button {
   0%, 100% {
-    box-shadow: inset 0 0 0 3px rgba(25, 118, 210, 1),
-                inset 0 0 8px rgba(25, 118, 210, 0.5);
+    box-shadow: inset 0 0 0 3px var(--guide-primary),
+                inset 0 0 20px var(--guide-bg-medium);
+    filter: brightness(1) saturate(1);
+    transform: scale(1);
   }
   50% {
-    box-shadow: inset 0 0 0 5px rgba(25, 118, 210, 0.7),
-                inset 0 0 20px rgba(25, 118, 210, 0.6);
+    box-shadow: inset 0 0 0 5px var(--guide-primary-bright),
+                inset 0 0 40px var(--guide-bg-strong);
+    filter: brightness(1.2) saturate(1.3);
+    transform: scale(1.05);
   }
 }
 
 /* ===== Form Field Specific Styles ===== */
 
-.mat-mdc-form-field.guide-active .mdc-text-field {
-  animation: guide-border-flash 1s ease-in-out infinite;
-}
-
+.mat-mdc-form-field.guide-active .mdc-text-field,
 input.guide-active,
 textarea.guide-active,
 select.guide-active {
-  animation: guide-border-flash 1s ease-in-out infinite;
+  outline: 3px solid var(--guide-primary) !important;
+  outline-offset: 1px;
+  background-color: var(--guide-bg-light) !important;
+}
+
+.mat-mdc-form-field.guide-active.guide-pulse .mdc-text-field,
+input.guide-active.guide-pulse,
+textarea.guide-active.guide-pulse,
+select.guide-active.guide-pulse {
+  animation: guide-pulse-input var(--guide-animation-duration) ease-in-out infinite;
+}
+
+@keyframes guide-pulse-input {
+  0%, 100% {
+    outline-color: var(--guide-primary);
+    background-color: var(--guide-bg-light);
+  }
+  50% {
+    outline-color: var(--guide-primary-bright);
+    background-color: var(--guide-bg-medium);
+  }
 }
 
 /* ===== Table Row Styles ===== */
 
 tr.guide-active {
-  animation: guide-row-highlight 1.5s ease-in-out infinite;
+  background: var(--guide-bg-medium) !important;
+  box-shadow: inset 4px 0 0 var(--guide-primary),
+              inset -4px 0 0 var(--guide-primary);
+}
+
+tr.guide-active.guide-pulse {
+  animation: guide-row-highlight var(--guide-animation-duration) ease-in-out infinite;
 }
 
 @keyframes guide-row-highlight {
-  0%,
-  100% {
-    background-color: rgba(25, 118, 210, 0.05);
+  0%, 100% {
+    background: var(--guide-bg-light);
   }
   50% {
-    background-color: rgba(25, 118, 210, 0.15);
+    background: var(--guide-bg-strong);
   }
 }
 
-/* ===== Icon/Menu Item Styles ===== */
+/* ===== Menu Item Styles ===== */
 
 .mat-mdc-menu-item.guide-active {
-  animation: guide-menu-item 1.5s ease-in-out infinite;
+  background: var(--guide-bg-medium) !important;
+  box-shadow: inset 4px 0 0 var(--guide-primary);
+}
+
+.mat-mdc-menu-item.guide-active.guide-pulse {
+  animation: guide-menu-item var(--guide-animation-duration) ease-in-out infinite;
 }
 
 @keyframes guide-menu-item {
-  0%,
-  100% {
-    background-color: rgba(25, 118, 210, 0.05);
+  0%, 100% {
+    background: var(--guide-bg-light);
   }
   50% {
-    background-color: rgba(25, 118, 210, 0.15);
+    background: var(--guide-bg-strong);
   }
+}
+
+/* ===== Dark Mode Support ===== */
+
+[data-theme='dark'] {
+  --guide-primary: #60a5fa;
+  --guide-primary-bright: #93c5fd;
+  --guide-primary-vivid: #3b82f6;
+  --guide-bg-light: rgba(96, 165, 250, 0.1);
+  --guide-bg-medium: rgba(96, 165, 250, 0.2);
+  --guide-bg-strong: rgba(96, 165, 250, 0.35);
+  --guide-tooltip-bg: #0f172a;
+  --guide-tooltip-text: #f1f5f9;
+  --guide-tooltip-secondary: #94a3b8;
 }
