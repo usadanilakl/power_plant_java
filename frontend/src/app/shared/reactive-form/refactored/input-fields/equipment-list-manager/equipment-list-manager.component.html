@@ -2,31 +2,47 @@
   <div class="header">
     <label class="input-label">{{ label }}</label>
     <div class="action-buttons">
-      @if (allowBrowse) {
+      @if (useUnifiedDialog) {
+        <!-- Unified dialog mode: single button opens tabbed dialog -->
         <button
           type="button"
-          class="btn-browse"
-          (click)="openBrowser()"
+          class="btn-add"
+          (click)="openUnifiedDialog()"
           [disabled]="disabled"
-          title="Select existing equipment">
+          title="Add equipment">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
           </svg>
-          Browse Existing
+          Add Equipment
         </button>
-      }
-      @if (allowDraw) {
-        <button
-          type="button"
-          class="btn-draw"
-          (click)="openDrawer()"
-          [disabled]="disabled"
-          title="Draw new equipment shape">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
-          </svg>
-          Draw New
-        </button>
+      } @else {
+        <!-- Separate dialog mode: two buttons -->
+        @if (allowBrowse) {
+          <button
+            type="button"
+            class="btn-browse"
+            (click)="openBrowser()"
+            [disabled]="disabled"
+            title="Select existing equipment">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+            </svg>
+            Browse Existing
+          </button>
+        }
+        @if (allowDraw) {
+          <button
+            type="button"
+            class="btn-draw"
+            (click)="openDrawer()"
+            [disabled]="disabled"
+            title="Draw new equipment shape">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+            </svg>
+            Draw New
+          </button>
+        }
       }
       @if (hasItems() && !disabled) {
         <button
@@ -91,7 +107,19 @@
   </div>
 </div>
 
-<!-- Browser Dialog -->
+<!-- Unified Dialog (combines browse + draw with tabs) -->
+<app-rf-popup-projection
+  [isOpen]="isUnifiedDialogOpen()"
+  [title]="'Add Equipment'"
+  [size]="'large'"
+  (close)="closeUnifiedDialog()">
+  <app-equipment-unified-dialog
+    (equipmentAcquired)="onUnifiedEquipmentAcquired($event)"
+    (close)="closeUnifiedDialog()"
+  />
+</app-rf-popup-projection>
+
+<!-- Browser Dialog (separate mode) -->
 <app-rf-popup-projection
   [isOpen]="isBrowserOpen()"
   [title]="'Select Existing Equipment'"
@@ -103,14 +131,16 @@
   />
 </app-rf-popup-projection>
 
-<!-- Drawer Dialog -->
+<!-- Drawer Dialog (separate mode) -->
 <app-rf-popup-projection
   [isOpen]="isDrawerOpen()"
   [title]="'Draw New Equipment Shape'"
   [size]="'large'"
   (close)="closeDrawer()">
   <app-equipment-shape-drawer-dialog
+    [enableLotoPointCreation]="requireLotoPointForDrawn"
     (saveSuccess)="onEquipmentSaved($event)"
+    (equipmentReadyForLotoPoint)="onEquipmentReadyForLotoPoint($event)"
     (close)="closeDrawer()"
   />
 </app-rf-popup-projection>
@@ -133,3 +163,31 @@
   (confirmed)="onConflictConfirmed($event)"
   (cancelled)="onConflictCancelled()"
 />
+
+<!-- LOTO Point Creation Form Popup (for requireLotoPointForDrawn mode) -->
+<app-rf-popup-projection
+  [isOpen]="isLotoPointFormOpen()"
+  [title]="'Create LOTO Point for Equipment'"
+  [size]="'large'"
+  [zIndex]="10100"
+  (close)="closeLotoPointForm()">
+  <div class="loto-point-form-container">
+    @if (pendingEquipment()) {
+      <div class="equipment-info-banner">
+        <span class="equipment-label">Equipment:</span>
+        <span class="equipment-value">
+          {{ pendingEquipment()?.tagNumber || 'New Equipment #' + pendingEquipment()?.id }}
+        </span>
+      </div>
+    }
+
+    @if (lotoPointFormError()) {
+      <div class="form-error-message">
+        {{ lotoPointFormError() }}
+      </div>
+    }
+
+    <!-- Dynamic form container -->
+    <ng-container #lotoFormContainer></ng-container>
+  </div>
+</app-rf-popup-projection>

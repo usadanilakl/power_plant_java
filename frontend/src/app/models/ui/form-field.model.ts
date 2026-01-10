@@ -70,16 +70,23 @@ export interface FormField {
     value: any;
   };
 
-  // Context for equipment-list-manager conflict detection
-  context?: {
-    currentLotoPointId?: number;
-    currentLotoPointTagNumber?: string;
-    conflictMode?: 'has-association' | 'no-association' | 'none';
-  };
+  // Context for equipment-list-manager
+  context?: EquipmentListManagerContext;
 
   // Guide system support
   guideId?: string;         // Guide identifier in format "guideId:stepId"
   guideMessage?: string;    // Message to show when this field is highlighted
+}
+
+/**
+ * Context options for equipment-list-manager field type
+ */
+export interface EquipmentListManagerContext {
+  currentLotoPointId?: number;
+  currentLotoPointTagNumber?: string;
+  conflictMode?: 'has-association' | 'no-association' | 'none';
+  useUnifiedDialog?: boolean;  // Use unified browse/draw dialog instead of separate dialogs
+  requireLotoPointForDrawn?: boolean;  // Require LOTO point creation for newly drawn equipment
 }
 
 export interface FormFieldGroup {
@@ -155,7 +162,7 @@ export interface RfFormField {
     left?: boolean;
   };
   group?: FormFieldGroup;
-  fields?: FormField[];
+  fields?: RfFormField[];
   nestedForm?: any;
   arrayIndexRange?: { start: number; end: number };
   readonly?: boolean;
@@ -164,12 +171,8 @@ export interface RfFormField {
     value: any;
   };
 
-  // Context for equipment-list-manager conflict detection
-  context?: {
-    currentLotoPointId?: number;
-    currentLotoPointTagNumber?: string;
-    conflictMode?: 'has-association' | 'no-association' | 'none';
-  };
+  // Context for equipment-list-manager
+  context?: EquipmentListManagerContext;
 
   // Guide system support
   guideId?: string;         // Guide identifier in format "guideId:stepId"

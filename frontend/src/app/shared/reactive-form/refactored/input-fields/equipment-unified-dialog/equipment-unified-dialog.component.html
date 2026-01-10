@@ -1,0 +1,69 @@
+<div class="dialog-container">
+  <div class="dialog-content">
+    <!-- Left Panel: File Navigation -->
+    <div class="navigation-panel">
+      <div class="menu-container">
+        <h3>Select P&ID</h3>
+        <app-rf-toggle-menu
+          [menuItems]="fileMenuItems()"
+          (itemClick)="onFileSelect($event)"
+        ></app-rf-toggle-menu>
+      </div>
+    </div>
+
+    <!-- Right Panel: P&ID Viewer -->
+    <div class="viewer-panel">
+      @if (selectedFile()) {
+        <div class="viewer-header">
+          <h3>{{ selectedFile()?.name }}</h3>
+          <div class="status-message" [class.has-selection]="canConfirm()">
+            {{ statusMessage() }}
+          </div>
+        </div>
+        <div class="viewer-content">
+          <app-interactive-image
+            [imageUrl]="currentFileLink()"
+            [shapesInput]="equipmentShapes()"
+            [preset]="'EQUIPMENT_UNIFIED'"
+            (shapeClicked)="onEquipmentClicked($event)"
+            (shapeDrawn)="onShapeDrawn($event)"
+          />
+        </div>
+        @if (error()) {
+          <div class="error-message">
+            {{ error() }}
+          </div>
+        }
+      } @else {
+        <div class="no-selection">
+          <p>Select a P&ID file to view and select equipment</p>
+          <p class="hint">Left-click on a shape to select existing equipment</p>
+          <p class="hint">Right-click and drag to draw new equipment</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Dialog Actions -->
+  <div class="dialog-actions">
+    <button
+      type="button"
+      class="btn-cancel"
+      (click)="onCancel()">
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="btn-select"
+      [disabled]="!canConfirm() || isLoading()"
+      (click)="onConfirm()">
+      @if (isLoading()) {
+        Saving...
+      } @else if (currentMode() === 'drawn') {
+        Save & Select Equipment
+      } @else {
+        Select Equipment
+      }
+    </button>
+  </div>
+</div>

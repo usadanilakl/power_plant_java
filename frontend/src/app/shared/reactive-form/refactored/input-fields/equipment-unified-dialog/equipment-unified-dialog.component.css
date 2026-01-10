@@ -1,0 +1,181 @@
+.dialog-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 80vh;
+}
+
+.dialog-content {
+  display: flex;
+  flex: 1;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+/* Navigation Panel */
+.navigation-panel {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #ddd;
+  padding-right: 1rem;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+/* Menu Container */
+.menu-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.menu-container app-rf-toggle-menu {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.menu-container h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #333;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Viewer Panel */
+.viewer-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #ddd;
+  gap: 1rem;
+}
+
+.viewer-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+  flex-shrink: 0;
+}
+
+/* Status Message */
+.status-message {
+  padding: 0.5rem 1rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #6c757d;
+  flex: 1;
+  text-align: right;
+}
+
+.status-message.has-selection {
+  background-color: #e7f3ff;
+  color: #0056b3;
+}
+
+.viewer-content {
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+/* Error Message */
+.error-message {
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  color: #721c24;
+  font-size: 0.9rem;
+}
+
+/* No Selection State */
+.no-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  font-size: 1rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.no-selection p {
+  margin: 0.5rem 0;
+}
+
+.no-selection .hint {
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+/* Dialog Actions */
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #ddd;
+}
+
+.btn-cancel,
+.btn-select {
+  padding: 0.5rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-weight: 500;
+}
+
+.btn-cancel {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background-color: #5a6268;
+}
+
+.btn-select {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-select:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.btn-select:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .navigation-panel {
+    width: 250px;
+  }
+}

@@ -1,6 +1,6 @@
 
 @if (isOpen) {
-  <div class="popup-overlay" (click)="onClose()">
+  <div class="popup-overlay" [style.z-index]="zIndex" (click)="onClose()">
     <div class="popup-content" [ngClass]="'popup-' + size" (click)="$event.stopPropagation()">
       <div class="popup-header">
         <h2>{{ title }}</h2>

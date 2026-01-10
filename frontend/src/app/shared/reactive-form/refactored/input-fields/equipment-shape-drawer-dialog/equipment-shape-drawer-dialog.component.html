@@ -40,6 +40,11 @@
             (shapeDrawn)="onShapeDrawn($event)"
           />
         </div>
+        @if (error()) {
+          <div class="error-message">
+            {{ error() }}
+          </div>
+        }
       } @else {
         <div class="no-selection">
           <p>Select a P&ID file to draw equipment shape</p>
@@ -56,12 +61,18 @@
       (click)="onCancel()">
       Cancel
     </button>
-    <button
-      type="button"
-      class="btn-confirm"
-      [disabled]="!canConfirm()"
-      (click)="onConfirmShape()">
-      Confirm Shape
-    </button>
+    @if (!enableLotoPointCreation()) {
+      <button
+        type="button"
+        class="btn-confirm"
+        [disabled]="!canConfirm() || isLoading()"
+        (click)="onConfirmShape()">
+        @if (isLoading()) {
+          Saving...
+        } @else {
+          Confirm Shape
+        }
+      </button>
+    }
   </div>
 </div>

@@ -255,6 +255,35 @@ export const INTERACTIVE_IMAGE_PRESETS: Record<string, InteractiveImageConfig> =
   },
 
   /**
+   * Equipment Unified Context
+   * Combined browse and draw: left-click to select existing, right-click drag to draw new
+   * Used in the unified equipment dialog for LOTO point forms
+   */
+  EQUIPMENT_UNIFIED: {
+    canPan: true,
+    canZoom: true,
+    canSelectShapes: true,
+    canMultiSelect: false,
+    canDrawShapes: true,
+    canEditShapes: false,
+    canDeleteShapes: false,
+    canDragShapes: false,
+    canResizeShapes: false,
+    canRotateShapes: false,
+    drawingMode: 'single',
+    allowedShapeTypes: ['rectangle'],
+    showToolbar: true,
+    toolbarPosition: 'top',
+    enabledTools: ['zoom-in', 'zoom-out', 'zoom-fit', 'reset-view'],
+    showSymbolPalette: false,
+    showContextMenu: false,
+    autoDeselectOnEmptyClick: true,
+    showResizeHandles: false,
+    showRotationHandle: false,
+    enforceAspectRatio: false,
+  },
+
+  /**
    * View Only Context
    * Pure viewing: pan and zoom only, no interaction with shapes
    */

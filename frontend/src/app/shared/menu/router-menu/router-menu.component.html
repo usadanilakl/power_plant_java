@@ -3,7 +3,8 @@
   @if (menuItems()) {
     <ul>
       @for (item of menuItems(); track item.route) {
-        <li>
+        <li [appGuide]="item.guideId || ''"
+            [guideMessage]="item.guideMessage || ''">
           <a [routerLink]="item.route">{{ item.label }}</a>
         </li>
       }

@@ -1,6 +1,8 @@
 export interface RouterMenuItem{
     route: string;
     label: string;
+    guideId?: string;
+    guideMessage?: string;
 }
 
 export type RouterMenuItems = RouterMenuItem[];
@@ -10,7 +12,7 @@ export type RouterMenuItems = RouterMenuItem[];
 export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/', label: 'Home' },
     { route: '/loto', label: 'LOTO' },
-    { route: '/loto-points', label: 'LOTO Points' },
+    { route: '/loto-points', label: 'LOTO Points', guideId: 'create-loto-point:menu-item', guideMessage: 'Click here to navigate to LOTO Points' },
     { route: '/loto-standard', label: 'LOTO Standards' },
     { route: '/loto-builder', label: 'LOTO Builder' },
     { route: '/tag-number', label: 'Create New Tag' },

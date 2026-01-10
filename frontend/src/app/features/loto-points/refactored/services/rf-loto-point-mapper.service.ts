@@ -519,6 +519,7 @@ export class LotoPointMapperService {
           initialValue: lotoPoint.zeroEnergy?.templateEquipment || [],
           context: {
             conflictMode: 'no-association',
+            requireLotoPointForDrawn: true,  // Require LOTO point creation when drawing new equipment
           },
         },
       ],
@@ -559,6 +560,7 @@ export class LotoPointMapperService {
         context: {
           currentLotoPointId: lotoPoint.id,
           currentLotoPointTagNumber: lotoPoint.tagNumber || undefined,
+          useUnifiedDialog: true,
         },
         guideId: 'create-loto-point:field-equipmentList',
         guideMessage: 'Manage the equipment associated with this LOTO point',

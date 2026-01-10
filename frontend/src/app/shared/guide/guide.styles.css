@@ -229,6 +229,32 @@ tr.guide-active.guide-pulse {
   }
 }
 
+/* ===== Router Menu Link Styles ===== */
+
+.router-menu li.guide-active {
+  background: var(--guide-bg-medium);
+  border-radius: 6px;
+  padding: 6px 12px;
+  box-shadow: inset 0 0 0 2px var(--guide-primary);
+}
+
+.router-menu li.guide-active.guide-pulse {
+  animation: guide-pulse-menu-li var(--guide-animation-duration) ease-in-out infinite !important;
+}
+
+@keyframes guide-pulse-menu-li {
+  0%, 100% {
+    background: var(--guide-bg-light);
+    box-shadow: inset 0 0 0 2px var(--guide-primary);
+    transform: scale(1);
+  }
+  50% {
+    background: var(--guide-bg-strong);
+    box-shadow: inset 0 0 0 3px var(--guide-primary-bright);
+    transform: scale(1.03);
+  }
+}
+
 /* ===== Dark Mode Support ===== */
 
 [data-theme='dark'] {

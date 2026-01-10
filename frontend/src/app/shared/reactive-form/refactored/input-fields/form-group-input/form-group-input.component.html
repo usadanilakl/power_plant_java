@@ -33,9 +33,11 @@
             <app-equipment-list-manager
               [label]="field.label"
               [formControl]="getFormControl(field.name)"
+              [useUnifiedDialog]="field.context?.useUnifiedDialog ?? false"
               [currentLotoPointId]="field.context?.currentLotoPointId"
               [currentLotoPointTagNumber]="field.context?.currentLotoPointTagNumber"
               [conflictMode]="field.context?.conflictMode ?? 'has-association'"
+              [requireLotoPointForDrawn]="field.context?.requireLotoPointForDrawn ?? false"
             >
             </app-equipment-list-manager>
           }

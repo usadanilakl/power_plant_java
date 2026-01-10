@@ -1,14 +1,20 @@
-import { Component, Input, forwardRef, signal, inject } from '@angular/core';
+import { Component, Input, forwardRef, signal, inject, DestroyRef, ViewContainerRef, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RfPopupProjectionComponent } from '../../../../popup-projection/rf-popup-projection.component';
 import { EquipmentBrowserDialogComponent } from '../equipment-browser-dialog/equipment-browser-dialog.component';
 import { EquipmentShapeDrawerDialogComponent } from '../equipment-shape-drawer-dialog/equipment-shape-drawer-dialog.component';
+import { EquipmentUnifiedDialogComponent } from '../equipment-unified-dialog/equipment-unified-dialog.component';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
 import { RfEquipmentEditorComponent } from "../../../../../features/equipment/refactored/rf-equipment-editor/rf-equipment-editor.component";
 import { EquipmentLotoConflictService } from '../services/equipment-loto-conflict.service';
 import { EquipmentConflictDialogComponent, ConflictDialogData } from '../equipment-conflict-dialog/equipment-conflict-dialog.component';
+import { LotoPointMapperService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-mapper.service';
+import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
+import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
+import { RfFormField } from '../../../../../models/ui/form-field.model';
 
 /**
  * Conflict detection modes:
@@ -36,9 +42,10 @@ interface EquipmentListItem {
     RfPopupProjectionComponent,
     EquipmentBrowserDialogComponent,
     EquipmentShapeDrawerDialogComponent,
+    EquipmentUnifiedDialogComponent,
     RfEquipmentEditorComponent,
     EquipmentConflictDialogComponent
-],
+  ],
   templateUrl: './equipment-list-manager.component.html',
   styleUrl: './equipment-list-manager.component.css',
   providers: [
@@ -53,23 +60,40 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   @Input() label: string = 'Equipment List';
   @Input() allowBrowse: boolean = true;  // Allow selecting existing equipment
   @Input() allowDraw: boolean = true;    // Allow drawing new shapes
+  @Input() useUnifiedDialog: boolean = false;  // Use unified dialog instead of separate browse/draw dialogs
   @Input() currentLotoPointId?: number;  // For conflict detection exclusion
   @Input() currentLotoPointTagNumber?: string;  // For conflict dialog display
   @Input() conflictMode: ConflictMode = 'has-association';  // Conflict detection mode
+  @Input() requireLotoPointForDrawn: boolean = false;  // Require LOTO point creation for newly drawn equipment
+
+  // ViewContainerRef for dynamic component loading
+  @ViewChild('lotoFormContainer', { read: ViewContainerRef }) lotoFormContainer!: ViewContainerRef;
 
   // Services
   private equipmentMapper = inject(EquipmentMapperService);
   private conflictService = inject(EquipmentLotoConflictService);
+  private lotoPointMapper = inject(LotoPointMapperService);
+  private lotoPointApi = inject(RfLotoPointApiService);
+  private destroyRef = inject(DestroyRef);
+  private cdr = inject(ChangeDetectorRef);
 
   // State
   isBrowserOpen = signal(false);
   isDrawerOpen = signal(false);
+  isUnifiedDialogOpen = signal(false);
   isVeiewerOpen = signal(false);
   isConflictDialogOpen = signal(false);
   equipmentList = signal<EquipmentListItem[]>([]);
   selectedEquipment = signal<EquipmentListItem | null>(null);
   conflictDialogData = signal<ConflictDialogData | null>(null);
   pendingEquipment = signal<EquipmentDto | null>(null);
+
+  // LOTO Point Form State (for requireLotoPointForDrawn mode)
+  isLotoPointFormOpen = signal(false);
+  lotoPointFormFields = signal<RfFormField[]>([]);
+  newLotoPoint = signal<LotoPointDto>(new LotoPointDto());
+  isSavingLotoPoint = signal(false);
+  lotoPointFormError = signal<string | null>(null);
 
   // ControlValueAccessor
   value = signal<EquipmentListItem[]>([]);
@@ -109,6 +133,45 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
+  }
+
+  // Unified Dialog (combines browse + draw)
+  openUnifiedDialog() {
+    if (!this.disabled && (this.allowBrowse || this.allowDraw)) {
+      this.isUnifiedDialogOpen.set(true);
+    }
+  }
+
+  closeUnifiedDialog() {
+    this.isUnifiedDialogOpen.set(false);
+  }
+
+  onUnifiedEquipmentAcquired(equipment: EquipmentDto) {
+    // Handle equipment from unified dialog (either browsed or drawn)
+    // Check for conflicts same as browser selection
+    if (this.conflictMode === 'none' || !equipment.id) {
+      this.addEquipmentToList(equipment, equipment.id ? 'browsed' : 'drawn');
+      this.closeUnifiedDialog();
+      return;
+    }
+
+    if (this.conflictMode === 'has-association') {
+      const conflicts = this.conflictService.findConflicts(equipment.id, this.currentLotoPointId);
+      if (conflicts.length > 0) {
+        this.showConflictDialog(equipment, conflicts, 'has-association');
+        this.closeUnifiedDialog();
+        return;
+      }
+    } else if (this.conflictMode === 'no-association') {
+      if (this.conflictService.hasNoAssociation(equipment.id)) {
+        this.showConflictDialog(equipment, [], 'no-association');
+        this.closeUnifiedDialog();
+        return;
+      }
+    }
+
+    this.addEquipmentToList(equipment, equipment.id ? 'browsed' : 'drawn');
+    this.closeUnifiedDialog();
   }
 
   // Browser Dialog
@@ -178,7 +241,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
     this.closeBrowser();
   }
 
-  private addEquipmentToList(equipment: EquipmentDto) {
+  private addEquipmentToList(equipment: EquipmentDto, source: 'browsed' | 'drawn' = 'browsed') {
     const newItem: EquipmentListItem = {
       id: equipment.id,
       coordinates: equipment.coordinates || '',
@@ -186,7 +249,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
       fileName: equipment.mainFileObject?.name ?? (equipment.mainFileId ? `File #${equipment.mainFileId}` : ''),
       originalPictureSize: equipment.originalPictureSize || '',
       tagNumber: equipment.tagNumber || '',
-      source: 'browsed'
+      source
     };
 
     this.addItem(newItem);
@@ -226,6 +289,12 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
       return;
     }
 
+    // If LOTO point creation is required, the equipmentReadyForLotoPoint event handles it
+    if (this.requireLotoPointForDrawn) {
+      // Don't close drawer or add to list - wait for LOTO form
+      return;
+    }
+
     const newItem: EquipmentListItem = {
       id: equipment.id,
       coordinates: equipment.coordinates || '',
@@ -238,6 +307,155 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
 
     this.addItem(newItem);
     this.closeDrawer();
+  }
+
+  /**
+   * Called when equipment is saved and ready for LOTO point creation
+   * (from drawer dialog's equipmentReadyForLotoPoint event)
+   */
+  onEquipmentReadyForLotoPoint(equipment: EquipmentDto) {
+    this.openLotoPointFormForEquipment(equipment);
+  }
+
+  /**
+   * Opens LOTO point form for newly drawn equipment
+   */
+  private async openLotoPointFormForEquipment(equipment: EquipmentDto) {
+    // Store the equipment for later
+    this.pendingEquipment.set(equipment);
+
+    // Create a new LOTO point with the equipment pre-assigned
+    const lotoPoint = new LotoPointDto({
+      equipmentList: [equipment]
+    });
+    this.newLotoPoint.set(lotoPoint);
+
+    // Generate form fields WITHOUT equipmentList field (it's pre-assigned)
+    const fieldsWithoutEquipmentList: (keyof LotoPointDto)[] = [
+      'unit',
+      'tagNumber',
+      'description',
+      'eqType',
+      'tagged',
+      'isoPos',
+      'normPos',
+      'specificLocation',
+      'location',
+      'standard',
+      'generalLocation'
+    ];
+    const formFields = this.lotoPointMapper.toFormFields(lotoPoint, fieldsWithoutEquipmentList);
+    this.lotoPointFormFields.set(formFields);
+
+    // Open the form (keep drawer open behind it)
+    this.isLotoPointFormOpen.set(true);
+    this.lotoPointFormError.set(null);
+
+    // Dynamically load the form component to avoid circular dependency
+    await this.loadLotoPointFormComponent();
+  }
+
+  /**
+   * Dynamically loads RfReactiveFormComponent to avoid circular dependency
+   */
+  private async loadLotoPointFormComponent() {
+    // Trigger change detection to render the popup with ng-container
+    this.cdr.detectChanges();
+
+    // Wait for Angular to fully render the popup
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    if (!this.lotoFormContainer) {
+      console.error('lotoFormContainer not available after change detection');
+      return;
+    }
+
+    // Clear previous component
+    this.lotoFormContainer.clear();
+
+    // Dynamically import the component
+    const { RfReactiveFormComponent } = await import('../../reactive-form/rf-reactive-form.component');
+
+    // Create the component
+    const componentRef = this.lotoFormContainer.createComponent(RfReactiveFormComponent);
+
+    // Set inputs using setInput() method for signal inputs
+    componentRef.setInput('fields', this.lotoPointFormFields());
+    componentRef.setInput('entity', this.newLotoPoint());
+    componentRef.setInput('title', '');
+    componentRef.setInput('submitButtonText', this.isSavingLotoPoint() ? 'Saving...' : 'Create LOTO Point');
+    componentRef.setInput('showSubmitButton', true);
+
+    // Subscribe to formSubmit output
+    componentRef.instance.formSubmit.subscribe((formData: any) => {
+      this.onLotoPointFormSubmit(formData);
+    });
+
+    // Trigger change detection to render the dynamically created component
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Handle LOTO point form submission
+   */
+  onLotoPointFormSubmit(formData: any) {
+    const equipment = this.pendingEquipment();
+    if (!equipment) {
+      this.lotoPointFormError.set('No equipment available for LOTO point.');
+      return;
+    }
+
+    this.isSavingLotoPoint.set(true);
+    this.lotoPointFormError.set(null);
+
+    // Create LotoPointDto with the form data and the pre-assigned equipment
+    const lotoPointData = new LotoPointDto({
+      ...formData,
+      equipmentList: [equipment]
+    });
+
+    this.lotoPointApi
+      .saveLotoPoint(lotoPointData)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.isSavingLotoPoint.set(false);
+          if (response.responseData) {
+            // LOTO point created successfully, now add equipment to the list
+            const newItem: EquipmentListItem = {
+              id: equipment.id,
+              coordinates: equipment.coordinates || '',
+              fileId: equipment.mainFileId ?? undefined,
+              fileName: equipment.mainFileObject?.name ?? (equipment.mainFileId ? `File #${equipment.mainFileId}` : ''),
+              originalPictureSize: equipment.originalPictureSize || '',
+              tagNumber: equipment.tagNumber || `Equipment #${equipment.id}`,
+              source: 'drawn'
+            };
+
+            this.addItem(newItem);
+            this.closeLotoPointForm();
+            // Keep drawer open so user can continue drawing
+          } else {
+            this.lotoPointFormError.set('Failed to save LOTO point.');
+          }
+        },
+        error: (err) => {
+          this.isSavingLotoPoint.set(false);
+          this.lotoPointFormError.set('An error occurred while saving the LOTO point.');
+          console.error('Failed to save LOTO point:', err);
+        },
+      });
+  }
+
+  /**
+   * Close the LOTO point form popup
+   */
+  closeLotoPointForm() {
+    this.isLotoPointFormOpen.set(false);
+    this.lotoPointFormFields.set([]);
+    this.newLotoPoint.set(new LotoPointDto());
+    this.pendingEquipment.set(null);
+    this.lotoPointFormError.set(null);
   }
 
   // List Management

@@ -1,4 +1,4 @@
-import { Component, inject, output, signal, computed, ViewChild, DestroyRef } from '@angular/core';
+import { Component, inject, output, signal, computed, ViewChild, DestroyRef, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { InteractiveImageComponent } from '../../../../image/refactored/interactive-image/interactive-image.component';
 import { FileDto } from '../../../../../models/file/file.model';
@@ -14,7 +14,11 @@ import { EquipmentDialogFileService } from '../services/equipment-dialog-file.se
 @Component({
   selector: 'app-equipment-shape-drawer-dialog',
   standalone: true,
-  imports: [CommonModule, InteractiveImageComponent, RfToggleMenuComponent],
+  imports: [
+    CommonModule,
+    InteractiveImageComponent,
+    RfToggleMenuComponent
+  ],
   providers: [EquipmentDialogFileService],
   templateUrl: './equipment-shape-drawer-dialog.component.html',
   styleUrl: './equipment-shape-drawer-dialog.component.css',
@@ -29,9 +33,15 @@ export class EquipmentShapeDrawerDialogComponent {
   equipmentMapper = inject(EquipmentMapperService);
   destroyRef = inject(DestroyRef);
 
+  // Inputs
+  /** Enable LOTO point creation mode - saves equipment and emits for parent to open LOTO form */
+  enableLotoPointCreation = input<boolean>(false);
+
   // Outputs
   shapeDrawn = output<{ shape: RfShape; file: FileDto }>();
   saveSuccess = output<EquipmentDto | null>();
+  /** Emitted when equipment is saved and ready for LOTO point creation (parent should open form) */
+  equipmentReadyForLotoPoint = output<EquipmentDto>();
   close = output<void>();
 
   // State
@@ -123,6 +133,54 @@ export class EquipmentShapeDrawerDialogComponent {
     this.isDrawingMode.set(false);
     if(this.selectedFile()) {
       this.shapeDrawn.emit({ shape: $event, file: this.selectedFile()! });
+
+      // If LOTO point creation is enabled, save equipment and emit for parent to handle
+      if (this.enableLotoPointCreation()) {
+        this.saveEquipmentForLotoPoint($event);
+      }
     }
+  }
+
+  /**
+   * Saves the drawn equipment shape and emits event for parent to open LOTO point form
+   */
+  private saveEquipmentForLotoPoint(shape: RfShape) {
+    const file = this.selectedFile();
+    if (!file) return;
+
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    const shapeWithFileContext: RfShape = { ...shape, fileId: file.id };
+
+    this.equipmentService
+      .saveEquipmentFromShape(shapeWithFileContext)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (savedEquipment) => {
+          this.isLoading.set(false);
+          if (savedEquipment) {
+            // Enrich saved equipment with file context
+            const enrichedEquipment = new EquipmentDto({
+              ...savedEquipment,
+              mainFileId: file.id,
+              mainFileObject: file
+            });
+
+            // Emit for parent to handle LOTO point form
+            this.equipmentReadyForLotoPoint.emit(enrichedEquipment);
+
+            // Clear the drawn shape so user can continue drawing
+            this.drawnShape.set(null);
+          } else {
+            this.error.set('Failed to save the equipment.');
+          }
+        },
+        error: (err) => {
+          this.isLoading.set(false);
+          this.error.set('An error occurred while saving the equipment.');
+          console.error(err);
+        },
+      });
   }
 }

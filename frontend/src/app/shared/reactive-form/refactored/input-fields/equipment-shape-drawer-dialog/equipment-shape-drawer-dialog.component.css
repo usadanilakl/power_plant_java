@@ -190,3 +190,44 @@
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+/* Error Message */
+.error-message {
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  color: #721c24;
+  font-size: 0.9rem;
+}
+
+/* LOTO Point Form Container */
+.loto-point-form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.equipment-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #e7f3ff;
+  border: 1px solid #b8daff;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.equipment-label {
+  font-weight: 600;
+  color: #004085;
+}
+
+.equipment-value {
+  color: #0056b3;
+  font-weight: 500;
+}
