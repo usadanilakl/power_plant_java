@@ -23,6 +23,7 @@
   padding: 1rem;
   background-color: #fff;
   border-bottom: 2px solid #ddd;
+  overflow: visible;
 }
 
 .menu-header h2 {
@@ -35,6 +36,7 @@
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  overflow: visible;
 }
 
 .create-button {

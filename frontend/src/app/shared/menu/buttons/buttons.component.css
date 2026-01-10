@@ -109,25 +109,9 @@ span {
   white-space: nowrap;
 }
 
-/* Guide highlight support */
+/* Guide highlight support - defer to global guide.styles.css */
 button.guide-active,
 button.guide-highlight {
   position: relative;
   z-index: 100;
-  outline: 3px solid rgba(25, 118, 210, 0.8);
-  outline-offset: 2px;
-}
-
-/* Pulsing animation using box-shadow */
-button.guide-pulse {
-  animation: guide-button-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes guide-button-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(25, 118, 210, 0);
-  }
 }

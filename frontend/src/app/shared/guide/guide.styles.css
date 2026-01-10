@@ -220,31 +220,31 @@ app-navigation-card.guide-active {
 
 /* ===== Button Specific Styles ===== */
 
-/* Use inset box-shadow to avoid overflow clipping issues */
-button.guide-active,
-.mat-mdc-button.guide-active,
-.mat-mdc-raised-button.guide-active,
-.mat-mdc-flat-button.guide-active {
+/* Use inset box-shadow for buttons - works even with overflow:hidden parents */
+button.guide-active:not(.guide-pulse),
+.mat-mdc-button.guide-active:not(.guide-pulse),
+.mat-mdc-raised-button.guide-active:not(.guide-pulse),
+.mat-mdc-flat-button.guide-active:not(.guide-pulse) {
   outline: none !important;
-  box-shadow: inset 0 0 0 3px rgba(25, 118, 210, 0.8) !important;
+  box-shadow: inset 0 0 0 3px rgba(25, 118, 210, 0.9) !important;
 }
 
 button.guide-active.guide-pulse,
 .mat-mdc-button.guide-active.guide-pulse,
 .mat-mdc-raised-button.guide-active.guide-pulse,
 .mat-mdc-flat-button.guide-active.guide-pulse {
-  animation: guide-pulse-button-inset 1.5s ease-in-out infinite !important;
+  outline: none !important;
+  animation: guide-pulse-button 1.2s ease-in-out infinite !important;
 }
 
-@keyframes guide-pulse-button-inset {
-  0% {
-    box-shadow: inset 0 0 0 3px rgba(25, 118, 210, 1);
+@keyframes guide-pulse-button {
+  0%, 100% {
+    box-shadow: inset 0 0 0 3px rgba(25, 118, 210, 1),
+                inset 0 0 8px rgba(25, 118, 210, 0.5);
   }
   50% {
-    box-shadow: inset 0 0 0 5px rgba(25, 118, 210, 0.5), inset 0 0 15px rgba(25, 118, 210, 0.3);
-  }
-  100% {
-    box-shadow: inset 0 0 0 3px rgba(25, 118, 210, 1);
+    box-shadow: inset 0 0 0 5px rgba(25, 118, 210, 0.7),
+                inset 0 0 20px rgba(25, 118, 210, 0.6);
   }
 }
 
