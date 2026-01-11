@@ -7,6 +7,7 @@ import { RfLotoPointApiService } from '../../../../../loto-points/refactored/ser
 import { LotoPointDto } from '../../../../../../models/loto/loto-point.model';
 import { FileDto } from '../../../../../../models/file/file.model';
 import { RfLotoPointClickService } from '../../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-click.service';
+import { LotoBuilderLotoPointContextMenuService } from './loto-builder-loto-point-context-menu.service';
 
 /**
  * Custom click service for LOTO point table in LOTO builder.
@@ -19,6 +20,7 @@ export class LotoBuilderLotoPointTableClickService extends RfLotoPointClickServi
   private builderState = inject(LotoBuilderStateService);
   private lotoPointApiService = inject(RfLotoPointApiService);
   private localDestroyRef = inject(DestroyRef);
+  private builderContextMenuService = inject(LotoBuilderLotoPointContextMenuService);
 
   /**
    * Override double click to find equipment's file and highlight the loto point
@@ -143,5 +145,15 @@ export class LotoBuilderLotoPointTableClickService extends RfLotoPointClickServi
         this.builderState.hoveredLotoPoint.set(lotoPoint);
       }
     }
+  }
+
+  /**
+   * Override right click to use builder's context menu service
+   */
+  protected override handleRowRightClick(item: any, event: MouseEvent): void {
+    const normalizedItem = this.normalizeItem(item) as LotoPointDto;
+
+    this.builderContextMenuService.showContextMenu(normalizedItem, event);
+    this.builderContextMenuService.positionContextMenu(event, 220, 320);
   }
 }

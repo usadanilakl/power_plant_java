@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RfLotoPointTableComponent } from '../../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
 import { TableClickService } from '../../../../../../shared/table/refactored/services/table-click.service';
 import { LotoBuilderLotoPointTableClickService } from './loto-builder-loto-point-table-click.service';
+import { LotoBuilderLotoPointContextMenuService } from './loto-builder-loto-point-context-menu.service';
 import { TableSelectionService } from '../../../../../../shared/table/refactored/services/table-selection.service';
 import { TableDragService } from '../../../../../../shared/table/refactored/services/table-drag.service';
 import { TableControlsService } from '../../../../../../shared/table/refactored/services/table-controls.service';
@@ -36,6 +37,7 @@ import { RfLotoPointTableDataService } from '../../../../../loto-points/refactor
     TableSyncService,
     LotoPointBulkEditService,
     RfLotoPointTableDataService,
+    LotoBuilderLotoPointContextMenuService,
     { provide: TableClickService, useClass: LotoBuilderLotoPointTableClickService },
   ],
   template: `

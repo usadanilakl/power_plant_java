@@ -21,7 +21,7 @@ export interface DraggableWindow {
   providedIn: 'root'
 })
 export class DraggableWindowService {
-  private baseZIndex = 1100;
+  private baseZIndex = 10000;
   private maxZIndex = signal<number>(this.baseZIndex);
 
   private windows = signal<Map<string, DraggableWindow>>(new Map());
