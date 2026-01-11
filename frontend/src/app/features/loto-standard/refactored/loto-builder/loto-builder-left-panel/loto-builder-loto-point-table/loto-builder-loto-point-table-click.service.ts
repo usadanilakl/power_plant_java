@@ -122,28 +122,32 @@ export class LotoBuilderLotoPointTableClickService extends RfLotoPointClickServi
   }
 
   /**
-   * Override single click to highlight the point without opening file
+   * Override single click to open the file and highlight the point
+   * (same behavior as double-click for consistency with file mode)
    */
   protected override handleRowLeftClick(item: any, event: MouseEvent): void {
     // Call base implementation for selection handling
     super.handleRowLeftClick(item, event);
 
     const normalizedItem = this.normalizeItem(item);
+    console.log('[LotoBuilderLotoPointTable] Left clicked LOTO point:', normalizedItem);
 
-    if (normalizedItem instanceof LotoPointDto || normalizedItem.id) {
-      const lotoPoint = normalizedItem as LotoPointDto;
+    if (!(normalizedItem instanceof LotoPointDto) && !normalizedItem.id) {
+      console.warn('[LotoBuilderLotoPointTable] Invalid item:', normalizedItem);
+      return;
+    }
 
-      // Find equipment containing this loto point in the current file
-      const currentEquipment = this.builderState.currentEquipment();
-      const matchingEquipment = currentEquipment.find(eq =>
-        eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === lotoPoint.id)
-      );
+    const lotoPoint = normalizedItem as LotoPointDto;
 
-      if (matchingEquipment) {
-        // Highlight the shape on the image
-        this.builderState.hoveredShapeId.set(matchingEquipment.id);
-        this.builderState.hoveredLotoPoint.set(lotoPoint);
-      }
+    // Try to find the file from equipment list
+    const file = this.findFileFromLotoPoint(lotoPoint);
+
+    if (file) {
+      this.openFileAndHighlightPoint(file, lotoPoint);
+    } else {
+      // Equipment list might be missing in partial DTO - fetch full data from server
+      console.log('[LotoBuilderLotoPointTable] No equipment list, fetching full LOTO point data...');
+      this.fetchFullLotoPointAndOpenFile(lotoPoint);
     }
   }
 

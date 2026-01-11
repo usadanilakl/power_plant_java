@@ -2,9 +2,9 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { RfFileLeftMenuComponent } from '../../../../files/refactored/rf-file-left-menu/rf-file-left-menu.component';
-import { RfLotoPointLeftMenuComponent } from '../../../../loto-points/refactored/rf-loto-point-left-menu/rf-loto-point-left-menu.component';
 import { LotoBuilderFileTableComponent } from './loto-builder-file-table/loto-builder-file-table.component';
 import { LotoBuilderLotoPointTableComponent } from './loto-builder-loto-point-table/loto-builder-loto-point-table.component';
+import { LotoBuilderLotoPointLeftMenuComponent } from './loto-builder-loto-point-left-menu/loto-builder-loto-point-left-menu.component';
 import { GuideDirective } from '../../../../../shared/guide/guide.directive';
 import { ReactiveGuideDirective } from '../../../../../shared/guide/reactive-guide.directive';
 import { ContextualGuideDirective } from '../../../../../shared/guide/contextual-guide.directive';
@@ -15,9 +15,9 @@ import { ContextualGuideDirective } from '../../../../../shared/guide/contextual
   imports: [
     CommonModule,
     RfFileLeftMenuComponent,
-    RfLotoPointLeftMenuComponent,
     LotoBuilderFileTableComponent,
     LotoBuilderLotoPointTableComponent,
+    LotoBuilderLotoPointLeftMenuComponent,
     GuideDirective,
     ReactiveGuideDirective,
     ContextualGuideDirective,

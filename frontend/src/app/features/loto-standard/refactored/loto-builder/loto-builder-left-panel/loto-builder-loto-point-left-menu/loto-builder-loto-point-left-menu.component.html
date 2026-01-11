@@ -1,0 +1,51 @@
+<div class="loto-point-menu-container">
+  <div class="menu-header">
+    <h2>LOTO Points</h2>
+    <div class="header-actions">
+      <button class="refresh-button" (click)="refresh()" [disabled]="isLoading()" title="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grouping Controls -->
+  <div class="grouping-controls">
+    <label class="grouping-label">Group by:</label>
+    <div class="grouping-buttons">
+      @for (option of groupingOptions; track option.value) {
+        <button
+          class="grouping-button"
+          [class.active]="selectedGrouping() === option.value"
+          (click)="loadLotoPoints(option.value)"
+          [disabled]="isLoading()"
+        >
+          {{ option.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Loading/Error States -->
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <div>Loading LOTO points...</div>
+    </div>
+  } @else if (error()) {
+    <div class="error-state">
+      <div class="error-icon">&#9888;</div>
+      <div class="error-message">{{ error() }}</div>
+      <button class="retry-button" (click)="refresh()">Retry</button>
+    </div>
+  } @else {
+    <!-- Toggle Menu with Search -->
+    <app-rf-toggle-menu
+      [menuItems]="menuItems()"
+      [enableSearch]="true"
+      [searchPlaceholder]="'Search LOTO points...'"
+      (itemClick)="onItemClick($event)"
+      (itemDblClick)="onItemDoubleClick($event)"
+      (itemRightClick)="onItemRightClick($event)"
+    ></app-rf-toggle-menu>
+  }
+</div>
