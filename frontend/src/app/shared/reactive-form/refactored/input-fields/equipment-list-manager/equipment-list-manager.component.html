@@ -112,6 +112,7 @@
   [isOpen]="isUnifiedDialogOpen()"
   [title]="'Add Equipment'"
   [size]="'large'"
+  [zIndex]="10050"
   (close)="closeUnifiedDialog()">
   <app-equipment-unified-dialog
     (equipmentAcquired)="onUnifiedEquipmentAcquired($event)"
@@ -124,6 +125,7 @@
   [isOpen]="isBrowserOpen()"
   [title]="'Select Existing Equipment'"
   [size]="'large'"
+  [zIndex]="10050"
   (close)="closeBrowser()">
   <app-equipment-browser-dialog
     (equipmentSelected)="onEquipmentSelected($event)"
@@ -136,6 +138,7 @@
   [isOpen]="isDrawerOpen()"
   [title]="'Draw New Equipment Shape'"
   [size]="'large'"
+  [zIndex]="10050"
   (close)="closeDrawer()">
   <app-equipment-shape-drawer-dialog
     [enableLotoPointCreation]="requireLotoPointForDrawn"
@@ -150,6 +153,7 @@
   [isOpen]="isVeiewerOpen()"
   [title]="'Viewing File'"
   [size]="'large'"
+  [zIndex]="10050"
   (close)="closeViewer()">
   <app-rf-equipment-editor
     [selectedEquipmentId]="selectedEquipment()?.id!"

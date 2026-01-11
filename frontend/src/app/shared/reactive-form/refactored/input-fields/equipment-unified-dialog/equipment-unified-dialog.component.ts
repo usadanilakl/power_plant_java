@@ -9,6 +9,7 @@ import { RfEquipmentService } from '../../../../../features/equipment/refactored
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { NestedItem } from '../../../../../models/ui/nested-item.model';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
+import { GuideDirective } from '../../../../guide/guide.directive';
 
 /**
  * Unified Equipment Dialog
@@ -26,7 +27,8 @@ import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
   imports: [
     CommonModule,
     InteractiveImageComponent,
-    RfToggleMenuComponent
+    RfToggleMenuComponent,
+    GuideDirective
   ],
   providers: [EquipmentDialogFileService],
   templateUrl: './equipment-unified-dialog.component.html',

@@ -1,4 +1,3 @@
-
 @if (isOpen) {
   <div class="popup-overlay" [style.z-index]="zIndex" (click)="onClose()">
     <div class="popup-content" [ngClass]="'popup-' + size" (click)="$event.stopPropagation()">

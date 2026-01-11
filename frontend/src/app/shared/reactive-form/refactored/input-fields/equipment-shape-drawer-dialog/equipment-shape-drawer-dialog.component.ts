@@ -7,6 +7,7 @@ import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { NestedItem } from '../../../../../models/ui/nested-item.model';
 import { RfToggleMenuComponent } from "../../../../menu/refactored/rf-toggle-menu/rf-toggle-menu.component";
 import { RfEquipmentService } from '../../../../../features/equipment/refactored/services/rf-equipment.service';
+import { GuideDirective } from '../../../../guide/guide.directive';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
 import { EquipmentDialogFileService } from '../services/equipment-dialog-file.service';
@@ -17,7 +18,8 @@ import { EquipmentDialogFileService } from '../services/equipment-dialog-file.se
   imports: [
     CommonModule,
     InteractiveImageComponent,
-    RfToggleMenuComponent
+    RfToggleMenuComponent,
+    GuideDirective
   ],
   providers: [EquipmentDialogFileService],
   templateUrl: './equipment-shape-drawer-dialog.component.html',

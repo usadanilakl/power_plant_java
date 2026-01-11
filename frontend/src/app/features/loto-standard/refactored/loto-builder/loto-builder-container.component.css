@@ -1,4 +1,27 @@
-/* Overlay backdrop */
+/* ========== Page Mode Styles ========== */
+
+/* Host component fills available space in page mode */
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Header menu container for page mode */
+.header-menus {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.menu-container {
+  display: flex;
+  align-items: center;
+}
+
+/* ========== Popup Mode Styles ========== */
+
+/* Overlay backdrop (popup mode only) */
 .loto-builder-overlay {
   position: fixed;
   top: 0;
@@ -22,7 +45,9 @@
   }
 }
 
-/* Main container - now full screen */
+/* ========== Shared Container Styles ========== */
+
+/* Main container - full screen in both modes */
 .loto-builder-container {
   display: flex;
   width: 100%;

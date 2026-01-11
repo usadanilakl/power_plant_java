@@ -24,7 +24,10 @@
 
       <!-- File Browser -->
       @if (browseMode() === 'file') {
-        <div class="menu-container">
+        <div class="menu-container"
+             appGuide="create-loto-point:file-selector"
+             guideMessage="Expand folders and click on a P&ID file to load it. The file's equipment will be displayed on the right."
+             [guideTooltipOnly]="true">
           <h3>Select P&ID</h3>
           <app-rf-toggle-menu
             [menuItems]="fileMenuItems()"
@@ -78,7 +81,10 @@
             </div>
           }
         </div>
-        <div class="viewer-content">
+        <div class="viewer-content"
+             appGuide="create-loto-point:image-viewer"
+             guideMessage="Click on an equipment shape to select it. Selected equipment will be highlighted in red."
+             [guideTooltipOnly]="true">
           <app-interactive-image
             [imageUrl]="activeFileLink()"
             [shapesInput]="equipmentShapes()"

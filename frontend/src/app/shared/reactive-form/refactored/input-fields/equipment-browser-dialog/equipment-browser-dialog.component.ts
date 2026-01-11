@@ -8,6 +8,7 @@ import { EquipmentMapperService } from '../../../../../features/equipment/refact
 import { EquipmentDialogFileService } from '../services/equipment-dialog-file.service';
 import { RfToggleMenuComponent } from '../../../../menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 import { NestedItem } from '../../../../../models/ui/nested-item.model';
+import { GuideDirective } from '../../../../guide/guide.directive';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { RfLotoPointLeftMenuService, GroupingCriteria } from '../../../../../features/loto-points/refactored/services/rf-loto-point-left-menu.service';
 import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
@@ -15,7 +16,7 @@ import { RfLotoPointApiService } from '../../../../../features/loto-points/refac
 @Component({
   selector: 'app-equipment-browser-dialog',
   standalone: true,
-  imports: [CommonModule, InteractiveImageComponent, RfToggleMenuComponent],
+  imports: [CommonModule, InteractiveImageComponent, RfToggleMenuComponent, GuideDirective],
   providers: [EquipmentDialogFileService],
   templateUrl: './equipment-browser-dialog.component.html',
   styleUrl: './equipment-browser-dialog.component.css'

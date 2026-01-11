@@ -2,7 +2,10 @@
   <div class="dialog-content">
     <!-- Left Panel: File Navigation -->
     <div class="navigation-panel">
-      <div class="menu-container">
+      <div class="menu-container"
+           appGuide="create-loto-point:file-selector"
+           guideMessage="Expand folders and click on a P&ID file to load it. The file's equipment will be displayed on the right."
+           [guideTooltipOnly]="true">
         <h3>Select P&ID</h3>
         <app-rf-toggle-menu
           [menuItems]="fileMenuItems()"
@@ -20,7 +23,10 @@
             {{ statusMessage() }}
           </div>
         </div>
-        <div class="viewer-content">
+        <div class="viewer-content"
+             appGuide="create-loto-point:image-unified"
+             guideMessage="Left-click on an equipment shape to select it. Right-click and drag to draw a new equipment shape."
+             [guideTooltipOnly]="true">
           <app-interactive-image
             [imageUrl]="currentFileLink()"
             [shapesInput]="equipmentShapes()"
