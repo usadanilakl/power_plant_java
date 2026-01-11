@@ -24,12 +24,33 @@
 
         <div class="form-content">
           <app-rf-reactive-form
+            #primaryForm
             [entity]="currentPrimaryValues() || primaryLotoPoint()"
             [fields]="primaryFields()"
             [title]="''"
             [showSubmitButton]="false"
             (formValueChange)="onPrimaryValueChange($event)"
-          ></app-rf-reactive-form>
+          >
+            <ng-container extra-buttons>
+              <button
+                type="button"
+                class="tag-generator-button"
+                (click)="openPrimaryTagGenerator()"
+                title="Generate New Tag Number">
+                Generate Tag
+              </button>
+              <app-clipboard-form
+                [entityType]="'LotoPoint'"
+                [initialEntity]="initialPrimaryEntity()"
+                [currentEntity]="currentPrimaryValues() || primaryLotoPoint()"
+                [hasValidData]="hasValidData"
+                [getItemSummary]="getItemSummary"
+                [clipboardFormatter]="clipboardFormatter"
+                [excludeIdOnPaste]="true"
+                (itemSelected)="onPrimaryClipboardItemSelected($event)"
+              ></app-clipboard-form>
+            </ng-container>
+          </app-rf-reactive-form>
         </div>
 
         <div class="panel-actions">
@@ -186,12 +207,33 @@
 
           <div class="form-content">
             <app-rf-reactive-form
+              #counterpartForm
               [entity]="currentCounterpartValues() || counterpartLotoPoint()!"
               [fields]="counterpartFields()"
               [title]="''"
               [showSubmitButton]="false"
               (formValueChange)="onCounterpartValueChange($event)"
-            ></app-rf-reactive-form>
+            >
+              <ng-container extra-buttons>
+                <button
+                  type="button"
+                  class="tag-generator-button"
+                  (click)="openCounterpartTagGenerator()"
+                  title="Generate New Tag Number">
+                  Generate Tag
+                </button>
+                <app-clipboard-form
+                  [entityType]="'LotoPoint'"
+                  [initialEntity]="initialCounterpartEntity()"
+                  [currentEntity]="currentCounterpartValues() || counterpartLotoPoint()!"
+                  [hasValidData]="hasValidData"
+                  [getItemSummary]="getItemSummary"
+                  [clipboardFormatter]="clipboardFormatter"
+                  [excludeIdOnPaste]="true"
+                  (itemSelected)="onCounterpartClipboardItemSelected($event)"
+                ></app-clipboard-form>
+              </ng-container>
+            </app-rf-reactive-form>
           </div>
 
           <div class="panel-actions">
@@ -316,4 +358,27 @@
       <button class="action-btn" (click)="close()">Close</button>
     </div>
   }
+
+  <!-- Tag Number Generator Popups -->
+  <app-popup-projection
+    [isOpen]="isPrimaryTagGeneratorOpen()"
+    [title]="'Generate Tag Number (Unit ' + sourceUnit() + ')'"
+    [size]="'medium'"
+    (close)="closePrimaryTagGenerator()">
+    <app-tag-number-generator
+      (tagGenerated)="onPrimaryTagGenerated($event)"
+      (cancelled)="closePrimaryTagGenerator()">
+    </app-tag-number-generator>
+  </app-popup-projection>
+
+  <app-popup-projection
+    [isOpen]="isCounterpartTagGeneratorOpen()"
+    [title]="'Generate Tag Number (Unit ' + targetUnit() + ')'"
+    [size]="'medium'"
+    (close)="closeCounterpartTagGenerator()">
+    <app-tag-number-generator
+      (tagGenerated)="onCounterpartTagGenerated($event)"
+      (cancelled)="closeCounterpartTagGenerator()">
+    </app-tag-number-generator>
+  </app-popup-projection>
 </div>

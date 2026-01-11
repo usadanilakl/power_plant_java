@@ -8,11 +8,13 @@ import {
   input,
   Output,
   signal,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of, tap } from 'rxjs';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import { LotoPointClipboardItem } from '../../../../models/loto/loto-point-clipboard.model';
 import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
@@ -24,6 +26,10 @@ import {
 } from '../services/loto-point-counterpart.service';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { RfLotoPointTableComponent } from '../rf-loto-point-table/rf-loto-point-table.component';
+import { ClipboardFormComponent } from '../../../../shared/reactive-form/refactored/form-clipboard/clipboard-form.component';
+import { ClipboardService } from '../../../../shared/clipboard/clipboard.service';
+import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-generator/tag-number-generator.component';
+import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 // Table services required for isolated table instance
@@ -63,7 +69,14 @@ import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-poin
 @Component({
   selector: 'app-loto-point-dual-form',
   standalone: true,
-  imports: [CommonModule, RfReactiveFormComponent, RfLotoPointTableComponent],
+  imports: [
+    CommonModule,
+    RfReactiveFormComponent,
+    RfLotoPointTableComponent,
+    ClipboardFormComponent,
+    TagNumberGeneratorComponent,
+    PopupProjectionComponent,
+  ],
   providers: [
     // Provide isolated instances for this component's table
     RfLotoPointStateService,
@@ -87,12 +100,16 @@ import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-poin
   styleUrl: './loto-point-dual-form.component.css',
 })
 export class LotoPointDualFormComponent {
+  @ViewChild('primaryForm') primaryFormRef!: RfReactiveFormComponent;
+  @ViewChild('counterpartForm') counterpartFormRef!: RfReactiveFormComponent;
+
   private apiService = inject(RfLotoPointApiService);
   private mapperService = inject(LotoPointMapperService);
   private counterpartService = inject(LotoPointCounterpartService);
   private messageService = inject(GlobalMessageService);
   private destroyRef = inject(DestroyRef);
   private lotoPointStateService = inject(RfLotoPointStateService);
+  protected clipboardService = inject(ClipboardService);
 
   // Inputs
   primaryLotoPoint = input.required<LotoPointDto>();
@@ -105,6 +122,7 @@ export class LotoPointDualFormComponent {
     'normPos',
     'location',
     'zeroEnergy',
+    'equipmentList',
   ]);
 
   // Outputs
@@ -839,6 +857,155 @@ export class LotoPointDualFormComponent {
         })
       )
       .subscribe();
+  }
+
+  // ========== Tag Number Generator ==========
+
+  /** Whether primary tag generator popup is open */
+  isPrimaryTagGeneratorOpen = signal<boolean>(false);
+
+  /** Whether counterpart tag generator popup is open */
+  isCounterpartTagGeneratorOpen = signal<boolean>(false);
+
+  /**
+   * Open tag generator for primary form
+   */
+  openPrimaryTagGenerator(): void {
+    this.isPrimaryTagGeneratorOpen.set(true);
+  }
+
+  /**
+   * Close tag generator for primary form
+   */
+  closePrimaryTagGenerator(): void {
+    this.isPrimaryTagGeneratorOpen.set(false);
+  }
+
+  /**
+   * Handle tag generated for primary form
+   */
+  onPrimaryTagGenerated(tagNumber: string): void {
+    const current = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const updated = new LotoPointDto({
+      ...current,
+      tagNumber: tagNumber,
+    });
+    this.currentPrimaryValues.set(updated);
+    this.closePrimaryTagGenerator();
+    this.updateDifferentFields();
+  }
+
+  /**
+   * Open tag generator for counterpart form
+   */
+  openCounterpartTagGenerator(): void {
+    this.isCounterpartTagGeneratorOpen.set(true);
+  }
+
+  /**
+   * Close tag generator for counterpart form
+   */
+  closeCounterpartTagGenerator(): void {
+    this.isCounterpartTagGeneratorOpen.set(false);
+  }
+
+  /**
+   * Handle tag generated for counterpart form
+   */
+  onCounterpartTagGenerated(tagNumber: string): void {
+    const current = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!current) return;
+
+    const updated = new LotoPointDto({
+      ...current,
+      tagNumber: tagNumber,
+    });
+    this.currentCounterpartValues.set(updated);
+    this.counterpartLotoPoint.set(updated);
+    this.closeCounterpartTagGenerator();
+    this.updateDifferentFields();
+  }
+
+  // ========== Clipboard Functionality ==========
+
+  /** Initial entity for primary clipboard tracking */
+  initialPrimaryEntity = signal<LotoPointDto>(new LotoPointDto());
+
+  /** Initial entity for counterpart clipboard tracking */
+  initialCounterpartEntity = signal<LotoPointDto>(new LotoPointDto());
+
+  /** Capture initial primary entity for clipboard */
+  private captureInitialPrimary = effect(() => {
+    const entity = this.primaryLotoPoint();
+    const current = this.initialPrimaryEntity();
+
+    if (
+      entity &&
+      (entity.id || entity.tagNumber || entity.description) &&
+      !(current.id || current.tagNumber || current.description)
+    ) {
+      this.initialPrimaryEntity.set(structuredClone(entity));
+    }
+  });
+
+  /** Capture initial counterpart entity for clipboard */
+  private captureInitialCounterpart = effect(() => {
+    const entity = this.counterpartLotoPoint();
+    const current = this.initialCounterpartEntity();
+
+    if (
+      entity &&
+      (entity.id || entity.tagNumber || entity.description) &&
+      !(current.id || current.tagNumber || current.description)
+    ) {
+      this.initialCounterpartEntity.set(structuredClone(entity));
+    }
+  }, { allowSignalWrites: true });
+
+  /**
+   * Check if entity has valid data for clipboard operations
+   */
+  hasValidData = (entity: LotoPointDto): boolean => {
+    return !!(entity.id || entity.tagNumber || entity.description);
+  };
+
+  /**
+   * Get summary string for clipboard item display
+   */
+  getItemSummary = (item: LotoPointDto): string => {
+    return `${item.tagNumber || 'N/A'} - ${item.description || 'No description'}`;
+  };
+
+  /**
+   * Formatter to transform LotoPointDto to LotoPointClipboardItem before adding to clipboard
+   */
+  clipboardFormatter = (entity: LotoPointDto): LotoPointClipboardItem => {
+    const clipboardItem = new LotoPointClipboardItem(entity);
+    clipboardItem.objectType = 'LotoPoint';
+    return clipboardItem;
+  };
+
+  /**
+   * Handle clipboard item selected for primary form
+   */
+  onPrimaryClipboardItemSelected(item: LotoPointDto): void {
+    if (item) {
+      const updated = new LotoPointDto(item);
+      this.currentPrimaryValues.set(updated);
+      this.updateDifferentFields();
+    }
+  }
+
+  /**
+   * Handle clipboard item selected for counterpart form
+   */
+  onCounterpartClipboardItemSelected(item: LotoPointDto): void {
+    if (item) {
+      const updated = new LotoPointDto(item);
+      this.currentCounterpartValues.set(updated);
+      this.counterpartLotoPoint.set(updated);
+      this.updateDifferentFields();
+    }
   }
 
   /**

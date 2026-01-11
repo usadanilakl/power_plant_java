@@ -812,3 +812,26 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Tag Generator Button */
+.tag-generator-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tag-generator-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.tag-generator-button:active {
+  transform: translateY(0);
+}
