@@ -112,24 +112,24 @@
 
           <!-- Field-by-field sync indicators -->
           <div class="field-sync-list">
-            @for (field of ['description', 'specificLocation', 'isoPos', 'normPos', 'eqType', 'location', 'zeroEnergy']; track field) {
+            @for (field of syncableFields; track field) {
               <div class="field-sync-row" [class.different]="isFieldDifferent(field)">
                 <button
                   class="field-sync-btn sync-right"
-                  (click)="syncFieldToCounterpart($any(field))"
+                  (click)="syncFieldToCounterpart(field)"
                   [disabled]="!isFieldDifferent(field)"
-                  title="Sync {{ field }} to Unit {{ targetUnit() }}"
+                  title="Sync {{ getFieldLabel(field) }} to Unit {{ targetUnit() }}"
                 >
                   &#8594;
                 </button>
                 <span class="field-name" [class.different]="isFieldDifferent(field)">
-                  {{ field }}
+                  {{ getFieldLabel(field) }}
                 </span>
                 <button
                   class="field-sync-btn sync-left"
-                  (click)="syncFieldToPrimary($any(field))"
+                  (click)="syncFieldToPrimary(field)"
                   [disabled]="!isFieldDifferent(field)"
-                  title="Sync {{ field }} to Unit {{ sourceUnit() }}"
+                  title="Sync {{ getFieldLabel(field) }} to Unit {{ sourceUnit() }}"
                 >
                   &#8592;
                 </button>
@@ -169,9 +169,19 @@
                 <span class="suggestion-badge">Suggestion</span>
               }
             </h3>
-            @if (isSavingCounterpart()) {
-              <span class="saving-indicator">Saving...</span>
-            }
+            <div class="panel-header-actions">
+              @if (isSavingCounterpart()) {
+                <span class="saving-indicator">Saving...</span>
+              }
+              <!-- Button to search for a different counterpart -->
+              <button
+                class="change-counterpart-btn"
+                (click)="openManualSearch()"
+                title="Search for a different counterpart"
+              >
+                &#128269; Change
+              </button>
+            </div>
           </div>
 
           <div class="form-content">
@@ -254,13 +264,44 @@
   @if (showManualSearch()) {
     <div class="manual-search-overlay">
       <div class="manual-search-panel">
-        <h3>Search for Counterpart</h3>
-        <p>Select a LOTO point from the table to set as the counterpart.</p>
-        <!-- Note: Integration with a LOTO point table component would go here -->
-        <p class="search-hint">Use the LOTO point table to search and select a counterpart.</p>
+        <div class="search-header">
+          <h3>Search for Counterpart in Unit {{ targetUnit() }}</h3>
+          <button class="close-search-btn" (click)="closeManualSearch()" title="Close">✕</button>
+        </div>
+        <p class="search-instructions">
+          Double-click a row to select, or select and click "Use Selected".
+        </p>
+
+        <div class="search-table-container">
+          @if (showManualSearch()) {
+            <app-rf-loto-point-table
+              [tableId]="'dual-form-counterpart-search-' + targetUnit()"
+              [fieldsToDisplay]="['tagNumber', 'description', 'normPos']"
+              [initialSearchCriteria]="searchCriteria()"
+              (selectedItemsEvent)="onSearchSelected($event)"
+              (rowDoubleClickedEvent)="onSearchRowDoubleClicked($event)"
+            ></app-rf-loto-point-table>
+          }
+        </div>
+
+        @if (selectedFromSearch()) {
+          <div class="selected-info">
+            <span class="selected-label">Selected:</span>
+            <strong>{{ selectedFromSearch()!.tagNumber }}</strong>
+            <span class="selected-desc">{{ selectedFromSearch()!.description }}</span>
+          </div>
+        }
+
         <div class="manual-search-actions">
           <button class="action-btn cancel-btn" (click)="closeManualSearch()">
-            Cancel Search
+            Cancel
+          </button>
+          <button
+            class="action-btn use-btn"
+            (click)="useSelectedFromSearch()"
+            [disabled]="!selectedFromSearch()"
+          >
+            Use Selected
           </button>
         </div>
       </div>

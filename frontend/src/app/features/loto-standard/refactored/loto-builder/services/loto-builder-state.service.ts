@@ -518,22 +518,10 @@ export class LotoBuilderStateService {
   }
 
   /**
-   * Open the builder popup
+   * Initialize builder (called when page loads)
    */
-  openBuilder(): void {
+  initializeBuilder(): void {
     this.isBuilderOpen.set(true);
-  }
-
-  /**
-   * Close the builder popup
-   */
-  closeBuilder(): void {
-    if (this.hasUnsavedChanges()) {
-      const confirmed = confirm('You have unsaved changes. Are you sure you want to close?');
-      if (!confirmed) return;
-    }
-    this.isBuilderOpen.set(false);
-    this.reset();
   }
 
   /**

@@ -13,39 +13,86 @@ import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of, tap } from 'rxjs';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
-import { RfFormField } from '../../../../models/ui/form-field.model';
 import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
+import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
+import {
+  LotoPointCounterpartService,
+  CounterpartStatus,
+  SyncableField,
+  SYNCABLE_FIELDS,
+} from '../services/loto-point-counterpart.service';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
+import { RfLotoPointTableComponent } from '../rf-loto-point-table/rf-loto-point-table.component';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
+import { SearchCriteria } from '../../../../models/api/search-criteria.model';
+// Table services required for isolated table instance
+import { TableSelectionService } from '../../../../shared/table/refactored/services/table-selection.service';
+import { TableDragService } from '../../../../shared/table/refactored/services/table-drag.service';
+import { TableStateService } from '../../../../shared/table/refactored/services/table-state.service';
+import { TableDataService } from '../../../../shared/table/refactored/services/table-data.service';
+import { TableSearchService } from '../../../../shared/table/refactored/services/table-search.service';
+import { TableSortService } from '../../../../shared/table/refactored/services/table-sort.service';
+import { TableResizeService } from '../../../../shared/table/refactored/services/table-resize.service';
+import { TableSyncService } from '../../../../shared/table/refactored/services/table-sync.service';
+import { TableClickService } from '../../../../shared/table/refactored/services/table-click.service';
+import { TableControlsService } from '../../../../shared/table/refactored/services/table-controls.service';
+import { LotoPointBulkEditService } from '../services/loto-point-bulk-edit.service';
+import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-point-table-data.service';
 
-/** Response structure from counterpart API */
-interface CounterpartResponse {
-  counterpart: LotoPointDto;
-  isNew: boolean;
-  isLinked: boolean;
-  sourceUnit: string;
-  targetUnit: string;
-}
-
-/** Counterpart status for UI display */
-type CounterpartStatus = 'linked' | 'found' | 'suggested' | 'not-found';
-
-/** Fields that can be synced between units */
-type SyncableField = 'tagNumber' | 'description' | 'specificLocation' | 'isoPos' | 'normPos' | 'zeroEnergy' | 'eqType' | 'location';
-
+/**
+ * Dual form component for editing unit-specific LOTO points (U1/U2).
+ * Displays two forms side-by-side with field synchronization controls.
+ *
+ * Features:
+ * - Automatic counterpart detection and loading
+ * - Field-by-field sync between units (with intelligent text transformation)
+ * - Three-state saving: save primary only, save counterpart only, or save both + link
+ * - Counterpart status tracking: 'linked' | 'found' | 'suggested' | 'not-found'
+ *
+ * Usage:
+ * <app-loto-point-dual-form
+ *   [primaryLotoPoint]="lotoPoint"
+ *   [fieldsToDisplay]="['tagNumber', 'description', ...]"
+ *   (primarySaved)="onPrimarySaved($event)"
+ *   (counterpartSaved)="onCounterpartSaved($event)"
+ *   (bothSaved)="onBothSaved($event)"
+ *   (formClosed)="onFormClosed()"
+ * />
+ */
 @Component({
   selector: 'app-loto-point-dual-form',
   standalone: true,
-  imports: [CommonModule, RfReactiveFormComponent],
+  imports: [CommonModule, RfReactiveFormComponent, RfLotoPointTableComponent],
+  providers: [
+    // Provide isolated instances for this component's table
+    RfLotoPointStateService,
+    TableSelectionService,
+    TableStateService,
+    TableDragService,
+    TableSearchService,
+    TableSortService,
+    TableResizeService,
+    TableSyncService,
+    TableClickService,
+    TableControlsService,
+    LotoPointBulkEditService,
+    RfLotoPointTableDataService,
+    {
+      provide: TableDataService,
+      useClass: RfLotoPointTableDataService,
+    },
+  ],
   templateUrl: './loto-point-dual-form.component.html',
   styleUrl: './loto-point-dual-form.component.css',
 })
 export class LotoPointDualFormComponent {
   private apiService = inject(RfLotoPointApiService);
   private mapperService = inject(LotoPointMapperService);
+  private counterpartService = inject(LotoPointCounterpartService);
   private messageService = inject(GlobalMessageService);
   private destroyRef = inject(DestroyRef);
+  private lotoPointStateService = inject(RfLotoPointStateService);
 
   // Inputs
   primaryLotoPoint = input.required<LotoPointDto>();
@@ -82,20 +129,32 @@ export class LotoPointDualFormComponent {
   // For manual search mode
   showManualSearch = signal<boolean>(false);
 
+  // Selected item from manual search table
+  selectedFromSearch = signal<LotoPointDto | null>(null);
+
+  // Search criteria for counterpart search (filters by target unit)
+  searchCriteria = computed<SearchCriteria>(() => {
+    return {
+      filters: {
+        unit: this.targetUnit(),
+      },
+      pageSize: 50,
+    };
+  });
+
   // Track form values for syncing
   currentPrimaryValues = signal<LotoPointDto | null>(null);
   currentCounterpartValues = signal<LotoPointDto | null>(null);
 
   // Track which fields are different between forms
-  differentFields = signal<Set<string>>(new Set());
+  differentFields = signal<Set<SyncableField>>(new Set());
+
+  // Expose syncable fields for template
+  readonly syncableFields: SyncableField[] = SYNCABLE_FIELDS.filter(f => f !== 'tagNumber');
 
   // Computed: Check if primary tag or unit starts with 01 or 02
   isUnitSpecific = computed(() => {
-    const primary = this.primaryLotoPoint();
-    const tag = primary?.tagNumber;
-    const unit = primary?.unit;
-    return tag?.startsWith('01') || tag?.startsWith('02') ||
-           unit?.startsWith('01') || unit?.startsWith('02');
+    return this.counterpartService.isUnitSpecific(this.primaryLotoPoint());
   });
 
   // Computed: Form fields for primary
@@ -111,26 +170,25 @@ export class LotoPointDualFormComponent {
     return this.mapperService.toFormFields(entity, this.fieldsToDisplay());
   });
 
-  // List of syncable fields (excluding equipment associations)
-  private syncableFields: SyncableField[] = [
-    'tagNumber',
-    'description',
-    'specificLocation',
-    'isoPos',
-    'normPos',
-    'zeroEnergy',
-    'eqType',
-    'location',
-  ];
-
   constructor() {
     // Load counterpart when primary changes
     effect(() => {
       const primary = this.primaryLotoPoint();
-      if (!this.isUnitSpecific()) {
+      if (!primary) {
+        return;
+      }
+
+      // Check if unit-specific directly (don't use computed to avoid dependency issues)
+      const isUnitSpecific = this.counterpartService.isUnitSpecific(primary);
+      if (!isUnitSpecific) {
         // Not unit-specific, nothing to load
         return;
       }
+
+      // Update source/target units
+      const source = this.counterpartService.getSourceUnit(primary);
+      this.sourceUnit.set(source);
+      this.targetUnit.set(this.counterpartService.getTargetUnit(source));
 
       if (primary?.id) {
         // Existing item: load counterpart by ID
@@ -140,7 +198,6 @@ export class LotoPointDualFormComponent {
         this.loadCounterpartByTagNumber(primary.tagNumber);
       } else if (primary?.unit) {
         // New item with only unit field set - use unit as the tag prefix
-        // This happens when user types in unit field first
         this.loadCounterpartByTagNumber(primary.unit);
       }
     }, { allowSignalWrites: true });
@@ -256,21 +313,8 @@ export class LotoPointDualFormComponent {
     const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
     if (!primary?.tagNumber) return;
 
-    const fromUnit = primary.tagNumber.startsWith('01') ? '01' : '02';
-    const toUnit = fromUnit === '01' ? '02' : '01';
-
-    // Create new counterpart with transformed tag number
-    const newCounterpart = new LotoPointDto({
-      tagNumber: toUnit + primary.tagNumber.substring(2),
-      description: this.transformUnitText(primary.description, fromUnit, toUnit),
-      specificLocation: this.transformUnitText(primary.specificLocation, fromUnit, toUnit),
-      isoPos: primary.isoPos,
-      normPos: primary.normPos,
-      zeroEnergy: primary.zeroEnergy,
-      eqType: primary.eqType,
-      location: primary.location,
-      unit: toUnit === '01' ? 'Unit 1' : 'Unit 2',
-    });
+    // Use service to generate counterpart
+    const newCounterpart = this.counterpartService.generateCounterpart(primary, this.targetUnit());
 
     this.counterpartLotoPoint.set(newCounterpart);
     this.currentCounterpartValues.set(newCounterpart);
@@ -285,6 +329,11 @@ export class LotoPointDualFormComponent {
    * Show manual search UI
    */
   openManualSearch(): void {
+    // Clear any previous search state so the table reloads fresh
+    this.lotoPointStateService.clearLotoPoints();
+    this.lotoPointStateService.resetPage();
+    this.lotoPointStateService.clearSortState();
+    this.selectedFromSearch.set(null);
     this.showManualSearch.set(true);
   }
 
@@ -293,6 +342,35 @@ export class LotoPointDualFormComponent {
    */
   closeManualSearch(): void {
     this.showManualSearch.set(false);
+    this.selectedFromSearch.set(null);
+  }
+
+  /**
+   * Handle selection from manual search table
+   */
+  onSearchSelected(items: LotoPointDto[]): void {
+    if (items.length > 0) {
+      this.selectedFromSearch.set(items[0]);
+    } else {
+      this.selectedFromSearch.set(null);
+    }
+  }
+
+  /**
+   * Handle double-click on search table row - immediately use that counterpart
+   */
+  onSearchRowDoubleClicked(item: LotoPointDto): void {
+    this.setCounterpartManually(item);
+  }
+
+  /**
+   * Use the selected item from search as counterpart
+   */
+  useSelectedFromSearch(): void {
+    const selected = this.selectedFromSearch();
+    if (selected) {
+      this.setCounterpartManually(selected);
+    }
   }
 
   /**
@@ -318,59 +396,30 @@ export class LotoPointDualFormComponent {
     const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
     const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
 
-    if (!primary || !counterpart) return;
-
-    const different = new Set<string>();
-
-    for (const field of this.syncableFields) {
-      if (field === 'tagNumber') {
-        // Skip tag number comparison since it will always differ
-        continue;
-      }
-
-      const primaryValue = this.getFieldValue(primary, field);
-      const counterpartValue = this.getFieldValue(counterpart, field);
-
-      if (!this.areValuesEqual(primaryValue, counterpartValue)) {
-        different.add(field);
-      }
-    }
-
-    this.differentFields.set(different);
-  }
-
-  /**
-   * Get field value for comparison
-   */
-  private getFieldValue(entity: LotoPointDto, field: string): any {
-    const value = (entity as any)[field];
-    if (value?.id !== undefined) {
-      return value.id;
-    }
-    return value;
-  }
-
-  /**
-   * Compare two values for equality
-   */
-  private areValuesEqual(val1: any, val2: any): boolean {
-    if (val1 === val2) return true;
-    if (val1 == null && val2 == null) return true;
-    if (val1 == null || val2 == null) return false;
-
-    // Compare by JSON for objects
-    if (typeof val1 === 'object' && typeof val2 === 'object') {
-      return JSON.stringify(val1) === JSON.stringify(val2);
-    }
-
-    return false;
+    this.differentFields.set(
+      this.counterpartService.getDifferentFields(primary, counterpart, true)
+    );
   }
 
   /**
    * Check if a field is different between forms
    */
-  isFieldDifferent(field: string): boolean {
+  isFieldDifferent(field: SyncableField): boolean {
     return this.differentFields().has(field);
+  }
+
+  /**
+   * Check if there are any different fields
+   */
+  hasDifferentFields(): boolean {
+    return this.differentFields().size > 0;
+  }
+
+  /**
+   * Get a short label for a field
+   */
+  getFieldLabel(field: SyncableField): string {
+    return this.counterpartService.getFieldLabel(field);
   }
 
   /**
@@ -382,10 +431,34 @@ export class LotoPointDualFormComponent {
 
     if (!primary || !counterpart) return;
 
-    const updatedCounterpart = new LotoPointDto({
-      ...counterpart,
-      [field]: this.transformFieldValue(primary, field, this.sourceUnit(), this.targetUnit()),
-    });
+    if (field === 'zeroEnergy') {
+      // Handle async zeroEnergy sync
+      this.isLoading.set(true);
+      this.counterpartService.syncZeroEnergy(primary, counterpart, this.sourceUnit(), this.destroyRef)
+        .pipe(
+          tap((updated) => {
+            this.currentCounterpartValues.set(updated);
+            this.counterpartLotoPoint.set(updated);
+            this.updateDifferentFields();
+            this.isLoading.set(false);
+          }),
+          catchError((error) => {
+            console.error('Error syncing zeroEnergy:', error);
+            this.isLoading.set(false);
+            return of(null);
+          })
+        )
+        .subscribe();
+      return;
+    }
+
+    const updatedCounterpart = this.counterpartService.syncField(
+      primary,
+      counterpart,
+      field,
+      this.sourceUnit(),
+      this.targetUnit()
+    );
 
     this.currentCounterpartValues.set(updatedCounterpart);
     this.counterpartLotoPoint.set(updatedCounterpart);
@@ -401,10 +474,33 @@ export class LotoPointDualFormComponent {
 
     if (!primary || !counterpart) return;
 
-    const updatedPrimary = new LotoPointDto({
-      ...primary,
-      [field]: this.transformFieldValue(counterpart, field, this.targetUnit(), this.sourceUnit()),
-    });
+    if (field === 'zeroEnergy') {
+      // Handle async zeroEnergy sync
+      this.isLoading.set(true);
+      this.counterpartService.syncZeroEnergy(counterpart, primary, this.targetUnit(), this.destroyRef)
+        .pipe(
+          tap((updated) => {
+            this.currentPrimaryValues.set(updated);
+            this.updateDifferentFields();
+            this.isLoading.set(false);
+          }),
+          catchError((error) => {
+            console.error('Error syncing zeroEnergy:', error);
+            this.isLoading.set(false);
+            return of(null);
+          })
+        )
+        .subscribe();
+      return;
+    }
+
+    const updatedPrimary = this.counterpartService.syncField(
+      counterpart,
+      primary,
+      field,
+      this.targetUnit(),
+      this.sourceUnit()
+    );
 
     this.currentPrimaryValues.set(updatedPrimary);
     this.updateDifferentFields();
@@ -414,76 +510,84 @@ export class LotoPointDualFormComponent {
    * Sync all fields from primary to counterpart
    */
   syncAllToCounterpart(): void {
-    for (const field of this.syncableFields) {
-      if (field !== 'tagNumber') {
-        this.syncFieldToCounterpart(field);
-      }
-    }
-    this.messageService.showSuccess(`All fields synced to Unit ${this.targetUnit()}`);
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+
+    if (!primary || !counterpart) return;
+
+    // Sync all non-async fields first
+    const updatedCounterpart = this.counterpartService.syncAllFields(
+      primary,
+      counterpart,
+      this.sourceUnit(),
+      this.targetUnit(),
+      true // exclude tagNumber
+    );
+
+    this.currentCounterpartValues.set(updatedCounterpart);
+    this.counterpartLotoPoint.set(updatedCounterpart);
+
+    // Then sync zeroEnergy (async)
+    this.isLoading.set(true);
+    this.counterpartService.syncZeroEnergy(primary, updatedCounterpart, this.sourceUnit(), this.destroyRef)
+      .pipe(
+        tap((finalCounterpart) => {
+          this.currentCounterpartValues.set(finalCounterpart);
+          this.counterpartLotoPoint.set(finalCounterpart);
+          this.updateDifferentFields();
+          this.isLoading.set(false);
+          this.messageService.showSuccess(`All fields synced to Unit ${this.targetUnit()}`);
+        }),
+        catchError((error) => {
+          console.error('Error syncing zeroEnergy:', error);
+          this.updateDifferentFields();
+          this.isLoading.set(false);
+          this.messageService.showSuccess(`Fields synced to Unit ${this.targetUnit()} (zeroEnergy sync failed)`);
+          return of(null);
+        })
+      )
+      .subscribe();
   }
 
   /**
    * Sync all fields from counterpart to primary
    */
   syncAllToPrimary(): void {
-    for (const field of this.syncableFields) {
-      if (field !== 'tagNumber') {
-        this.syncFieldToPrimary(field);
-      }
-    }
-    this.messageService.showSuccess(`All fields synced to Unit ${this.sourceUnit()}`);
-  }
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
 
-  /**
-   * Transform field value for syncing between units
-   */
-  private transformFieldValue(
-    source: LotoPointDto,
-    field: SyncableField,
-    fromUnit: string,
-    toUnit: string
-  ): any {
-    const value = (source as any)[field];
+    if (!primary || !counterpart) return;
 
-    if (field === 'tagNumber') {
-      // Transform tag number prefix
-      if (typeof value === 'string' && value.startsWith(fromUnit)) {
-        return toUnit + value.substring(fromUnit.length);
-      }
-      return value;
-    }
+    // Sync all non-async fields first
+    const updatedPrimary = this.counterpartService.syncAllFields(
+      counterpart,
+      primary,
+      this.targetUnit(),
+      this.sourceUnit(),
+      true // exclude tagNumber
+    );
 
-    if (field === 'description' || field === 'specificLocation') {
-      // Transform unit references in text
-      return this.transformUnitText(value, fromUnit, toUnit);
-    }
+    this.currentPrimaryValues.set(updatedPrimary);
 
-    // For other fields, copy as-is
-    return value;
-  }
-
-  /**
-   * Transform unit references in text (01<->02, Unit1<->Unit2, etc.)
-   */
-  private transformUnitText(text: string | null | undefined, fromUnit: string, toUnit: string): string {
-    if (!text) return '';
-
-    let result = text;
-
-    // Transform common patterns
-    const fromNum = fromUnit.replace(/^0/, '');
-    const toNum = toUnit.replace(/^0/, '');
-
-    // Unit 01 <-> Unit 02
-    result = result.replace(new RegExp(`Unit ${fromUnit}`, 'gi'), `Unit ${toUnit}`);
-    result = result.replace(new RegExp(`Unit${fromNum}`, 'gi'), `Unit${toNum}`);
-    result = result.replace(new RegExp(`U${fromNum}`, 'gi'), `U${toNum}`);
-    result = result.replace(new RegExp(`#${fromNum}`, 'gi'), `#${toNum}`);
-
-    // Standalone unit prefixes at word boundaries
-    result = result.replace(new RegExp(`\\b${fromUnit}\\b`, 'g'), toUnit);
-
-    return result;
+    // Then sync zeroEnergy (async)
+    this.isLoading.set(true);
+    this.counterpartService.syncZeroEnergy(counterpart, updatedPrimary, this.targetUnit(), this.destroyRef)
+      .pipe(
+        tap((finalPrimary) => {
+          this.currentPrimaryValues.set(finalPrimary);
+          this.updateDifferentFields();
+          this.isLoading.set(false);
+          this.messageService.showSuccess(`All fields synced to Unit ${this.sourceUnit()}`);
+        }),
+        catchError((error) => {
+          console.error('Error syncing zeroEnergy:', error);
+          this.updateDifferentFields();
+          this.isLoading.set(false);
+          this.messageService.showSuccess(`Fields synced to Unit ${this.sourceUnit()} (zeroEnergy sync failed)`);
+          return of(null);
+        })
+      )
+      .subscribe();
   }
 
   /**

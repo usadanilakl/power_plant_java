@@ -1,6 +1,6 @@
-import { Component, inject, signal, HostListener, Input, OnInit, OnDestroy, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, inject, signal, HostListener, OnInit, OnDestroy, PLATFORM_ID, Inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { LotoBuilderStateService } from './services/loto-builder-state.service';
 import { LotoBuilderLeftPanelComponent } from './loto-builder-left-panel/loto-builder-left-panel.component';
 import { LotoBuilderRightPanelComponent } from './loto-builder-right-panel/loto-builder-right-panel.component';
@@ -15,8 +15,6 @@ import { RfMultiUploadComponent } from '../../../files/refactored/rf-multi-uploa
 import { RfFileStateService } from '../../../files/refactored/services/rf-file-state.service';
 import { MainLayoutComponent } from '../../../../layout/refactored/main-layout.component';
 import { RouterMenuComponent } from '../../../../shared/menu/router-menu/router-menu.component';
-
-export type BuilderDisplayMode = 'popup' | 'page';
 
 @Component({
   selector: 'app-loto-builder-container',
@@ -39,7 +37,6 @@ export type BuilderDisplayMode = 'popup' | 'page';
   styleUrl: './loto-builder-container.component.css',
 })
 export class LotoBuilderContainerComponent implements OnInit, OnDestroy {
-  private route = inject(ActivatedRoute);
   private router = inject(Router);
   protected builderState = inject(LotoBuilderStateService);
   protected fileStateService = inject(RfFileStateService);
@@ -49,30 +46,14 @@ export class LotoBuilderContainerComponent implements OnInit, OnDestroy {
     this.isBrowser = isPlatformBrowser(platformId);
   }
 
-  /**
-   * Display mode: 'popup' shows as overlay, 'page' shows as full page content.
-   * When used via route, defaults to 'page'.
-   */
-  @Input() displayMode: BuilderDisplayMode = 'popup';
-
-  /** Whether component is in page mode (derived from route or input) */
-  isPageMode = signal<boolean>(false);
-
   // Resizing state
   isResizing = signal<boolean>(false);
   private startX = 0;
   private startWidth = 0;
 
   ngOnInit(): void {
-    // Determine if we're in page mode based on route
-    // When accessed via /loto-builder route, component is direct child of router-outlet
-    const isRoutedComponent = this.route.snapshot.routeConfig?.path === 'loto-builder';
-
-    if (isRoutedComponent || this.displayMode === 'page') {
-      this.isPageMode.set(true);
-      // Auto-open builder in page mode
-      this.builderState.isBuilderOpen.set(true);
-    }
+    // Initialize builder state when page loads
+    this.builderState.isBuilderOpen.set(true);
   }
 
   ngOnDestroy(): void {
@@ -82,10 +63,8 @@ export class LotoBuilderContainerComponent implements OnInit, OnDestroy {
       document.removeEventListener('mouseup', this.onMouseUp);
     }
 
-    // If in page mode, reset builder state when navigating away
-    if (this.isPageMode()) {
-      this.builderState.reset();
-    }
+    // Reset builder state when navigating away
+    this.builderState.reset();
   }
 
   /**
@@ -137,20 +116,14 @@ export class LotoBuilderContainerComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Close the builder
+   * Close the builder and navigate back to loto-standard page
    */
   onClose(): void {
-    if (this.isPageMode()) {
-      // In page mode, navigate back instead of just closing
-      if (this.builderState.hasUnsavedChanges()) {
-        const confirmed = confirm('You have unsaved changes. Are you sure you want to leave?');
-        if (!confirmed) return;
-      }
-      this.router.navigate(['/loto-standard']);
-    } else {
-      // In popup mode, use the state service's close logic
-      this.builderState.closeBuilder();
+    if (this.builderState.hasUnsavedChanges()) {
+      const confirmed = confirm('You have unsaved changes. Are you sure you want to leave?');
+      if (!confirmed) return;
     }
+    this.router.navigate(['/loto-standard']);
   }
 
   /**

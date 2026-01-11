@@ -112,6 +112,29 @@
   50% { opacity: 1; }
 }
 
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.change-counterpart-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.change-counterpart-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
 .form-content {
   flex: 1;
   overflow-y: auto;
@@ -637,25 +660,155 @@
 
 .manual-search-panel {
   background: var(--primary-background, #ffffff);
-  padding: 24px;
   border-radius: 8px;
-  max-width: 600px;
+  max-width: 900px;
   width: 90%;
   max-height: 80vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.manual-search-panel h3 {
-  margin: 0 0 16px;
+.search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--primary-color, #2196F3);
+  color: white;
 }
 
-.search-hint {
+.search-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.close-search-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.close-search-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.search-instructions {
+  margin: 0;
+  padding: 12px 20px;
+  background: var(--secondary-background, #f5f5f5);
   color: var(--secondary-text, #666);
-  font-style: italic;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+.search-table-container {
+  flex: 1;
+  min-height: 300px;
+  max-height: 400px;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-table-container app-rf-loto-point-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.search-table-container ::ng-deep .loto-point-table-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.search-table-container ::ng-deep app-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.search-table-container ::ng-deep .table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.search-table-container ::ng-deep table {
+  width: 100%;
+}
+
+.search-table-container ::ng-deep tbody tr {
+  display: table-row;
+}
+
+.search-table-container ::ng-deep td,
+.search-table-container ::ng-deep th {
+  padding: 8px 12px;
+}
+
+.selected-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #E3F2FD;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.selected-label {
+  color: var(--secondary-text, #666);
+  font-size: 13px;
+}
+
+.selected-info strong {
+  color: var(--primary-color, #2196F3);
+}
+
+.selected-desc {
+  color: var(--secondary-text, #666);
+  font-size: 13px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .manual-search-actions {
-  margin-top: 24px;
+  padding: 16px 20px;
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  background: var(--primary-background, #ffffff);
+}
+
+.action-btn.use-btn {
+  background: var(--primary-color, #2196F3);
+  color: white;
+  border-color: var(--primary-color, #2196F3);
+}
+
+.action-btn.use-btn:hover:not(:disabled) {
+  background: #1976D2;
+  border-color: #1976D2;
+}
+
+.action-btn.use-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

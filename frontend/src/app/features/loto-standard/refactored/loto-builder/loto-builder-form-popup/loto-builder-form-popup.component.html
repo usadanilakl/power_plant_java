@@ -42,14 +42,10 @@
       </div>
 
       <!-- Loading Overlay -->
-      @if (isLoading() || isSaving() || isLoadingCounterpart()) {
+      @if (isLoading()) {
         <div class="loading-overlay">
           <div class="loading-spinner"></div>
-          <span>
-            @if (isSaving()) { Saving... }
-            @else if (isLoadingCounterpart()) { Loading counterpart... }
-            @else { Loading... }
-          </span>
+          <span>Loading...</span>
         </div>
       }
 
@@ -93,207 +89,16 @@
       }
 
       <!-- Dual Form View (unit-specific with side-by-side forms) -->
-      @if (isFormView() && showDualForm()) {
-        <div class="dual-form-container">
-          <div class="dual-form-layout">
-            <!-- Primary Form (Left) -->
-            <div class="form-panel primary-panel">
-              <div class="panel-header">
-                <h3 class="panel-title">
-                  Unit {{ sourceUnit() }}
-                  <span class="panel-subtitle">(Primary)</span>
-                </h3>
-                @if (isSavingPrimary()) {
-                  <span class="saving-indicator">Saving...</span>
-                }
-              </div>
-
-              <div class="panel-form-content">
-                <app-rf-reactive-form
-                  [entity]="currentPrimaryValues()"
-                  [fields]="primaryFields()"
-                  [title]="''"
-                  [showSubmitButton]="false"
-                  (formValueChange)="onPrimaryValueChange($event)"
-                ></app-rf-reactive-form>
-              </div>
-
-              <div class="panel-actions">
-                <button
-                  class="action-btn save-btn"
-                  (click)="savePrimary()"
-                  [disabled]="isSavingPrimary() || isSavingBoth()"
-                >
-                  Save Unit {{ sourceUnit() }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Sync Controls (Center) -->
-            @if (counterpartLotoPoint()) {
-              <div class="sync-controls">
-                <div class="sync-header">
-                  <span class="sync-icon">&#8644;</span>
-                  <span class="sync-label">Sync</span>
-                </div>
-
-                <div class="sync-buttons">
-                  <button
-                    class="sync-all-btn sync-right"
-                    (click)="syncAllToCounterpart()"
-                    [disabled]="!hasDifferentFields()"
-                    title="Sync all fields to Unit {{ targetUnit() }}"
-                  >
-                    Sync All &#8594;
-                  </button>
-
-                  <button
-                    class="sync-all-btn sync-left"
-                    (click)="syncAllToPrimary()"
-                    [disabled]="!hasDifferentFields()"
-                    title="Sync all fields to Unit {{ sourceUnit() }}"
-                  >
-                    &#8592; Sync All
-                  </button>
-                </div>
-
-                <!-- Field-by-field sync indicators -->
-                <div class="field-sync-list">
-                  @for (field of syncableFields; track field) {
-                    <div class="field-sync-row" [class.different]="isFieldDifferent(field)">
-                      <button
-                        class="field-sync-btn sync-right"
-                        (click)="syncFieldToCounterpart(field)"
-                        [disabled]="!isFieldDifferent(field)"
-                        title="Sync {{ field }} to Unit {{ targetUnit() }}"
-                      >
-                        &#8594;
-                      </button>
-                      <span class="field-name" [class.different]="isFieldDifferent(field)">
-                        {{ getFieldLabel(field) }}
-                      </span>
-                      <button
-                        class="field-sync-btn sync-left"
-                        (click)="syncFieldToPrimary(field)"
-                        [disabled]="!isFieldDifferent(field)"
-                        title="Sync {{ field }} to Unit {{ sourceUnit() }}"
-                      >
-                        &#8592;
-                      </button>
-                    </div>
-                  }
-                </div>
-              </div>
-            } @else {
-              <!-- Empty sync placeholder when no counterpart -->
-              <div class="sync-controls sync-controls-empty">
-                <div class="sync-header disabled">
-                  <span class="sync-icon">&#8644;</span>
-                  <span class="sync-label">Sync</span>
-                </div>
-                <div class="sync-placeholder">
-                  <span>No counterpart<br>selected</span>
-                </div>
-              </div>
-            }
-
-            <!-- Counterpart Form (Right) OR Set Counterpart Button -->
-            @if (counterpartLotoPoint()) {
-              <div class="form-panel counterpart-panel" [class.is-new]="isCounterpartNew()">
-                <div class="panel-header counterpart-header">
-                  <h3 class="panel-title">
-                    Unit {{ targetUnit() }}
-                    @if (isCounterpartNew()) {
-                      <span class="new-badge">NEW</span>
-                    }
-                  </h3>
-                  @if (isSavingCounterpart()) {
-                    <span class="saving-indicator">Saving...</span>
-                  }
-                </div>
-
-                <div class="panel-form-content">
-                  <app-rf-reactive-form
-                    [entity]="currentCounterpartValues()"
-                    [fields]="counterpartFields()"
-                    [title]="''"
-                    [showSubmitButton]="false"
-                    (formValueChange)="onCounterpartValueChange($event)"
-                  ></app-rf-reactive-form>
-                </div>
-
-                <div class="panel-actions">
-                  <button
-                    class="action-btn change-btn"
-                    (click)="openCounterpartDialog()"
-                    title="Change counterpart"
-                  >
-                    Change
-                  </button>
-                  <button
-                    class="action-btn save-btn"
-                    (click)="saveCounterpart()"
-                    [disabled]="isSavingCounterpart() || isSavingBoth()"
-                  >
-                    {{ isCounterpartNew() ? 'Create' : 'Save' }} Unit {{ targetUnit() }}
-                  </button>
-                </div>
-              </div>
-            } @else {
-              <!-- No Counterpart - Show button to open dialog -->
-              <div class="form-panel counterpart-panel counterpart-panel-empty">
-                <div class="panel-header counterpart-header">
-                  <h3 class="panel-title">
-                    Unit {{ targetUnit() }}
-                    <span class="panel-subtitle">(No counterpart)</span>
-                  </h3>
-                </div>
-
-                <div class="counterpart-options">
-                  <div class="options-icon">?</div>
-                  <h4>No Counterpart Set</h4>
-                  @if (suggestedCounterpart()) {
-                    <p class="suggestion-found">
-                      A matching counterpart was found:
-                      <strong>{{ suggestedCounterpart()!.tagNumber }}</strong>
-                    </p>
-                  } @else {
-                    <p>No matching LOTO point found for Unit {{ targetUnit() }}.</p>
-                  }
-
-                  <button class="set-counterpart-btn" (click)="openCounterpartDialog()">
-                    <span class="btn-icon">+</span>
-                    Set Counterpart
-                  </button>
-
-                  <p class="options-hint">
-                    You can continue editing the primary form.<br>
-                    Choose a counterpart when ready.
-                  </p>
-                </div>
-              </div>
-            }
-          </div>
-
-          <!-- Dual Form Footer -->
-          <div class="dual-form-footer">
-            <button class="action-btn cancel-btn" (click)="close()">
-              Cancel
-            </button>
-            @if (counterpartLotoPoint()) {
-              <button
-                class="action-btn save-both-btn"
-                (click)="saveBoth()"
-                [disabled]="isSavingPrimary() || isSavingCounterpart() || isSavingBoth()"
-              >
-                @if (isSavingBoth()) {
-                  Saving Both...
-                } @else {
-                  Save Both Units
-                }
-              </button>
-            }
-          </div>
+      @if (isFormView() && showDualForm() && effectiveLotoPoint()) {
+        <div class="dual-form-wrapper">
+          <app-loto-point-dual-form
+            [primaryLotoPoint]="effectiveLotoPoint()!"
+            [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'zeroEnergy']"
+            (primarySaved)="onPrimarySaved($event)"
+            (counterpartSaved)="onCounterpartSaved($event)"
+            (bothSaved)="onBothSaved($event)"
+            (formClosed)="onDualFormClosed()"
+          ></app-loto-point-dual-form>
         </div>
       }
 
@@ -322,15 +127,4 @@
       }
     </div>
   </div>
-}
-
-<!-- Counterpart Selection Dialog -->
-@if (showCounterpartDialog()) {
-  <app-counterpart-selection-dialog
-    [primaryLotoPoint]="currentPrimaryValues()!"
-    [suggestedCounterpart]="suggestedCounterpart()"
-    [targetUnit]="targetUnit()"
-    (counterpartSelected)="onCounterpartSelected($event)"
-    (dialogClosed)="closeCounterpartDialog()"
-  ></app-counterpart-selection-dialog>
 }

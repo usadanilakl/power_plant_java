@@ -1,13 +1,11 @@
-/* ========== Page Mode Styles ========== */
-
-/* Host component fills available space in page mode */
+/* Host component fills available space */
 :host {
   display: block;
   width: 100%;
   height: 100%;
 }
 
-/* Header menu container for page mode */
+/* Header menu container */
 .header-menus {
   display: flex;
   align-items: center;
@@ -19,35 +17,9 @@
   align-items: center;
 }
 
-/* ========== Popup Mode Styles ========== */
+/* ========== Container Styles ========== */
 
-/* Overlay backdrop (popup mode only) */
-.loto-builder-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* ========== Shared Container Styles ========== */
-
-/* Main container - full screen in both modes */
+/* Main container - fills available space */
 .loto-builder-container {
   display: flex;
   width: 100%;

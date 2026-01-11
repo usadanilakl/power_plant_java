@@ -1,148 +1,77 @@
-@if (builderState.isBuilderOpen()) {
-  <!-- Page mode: with main layout and nav menu -->
-  @if (isPageMode()) {
-    <app-main-layout
-      [isSideMenuEnabled]="false"
-      [isBottomMenuEnabled]="false"
-    >
-      <ng-container header>
-        <div class="header-menus">
-          <div class="menu-container">
-            <app-router-menu [layout]="'row'"></app-router-menu>
-          </div>
-        </div>
-      </ng-container>
-      <ng-container main-content>
-        <div class="loto-builder-container">
-          <!-- Left Panel -->
-          <div
-            class="left-panel"
-            [style.width.px]="builderState.leftPanelWidth()"
-          >
-            <app-loto-builder-left-panel></app-loto-builder-left-panel>
-          </div>
-
-          <!-- Resizable Divider -->
-          <div
-            class="divider"
-            [class.resizing]="isResizing()"
-            (mousedown)="onDividerMouseDown($event)"
-          >
-            <div class="divider-handle"></div>
-          </div>
-
-          <!-- Right Panel -->
-          <div class="right-panel">
-            <app-loto-builder-right-panel
-              (closeRequested)="onClose()"
-            ></app-loto-builder-right-panel>
-          </div>
-        </div>
-      </ng-container>
-    </app-main-layout>
-
-    <!-- Floating elements outside main layout for proper z-index -->
-    <!-- Form Popup (overlay) -->
-    <app-loto-builder-form-popup></app-loto-builder-form-popup>
-
-    <!-- LOTO Points Table (floating window) -->
-    <app-loto-builder-table-popup></app-loto-builder-table-popup>
-
-    <!-- LOTO Standards Carousel (floating window) -->
-    @if (builderState.isCarouselVisible()) {
-      <app-loto-form-carousel
-        [lotoStandards]="builderState.selectedLotoStandards()"
-        (standardUpdated)="onCarouselStandardUpdated($event)"
-        (standardSubmitted)="onCarouselStandardSubmitted($event)"
-        (standardCancelled)="onCarouselStandardCancelled($event)"
-        (addNewRequested)="onCarouselAddNewRequested()"
-        (close)="onCarouselClose()"
-      ></app-loto-form-carousel>
-    }
-
-    <!-- LOTO Standards Selector Popup -->
-    <app-loto-standards-selector></app-loto-standards-selector>
-
-    <!-- File Form Popup -->
-    <app-rf-popup-projection
-      [isOpen]="fileStateService.isFileFormOpen()"
-      (close)="fileStateService.closeForm()"
-    >
-      <app-rf-file-form></app-rf-file-form>
-    </app-rf-popup-projection>
-
-    <!-- Multi-Upload Popup -->
-    <app-rf-popup-projection
-      [isOpen]="fileStateService.isMultiUploadOpen()"
-      (close)="fileStateService.closeMultiUpload()"
-    >
-      <app-rf-multi-upload (close)="fileStateService.closeMultiUpload()"></app-rf-multi-upload>
-    </app-rf-popup-projection>
-  } @else {
-    <!-- Popup mode: with overlay backdrop -->
-    <div class="loto-builder-overlay" (click)="onClose()">
-      <div class="loto-builder-container" (click)="$event.stopPropagation()">
-        <!-- Left Panel -->
-        <div
-          class="left-panel"
-          [style.width.px]="builderState.leftPanelWidth()"
-        >
-          <app-loto-builder-left-panel></app-loto-builder-left-panel>
-        </div>
-
-        <!-- Resizable Divider -->
-        <div
-          class="divider"
-          [class.resizing]="isResizing()"
-          (mousedown)="onDividerMouseDown($event)"
-        >
-          <div class="divider-handle"></div>
-        </div>
-
-        <!-- Right Panel -->
-        <div class="right-panel">
-          <app-loto-builder-right-panel
-            (closeRequested)="onClose()"
-          ></app-loto-builder-right-panel>
-        </div>
-
-        <!-- Form Popup (overlay) -->
-        <app-loto-builder-form-popup></app-loto-builder-form-popup>
-
-        <!-- LOTO Points Table (floating window) -->
-        <app-loto-builder-table-popup></app-loto-builder-table-popup>
-
-        <!-- LOTO Standards Carousel (floating window) -->
-        @if (builderState.isCarouselVisible()) {
-          <app-loto-form-carousel
-            [lotoStandards]="builderState.selectedLotoStandards()"
-            (standardUpdated)="onCarouselStandardUpdated($event)"
-            (standardSubmitted)="onCarouselStandardSubmitted($event)"
-            (standardCancelled)="onCarouselStandardCancelled($event)"
-            (addNewRequested)="onCarouselAddNewRequested()"
-            (close)="onCarouselClose()"
-          ></app-loto-form-carousel>
-        }
-
-        <!-- LOTO Standards Selector Popup -->
-        <app-loto-standards-selector></app-loto-standards-selector>
-
-        <!-- File Form Popup -->
-        <app-rf-popup-projection
-          [isOpen]="fileStateService.isFileFormOpen()"
-          (close)="fileStateService.closeForm()"
-        >
-          <app-rf-file-form></app-rf-file-form>
-        </app-rf-popup-projection>
-
-        <!-- Multi-Upload Popup -->
-        <app-rf-popup-projection
-          [isOpen]="fileStateService.isMultiUploadOpen()"
-          (close)="fileStateService.closeMultiUpload()"
-        >
-          <app-rf-multi-upload (close)="fileStateService.closeMultiUpload()"></app-rf-multi-upload>
-        </app-rf-popup-projection>
+<app-main-layout
+  [isSideMenuEnabled]="false"
+  [isBottomMenuEnabled]="false"
+>
+  <ng-container header>
+    <div class="header-menus">
+      <div class="menu-container">
+        <app-router-menu [layout]="'row'"></app-router-menu>
       </div>
     </div>
-  }
+  </ng-container>
+  <ng-container main-content>
+    <div class="loto-builder-container">
+      <!-- Left Panel -->
+      <div
+        class="left-panel"
+        [style.width.px]="builderState.leftPanelWidth()"
+      >
+        <app-loto-builder-left-panel></app-loto-builder-left-panel>
+      </div>
+
+      <!-- Resizable Divider -->
+      <div
+        class="divider"
+        [class.resizing]="isResizing()"
+        (mousedown)="onDividerMouseDown($event)"
+      >
+        <div class="divider-handle"></div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="right-panel">
+        <app-loto-builder-right-panel
+          (closeRequested)="onClose()"
+        ></app-loto-builder-right-panel>
+      </div>
+    </div>
+  </ng-container>
+</app-main-layout>
+
+<!-- Floating elements outside main layout for proper z-index -->
+<!-- Form Popup (overlay) -->
+<app-loto-builder-form-popup></app-loto-builder-form-popup>
+
+<!-- LOTO Points Table (floating window) -->
+<app-loto-builder-table-popup></app-loto-builder-table-popup>
+
+<!-- LOTO Standards Carousel (floating window) -->
+@if (builderState.isCarouselVisible()) {
+  <app-loto-form-carousel
+    [lotoStandards]="builderState.selectedLotoStandards()"
+    (standardUpdated)="onCarouselStandardUpdated($event)"
+    (standardSubmitted)="onCarouselStandardSubmitted($event)"
+    (standardCancelled)="onCarouselStandardCancelled($event)"
+    (addNewRequested)="onCarouselAddNewRequested()"
+    (close)="onCarouselClose()"
+  ></app-loto-form-carousel>
 }
+
+<!-- LOTO Standards Selector Popup -->
+<app-loto-standards-selector></app-loto-standards-selector>
+
+<!-- File Form Popup -->
+<app-rf-popup-projection
+  [isOpen]="fileStateService.isFileFormOpen()"
+  (close)="fileStateService.closeForm()"
+>
+  <app-rf-file-form></app-rf-file-form>
+</app-rf-popup-projection>
+
+<!-- Multi-Upload Popup -->
+<app-rf-popup-projection
+  [isOpen]="fileStateService.isMultiUploadOpen()"
+  (close)="fileStateService.closeMultiUpload()"
+>
+  <app-rf-multi-upload (close)="fileStateService.closeMultiUpload()"></app-rf-multi-upload>
+</app-rf-popup-projection>

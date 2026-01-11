@@ -20,13 +20,33 @@
   </ng-container>
 </app-main-layout>
 
-<!-- LOTO Point Form Popup -->
-<app-rf-popup-projection
-  [isOpen]="stateService.isLotoPointFormOpen()"
-  (close)="stateService.closeForm()"
->
-  <app-rf-loto-point-form [fieldsInput]="stateService.formFields()"></app-rf-loto-point-form>
-</app-rf-popup-projection>
+<!-- LOTO Point Form Popup - Single Form for non-unit-specific items -->
+@if (!isUnitSpecific()) {
+  <app-rf-popup-projection
+    [isOpen]="stateService.isLotoPointFormOpen()"
+    (close)="stateService.closeForm()"
+  >
+    <app-rf-loto-point-form [fieldsInput]="stateService.formFields()"></app-rf-loto-point-form>
+  </app-rf-popup-projection>
+}
+
+<!-- LOTO Point Form Popup - Dual Form for unit-specific items (01/02) -->
+@if (isUnitSpecific() && stateService.isLotoPointFormOpen() && stateService.selectedItem()) {
+  <app-rf-popup-projection
+    [isOpen]="true"
+    [size]="'large'"
+    (close)="stateService.closeForm()"
+  >
+    <app-loto-point-dual-form
+      [primaryLotoPoint]="stateService.selectedItem()!"
+      [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'zeroEnergy']"
+      (primarySaved)="onPrimarySaved()"
+      (counterpartSaved)="onCounterpartSaved()"
+      (bothSaved)="onBothSaved()"
+      (formClosed)="onDualFormClosed()"
+    ></app-loto-point-dual-form>
+  </app-rf-popup-projection>
+}
 
 <!-- Export Dialog -->
 <app-export-dialog></app-export-dialog>

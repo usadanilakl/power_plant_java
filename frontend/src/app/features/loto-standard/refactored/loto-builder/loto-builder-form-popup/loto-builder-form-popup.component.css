@@ -1206,3 +1206,18 @@
   gap: 12px;
   flex-shrink: 0;
 }
+
+/* Dual Form Wrapper - when using the dual form component directly */
+.dual-form-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dual-form-wrapper app-loto-point-dual-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
