@@ -31,7 +31,7 @@
 
 .guide-tooltip {
   position: fixed;
-  z-index: 10000;
+  /* z-index is set dynamically by the directive based on stacking context */
   max-width: 300px;
   padding: 14px 18px;
   background: var(--guide-tooltip-bg);

@@ -91,25 +91,13 @@ export class GuideDirective implements OnInit, OnDestroy {
   });
 
   private tooltip: HTMLElement | null = null;
+  private tooltipContainer: HTMLElement | null = null;
   private isTooltipVisible = false;
 
   constructor() {
     // React to active state changes - use afterRenderEffect pattern for DOM manipulation
     effect(() => {
-      const guideValue = this.appGuide();
       const active = this.isActive();
-      const withHighlight = this.isActiveWithHighlight();
-      // Debug logging
-      if (guideValue?.includes('create-button')) {
-        console.log('[GuideDirective] create-button:', {
-          guideValue,
-          active,
-          withHighlight,
-          activeGuide: this.guideService.activeGuide(),
-          currentRoute: this.guideService.currentRoute(),
-          isPaused: this.guideService.isPaused(),
-        });
-      }
       if (active) {
         this.addHighlightStyles();
       } else {
@@ -154,6 +142,9 @@ export class GuideDirective implements OnInit, OnDestroy {
 
   @HostListener('click')
   onClick(): void {
+    // Hide tooltip immediately on click to prevent it from overlaying dialogs
+    this.hideTooltip();
+
     if (this.isActive()) {
       // Mark step as completed when clicked
       this.guideService.markStepCompleted(this.guideId(), this.stepId());
@@ -199,8 +190,13 @@ export class GuideDirective implements OnInit, OnDestroy {
     this.renderer.addClass(arrow, 'guide-tooltip-arrow');
     this.renderer.appendChild(this.tooltip, arrow);
 
-    // Append to body
-    this.renderer.appendChild(document.body, this.tooltip);
+    // Find the appropriate container and z-index for the tooltip
+    this.tooltipContainer = this.findTooltipContainer();
+    const zIndex = this.calculateZIndex();
+    this.renderer.setStyle(this.tooltip, 'z-index', zIndex.toString());
+
+    // Append to the container
+    this.renderer.appendChild(this.tooltipContainer, this.tooltip);
 
     // Position the tooltip
     this.positionTooltip();
@@ -208,11 +204,61 @@ export class GuideDirective implements OnInit, OnDestroy {
   }
 
   private hideTooltip(): void {
-    if (this.tooltip && this.isTooltipVisible) {
-      this.renderer.removeChild(document.body, this.tooltip);
+    if (this.tooltip && this.isTooltipVisible && this.tooltipContainer) {
+      this.renderer.removeChild(this.tooltipContainer, this.tooltip);
       this.tooltip = null;
+      this.tooltipContainer = null;
       this.isTooltipVisible = false;
     }
+  }
+
+  /**
+   * Find the appropriate container for the tooltip.
+   * Looks for the nearest overlay/dialog container, falls back to body.
+   */
+  private findTooltipContainer(): HTMLElement {
+    let element: HTMLElement | null = this.elementRef.nativeElement;
+
+    while (element) {
+      // Check for common dialog/overlay containers
+      if (
+        element.classList.contains('cdk-overlay-container') ||
+        element.classList.contains('cdk-overlay-pane') ||
+        element.classList.contains('mat-mdc-dialog-container') ||
+        element.classList.contains('popup-container') ||
+        element.classList.contains('popup-projection-container') ||
+        element.classList.contains('dialog-container') ||
+        element.hasAttribute('data-guide-container')
+      ) {
+        return element;
+      }
+      element = element.parentElement;
+    }
+
+    return document.body;
+  }
+
+  /**
+   * Calculate the appropriate z-index for the tooltip based on its container.
+   * Ensures tooltip appears above sibling elements but respects dialog stacking.
+   */
+  private calculateZIndex(): number {
+    let element: HTMLElement | null = this.elementRef.nativeElement;
+    let maxZIndex = 0;
+
+    // Walk up the DOM tree and find the highest z-index in the stacking context
+    while (element && element !== document.body) {
+      const style = window.getComputedStyle(element);
+      const zIndex = parseInt(style.zIndex, 10);
+
+      if (!isNaN(zIndex) && zIndex > maxZIndex) {
+        maxZIndex = zIndex;
+      }
+      element = element.parentElement;
+    }
+
+    // Return a z-index slightly higher than the highest found, with a minimum
+    return Math.max(maxZIndex + 1, 1000);
   }
 
   private positionTooltip(): void {

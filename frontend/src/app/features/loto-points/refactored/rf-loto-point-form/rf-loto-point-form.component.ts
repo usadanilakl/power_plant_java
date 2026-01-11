@@ -101,7 +101,7 @@ export class RfLotoPointFormComponent {
       this.draftCheckDone.set(false);
     }
     this.lastEntityIdChecked.set(currentId);
-  }, { allowSignalWrites: true });
+  });
 
   // Check for drafts when entity changes
   private checkForDrafts = effect(() => {
@@ -134,14 +134,12 @@ export class RfLotoPointFormComponent {
             this.showDraftDialog.set(true);
           } else {
             // No real differences - just clear the draft silently
-            console.log('Draft has no real differences from server version, clearing silently');
             this.stateService.clearDraftForItem(lotoPointId);
           }
         } else if (!this.draftCheckDone()) {
           // For new items (including blank forms), auto-load draft
           // Only do this once to prevent infinite loops
           this.draftCheckDone.set(true);
-          console.log('Loading draft for new item:', draftData);
           this.stateService.setSelectedItem(draftData);
         }
       } else {
@@ -149,7 +147,7 @@ export class RfLotoPointFormComponent {
         this.originalServerVersion.set(currentEntity);
       }
     }
-  }, { allowSignalWrites: true });
+  });
 
   /**
    * Check if there are real differences between server and draft versions
@@ -348,7 +346,6 @@ export class RfLotoPointFormComponent {
 
   onClipboardItemSelected(item: LotoPointDto): void {
     if (item) {
-      console.log('Loading item from clipboard (id excluded):', item);
       this.stateService.setSelectedItem(new LotoPointDto(item));
     }
   }
@@ -363,8 +360,6 @@ export class RfLotoPointFormComponent {
   }
 
   onTagGenerated(tagNumber: string): void {
-    console.log('Tag number generated:', tagNumber);
-
     // Update the form with the new tag number
     if (this.reactiveForm) {
       const currentEntity = this.entity();

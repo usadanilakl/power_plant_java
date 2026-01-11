@@ -42,9 +42,6 @@ export class LotoPointCacheService {
    * This is called once at app startup
    */
   private loadAllSummaries(): void {
-    const startTime = performance.now();
-    console.log('Loading LOTO point summaries...');
-
     this.isLoadingSubject.next(true);
     this.errorSubject.next(null);
 
@@ -59,10 +56,6 @@ export class LotoPointCacheService {
         this.summariesSubject.next(summaries);
         this.summariesLoadedSubject.next(true);
         this.isLoadingSubject.next(false);
-
-        const endTime = performance.now();
-        console.log(`Loaded ${summaries.length} LOTO point summaries in ${endTime - startTime}ms`);
-        console.log(`Payload size estimate: ${JSON.stringify(response.responseData).length / 1024}KB`);
       },
       error: (error) => {
         console.error('Error loading LOTO point summaries:', error);

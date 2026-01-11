@@ -18,7 +18,6 @@ export class LotoPointContextMenuService extends ContextMenuService {
 
   constructor() {
     super();
-    console.log('[LotoPointContextMenuService] Constructor called');
     // Initialize actions in constructor to ensure proper this binding
     this.contextMenuActions = this.buildContextMenuActions();
   }
@@ -106,15 +105,9 @@ export class LotoPointContextMenuService extends ContextMenuService {
   }
 
   override handleViewDetails(item: any): void {
-    console.log('[LotoPointContextMenu] handleViewDetails called with item:', item);
     if (item?.id) {
-      console.log('[LotoPointContextMenu] Loading item by ID:', item.id);
       this.stateService.loadItemById(item.id);
-      console.log('[LotoPointContextMenu] Calling openForm()');
       this.stateService.openForm();
-      console.log('[LotoPointContextMenu] isLotoPointFormOpen after openForm:', this.stateService.isLotoPointFormOpen());
-    } else {
-      console.warn('Cannot view details: item has no ID', item);
     }
   }
 
@@ -124,9 +117,7 @@ export class LotoPointContextMenuService extends ContextMenuService {
    * including nested structures like zeroEnergy
    */
   override handleClipboard(item: any): void {
-
     if (!item?.id) {
-      console.warn('[LotoPointContextMenu] Cannot add to clipboard: item has no ID', item);
       return;
     }
 
@@ -138,16 +129,14 @@ export class LotoPointContextMenuService extends ContextMenuService {
         // Now add the complete DTO to clipboard
         super.handleClipboard(fullDto);
       },
-      error: (error: any) => {
-        console.error('[LotoPointContextMenu] Failed to fetch full DTO:', error);
+      error: () => {
         // Fallback to table data if fetch fails
         super.handleClipboard(item);
       }
     });
   }
 
-    private handleInspect(item: LotoPointDto): void {
-      console.log('Inspecting:', item);
+    private handleInspect(_item: LotoPointDto): void {
       // Implement inspect logic
     }
   
@@ -159,8 +148,7 @@ export class LotoPointContextMenuService extends ContextMenuService {
       });
     }
   
-    private handleRelease(item: LotoPointDto): void {
-      console.log('Releasing:', item);
+    private handleRelease(_item: LotoPointDto): void {
       // Implement release logic
     }
 

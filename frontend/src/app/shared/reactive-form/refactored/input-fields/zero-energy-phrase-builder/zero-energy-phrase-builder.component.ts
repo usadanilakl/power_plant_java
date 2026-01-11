@@ -196,7 +196,6 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
     // Connect the child component's CVA to our CVA
     if (this.selectInput) {
       this.selectInput.registerOnChange((val: any) => {
-        console.log('ZeroEnergyPhraseBuilder received new value:', val);
         const id = val?.id ?? val;
         this.selectedPhraseId.set(id);
         this.onChange({id:id});
@@ -329,8 +328,7 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
     try {
       const phraseData: ZeroEnergyPhrase = JSON.parse(selectedValue.alias || '{}');
       this.dialogPhraseText.set(phraseData.rawText || '');
-    } catch (e) {
-      console.error('Error parsing phrase data:', e);
+    } catch {
       this.dialogPhraseText.set('');
     }
 
@@ -492,7 +490,7 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
       });
       this.capturedInitialPhrase.set(clipboardItem);
     }
-  }, { allowSignalWrites: true });
+  });
 
   clipboardItems = computed(() => {
     const section = this.clipboardService.getSectionByType('ZeroEnergyPhrase');
@@ -527,7 +525,6 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
   addToClipboard(): void {
     const phraseId = this.selectedPhraseId();
     if (!phraseId) {
-      console.warn('No phrase selected to add to clipboard');
       return;
     }
 
@@ -543,13 +540,10 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
     });
 
     this.clipboardService.addItem(clipboardItem);
-    console.log('Added zero energy phrase to clipboard:', clipboardItem);
   }
 
   onClipboardItemClick(item: ZeroEnergyPhraseClipboardItem): void {
     if (item && item.zeroEnergyTemplate?.id) {
-      console.log('Loading zero energy phrase from clipboard:', item);
-
       // Update the selected phrase
       this.selectedPhraseId.set(item.zeroEnergyTemplate.id);
       this.onChange({ id: item.zeroEnergyTemplate.id });

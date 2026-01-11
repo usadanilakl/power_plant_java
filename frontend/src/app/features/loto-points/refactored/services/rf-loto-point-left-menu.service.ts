@@ -61,7 +61,6 @@ export class RfLotoPointLeftMenuService {
 
           // If there's a pending grouping request, load it now that cache is ready
           if (this.pendingGrouping) {
-            console.log(`Cache is ready, loading pending grouping: ${this.pendingGrouping}`);
             const grouping = this.pendingGrouping;
             this.pendingGrouping = null;
             this.loadGroupedLotoPoints(grouping);
@@ -71,7 +70,6 @@ export class RfLotoPointLeftMenuService {
         }
       },
       error: (error) => {
-        console.error('Error loading LOTO point summaries:', error);
         this.errorSubject.next(error.message);
       }
     });
@@ -81,7 +79,6 @@ export class RfLotoPointLeftMenuService {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
-        console.log('LOTO point summaries updated, clearing grouped cache');
         this.groupedDataCache.clear();
       }
     });
@@ -92,12 +89,9 @@ export class RfLotoPointLeftMenuService {
    * Uses cached summaries and groups them client-side for instant performance
    */
   loadGroupedLotoPoints(groupBy: GroupingCriteria): void {
-    const startTime = performance.now();
-
     // Check grouped cache first
     const cachedGroupedData = this.groupedDataCache.get(groupBy);
     if (cachedGroupedData) {
-      console.log(`Loading ${groupBy} from grouped cache`);
       this.menuDataSubject.next(cachedGroupedData);
       return;
     }
@@ -106,7 +100,6 @@ export class RfLotoPointLeftMenuService {
     const summaries = this.cacheService.getAllSummaries();
 
     if (summaries.length === 0) {
-      console.warn('No LOTO point summaries available yet - cache may still be loading');
       // Store this grouping request to execute when cache is ready
       this.pendingGrouping = groupBy;
       this.isLoadingSubject.next(true);
@@ -119,9 +112,6 @@ export class RfLotoPointLeftMenuService {
     // Cache the grouped result
     this.groupedDataCache.set(groupBy, nestedItems);
     this.menuDataSubject.next(nestedItems);
-
-    const endTime = performance.now();
-    console.log(`Grouped ${summaries.length} LOTO points by ${groupBy} in ${endTime - startTime}ms`);
   }
 
   /**
@@ -270,7 +260,6 @@ export class RfLotoPointLeftMenuService {
   selectLotoPointFromNestedItem(lotoPointItem: NestedItem): void {
     // Only handle leaf items (actual LOTO points, not group headers)
     if (lotoPointItem.objectType !== 'LotoPoint') {
-      console.warn('Attempted to select non-LOTO point item:', lotoPointItem);
       return;
     }
 
@@ -278,44 +267,35 @@ export class RfLotoPointLeftMenuService {
       ? lotoPointItem.id.toString()
       : lotoPointItem.id;
 
-    console.log('Selecting LOTO point with ID:', lotoPointId);
-
     // Fetch the full LOTO point data to get equipment references
     this.apiService.getLotoPointById(lotoPointId).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap((response: any) => {
         const lotoPoint = response.responseData;
-        console.log('LOTO point loaded:', lotoPoint);
         this.selectedLotoPointSubject.next(lotoPoint);
 
         // Get the first equipment from the LOTO point
         const equipmentList = lotoPoint.equipmentList;
         if (equipmentList && equipmentList.length > 0) {
           const firstEquipment = equipmentList[0];
-          console.log('First equipment from LOTO point:', firstEquipment);
           this.selectedEquipmentSubject.next(firstEquipment);
 
           // Get the file from the equipment's mainFileObject
           if (firstEquipment.mainFileObject) {
-            console.log('Setting file from equipment.mainFileObject:', firstEquipment.mainFileObject);
             this.selectedFileSubject.next(firstEquipment.mainFileObject);
           } else if (firstEquipment.mainFileId) {
-            console.warn('Equipment has mainFileId but no mainFileObject. File will need to be fetched via CurrentFileService.setCurrentFile()');
             // Create a minimal FileDto with just the ID - CurrentFileService will fetch complete data
             const minimalFile = new FileDto({ id: firstEquipment.mainFileId });
             this.selectedFileSubject.next(minimalFile);
           } else {
-            console.error('Equipment has no file reference (no mainFileObject or mainFileId)');
             this.selectedFileSubject.next(null);
           }
         } else {
-          console.warn('LOTO point has no equipment:', lotoPoint);
           this.selectedEquipmentSubject.next(null);
           this.selectedFileSubject.next(null);
         }
       }),
       catchError((error) => {
-        console.error('Error loading LOTO point:', error);
         this.errorSubject.next(error.message || 'Failed to load LOTO point');
         return of(null);
       })
