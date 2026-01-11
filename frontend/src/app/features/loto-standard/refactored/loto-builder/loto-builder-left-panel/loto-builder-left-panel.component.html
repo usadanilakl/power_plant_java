@@ -10,6 +10,8 @@
         class="tab-button"
         [class.active]="builderState.leftMenuTab() === 'file'"
         (click)="selectFileTab()"
+        appReactiveGuide="loto-builder-full:files-tab"
+        reactiveGuideMessage="Click to view files"
       >
         📁 Files
       </button>
@@ -23,7 +25,7 @@
     </div>
 
     <!-- Mode Toggle -->
-    <div class="mode-toggle">
+    <div class="mode-toggle" appContextualGuide="contextual:toggle-view-button">
       <button
         class="mode-button"
         [class.active]="builderState.displayMode() === 'table'"
@@ -47,7 +49,11 @@
   <div class="panel-content"
        appGuide="create-loto-point-bulk:file-menu"
        guideMessage="Expand folders and click on a P&ID file to load it. The file will be displayed on the right."
-       [guideTooltipOnly]="true">
+       [guideTooltipOnly]="true"
+       appReactiveGuide="loto-builder-full:file-tree"
+       reactiveGuideMessage="Expand folders and click on a file to load it"
+       [reactiveGuideTooltipOnly]="true"
+       appContextualGuide="contextual:file-tree">
     @if (builderState.leftMenuTab() === 'file') {
       @if (builderState.displayMode() === 'toggle-menu') {
         <app-rf-file-left-menu></app-rf-file-left-menu>

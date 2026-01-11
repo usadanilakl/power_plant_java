@@ -148,6 +148,20 @@ export class LotoBuilderStateService {
     return this.isLotoBuildingMode() && this.selectedLotoStandards().length > 0;
   });
 
+  // ========== Dual Form / Counterpart State (for contextual guide) ==========
+
+  /** Whether the current LOTO point is unit-specific (tag starts with 01 or 02) */
+  isUnitSpecificLotoPoint = signal<boolean>(false);
+
+  /** Whether a counterpart LOTO point has been selected/loaded */
+  hasCounterpartLotoPoint = signal<boolean>(false);
+
+  /** Whether the counterpart selection dialog is open */
+  isCounterpartDialogOpen = signal<boolean>(false);
+
+  /** Whether a suggested counterpart was found */
+  hasSuggestedCounterpart = signal<boolean>(false);
+
   // ========== Methods ==========
 
   /**
@@ -327,6 +341,50 @@ export class LotoBuilderStateService {
     this.lotoPointPopupView.set(current === 'form' ? 'table' : 'form');
   }
 
+  // ========== Dual Form / Counterpart Methods ==========
+
+  /**
+   * Update unit-specific state based on tag number
+   * Called from loto-builder-form-popup when form values change
+   */
+  setIsUnitSpecific(isUnitSpecific: boolean): void {
+    this.isUnitSpecificLotoPoint.set(isUnitSpecific);
+  }
+
+  /**
+   * Update counterpart loaded state
+   * Called from loto-builder-form-popup when counterpart is selected/loaded
+   */
+  setHasCounterpart(hasCounterpart: boolean): void {
+    this.hasCounterpartLotoPoint.set(hasCounterpart);
+  }
+
+  /**
+   * Set counterpart dialog open state
+   * Called from loto-builder-form-popup when dialog opens/closes
+   */
+  setCounterpartDialogOpen(isOpen: boolean): void {
+    this.isCounterpartDialogOpen.set(isOpen);
+  }
+
+  /**
+   * Set suggested counterpart found state
+   * Called from loto-builder-form-popup when search finds a suggestion
+   */
+  setHasSuggestedCounterpart(hasSuggested: boolean): void {
+    this.hasSuggestedCounterpart.set(hasSuggested);
+  }
+
+  /**
+   * Reset all counterpart-related state
+   */
+  resetCounterpartState(): void {
+    this.isUnitSpecificLotoPoint.set(false);
+    this.hasCounterpartLotoPoint.set(false);
+    this.isCounterpartDialogOpen.set(false);
+    this.hasSuggestedCounterpart.set(false);
+  }
+
   /**
    * Open LOTO point popup with table view and pre-filtered search
    */
@@ -500,5 +558,7 @@ export class LotoBuilderStateService {
     this.tableSearchTerm.set(null);
     this.lotoPointPopupView.set('form');
     this.isEditMode.set(false);
+    // Reset counterpart state
+    this.resetCounterpartState();
   }
 }

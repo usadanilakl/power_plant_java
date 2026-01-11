@@ -13,7 +13,11 @@
   <div class="image-area"
        appGuide="create-loto-point-bulk:image-viewer"
        guideMessage="Right-click and drag on the P&ID image to draw a rectangle around equipment. This will create a new LOTO point."
-       [guideTooltipOnly]="true">
+       [guideTooltipOnly]="true"
+       appReactiveGuide="loto-builder-full:image-viewer"
+       reactiveGuideMessage="Right-click and drag to draw a rectangle around equipment"
+       [reactiveGuideTooltipOnly]="true"
+       appContextualGuide="contextual:image-viewer">
     @if (currentImageUrl()) {
       <app-interactive-image
         [imageUrl]="currentImageUrl()"
@@ -64,6 +68,9 @@
       [class.active]="builderState.isCarouselVisible()"
       title="Toggle LOTO Building Mode"
       (click)="builderState.toggleCarousel()"
+      appReactiveGuide="loto-builder-full:build-loto-button"
+      reactiveGuideMessage="Click to start LOTO building mode"
+      appContextualGuide="contextual:build-loto-button"
     >
       Build LOTO ({{ builderState.selectedLotoStandards().length }})
     </button>
@@ -71,6 +78,9 @@
       class="toolbar-button"
       title="Select LOTO Standards"
       (click)="builderState.openLotoStandardsPopup()"
+      appReactiveGuide="loto-builder-full:select-standards-button"
+      reactiveGuideMessage="Click to select existing LOTO standards"
+      appContextualGuide="contextual:select-standards-button"
     >
       Select Standards
     </button>

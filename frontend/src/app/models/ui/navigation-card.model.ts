@@ -9,6 +9,10 @@ export interface NavigationCard {
   guideId?: string;
   /** Message to show when this card is highlighted by a guide */
   guideMessage?: string;
+  /** Reactive guide identifier in format "guideId:stepId" for the reactive guide system */
+  reactiveGuideId?: string;
+  /** Message to show when this card is highlighted by a reactive guide */
+  reactiveGuideMessage?: string;
 }
 
 export type NavigationCards = NavigationCard[];
@@ -55,7 +59,9 @@ export const HOME_NAVIGATION_CARDS: NavigationCards = [
     route: '/loto-builder',
     color: '#1abc9c',
     guideId: 'create-loto-point-bulk:nav-card',
-    guideMessage: 'Click here to open LOTO Builder and create multiple LOTO points'
+    guideMessage: 'Click here to open LOTO Builder and create multiple LOTO points',
+    reactiveGuideId: 'loto-builder-full:nav-card',
+    reactiveGuideMessage: 'Click here to open the LOTO Builder'
   },
   {
     title: 'Permits',

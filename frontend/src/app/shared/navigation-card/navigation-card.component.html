@@ -2,7 +2,9 @@
    class="nav-card"
    [style.--card-color]="card().color || '#3498db'"
    [appGuide]="card().guideId || ''"
-   [guideMessage]="card().guideMessage || ''">
+   [guideMessage]="card().guideMessage || ''"
+   [appReactiveGuide]="card().reactiveGuideId || ''"
+   [reactiveGuideMessage]="card().reactiveGuideMessage || ''">
   <div class="card-icon">
     <span class="material-icons">{{ card().icon }}</span>
   </div>

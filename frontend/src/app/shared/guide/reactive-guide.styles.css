@@ -1,0 +1,230 @@
+/**
+ * Reactive Guide System Styles
+ *
+ * Styles for highlighting and tooltips used by ReactiveGuideDirective
+ */
+
+/* Animation duration variable */
+:root {
+  --reactive-guide-animation-duration: 1s;
+  --reactive-guide-highlight-color: #1976d2;
+  --reactive-guide-pulse-color: rgba(25, 118, 210, 0.3);
+}
+
+/* Base highlight class */
+.reactive-guide-highlight {
+  position: relative;
+}
+
+/* Highlight effect for buttons */
+button.reactive-guide-highlight,
+.reactive-guide-highlight button,
+[mat-button].reactive-guide-highlight,
+[mat-raised-button].reactive-guide-highlight,
+[mat-flat-button].reactive-guide-highlight,
+[mat-stroked-button].reactive-guide-highlight,
+[mat-icon-button].reactive-guide-highlight,
+[mat-fab].reactive-guide-highlight,
+[mat-mini-fab].reactive-guide-highlight {
+  box-shadow: inset 0 0 0 3px var(--reactive-guide-highlight-color) !important;
+  animation: reactive-guide-button-pulse var(--reactive-guide-animation-duration) ease-in-out infinite;
+}
+
+@keyframes reactive-guide-button-pulse {
+  0%, 100% {
+    filter: brightness(1) saturate(1);
+  }
+  50% {
+    filter: brightness(1.1) saturate(1.2);
+  }
+}
+
+/* Highlight effect for form fields */
+input.reactive-guide-highlight,
+textarea.reactive-guide-highlight,
+select.reactive-guide-highlight,
+.reactive-guide-highlight input,
+.reactive-guide-highlight textarea,
+.reactive-guide-highlight select,
+mat-form-field.reactive-guide-highlight,
+.mat-mdc-form-field.reactive-guide-highlight {
+  outline: 3px solid var(--reactive-guide-highlight-color) !important;
+  outline-offset: 2px;
+  animation: reactive-guide-field-pulse var(--reactive-guide-animation-duration) ease-in-out infinite;
+}
+
+@keyframes reactive-guide-field-pulse {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: var(--reactive-guide-pulse-color);
+  }
+}
+
+/* Highlight effect for cards */
+.mat-mdc-card.reactive-guide-highlight,
+.card.reactive-guide-highlight,
+.reactive-guide-highlight.navigation-card {
+  outline: 3px solid var(--reactive-guide-highlight-color) !important;
+  outline-offset: 2px;
+  animation: reactive-guide-card-pulse var(--reactive-guide-animation-duration) ease-in-out infinite;
+}
+
+@keyframes reactive-guide-card-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    transform: scale(1.01);
+    box-shadow: 0 4px 12px var(--reactive-guide-pulse-color);
+  }
+}
+
+/* Highlight effect for generic elements */
+div.reactive-guide-highlight:not(.mat-mdc-card):not(.card),
+span.reactive-guide-highlight,
+a.reactive-guide-highlight {
+  outline: 2px solid var(--reactive-guide-highlight-color) !important;
+  outline-offset: 2px;
+  animation: reactive-guide-generic-pulse var(--reactive-guide-animation-duration) ease-in-out infinite;
+}
+
+@keyframes reactive-guide-generic-pulse {
+  0%, 100% {
+    outline-width: 2px;
+  }
+  50% {
+    outline-width: 3px;
+  }
+}
+
+/* Highlight effect for table rows */
+tr.reactive-guide-highlight,
+.reactive-guide-highlight tr {
+  box-shadow: inset 4px 0 0 0 var(--reactive-guide-highlight-color),
+              inset -4px 0 0 0 var(--reactive-guide-highlight-color) !important;
+  animation: reactive-guide-row-pulse var(--reactive-guide-animation-duration) ease-in-out infinite;
+}
+
+@keyframes reactive-guide-row-pulse {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: var(--reactive-guide-pulse-color);
+  }
+}
+
+/* Highlight effect for menu items */
+.mat-menu-item.reactive-guide-highlight,
+.mat-mdc-menu-item.reactive-guide-highlight,
+.menu-item.reactive-guide-highlight {
+  box-shadow: inset 4px 0 0 0 var(--reactive-guide-highlight-color) !important;
+  animation: reactive-guide-menu-pulse var(--reactive-guide-animation-duration) ease-in-out infinite;
+}
+
+@keyframes reactive-guide-menu-pulse {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: var(--reactive-guide-pulse-color);
+  }
+}
+
+/* Tooltip styles */
+.reactive-guide-tooltip {
+  position: fixed;
+  max-width: 280px;
+  padding: 12px 16px;
+  background: #1a1a2e;
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: none;
+  animation: reactive-guide-tooltip-enter 0.2s ease;
+  border-left: 4px solid var(--reactive-guide-highlight-color);
+}
+
+@keyframes reactive-guide-tooltip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reactive-guide-tooltip-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: #fff;
+}
+
+.reactive-guide-tooltip-message {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.reactive-guide-tooltip-arrow {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #1a1a2e;
+}
+
+.reactive-guide-tooltip-below .reactive-guide-tooltip-arrow {
+  top: -8px;
+  bottom: auto;
+  border-top: none;
+  border-bottom: 8px solid #1a1a2e;
+}
+
+/* Pulse animation for active elements */
+.reactive-guide-pulse {
+  position: relative;
+}
+
+.reactive-guide-pulse::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px solid var(--reactive-guide-highlight-color);
+  border-radius: inherit;
+  opacity: 0;
+  animation: reactive-guide-outline-pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes reactive-guide-outline-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
+
+/* Ensure elements are above siblings when highlighted */
+.reactive-guide-active {
+  z-index: 10 !important;
+}

@@ -17,6 +17,8 @@ import { RfShape } from '../../../../../shared/image/refactored/models/fr-shape.
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { GuideDirective } from '../../../../../shared/guide/guide.directive';
+import { ReactiveGuideDirective } from '../../../../../shared/guide/reactive-guide.directive';
+import { ContextualGuideDirective } from '../../../../../shared/guide/contextual-guide.directive';
 
 @Component({
   selector: 'app-loto-builder-right-panel',
@@ -26,6 +28,8 @@ import { GuideDirective } from '../../../../../shared/guide/guide.directive';
     InteractiveImageComponent,
     LotoBuilderInfoWindowComponent,
     GuideDirective,
+    ReactiveGuideDirective,
+    ContextualGuideDirective,
   ],
   templateUrl: './loto-builder-right-panel.component.html',
   styleUrl: './loto-builder-right-panel.component.css',

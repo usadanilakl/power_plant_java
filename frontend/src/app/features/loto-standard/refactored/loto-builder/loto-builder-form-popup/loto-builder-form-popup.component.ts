@@ -194,6 +194,30 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
 
       this.wasVisible = isNowVisible;
     }, { allowSignalWrites: true });
+
+    // Effect to sync unit-specific state to builder state service (for contextual guide)
+    effect(() => {
+      const isUnitSpecific = this.isUnitSpecific();
+      this.builderState.setIsUnitSpecific(isUnitSpecific);
+    });
+
+    // Effect to sync counterpart loaded state to builder state service (for contextual guide)
+    effect(() => {
+      const hasCounterpart = this.counterpartLotoPoint() !== null;
+      this.builderState.setHasCounterpart(hasCounterpart);
+    });
+
+    // Effect to sync counterpart dialog state to builder state service (for contextual guide)
+    effect(() => {
+      const isDialogOpen = this.showCounterpartDialog();
+      this.builderState.setCounterpartDialogOpen(isDialogOpen);
+    });
+
+    // Effect to sync suggested counterpart state to builder state service (for contextual guide)
+    effect(() => {
+      const hasSuggested = this.suggestedCounterpart() !== null;
+      this.builderState.setHasSuggestedCounterpart(hasSuggested);
+    });
   }
 
   // Drag state

@@ -4,6 +4,8 @@
 @import url('driver.js/dist/driver.css');
 @import url('./app/services/tour/tour.styles.css');
 @import url('./app/shared/guide/guide.styles.css');
+@import url('./app/shared/guide/reactive-guide.styles.css');
+@import url('./app/shared/guide/contextual-guide.styles.css');
 *{
   padding: 0;
   margin: 0;
