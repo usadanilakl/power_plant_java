@@ -53,7 +53,9 @@ export const HOME_NAVIGATION_CARDS: NavigationCards = [
     description: 'Build and configure LOTO procedures',
     icon: 'build',
     route: '/loto-builder',
-    color: '#1abc9c'
+    color: '#1abc9c',
+    guideId: 'create-loto-point-bulk:nav-card',
+    guideMessage: 'Click here to open LOTO Builder and create multiple LOTO points'
   },
   {
     title: 'Permits',

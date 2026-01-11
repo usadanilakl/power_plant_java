@@ -8,6 +8,7 @@
 
 export type GuideId =
   | 'create-loto-point'
+  | 'create-loto-point-bulk'
   | 'create-loto-standard'
   | 'manage-files'
   | 'equipment-management';

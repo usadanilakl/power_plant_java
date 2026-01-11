@@ -16,6 +16,7 @@ import { ImageService } from '../../../../../services/text-recognition.service';
 import { RfShape } from '../../../../../shared/image/refactored/models/fr-shape.model';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
+import { GuideDirective } from '../../../../../shared/guide/guide.directive';
 
 @Component({
   selector: 'app-loto-builder-right-panel',
@@ -24,6 +25,7 @@ import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
     CommonModule,
     InteractiveImageComponent,
     LotoBuilderInfoWindowComponent,
+    GuideDirective,
   ],
   templateUrl: './loto-builder-right-panel.component.html',
   styleUrl: './loto-builder-right-panel.component.css',

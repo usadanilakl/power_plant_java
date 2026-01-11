@@ -5,6 +5,7 @@ import { RfFileLeftMenuComponent } from '../../../../files/refactored/rf-file-le
 import { RfLotoPointLeftMenuComponent } from '../../../../loto-points/refactored/rf-loto-point-left-menu/rf-loto-point-left-menu.component';
 import { LotoBuilderFileTableComponent } from './loto-builder-file-table/loto-builder-file-table.component';
 import { LotoBuilderLotoPointTableComponent } from './loto-builder-loto-point-table/loto-builder-loto-point-table.component';
+import { GuideDirective } from '../../../../../shared/guide/guide.directive';
 
 @Component({
   selector: 'app-loto-builder-left-panel',
@@ -15,6 +16,7 @@ import { LotoBuilderLotoPointTableComponent } from './loto-builder-loto-point-ta
     RfLotoPointLeftMenuComponent,
     LotoBuilderFileTableComponent,
     LotoBuilderLotoPointTableComponent,
+    GuideDirective,
   ],
   templateUrl: './loto-builder-left-panel.component.html',
   styleUrl: './loto-builder-left-panel.component.css',

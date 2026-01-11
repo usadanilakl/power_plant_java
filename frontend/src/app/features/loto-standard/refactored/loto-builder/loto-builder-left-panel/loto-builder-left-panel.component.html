@@ -1,4 +1,7 @@
-<div class="left-panel-container">
+<div class="left-panel-container"
+     appGuide="create-loto-point-bulk:left-panel-files"
+     guideMessage="Select the Files tab to browse P&ID files. Click on a file to load it in the viewer."
+     [guideTooltipOnly]="true">
   <!-- Header with Tabs and Mode Toggle -->
   <div class="panel-header">
     <!-- Tabs -->
@@ -41,7 +44,10 @@
   </div>
 
   <!-- Content Area -->
-  <div class="panel-content">
+  <div class="panel-content"
+       appGuide="create-loto-point-bulk:file-menu"
+       guideMessage="Expand folders and click on a P&ID file to load it. The file will be displayed on the right."
+       [guideTooltipOnly]="true">
     @if (builderState.leftMenuTab() === 'file') {
       @if (builderState.displayMode() === 'toggle-menu') {
         <app-rf-file-left-menu></app-rf-file-left-menu>

@@ -10,7 +10,10 @@
   }
 
   <!-- Image Viewer Area -->
-  <div class="image-area">
+  <div class="image-area"
+       appGuide="create-loto-point-bulk:image-viewer"
+       guideMessage="Right-click and drag on the P&ID image to draw a rectangle around equipment. This will create a new LOTO point."
+       [guideTooltipOnly]="true">
     @if (currentImageUrl()) {
       <app-interactive-image
         [imageUrl]="currentImageUrl()"
