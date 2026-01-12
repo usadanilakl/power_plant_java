@@ -101,6 +101,13 @@ export class LotoBuilderRightPanelComponent {
     return this.builderState.hoveredShapeId();
   });
 
+  /**
+   * Get selected shape ID (for selection with handles)
+   */
+  selectedShapeId = computed(() => {
+    return this.builderState.selectedShapeId();
+  });
+
   constructor() {
     // Sync currentShapes with builder state whenever equipment changes
     effect(() => {
@@ -123,7 +130,10 @@ export class LotoBuilderRightPanelComponent {
               this.builderState.setCurrentEquipment([]);
             }
 
-            this.builderState.setCurrentFile(file);
+            // Check if there's a pending LOTO point (set by click handler before file change)
+            // If so, preserve it when setting the current file
+            const hasPendingLotoPoint = this.builderState.currentLotoPoint() !== null;
+            this.builderState.setCurrentFile(file, hasPendingLotoPoint);
           }
         },
         error: (error) => {
@@ -146,6 +156,16 @@ export class LotoBuilderRightPanelComponent {
             if (equipmentFileId === currentBuilderFileId) {
               // Merge with existing equipment to preserve local LOTO point associations
               this.mergeEquipmentWithLocalState(equipment);
+
+              // After equipment loads, check if there's a pending LOTO point to highlight
+              const pendingLotoPoint = this.builderState.currentLotoPoint();
+              console.log('[RightPanel] Equipment loaded, pendingLotoPoint:', pendingLotoPoint?.id, pendingLotoPoint?.tagNumber);
+              if (pendingLotoPoint) {
+                // Use setTimeout to ensure the shapes are rendered before highlighting
+                setTimeout(() => {
+                  this.highlightLotoPointEquipment(pendingLotoPoint);
+                }, 100);
+              }
             }
           } else if (equipment && equipment.length === 0) {
             // Always clear equipment when empty array is received
@@ -489,19 +509,30 @@ export class LotoBuilderRightPanelComponent {
   private highlightLotoPointEquipment(lotoPoint: LotoPointDto): void {
     // Find equipment that has this LOTO point
     const equipment = this.builderState.currentEquipment();
+    console.log('[highlightLotoPointEquipment] Looking for lotoPoint:', lotoPoint.id, lotoPoint.tagNumber);
+    console.log('[highlightLotoPointEquipment] Equipment count:', equipment.length);
+
     const matchingEquipment = equipment.find(eq =>
       eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === lotoPoint.id)
     );
 
     if (matchingEquipment) {
-      // Highlight the equipment by setting it as hovered
+      console.log('[highlightLotoPointEquipment] Found matching equipment:', matchingEquipment.id);
+      // Highlight the equipment by setting it as hovered and selected
       this.builderState.hoveredShapeId.set(matchingEquipment.id);
+      this.builderState.selectedShapeId.set(matchingEquipment.id);
       this.builderState.hoveredLotoPoint.set(lotoPoint);
 
       // Show the info window
       this.builderState.showLotoPointInfoWindow(lotoPoint);
     } else {
-      console.log('No equipment found for LOTO point:', lotoPoint.tagNumber);
+      console.log('[highlightLotoPointEquipment] No equipment found for LOTO point:', lotoPoint.tagNumber);
+      // Log equipment lotoPoints for debugging
+      equipment.forEach(eq => {
+        if (eq.lotoPoints && eq.lotoPoints.length > 0) {
+          console.log('[highlightLotoPointEquipment] Equipment', eq.id, 'has lotoPoints:', eq.lotoPoints.map(lp => lp.id));
+        }
+      });
     }
   }
 

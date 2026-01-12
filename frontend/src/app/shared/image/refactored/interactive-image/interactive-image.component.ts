@@ -69,6 +69,8 @@ export class InteractiveImageComponent {
   imageName = input<string>();
   shapesInput = input<RfShape[]>([]);
   hoveredShapeId = input<number | null>(null);
+  /** ID of shape to select programmatically (shows selection handles) */
+  selectedShapeIdInput = input<number | null>(null);
 
   // Configuration-based approach (replaces simple 'mode')
   config = input<InteractiveImageConfig>();
@@ -226,6 +228,25 @@ export class InteractiveImageComponent {
       const hoveredId = this.hoveredShapeId();
       if (this.canvas && this.img) {
         this.updateCanvasAndRedraw();
+      }
+    });
+
+    // Effect to select shape when selectedShapeIdInput changes or shapes are loaded
+    effect(() => {
+      const selectedId = this.selectedShapeIdInput();
+      // Also track shapes signal so this effect re-runs when shapes are loaded
+      const shapes = this.shapes();
+      console.log('[InteractiveImage] Selection effect - selectedId:', selectedId, 'shapes.length:', shapes.length, 'canvas:', !!this.canvas, 'img:', !!this.img);
+      if (selectedId !== null && this.canvas && this.img && shapes.length > 0) {
+        // Check if shape exists before selecting
+        const shape = this.shapeManager.getShapeById(selectedId);
+        console.log('[InteractiveImage] Looking for shape:', selectedId, 'found:', !!shape, 'isSelected:', shape?.isSelected);
+        // Only select if the shape exists and is not already selected (prevents infinite loop)
+        if (shape && !shape.isSelected) {
+          this.shapeManager.selectShape(selectedId, true);
+          console.log('[InteractiveImage] Shape selected, redrawing');
+          this.updateCanvasAndRedraw();
+        }
       }
     });
 

@@ -61,6 +61,9 @@ export class LotoBuilderStateService {
   /** Hovered shape ID (for highlighting) */
   hoveredShapeId = signal<number | null>(null);
 
+  /** Selected shape ID (for selection with handles) */
+  selectedShapeId = signal<number | null>(null);
+
   /** Hovered LOTO point (for highlighting) */
   hoveredLotoPoint = signal<LotoPointDto | null>(null);
 
@@ -166,10 +169,14 @@ export class LotoBuilderStateService {
 
   /**
    * Set the current file and load its equipment
+   * @param file The file to set
+   * @param preserveLotoPoint If true, don't clear the current LOTO point (used when navigating via LOTO point click)
    */
-  setCurrentFile(file: FileDto | null): void {
+  setCurrentFile(file: FileDto | null, preserveLotoPoint: boolean = false): void {
     this.currentFile.set(file);
-    this.currentLotoPoint.set(null);
+    if (!preserveLotoPoint) {
+      this.currentLotoPoint.set(null);
+    }
     this.hasUnsavedChanges.set(false);
   }
 

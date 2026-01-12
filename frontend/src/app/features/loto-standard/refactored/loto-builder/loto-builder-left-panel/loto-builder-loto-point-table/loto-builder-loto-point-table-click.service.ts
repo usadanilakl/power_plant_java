@@ -54,12 +54,46 @@ export class LotoBuilderLotoPointTableClickService extends RfLotoPointClickServi
   private openFileAndHighlightPoint(file: FileDto, lotoPoint: LotoPointDto): void {
     console.log('[LotoBuilderLotoPointTable] Opening file:', file.id, 'and highlighting point:', lotoPoint.tagNumber);
 
-    // Set the current file to load it
-    this.currentFileService.setCurrentFile(file);
+    const currentFileId = this.builderState.currentFile()?.id;
+    const isSameFile = currentFileId === file.id;
 
-    // Highlight the loto point after file loads
+    // Clear any previous selection before switching files
+    this.builderState.selectedShapeId.set(null);
+    this.builderState.hoveredShapeId.set(null);
+
+    // IMPORTANT: Set the loto point BEFORE setCurrentFile so it's available when equipment loads
     this.builderState.setCurrentLotoPoint(lotoPoint);
     this.builderState.showLotoPointInfoWindow(lotoPoint);
+
+    if (isSameFile) {
+      // File is already loaded - directly highlight the equipment
+      console.log('[LotoBuilderLotoPointTable] Same file already loaded, highlighting directly');
+      this.highlightLotoPointEquipment(lotoPoint);
+    } else {
+      // Different file - set it and let the subscription handle highlighting
+      this.currentFileService.setCurrentFile(file);
+    }
+  }
+
+  /**
+   * Highlight equipment associated with selected LOTO point (when file is already loaded)
+   */
+  private highlightLotoPointEquipment(lotoPoint: LotoPointDto): void {
+    const equipment = this.builderState.currentEquipment();
+    console.log('[LotoBuilderLotoPointTable] Looking for equipment with lotoPoint:', lotoPoint.id);
+
+    const matchingEquipment = equipment.find(eq =>
+      eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === lotoPoint.id)
+    );
+
+    if (matchingEquipment) {
+      console.log('[LotoBuilderLotoPointTable] Found matching equipment:', matchingEquipment.id);
+      this.builderState.hoveredShapeId.set(matchingEquipment.id);
+      this.builderState.selectedShapeId.set(matchingEquipment.id);
+      this.builderState.hoveredLotoPoint.set(lotoPoint);
+    } else {
+      console.log('[LotoBuilderLotoPointTable] No equipment found for LOTO point:', lotoPoint.tagNumber);
+    }
   }
 
   /**
