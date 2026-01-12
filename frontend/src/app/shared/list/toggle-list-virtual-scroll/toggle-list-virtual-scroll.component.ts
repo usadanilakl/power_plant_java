@@ -3,6 +3,7 @@ import {
   ChangeDetectorRef,
   Component,
   ViewChild,
+  ElementRef,
   signal,
   output,
   computed,
@@ -34,6 +35,8 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
   @ViewChild(CdkVirtualScrollViewport) viewport: CdkVirtualScrollViewport | null = null;
 
   private cdr = inject(ChangeDetectorRef);
+  private elementRef = inject(ElementRef);
+  private intersectionObserver: IntersectionObserver | null = null;
 
   items = input<NestedItem[]>([]);
   highlightOnHover = input(false);
@@ -81,61 +84,80 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
     return flatten(this.items(), 0);
   });
 
+  // Track last items reference to avoid redundant updates
+  private lastItemsLength = 0;
+  private pendingTimeouts: ReturnType<typeof setTimeout>[] = [];
+
   constructor() {
     // Effect to update viewport when items change
     effect(() => {
       // Track items changes - reading items() here creates dependency
       const items = this.items();
-      const flatCount = this.flatItems().length;
 
-      console.log(`[ToggleList] Items changed: ${items.length} groups, ${flatCount} flat items`);
+      // Only schedule updates if items actually changed
+      if (items.length !== this.lastItemsLength) {
+        this.lastItemsLength = items.length;
 
-      // Schedule viewport check after items are updated
-      if (items.length > 0) {
-        // Use multiple delayed checks to ensure rendering in dialogs/popups
-        this.scheduleViewportCheck();
+        // Schedule viewport check after items are updated
+        if (items.length > 0) {
+          this.scheduleViewportCheck();
+        }
       }
     });
   }
 
   ngAfterViewInit(): void {
-    console.log('[ToggleList] ngAfterViewInit called');
-    // Schedule viewport size checks after view is initialized
-    // This ensures proper rendering when opened in popups/dialogs
+    // Set up IntersectionObserver to detect when component becomes visible
+    this.setupVisibilityObserver();
+    // Also schedule immediate check in case already visible
     this.scheduleViewportCheck();
   }
 
   /**
-   * Schedule multiple viewport checks to ensure proper rendering.
-   * Virtual scroll in popups/dialogs often needs multiple checks
-   * as the container dimensions settle.
+   * Set up IntersectionObserver to detect visibility changes.
+   * This handles the case where the component is rendered but hidden initially.
+   */
+  private setupVisibilityObserver(): void {
+    if (typeof IntersectionObserver === 'undefined') return;
+
+    this.intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0) {
+            // Component is now visible - update viewport
+            this.scheduleViewportCheck();
+          }
+        });
+      },
+      { threshold: [0, 0.1, 0.5, 1.0] }
+    );
+
+    this.intersectionObserver.observe(this.elementRef.nativeElement);
+  }
+
+  /**
+   * Schedule viewport checks to ensure proper rendering.
+   * Clears any pending checks before scheduling new ones.
    */
   private scheduleViewportCheck(): void {
-    // Immediate check
-    setTimeout(() => this.forceViewportUpdate(), 0);
-    // Short delay check (for initial render)
-    setTimeout(() => this.forceViewportUpdate(), 50);
-    // Medium delay check (for popup animations)
-    setTimeout(() => this.forceViewportUpdate(), 150);
-    // Longer delay check (for complex layouts)
-    setTimeout(() => this.forceViewportUpdate(), 300);
+    // Clear any pending timeouts to avoid multiple parallel checks
+    this.pendingTimeouts.forEach(t => clearTimeout(t));
+    this.pendingTimeouts = [];
+
+    // Schedule checks at different intervals
+    this.pendingTimeouts.push(setTimeout(() => this.forceViewportUpdate(), 0));
+    this.pendingTimeouts.push(setTimeout(() => this.forceViewportUpdate(), 100));
+    this.pendingTimeouts.push(setTimeout(() => this.forceViewportUpdate(), 300));
   }
 
   /**
    * Force the viewport to update and render items
    */
   private forceViewportUpdate(): void {
-    const flatCount = this.flatItems().length;
-    const viewportSize = this.viewport?.getViewportSize() ?? 0;
-    const renderedRange = this.viewport?.getRenderedRange();
-
-    console.log(`[ToggleList] forceViewportUpdate: ${flatCount} items, viewport size: ${viewportSize}, rendered: ${renderedRange?.start}-${renderedRange?.end}`);
-
-    // Use detectChanges for immediate update (more forceful than markForCheck)
-    this.cdr.detectChanges();
-
     if (this.viewport) {
+      // Always try to update - checkViewportSize will recalculate
       this.viewport.checkViewportSize();
+      this.cdr.markForCheck();
     }
   }
 
@@ -225,193 +247,19 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
   }
 
   ngOnDestroy() {
+    // Clean up click timeout
     if (this.clickTimeout !== null) {
       clearTimeout(this.clickTimeout);
     }
+
+    // Clean up pending viewport check timeouts
+    this.pendingTimeouts.forEach(t => clearTimeout(t));
+    this.pendingTimeouts = [];
+
+    // Clean up intersection observer
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
+      this.intersectionObserver = null;
+    }
   }
 }
-
-
-// import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, SimpleChanges, ViewChild, signal, output, OnInit, computed } from '@angular/core';
-// import { NestedItem } from '../../../models/ui/nested-item.model';
-// import { CdkVirtualScrollViewport, ScrollingModule } from "@angular/cdk/scrolling";
-// import { CommonModule } from '@angular/common';
-// import { BehaviorSubject } from 'rxjs';
-
-// interface FlatItem extends NestedItem {
-//   level: number;
-//   isVisible: boolean;
-//   isClicked?: boolean;
-//   isLastClicked?: boolean;
-// }
-
-// @Component({
-//   selector: 'app-toggle-list-virtual-scroll',
-//   imports: [ScrollingModule, CommonModule],
-//   templateUrl: './toggle-list-virtual-scroll.component.html',
-//   standalone: true,
-//   styleUrl: './toggle-list-virtual-scroll.component.css'
-// })
-// export class ToggleListVirtualScrollComponent implements OnInit {
-//   @ViewChild(CdkVirtualScrollViewport) viewport: CdkVirtualScrollViewport | null = null;
-
-//   @Input() items: NestedItem[] = [];
-//   @Input() highlightOnHover = false;
-//   @Input() trackLastClicked = false;
-//   @Input() trackAllClicked = false;
-//   @Input() colorLevels = false;
-
-//   itemClicked = output<FlatItem>();
-//   itemDoubleClicked = output<FlatItem>();
-//   itemRightClicked = output<{ event: MouseEvent, item: FlatItem }>();
-//   itemMiddleClicked = output<FlatItem>();
-
-//   private clickTimeout: any = null;
-//   private lastClickTime = 0;
-//   private readonly doubleClickDelay = 250;
-
-//   private flatItemsSignal = signal<FlatItem[]>([]);
-//   flatItems = computed(() =>{
-//     return this.flatItemsSignal();
-//   } );
-
-//   clickedItem: FlatItem | null = null;
-//   clickedItems: FlatItem[] = [];
-
-
-//   ngOnInit() {
-//     this.flattenItems();
-//   }
-
-//   flattenItems() {
-//     const flatItems = this.flattenChildrenRecursively(this.items, 0);
-//     this.flatItemsSignal.set(flatItems);
-//   }
-  
-//   private flattenChildrenRecursively(items: NestedItem[], level: number): FlatItem[] {
-//     let result: FlatItem[] = [];
-//     for (const item of items) {
-//       const flatItem: FlatItem = {
-//         ...item,
-//         level,
-//         isVisible: true,
-//         isClicked: false,
-//         isLastClicked: false
-//       };
-//       result.push(flatItem);
-//       if (item.isExpanded && item.values) {
-//         result = result.concat(this.flattenChildrenRecursively(item.values, level + 1));
-//       }
-//     }
-//     return result;
-//   }
-
-//   toggleItem(item: FlatItem) {
-//     item.isExpanded = !item.isExpanded;
-    
-//     // Update the original nested item
-//     const originalItem = this.findOriginalItem(this.items, item.id);
-//     if (originalItem) {
-//       originalItem.isExpanded = item.isExpanded;
-//     }
-  
-//     // Rebuild the entire flatItems array
-//     this.flattenItems();
-    
-//     // Trigger a re-render of the virtual scroll
-//     if (this.viewport) {
-//       this.viewport.checkViewportSize();
-//     }
-//   }
-
-//   private findOriginalItem(items: NestedItem[], id: string | number): NestedItem | null {
-//     for (const item of items) {
-//       if (item.id === id) {
-//         return item;
-//       }
-//       if (item.values) {
-//         const found = this.findOriginalItem(item.values, id);
-//         if (found) {
-//           return found;
-//         }
-//       }
-//     }
-//     return null;
-//   }
-
-//   trackByFn(index: number, item: FlatItem): string | number {
-//     return item.id;
-//   }
-
-//   onClick(event: MouseEvent, item: FlatItem): void {
-//     event.stopPropagation();
-//     const currentTime = new Date().getTime();
-//     const timeSinceLastClick = currentTime - this.lastClickTime;
-
-//     if (timeSinceLastClick < this.doubleClickDelay) {
-//       clearTimeout(this.clickTimeout);
-//       this.clickTimeout = null;
-//       this.onDoubleClick(item);
-//     } else {
-//       this.clickTimeout = setTimeout(() => {
-//         this.onItemClick(event, item);
-//       }, this.doubleClickDelay);
-//     }
-
-//     this.lastClickTime = currentTime;
-//   }
-
-  
-//   private updateClickedState(clickedItem: FlatItem): void {
-//     const all = [...this.flatItemsSignal()];
-//     all.forEach(item => {
-//       item.isClicked = item.id === clickedItem.id;
-//       item.isLastClicked = clickedItem.id === clickedItem.id;
-//     });
-//       this.flatItemsSignal.set(all);
-//   }
-  
-//   onItemClick(event: MouseEvent, item: FlatItem): void {
-//     this.clickedItem = item;
-//     this.clickedItems.push(item);
-//     this.updateClickedState(item);
-//     this.toggleItem(item);
-//     this.itemClicked.emit(item);
-//   }
-  
-//   isItemClicked(item: FlatItem): boolean {
-//     return this.clickedItems.some(clickedItem => clickedItem.id === item.id);
-//   }
-  
-//   isItemLastClicked(item: FlatItem): boolean {
-//     return item.id === this.clickedItem?.id;
-//   }
-
-//   onDoubleClick(item: FlatItem): void {
-//     this.itemDoubleClicked.emit(item);
-//   }
-
-//   onRightClick(event: MouseEvent, item: FlatItem): void {
-//     event.preventDefault();
-//     event.stopPropagation();
-//     this.itemRightClicked.emit({ event, item });
-//   }
-
-//   onMiddleClick(event: MouseEvent, item: FlatItem): void {
-//     if (event.button === 1) {
-//       event.preventDefault();
-//       event.stopPropagation();
-//       this.itemMiddleClicked.emit(item);
-//     }
-//   }
-
-//   getItemColor(item: FlatItem): string | null {
-//     return item.color || null;
-//   }
-
-//   ngOnDestroy() {
-//     if (this.clickTimeout !== null) {
-//       clearTimeout(this.clickTimeout);
-//     }
-//   }
-// }
