@@ -77,6 +77,10 @@ public class Equipment extends BaseEquipment implements Referenceable {
 
     private String separationNote;
 
+    // Symbol fields for PID markup shapes
+    private String symbolId;        // PID symbol ID (null = rectangle, e.g., "mov", "centrifugal-pump")
+    @Column(columnDefinition = "TEXT")
+    private String svgPath;         // SVG path data for rendering the symbol
 
     @Transient
     private String pid;

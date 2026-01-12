@@ -1,11 +1,13 @@
-import { Injectable } from "@angular/core";
+import { inject, Injectable } from "@angular/core";
 import { EquipmentDto, EquipmentModel } from "../../../../models/equipment/equipment.model";
-import { RfShape, RfRectangleShape } from "../../../../shared/image/refactored/models/fr-shape.model";
+import { RfShape, RfRectangleShape, SVGSymbolShape } from "../../../../shared/image/refactored/models/fr-shape.model";
+import { PIDSymbolsService } from "../../../../shared/image/refactored/services/pid-symbols.service";
 
 @Injectable({
     providedIn: 'root'
 })
 export class EquipmentMapperService{
+    private pidSymbolsService = inject(PIDSymbolsService);
 
     mapAllToRfShapes(equipment: EquipmentModel[]): RfShape[] {
         return equipment
@@ -77,6 +79,43 @@ export class EquipmentMapperService{
                 color = this.getShapeColor(equipment);
             }
 
+            const rotation = equipment.rotation !== undefined && equipment.rotation !== null
+                ? equipment.rotation
+                : (coordinates.rotation !== undefined ? coordinates.rotation : 0);
+
+            // If equipment has a symbolId, return SVGSymbolShape
+            if (equipment.symbolId && equipment.svgPath) {
+                // Get original SVG viewbox dimensions from the symbol definition
+                const pidSymbol = this.pidSymbolsService.getSymbolById(equipment.symbolId);
+                const svgOriginalWidth = pidSymbol?.originalWidth || width;
+                const svgOriginalHeight = pidSymbol?.originalHeight || height;
+
+                const symbolShape: SVGSymbolShape = {
+                    id: equipment.id || 0,
+                    fileId: equipment.mainFileId || (equipment as any).mainFileObject?.id || 0,
+                    type: 'svg-symbol',
+                    symbolId: equipment.symbolId,
+                    svgPath: equipment.svgPath,
+                    color: color,
+                    originalPictureWidth: pictureSize.width,
+                    originalPictureHeight: pictureSize.height,
+                    originalWidth: svgOriginalWidth,   // SVG viewbox dimensions for proper scaling
+                    originalHeight: svgOriginalHeight,
+                    isSelected: false,
+                    isBulkSelected: options?.shouldHighlight || false,
+                    currentImgWidth: pictureSize.width,
+                    currentImgHeigth: pictureSize.height,
+                    scaleToCurrentImage: 1,
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: height,
+                    rotation: rotation
+                };
+                return symbolShape;
+            }
+
+            // Default: return rectangle shape
             const shape: RfRectangleShape = {
                 id: equipment.id || 0,
                 fileId: equipment.mainFileId || (equipment as any).mainFileObject?.id || 0,
@@ -95,9 +134,7 @@ export class EquipmentMapperService{
                 y: y,
                 width: width,
                 height: height,
-                rotation: equipment.rotation !== undefined && equipment.rotation !== null
-                    ? equipment.rotation
-                    : (coordinates.rotation !== undefined ? coordinates.rotation : 0)
+                rotation: rotation
             };
 
             return shape;
@@ -252,8 +289,8 @@ export class EquipmentMapperService{
      * Returns string like: {startX:10,startY:20,endX:100,endY:80,width:90,height:60}
      */
     mapRfShapeToCoordinates(shape: RfShape): string {
-        if (shape.type === 'rectangle') {
-            const rect = shape as RfRectangleShape;
+        if (shape.type === 'rectangle' || shape.type === 'svg-symbol') {
+            const rect = shape as RfRectangleShape | SVGSymbolShape;
             const startX = rect.x;
             const startY = rect.y;
             const endX = rect.x + rect.width;
@@ -283,18 +320,35 @@ export class EquipmentMapperService{
     }
 
     shapeToEquipment(shape: RfShape): EquipmentDto | null {
-        if(shape.type !== 'rectangle') return null;
+        if (shape.type !== 'rectangle' && shape.type !== 'svg-symbol') return null;
+
         const coordinates = this.mapRfShapeToCoordinates(shape);
-        if(!coordinates) return null;
+        if (!coordinates) return null;
+
         // Use originalPictureWidth/Height (actual image dimensions when shape was created)
         const pictureSize = this.formatPictureSize(shape.originalPictureWidth, shape.originalPictureHeight);
+
+        if (shape.type === 'svg-symbol') {
+            const symbol = shape as SVGSymbolShape;
+            const equipment: EquipmentDto = new EquipmentDto({
+                coordinates: coordinates,
+                originalPictureSize: pictureSize,
+                rotation: symbol.rotation || 0,
+                mainFileId: shape.fileId,
+                symbolId: symbol.symbolId,
+                svgPath: symbol.svgPath
+            });
+            return equipment;
+        }
+
+        // Default: rectangle shape
         const rect = shape as RfRectangleShape;
         const equipment: EquipmentDto = new EquipmentDto({
             coordinates: coordinates,
             originalPictureSize: pictureSize,
             rotation: rect.rotation || 0,
             mainFileId: shape.fileId
-        })
+        });
         return equipment;
     }
 }

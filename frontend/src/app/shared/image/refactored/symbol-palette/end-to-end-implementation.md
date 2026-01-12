@@ -1,26 +1,38 @@
-Server Side:
-1. MarkupItem entity
-2. MarkupItem repo
-3. Markup mapper
-4. Markup service
-5. Markup controller
+# Symbol/Markup Implementation (Completed)
 
-Client side:
-1. Markup model
-2. Markup mapper
-3. Markup table component
-4. Markup form component
+## Approach
+Symbols are implemented as an extension of the Equipment entity with two additional fields:
+- `symbolId`: PID symbol identifier (null = rectangle, e.g., "mov", "centrifugal-pump")
+- `svgPath`: SVG path data for rendering the symbol
 
-Relationships:
-1. FileObjec has multiple markups
-2. One markup can have association with one LotoPoint, LotoPoint will have multiple associations with Equipment or Markups
+## Server Side (Uses existing Equipment infrastructure):
+1. Equipment entity - added `symbolId` and `svgPath` fields
+2. EquipmentDto - added `symbolId` and `svgPath` fields
+3. EquipmentIdDto - added `symbolId` and `svgPath` fields
+4. No changes needed to repo, service, controller, or mapper (auto-mapped)
 
-Flow:
-1. File loads, all related markups load ang get placed on its coordinates.
-2. user can interact with current items or create new ones 
-3. new items can be associated with loto points
+## Client Side:
+1. EquipmentModel - added `symbolId` and `svgPath` fields
+2. EquipmentDto - updated constructor, toJson(), fromJson(), toIdModel()
+3. EquipmentIdDto - updated with symbol fields
+4. EquipmentMapperService - updated to handle svg-symbol shapes:
+   - mapToRfShape() returns SVGSymbolShape when symbolId exists
+   - shapeToEquipment() handles both rectangle and svg-symbol types
+   - mapRfShapeToCoordinates() handles both types
+5. InteractiveImageComponent - emits shapeDrawn when symbol is placed
 
-The flow is fully mimics Equipment flow:
-1. it is associated with a file's specific coordinates
-2. it is drawn on a file
-3. it is interactive - contex menu, resize, move, delete, associate with loto point...
+## Relationships:
+1. FileObject has multiple Equipment (including symbols)
+2. Equipment (rectangle or symbol) can have association with LotoPoints
+
+## Flow:
+1. File loads, all related equipment (rectangles and symbols) load and get placed at their coordinates
+2. User can interact with existing items or create new ones via symbol palette
+3. New items can be associated with loto points (same flow as rectangles)
+
+## Key Points:
+- Symbols use the same Equipment entity, API, and services as rectangles
+- `symbolId = null` means rectangle (existing behavior, backward compatible)
+- `symbolId = "mov"` (or other symbol ID) means symbol with svgPath for rendering
+- Context menu, resize, move, delete, loto association all work the same
+- shapeDrawn event triggers for both rectangles and symbols

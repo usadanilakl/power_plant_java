@@ -41,6 +41,10 @@ public class EquipmentDto extends BaseEquipmentDto {
     private String conflictStatus;
     private Boolean isVerified = false;
 
+    // Symbol fields for PID markup shapes
+    private String symbolId;        // PID symbol ID (null = rectangle, e.g., "mov", "centrifugal-pump")
+    private String svgPath;         // SVG path data for rendering the symbol
+
     public static final List<String> SYSTEMS = List.of(
             "BFW","CND","CCW","INA","FGS","DWS","DWT","SWS","STP","CTP"
             );

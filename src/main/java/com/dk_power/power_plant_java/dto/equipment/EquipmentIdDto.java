@@ -33,4 +33,8 @@ public class EquipmentIdDto extends BaseEquipmentDto {
     private String isUpdated;
     private String conflictStatus;
     private Boolean isVerified = false;
+
+    // Symbol fields for PID markup shapes
+    private String symbolId;        // PID symbol ID (null = rectangle, e.g., "mov", "centrifugal-pump")
+    private String svgPath;         // SVG path data for rendering the symbol
 }

@@ -411,6 +411,10 @@ export class InteractiveImageComponent {
       this.drawingService.cancelDrawing();
       this.cursor = 'default';
     }
+    if (this.drawingService.isDrawingSymbol()) {
+      this.drawingService.cancelDrawingSymbol();
+      this.cursor = 'default';
+    }
     if (this.isPanning) {
       this.stopPanning();
     }
@@ -424,8 +428,9 @@ export class InteractiveImageComponent {
     // Right mouse button for drawing (only if drawing is allowed)
     if (event.button === 2 && config.canDrawShapes) {
       if (this.currentDrawMode() === 'symbol') {
-        this.placeSymbol(event);
-        console.log('Placing Symbol');
+        event.preventDefault();
+        this.startDrawingSymbol(event);
+        console.log('Starting symbol drawing');
         return;
       } else {
         event.preventDefault();
@@ -485,6 +490,12 @@ export class InteractiveImageComponent {
       return;
     }
 
+    if (this.drawingService.isDrawingSymbol()) {
+      event.preventDefault();
+      this.updateDrawingSymbol(event);
+      return;
+    }
+
     if (this.isResizingShape) {
       event.preventDefault();
       this.updateResizingShape(event);
@@ -538,6 +549,11 @@ export class InteractiveImageComponent {
   onMouseUp(event: MouseEvent): void {
     if (this.drawingService.isDrawing()) {
       this.finishDrawing(event);
+      return;
+    }
+
+    if (this.drawingService.isDrawingSymbol()) {
+      this.finishDrawingSymbol(event);
       return;
     }
 
@@ -994,44 +1010,59 @@ export class InteractiveImageComponent {
     console.log('Symbol selected:', symbol);
   }
 
-  private placeSymbol(event: MouseEvent): void {
+  // ========================= Symbol Drawing Methods =========================
+
+  private startDrawingSymbol(event: MouseEvent): void {
     const symbol = this.selectedSymbol();
     if (!symbol) return;
 
     const imgRect = this.img.getBoundingClientRect();
-    const x =
-      (event.clientX - imgRect.left) /
-      this.transformState.scale /
-      this.baseImageScale;
-    const y =
-      (event.clientY - imgRect.top) /
-      this.transformState.scale /
-      this.baseImageScale;
+    this.drawingService.startDrawingSymbol(
+      event.clientX,
+      event.clientY,
+      imgRect,
+      this.baseImageScale,
+      this.transformState,
+      symbol
+    );
+    this.cursor = 'crosshair';
+  }
 
-    // Use a default width and calculate height based on aspect ratio
-    const initialWidth = 50;
-    const aspectRatio = symbol.originalHeight / symbol.originalWidth;
-    const initialHeight = initialWidth * aspectRatio;
+  private updateDrawingSymbol(event: MouseEvent): void {
+    const imgRect = this.img.getBoundingClientRect();
+    this.drawingService.updateDrawingSymbol(
+      event.clientX,
+      event.clientY,
+      imgRect,
+      this.baseImageScale,
+      this.transformState
+    );
+  }
 
-    // Create a temporary symbol object with the correct initial size
-    const sizedSymbol: PIDSymbol = {
-      ...symbol,
-      width: initialWidth,
-      height: initialHeight,
-    };
-
-    const newSymbol = this.shapeManager.createSymbol(
-      sizedSymbol,
-      x,
-      y,
+  private finishDrawingSymbol(event: MouseEvent): void {
+    const imgRect = this.img.getBoundingClientRect();
+    const newSymbol = this.drawingService.finishDrawingSymbol(
+      event.clientX,
+      event.clientY,
+      imgRect,
+      this.baseImageScale,
+      this.transformState,
       this.img.naturalWidth,
-      this.img.naturalHeight
+      this.img.naturalHeight,
+      this.shapeManager.getNextShapeId()
     );
 
-    this.shapeManager.addShape(newSymbol);
-    this.setDrawMode('none');
-    this.selectedSymbol.set(null);
+    if (newSymbol) {
+      this.shapeManager.addShape(newSymbol);
+      // Emit shapeDrawn event so symbols trigger the same flow as rectangles
+      // (e.g., opening loto point form for association)
+      this.shapeDrawn.emit(newSymbol);
+    }
+
     this.cursor = 'default';
+
+    // Suppress context menu that fires after right-button mouseup during drawing
+    this.suppressContextMenuTemporarily();
   }
 
   //==================================================Shape Events==================================================

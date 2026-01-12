@@ -1,12 +1,21 @@
 
 import { Injectable } from '@angular/core';
 import { TransformState } from './zoom-pan.service';
-import { RfRectangleShape } from '../models/fr-shape.model';
+import { RfRectangleShape, SVGSymbolShape } from '../models/fr-shape.model';
+import { PIDSymbol } from './pid-symbols.service';
 
 export interface DrawingState {
   isDrawing: boolean;
   startPos: { x: number; y: number };
   currentShape: RfRectangleShape | null;
+}
+
+export interface SymbolDrawingState {
+  isDrawing: boolean;
+  startPos: { x: number; y: number };
+  symbol: PIDSymbol | null;
+  currentWidth: number;
+  currentHeight: number;
 }
 
 @Injectable({
@@ -17,6 +26,14 @@ export class DrawingService {
     isDrawing: false,
     startPos: { x: 0, y: 0 },
     currentShape: null,
+  };
+
+  private symbolState: SymbolDrawingState = {
+    isDrawing: false,
+    startPos: { x: 0, y: 0 },
+    symbol: null,
+    currentWidth: 0,
+    currentHeight: 0,
   };
 
   private tempCanvas: HTMLCanvasElement | null = null;
@@ -278,6 +295,243 @@ export class DrawingService {
    */
   getState(): Readonly<DrawingState> {
     return { ...this.state };
+  }
+
+  // ========================= Symbol Drawing Methods =========================
+
+  /**
+   * Start drawing a symbol with drag-to-size
+   */
+  startDrawingSymbol(
+    clientX: number,
+    clientY: number,
+    imgRect: DOMRect,
+    baseImageScale: number,
+    transformState: TransformState,
+    symbol: PIDSymbol
+  ): void {
+    const { x, y } = this.clientToImageCoords(
+      clientX,
+      clientY,
+      imgRect,
+      baseImageScale,
+      transformState
+    );
+
+    this.symbolState = {
+      isDrawing: true,
+      startPos: { x, y },
+      symbol: symbol,
+      currentWidth: 0,
+      currentHeight: 0,
+    };
+
+    console.log('Started drawing symbol at:', { x, y, symbol: symbol.id });
+  }
+
+  /**
+   * Update symbol drawing preview as mouse moves (maintains aspect ratio)
+   */
+  updateDrawingSymbol(
+    clientX: number,
+    clientY: number,
+    imgRect: DOMRect,
+    baseImageScale: number,
+    transformState: TransformState
+  ): void {
+    if (!this.symbolState.isDrawing || !this.tempCanvas || !this.symbolState.symbol) return;
+
+    const { x: currentX, y: currentY } = this.clientToImageCoords(
+      clientX,
+      clientY,
+      imgRect,
+      baseImageScale,
+      transformState
+    );
+
+    const symbol = this.symbolState.symbol;
+    const aspectRatio = symbol.originalHeight / symbol.originalWidth;
+
+    // Calculate the drag distance (use the larger of x or y movement to determine size)
+    const dragX = Math.abs(currentX - this.symbolState.startPos.x);
+    const dragY = Math.abs(currentY - this.symbolState.startPos.y);
+
+    // Use the larger dimension to determine width, then calculate height from aspect ratio
+    let width: number;
+    let height: number;
+
+    if (dragX / aspectRatio > dragY) {
+      // Width-dominant drag
+      width = dragX;
+      height = width * aspectRatio;
+    } else {
+      // Height-dominant drag
+      height = dragY;
+      width = height / aspectRatio;
+    }
+
+    this.symbolState.currentWidth = width;
+    this.symbolState.currentHeight = height;
+
+    // Calculate position (symbol is placed from start position)
+    const x = this.symbolState.startPos.x;
+    const y = this.symbolState.startPos.y;
+
+    this.drawSymbolPreview(x, y, width, height, baseImageScale, transformState, symbol);
+  }
+
+  /**
+   * Finish drawing symbol and return the created shape
+   */
+  finishDrawingSymbol(
+    clientX: number,
+    clientY: number,
+    imgRect: DOMRect,
+    baseImageScale: number,
+    transformState: TransformState,
+    naturalWidth: number,
+    naturalHeight: number,
+    nextId: number,
+    minSize: number = 10
+  ): SVGSymbolShape | null {
+    if (!this.symbolState.isDrawing || !this.symbolState.symbol) return null;
+
+    const { x: currentX, y: currentY } = this.clientToImageCoords(
+      clientX,
+      clientY,
+      imgRect,
+      baseImageScale,
+      transformState
+    );
+
+    const symbol = this.symbolState.symbol;
+    const aspectRatio = symbol.originalHeight / symbol.originalWidth;
+
+    // Calculate final dimensions
+    const dragX = Math.abs(currentX - this.symbolState.startPos.x);
+    const dragY = Math.abs(currentY - this.symbolState.startPos.y);
+
+    let width: number;
+    let height: number;
+
+    if (dragX / aspectRatio > dragY) {
+      width = dragX;
+      height = width * aspectRatio;
+    } else {
+      height = dragY;
+      width = height / aspectRatio;
+    }
+
+    const x = this.symbolState.startPos.x;
+    const y = this.symbolState.startPos.y;
+
+    this.cancelDrawingSymbol();
+
+    // Only create shape if it has meaningful size
+    if (width < minSize || height < minSize) {
+      return null;
+    }
+
+    const newSymbol: SVGSymbolShape = {
+      id: nextId,
+      fileId: 0,
+      type: 'svg-symbol',
+      symbolId: symbol.id,
+      svgPath: symbol.svgPath,
+      x,
+      y,
+      width,
+      height,
+      color: '#000000',
+      rotation: 0,
+      originalPictureWidth: naturalWidth,
+      originalPictureHeight: naturalHeight,
+      originalWidth: symbol.originalWidth,
+      originalHeight: symbol.originalHeight,
+      isSelected: false,
+      isBulkSelected: false,
+      currentImgWidth: naturalWidth,
+      currentImgHeigth: naturalHeight,
+      scaleToCurrentImage: 1,
+    };
+
+    console.log('Created new symbol shape:', newSymbol);
+    return newSymbol;
+  }
+
+  /**
+   * Cancel current symbol drawing operation
+   */
+  cancelDrawingSymbol(): void {
+    this.symbolState = {
+      isDrawing: false,
+      startPos: { x: 0, y: 0 },
+      symbol: null,
+      currentWidth: 0,
+      currentHeight: 0,
+    };
+
+    this.clearPreview();
+  }
+
+  /**
+   * Check if currently drawing a symbol
+   */
+  isDrawingSymbol(): boolean {
+    return this.symbolState.isDrawing;
+  }
+
+  /**
+   * Draw symbol preview on temp canvas
+   */
+  private drawSymbolPreview(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    baseImageScale: number,
+    transformState: TransformState,
+    symbol: PIDSymbol
+  ): void {
+    if (!this.tempCanvas) return;
+
+    const ctx = this.tempCanvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear previous preview
+    ctx.clearRect(0, 0, this.tempCanvas.width, this.tempCanvas.height);
+
+    // Convert from natural image coordinates to base display coordinates
+    const displayX = x * baseImageScale;
+    const displayY = y * baseImageScale;
+    const displayWidth = width * baseImageScale;
+    const displayHeight = height * baseImageScale;
+
+    // Draw bounding box
+    ctx.strokeStyle = '#0066FF';
+    ctx.lineWidth = 2 / transformState.scale;
+    ctx.setLineDash([5 / transformState.scale, 5 / transformState.scale]);
+    ctx.strokeRect(displayX, displayY, displayWidth, displayHeight);
+
+    // Draw the SVG path preview
+    ctx.save();
+    ctx.translate(displayX, displayY);
+
+    // Scale the SVG to fit the drawn bounds
+    const scaleX = displayWidth / symbol.originalWidth;
+    const scaleY = displayHeight / symbol.originalHeight;
+    ctx.scale(scaleX, scaleY);
+
+    // Draw the symbol path
+    const path = new Path2D(symbol.svgPath);
+    ctx.fillStyle = 'rgba(0, 102, 255, 0.3)';
+    ctx.fill(path);
+    ctx.strokeStyle = '#0066FF';
+    ctx.lineWidth = 1 / Math.min(scaleX, scaleY);
+    ctx.setLineDash([]);
+    ctx.stroke(path);
+
+    ctx.restore();
   }
 }
 

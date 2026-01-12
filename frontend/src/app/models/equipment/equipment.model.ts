@@ -36,6 +36,9 @@ export interface EquipmentModel extends BaseModel  {
   isUpdated: string | null | undefined;
   conflictStatus: string | null | undefined;
   mainFileObject: FileModel | null | undefined;
+  // Symbol fields for PID markup shapes
+  symbolId: string | null | undefined;    // PID symbol ID (null = rectangle, e.g., "mov", "centrifugal-pump")
+  svgPath: string | null | undefined;     // SVG path data for rendering the symbol
 }
 
 export class EquipmentDto extends BaseDto implements EquipmentModel {
@@ -56,6 +59,9 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
   isUpdated: string | null | undefined;
   conflictStatus: string | null | undefined;
   mainFileObject: FileModel | null | undefined;
+  // Symbol fields for PID markup shapes
+  symbolId: string | null | undefined;
+  svgPath: string | null | undefined;
 
   constructor(data: Partial<EquipmentModel> = {}) {
     super(data);
@@ -78,6 +84,8 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
     this.isUpdated = data.isUpdated ?? null;
     this.conflictStatus = data.conflictStatus ?? null;
     this.mainFileObject = data.mainFileObject?? null;
+    this.symbolId = data.symbolId ?? null;
+    this.svgPath = data.svgPath ?? null;
   }
 
   // Serialization method
@@ -99,6 +107,8 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       lotoPoints: this.lotoPoints?.map(point => point ? point.toJson() : null).filter(Boolean),
       isUpdated: this.isUpdated || null,
       conflictStatus: this.conflictStatus || null,
+      symbolId: this.symbolId || null,
+      svgPath: this.svgPath || null,
     };
   }
 
@@ -128,6 +138,8 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       isUpdated: json.isUpdated || null,
       conflictStatus: json.conflictStatus || null,
       mainFileObject: json.mainFileObject? FileDto.fromJson(json.mainFileObject) : null,
+      symbolId: json.symbolId || null,
+      svgPath: json.svgPath || null,
     });
   }
 
@@ -152,7 +164,9 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       lotoPointIds: this.lotoPoints?.map(point => point.id) || null,
       isUpdated: this.isUpdated,
       conflictStatus: this.conflictStatus,
-      isVerified: this.isVerified
+      isVerified: this.isVerified,
+      symbolId: this.symbolId,
+      svgPath: this.svgPath,
     });
   }
 
@@ -391,6 +405,8 @@ export class EquipmentDto extends BaseDto implements EquipmentModel {
       name: { name: 'name', label: 'Name', type: 'text', initialValue: dto.name },
       objectType: { name: 'objectType', label: 'Object Type', type: 'text', initialValue: dto.objectType },
       mainFileObject: { name:'mainFileObject', label: 'Main File', type: 'text', initialValue: dto.mainFile },
+      symbolId: { name: 'symbolId', label: 'Symbol ID', type: 'text', initialValue: dto.symbolId },
+      svgPath: { name: 'svgPath', label: 'SVG Path', type: 'text', initialValue: dto.svgPath },
     };
   
     return fields.map(fieldName => allFields[fieldName]);

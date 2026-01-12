@@ -130,6 +130,15 @@ public class EquipmentMapper implements BaseMapper {
         if (entity.getIsVerified() != null) {
             dto.setIsVerified(entity.getIsVerified());
         }
+
+        // Symbol fields
+        if (entity.getSymbolId() != null) {
+            dto.setSymbolId(entity.getSymbolId());
+        }
+        if (entity.getSvgPath() != null) {
+            dto.setSvgPath(entity.getSvgPath());
+        }
+
         return dto;
     }
 
@@ -309,6 +318,15 @@ public class EquipmentMapper implements BaseMapper {
         if (source.getIsVerified() != null) {
             entity.setIsVerified(source.getIsVerified());
         }
+
+        // Symbol fields
+        if (source.getSymbolId() != null) {
+            entity.setSymbolId(source.getSymbolId());
+        }
+        if (source.getSvgPath() != null) {
+            entity.setSvgPath(source.getSvgPath());
+        }
+
         return entity;
     }
 
@@ -390,6 +408,14 @@ public class EquipmentMapper implements BaseMapper {
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
             equipment.setHeatTraceList(heatTraces);
+        }
+
+        // Symbol fields
+        if (dto.getSymbolId() != null) {
+            equipment.setSymbolId(dto.getSymbolId());
+        }
+        if (dto.getSvgPath() != null) {
+            equipment.setSvgPath(dto.getSvgPath());
         }
 
         System.out.println("From Eq mapper: " + equipment.getMainFile().getFileNumber());

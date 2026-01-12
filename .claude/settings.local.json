@@ -16,7 +16,10 @@
       "Bash(npm run:*)",
       "Bash(npx ng build)",
       "Bash(xargs cat:*)",
-      "Bash(npx ng build:*)"
+      "Bash(npx ng build:*)",
+      "Bash(/home/dk-power/.nvm/versions/node/v20.17.0/bin/npx ng build)",
+      "Bash(/usr/local/bin/ng build:*)",
+      "Bash(tsc:*)"
     ]
   }
 }

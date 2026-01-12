@@ -13,7 +13,7 @@ import { EquipmentService } from '../../../../../services/equipment.service';
 import { RfLotoPointStateService } from '../../../../loto-points/refactored/services/rf-loto-point-state.service';
 import { RfLotoPointApiService } from '../../../../loto-points/refactored/services/rf-loto-point-api.service';
 import { ImageService } from '../../../../../services/text-recognition.service';
-import { RfShape } from '../../../../../shared/image/refactored/models/fr-shape.model';
+import { RfShape, SVGSymbolShape } from '../../../../../shared/image/refactored/models/fr-shape.model';
 import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { GuideDirective } from '../../../../../shared/guide/guide.directive';
@@ -488,7 +488,7 @@ export class LotoBuilderRightPanelComponent {
     this.builderState.startProcessing('Saving equipment...');
 
     // Create new equipment from shape
-    const newEquipment = new EquipmentDto({
+    const equipmentData: any = {
       coordinates: JSON.stringify({
         startX: shape.x,
         startY: shape.y,
@@ -500,7 +500,16 @@ export class LotoBuilderRightPanelComponent {
       }).replace(/^"|"$/g, '').replace(/\\/g, '').replace(/"(\w+)":/g, '$1:'),
       originalPictureSize: `width:${shape.originalPictureWidth},height:${shape.originalPictureHeight}`,
       mainFileObject: this.builderState.currentFile(),
-    });
+    };
+
+    // Add symbol-specific fields for svg-symbol shapes
+    if (shape.type === 'svg-symbol') {
+      const symbolShape = shape as SVGSymbolShape;
+      equipmentData.symbolId = symbolShape.symbolId;
+      equipmentData.svgPath = symbolShape.svgPath;
+    }
+
+    const newEquipment = new EquipmentDto(equipmentData);
 
     // Save equipment to backend
     this.equipmentService.updateEquipment(newEquipment)
