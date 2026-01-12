@@ -67,6 +67,8 @@ export class RfLotoPointTableComponent implements OnInit {
   itemsReorderedEvent = output<LotoPointDto[]>();
   rowHoveredEvent = output<LotoPointDto | null>();
   rowDoubleClickedEvent = output<LotoPointDto>();
+  /** Emitted when bulk edit is applied - parent should refresh data if using inputItems */
+  bulkEditAppliedEvent = output<LotoPointDto[]>();
 
   // State
   items$ = toSignal(this.stateService.allLoadedLotoPoints$, {
@@ -402,8 +404,11 @@ export class RfLotoPointTableComponent implements OnInit {
   onBulkEditApplied(updatedItems: LotoPointDto[]): void {
     console.log(`Bulk edit applied to ${updatedItems.length} items`);
 
+    // Always emit the event so parents can handle refresh if needed
+    this.bulkEditAppliedEvent.emit(updatedItems);
+
     // If using input items, we can't refresh from API
-    // The parent component should handle the update
+    // The parent component should handle the update via the event
     const isUsingInputItems = this.inputItems();
 
     if (!isUsingInputItems) {

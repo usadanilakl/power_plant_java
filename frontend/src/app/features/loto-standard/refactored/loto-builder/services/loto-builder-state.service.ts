@@ -532,6 +532,18 @@ export class LotoBuilderStateService {
   }
 
   /**
+   * Refresh equipment data.
+   * This is typically called after bulk edits are applied.
+   * The actual refresh happens automatically via lotoPointUpdated$ subscription
+   * in the right panel, so this method serves as a documentation hook.
+   */
+  refreshEquipment(): void {
+    // Updates are automatically handled via the lotoPointUpdated$ subscription
+    // in loto-builder-right-panel.component.ts which calls updateLotoPointInEquipment()
+    console.log('[LotoBuilderState] refreshEquipment called - updates propagate via lotoPointUpdated$');
+  }
+
+  /**
    * Reset builder state
    */
   reset(): void {

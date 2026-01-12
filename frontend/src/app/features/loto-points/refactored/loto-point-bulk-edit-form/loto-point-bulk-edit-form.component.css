@@ -1,0 +1,111 @@
+/* Container for the overlay content */
+.bulk-edit-overlay-container {
+  position: relative;
+}
+
+/* Counterpart Confirmation Overlay */
+.counterpart-confirmation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+}
+
+/* Counterpart Confirmation Dialog */
+.counterpart-confirmation-dialog {
+  background: var(--primary-background, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  max-width: 450px;
+  width: 90%;
+  overflow: hidden;
+}
+
+.dialog-header {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+  color: white;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.dialog-content {
+  padding: 20px;
+}
+
+.dialog-content p {
+  margin: 0 0 12px 0;
+  color: var(--primary-text, #333);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.dialog-content p:last-child {
+  margin-bottom: 0;
+}
+
+.dialog-content .note {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--secondary-background, #f8f9fa);
+  border-left: 3px solid var(--accent-color, #1976D2);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.85rem;
+  color: var(--secondary-text, #666);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  background: var(--secondary-background, #f8f9fa);
+}
+
+.dialog-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel {
+  background: var(--secondary-background, #e0e0e0);
+  color: var(--primary-text, #333);
+}
+
+.btn-cancel:hover {
+  background: #d0d0d0;
+}
+
+.btn-skip {
+  background: var(--secondary-color, #6c757d);
+  color: white;
+}
+
+.btn-skip:hover {
+  background: #5a6268;
+}
+
+.btn-apply {
+  background: var(--accent-color, #1976D2);
+  color: white;
+}
+
+.btn-apply:hover {
+  background: #1565C0;
+}

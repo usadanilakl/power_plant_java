@@ -124,4 +124,13 @@ export class LotoBuilderTablePopupComponent {
       this.builderState.hoveredShapeId.set(matchingEquipment.id!);
     }
   }
+
+  /**
+   * Handle bulk edit applied event - refresh equipment data
+   */
+  onBulkEditApplied(updatedItems: LotoPointDto[]): void {
+    console.log(`Bulk edit applied to ${updatedItems.length} LOTO points, refreshing equipment...`);
+    // Trigger equipment refresh in the builder state
+    this.builderState.refreshEquipment();
+  }
 }

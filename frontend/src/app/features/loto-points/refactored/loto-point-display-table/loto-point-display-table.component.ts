@@ -64,6 +64,8 @@ export class LotoPointDisplayTableComponent {
   selectedItemsEvent = output<LotoPointDto[]>();
   rowHoveredEvent = output<LotoPointDto | null>();
   rowClickedEvent = output<LotoPointDto>();
+  /** Emitted when bulk edit is applied - parent should refresh data */
+  bulkEditAppliedEvent = output<LotoPointDto[]>();
 
   constructor() {
     // Forward row clicked events from click service to output event

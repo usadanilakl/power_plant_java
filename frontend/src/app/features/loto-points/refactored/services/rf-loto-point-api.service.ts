@@ -125,6 +125,14 @@ export class RfLotoPointApiService {
       `${this.apiUrl}`,
       lotoPointIdDto,
       { headers }
+    ).pipe(
+      tap(response => {
+        if (response.responseData) {
+          // Broadcast the updated LOTO point to all listeners
+          const updatedLotoPoint = LotoPointDto.fromJson(response.responseData);
+          this.lotoPointUpdatedSubject.next(updatedLotoPoint);
+        }
+      })
     );
   }
 

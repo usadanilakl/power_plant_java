@@ -1,19 +1,34 @@
-import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { TableBulkEditService, BulkEditFieldDefinition } from '../../../../shared/table/refactored/services/table-bulk-edit.service';
+import { Injectable, inject, signal, DestroyRef } from '@angular/core';
+import { Observable, forkJoin, of, from } from 'rxjs';
+import { map, switchMap, catchError } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TableBulkEditService, BulkEditFieldDefinition, BulkUpdateResult } from '../../../../shared/table/refactored/services/table-bulk-edit.service';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { RfLotoPointApiService } from './rf-loto-point-api.service';
 import { LotoPointMapperService } from './rf-loto-point-mapper.service';
+import { LotoPointCounterpartService, SyncableField, SYNCABLE_FIELDS } from './loto-point-counterpart.service';
+import { ConfirmationService } from '../../../../services/ui/confirmation.service';
 
 /**
  * Bulk edit service for LOTO points
  * Provides field definitions and batch update logic specific to LOTO points
+ * Includes counterpart handling for unit-specific LOTO points
  */
 @Injectable()
 export class LotoPointBulkEditService extends TableBulkEditService<LotoPointDto> {
   private apiService = inject(RfLotoPointApiService);
   private mapperService = inject(LotoPointMapperService);
+  private counterpartService = inject(LotoPointCounterpartService);
+  private confirmationService = inject(ConfirmationService);
+  private destroyRef = inject(DestroyRef);
+
+  // Counterpart handling state
+  private applyToCounterpartsSubject = signal<boolean | null>(null); // null = not asked, true/false = user choice
+  applyToCounterparts = this.applyToCounterpartsSubject.asReadonly();
+
+  // Track items with counterparts for UI
+  private itemsWithCounterpartsSubject = signal<LotoPointDto[]>([]);
+  itemsWithCounterparts = this.itemsWithCounterpartsSubject.asReadonly();
 
   /**
    * Get available fields for bulk editing LOTO points
@@ -89,6 +104,168 @@ export class LotoPointBulkEditService extends TableBulkEditService<LotoPointDto>
 
     // Execute all updates in parallel
     return forkJoin(updates);
+  }
+
+  /**
+   * Check if any items have counterparts
+   */
+  hasItemsWithCounterparts(items: LotoPointDto[]): boolean {
+    return items.some(item => item.counterpartId != null);
+  }
+
+  /**
+   * Get items that have counterparts
+   */
+  getItemsWithCounterparts(items: LotoPointDto[]): LotoPointDto[] {
+    return items.filter(item => item.counterpartId != null);
+  }
+
+  /**
+   * Set user's choice for counterpart handling
+   */
+  setApplyToCounterparts(value: boolean): void {
+    this.applyToCounterpartsSubject.set(value);
+  }
+
+  /**
+   * Reset counterpart state
+   */
+  resetCounterpartState(): void {
+    this.applyToCounterpartsSubject.set(null);
+    this.itemsWithCounterpartsSubject.set([]);
+  }
+
+  /**
+   * Override close to reset counterpart state
+   */
+  override closeBulkEdit(): void {
+    super.closeBulkEdit();
+    this.resetCounterpartState();
+  }
+
+  /**
+   * Apply changes to counterpart using the counterpart service
+   * Transforms fields appropriately for the target unit
+   */
+  private applyChangesToCounterpart(
+    sourceItem: LotoPointDto,
+    counterpartId: number,
+    changes: Partial<LotoPointDto>
+  ): Observable<LotoPointDto> {
+    // First fetch the counterpart
+    return this.apiService.getLotoPointById(String(counterpartId)).pipe(
+      switchMap(response => {
+        const counterpart = response.responseData;
+        if (!counterpart) {
+          console.warn(`Counterpart ${counterpartId} not found`);
+          return of(null as any);
+        }
+
+        // Determine source and target units
+        const sourceUnit = this.counterpartService.getSourceUnit(sourceItem);
+        const targetUnit = this.counterpartService.getTargetUnit(sourceUnit);
+
+        // Transform changes for counterpart
+        const transformedChanges: Record<string, any> = {};
+
+        for (const [key, value] of Object.entries(changes)) {
+          if (SYNCABLE_FIELDS.includes(key as SyncableField)) {
+            // Use counterpart service to transform the field
+            const tempSource = new LotoPointDto({ ...sourceItem, [key]: value });
+            transformedChanges[key] =
+              this.counterpartService.transformFieldValue(
+                tempSource,
+                key as SyncableField,
+                sourceUnit,
+                targetUnit
+              );
+          } else {
+            // Non-syncable fields are copied as-is
+            transformedChanges[key] = value;
+          }
+        }
+
+        // Apply transformed changes to counterpart
+        const updatedCounterpart = new LotoPointDto({
+          ...counterpart,
+          ...transformedChanges,
+          id: counterpart.id // Preserve counterpart's id
+        });
+
+        return this.apiService.updateLotoPoint(updatedCounterpart).pipe(
+          map(res => res.responseData),
+          catchError(error => {
+            console.error(`Error updating counterpart ${counterpartId}:`, error);
+            return of(null as any);
+          })
+        );
+      }),
+      catchError(error => {
+        console.error(`Error fetching counterpart ${counterpartId}:`, error);
+        return of(null as any);
+      })
+    );
+  }
+
+  /**
+   * Update batch with counterpart handling
+   * If user chooses to apply to counterparts, also updates counterpart LOTO points
+   */
+  updateBatchWithCounterparts(
+    items: LotoPointDto[],
+    changes: Partial<LotoPointDto>,
+    applyToCounterparts: boolean
+  ): Observable<LotoPointDto[]> {
+    // First update the selected items
+    const primaryUpdates = items.map(item => {
+      const updated = new LotoPointDto({
+        ...item,
+        ...changes,
+        id: item.id
+      });
+
+      return this.apiService.updateLotoPoint(updated).pipe(
+        map(response => response.responseData),
+        catchError(error => {
+          console.error(`Error updating item ${item.id}:`, error);
+          return of(null as any);
+        })
+      );
+    });
+
+    if (!applyToCounterparts) {
+      // Just update primary items
+      return forkJoin(primaryUpdates).pipe(
+        map(results => results.filter(r => r !== null))
+      );
+    }
+
+    // Update primary items first, then counterparts
+    return forkJoin(primaryUpdates).pipe(
+      switchMap(primaryResults => {
+        const successfulPrimary = primaryResults.filter(r => r !== null);
+
+        // Find items that have counterparts
+        const itemsWithCounterparts = items.filter(item => item.counterpartId != null);
+
+        if (itemsWithCounterparts.length === 0) {
+          return of(successfulPrimary);
+        }
+
+        // Update counterparts
+        const counterpartUpdates = itemsWithCounterparts.map(item =>
+          this.applyChangesToCounterpart(item, item.counterpartId!, changes)
+        );
+
+        return forkJoin(counterpartUpdates).pipe(
+          map(counterpartResults => {
+            const successfulCounterparts = counterpartResults.filter(r => r !== null);
+            console.log(`Updated ${successfulPrimary.length} items and ${successfulCounterparts.length} counterparts`);
+            return successfulPrimary;
+          })
+        );
+      })
+    );
   }
 
   /**

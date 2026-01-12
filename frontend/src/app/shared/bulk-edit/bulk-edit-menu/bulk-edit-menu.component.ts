@@ -24,6 +24,11 @@ export class BulkEditMenuComponent<T> {
   // Outputs
   applied = output<T[]>();
   close = output<void>();
+  /**
+   * Emitted before applying changes - allows parent to intercept and handle custom logic
+   * If handled, the parent should call applyChanges() on the service directly
+   */
+  beforeApply = output<{ items: T[], proceed: () => void }>();
 
   // Menu position
   MenuPosition = MenuPosition;
@@ -150,8 +155,25 @@ export class BulkEditMenuComponent<T> {
 
   /**
    * Apply bulk edit to items
+   * Emits beforeApply event to allow parent to intercept
    */
   onApply(): void {
+    const svc = this.service();
+    const items = this.items();
+
+    // Emit beforeApply to allow parent to intercept
+    // Parent can show confirmation dialogs, etc.
+    this.beforeApply.emit({
+      items,
+      proceed: () => this.executeApply()
+    });
+  }
+
+  /**
+   * Execute the actual apply operation
+   * Can be called directly by parent after handling beforeApply
+   */
+  executeApply(): void {
     const svc = this.service();
     const items = this.items();
 

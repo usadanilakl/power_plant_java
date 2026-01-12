@@ -1,11 +1,50 @@
-<app-bulk-edit-menu
-  [items]="selectedItems()"
-  [service]="bulkEditService"
-  [open]="isBulkEditOpen()"
-  [title]="'Bulk Edit LOTO Points'"
-  [clipboardEntityType]="'LotoPoint'"
-  [clipboardHasValidData]="hasValidData"
-  [clipboardGetItemSummary]="getItemSummary"
-  (applied)="onBulkEditApplied($event)"
-  (close)="onClose()"
-></app-bulk-edit-menu>
+<!-- Template for overlay portal - renders at document body level -->
+<ng-template #bulkEditTemplate>
+  <div class="bulk-edit-overlay-container">
+    <app-bulk-edit-menu
+      [items]="selectedItems()"
+      [service]="bulkEditService"
+      [open]="true"
+      [title]="'Bulk Edit LOTO Points'"
+      [clipboardEntityType]="'LotoPoint'"
+      [clipboardHasValidData]="hasValidData"
+      [clipboardGetItemSummary]="getItemSummary"
+      (beforeApply)="onBeforeApply($event)"
+      (applied)="onBulkEditApplied($event)"
+      (close)="onClose()"
+    ></app-bulk-edit-menu>
+
+    <!-- Counterpart Confirmation Dialog -->
+    @if (showCounterpartConfirmation()) {
+      <div class="counterpart-confirmation-overlay">
+        <div class="counterpart-confirmation-dialog">
+          <div class="dialog-header">
+            <h3>Apply to Counterparts?</h3>
+          </div>
+          <div class="dialog-content">
+            <p>
+              <strong>{{ itemsWithCounterparts().length }}</strong> of the selected LOTO points
+              have linked counterparts.
+            </p>
+            <p>Would you like to apply the same changes to their counterpart LOTO points?</p>
+            <p class="note">
+              Note: Text fields (description, location) will be transformed
+              to match the counterpart's unit (e.g., "U1" → "U2").
+            </p>
+          </div>
+          <div class="dialog-actions">
+            <button class="btn-cancel" (click)="onCancelCounterpartConfirmation()">
+              Cancel
+            </button>
+            <button class="btn-skip" (click)="onSkipCounterparts()">
+              Skip Counterparts
+            </button>
+            <button class="btn-apply" (click)="onConfirmCounterparts()">
+              Apply to Both
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</ng-template>
