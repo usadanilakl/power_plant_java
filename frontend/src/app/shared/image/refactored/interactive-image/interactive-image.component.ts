@@ -394,7 +394,9 @@ export class InteractiveImageComponent {
       this.canvas,
       this.shapes(),
       this.imageScale,
-      this.hoveredShapeId()
+      this.hoveredShapeId(),
+      this.img.naturalWidth,
+      this.img.naturalHeight
     );
   }
 

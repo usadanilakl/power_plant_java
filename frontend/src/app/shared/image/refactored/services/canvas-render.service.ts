@@ -16,7 +16,9 @@ export class CanvasRenderService {
     canvas: HTMLCanvasElement,
     shapes: RfShape[],
     scale: number,
-    hoveredShapeId?: number | null
+    hoveredShapeId?: number | null,
+    currentImageWidth?: number,
+    currentImageHeight?: number
   ): void {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -25,14 +27,16 @@ export class CanvasRenderService {
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    shapes.forEach((shape) => this.drawShape(ctx, shape, scale, hoveredShapeId));
+    shapes.forEach((shape) => this.drawShape(ctx, shape, scale, hoveredShapeId, currentImageWidth, currentImageHeight));
   }
 
   private drawShape(
     ctx: CanvasRenderingContext2D,
     shape: RfShape,
     scale: number,
-    hoveredShapeId?: number | null
+    hoveredShapeId?: number | null,
+    currentImageWidth?: number,
+    currentImageHeight?: number
   ): void {
     const isHovered = hoveredShapeId !== null && hoveredShapeId !== undefined && shape.id === hoveredShapeId;
 
@@ -46,10 +50,10 @@ export class CanvasRenderService {
 
     // Draw highlight overlay for hovered shapes
     if (isHovered && (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol')) {
-      this.drawHoverHighlight(ctx, shape, scale);
+      this.drawHoverHighlight(ctx, shape, scale, currentImageWidth, currentImageHeight);
     }
 
-    const scaledShape = this.scaleShape(shape, scale);
+    const scaledShape = this.scaleShape(shape, scale, currentImageWidth, currentImageHeight);
 
     switch (scaledShape.type) {
       case 'rectangle':
@@ -329,17 +333,20 @@ export class CanvasRenderService {
   private drawHoverHighlight(
     ctx: CanvasRenderingContext2D,
     shape: RfShape,
-    scale: number
+    scale: number,
+    currentImageWidth?: number,
+    currentImageHeight?: number
   ): void {
     if (shape.type !== 'rectangle' && shape.type !== 'image' && shape.type !== 'svg-symbol') {
       return;
     }
 
     const rectShape = shape as RfRectangleShape | RfImageShape | SVGSymbolShape;
-    const x = rectShape.x * scale;
-    const y = rectShape.y * scale;
-    const width = rectShape.width * scale;
-    const height = rectShape.height * scale;
+    const { scaleX: normX, scaleY: normY } = this.getNormalizationFactor(shape, currentImageWidth, currentImageHeight);
+    const x = rectShape.x * normX * scale;
+    const y = rectShape.y * normY * scale;
+    const width = rectShape.width * normX * scale;
+    const height = rectShape.height * normY * scale;
 
     ctx.save();
 
@@ -366,62 +373,87 @@ export class CanvasRenderService {
     ctx.restore();
   }
 
-  private scaleShape(shape: RfShape, scale: number): RfShape {
+  /**
+   * Calculates the normalization factor to convert shape coordinates from their
+   * original image dimensions to current image dimensions.
+   * This handles cases where shapes were created on images that were later resized.
+   */
+  private getNormalizationFactor(
+    shape: RfShape,
+    currentImageWidth?: number,
+    currentImageHeight?: number
+  ): { scaleX: number; scaleY: number } {
+    // If current image dimensions are not provided, or shape doesn't have original dimensions, no normalization
+    if (!currentImageWidth || !currentImageHeight ||
+        !shape.originalPictureWidth || !shape.originalPictureHeight) {
+      return { scaleX: 1, scaleY: 1 };
+    }
+
+    // Calculate ratio between current image size and the image size when shape was created
+    const scaleX = currentImageWidth / shape.originalPictureWidth;
+    const scaleY = currentImageHeight / shape.originalPictureHeight;
+
+    return { scaleX, scaleY };
+  }
+
+  private scaleShape(
+    shape: RfShape,
+    scale: number,
+    currentImageWidth?: number,
+    currentImageHeight?: number
+  ): RfShape {
+    // First normalize coordinates from shape's original image size to current image size
+    const { scaleX: normX, scaleY: normY } = this.getNormalizationFactor(shape, currentImageWidth, currentImageHeight);
+
     switch (shape.type) {
       case 'rectangle':
         return {
           ...shape,
-          x: shape.x * scale,
-          y: shape.y * scale,
-          width: shape.width * scale,
-          height: shape.height * scale,
+          x: shape.x * normX * scale,
+          y: shape.y * normY * scale,
+          width: shape.width * normX * scale,
+          height: shape.height * normY * scale,
         };
       case 'image':
         return {
           ...shape,
-          x: shape.x * scale,
-          y: shape.y * scale,
-          width: shape.width * scale,
-          height: shape.height * scale,
+          x: shape.x * normX * scale,
+          y: shape.y * normY * scale,
+          width: shape.width * normX * scale,
+          height: shape.height * normY * scale,
         };
       case 'circle':
+        // For circles, use average of scaleX and scaleY for radius
+        const avgNorm = (normX + normY) / 2;
         return {
           ...shape,
-          x: shape.x * scale,
-          y: shape.y * scale,
-          radius: shape.radius * scale,
+          x: shape.x * normX * scale,
+          y: shape.y * normY * scale,
+          radius: shape.radius * avgNorm * scale,
         };
       case 'line':
         return {
           ...shape,
-          startX: shape.startX * scale,
-          startY: shape.startY * scale,
-          endX: shape.endX * scale,
-          endY: shape.endY * scale,
+          startX: shape.startX * normX * scale,
+          startY: shape.startY * normY * scale,
+          endX: shape.endX * normX * scale,
+          endY: shape.endY * normY * scale,
         };
       case 'text':
         return {
           ...shape,
-          x: shape.x * scale,
-          y: shape.y * scale,
+          x: shape.x * normX * scale,
+          y: shape.y * normY * scale,
         };
-      case 'svg-symbol': // Add this case
+      case 'svg-symbol':
         const svgShape = shape as SVGSymbolShape;
         return {
           ...svgShape,
-          x: svgShape.x * scale,
-          y: svgShape.y * scale,
-          width: svgShape.width * scale,
-          height: svgShape.height * scale,
+          x: svgShape.x * normX * scale,
+          y: svgShape.y * normY * scale,
+          width: svgShape.width * normX * scale,
+          height: svgShape.height * normY * scale,
         };
-      // case 'svg-symbol':
-      //   return {
-      //     ...shape,
-      //     x: shape.x * scale,
-      //     y: shape.y * scale,
-      //     width: shape.width * scale,
-      //     height: shape.height * scale,
-      //   };
       default:
         return shape;
     }

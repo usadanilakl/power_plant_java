@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ViewChild,
   signal,
@@ -8,7 +9,8 @@ import {
   input,
   OnDestroy,
   AfterViewInit,
-  effect
+  effect,
+  inject
 } from '@angular/core';
 import { NestedItem } from '../../../models/ui/nested-item.model';
 import { CdkVirtualScrollViewport, ScrollingModule } from "@angular/cdk/scrolling";
@@ -30,6 +32,8 @@ interface FlatItem extends NestedItem {
 })
 export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewInit {
   @ViewChild(CdkVirtualScrollViewport) viewport: CdkVirtualScrollViewport | null = null;
+
+  private cdr = inject(ChangeDetectorRef);
 
   items = input<NestedItem[]>([]);
   highlightOnHover = input(false);
@@ -80,8 +84,12 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
   constructor() {
     // Effect to update viewport when items change
     effect(() => {
-      // Track items changes
+      // Track items changes - reading items() here creates dependency
       const items = this.items();
+      const flatCount = this.flatItems().length;
+
+      console.log(`[ToggleList] Items changed: ${items.length} groups, ${flatCount} flat items`);
+
       // Schedule viewport check after items are updated
       if (items.length > 0) {
         // Use multiple delayed checks to ensure rendering in dialogs/popups
@@ -91,6 +99,7 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
   }
 
   ngAfterViewInit(): void {
+    console.log('[ToggleList] ngAfterViewInit called');
     // Schedule viewport size checks after view is initialized
     // This ensures proper rendering when opened in popups/dialogs
     this.scheduleViewportCheck();
@@ -116,10 +125,17 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
    * Force the viewport to update and render items
    */
   private forceViewportUpdate(): void {
+    const flatCount = this.flatItems().length;
+    const viewportSize = this.viewport?.getViewportSize() ?? 0;
+    const renderedRange = this.viewport?.getRenderedRange();
+
+    console.log(`[ToggleList] forceViewportUpdate: ${flatCount} items, viewport size: ${viewportSize}, rendered: ${renderedRange?.start}-${renderedRange?.end}`);
+
+    // Use detectChanges for immediate update (more forceful than markForCheck)
+    this.cdr.detectChanges();
+
     if (this.viewport) {
       this.viewport.checkViewportSize();
-      // Also scroll to top to ensure items are rendered
-      this.viewport.scrollToIndex(0);
     }
   }
 
