@@ -56,6 +56,27 @@ export class LotoBuilderTablePopupComponent {
   });
 
   /**
+   * Get the ID of the clicked LOTO point to scroll to in the table.
+   * This is derived from the selected shape - when a shape is clicked,
+   * we find the corresponding LOTO point and scroll to it.
+   */
+  scrollToLotoPointId = computed(() => {
+    const selectedShapeId = this.builderState.selectedShapeId();
+    if (!selectedShapeId) return null;
+
+    // Find equipment with matching shape ID
+    const equipment = this.builderState.currentEquipment();
+    const matchingEquipment = equipment.find(eq => eq.id === selectedShapeId);
+
+    // Return the first LOTO point ID from that equipment
+    if (matchingEquipment?.lotoPoints && matchingEquipment.lotoPoints.length > 0) {
+      return matchingEquipment.lotoPoints[0].id;
+    }
+
+    return null;
+  });
+
+  /**
    * Close the table popup
    */
   close(): void {

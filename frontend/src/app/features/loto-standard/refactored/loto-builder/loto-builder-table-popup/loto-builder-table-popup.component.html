@@ -27,6 +27,7 @@
         [loadMoreEnabled]="false"
         [hoverDebounceTime]="100"
         [hoveredItemId]="hoveredLotoPoint()?.id ?? null"
+        [scrollToItemId]="scrollToLotoPointId()"
         (selectedItemsEvent)="onRowSelected($event)"
         (rowHoveredEvent)="onRowHovered($event)"
       ></app-loto-point-display-table>

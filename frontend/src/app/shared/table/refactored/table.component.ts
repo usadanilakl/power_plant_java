@@ -90,6 +90,8 @@ export class TableComponent implements OnInit, AfterViewInit {
   isDragAndDropEnabled = input<boolean>(false);
   filterOutItems = input<FilterOutRules | undefined>();
   hoveredItemId = input<number | null>(null);
+  /** ID of item to scroll to (triggered by external click events) */
+  scrollToItemId = input<number | null>(null);
   clickSetupInput = input<ClickSetup>({
     applyTo: 'row',
     actions: ['leftClick', 'rightClick', 'middleClick', 'doubleClick'],
@@ -195,6 +197,23 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.searchService.updateFilteredItems();
   });
 
+  /**
+   * Scroll to the specified item when scrollToItemId changes (triggered by external click events).
+   * This enables auto-scrolling when clicking on shapes in an image viewer, for example.
+   */
+  private scrollToItemEffect = effect(() => {
+    const scrollToId = this.scrollToItemId();
+    if (scrollToId === null) return;
+
+    const filteredItems = this.dataService.filteredItems();
+    const viewport = this.dataService.viewport();
+    if (!viewport || filteredItems.length === 0) return;
+
+    const index = filteredItems.findIndex((item) => item.id === scrollToId);
+    if (index !== -1) {
+      viewport.scrollToIndex(index, 'smooth');
+    }
+  });
 
   private syncDataTableServiceEffect = effect(() => {
     this.dataService.headerContainer.set(this.headerContainer());
