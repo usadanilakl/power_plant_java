@@ -1,24 +1,17 @@
-
 <div class="interactive-image-container">
-  <!-- Symbol Palette Sidebar -->
-  <div class="symbol-palette-sidebar" *ngIf="showSymbolPalette()">
-    <app-symbol-palette
-      (symbolSelected)="onSymbolSelected($event)">
-    </app-symbol-palette>
-  </div>
-
   <!-- Main Image Area -->
   <div class="image-workspace">
-  <!-- Unified Toolbar -->
-  <app-unified-toolbar
-    *ngIf="activeConfig().showToolbar"
-    [enabledTools]="enabledTools()"
-    [activeTool]="currentTool()"
-    [position]="activeConfig().toolbarPosition || 'top'"
-    [showSymbolPalette]="showSymbolPalette()"
-    (toolClicked)="onToolbarToolClick($event)"
-    (symbolPaletteToggled)="toggleSymbolPalette()"
-  ></app-unified-toolbar>
+    <!-- Unified Toolbar -->
+    <app-unified-toolbar
+      *ngIf="activeConfig().showToolbar"
+      [enabledTools]="enabledTools()"
+      [activeTool]="currentTool()"
+      [position]="activeConfig().toolbarPosition || 'top'"
+      [showSymbolPalette]="showSymbolPalette()"
+      (toolClicked)="onToolbarToolClick($event)"
+      (symbolPaletteToggled)="toggleSymbolPalette()"
+    ></app-unified-toolbar>
+
     <!-- Image Container -->
     <div #imageContainer class="image-container" (contextmenu)="preventContextMenu($event)">
       <div #zoomOuter class="zoom-outer">
@@ -43,6 +36,13 @@
           </canvas>
         </div>
       </div>
+    </div>
+
+    <!-- Symbol Palette Bar (horizontal, at bottom) -->
+    <div class="symbol-palette-bar" *ngIf="showSymbolPalette()">
+      <app-symbol-palette
+        (symbolSelected)="onSymbolSelected($event)">
+      </app-symbol-palette>
     </div>
   </div>
 

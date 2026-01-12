@@ -162,10 +162,12 @@ export class LotoPointCounterpartService {
   /**
    * Transform a single field value for syncing between units
    * Transfer rules:
-   * 1. tagNumber: swap 01<->02 prefix
-   * 2. description, specificLocation: transform unit text patterns
+   * 1. tagNumber: swap 01<->02 prefix (only if starts with fromUnit)
+   * 2. description, specificLocation: transform unit text patterns (only if 01/02 units)
    * 3. isoPos, normPos, eqType, location: copy as-is (value-select fields)
    * 4. zeroEnergy: handled separately with async equipment lookup
+   *
+   * For non 01/02 items: copies all values as-is without transformation
    */
   transformFieldValue(
     source: LotoPointDto,
@@ -175,17 +177,25 @@ export class LotoPointCounterpartService {
   ): any {
     const value = (source as any)[field];
 
-    // 1. Transform tag number prefix (01<->02)
+    // Check if this is a unit-specific transfer (01/02)
+    const isUnitTransfer = this.isUnitValue(fromUnit) && this.isUnitValue(toUnit);
+
+    // 1. Transform tag number prefix (01<->02) - only if unit-specific
     if (field === 'tagNumber') {
-      if (typeof value === 'string' && value.startsWith(fromUnit)) {
+      if (isUnitTransfer && typeof value === 'string' && value.startsWith(fromUnit)) {
         return toUnit + value.substring(fromUnit.length);
       }
+      // Non 01/02 items: copy as-is
       return value;
     }
 
-    // 2. Transform text fields with unit patterns
+    // 2. Transform text fields with unit patterns - only if unit-specific
     if (field === 'description' || field === 'specificLocation') {
-      return this.transformUnitText(value, fromUnit, toUnit);
+      if (isUnitTransfer) {
+        return this.transformUnitText(value, fromUnit, toUnit);
+      }
+      // Non 01/02 items: copy as-is
+      return value;
     }
 
     // 3. Value-select fields - copy as-is

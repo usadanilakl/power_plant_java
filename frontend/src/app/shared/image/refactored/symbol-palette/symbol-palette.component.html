@@ -1,12 +1,16 @@
-
-    <div class="symbol-palette">
-      <h3 class="palette-title">P&ID Symbols</h3>
-
-      <div class="symbol-category">
-        <h4>Valves</h4>
+<div class="symbol-palette">
+  @for (category of categories; track category.id) {
+    <div class="symbol-category" [class.expanded]="isCategoryExpanded(category.id)">
+      <button class="category-header" (click)="toggleCategory(category.id)">
+        <span class="category-label">{{ category.label }}</span>
+        <svg class="chevron" [class.rotated]="isCategoryExpanded(category.id)" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z"/>
+        </svg>
+      </button>
+      @if (isCategoryExpanded(category.id)) {
         <div class="symbol-grid">
-          @for (symbol of getSymbolsByCategory('valve'); track symbol.id) {
-            <div class="symbol-item" (click)="onSymbolSelect(symbol)">
+          @for (symbol of getSymbolsByCategory(category.id); track symbol.id) {
+            <div class="symbol-item" (click)="onSymbolSelect(symbol)" [title]="symbol.name">
               <svg [attr.width]="symbol.width" [attr.height]="symbol.height" class="symbol-svg">
                 <path [attr.d]="symbol.svgPath" fill="none"/>
               </svg>
@@ -14,47 +18,7 @@
             </div>
           }
         </div>
-      </div>
-
-      <div class="symbol-category">
-        <h4>Pumps</h4>
-        <div class="symbol-grid">
-          @for (symbol of getSymbolsByCategory('pump'); track symbol.id) {
-            <div class="symbol-item" (click)="onSymbolSelect(symbol)">
-              <svg [attr.width]="symbol.width" [attr.height]="symbol.height" class="symbol-svg">
-                <path [attr.d]="symbol.svgPath" fill="none"/>
-              </svg>
-              <span>{{ symbol.name }}</span>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="symbol-category">
-        <h4>Instruments</h4>
-        <div class="symbol-grid">
-          @for (symbol of getSymbolsByCategory('instrument'); track symbol.id) {
-            <div class="symbol-item" (click)="onSymbolSelect(symbol)">
-              <svg [attr.width]="symbol.width" [attr.height]="symbol.height" class="symbol-svg">
-                <path [attr.d]="symbol.svgPath" fill="none"/>
-              </svg>
-              <span>{{ symbol.name }}</span>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="symbol-category">
-        <h4>Electrical</h4>
-        <div class="symbol-grid">
-          @for (symbol of getSymbolsByCategory('electrical'); track symbol.id) {
-            <div class="symbol-item" (click)="onSymbolSelect(symbol)">
-              <svg [attr.width]="symbol.width" [attr.height]="symbol.height" class="symbol-svg">
-                <path [attr.d]="symbol.svgPath" fill="none"/>
-              </svg>
-              <span>{{ symbol.name }}</span>
-            </div>
-          }
-        </div>
-      </div>
+      }
     </div>
+  }
+</div>

@@ -684,22 +684,40 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Remove LOTO point from equipment list when it's deleted
+   * Remove LOTO point from equipment list when it's deleted.
+   * Also removes any equipment that no longer has any LOTO points (since the server
+   * deletes equipment shapes when their associated LOTO point is deleted).
    */
   private removeLotoPointFromEquipment(deletedLotoPointId: number): void {
     const currentEquipment = this.builderState.currentEquipment();
 
-    const updatedEquipmentList = currentEquipment.map(eq => {
-      if (eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === deletedLotoPointId)) {
-        const filteredLotoPoints = eq.lotoPoints.filter(lp => lp.id !== deletedLotoPointId);
-        return new EquipmentDto({ ...eq, lotoPoints: filteredLotoPoints });
-      }
-      return eq;
-    });
+    // First, update equipment by removing the deleted LOTO point from their lotoPoints arrays
+    const updatedEquipmentList = currentEquipment
+      .map(eq => {
+        if (eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === deletedLotoPointId)) {
+          const filteredLotoPoints = eq.lotoPoints.filter(lp => lp.id !== deletedLotoPointId);
+          return new EquipmentDto({ ...eq, lotoPoints: filteredLotoPoints });
+        }
+        return eq;
+      })
+      // Then, filter out equipment that no longer has any LOTO points
+      // (these are shapes that were deleted on the server along with the LOTO point)
+      .filter(eq => {
+        const hadDeletedLotoPoint = currentEquipment.find(
+          orig => orig.id === eq.id
+        )?.lotoPoints?.some(lp => lp.id === deletedLotoPointId);
 
-    const hasChanges = updatedEquipmentList.some((eq, index) => eq !== currentEquipment[index]);
-    if (hasChanges) {
-      console.log('[LOTO Builder] Removed deleted LOTO point from equipment');
+        // If this equipment had the deleted LOTO point and now has no LOTO points, remove it
+        if (hadDeletedLotoPoint && (!eq.lotoPoints || eq.lotoPoints.length === 0)) {
+          console.log('[LOTO Builder] Removing equipment with no remaining LOTO points:', eq.id);
+          return false;
+        }
+        return true;
+      });
+
+    if (updatedEquipmentList.length !== currentEquipment.length ||
+        updatedEquipmentList.some((eq, index) => eq !== currentEquipment[index])) {
+      console.log('[LOTO Builder] Removed deleted LOTO point and associated equipment');
       this.builderState.setCurrentEquipment(updatedEquipmentList);
     }
   }

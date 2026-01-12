@@ -136,12 +136,15 @@ canvas {
   object-fit: contain;
 }
 
-.symbol-palette-sidebar {
-  width: 280px;
+/* Symbol Palette Bar - Horizontal at bottom */
+.symbol-palette-bar {
   flex-shrink: 0;
-  height: 100%;
-  overflow: hidden;
+  width: 100%;
+  max-height: 180px;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: var(--surface-color, #ffffff);
+  border-top: 1px solid var(--border-color, #e0e0e0);
 }
 
 .image-workspace {

@@ -83,23 +83,44 @@ export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewIni
       // Track items changes
       const items = this.items();
       // Schedule viewport check after items are updated
-      if (items.length > 0 && this.viewport) {
-        // Use setTimeout to ensure viewport check runs after render
-        setTimeout(() => {
-          this.viewport?.checkViewportSize();
-        }, 0);
+      if (items.length > 0) {
+        // Use multiple delayed checks to ensure rendering in dialogs/popups
+        this.scheduleViewportCheck();
       }
     });
   }
 
   ngAfterViewInit(): void {
-    // Schedule viewport size check after view is initialized
+    // Schedule viewport size checks after view is initialized
     // This ensures proper rendering when opened in popups/dialogs
-    setTimeout(() => {
-      if (this.viewport) {
-        this.viewport.checkViewportSize();
-      }
-    }, 100);
+    this.scheduleViewportCheck();
+  }
+
+  /**
+   * Schedule multiple viewport checks to ensure proper rendering.
+   * Virtual scroll in popups/dialogs often needs multiple checks
+   * as the container dimensions settle.
+   */
+  private scheduleViewportCheck(): void {
+    // Immediate check
+    setTimeout(() => this.forceViewportUpdate(), 0);
+    // Short delay check (for initial render)
+    setTimeout(() => this.forceViewportUpdate(), 50);
+    // Medium delay check (for popup animations)
+    setTimeout(() => this.forceViewportUpdate(), 150);
+    // Longer delay check (for complex layouts)
+    setTimeout(() => this.forceViewportUpdate(), 300);
+  }
+
+  /**
+   * Force the viewport to update and render items
+   */
+  private forceViewportUpdate(): void {
+    if (this.viewport) {
+      this.viewport.checkViewportSize();
+      // Also scroll to top to ensure items are rendered
+      this.viewport.scrollToIndex(0);
+    }
   }
 
   trackByFn(index: number, item: FlatItem): string | number {

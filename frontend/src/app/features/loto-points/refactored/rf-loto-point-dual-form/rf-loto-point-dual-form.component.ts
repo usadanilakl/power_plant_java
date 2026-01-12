@@ -142,12 +142,19 @@ export class RfLotoPointDualFormComponent {
   // Selected item from manual search table
   selectedFromSearch = signal<LotoPointDto | null>(null);
 
-  // Search criteria for counterpart search (filters by target unit)
+  // Search criteria for counterpart search (filters by target unit if unit-specific)
   searchCriteria = computed<SearchCriteria>(() => {
+    const targetUnit = this.targetUnit();
+    // Only filter by unit if unit-specific (01/02)
+    const isUnitFilter = this.counterpartService.isUnitValue(targetUnit);
+
+    const filters: { [key: string]: string } = {};
+    if (isUnitFilter) {
+      filters['unit'] = targetUnit;
+    }
+
     return {
-      filters: {
-        unit: this.targetUnit(),
-      },
+      filters,
       pageSize: 50,
     };
   });
@@ -190,27 +197,32 @@ export class RfLotoPointDualFormComponent {
         return;
       }
 
-      // Check if unit-specific directly (don't use computed to avoid dependency issues)
+      // Check if unit-specific (01/02) for automatic unit detection
       const isUnitSpecific = this.counterpartService.isUnitSpecific(primary);
-      if (!isUnitSpecific) {
-        return;
+
+      if (isUnitSpecific) {
+        // Unit-specific: Update source/target units based on tag/unit
+        const source = this.counterpartService.getSourceUnit(primary);
+        this.sourceUnit.set(source);
+        this.targetUnit.set(this.counterpartService.getTargetUnit(source));
+      } else {
+        // Non unit-specific: Use generic labels
+        this.sourceUnit.set('Primary');
+        this.targetUnit.set('Counterpart');
       }
 
-      // Update source/target units
-      const source = this.counterpartService.getSourceUnit(primary);
-      this.sourceUnit.set(source);
-      this.targetUnit.set(this.counterpartService.getTargetUnit(source));
-
       if (primary?.id) {
-        // Existing item: load counterpart by ID
+        // Existing item: load counterpart by ID (works for both unit-specific and generic)
         this.loadCounterpart(primary.id);
-      } else if (primary?.tagNumber) {
-        // New item: try to find counterpart by tag number
+      } else if (isUnitSpecific && primary?.tagNumber) {
+        // Unit-specific new item: try to find counterpart by tag number
         this.loadCounterpartByTagNumber(primary.tagNumber);
-      } else if (primary?.unit) {
+      } else if (isUnitSpecific && primary?.unit) {
         // New item with only unit field set - use unit as the tag prefix
         this.loadCounterpartByTagNumber(primary.unit);
       }
+      // Non unit-specific new items: no automatic counterpart search
+      // User can use manual search to find/create counterpart
     }, { allowSignalWrites: true });
   }
 
@@ -317,13 +329,23 @@ export class RfLotoPointDualFormComponent {
   }
 
   /**
-   * Create a new counterpart (empty form)
+   * Create a new counterpart (empty form or generated from primary)
+   * For unit-specific items: generates counterpart with transformed values
+   * For non unit-specific items: creates empty counterpart
    */
   createNewCounterpart(): void {
     const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
-    if (!primary?.tagNumber) return;
+    const isUnitSpecific = this.counterpartService.isUnitSpecific(primary);
 
-    const newCounterpart = this.counterpartService.generateCounterpart(primary, this.targetUnit());
+    let newCounterpart: LotoPointDto;
+
+    if (isUnitSpecific && primary?.tagNumber) {
+      // Unit-specific: generate counterpart with transformed tag number
+      newCounterpart = this.counterpartService.generateCounterpart(primary, this.targetUnit());
+    } else {
+      // Non unit-specific: create empty counterpart
+      newCounterpart = new LotoPointDto();
+    }
 
     this.counterpartLotoPoint.set(newCounterpart);
     this.currentCounterpartValues.set(newCounterpart);

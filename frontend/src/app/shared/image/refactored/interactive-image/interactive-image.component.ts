@@ -195,8 +195,8 @@ export class InteractiveImageComponent {
   private suppressContextMenu = false;
   private suppressContextMenuTimer: any = null;
 
-  //Symbol palette
-  private _symbolPaletteVisible = signal<boolean>(true);
+  //Symbol palette (collapsed by default)
+  private _symbolPaletteVisible = signal<boolean>(false);
   showSymbolPalette = computed(() => {
     const config = this.activeConfig();
     return config.showSymbolPalette && this._symbolPaletteVisible();
