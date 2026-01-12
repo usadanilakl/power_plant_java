@@ -264,7 +264,19 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
   isManualDualFormMode = signal<boolean>(false);
 
   /**
-   * Should show dual form (unit-specific AND dual form enabled, OR manually forced)
+   * Check if the current LOTO point has a linked counterpart (counterpartId is set)
+   */
+  hasLinkedCounterpart = computed(() => {
+    const formValues = this.currentFormValues();
+    const existingLp = this.lotoPoint();
+    return !!(formValues?.counterpartId || existingLp?.counterpartId);
+  });
+
+  /**
+   * Should show dual form:
+   * - If manually forced, OR
+   * - If item has a linked counterpart (counterpartId is set), OR
+   * - If unit-specific (01/02) AND dual form enabled
    * Works for both edit mode (existing items) and create mode (new items with 01/02 tag)
    */
   shouldShowDualForm = computed(() => {
@@ -273,7 +285,12 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
       return true;
     }
 
-    // Automatic mode: must be unit-specific and dual form enabled
+    // If item has a linked counterpart, always show dual form
+    if (this.hasLinkedCounterpart() && this.isDualFormEnabled()) {
+      return true;
+    }
+
+    // Automatic mode for unit-specific: must be unit-specific and dual form enabled
     if (!this.isUnitSpecific() || !this.isDualFormEnabled()) {
       return false;
     }

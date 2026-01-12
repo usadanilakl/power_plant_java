@@ -211,8 +211,13 @@ export class RfLotoPointDualFormComponent {
         this.targetUnit.set('Counterpart');
       }
 
-      if (primary?.id) {
-        // Existing item: load counterpart by ID (works for both unit-specific and generic)
+      // Priority 1: If primary has a counterpartId, load that counterpart directly
+      // This works for both unit-specific and non-unit-specific items that are already linked
+      if (primary?.counterpartId) {
+        this.loadCounterpartById(primary.counterpartId);
+      } else if (primary?.id) {
+        // Priority 2: Existing item without counterpartId - try to find counterpart via API
+        // (for unit-specific items, API can find by tag number transformation)
         this.loadCounterpart(primary.id);
       } else if (isUnitSpecific && primary?.tagNumber) {
         // Unit-specific new item: try to find counterpart by tag number
@@ -307,6 +312,43 @@ export class RfLotoPointDualFormComponent {
         }),
         catchError((error) => {
           console.error('Error loading counterpart by tag:', error);
+          this.counterpartStatus.set('not-found');
+          this.isLoading.set(false);
+          return of(null);
+        })
+      )
+      .subscribe();
+  }
+
+  /**
+   * Load counterpart directly by its ID (when counterpartId is already known).
+   * This is used when the primary already has a linked counterpart.
+   */
+  private loadCounterpartById(counterpartId: number): void {
+    this.isLoading.set(true);
+    this.showManualSearch.set(false);
+
+    this.apiService
+      .getCounterpartById(counterpartId)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        tap((response) => {
+          if (response.responseData) {
+            const counterpart = LotoPointDto.fromJson(response.responseData);
+            this.counterpartLotoPoint.set(counterpart);
+            this.currentCounterpartValues.set(counterpart);
+            this.isCounterpartNew.set(false);
+            this.isCounterpartLinked.set(true);
+            this.counterpartStatus.set('linked');
+            this.updateDifferentFields();
+          } else {
+            this.counterpartStatus.set('not-found');
+          }
+          this.isLoading.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error loading counterpart by ID:', error);
+          this.messageService.showError('Failed to load linked counterpart');
           this.counterpartStatus.set('not-found');
           this.isLoading.set(false);
           return of(null);
