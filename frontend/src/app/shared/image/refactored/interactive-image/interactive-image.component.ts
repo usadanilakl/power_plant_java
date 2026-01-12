@@ -1096,11 +1096,13 @@ export class InteractiveImageComponent {
         shape.type === 'image' ||
         shape.type === 'svg-symbol'
       ) {
+        // Use normalized bounds for hover detection
+        const bounds = this.getNormalizedShapeBounds(shape);
         if (
-          hoverX >= shape.x &&
-          hoverX <= shape.x + shape.width &&
-          hoverY >= shape.y &&
-          hoverY <= shape.y + shape.height
+          hoverX >= bounds.x &&
+          hoverX <= bounds.x + bounds.width &&
+          hoverY >= bounds.y &&
+          hoverY <= bounds.y + bounds.height
         ) {
           isOverShape = true;
           hoveredShape = shape;
@@ -1277,6 +1279,35 @@ export class InteractiveImageComponent {
     this.imageResizeObserver.observe(this.img);
   }
 
+  /**
+   * Returns normalized shape bounds adjusted for current image dimensions.
+   * This handles cases where shapes were created on images that were later resized.
+   */
+  private getNormalizedShapeBounds(shape: RfShape): { x: number; y: number; width: number; height: number } {
+    const currentWidth = this.img?.naturalWidth;
+    const currentHeight = this.img?.naturalHeight;
+
+    // Calculate normalization factors
+    let normX = 1;
+    let normY = 1;
+    if (currentWidth && currentHeight && shape.originalPictureWidth && shape.originalPictureHeight) {
+      normX = currentWidth / shape.originalPictureWidth;
+      normY = currentHeight / shape.originalPictureHeight;
+    }
+
+    if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {
+      return {
+        x: shape.x * normX,
+        y: shape.y * normY,
+        width: shape.width * normX,
+        height: shape.height * normY,
+      };
+    }
+
+    // For other shape types, return basic bounds (they may need specific handling)
+    return { x: (shape as any).x * normX, y: (shape as any).y * normY, width: 0, height: 0 };
+  }
+
   private isOverShape(event: MouseEvent) {
     const imgRect = this.img.getBoundingClientRect();
     const clickX =
@@ -1299,11 +1330,13 @@ export class InteractiveImageComponent {
         shape.type === 'image' ||
         shape.type === 'svg-symbol'
       ) {
+        // Use normalized bounds for hit detection
+        const bounds = this.getNormalizedShapeBounds(shape);
         if (
-          clickX >= shape.x &&
-          clickX <= shape.x + shape.width &&
-          clickY >= shape.y &&
-          clickY <= shape.y + shape.height
+          clickX >= bounds.x &&
+          clickX <= bounds.x + bounds.width &&
+          clickY >= bounds.y &&
+          clickY <= bounds.y + bounds.height
         ) {
           clickedShapeId = shape.id;
           break;
@@ -1771,6 +1804,9 @@ export class InteractiveImageComponent {
       return null;
     }
 
+    // Get normalized bounds for handle detection
+    const bounds = this.getNormalizedShapeBounds(shape);
+
     const imgRect = this.img.getBoundingClientRect();
     let mouseX =
       (event.clientX - imgRect.left) /
@@ -1784,8 +1820,8 @@ export class InteractiveImageComponent {
     // If shape is rotated, transform mouse coordinates to shape's local space
     const rotation = (shape as any).rotation || 0;
     if (rotation !== 0) {
-      const centerX = shape.x + shape.width / 2;
-      const centerY = shape.y + shape.height / 2;
+      const centerX = bounds.x + bounds.width / 2;
+      const centerY = bounds.y + bounds.height / 2;
 
       // Translate mouse to origin
       const translatedX = mouseX - centerX;
@@ -1803,7 +1839,7 @@ export class InteractiveImageComponent {
     // Handle size in image coordinates (adjust based on zoom)
     const handleSize = 8 / this.transformState.scale / this.baseImageScale;
 
-    const handles = this.getResizeHandlePositions(shape, handleSize);
+    const handles = this.getResizeHandlePositions(bounds, handleSize);
 
     for (const [handle, pos] of Object.entries(handles)) {
       if (this.isPointInHandle(mouseX, mouseY, pos, handleSize)) {
@@ -1896,6 +1932,9 @@ export class InteractiveImageComponent {
       return false;
     }
 
+    // Get normalized bounds for rotation handle detection
+    const bounds = this.getNormalizedShapeBounds(shape);
+
     const imgRect = this.img.getBoundingClientRect();
     let mouseX =
       (event.clientX - imgRect.left) /
@@ -1909,8 +1948,8 @@ export class InteractiveImageComponent {
     // If shape is rotated, transform mouse coordinates to shape's local space
     const rotation = (shape as any).rotation || 0;
     if (rotation !== 0) {
-      const centerX = shape.x + shape.width / 2;
-      const centerY = shape.y + shape.height / 2;
+      const centerX = bounds.x + bounds.width / 2;
+      const centerY = bounds.y + bounds.height / 2;
 
       // Translate mouse to origin
       const translatedX = mouseX - centerX;
@@ -1925,7 +1964,7 @@ export class InteractiveImageComponent {
       mouseY = translatedX * sin + translatedY * cos + centerY;
     }
 
-    const handlePos = this.getRotationHandlePosition(shape);
+    const handlePos = this.getRotationHandlePosition(bounds);
     const handleRadius = 8 / this.transformState.scale / this.baseImageScale;
 
     // Use circular hit detection for rotation handle

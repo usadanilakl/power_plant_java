@@ -1,7 +1,7 @@
 .dialog-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 80vh;
   max-height: 80vh;
 }
 
@@ -30,12 +30,16 @@
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+  /* Ensure the container has a calculable height for virtual scroll */
+  height: 100%;
 }
 
 .menu-container app-rf-toggle-menu {
   flex: 1;
   display: flex;
   min-height: 0;
+  /* Ensure the toggle menu fills its container */
+  height: 100%;
 }
 
 .menu-container h3 {
