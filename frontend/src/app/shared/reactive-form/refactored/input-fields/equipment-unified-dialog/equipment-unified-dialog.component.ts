@@ -1,4 +1,4 @@
-import { Component, inject, output, signal, computed, DestroyRef } from '@angular/core';
+import { Component, inject, input, output, signal, computed, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { InteractiveImageComponent } from '../../../../image/refactored/interactive-image/interactive-image.component';
@@ -41,8 +41,12 @@ export class EquipmentUnifiedDialogComponent {
   private equipmentService = inject(RfEquipmentService);
   private destroyRef = inject(DestroyRef);
 
+  // Inputs
+  requireLotoPointForDrawn = input<boolean>(false);  // When true, emits equipmentDrawnForLotoPoint instead of equipmentAcquired for drawn shapes
+
   // Outputs
-  equipmentAcquired = output<EquipmentDto>();
+  equipmentAcquired = output<EquipmentDto>();  // Emitted for browsed equipment (always) and drawn equipment (when requireLotoPointForDrawn=false)
+  equipmentDrawnForLotoPoint = output<EquipmentDto>();  // Emitted for drawn equipment when requireLotoPointForDrawn=true
   close = output<void>();
 
   // Delegated to file service
@@ -155,9 +159,7 @@ export class EquipmentUnifiedDialogComponent {
     const file = this.selectedFile();
     if (!file) return;
 
-    const mode = this.currentMode();
-
-    if (mode === 'browse') {
+    if (this.currentMode() === 'browse') {
       // Selecting existing equipment
       const equipment = this.selectedEquipment();
       if (equipment) {
@@ -169,7 +171,7 @@ export class EquipmentUnifiedDialogComponent {
         this.equipmentAcquired.emit(enrichedEquipment);
         this.reset();
       }
-    } else if (mode === 'drawn') {
+    } else if (this.currentMode() === 'drawn') {
       // Saving new drawn equipment
       const shape = this.drawnShape();
       if (shape) {
@@ -191,8 +193,15 @@ export class EquipmentUnifiedDialogComponent {
                   mainFileId: file.id,
                   mainFileObject: file
                 });
-                this.equipmentAcquired.emit(enrichedEquipment);
-                this.reset();
+
+                // If LOTO point creation is required for drawn equipment, emit special event
+                if (this.requireLotoPointForDrawn()) {
+                  this.equipmentDrawnForLotoPoint.emit(enrichedEquipment);
+                  // Don't reset - parent will handle closing after LOTO point form
+                } else {
+                  this.equipmentAcquired.emit(enrichedEquipment);
+                  this.reset();
+                }
               } else {
                 this.error.set('Failed to save equipment.');
               }

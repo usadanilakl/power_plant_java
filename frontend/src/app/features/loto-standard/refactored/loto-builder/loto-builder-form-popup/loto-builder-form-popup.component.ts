@@ -6,7 +6,7 @@ import { of } from 'rxjs';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { RfLotoPointFormComponent } from '../../../../loto-points/refactored/rf-loto-point-form/rf-loto-point-form.component';
 import { RfLotoPointTableComponent } from '../../../../loto-points/refactored/rf-loto-point-table/rf-loto-point-table.component';
-import { LotoPointDualFormComponent } from '../../../../loto-points/refactored/loto-point-dual-form/loto-point-dual-form.component';
+import { RfLotoPointDualFormComponent } from '../../../../loto-points/refactored/rf-loto-point-dual-form/rf-loto-point-dual-form.component';
 import { RfLotoPointApiService } from '../../../../loto-points/refactored/services/rf-loto-point-api.service';
 import { RfLotoPointStateService } from '../../../../loto-points/refactored/services/rf-loto-point-state.service';
 import { LotoPointCounterpartService } from '../../../../loto-points/refactored/services/loto-point-counterpart.service';
@@ -45,7 +45,7 @@ import { RfLotoPointTableDataService } from '../../../../loto-points/refactored/
     CommonModule,
     RfLotoPointFormComponent,
     RfLotoPointTableComponent,
-    LotoPointDualFormComponent,
+    RfLotoPointDualFormComponent,
   ],
   providers: [
     // Provide a separate instance of RfLotoPointStateService for this popup
@@ -99,6 +99,7 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
     effect(() => {
       const isNowVisible = this.builderState.isLotoPointFormOpen();
       const lotoPointForEdit = this.builderState.selectedLotoPointForEdit();
+      const pendingEquipment = this.builderState.pendingEquipment();
 
       if (isNowVisible && !this.wasVisible) {
         // Popup just opened - clear all state for fresh start
@@ -112,6 +113,14 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
         // For edit mode, initialize currentFormValues with the existing loto point
         if (lotoPointForEdit) {
           this.currentFormValues.set(lotoPointForEdit);
+        } else if (pendingEquipment) {
+          // For new loto point with pending equipment, pre-populate equipmentList
+          const newLotoPointWithEquipment = new LotoPointDto({
+            equipmentList: [pendingEquipment],
+          });
+          this.currentFormValues.set(newLotoPointWithEquipment);
+          // Also set it in the state service so the form picks it up
+          this.lotoPointStateService.setSelectedItem(newLotoPointWithEquipment);
         } else {
           this.currentFormValues.set(null);
         }
@@ -250,11 +259,21 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
   isDualFormEnabled = signal<boolean>(true);
 
   /**
-   * Should show dual form (unit-specific AND dual form enabled)
+   * Whether user manually forced dual form mode (for non 01/02 items)
+   */
+  isManualDualFormMode = signal<boolean>(false);
+
+  /**
+   * Should show dual form (unit-specific AND dual form enabled, OR manually forced)
    * Works for both edit mode (existing items) and create mode (new items with 01/02 tag)
    */
   shouldShowDualForm = computed(() => {
-    // Must be unit-specific and dual form enabled
+    // If manually forced, always show dual form
+    if (this.isManualDualFormMode()) {
+      return true;
+    }
+
+    // Automatic mode: must be unit-specific and dual form enabled
     if (!this.isUnitSpecific() || !this.isDualFormEnabled()) {
       return false;
     }
@@ -279,8 +298,27 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
   });
 
   /**
+   * Whether to show the manual dual form toggle button.
+   * Only show when:
+   * - In form view
+   * - NOT in dual form mode (either automatic or manual)
+   * - There are form values (something to work with)
+   */
+  showManualDualFormButton = computed(() => {
+    // Only in form view
+    if (!this.isFormView()) return false;
+    // Don't show if already in dual form mode
+    if (this.showDualForm()) return false;
+    // Need to have some form values to toggle
+    const formValues = this.currentFormValues();
+    const existingLp = this.lotoPoint();
+    return !!(formValues || existingLp);
+  });
+
+  /**
    * Get the effective LOTO point to display in dual form
    * For new items, use currentFormValues; for existing, use lotoPoint
+   * Also handles manual dual form mode for non 01/02 items
    */
   effectiveLotoPoint = computed(() => {
     const formValues = this.currentFormValues();
@@ -289,6 +327,12 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
     // For edit mode, use existing LOTO point
     if (this.isEditMode() && existingLp) {
       return existingLp;
+    }
+
+    // For manual dual form mode, use form values even if not unit-specific
+    if (this.isManualDualFormMode()) {
+      // Prefer form values, fallback to existing LOTO point, or create empty one
+      return formValues || existingLp || new LotoPointDto();
     }
 
     // For new items with form values that have a unit-specific tag or unit
@@ -312,6 +356,8 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
     this.builderState.setRecognizedText(null);
     this.selectedLotoPointFromTable.set(null);
     this.currentFormValues.set(null);
+    // Reset manual dual form mode
+    this.isManualDualFormMode.set(false);
     // Reset popup position when closing
     this.popupPosition.set(null);
   }
@@ -518,10 +564,19 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
     const equipment = this.pendingEquipment();
 
     if (equipment) {
-      // Associate with pending equipment
+      // Check if equipment is already in the list (pre-populated on form open)
+      const equipmentAlreadyInList = (lotoPoint.equipmentList || []).some(
+        eq => eq.id === equipment.id
+      );
+
+      // Only add equipment if not already present
+      const finalEquipmentList = equipmentAlreadyInList
+        ? (lotoPoint.equipmentList || [])
+        : [...(lotoPoint.equipmentList || []), equipment];
+
       const lotoPointWithEquipment = new LotoPointDto({
         ...lotoPoint,
-        equipmentList: [...(lotoPoint.equipmentList || []), equipment]
+        equipmentList: finalEquipmentList
       });
 
       this.isLoading.set(true);
@@ -570,10 +625,24 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
   }
 
   /**
-   * Toggle dual form mode
+   * Toggle dual form mode (for unit-specific items)
    */
   toggleDualFormMode(): void {
     this.isDualFormEnabled.update(v => !v);
+  }
+
+  /**
+   * Enable manual dual form mode (for non 01/02 items that need counterparts)
+   */
+  enableManualDualFormMode(): void {
+    this.isManualDualFormMode.set(true);
+  }
+
+  /**
+   * Disable manual dual form mode and return to single form
+   */
+  disableManualDualFormMode(): void {
+    this.isManualDualFormMode.set(false);
   }
 
   /**

@@ -1,0 +1,355 @@
+<div class="rf-dual-form-container">
+  <!-- Loading Overlay -->
+  @if (isLoading()) {
+    <div class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <span>Loading counterpart...</span>
+    </div>
+  }
+
+  <!-- Dual Form Layout - Always show when unit-specific -->
+  @if (!isLoading() && isUnitSpecific()) {
+    <div class="rf-dual-form-layout">
+      <!-- Primary Form (Left) - Uses full rf-loto-point-form with all features -->
+      <div class="form-panel primary-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">
+            Unit {{ sourceUnit() }}
+            <span class="panel-subtitle">(Primary)</span>
+          </h3>
+          @if (isSavingPrimary()) {
+            <span class="saving-indicator">Saving...</span>
+          }
+        </div>
+
+        <div class="form-content">
+          <!-- Full single form with carousel, equipment, drafts, clipboard, tag generator -->
+          <app-rf-loto-point-form
+            #primaryForm
+            [entityInput]="effectivePrimaryEntity()"
+            [fieldsInput]="fieldsToDisplay()"
+            [externalSaveMode]="true"
+            (formValueChange)="onPrimaryValueChange($event)"
+          ></app-rf-loto-point-form>
+        </div>
+
+        <div class="panel-actions">
+          <button
+            class="action-btn save-btn"
+            (click)="savePrimary()"
+            [disabled]="isSavingPrimary() || isSavingBoth()"
+          >
+            Save Unit {{ sourceUnit() }}
+          </button>
+          @if (canDeletePrimary()) {
+            <button
+              class="action-btn delete-btn"
+              (click)="deletePrimary()"
+              [disabled]="isDeletingPrimary() || isDeletingBoth()"
+              title="Delete this LOTO point"
+            >
+              @if (isDeletingPrimary()) { Deleting... } @else { Delete }
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Sync Controls (Center) - Only show when counterpart exists -->
+      @if (counterpartLotoPoint()) {
+        <div class="sync-controls">
+          <div class="sync-header">
+            <span class="sync-icon">&#8644;</span>
+            <span class="sync-label">Sync</span>
+          </div>
+
+          <!-- Counterpart Status Indicator -->
+          <div class="counterpart-status" [class]="counterpartStatus()">
+            @switch (counterpartStatus()) {
+              @case ('linked') {
+                <span class="status-badge linked">&#128279; Linked</span>
+              }
+              @case ('found') {
+                <span class="status-badge found">Found (not linked)</span>
+              }
+              @case ('suggested') {
+                <span class="status-badge suggested">Suggestion</span>
+              }
+            }
+          </div>
+
+          <!-- Link/Unlink buttons -->
+          @if (!isCounterpartNew()) {
+            <div class="link-controls">
+              @if (isCounterpartLinked()) {
+                <button
+                  class="link-btn unlink"
+                  (click)="unlinkCounterpart()"
+                  [disabled]="isLinking()"
+                  title="Remove counterpart link"
+                >
+                  @if (isLinking()) { Unlinking... } @else { Unlink }
+                </button>
+              } @else {
+                <button
+                  class="link-btn link"
+                  (click)="linkCounterparts()"
+                  [disabled]="isLinking() || !(currentPrimaryValues()?.id || primaryLotoPoint()?.id)"
+                  title="Link these LOTO points as counterparts"
+                >
+                  @if (isLinking()) { Linking... } @else { Link }
+                </button>
+              }
+            </div>
+          }
+
+          <div class="sync-buttons">
+            <!-- Sync All Buttons -->
+            <button
+              class="sync-all-btn sync-right"
+              (click)="syncAllToCounterpart()"
+              title="Sync all fields to Unit {{ targetUnit() }}"
+            >
+              Sync All &#8594;
+            </button>
+
+            <button
+              class="sync-all-btn sync-left"
+              (click)="syncAllToPrimary()"
+              title="Sync all fields to Unit {{ sourceUnit() }}"
+            >
+              &#8592; Sync All
+            </button>
+          </div>
+
+          <!-- Field-by-field sync indicators -->
+          <div class="field-sync-list">
+            @for (field of syncableFields; track field) {
+              <div class="field-sync-row" [class.different]="isFieldDifferent(field)">
+                <button
+                  class="field-sync-btn sync-right"
+                  (click)="syncFieldToCounterpart(field)"
+                  [disabled]="!isFieldDifferent(field)"
+                  title="Sync {{ getFieldLabel(field) }} to Unit {{ targetUnit() }}"
+                >
+                  &#8594;
+                </button>
+                <span class="field-name" [class.different]="isFieldDifferent(field)">
+                  {{ getFieldLabel(field) }}
+                </span>
+                <button
+                  class="field-sync-btn sync-left"
+                  (click)="syncFieldToPrimary(field)"
+                  [disabled]="!isFieldDifferent(field)"
+                  title="Sync {{ getFieldLabel(field) }} to Unit {{ sourceUnit() }}"
+                >
+                  &#8592;
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+        <!-- Minimal sync placeholder when no counterpart -->
+        <div class="sync-controls sync-controls-empty">
+          <div class="sync-header disabled">
+            <span class="sync-icon">&#8644;</span>
+            <span class="sync-label">Sync</span>
+          </div>
+          <div class="sync-placeholder">
+            <span>No counterpart selected</span>
+          </div>
+        </div>
+      }
+
+      <!-- Counterpart Form (Right) - Uses full rf-loto-point-form with all features -->
+      @if (counterpartLotoPoint()) {
+        <div class="form-panel counterpart-panel"
+             [class.is-new]="isCounterpartNew()"
+             [class.is-linked]="isCounterpartLinked()"
+             [class.is-suggestion]="counterpartStatus() === 'suggested'">
+          <div class="panel-header">
+            <h3 class="panel-title">
+              Unit {{ targetUnit() }}
+              @if (isCounterpartNew()) {
+                <span class="new-badge">NEW</span>
+              }
+              @if (isCounterpartLinked()) {
+                <span class="linked-badge">&#128279;</span>
+              }
+              @if (counterpartStatus() === 'suggested' && !isCounterpartLinked()) {
+                <span class="suggestion-badge">Suggestion</span>
+              }
+            </h3>
+            <div class="panel-header-actions">
+              @if (isSavingCounterpart()) {
+                <span class="saving-indicator">Saving...</span>
+              }
+              <!-- Button to search for a different counterpart -->
+              <button
+                class="change-counterpart-btn"
+                (click)="openManualSearch()"
+                title="Search for a different counterpart"
+              >
+                &#128269; Change
+              </button>
+            </div>
+          </div>
+
+          <div class="form-content">
+            <!-- Full single form with carousel, equipment, drafts, clipboard, tag generator -->
+            <app-rf-loto-point-form
+              #counterpartForm
+              [entityInput]="effectiveCounterpartEntity()!"
+              [fieldsInput]="fieldsToDisplay()"
+              [externalSaveMode]="true"
+              (formValueChange)="onCounterpartValueChange($event)"
+            ></app-rf-loto-point-form>
+          </div>
+
+          <div class="panel-actions">
+            <button
+              class="action-btn save-btn"
+              (click)="saveCounterpart()"
+              [disabled]="isSavingCounterpart() || isSavingBoth()"
+            >
+              {{ isCounterpartNew() ? 'Create' : 'Save' }} Unit {{ targetUnit() }}
+            </button>
+            @if (canDeleteCounterpart()) {
+              <button
+                class="action-btn delete-btn"
+                (click)="deleteCounterpart()"
+                [disabled]="isDeletingCounterpart() || isDeletingBoth()"
+                title="Delete this LOTO point"
+              >
+                @if (isDeletingCounterpart()) { Deleting... } @else { Delete }
+              </button>
+            }
+          </div>
+        </div>
+      } @else {
+        <!-- No Counterpart - Inline Options Panel (Right side) -->
+        <div class="form-panel counterpart-panel counterpart-panel-empty">
+          <div class="panel-header">
+            <h3 class="panel-title">
+              Unit {{ targetUnit() }}
+              <span class="panel-subtitle">(No counterpart)</span>
+            </h3>
+          </div>
+
+          <div class="counterpart-options-inline">
+            <div class="options-icon">?</div>
+            <h4>No Counterpart Found</h4>
+            <p>No matching LOTO point found for Unit {{ targetUnit() }}.</p>
+
+            <div class="options-buttons">
+              <button class="option-btn create-btn" (click)="createNewCounterpart()">
+                <span class="btn-icon">+</span>
+                Create New
+              </button>
+              <button class="option-btn search-btn" (click)="openManualSearch()">
+                <span class="btn-icon">&#128269;</span>
+                Search Existing
+              </button>
+            </div>
+
+            <p class="options-hint">
+              You can continue editing the primary form.<br>
+              Choose an option when ready.
+            </p>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="rf-dual-form-footer">
+      <div class="footer-left">
+        <button class="action-btn cancel-btn" (click)="close()">
+          Cancel
+        </button>
+        @if (canDeletePrimary() && canDeleteCounterpart()) {
+          <button
+            class="action-btn delete-both-btn"
+            (click)="deleteBoth()"
+            [disabled]="isDeletingPrimary() || isDeletingCounterpart() || isDeletingBoth()"
+            title="Delete both LOTO points"
+          >
+            @if (isDeletingBoth()) { Deleting... } @else { Delete Both }
+          </button>
+        }
+      </div>
+      <div class="footer-right">
+        @if (counterpartLotoPoint()) {
+          <button
+            class="action-btn save-both-btn"
+            (click)="saveBoth()"
+            [disabled]="isSavingPrimary() || isSavingCounterpart() || isSavingBoth()"
+          >
+            @if (isSavingBoth()) {
+              Saving Both...
+            } @else {
+              Save Both Units
+            }
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Manual Search Mode - Overlay on right panel only -->
+  @if (showManualSearch()) {
+    <div class="manual-search-overlay">
+      <div class="manual-search-panel">
+        <div class="search-header">
+          <h3>Search for Counterpart in Unit {{ targetUnit() }}</h3>
+          <button class="close-search-btn" (click)="closeManualSearch()" title="Close">&#10005;</button>
+        </div>
+        <p class="search-instructions">
+          Double-click a row to select, or select and click "Use Selected".
+        </p>
+
+        <div class="search-table-container">
+          @if (showManualSearch()) {
+            <app-rf-loto-point-table
+              [tableId]="'rf-dual-form-counterpart-search-' + targetUnit()"
+              [fieldsToDisplay]="['tagNumber', 'description', 'normPos']"
+              [initialSearchCriteria]="searchCriteria()"
+              (selectedItemsEvent)="onSearchSelected($event)"
+              (rowDoubleClickedEvent)="onSearchRowDoubleClicked($event)"
+            ></app-rf-loto-point-table>
+          }
+        </div>
+
+        @if (selectedFromSearch()) {
+          <div class="selected-info">
+            <span class="selected-label">Selected:</span>
+            <strong>{{ selectedFromSearch()!.tagNumber }}</strong>
+            <span class="selected-desc">{{ selectedFromSearch()!.description }}</span>
+          </div>
+        }
+
+        <div class="manual-search-actions">
+          <button class="action-btn cancel-btn" (click)="closeManualSearch()">
+            Cancel
+          </button>
+          <button
+            class="action-btn use-btn"
+            (click)="useSelectedFromSearch()"
+            [disabled]="!selectedFromSearch()"
+          >
+            Use Selected
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Not Unit Specific -->
+  @if (!isUnitSpecific()) {
+    <div class="not-unit-specific">
+      <p>This LOTO point's tag number does not start with 01 or 02.</p>
+      <p>Dual form view is only available for unit-specific LOTO points.</p>
+      <button class="action-btn" (click)="close()">Close</button>
+    </div>
+  }
+</div>

@@ -147,7 +147,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   }
 
   onUnifiedEquipmentAcquired(equipment: EquipmentDto) {
-    // Handle equipment from unified dialog (either browsed or drawn)
+    // Handle equipment from unified dialog (either browsed or drawn without LOTO requirement)
     // Check for conflicts same as browser selection
     if (this.conflictMode === 'none' || !equipment.id) {
       this.addEquipmentToList(equipment, equipment.id ? 'browsed' : 'drawn');
@@ -172,6 +172,16 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
 
     this.addEquipmentToList(equipment, equipment.id ? 'browsed' : 'drawn');
     this.closeUnifiedDialog();
+  }
+
+  /**
+   * Called when equipment is drawn in unified dialog and LOTO point creation is required.
+   * Opens the LOTO point form for the newly drawn equipment.
+   */
+  onUnifiedEquipmentDrawnForLotoPoint(equipment: EquipmentDto) {
+    // Close the unified dialog first, then open LOTO point form
+    this.closeUnifiedDialog();
+    this.openLotoPointFormForEquipment(equipment);
   }
 
   // Browser Dialog

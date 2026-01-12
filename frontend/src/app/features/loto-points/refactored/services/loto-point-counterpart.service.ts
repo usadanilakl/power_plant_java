@@ -119,6 +119,7 @@ export class LotoPointCounterpartService {
   /**
    * Transform unit references in text (01<->02, Unit1<->Unit2, etc.)
    * Handles: U1, U 1, Unit1, Unit 1, u1, u 1, unit1, unit 1, UNIT1, UNIT 1, #1, #2
+   * Also handles words that START with 01 or 02 (e.g., "01ABC" -> "02ABC")
    */
   transformUnitText(text: string | null | undefined, fromUnit: string, toUnit: string): string {
     if (!text) return '';
@@ -145,6 +146,10 @@ export class LotoPointCounterpartService {
 
     // Pattern: "#1" or "#2"
     result = result.replace(new RegExp(`#${fromNum}\\b`, 'g'), `#${toNum}`);
+
+    // Pattern: Words that START with 01 or 02 (e.g., "01ABC" -> "02ABC", "02-VALVE" -> "01-VALVE")
+    // This matches word boundaries followed by 01/02 and then any word characters
+    result = result.replace(new RegExp(`\\b${fromUnit}(\\w+)`, 'g'), `${toUnit}$1`);
 
     // Pattern: Standalone "01" or "02" at word boundaries (for tag-like references)
     result = result.replace(new RegExp(`\\b${fromUnit}\\b`, 'g'), toUnit);

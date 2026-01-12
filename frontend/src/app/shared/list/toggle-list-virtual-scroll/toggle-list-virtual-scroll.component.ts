@@ -6,7 +6,9 @@ import {
   output,
   computed,
   input,
-  OnDestroy
+  OnDestroy,
+  AfterViewInit,
+  effect
 } from '@angular/core';
 import { NestedItem } from '../../../models/ui/nested-item.model';
 import { CdkVirtualScrollViewport, ScrollingModule } from "@angular/cdk/scrolling";
@@ -26,7 +28,7 @@ interface FlatItem extends NestedItem {
   styleUrl: './toggle-list-virtual-scroll.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ToggleListVirtualScrollComponent implements OnDestroy {
+export class ToggleListVirtualScrollComponent implements OnDestroy, AfterViewInit {
   @ViewChild(CdkVirtualScrollViewport) viewport: CdkVirtualScrollViewport | null = null;
 
   items = input<NestedItem[]>([]);
@@ -74,6 +76,31 @@ export class ToggleListVirtualScrollComponent implements OnDestroy {
 
     return flatten(this.items(), 0);
   });
+
+  constructor() {
+    // Effect to update viewport when items change
+    effect(() => {
+      // Track items changes
+      const items = this.items();
+      // Schedule viewport check after items are updated
+      if (items.length > 0 && this.viewport) {
+        // Use setTimeout to ensure viewport check runs after render
+        setTimeout(() => {
+          this.viewport?.checkViewportSize();
+        }, 0);
+      }
+    });
+  }
+
+  ngAfterViewInit(): void {
+    // Schedule viewport size check after view is initialized
+    // This ensures proper rendering when opened in popups/dialogs
+    setTimeout(() => {
+      if (this.viewport) {
+        this.viewport.checkViewportSize();
+      }
+    }, 100);
+  }
 
   trackByFn(index: number, item: FlatItem): string | number {
     return item.id;

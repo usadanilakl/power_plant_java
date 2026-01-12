@@ -91,14 +91,14 @@
       <!-- Dual Form View (unit-specific with side-by-side forms) -->
       @if (isFormView() && showDualForm() && effectiveLotoPoint()) {
         <div class="dual-form-wrapper">
-          <app-loto-point-dual-form
+          <app-rf-loto-point-dual-form
             [primaryLotoPoint]="effectiveLotoPoint()!"
-            [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'zeroEnergy']"
+            [fieldsToDisplay]="['tagNumber', 'description', 'specificLocation', 'eqType', 'isoPos', 'normPos', 'location', 'zeroEnergy', 'equipmentList']"
             (primarySaved)="onPrimarySaved($event)"
             (counterpartSaved)="onCounterpartSaved($event)"
             (bothSaved)="onBothSaved($event)"
             (formClosed)="onDualFormClosed()"
-          ></app-loto-point-dual-form>
+          ></app-rf-loto-point-dual-form>
         </div>
       }
 
@@ -121,6 +121,15 @@
               (click)="associateSelectedLotoPoint()"
             >
               Associate Selected
+            </button>
+          }
+          @if (showManualDualFormButton()) {
+            <button
+              class="action-button"
+              (click)="enableManualDualFormMode()"
+              title="Open counterpart form for editing both units side by side"
+            >
+              Open Counterpart
             </button>
           }
         </div>

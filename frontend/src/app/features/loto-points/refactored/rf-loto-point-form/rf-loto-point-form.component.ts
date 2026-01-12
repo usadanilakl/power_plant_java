@@ -71,8 +71,14 @@ export class RfLotoPointFormComponent {
   entityInput = input<LotoPointDto>();
   fieldsInput = input<LotoPointFieldName[]>([]);
 
+  // External save mode - when true, formSubmit emits instead of calling stateService
+  externalSaveMode = input<boolean>(false);
+
   // Output for form value changes (passthrough from reactive form)
   formValueChange = output<LotoPointDto>();
+
+  // Output for form submission (used in external save mode)
+  formSubmit = output<LotoPointDto>();
 
   private entityFromState = this.stateService.selectedItem;
 
@@ -261,8 +267,13 @@ export class RfLotoPointFormComponent {
   }
 
   onSubmit(item: LotoPointDto) {
-    // Draft will be cleared by submitForm after successful save
-    this.stateService.submitForm(item);
+    if (this.externalSaveMode()) {
+      // In external save mode, emit the data and let parent handle save
+      this.formSubmit.emit(item);
+    } else {
+      // Draft will be cleared by submitForm after successful save
+      this.stateService.submitForm(item);
+    }
   }
 
   // Draft dialog handlers
@@ -350,7 +361,17 @@ export class RfLotoPointFormComponent {
 
   onClipboardItemSelected(item: LotoPointDto): void {
     if (item) {
-      this.stateService.setSelectedItem(new LotoPointDto(item));
+      // Create a copy excluding equipmentList to preserve current equipment
+      const currentEntity = this.entity();
+      const pastedItem = new LotoPointDto({
+        ...item,
+        id: undefined, // Always exclude ID on paste
+        equipmentList: currentEntity?.equipmentList || [], // Preserve current equipment
+        equipmentIdList: currentEntity?.equipmentIdList || [], // Preserve current equipment IDs
+      });
+      this.stateService.setSelectedItem(pastedItem);
+      // Emit form value change to notify parent (e.g., to trigger dual form for 01/02 tags)
+      this.formValueChange.emit(pastedItem);
     }
   }
 
@@ -440,5 +461,21 @@ export class RfLotoPointFormComponent {
         alert('Failed to delete LOTO point: ' + (error.error?.message || error.message || 'Unknown error'));
       }
     });
+  }
+
+  //===========================EXTERNAL UPDATE===========================
+  /**
+   * Update the entity externally (used by dual form for sync operations).
+   * This updates the state service which triggers the form to patch with new values.
+   */
+  updateEntity(entity: LotoPointDto): void {
+    this.stateService.setSelectedItem(entity);
+  }
+
+  /**
+   * Get the current form values (useful for sync operations)
+   */
+  getCurrentValues(): LotoPointDto {
+    return this.entity();
   }
 }

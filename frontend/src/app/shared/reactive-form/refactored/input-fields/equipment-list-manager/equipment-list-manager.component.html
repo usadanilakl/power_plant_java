@@ -115,7 +115,9 @@
   [zIndex]="10050"
   (close)="closeUnifiedDialog()">
   <app-equipment-unified-dialog
+    [requireLotoPointForDrawn]="requireLotoPointForDrawn"
     (equipmentAcquired)="onUnifiedEquipmentAcquired($event)"
+    (equipmentDrawnForLotoPoint)="onUnifiedEquipmentDrawnForLotoPoint($event)"
     (close)="closeUnifiedDialog()"
   />
 </app-rf-popup-projection>
