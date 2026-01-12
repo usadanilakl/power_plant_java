@@ -147,6 +147,7 @@
   background: var(--secondary-background, #f5f5f5);
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 /* Sync Controls (Center) */
@@ -284,7 +285,18 @@
   background: var(--primary-background, #ffffff);
   border-top: 2px solid var(--border-color, #e0e0e0);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-left {
+  display: flex;
+  gap: 12px;
+}
+
+.footer-right {
+  display: flex;
   gap: 12px;
 }
 
@@ -342,6 +354,31 @@
 .save-both-btn:hover:not(:disabled) {
   background: #43A047;
   border-color: #43A047;
+}
+
+/* Delete buttons */
+.delete-btn {
+  background: var(--secondary-background, #e5e5e5);
+  color: #c62828;
+  border-color: #c62828;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #c62828;
+  color: white;
+  border-color: #c62828;
+}
+
+.delete-both-btn {
+  background: var(--secondary-background, #e5e5e5);
+  color: #c62828;
+  border-color: #c62828;
+}
+
+.delete-both-btn:hover:not(:disabled) {
+  background: #c62828;
+  color: white;
+  border-color: #c62828;
 }
 
 /* Error/Info States */

@@ -31,6 +31,7 @@ import { ClipboardService } from '../../../../shared/clipboard/clipboard.service
 import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-generator/tag-number-generator.component';
 import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
+import { ConfirmationService } from '../../../../services/ui/confirmation.service';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 // Table services required for isolated table instance
 import { TableSelectionService } from '../../../../shared/table/refactored/services/table-selection.service';
@@ -107,6 +108,7 @@ export class LotoPointDualFormComponent {
   private mapperService = inject(LotoPointMapperService);
   private counterpartService = inject(LotoPointCounterpartService);
   private messageService = inject(GlobalMessageService);
+  private confirmationService = inject(ConfirmationService);
   private destroyRef = inject(DestroyRef);
   private lotoPointStateService = inject(RfLotoPointStateService);
   protected clipboardService = inject(ClipboardService);
@@ -1006,6 +1008,176 @@ export class LotoPointDualFormComponent {
       this.counterpartLotoPoint.set(updated);
       this.updateDifferentFields();
     }
+  }
+
+  // ========== Delete Functionality ==========
+
+  /** Whether currently deleting primary */
+  isDeletingPrimary = signal<boolean>(false);
+
+  /** Whether currently deleting counterpart */
+  isDeletingCounterpart = signal<boolean>(false);
+
+  /** Whether currently deleting both */
+  isDeletingBoth = signal<boolean>(false);
+
+  /**
+   * Check if primary can be deleted (must have an ID)
+   */
+  canDeletePrimary(): boolean {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    return !!primary?.id;
+  }
+
+  /**
+   * Check if counterpart can be deleted (must have an ID and not be new)
+   */
+  canDeleteCounterpart(): boolean {
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    return !!counterpart?.id && !this.isCounterpartNew();
+  }
+
+  /**
+   * Delete primary LOTO point with confirmation
+   */
+  deletePrimary(): void {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    if (!primary?.id) return;
+
+    const tagNumber = primary.tagNumber || `LOTO Point #${primary.id}`;
+
+    this.confirmationService.confirm(
+      `Are you sure you want to delete "${tagNumber}" (Unit ${this.sourceUnit()})?\n\nThis will also delete all associated equipment shapes.`
+    ).then(confirmed => {
+      if (!confirmed) return;
+
+      // If counterpart is linked, ask about it
+      if (this.isCounterpartLinked()) {
+        this.confirmationService.confirm(
+          `This LOTO point has a linked counterpart.\n\nDo you also want to delete the counterpart LOTO point (Unit ${this.targetUnit()})?`
+        ).then(deleteCounterpart => {
+          this.executeDeletePrimary(primary.id!, deleteCounterpart);
+        });
+      } else {
+        this.executeDeletePrimary(primary.id!, false);
+      }
+    });
+  }
+
+  /**
+   * Execute delete primary API call
+   */
+  private executeDeletePrimary(id: number, deleteCounterpart: boolean): void {
+    this.isDeletingPrimary.set(true);
+
+    // Get counterpart ID to pass for broadcasting if deleteCounterpart is true
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    const counterpartId = deleteCounterpart ? counterpart?.id : undefined;
+
+    this.apiService.deleteLotoPoint(id, deleteCounterpart, counterpartId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.messageService.showSuccess(`Unit ${this.sourceUnit()} LOTO point deleted`);
+          this.isDeletingPrimary.set(false);
+
+          if (deleteCounterpart) {
+            this.messageService.showSuccess(`Counterpart (Unit ${this.targetUnit()}) also deleted`);
+          }
+
+          // Close the form after deletion
+          this.formClosed.emit();
+        },
+        error: (error) => {
+          console.error('Error deleting primary:', error);
+          this.messageService.showError('Failed to delete LOTO point');
+          this.isDeletingPrimary.set(false);
+        }
+      });
+  }
+
+  /**
+   * Delete counterpart LOTO point with confirmation
+   */
+  deleteCounterpart(): void {
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+    if (!counterpart?.id) return;
+
+    const tagNumber = counterpart.tagNumber || `LOTO Point #${counterpart.id}`;
+
+    this.confirmationService.confirm(
+      `Are you sure you want to delete "${tagNumber}" (Unit ${this.targetUnit()})?\n\nThis will also delete all associated equipment shapes.`
+    ).then(confirmed => {
+      if (!confirmed) return;
+
+      this.executeDeleteCounterpart(counterpart.id!, false);
+    });
+  }
+
+  /**
+   * Execute delete counterpart API call
+   */
+  private executeDeleteCounterpart(id: number, deleteCounterpart: boolean): void {
+    this.isDeletingCounterpart.set(true);
+
+    this.apiService.deleteLotoPoint(id, deleteCounterpart)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.messageService.showSuccess(`Unit ${this.targetUnit()} LOTO point deleted`);
+          this.isDeletingCounterpart.set(false);
+
+          // Clear the counterpart from the form
+          this.counterpartLotoPoint.set(null);
+          this.currentCounterpartValues.set(null);
+          this.isCounterpartLinked.set(false);
+          this.counterpartStatus.set('not-found');
+        },
+        error: (error) => {
+          console.error('Error deleting counterpart:', error);
+          this.messageService.showError('Failed to delete counterpart LOTO point');
+          this.isDeletingCounterpart.set(false);
+        }
+      });
+  }
+
+  /**
+   * Delete both LOTO points with confirmation
+   */
+  deleteBoth(): void {
+    const primary = this.currentPrimaryValues() || this.primaryLotoPoint();
+    const counterpart = this.currentCounterpartValues() || this.counterpartLotoPoint();
+
+    if (!primary?.id) return;
+
+    const primaryTag = primary.tagNumber || `LOTO Point #${primary.id}`;
+    const counterpartTag = counterpart?.tagNumber || (counterpart?.id ? `LOTO Point #${counterpart.id}` : 'counterpart');
+
+    this.confirmationService.confirm(
+      `Are you sure you want to delete BOTH LOTO points?\n\n- ${primaryTag} (Unit ${this.sourceUnit()})\n- ${counterpartTag} (Unit ${this.targetUnit()})\n\nThis will also delete all associated equipment shapes.`
+    ).then(confirmed => {
+      if (!confirmed) return;
+
+      // Delete primary with deleteCounterpart=true
+      this.isDeletingBoth.set(true);
+
+      // Pass counterpartId for proper broadcast
+      const counterpartId = counterpart?.id;
+      this.apiService.deleteLotoPoint(primary.id!, true, counterpartId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.messageService.showSuccess('Both LOTO points deleted successfully');
+            this.isDeletingBoth.set(false);
+            this.formClosed.emit();
+          },
+          error: (error) => {
+            console.error('Error deleting both:', error);
+            this.messageService.showError('Failed to delete LOTO points');
+            this.isDeletingBoth.set(false);
+          }
+        });
+    });
   }
 
   /**

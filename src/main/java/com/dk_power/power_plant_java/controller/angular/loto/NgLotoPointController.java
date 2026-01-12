@@ -537,6 +537,33 @@ public class NgLotoPointController {
     }
 
     /**
+     * Delete a LOTO point safely.
+     * - Deletes all associated equipment (and handles their file relationships)
+     * - Handles counterpart relationship (delete or unlink based on deleteCounterpart param)
+     * - Soft deletes the LOTO point
+     *
+     * @param id The LOTO point ID to delete
+     * @param deleteCounterpart If true, also deletes the counterpart LOTO point (default: false)
+     * @return The deleted LOTO point DTO
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<NgApiResponse<LotoPointDto>> deleteLotoPoint(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean deleteCounterpart) {
+        try {
+            LotoPointDto deletedLotoPoint = ngLotoPointService.deleteLotoPointSafely(id, deleteCounterpart);
+            NgApiResponse<LotoPointDto> response = new NgApiResponse<>(
+                    deletedLotoPoint,
+                    "LOTO point deleted successfully"
+            );
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new NgApiResponse<>(null, e.getMessage()));
+        }
+    }
+
+    /**
      * Look up counterpart equipment for ZeroEnergy transfer.
      *
      * Transfer logic for zeroEnergy templateEquipment:

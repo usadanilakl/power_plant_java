@@ -10,11 +10,13 @@ import {
 } from '@angular/core';
 import { RfLotoPointStateService } from '../services/rf-loto-point-state.service';
 import { LotoPointMapperService } from '../services/rf-loto-point-mapper.service';
+import { RfLotoPointApiService } from '../services/rf-loto-point-api.service';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { LotoPointClipboardItem } from '../../../../models/loto/loto-point-clipboard.model';
 import { RfReactiveFormComponent } from '../../../../shared/reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { ClipboardFormComponent } from '../../../../shared/reactive-form/refactored/form-clipboard/clipboard-form.component';
 import { ClipboardService } from '../../../../shared/clipboard/clipboard.service';
+import { ConfirmationService } from '../../../../services/ui/confirmation.service';
 import { DraftComparisonDialogComponent } from '../draft-comparison-dialog/draft-comparison-dialog.component';
 import { TagNumberGeneratorComponent } from '../../../tag-number/tag-number-generator/tag-number-generator.component';
 import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
@@ -41,6 +43,8 @@ export class RfLotoPointFormComponent {
   protected stateService = inject(RfLotoPointStateService);
   protected mapperService = inject(LotoPointMapperService);
   protected clipboardService = inject(ClipboardService);
+  protected apiService = inject(RfLotoPointApiService);
+  protected confirmationService = inject(ConfirmationService);
 
   // Tag number generator state
   isTagGeneratorOpen = signal<boolean>(false);
@@ -371,5 +375,70 @@ export class RfLotoPointFormComponent {
       this.stateService.setSelectedItem(updatedEntity);
       this.closeTagGenerator();
     }
+  }
+
+  //===========================DELETE===========================
+  /**
+   * Check if the current entity can be deleted (must have an ID)
+   */
+  canDelete(): boolean {
+    return !!this.entity()?.id;
+  }
+
+  /**
+   * Handle delete button click with confirmation dialogs.
+   * If counterpart exists, asks user if they want to delete it too.
+   */
+  onDelete(): void {
+    const currentEntity = this.entity();
+    if (!currentEntity?.id) {
+      return;
+    }
+
+    const tagNumber = currentEntity.tagNumber || `LOTO Point #${currentEntity.id}`;
+
+    // First confirmation - delete the LOTO point
+    this.confirmationService.confirm(
+      `Are you sure you want to delete "${tagNumber}"?\n\nThis will also delete all associated equipment shapes.`
+    ).then(confirmed => {
+      if (!confirmed) {
+        return;
+      }
+
+      // Check if this point has a counterpart
+      const counterpartId = currentEntity.counterpartId;
+      if (counterpartId) {
+        // Ask about counterpart deletion
+        this.confirmationService.confirm(
+          `This LOTO point has a linked counterpart.\n\nDo you also want to delete the counterpart LOTO point?`
+        ).then(deleteCounterpart => {
+          this.executeDelete(currentEntity.id!, deleteCounterpart);
+        });
+      } else {
+        // No counterpart, just delete
+        this.executeDelete(currentEntity.id!, false);
+      }
+    });
+  }
+
+  /**
+   * Execute the delete API call
+   */
+  private executeDelete(id: number, deleteCounterpart: boolean): void {
+    // Get counterpartId for proper broadcast if deleting counterpart too
+    // Convert null to undefined since API expects number | undefined
+    const counterpartId = deleteCounterpart ? (this.entity().counterpartId ?? undefined) : undefined;
+    this.apiService.deleteLotoPoint(id, deleteCounterpart, counterpartId).subscribe({
+      next: (response) => {
+        console.log('LOTO point deleted successfully:', response);
+        // Clear the form and close
+        this.stateService.setSelectedItem(null);
+        this.stateService.closeForm();
+      },
+      error: (error) => {
+        console.error('Error deleting LOTO point:', error);
+        alert('Failed to delete LOTO point: ' + (error.error?.message || error.message || 'Unknown error'));
+      }
+    });
   }
 }

@@ -168,11 +168,33 @@ export class RfLotoPointApiService {
     return true; // No nested objects found, likely a LotoPointIdDto
   }
 
-  deleteLotoPoint(id: string): Observable<SpringApiResponse<void>> {
-    return this.http.delete<SpringApiResponse<void>>(`${this.apiUrl}/${id}`).pipe(
-      tap(() => {
+  /**
+   * Delete a LOTO point safely.
+   * - Deletes all associated equipment (and handles their file relationships)
+   * - Handles counterpart relationship (delete or unlink based on deleteCounterpart param)
+   * - Soft deletes the LOTO point
+   *
+   * @param id The LOTO point ID to delete
+   * @param deleteCounterpart If true, also deletes the counterpart LOTO point (default: false)
+   * @param counterpartId Optional: The counterpart ID to also broadcast deletion for (when deleteCounterpart is true)
+   * @returns Observable with the deleted LOTO point DTO
+   */
+  deleteLotoPoint(id: string | number, deleteCounterpart: boolean = false, counterpartId?: number): Observable<SpringApiResponse<LotoPointDto>> {
+    const params = new HttpParams().set('deleteCounterpart', deleteCounterpart.toString());
+    return this.http.delete<SpringApiResponse<LotoPointDto>>(`${this.apiUrl}/${id}`, { params }).pipe(
+      tap((response) => {
         // Broadcast the deletion to all listeners
-        this.lotoPointDeletedSubject.next(parseInt(id, 10));
+        const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+        this.lotoPointDeletedSubject.next(numericId);
+
+        // If counterpart was also deleted, broadcast that deletion too
+        if (deleteCounterpart) {
+          // Try to get counterpartId from response or from parameter
+          const deletedCounterpartId = counterpartId || response?.responseData?.counterpartId;
+          if (deletedCounterpartId) {
+            this.lotoPointDeletedSubject.next(deletedCounterpartId);
+          }
+        }
       })
     );
   }

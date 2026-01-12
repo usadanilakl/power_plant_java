@@ -57,6 +57,13 @@ export class RfLotoPointStateService {
   constructor() {
     // Don't auto-load drafts on service initialization
     // Drafts will be loaded by the form component's effect when appropriate
+
+    // Subscribe to LOTO point deletion events to update local state
+    this.apiService.lotoPointDeleted$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((deletedId) => {
+        this.removeLotoPointById(deletedId);
+      });
   }
 
   addLotoPoints(items: LotoPointDto[]): void {
@@ -67,6 +74,32 @@ export class RfLotoPointStateService {
   clearLotoPoints(): void {
     this.allLoadedLotoPointsSubject.next([]);
     this.currentPage = 1;
+  }
+
+  /**
+   * Remove a LOTO point from the local list by ID.
+   * Called automatically when a deletion event is received.
+   */
+  removeLotoPointById(id: number): void {
+    const current = this.allLoadedLotoPointsSubject.value;
+    const filtered = current.filter(lp => lp.id !== id);
+
+    // Only update if something was actually removed
+    if (filtered.length !== current.length) {
+      this.allLoadedLotoPointsSubject.next(filtered);
+
+      // Also clear selected item if it was the deleted one
+      const selectedItem = this.selectedItem();
+      if (selectedItem?.id === id) {
+        this.selectedItem.set(null);
+      }
+
+      // Also remove from selectedItems array
+      const selectedItems = this.selectedItems();
+      if (selectedItems.some(item => item.id === id)) {
+        this.selectedItems.set(selectedItems.filter(item => item.id !== id));
+      }
+    }
   }
 
   getCurrentPage(): number {

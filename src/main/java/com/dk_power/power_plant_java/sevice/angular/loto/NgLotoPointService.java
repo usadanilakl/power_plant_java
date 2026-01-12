@@ -1013,6 +1013,86 @@ public class NgLotoPointService implements NgCrudService<LotoPoint, LotoPointDto
     }
 
     /**
+     * Safely deletes a LOTO point by handling relationships before soft delete.
+     * - Deletes all associated equipment (via equipmentService.deleteEquipmentSafely)
+     * - Handles counterpart relationship (delete or unlink based on deleteCounterpart flag)
+     * - Soft deletes the LOTO point
+     *
+     * @param id The LOTO point ID to delete
+     * @param deleteCounterpart If true, also deletes the counterpart LOTO point
+     * @return The deleted LOTO point DTO
+     */
+    @Transactional
+    public LotoPointDto deleteLotoPointSafely(Long id, boolean deleteCounterpart) {
+        LotoPoint lotoPoint = findById(id)
+                .orElseThrow(() -> new RuntimeException("LOTO point not found with id: " + id));
+
+        // Convert to DTO BEFORE any modifications or deletions
+        // This ensures we have a clean snapshot of the entity before hibernate session issues
+        LotoPointDto resultDto = toDto(lotoPoint);
+
+        // Handle counterpart relationship first
+        Long counterpartId = lotoPoint.getCounterpartId();
+        if (counterpartId != null) {
+            if (deleteCounterpart) {
+                // Recursively delete the counterpart (but don't delete its counterpart again)
+                LotoPoint counterpart = lotoPointRepo.findByIdWithEquipment(counterpartId);
+                if (counterpart != null) {
+                    // Unlink first to prevent infinite recursion
+                    counterpart.setCounterpartId(null);
+                    lotoPointRepo.save(counterpart);
+                    lotoPoint.setCounterpartId(null);
+                    lotoPointRepo.save(lotoPoint);
+
+                    // Delete the counterpart's equipment and the counterpart itself
+                    deleteEquipmentAndPoint(counterpart);
+                }
+            } else {
+                // Just unlink the counterpart
+                unlinkCounterparts(id);
+            }
+        }
+
+        // Delete equipment and the main point
+        deleteEquipmentAndPoint(lotoPoint);
+
+        return resultDto;
+    }
+
+    /**
+     * Helper method to delete all equipment associated with a LOTO point and then soft delete the point.
+     */
+    private void deleteEquipmentAndPoint(LotoPoint lotoPoint) {
+        // Get all equipment associated with this LOTO point
+        Set<Equipment> equipmentList = lotoPoint.getEquipmentList();
+        if (equipmentList != null && !equipmentList.isEmpty()) {
+            // Create a copy to avoid ConcurrentModificationException
+            List<Long> equipmentIds = equipmentList.stream()
+                    .map(Equipment::getId)
+                    .collect(Collectors.toList());
+
+            // Delete each equipment safely
+            for (Long equipmentId : equipmentIds) {
+                try {
+                    equipmentService.deleteEquipmentSafely(equipmentId);
+                } catch (Exception e) {
+                    System.err.println("Warning: Could not delete equipment " + equipmentId + ": " + e.getMessage());
+                }
+            }
+        }
+
+        // Refresh the entity to get updated state after equipment deletion
+        entityManager.flush();
+        entityManager.clear();
+        lotoPoint = lotoPointRepo.findByIdWithEquipment(lotoPoint.getId());
+
+        // Soft delete the LOTO point
+        if (lotoPoint != null) {
+            softDelete(lotoPoint);
+        }
+    }
+
+    /**
      * Convert LotoPoint entity to lightweight SummaryDto
      */
     private LotoPointSummaryDto convertToSummaryDto(LotoPoint lp) {

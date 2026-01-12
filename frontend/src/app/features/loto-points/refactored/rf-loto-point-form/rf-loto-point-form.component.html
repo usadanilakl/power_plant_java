@@ -54,6 +54,15 @@
                 title="Generate New Tag Number">
                 Generate Tag Number
               </button>
+              @if (canDelete()) {
+                <button
+                  type="button"
+                  class="delete-button"
+                  (click)="onDelete()"
+                  title="Delete LOTO Point">
+                  Delete
+                </button>
+              }
               <app-clipboard-form
                 [entityType]="'LotoPoint'"
                 [initialEntity]="initialEntity()"

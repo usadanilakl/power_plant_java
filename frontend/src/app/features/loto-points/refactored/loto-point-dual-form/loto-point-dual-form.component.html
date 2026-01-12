@@ -61,6 +61,16 @@
           >
             Save Unit {{ sourceUnit() }}
           </button>
+          @if (canDeletePrimary()) {
+            <button
+              class="action-btn delete-btn"
+              (click)="deletePrimary()"
+              [disabled]="isDeletingPrimary() || isDeletingBoth()"
+              title="Delete this LOTO point"
+            >
+              @if (isDeletingPrimary()) { Deleting... } @else { Delete }
+            </button>
+          }
         </div>
       </div>
 
@@ -244,6 +254,16 @@
             >
               {{ isCounterpartNew() ? 'Create' : 'Save' }} Unit {{ targetUnit() }}
             </button>
+            @if (canDeleteCounterpart()) {
+              <button
+                class="action-btn delete-btn"
+                (click)="deleteCounterpart()"
+                [disabled]="isDeletingCounterpart() || isDeletingBoth()"
+                title="Delete this LOTO point"
+              >
+                @if (isDeletingCounterpart()) { Deleting... } @else { Delete }
+              </button>
+            }
           </div>
         </div>
       } @else {
@@ -283,22 +303,36 @@
 
     <!-- Footer Actions -->
     <div class="dual-form-footer">
-      <button class="action-btn cancel-btn" (click)="close()">
-        Cancel
-      </button>
-      @if (counterpartLotoPoint()) {
-        <button
-          class="action-btn save-both-btn"
-          (click)="saveBoth()"
-          [disabled]="isSavingPrimary() || isSavingCounterpart() || isSavingBoth()"
-        >
-          @if (isSavingBoth()) {
-            Saving Both...
-          } @else {
-            Save Both Units
-          }
+      <div class="footer-left">
+        <button class="action-btn cancel-btn" (click)="close()">
+          Cancel
         </button>
-      }
+        @if (canDeletePrimary() && canDeleteCounterpart()) {
+          <button
+            class="action-btn delete-both-btn"
+            (click)="deleteBoth()"
+            [disabled]="isDeletingPrimary() || isDeletingCounterpart() || isDeletingBoth()"
+            title="Delete both LOTO points"
+          >
+            @if (isDeletingBoth()) { Deleting... } @else { Delete Both }
+          </button>
+        }
+      </div>
+      <div class="footer-right">
+        @if (counterpartLotoPoint()) {
+          <button
+            class="action-btn save-both-btn"
+            (click)="saveBoth()"
+            [disabled]="isSavingPrimary() || isSavingCounterpart() || isSavingBoth()"
+          >
+            @if (isSavingBoth()) {
+              Saving Both...
+            } @else {
+              Save Both Units
+            }
+          </button>
+        }
+      </div>
     </div>
   }
 

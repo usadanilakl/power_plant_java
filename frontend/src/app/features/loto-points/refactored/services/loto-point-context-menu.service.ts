@@ -7,6 +7,7 @@ import { RfLotoPointStateService } from "./rf-loto-point-state.service";
 import { RfLotoPointApiService } from "./rf-loto-point-api.service";
 import { map } from "rxjs";
 import { BradyPrinterModalService } from "../../../../shared/brady-printer-manager/brady-printer-modal.service";
+import { ConfirmationService } from "../../../../services/ui/confirmation.service";
 
 @Injectable({
     providedIn: "root"
@@ -14,7 +15,8 @@ import { BradyPrinterModalService } from "../../../../shared/brady-printer-manag
 export class LotoPointContextMenuService extends ContextMenuService {
   private stateService = inject(RfLotoPointStateService);
   private apiService = inject(RfLotoPointApiService);
-  private bradyModalService = inject(BradyPrinterModalService)
+  private bradyModalService = inject(BradyPrinterModalService);
+  private confirmationService = inject(ConfirmationService);
 
   constructor() {
     super();
@@ -139,7 +141,7 @@ export class LotoPointContextMenuService extends ContextMenuService {
     private handleInspect(_item: LotoPointDto): void {
       // Implement inspect logic
     }
-  
+
     private handlePrint(item: LotoPointDto): void {
       this.bradyModalService.openWithData({
         line1: item.tagNumber || '',
@@ -147,10 +149,66 @@ export class LotoPointContextMenuService extends ContextMenuService {
         withQr: true
       });
     }
-  
+
     private handleRelease(_item: LotoPointDto): void {
       // Implement release logic
     }
 
+    /**
+     * Handle LOTO point deletion with counterpart check.
+     * Prompts user to confirm deletion, and if counterpart exists, asks if counterpart should also be deleted.
+     */
+    override handleDelete(item: any): void {
+      if (!item?.id) {
+        console.warn('Cannot delete: No ID provided');
+        return;
+      }
 
+      const tagNumber = item.tagNumber || `LOTO Point #${item.id}`;
+
+      // First confirmation - delete the LOTO point
+      this.confirmationService.confirm(
+        `Are you sure you want to delete "${tagNumber}"?\n\nThis will also delete all associated equipment shapes.`
+      ).then(confirmed => {
+        if (!confirmed) {
+          return;
+        }
+
+        // Check if this point has a counterpart
+        const counterpartId = item.counterpartId;
+        if (counterpartId) {
+          // Ask about counterpart deletion
+          this.confirmationService.confirm(
+            `This LOTO point has a linked counterpart.\n\nDo you also want to delete the counterpart LOTO point?`
+          ).then(deleteCounterpart => {
+            // Pass counterpartId for proper broadcast when deleteCounterpart is true
+            this.executeDelete(item.id, deleteCounterpart, deleteCounterpart ? counterpartId : undefined);
+          });
+        } else {
+          // No counterpart, just delete
+          this.executeDelete(item.id, false);
+        }
+      });
+    }
+
+    /**
+     * Execute the delete API call
+     */
+    private executeDelete(id: number, deleteCounterpart: boolean, counterpartId?: number): void {
+      this.apiService.deleteLotoPoint(id, deleteCounterpart, counterpartId).subscribe({
+        next: (response) => {
+          console.log('LOTO point deleted successfully:', response);
+          // Close context menu
+          this.closeContextMenu();
+          // Reload the table/list if state service supports it
+          if (this.stateService && typeof (this.stateService as any).reloadTable === 'function') {
+            (this.stateService as any).reloadTable();
+          }
+        },
+        error: (error) => {
+          console.error('Error deleting LOTO point:', error);
+          alert('Failed to delete LOTO point: ' + (error.error?.message || error.message || 'Unknown error'));
+        }
+      });
+    }
 }
