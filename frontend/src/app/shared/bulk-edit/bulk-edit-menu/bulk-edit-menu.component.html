@@ -34,11 +34,24 @@
           <div class="empty-state-icon">📝</div>
           <h3>No Fields Selected</h3>
           <p>Select fields from the left panel to begin bulk editing.</p>
+          @if (hasLoadedPreset()) {
+            <p class="preset-hint">Previous preset was cleared.</p>
+          }
         </div>
       } @else {
         <!-- Form Header -->
         <div class="form-header">
-          <h3>Edit Values</h3>
+          <div class="form-header-top">
+            <h3>Edit Values</h3>
+            <button
+              class="btn-clear-all"
+              (click)="onClearAll()"
+              title="Clear all fields and values"
+              [disabled]="isUpdating()"
+            >
+              Clear All
+            </button>
+          </div>
           <p class="form-description">
             Changes will be applied to all {{ itemCount() }} selected item{{ itemCount() !== 1 ? 's' : '' }}.
           </p>
@@ -61,6 +74,17 @@
             (formValueChange)="onFormValueChange($event)"
           ></app-rf-reactive-form>
         </div>
+
+        <!-- Success Message -->
+        @if (lastApplyResult()) {
+          <div class="success-message">
+            <span class="success-icon">✓</span>
+            <span class="success-text">
+              Successfully updated {{ lastApplyResult()!.count }} item{{ lastApplyResult()!.count !== 1 ? 's' : '' }}!
+              Select more items to continue.
+            </span>
+          </div>
+        }
 
         <!-- Error Message -->
         @if (errorMessage()) {
@@ -90,16 +114,18 @@
             (click)="onClose()"
             [disabled]="isUpdating()"
           >
-            Cancel
+            Close
           </button>
           <button
             class="btn-apply"
             (click)="onApply()"
-            [disabled]="!canApply() || isUpdating()"
+            [disabled]="!canApply() || isUpdating() || itemCount() === 0"
           >
             @if (isUpdating()) {
               <span class="spinner"></span>
               Applying...
+            } @else if (itemCount() === 0) {
+              Select items to apply
             } @else {
               Apply to {{ itemCount() }} item{{ itemCount() !== 1 ? 's' : '' }}
             }

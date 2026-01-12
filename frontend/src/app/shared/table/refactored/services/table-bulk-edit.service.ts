@@ -105,11 +105,15 @@ export abstract class TableBulkEditService<T> {
   }
 
   /**
-   * Close the bulk edit menu and reset state
+   * Close the bulk edit menu
+   * Note: Does NOT reset state - this preserves field selection and values
+   * for the next time the dialog opens (supports persistent workflow)
    */
   closeBulkEdit(): void {
     this.isBulkEditOpenSubject.set(false);
-    this.reset();
+    // Clear error and progress, but keep field selection and template values
+    this.errorMessageSubject.set(null);
+    this.progressSubject.set(0);
   }
 
   /**

@@ -6,6 +6,8 @@
       [service]="bulkEditService"
       [open]="true"
       [title]="'Bulk Edit LOTO Points'"
+      [storageKey]="'loto-point'"
+      [persistAfterApply]="true"
       [clipboardEntityType]="'LotoPoint'"
       [clipboardHasValidData]="hasValidData"
       [clipboardGetItemSummary]="getItemSummary"

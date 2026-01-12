@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed, effect } from '@angular/core';
+import { Component, input, output, signal, computed, effect, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FloatingMenuComponent, MenuPosition } from '../../menu/floating-menu/floating-menu.component';
 import { FieldSelectorComponent } from '../field-selector/field-selector.component';
@@ -7,6 +7,13 @@ import { ClipboardFormComponent } from '../../reactive-form/refactored/form-clip
 import { TableBulkEditService, BulkEditFieldDefinition } from '../../table/refactored/services/table-bulk-edit.service';
 import { RfFormField } from '../../../models/ui/form-field.model';
 
+/** Preset data stored in localStorage */
+interface BulkEditPreset {
+  selectedFields: string[];
+  templateValues: Record<string, any>;
+  savedAt: number;
+}
+
 @Component({
   selector: 'app-bulk-edit-menu',
   standalone: true,
@@ -14,12 +21,16 @@ import { RfFormField } from '../../../models/ui/form-field.model';
   templateUrl: './bulk-edit-menu.component.html',
   styleUrl: './bulk-edit-menu.component.css'
 })
-export class BulkEditMenuComponent<T> {
+export class BulkEditMenuComponent<T> implements OnInit, OnDestroy {
   // Inputs
   items = input.required<T[]>();
   service = input.required<TableBulkEditService<T>>();
   open = input<boolean>(false);
   title = input<string>('Bulk Edit');
+  /** Unique key for localStorage persistence (e.g., 'loto-point-bulk-edit') */
+  storageKey = input<string>('');
+  /** Whether to keep the dialog open after applying changes */
+  persistAfterApply = input<boolean>(true);
 
   // Outputs
   applied = output<T[]>();
@@ -35,10 +46,15 @@ export class BulkEditMenuComponent<T> {
 
   // Local state
   showFieldSelector = signal<boolean>(true);
+  /** Track last successful apply for UI feedback */
+  lastApplyResult = signal<{ count: number; timestamp: number } | null>(null);
+  /** Whether preset was loaded from storage */
+  hasLoadedPreset = signal<boolean>(false);
 
   // Local copy of template values to prevent infinite loop
   private localTemplateValues = signal<Partial<T>>({});
   private isUpdatingFromService = false;
+  private presetLoaded = false;
 
   // Computed: Available fields from service
   availableFields = computed(() => {
@@ -66,6 +82,39 @@ export class BulkEditMenuComponent<T> {
         this.isUpdatingFromService = false;
       }
     });
+
+    // Save preset to localStorage when values change
+    effect(() => {
+      const key = this.storageKey();
+      const selectedFields = this.selectedFieldNames();
+      const templateValues = this.templateValues();
+
+      // Only save if we have a storage key and preset has been loaded (to avoid overwriting on init)
+      if (key && this.presetLoaded && (selectedFields.length > 0 || Object.keys(templateValues).length > 0)) {
+        this.savePresetToStorage();
+      }
+    });
+
+    // Load preset when dialog opens
+    effect(() => {
+      const isOpen = this.open();
+      const key = this.storageKey();
+
+      if (isOpen && key && !this.presetLoaded) {
+        this.loadPresetFromStorage();
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    // Initial preset load handled by effect
+  }
+
+  ngOnDestroy(): void {
+    // Save preset on destroy
+    if (this.storageKey()) {
+      this.savePresetToStorage();
+    }
   }
 
   // Computed: Is updating from service
@@ -110,6 +159,14 @@ export class BulkEditMenuComponent<T> {
     const count = this.itemCount();
     const baseTitle = this.title();
     return `${baseTitle} (${count} item${count !== 1 ? 's' : ''})`;
+  });
+
+  // Computed: Show success message after apply
+  showSuccessMessage = computed(() => {
+    const result = this.lastApplyResult();
+    if (!result) return false;
+    // Show for 3 seconds after apply
+    return Date.now() - result.timestamp < 3000;
   });
 
   // Clipboard configuration for bulk edit
@@ -182,8 +239,19 @@ export class BulkEditMenuComponent<T> {
         if (result.successCount > 0) {
           this.applied.emit(result.successful);
 
-          if (result.failureCount === 0) {
-            // All succeeded, close the menu
+          // Record success for UI feedback
+          this.lastApplyResult.set({
+            count: result.successCount,
+            timestamp: Date.now()
+          });
+
+          // Clear success message after 3 seconds
+          setTimeout(() => {
+            this.lastApplyResult.set(null);
+          }, 3000);
+
+          // Only close if persistAfterApply is false
+          if (!this.persistAfterApply() && result.failureCount === 0) {
             this.onClose();
           }
         }
@@ -215,6 +283,97 @@ export class BulkEditMenuComponent<T> {
     console.log('[BulkEditMenu] Clipboard item selected:', item);
     console.log('[BulkEditMenu] Zero energy in clipboard item:', item.zeroEnergy);
     this.service().setTemplateValues(item);
+  }
+
+  /**
+   * Clear all field selections and template values
+   * Also clears the localStorage preset
+   */
+  onClearAll(): void {
+    const svc = this.service();
+    if (svc) {
+      svc.setFieldSelection([]);
+      svc.setTemplateValues({});
+    }
+
+    // Clear from localStorage
+    const key = this.storageKey();
+    if (key) {
+      try {
+        localStorage.removeItem(this.getStorageKeyName());
+      } catch (e) {
+        console.warn('[BulkEditMenu] Failed to clear preset from localStorage:', e);
+      }
+    }
+
+    this.hasLoadedPreset.set(false);
+  }
+
+  /**
+   * Save current preset to localStorage
+   */
+  private savePresetToStorage(): void {
+    const key = this.storageKey();
+    if (!key) return;
+
+    try {
+      const preset: BulkEditPreset = {
+        selectedFields: this.selectedFieldNames(),
+        templateValues: this.templateValues() as Record<string, any>,
+        savedAt: Date.now()
+      };
+
+      localStorage.setItem(this.getStorageKeyName(), JSON.stringify(preset));
+    } catch (e) {
+      console.warn('[BulkEditMenu] Failed to save preset to localStorage:', e);
+    }
+  }
+
+  /**
+   * Load preset from localStorage
+   */
+  private loadPresetFromStorage(): void {
+    const key = this.storageKey();
+    if (!key) {
+      this.presetLoaded = true;
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem(this.getStorageKeyName());
+      if (stored) {
+        const preset: BulkEditPreset = JSON.parse(stored);
+
+        // Validate preset has required fields
+        if (preset.selectedFields && Array.isArray(preset.selectedFields)) {
+          const svc = this.service();
+          if (svc) {
+            // Set field selection first
+            if (preset.selectedFields.length > 0) {
+              svc.setFieldSelection(preset.selectedFields);
+            }
+
+            // Then set template values
+            if (preset.templateValues && Object.keys(preset.templateValues).length > 0) {
+              svc.setTemplateValues(preset.templateValues as Partial<T>);
+            }
+
+            this.hasLoadedPreset.set(true);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[BulkEditMenu] Failed to load preset from localStorage:', e);
+    }
+
+    this.presetLoaded = true;
+  }
+
+  /**
+   * Get the full storage key name
+   */
+  private getStorageKeyName(): string {
+    return `bulk-edit-preset-${this.storageKey()}`;
   }
 
   /**
