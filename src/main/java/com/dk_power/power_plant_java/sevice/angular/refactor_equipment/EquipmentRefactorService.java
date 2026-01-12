@@ -137,6 +137,12 @@ public class EquipmentRefactorService {
                     if (equipment.getEqType() != null && lotoPoint.getEqType() == null) {
                         lotoPoint.setEqType(equipment.getEqType());
                     }
+                    if(equipment.getSystem() != null && lotoPoint.getSystemValue() == null){
+                        lotoPoint.setSystemValue(equipment.getSystem());
+                    }
+                    if(equipment.getVendor() != null && lotoPoint.getVendor() == null){
+                        lotoPoint.setVendor(equipment.getVendor());
+                    }
                     updatedCount++;
                 }
             }

@@ -74,6 +74,12 @@ public class LotoPoint extends BaseAuditEntity implements Referenceable {
     @ManyToOne()
     @JoinColumn(name = "eq_type_id")
     private Value eqType;
+    @ManyToOne()
+    @JoinColumn(name = "systemValue_id")
+    private Value systemValue;
+    @ManyToOne()
+    @JoinColumn(name = "vendor_id")
+    private Value vendor;
     private Long counterpartId;
     @Column(columnDefinition = "TEXT")
     private String relatedLotoPointIds; // e.g., "123,456,789"
