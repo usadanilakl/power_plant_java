@@ -1290,9 +1290,20 @@ export class InteractiveImageComponent {
     // Calculate normalization factors
     let normX = 1;
     let normY = 1;
-    if (currentWidth && currentHeight && shape.originalPictureWidth && shape.originalPictureHeight) {
+
+    // Only normalize if we have valid current and original dimensions
+    if (currentWidth && currentWidth > 0 &&
+        currentHeight && currentHeight > 0 &&
+        shape.originalPictureWidth && shape.originalPictureWidth > 0 &&
+        shape.originalPictureHeight && shape.originalPictureHeight > 0) {
       normX = currentWidth / shape.originalPictureWidth;
       normY = currentHeight / shape.originalPictureHeight;
+
+      // Guard against invalid scale values
+      if (!isFinite(normX) || !isFinite(normY) || normX <= 0 || normY <= 0) {
+        normX = 1;
+        normY = 1;
+      }
     }
 
     if (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol') {

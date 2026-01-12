@@ -286,7 +286,8 @@ export class EquipmentMapperService{
         if(shape.type !== 'rectangle') return null;
         const coordinates = this.mapRfShapeToCoordinates(shape);
         if(!coordinates) return null;
-        const pictureSize = this.formatPictureSize(shape.originalWidth, shape.originalHeight);
+        // Use originalPictureWidth/Height (actual image dimensions when shape was created)
+        const pictureSize = this.formatPictureSize(shape.originalPictureWidth, shape.originalPictureHeight);
         const rect = shape as RfRectangleShape;
         const equipment: EquipmentDto = new EquipmentDto({
             coordinates: coordinates,

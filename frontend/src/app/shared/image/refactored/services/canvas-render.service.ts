@@ -383,15 +383,26 @@ export class CanvasRenderService {
     currentImageWidth?: number,
     currentImageHeight?: number
   ): { scaleX: number; scaleY: number } {
-    // If current image dimensions are not provided, or shape doesn't have original dimensions, no normalization
-    if (!currentImageWidth || !currentImageHeight ||
-        !shape.originalPictureWidth || !shape.originalPictureHeight) {
+    // If current image dimensions are not provided, no normalization
+    if (currentImageWidth === undefined || currentImageWidth === null ||
+        currentImageHeight === undefined || currentImageHeight === null) {
+      return { scaleX: 1, scaleY: 1 };
+    }
+
+    // If shape doesn't have valid original dimensions, no normalization
+    if (!shape.originalPictureWidth || shape.originalPictureWidth <= 0 ||
+        !shape.originalPictureHeight || shape.originalPictureHeight <= 0) {
       return { scaleX: 1, scaleY: 1 };
     }
 
     // Calculate ratio between current image size and the image size when shape was created
     const scaleX = currentImageWidth / shape.originalPictureWidth;
     const scaleY = currentImageHeight / shape.originalPictureHeight;
+
+    // Guard against invalid scale values
+    if (!isFinite(scaleX) || !isFinite(scaleY) || scaleX <= 0 || scaleY <= 0) {
+      return { scaleX: 1, scaleY: 1 };
+    }
 
     return { scaleX, scaleY };
   }
