@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { LotoBoxService } from '../../services/loto-box.service';
 import { SpellingService } from '../../services/spelling.service';
+import { NetworkModeService } from '../../services/network-mode.service';
 
 @Component({
   selector: 'app-control-panel',
@@ -11,6 +12,15 @@ import { SpellingService } from '../../services/spelling.service';
 export class ControlPanelComponent {
   private lotoBoxService = inject(LotoBoxService);
   private spellService = inject(SpellingService);
+  private networkModeService = inject(NetworkModeService);
+
+  get isReadOnly(): boolean {
+    return this.lotoBoxService.isReadOnly();
+  }
+
+  get canControl(): boolean {
+    return this.lotoBoxService.canControl();
+  }
 
   syncAll(): void {
     this.lotoBoxService.syncAllToControllers().subscribe();

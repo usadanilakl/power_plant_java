@@ -1,19 +1,17 @@
 {
   "name": "loto-boxes",
   "version": "1.0.0",
-  "main": "server.js",
-  "bin": "server.js",
-  "pkg": {
-    "assets": [],
-    "targets": [
-      "node18-win-x64"
-    ],
-    "outputPath": "loto-boxes-app"
-  },
+  "description": "LOTO Box Control System - PWA with optional Electron shell",
+  "author": "LOTO Team",
+  "main": "electron/main.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "ng serve",
     "build": "ng build --configuration production --base-href ./",
-    "package": "pkg server.js --compress Brotli --target node18-win-x64 --output loto-boxes-app/start.exe"
+    "build:pwa": "ng build --configuration production",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "electron:dev": "npm run build && electron .",
+    "electron:build": "npm run build && electron-builder"
   },
   "dependencies": {
     "@angular/common": "^20.3.0",
@@ -23,7 +21,6 @@
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
     "@angular/service-worker": "^20.3.0",
-    "express": "^4.22.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
@@ -33,6 +30,8 @@
     "@angular/cli": "^20.3.6",
     "@angular/compiler-cli": "^20.3.0",
     "@types/jasmine": "~5.1.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
     "jasmine-core": "~5.9.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
@@ -40,5 +39,25 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "typescript": "~5.9.2"
+  },
+  "build": {
+    "appId": "com.lotoboxes.app",
+    "productName": "LOTO Boxes",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/loto-boxes/browser/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

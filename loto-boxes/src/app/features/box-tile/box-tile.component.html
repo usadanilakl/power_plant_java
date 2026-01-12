@@ -1,24 +1,26 @@
 <div class="box-tile"
-         [class.offline]="!box.online"
-         [class.pending]="box.pendingSync"
-         [style.background-color]="getColor()"
-         (click)="onBoxClick()">
-      <span class="box-number">{{ box.number }}</span>
-      @if (box.pendingSync) {
-        <span class="sync-indicator">⏱</span>
-      }
-      @if (!box.online) {
-        <span class="offline-indicator">⚠</span>
-      }
+     [class.offline]="!box.online"
+     [class.pending]="box.pendingSync"
+     [class.read-only]="isReadOnly"
+     [class.locked]="isLocked"
+     [style.background-color]="getColor()"
+     (click)="onBoxClick()">
+  <span class="box-number">{{ box.number }}</span>
+  @if (box.pendingSync) {
+    <span class="sync-indicator">&#8987;</span>
+  }
+  @if (!box.online) {
+    <span class="offline-indicator">&#9888;</span>
+  }
 
-      @if (showDropdown) {
-        <div class="dropdown" (click)="$event.stopPropagation()">
-          @for (status of statuses; track status) {
-            <div class="dropdown-item"
-                 (click)="selectStatus(status)">
-              {{ getStatusLabel(status) }}
-            </div>
-          }
+  @if (showDropdown && !isReadOnly && !isLocked) {
+    <div class="dropdown" (click)="$event.stopPropagation()">
+      @for (status of statuses; track status) {
+        <div class="dropdown-item"
+             (click)="selectStatus(status)">
+          {{ getStatusLabel(status) }}
         </div>
       }
     </div>
+  }
+</div>

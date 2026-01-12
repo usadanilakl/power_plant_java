@@ -1,9 +1,13 @@
 {
-  "name": "loto-boxes",
-  "short_name": "loto-boxes",
+  "name": "LOTO Box Control System",
+  "short_name": "LOTO Boxes",
+  "description": "Control and monitor LOTO safety boxes with LED indicators",
   "display": "standalone",
+  "orientation": "landscape",
   "scope": "./",
   "start_url": "./",
+  "background_color": "#121212",
+  "theme_color": "#00aaff",
   "icons": [
     {
       "src": "icons/icon-72x72.png",

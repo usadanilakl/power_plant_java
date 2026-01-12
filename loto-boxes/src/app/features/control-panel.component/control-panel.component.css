@@ -5,10 +5,22 @@
       border-radius: 8px;
     }
 
+    .read-only-warning {
+      background: rgba(255, 68, 68, 0.2);
+      border: 1px solid #f44;
+      color: #f88;
+      padding: 8px 16px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      text-align: center;
+      font-weight: 500;
+    }
+
     .buttons {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
+      flex-wrap: wrap;
     }
 
     button {
@@ -17,6 +29,12 @@
       border-radius: 4px;
       cursor: pointer;
       font-weight: bold;
+      transition: opacity 0.2s;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .btn-primary {

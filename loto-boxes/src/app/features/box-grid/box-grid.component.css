@@ -1,10 +1,12 @@
+.box-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+}
 
-    .box-grid {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      grid-template-rows: repeat(6, 1fr);
-      gap: 8px;
-      width: 100%;
-      height: 100%;
-      padding: 16px;
-    }
+/* Make grid items square using aspect-ratio */
+:host ::ng-deep app-box-tile {
+  aspect-ratio: 1 / 1;
+}

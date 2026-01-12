@@ -1,17 +1,25 @@
+<div class="app-container" [class.electron]="isElectron()">
+  @if (isElectron()) {
+    <div class="title-bar">
+      <span class="title-text">LOTO Box Control System</span>
+      <button class="close-btn" (click)="closeWindow()">&#10005;</button>
+    </div>
+  }
 
-    
-        <div class="app-container">
-          <header>
-            <h1>LOTO Box Control System</h1>
-          </header>
-    
-          <div class="main-content">
-            <div class="control-panel-top">
-              <app-control-panel></app-control-panel>
-            </div>
-    
-            <main class="grid-area">
-              <app-box-grid></app-box-grid>
-            </main>
-          </div>
-        </div>
+  <header>
+    <div class="header-content">
+      <h1>LOTO Box Control System</h1>
+      <app-network-status></app-network-status>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <div class="control-panel-top">
+      <app-control-panel></app-control-panel>
+    </div>
+
+    <main class="grid-area">
+      <app-box-grid></app-box-grid>
+    </main>
+  </div>
+</div>

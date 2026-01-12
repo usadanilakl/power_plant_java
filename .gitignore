@@ -154,3 +154,4 @@ token.properties
 /loto-boxes/build_log.txt
 /loto-boxes/test-output/test.exe
 /loto-boxes/loto-boxes-app/**
+/loto-boxes/dist-electron/**

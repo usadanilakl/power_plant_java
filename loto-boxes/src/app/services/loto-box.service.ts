@@ -1,12 +1,14 @@
-import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal, computed } from '@angular/core';
 import { Observable, forkJoin, of, throwError } from 'rxjs';
-import { map, tap, catchError } from 'rxjs/operators';
-import { LotoBox, LotoBoxStatus, STATUS_COLORS, BoxUpdateRequest, BulkUpdateRequest } from '../models/loto-box.model';
+import { tap, catchError } from 'rxjs/operators';
+import { LotoBox, LotoBoxStatus, STATUS_COLORS, BoxUpdateRequest } from '../models/loto-box.model';
 import { WLEDService } from './wled.service';
 import { LoggerService } from './logger.service';
 import { SyncQueueService } from './sync-queue.service';
 import { WledLedArrayService } from './wled-led-array.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NetworkModeService, NetworkMode } from './network-mode.service';
+import { StorageService } from './storage.service';
 
 /**
  * WLED Update Strategy
@@ -16,10 +18,10 @@ export enum WLEDStrategy {
   LED_ARRAY = 'led_array'     // Use individual LED control (no segment limit)
 }
 
-export enum NetworkMode{
-  ONLINE = 'online',
-  OFFLINE = 'offline'
-}
+/**
+ * Locked box number - always magenta, no controls allowed
+ */
+export const LOCKED_BOX_NUMBER = 61;
 
 @Injectable({
   providedIn: 'root'
@@ -27,6 +29,8 @@ export enum NetworkMode{
 export class LotoBoxService {
 
   destroyRef = inject(DestroyRef);
+  private networkModeService = inject(NetworkModeService);
+  private storageService = inject(StorageService);
 
   // Signal for reactive state
   boxes = signal<LotoBox[]>([]);
@@ -34,8 +38,11 @@ export class LotoBoxService {
   // Current WLED strategy (use LED_ARRAY to bypass 31 segment limit)
   private wledStrategy = signal<WLEDStrategy>(WLEDStrategy.LED_ARRAY);
 
-  // Current network mode
-  private networkMode = signal<NetworkMode>(NetworkMode.OFFLINE);
+  // Computed: Is in read-only mode?
+  readonly isReadOnly = computed(() => this.networkModeService.isReadOnly());
+
+  // Computed: Can control boxes?
+  readonly canControl = computed(() => this.networkModeService.canControl());
 
   // Initial box configuration from hardware specs
   private readonly INITIAL_BOXES: LotoBox[] = [
@@ -156,35 +163,21 @@ export class LotoBoxService {
   }
 
   /**
-   * GET CURRENT NETWORK MODE
+   * Get current network mode from service
    */
   getNetworkMode(): NetworkMode {
-    return this.networkMode();
-  }
-
-  /**
-   * Set network mode (standalone vs. multi-controller)
-   */
-  setNetworkMode(mode: NetworkMode): void {
-    this.networkMode.set(mode);
-    this.logger.info(`Network mode changed to: ${mode}`);
+    return this.networkModeService.networkMode();
   }
 
   /**
    * Load boxes from storage or initialize with defaults
    */
   loadBoxes(): void {
-    // Try to load from localStorage
-    const stored = localStorage.getItem('loto-boxes');
-    if (stored) {
-      try {
-        const boxes = JSON.parse(stored);
-        this.boxes.set(boxes);
-        this.logger.info('Loaded boxes from storage', { count: boxes.length });
-      } catch (e) {
-        console.error('Failed to parse stored boxes', e);
-        this.initializeBoxes();
-      }
+    // Try to load from localStorage using StorageService
+    const stored = this.storageService.getBoxes<LotoBox[]>();
+    if (stored && stored.length > 0) {
+      this.boxes.set(stored);
+      this.logger.info('Loaded boxes from storage', { count: stored.length });
     } else {
       this.initializeBoxes();
     }
@@ -207,10 +200,10 @@ export class LotoBoxService {
   }
 
   /**
-   * Save boxes to storage
+   * Save boxes to storage using StorageService
    */
   private saveBoxes(): void {
-    localStorage.setItem('loto-boxes', JSON.stringify(this.boxes()));
+    this.storageService.saveBoxes(this.boxes());
   }
 
   /**
@@ -525,10 +518,12 @@ export class LotoBoxService {
     }
 
   /**
-   * Clear all boxes (set to CLOSED/dark blue)
+   * Clear all boxes (set to CLOSED/dark blue) - except locked box 61
    */
   clearAllBoxes(): Observable<any[]> {
-    const boxNumbers = this.boxes().map(b => b.number);
+    const boxNumbers = this.boxes()
+      .filter(b => b.number !== LOCKED_BOX_NUMBER)
+      .map(b => b.number);
     return this.bulkUpdateBoxes(boxNumbers, LotoBoxStatus.CLOSED);
   }
 

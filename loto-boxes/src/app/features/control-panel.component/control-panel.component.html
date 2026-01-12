@@ -1,42 +1,37 @@
-    <div class="control-panel">
-      <h2>Control Panel</h2>
-      <div class="buttons">
-        <button (click)="syncAll()" class="btn-primary">
-          Update All
-        </button>
-        <button (click)="clearAll()" class="btn-secondary">
-          Clear All
-        </button>
-        <button (click)="refresh()" class="btn-secondary">
-          Refresh
-        </button>
-        <button (click)="checkMate()" class="btn-secondary">
-          Random
-        </button>
-        <button (click)="loadFromEsp()" class="btn-secondary">
-          Load From ESP
-        </button>
-        <button (click)="spell()" class="btn-secondary">
-          Spell
-        </button>
-      </div>
+<div class="control-panel">
+  <h2>Control Panel</h2>
 
-      <div class="stats">
-        <div class="stat">
-          <span class="label">Building:</span>
-          <span class="value">{{ getStatusCount('building') }}</span>
-        </div>
-        <div class="stat">
-          <span class="label">Test:</span>
-          <span class="value">{{ getStatusCount('test') }}</span>
-        </div>
-        <div class="stat">
-          <span class="label">Active:</span>
-          <span class="value">{{ getStatusCount('active') }}</span>
-        </div>
-        <div class="stat">
-          <span class="label">Closed:</span>
-          <span class="value">{{ getStatusCount('closed') }}</span>
-        </div>
-      </div>
+  @if (isReadOnly) {
+    <div class="read-only-warning">
+      ESP controllers not reachable - Read-Only Mode
     </div>
+  }
+
+  <div class="buttons">
+    <button (click)="clearAll()" class="btn-secondary" [disabled]="!canControl">
+      Clear All
+    </button>
+    <button (click)="refresh()" class="btn-primary">
+      Update
+    </button>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <span class="label">Building:</span>
+      <span class="value">{{ getStatusCount('building') }}</span>
+    </div>
+    <div class="stat">
+      <span class="label">Test:</span>
+      <span class="value">{{ getStatusCount('test') }}</span>
+    </div>
+    <div class="stat">
+      <span class="label">Active:</span>
+      <span class="value">{{ getStatusCount('active') }}</span>
+    </div>
+    <div class="stat">
+      <span class="label">Closed:</span>
+      <span class="value">{{ getStatusCount('closed') }}</span>
+    </div>
+  </div>
+</div>

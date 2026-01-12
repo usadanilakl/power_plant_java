@@ -1,17 +1,24 @@
-    .box-tile {
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      border: 2px solid #333;
-      border-radius: 4px;
-      font-weight: bold;
-      color: white;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-      transition: transform 0.2s;
-      z-index: 1;
-    }
+.box-tile {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  border: 2px solid #333;
+  border-radius: 4px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  transition: transform 0.2s;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.box-tile.locked {
+  cursor: not-allowed;
+  border-color: #808;
+}
 
     .box-tile:hover {
       transform: scale(1.05);
