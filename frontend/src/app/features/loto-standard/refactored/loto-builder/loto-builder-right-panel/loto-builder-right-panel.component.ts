@@ -71,6 +71,12 @@ export class LotoBuilderRightPanelComponent {
         label: 'Add to LOTO',
         icon: '➕',
         action: (shape: RfShape) => this.handleAddToLotoAction(shape)
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        icon: '🗑️',
+        action: (shape: RfShape) => this.handleDeleteAction(shape)
       }
     ];
   });
@@ -232,6 +238,16 @@ export class LotoBuilderRightPanelComponent {
           this.removeLotoPointFromEquipment(deletedLotoPointId);
         }
       });
+
+    // Subscribe to equipment deletions to keep local state in sync
+    this.equipmentService.equipmentDeleted$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (deletedEquipmentId) => {
+          console.log('[LOTO Builder] Equipment deleted:', deletedEquipmentId);
+          this.removeEquipmentFromLocalList(deletedEquipmentId);
+        }
+      });
   }
 
   /**
@@ -258,9 +274,12 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
-   * Handle shape click - show info window
+   * Handle shape click - show info window and set selection
    */
   onShapeClicked(shape: RfShape): void {
+    // Set the selected shape for toolbar delete button
+    this.builderState.selectedShapeId.set(shape.id);
+
     const equipment = this.builderState.currentEquipment();
     const matchingEquipment = equipment.find(eq => eq.id === shape.id);
 
@@ -284,6 +303,35 @@ export class LotoBuilderRightPanelComponent {
   onShapeRightClicked(shape: RfShape): void {
     // Context menu is now handled by interactive-image component
     // using customContextMenuActions input
+  }
+
+  /**
+   * Handle shapes deleted from interactive-image (via toolbar, keyboard, or context menu)
+   */
+  onShapesDeleted(shapeIds: number[]): void {
+    console.log('[LOTO Builder] Shapes deleted from interactive-image:', shapeIds);
+
+    // Delete each equipment via API
+    shapeIds.forEach(shapeId => {
+      const equipment = this.builderState.currentEquipment();
+      const matchingEquipment = equipment.find(eq => eq.id === shapeId);
+
+      if (matchingEquipment) {
+        this.equipmentService.deleteEquipment(matchingEquipment.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              console.log('[LOTO Builder] Equipment deleted via API:', matchingEquipment.id);
+            },
+            error: (error: any) => {
+              console.error('Error deleting equipment:', error);
+            }
+          });
+      }
+    });
+
+    // Clear selection
+    this.builderState.selectedShapeId.set(null);
   }
 
   /**
@@ -330,6 +378,51 @@ export class LotoBuilderRightPanelComponent {
       // Store the LOTO point to add after user selects standards
       this.builderState.setCurrentLotoPoint(lotoPoint);
     }
+  }
+
+  /**
+   * Handle Delete action from context menu
+   */
+  private handleDeleteAction(shape: RfShape): void {
+    const equipment = this.builderState.currentEquipment();
+    const matchingEquipment = equipment.find(eq => eq.id === shape.id);
+
+    if (!matchingEquipment) {
+      console.warn('No equipment found for shape:', shape.id);
+      return;
+    }
+
+    // Confirm deletion
+    const hasLotoPoints = matchingEquipment.lotoPoints && matchingEquipment.lotoPoints.length > 0;
+    const confirmMessage = hasLotoPoints
+      ? `Are you sure you want to delete this equipment? The LOTO point associations will be removed but the LOTO points will be preserved.`
+      : `Are you sure you want to delete this equipment?`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    // Start processing
+    this.builderState.startProcessing('Deleting equipment...');
+
+    // Delete equipment via API
+    this.equipmentService.deleteEquipment(matchingEquipment.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          console.log('[LOTO Builder] Equipment deleted successfully:', matchingEquipment.id);
+          this.builderState.stopProcessing();
+          // Clear selection if deleted equipment was selected
+          if (this.builderState.selectedShapeId() === matchingEquipment.id) {
+            this.builderState.selectedShapeId.set(null);
+          }
+        },
+        error: (error: any) => {
+          console.error('Error deleting equipment:', error);
+          this.builderState.stopProcessing();
+          alert('Failed to delete equipment. Please try again.');
+        }
+      });
   }
 
   /**
@@ -504,6 +597,18 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
+   * Handle delete button click in toolbar
+   */
+  onDeleteSelected(): void {
+    const shapeId = this.selectedShapeId();
+    if (!shapeId) return;
+
+    // Create a mock shape with the selected ID to reuse handleDeleteAction
+    const shape = { id: shapeId } as RfShape;
+    this.handleDeleteAction(shape);
+  }
+
+  /**
    * Highlight equipment associated with selected LOTO point
    */
   private highlightLotoPointEquipment(lotoPoint: LotoPointDto): void {
@@ -596,6 +701,19 @@ export class LotoBuilderRightPanelComponent {
     if (hasChanges) {
       console.log('[LOTO Builder] Removed deleted LOTO point from equipment');
       this.builderState.setCurrentEquipment(updatedEquipmentList);
+    }
+  }
+
+  /**
+   * Remove equipment from local list when it's deleted
+   */
+  private removeEquipmentFromLocalList(deletedEquipmentId: number): void {
+    const currentEquipment = this.builderState.currentEquipment();
+    const filteredEquipment = currentEquipment.filter(eq => eq.id !== deletedEquipmentId);
+
+    if (filteredEquipment.length !== currentEquipment.length) {
+      console.log('[LOTO Builder] Removed deleted equipment from local list:', deletedEquipmentId);
+      this.builderState.setCurrentEquipment(filteredEquipment);
     }
   }
 

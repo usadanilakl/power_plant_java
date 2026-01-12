@@ -103,6 +103,7 @@ export class InteractiveImageComponent {
   shapeUpdated = output<RfShape>();
   shapeDrawn = output<RfShape>();
   shapeHovered = output<RfShape | null>();
+  shapeDeleted = output<number[]>();
 
   baseUrl = environment.baseApiUrl;
   pngUrl = computed(()=>this.baseUrl +'/'+ this.imageUrl()?.replaceAll('pdf', 'jpg'));
@@ -948,6 +949,7 @@ export class InteractiveImageComponent {
       case 'delete':
         const selectedIds = this.selectedShapeIds();
         if (selectedIds.length > 0 && this.activeConfig().canDeleteShapes) {
+          this.shapeDeleted.emit([...selectedIds]);
           this.shapeManager.deleteShapes(selectedIds);
         }
         break;
@@ -1202,6 +1204,7 @@ export class InteractiveImageComponent {
           const selectedIds = this.selectedShapeIds();
           if (selectedIds.length > 0) {
             event.preventDefault();
+            this.shapeDeleted.emit([...selectedIds]);
             this.shapeManager.deleteShapes(selectedIds);
             console.log('Deleted shapes:', selectedIds);
           }
@@ -1378,7 +1381,10 @@ export class InteractiveImageComponent {
       { id: 'bringToFront', label: 'Bring to Front', action: () => console.log('Bring to front:', shapeId) },
       { id: 'sendToBack', label: 'Send to Back', action: () => console.log('Send to back:', shapeId) },
       { id: 'duplicate', label: 'Duplicate', action: () => this.duplicateShape(shapeId) },
-      { id: 'delete', label: 'Delete', action: () => this.shapeManager.deleteShapes([shapeId]) }
+      { id: 'delete', label: 'Delete', action: () => {
+        this.shapeDeleted.emit([shapeId]);
+        this.shapeManager.deleteShapes([shapeId]);
+      }}
     );
 
     // Use setTimeout to ensure the old menu is closed before opening new one

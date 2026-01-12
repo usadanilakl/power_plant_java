@@ -32,6 +32,7 @@
         (shapeRightClicked)="onShapeRightClicked($event)"
         (shapeUpdated)="onShapeUpdated($event)"
         (shapeDrawn)="onShapeDrawn($event)"
+        (shapeDeleted)="onShapesDeleted($event)"
       ></app-interactive-image>
 
       <!-- Info Window (positioned in upper right) -->
@@ -56,6 +57,14 @@
       (click)="builderState.toggleTextRecognition()"
     >
       {{ builderState.isTextRecognitionEnabled() ? 'OCR On' : 'OCR Off' }}
+    </button>
+    <button
+      class="toolbar-button danger"
+      title="Delete Selected Equipment"
+      [disabled]="!selectedShapeId()"
+      (click)="onDeleteSelected()"
+    >
+      Delete
     </button>
     <button
       class="toolbar-button"

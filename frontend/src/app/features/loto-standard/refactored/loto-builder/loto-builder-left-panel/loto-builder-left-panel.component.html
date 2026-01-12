@@ -30,17 +30,17 @@
         class="mode-button"
         [class.active]="builderState.displayMode() === 'table'"
         (click)="toggleDisplayMode()"
-        title="Table Mode"
+        title="Table View"
       >
-        📊
+        <mat-icon>view_list</mat-icon>
       </button>
       <button
         class="mode-button"
         [class.active]="builderState.displayMode() === 'toggle-menu'"
         (click)="toggleDisplayMode()"
-        title="Menu Mode"
+        title="Tree View"
       >
-        📂
+        <mat-icon>account_tree</mat-icon>
       </button>
     </div>
   </div>

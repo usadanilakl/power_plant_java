@@ -36,13 +36,18 @@ export class CanvasRenderService {
   ): void {
     const isHovered = hoveredShapeId !== null && hoveredShapeId !== undefined && shape.id === hoveredShapeId;
 
-    ctx.strokeStyle = isHovered ? '#ffa500' : shape.color; // Orange for hover
+    ctx.strokeStyle = isHovered ? '#ff6600' : shape.color; // Bright orange for hover
     ctx.fillStyle = shape.color;
     ctx.lineWidth = shape.isSelected
       ? this.SELECTED_LINE_WIDTH
       : isHovered
-      ? 2
+      ? 4  // Thicker line for hover to make it more noticeable
       : this.DEFAULT_LINE_WIDTH;
+
+    // Draw highlight overlay for hovered shapes
+    if (isHovered && (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol')) {
+      this.drawHoverHighlight(ctx, shape, scale);
+    }
 
     const scaledShape = this.scaleShape(shape, scale);
 
@@ -316,6 +321,49 @@ export class CanvasRenderService {
   ): void {
     ctx.font = `${16 * scale}px Arial`;
     ctx.fillText(text.text, text.x, text.y);
+  }
+
+  /**
+   * Draw a prominent highlight overlay for hovered shapes
+   */
+  private drawHoverHighlight(
+    ctx: CanvasRenderingContext2D,
+    shape: RfShape,
+    scale: number
+  ): void {
+    if (shape.type !== 'rectangle' && shape.type !== 'image' && shape.type !== 'svg-symbol') {
+      return;
+    }
+
+    const rectShape = shape as RfRectangleShape | RfImageShape | SVGSymbolShape;
+    const x = rectShape.x * scale;
+    const y = rectShape.y * scale;
+    const width = rectShape.width * scale;
+    const height = rectShape.height * scale;
+
+    ctx.save();
+
+    // Apply rotation if specified
+    if (rectShape.rotation) {
+      const centerX = x + width / 2;
+      const centerY = y + height / 2;
+      ctx.translate(centerX, centerY);
+      ctx.rotate((rectShape.rotation * Math.PI) / 180);
+      ctx.translate(-centerX, -centerY);
+    }
+
+    // Draw semi-transparent orange fill
+    ctx.fillStyle = 'rgba(255, 102, 0, 0.25)';
+    ctx.fillRect(x, y, width, height);
+
+    // Draw thicker orange border with glow effect
+    ctx.shadowColor = '#ff6600';
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = '#ff6600';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x, y, width, height);
+
+    ctx.restore();
   }
 
   private scaleShape(shape: RfShape, scale: number): RfShape {

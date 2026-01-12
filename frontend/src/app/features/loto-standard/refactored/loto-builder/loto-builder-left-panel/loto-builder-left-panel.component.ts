@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { LotoBuilderStateService } from '../services/loto-builder-state.service';
 import { RfFileLeftMenuComponent } from '../../../../files/refactored/rf-file-left-menu/rf-file-left-menu.component';
 import { LotoBuilderFileTableComponent } from './loto-builder-file-table/loto-builder-file-table.component';
@@ -14,6 +15,7 @@ import { ContextualGuideDirective } from '../../../../../shared/guide/contextual
   standalone: true,
   imports: [
     CommonModule,
+    MatIconModule,
     RfFileLeftMenuComponent,
     LotoBuilderFileTableComponent,
     LotoBuilderLotoPointTableComponent,

@@ -322,4 +322,41 @@ public class NgEquipmentService implements NgCrudService<Equipment, EquipmentDto
                 .map(equipmentMapper::convertToDto)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Safely deletes equipment by handling relationships before soft delete.
+     * - Clears lotoPoints associations (junction table) - LOTO points are preserved
+     * - Removes equipment from file's points list (junction table)
+     * - Soft deletes the equipment
+     *
+     * @param id The equipment ID to delete
+     * @return The deleted equipment DTO
+     */
+    public EquipmentDto deleteEquipmentSafely(Long id) {
+        Equipment equipment = findById(id)
+                .orElseThrow(() -> new RuntimeException("Equipment not found with id: " + id));
+
+        // Clear LOTO point associations (keeps LOTO points, just removes junction entries)
+        if (equipment.getLotoPoints() != null) {
+            equipment.getLotoPoints().clear();
+        }
+
+        // Remove equipment from file's points list and clear the files collection
+        if (equipment.getFiles() != null) {
+            for (FileObject file : new ArrayList<>(equipment.getFiles())) {
+                if (file != null && file.getPoints() != null) {
+                    file.getPoints().remove(equipment);
+                }
+            }
+            equipment.getFiles().clear();
+        }
+
+        // Save to persist relationship changes before soft delete
+        equipment = save(equipment);
+
+        // Soft delete the equipment
+        equipment = softDelete(equipment);
+
+        return toDto(equipment);
+    }
 }
