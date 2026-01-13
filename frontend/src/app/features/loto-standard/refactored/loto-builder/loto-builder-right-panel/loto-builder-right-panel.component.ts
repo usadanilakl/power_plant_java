@@ -1,4 +1,4 @@
-import { Component, inject, computed, DestroyRef, effect, output, Injector } from '@angular/core';
+import { Component, inject, computed, DestroyRef, effect, output, Injector, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { catchError, of, tap } from 'rxjs';
@@ -19,6 +19,7 @@ import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
 import { GuideDirective } from '../../../../../shared/guide/guide.directive';
 import { ReactiveGuideDirective } from '../../../../../shared/guide/reactive-guide.directive';
 import { ContextualGuideDirective } from '../../../../../shared/guide/contextual-guide.directive';
+import { PIDSymbol, PIDSymbolsService } from '../../../../../shared/image/refactored/services/pid-symbols.service';
 
 @Component({
   selector: 'app-loto-builder-right-panel',
@@ -35,6 +36,8 @@ import { ContextualGuideDirective } from '../../../../../shared/guide/contextual
   styleUrl: './loto-builder-right-panel.component.css',
 })
 export class LotoBuilderRightPanelComponent {
+  @ViewChild(InteractiveImageComponent) interactiveImage!: InteractiveImageComponent;
+
   protected builderState = inject(LotoBuilderStateService);
   private currentFileService = inject(CurrentFileService);
   private equipmentMapper = inject(EquipmentMapperService);
@@ -42,11 +45,17 @@ export class LotoBuilderRightPanelComponent {
   private lotoPointStateService = inject(RfLotoPointStateService);
   private lotoPointApiService = inject(RfLotoPointApiService);
   private imageService = inject(ImageService);
+  private pidSymbolsService = inject(PIDSymbolsService);
   private destroyRef = inject(DestroyRef);
   private injector = inject(Injector);
 
   // Output event for close button
   closeRequested = output<void>();
+
+  // Symbol picker state
+  showSymbolPicker = signal(false);
+  shapeToChangeSymbol = signal<RfShape | null>(null);
+  availableSymbols = computed(() => this.pidSymbolsService.getAllSymbols());
 
   /**
    * Interactive image configuration - use FILE_EDITOR preset
@@ -65,6 +74,12 @@ export class LotoBuilderRightPanelComponent {
         label: 'Edit',
         icon: '✏️',
         action: (shape: RfShape) => this.handleEditAction(shape)
+      },
+      {
+        id: 'changeSymbol',
+        label: 'Change Symbol',
+        icon: '🔄',
+        action: (shape: RfShape) => this.handleChangeSymbolAction(shape)
       },
       {
         id: 'addToLoto',
@@ -355,6 +370,57 @@ export class LotoBuilderRightPanelComponent {
   }
 
   /**
+   * Handle Change Symbol action from context menu
+   * Opens the symbol picker to allow user to change shape type
+   */
+  private handleChangeSymbolAction(shape: RfShape): void {
+    // Only allow for rectangle and svg-symbol types
+    if (shape.type !== 'rectangle' && shape.type !== 'svg-symbol') {
+      console.warn('Cannot change symbol for shape type:', shape.type);
+      return;
+    }
+    this.shapeToChangeSymbol.set(shape);
+    this.showSymbolPicker.set(true);
+  }
+
+  /**
+   * Apply selected symbol to the shape being changed
+   */
+  onSymbolSelected(symbol: PIDSymbol | null): void {
+    const shape = this.shapeToChangeSymbol();
+    if (!shape) return;
+
+    // Use the interactive image component to change the symbol
+    if (this.interactiveImage) {
+      const updatedShape = this.interactiveImage.changeShapeSymbol(shape.id, symbol);
+
+      // After shape is updated locally, also update equipment on the server
+      if (updatedShape) {
+        this.onShapeUpdated(updatedShape);
+      }
+    }
+
+    this.closeSymbolPicker();
+  }
+
+  /**
+   * Close the symbol picker without making changes
+   */
+  closeSymbolPicker(): void {
+    this.showSymbolPicker.set(false);
+    this.shapeToChangeSymbol.set(null);
+  }
+
+  /**
+   * Check if the given symbol ID matches the current shape's symbol
+   */
+  isCurrentSymbol(symbolId: string): boolean {
+    const shape = this.shapeToChangeSymbol();
+    if (!shape || shape.type !== 'svg-symbol') return false;
+    return (shape as SVGSymbolShape).symbolId === symbolId;
+  }
+
+  /**
    * Handle Add to LOTO action from context menu
    */
   private handleAddToLotoAction(shape: RfShape): void {
@@ -456,6 +522,16 @@ export class LotoBuilderRightPanelComponent {
       updatedEquipment.coordinates = coordinates;
       updatedEquipment.originalPictureSize = originalPictureSize;
 
+      // Update symbol-specific fields based on shape type
+      if (shape.type === 'svg-symbol') {
+        const symbolShape = shape as SVGSymbolShape;
+        updatedEquipment.symbolId = symbolShape.symbolId;
+        updatedEquipment.svgPath = symbolShape.svgPath;
+      } else {
+        // Converting to rectangle - clear symbol fields
+        updatedEquipment.symbolId = null;
+        updatedEquipment.svgPath = null;
+      }
 
       // Save to backend
       this.equipmentService.updateEquipment(updatedEquipment)
@@ -463,6 +539,9 @@ export class LotoBuilderRightPanelComponent {
         .subscribe({
           next: (response: any) => {
             console.log('Equipment updated successfully:', response);
+            // Update local equipment list with the saved data
+            const savedEquipment = EquipmentDto.fromJson(response.responseData);
+            this.updateEquipmentInLocalList(savedEquipment);
             this.builderState.hasUnsavedChanges.set(false);
           },
           error: (error: any) => {
@@ -470,6 +549,17 @@ export class LotoBuilderRightPanelComponent {
           }
         });
     }
+  }
+
+  /**
+   * Update an existing equipment in the local list
+   */
+  private updateEquipmentInLocalList(updatedEquipment: EquipmentDto): void {
+    const currentEquipment = this.builderState.currentEquipment();
+    const updatedList = currentEquipment.map(eq =>
+      eq.id === updatedEquipment.id ? updatedEquipment : eq
+    );
+    this.builderState.setCurrentEquipment(updatedList);
   }
 
   /**

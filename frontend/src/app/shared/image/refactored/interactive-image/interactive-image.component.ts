@@ -12,7 +12,7 @@ import { CanvasRenderService } from "../services/canvas-render.service";
 import { DrawingService } from "../services/drawing.service";
 import { ShapeConversionService } from "../services/shape-conversion.service";
 import { ShapeManagerService } from "../services/shape-manager.service";
-import { RfImageShape, RfRectangleShape, RfShape } from "../models/fr-shape.model";
+import { RfImageShape, RfRectangleShape, RfShape, SVGSymbolShape } from "../models/fr-shape.model";
 import { PIDSymbol } from "../services/pid-symbols.service";
 import {
   InteractiveImageConfig,
@@ -104,6 +104,8 @@ export class InteractiveImageComponent {
   shapeDrawn = output<RfShape>();
   shapeHovered = output<RfShape | null>();
   shapeDeleted = output<number[]>();
+  /** Emitted when user requests to change a shape's symbol/type. Parent should handle showing symbol picker. */
+  shapeSymbolChangeRequested = output<RfShape>();
 
   baseUrl = environment.baseApiUrl;
   pngUrl = computed(()=>this.baseUrl +'/'+ this.imageUrl()?.replaceAll('pdf', 'jpg'));
@@ -833,6 +835,9 @@ export class InteractiveImageComponent {
       this.shapeDrawn.emit(newShape);
     }
 
+    // Reset draw mode and cursor after drawing completes
+    this.currentDrawMode.set('none');
+    this.currentTool.set('select');
     this.cursor = 'default';
 
     // Suppress context menu that fires after right-button mouseup during drawing
@@ -944,6 +949,74 @@ export class InteractiveImageComponent {
       this.shapeManager.replaceShape(shapeId, rectangleShape);
       console.log('Image converted back to rectangle');
     }
+  }
+
+  /**
+   * Change a shape's symbol type. Can convert:
+   * - Rectangle to SVG Symbol
+   * - SVG Symbol to Rectangle
+   * - SVG Symbol to different SVG Symbol
+   * @param shapeId The ID of the shape to convert
+   * @param newSymbol The new symbol to use, or null for rectangle
+   * @returns The new shape, or null if conversion failed
+   */
+  changeShapeSymbol(shapeId: number, newSymbol: PIDSymbol | null): RfShape | null {
+    const currentShape = this.shapeManager.getShapeById(shapeId);
+    if (!currentShape) {
+      console.error('Shape not found:', shapeId);
+      return null;
+    }
+
+    // Only allow conversion for rectangle and svg-symbol types
+    if (currentShape.type !== 'rectangle' && currentShape.type !== 'svg-symbol') {
+      console.warn('Cannot change symbol for shape type:', currentShape.type);
+      return null;
+    }
+
+    let newShape: RfShape;
+    const baseProps = {
+      id: currentShape.id,
+      fileId: currentShape.fileId,
+      x: currentShape.x,
+      y: currentShape.y,
+      width: currentShape.width,
+      height: currentShape.height,
+      color: currentShape.color,
+      originalPictureWidth: currentShape.originalPictureWidth,
+      originalPictureHeight: currentShape.originalPictureHeight,
+      isSelected: currentShape.isSelected,
+      isBulkSelected: currentShape.isBulkSelected,
+      currentImgWidth: currentShape.currentImgWidth,
+      currentImgHeigth: currentShape.currentImgHeigth,
+      scaleToCurrentImage: currentShape.scaleToCurrentImage,
+    };
+
+    if (newSymbol === null) {
+      // Convert to rectangle
+      newShape = {
+        ...baseProps,
+        type: 'rectangle',
+        originalWidth: currentShape.width,
+        originalHeight: currentShape.height,
+      } as RfRectangleShape;
+      console.log('Converted shape to rectangle:', shapeId);
+    } else {
+      // Convert to SVG Symbol
+      newShape = {
+        ...baseProps,
+        type: 'svg-symbol',
+        symbolId: newSymbol.id,
+        svgPath: newSymbol.svgPath,
+        rotation: (currentShape as any).rotation || 0,
+        originalWidth: newSymbol.originalWidth,
+        originalHeight: newSymbol.originalHeight,
+      } as SVGSymbolShape;
+      console.log('Converted shape to symbol:', newSymbol.id);
+    }
+
+    this.shapeManager.replaceShape(shapeId, newShape);
+    this.shapeUpdated.emit(newShape);
+    return newShape;
   }
 
   // ==================================================Symbol Palette Methods==================================================
@@ -1061,6 +1134,10 @@ export class InteractiveImageComponent {
       this.shapeDrawn.emit(newSymbol);
     }
 
+    // Reset draw mode and cursor after drawing completes
+    this.currentDrawMode.set('none');
+    this.currentTool.set('select');
+    this.selectedSymbol.set(null);
     this.cursor = 'default';
 
     // Suppress context menu that fires after right-button mouseup during drawing

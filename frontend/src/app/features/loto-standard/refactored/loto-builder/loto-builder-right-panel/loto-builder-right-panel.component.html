@@ -9,6 +9,49 @@
     </div>
   }
 
+  <!-- Symbol Picker Modal -->
+  @if (showSymbolPicker()) {
+    <div class="symbol-picker-overlay" (click)="closeSymbolPicker()">
+      <div class="symbol-picker-modal" (click)="$event.stopPropagation()">
+        <div class="symbol-picker-header">
+          <h3>Change Symbol</h3>
+          <button class="close-button" (click)="closeSymbolPicker()">×</button>
+        </div>
+        <div class="symbol-picker-content">
+          <!-- Rectangle option -->
+          <div
+            class="symbol-option"
+            [class.selected]="shapeToChangeSymbol()?.type === 'rectangle'"
+            (click)="onSymbolSelected(null)"
+          >
+            <div class="symbol-preview rectangle-preview">
+              <svg viewBox="0 0 40 30" width="40" height="30">
+                <rect x="2" y="2" width="36" height="26" fill="none" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <span class="symbol-name">Rectangle</span>
+          </div>
+
+          <!-- Symbol options -->
+          @for (symbol of availableSymbols(); track symbol.id) {
+            <div
+              class="symbol-option"
+              [class.selected]="isCurrentSymbol(symbol.id)"
+              (click)="onSymbolSelected(symbol)"
+            >
+              <div class="symbol-preview">
+                <svg [attr.viewBox]="'0 0 ' + symbol.width + ' ' + symbol.height" [attr.width]="symbol.width" [attr.height]="symbol.height">
+                  <path [attr.d]="symbol.svgPath" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+              </div>
+              <span class="symbol-name">{{ symbol.name }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Image Viewer Area -->
   <div class="image-area"
        appGuide="create-loto-point-bulk:image-viewer"
