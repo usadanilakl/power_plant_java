@@ -1,6 +1,6 @@
 
 export default {
-  basePath: '/angular/browser',
+  basePath: '/',
   supportedLocales: {
   "en-US": ""
 },

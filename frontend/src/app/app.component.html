@@ -4,3 +4,29 @@
 <app-global-context-menu></app-global-context-menu>
 <app-qr-scanner></app-qr-scanner>
 <app-brady-printer-manager></app-brady-printer-manager>
+
+<!-- Guide Form Dialog -->
+<app-guide-form-dialog />
+
+<!-- Guide FAB Button -->
+@if (!guideService.isActive()) {
+  <button
+    mat-fab
+    color="primary"
+    class="guide-fab"
+    [matMenuTriggerFor]="guideMenu"
+    matTooltip="Start Guide"
+  >
+    <mat-icon>help_outline</mat-icon>
+  </button>
+  <mat-menu #guideMenu="matMenu">
+    <button mat-menu-item (click)="startGuide('upload-file')">
+      <mat-icon>upload_file</mat-icon>
+      <span>Upload File</span>
+    </button>
+    <button mat-menu-item (click)="startGuide('add-loto-point')">
+      <mat-icon>add_location</mat-icon>
+      <span>Add LOTO Point</span>
+    </button>
+  </mat-menu>
+}

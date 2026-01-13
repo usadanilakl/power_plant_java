@@ -30,7 +30,7 @@ export class RfValueService {
    * Preload commonly used value categories to avoid race conditions
    */
   private preloadCommonCategories(): void {
-    const commonCategories = ['isoPos', 'normPos', 'location', 'eqType'];
+    const commonCategories = ['isoPos', 'normPos', 'location', 'eqType', 'zeroEnergyPhrase'];
     commonCategories.forEach(alias => this.loadCategoryValues(alias));
   }
 

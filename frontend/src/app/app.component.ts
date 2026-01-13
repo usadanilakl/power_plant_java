@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MainLayoutComponent } from './layout/refactored/main-layout.component';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { PrintLayoutComponent } from "./features/form-designer/printable-form/print-layout/print-layout.component";
@@ -6,6 +6,13 @@ import { GlobalMessageComponent } from "./shared/global-message/global-message.c
 import { GlobalContextMenuComponent } from "./shared/menu/context-menu/global-context-menu/global-context-menu.component";
 import { QrScannerComponent } from "./shared/qr-code/qr-scanner/qr-scanner.component";
 import { BradyPrinterManagerComponent } from "./shared/brady-printer-manager/brady-printer-manager.component";
+import { GuideFormDialogComponent } from "./shared/guide/guide-form/guide-form-dialog.component";
+import { GuideFormService } from "./shared/guide/guide-form/guide-form.service";
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
+import { GuideAction } from './shared/guide/guide-form/guide-form.types';
 
 @Component({
   selector: 'app-root',
@@ -18,11 +25,22 @@ import { BradyPrinterManagerComponent } from "./shared/brady-printer-manager/bra
     GlobalContextMenuComponent,
     QrScannerComponent,
     BradyPrinterManagerComponent,
+    GuideFormDialogComponent,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatMenuModule,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent {
+  guideService = inject(GuideFormService);
+
   constructor(public route: ActivatedRoute) {}
   title = 'Jackson';
+
+  startGuide(action: GuideAction): void {
+    this.guideService.start(action);
+  }
 }
