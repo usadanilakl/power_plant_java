@@ -147,6 +147,10 @@ export class ShapeManagerService {
   }
 
   setShapes(shapes: RfShape[]): void {
+    // Clear any stale selection state before setting new shapes
+    // This prevents selection/hover issues when shapes are reloaded
+    this.selectedShapeIdsSignal.set([]);
+    this.singleSelectedShapeIdSignal.set(null);
     this.shapesSignal.set(shapes);
   }
 

@@ -656,29 +656,60 @@ export class LotoBuilderRightPanelComponent {
    */
   private updateLotoPointInEquipment(updatedLotoPoint: LotoPointDto): void {
     const currentEquipment = this.builderState.currentEquipment();
+    const currentFileId = this.builderState.currentFile()?.id;
+
+    // Build a set of equipment IDs that should have this LOTO point
+    // Check both equipmentList (full objects) and equipmentIdList (IDs only)
+    const equipmentIdsWithLotoPoint = new Set<number>();
+
+    // Add from equipmentList (full equipment objects)
+    if (updatedLotoPoint.equipmentList) {
+      updatedLotoPoint.equipmentList.forEach(e => {
+        if (e.id) equipmentIdsWithLotoPoint.add(e.id);
+      });
+    }
+
+    // Also check equipmentIdList (IDs only) - server may return this instead
+    if (updatedLotoPoint.equipmentIdList) {
+      updatedLotoPoint.equipmentIdList.forEach(id => {
+        if (id) equipmentIdsWithLotoPoint.add(id);
+      });
+    }
+
+    console.log('[LOTO Builder] Updating LOTO point:', updatedLotoPoint.id,
+      'tagNumber:', updatedLotoPoint.tagNumber,
+      'equipmentIds:', Array.from(equipmentIdsWithLotoPoint));
 
     // Check if this LOTO point is associated with any equipment in the current file
     const updatedEquipmentList = currentEquipment.map(eq => {
-      // Check if this equipment has the updated LOTO point
-      if (eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === updatedLotoPoint.id)) {
+      // Skip equipment not in the current file
+      if (currentFileId && eq.mainFileId !== currentFileId) {
+        return eq;
+      }
+
+      // Check if this equipment already has the updated LOTO point
+      const hasLotoPoint = eq.lotoPoints && eq.lotoPoints.some(lp => lp.id === updatedLotoPoint.id);
+
+      // Check if this equipment should have the LOTO point (based on the updated LOTO point's equipment associations)
+      const shouldHaveLotoPoint = eq.id && equipmentIdsWithLotoPoint.has(eq.id);
+
+      if (hasLotoPoint) {
         // Update the LOTO point in the equipment's lotoPoints array
-        const updatedLotoPoints = eq.lotoPoints.map(lp =>
+        const updatedLotoPoints = eq.lotoPoints!.map(lp =>
           lp.id === updatedLotoPoint.id ? updatedLotoPoint : lp
         );
+        console.log('[LOTO Builder] Updated existing LOTO point in equipment:', eq.id);
         return new EquipmentDto({ ...eq, lotoPoints: updatedLotoPoints });
       }
 
-      // Check if this equipment is in the updated LOTO point's equipmentList
-      // This handles newly associated equipment
-      if (updatedLotoPoint.equipmentList && updatedLotoPoint.equipmentList.some(e => e.id === eq.id)) {
-        // Check if LOTO point is not already in this equipment's lotoPoints
-        if (!eq.lotoPoints || !eq.lotoPoints.some(lp => lp.id === updatedLotoPoint.id)) {
-          const existingLotoPoints = eq.lotoPoints || [];
-          return new EquipmentDto({
-            ...eq,
-            lotoPoints: [...existingLotoPoints, updatedLotoPoint]
-          });
-        }
+      if (shouldHaveLotoPoint) {
+        // Add LOTO point to this equipment's lotoPoints array
+        const existingLotoPoints = eq.lotoPoints || [];
+        console.log('[LOTO Builder] Adding LOTO point to equipment:', eq.id);
+        return new EquipmentDto({
+          ...eq,
+          lotoPoints: [...existingLotoPoints, updatedLotoPoint]
+        });
       }
 
       return eq;
@@ -687,7 +718,7 @@ export class LotoBuilderRightPanelComponent {
     // Check if any equipment was actually updated
     const hasChanges = updatedEquipmentList.some((eq, index) => eq !== currentEquipment[index]);
     if (hasChanges) {
-      console.log('[LOTO Builder] Updated equipment with new LOTO point data');
+      console.log('[LOTO Builder] Equipment state updated with new LOTO point data');
       this.builderState.setCurrentEquipment(updatedEquipmentList);
     }
   }

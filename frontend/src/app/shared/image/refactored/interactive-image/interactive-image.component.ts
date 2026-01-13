@@ -588,12 +588,14 @@ export class InteractiveImageComponent {
       if ((event.ctrlKey || event.metaKey) && config.canMultiSelect) {
         this.handleShapeSelection(event);
       } else {
-        console.log('Ctrl/Cmd key is NOT held');
         // Handle normal click behavior
         const clickedShapeId = this.isOverShape(event);
         if (clickedShapeId !== null) {
           const shape = this.shapeManager.getShapeById(clickedShapeId);
           if(shape) this.shapeClicked.emit(shape);
+        } else {
+          // Clicked on empty space - clear selection
+          this.shapeManager.clearSelections();
         }
       }
     }
@@ -1090,21 +1092,6 @@ export class InteractiveImageComponent {
   // Add visual feedback for selected shapes in the template
   // Update the cursor based on hover state (add this method):
   private updateCursorForHover(event: MouseEvent): void {
-    if (this.currentDrawMode() !== 'none') return;
-
-    // Check for resize handles first (highest priority)
-    const handle = this.getResizeHandleAtPoint(event);
-    if (handle) {
-      this.cursor = this.getResizeCursor(handle);
-      return;
-    }
-
-    // Check for rotation handle (second priority)
-    if (this.isPointInRotationHandle(event)) {
-      this.cursor = 'grab';
-      return;
-    }
-
     const imgRect = this.img.getBoundingClientRect();
     const hoverX =
       (event.clientX - imgRect.left) /
@@ -1115,6 +1102,7 @@ export class InteractiveImageComponent {
       this.transformState.scale /
       this.baseImageScale;
 
+    // Always find hovered shape first (for hover highlighting)
     const shapes = this.shapes();
     let isOverShape = false;
     let hoveredShape: RfShape | null = null;
@@ -1142,10 +1130,30 @@ export class InteractiveImageComponent {
       }
     }
 
-    this.cursor = isOverShape ? 'pointer' : 'default';
-
-    // Emit hovered shape for external listeners
+    // Always emit hovered shape for external listeners (table highlighting, etc.)
     this.shapeHovered.emit(hoveredShape);
+
+    // If in draw mode, keep crosshair cursor but still allow hover highlighting
+    if (this.currentDrawMode() !== 'none') {
+      this.cursor = 'crosshair';
+      return;
+    }
+
+    // Now determine cursor based on context
+    // Check for resize handles first (highest priority for cursor)
+    const handle = this.getResizeHandleAtPoint(event);
+    if (handle) {
+      this.cursor = this.getResizeCursor(handle);
+      return;
+    }
+
+    // Check for rotation handle (second priority for cursor)
+    if (this.isPointInRotationHandle(event)) {
+      this.cursor = 'grab';
+      return;
+    }
+
+    this.cursor = isOverShape ? 'pointer' : 'default';
   }
 
   // Enhanced keyboard shortcuts for all operations
