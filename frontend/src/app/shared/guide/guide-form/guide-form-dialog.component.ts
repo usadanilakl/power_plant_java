@@ -138,12 +138,19 @@ import { GuideLotoReviewStepComponent } from './steps/guide-loto-review-step.com
                 />
               }
               @case ('review') {
-                <app-guide-review-step
-                  [step]="guideService.currentStep()!"
-                  [state]="guideService.state()!"
-                  [isSubmitting]="isSubmitting()"
-                  [error]="submitError()"
-                />
+                @if (guideService.state()?.action === 'add-loto-point') {
+                  <app-guide-loto-review-step
+                    [step]="guideService.currentStep()!"
+                    [state]="guideService.state()!"
+                  />
+                } @else {
+                  <app-guide-review-step
+                    [step]="guideService.currentStep()!"
+                    [state]="guideService.state()!"
+                    [isSubmitting]="isSubmitting()"
+                    [error]="submitError()"
+                  />
+                }
               }
               @case ('complete') {
                 <app-guide-complete-step
@@ -184,14 +191,14 @@ import { GuideLotoReviewStepComponent } from './steps/guide-loto-review-step.com
                     color="primary"
                     class="footer-btn submit-btn"
                     (click)="onSubmit()"
-                    [disabled]="isSubmitting()"
+                    [disabled]="isSubmitting() || !canSubmit()"
                   >
                     @if (isSubmitting()) {
                       <div class="btn-spinner"></div>
                     } @else {
-                      <mat-icon>cloud_upload</mat-icon>
+                      <mat-icon>{{ guideService.state()?.action === 'add-loto-point' ? 'save' : 'cloud_upload' }}</mat-icon>
                     }
-                    {{ isSubmitting() ? 'Uploading...' : 'Upload' }}
+                    {{ getSubmitButtonText() }}
                   </button>
                 } @else if (guideService.canGoNext()) {
                   <button
@@ -457,6 +464,24 @@ export class GuideFormDialogComponent {
       default:
         return true;
     }
+  }
+
+  canSubmit(): boolean {
+    const action = this.guideService.state()?.action;
+    if (action === 'add-loto-point') {
+      const data = this.guideService.state()?.lotoPointData;
+      return !!(data?.tagNumber && data?.description && data?.normPos && data?.isoPos);
+    }
+    // For file upload, check if we have file and required form data
+    return this.selectedFile() !== null;
+  }
+
+  getSubmitButtonText(): string {
+    const action = this.guideService.state()?.action;
+    if (this.isSubmitting()) {
+      return action === 'add-loto-point' ? 'Saving...' : 'Uploading...';
+    }
+    return action === 'add-loto-point' ? 'Save LOTO Point' : 'Upload';
   }
 
   onFileSelected(file: File): void {

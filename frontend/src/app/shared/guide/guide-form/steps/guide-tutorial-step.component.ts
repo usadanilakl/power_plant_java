@@ -27,7 +27,10 @@ import { TagNumberGeneratorComponent } from '../../../../features/tag-number/tag
 import { NamingConventionComponent } from '../../../../features/tag-number/naming-convention/naming-convention.component';
 import { ZeroEnergyPhraseBuilderComponent } from '../../../reactive-form/refactored/input-fields/zero-energy-phrase-builder/zero-energy-phrase-builder.component';
 import { EquipmentBrowserDialogComponent } from '../../../reactive-form/refactored/input-fields/equipment-browser-dialog/equipment-browser-dialog.component';
+import { EquipmentShapeDrawerDialogComponent } from '../../../reactive-form/refactored/input-fields/equipment-shape-drawer-dialog/equipment-shape-drawer-dialog.component';
 import { RfLotoPointDualFormComponent } from '../../../../features/loto-points/refactored/rf-loto-point-dual-form/rf-loto-point-dual-form.component';
+import { GuideZeroEnergyDialogComponent, GuideZeroEnergyResult } from '../dialogs/guide-zero-energy-dialog.component';
+import { GuideFileConnectionDialogComponent, GuideFileConnectionResult } from '../dialogs/guide-file-connection-dialog.component';
 
 // Import services
 import { LotoPointCounterpartService } from '../../../../features/loto-points/refactored/services/loto-point-counterpart.service';
@@ -53,7 +56,10 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
     NamingConventionComponent,
     ZeroEnergyPhraseBuilderComponent,
     EquipmentBrowserDialogComponent,
+    EquipmentShapeDrawerDialogComponent,
     RfLotoPointDualFormComponent,
+    GuideZeroEnergyDialogComponent,
+    GuideFileConnectionDialogComponent,
   ],
   template: `
     <div class="tutorial-step">
@@ -263,31 +269,78 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
             <mat-icon>close</mat-icon>
           </button>
         </div>
+
+        <!-- Step guidance banner -->
+        <div class="ze-guidance">
+          <div class="guidance-step" [class.completed]="selectedZeroEnergyPhrase()">
+            <span class="step-number">1</span>
+            <span class="step-text">Select a verification phrase</span>
+            @if (selectedZeroEnergyPhrase()) {
+              <mat-icon class="step-check">check_circle</mat-icon>
+            }
+          </div>
+          <mat-icon class="step-arrow">arrow_forward</mat-icon>
+          <div class="guidance-step" [class.active]="selectedZeroEnergyPhrase() && needsMoreEquipment()" [class.completed]="!needsMoreEquipment() && selectedZeroEnergyEquipment().length > 0">
+            <span class="step-number">2</span>
+            <span class="step-text">Select equipment for placeholders</span>
+            @if (!needsMoreEquipment() && selectedZeroEnergyEquipment().length > 0) {
+              <mat-icon class="step-check">check_circle</mat-icon>
+            }
+          </div>
+        </div>
+
         <div class="ze-tabs">
           <button class="ze-tab" [class.active]="zeroEnergyTab() === 'phrase'" (click)="zeroEnergyTab.set('phrase')">
             <mat-icon>text_snippet</mat-icon>
             Phrase Builder
           </button>
-          <button class="ze-tab" [class.active]="zeroEnergyTab() === 'equipment'" (click)="zeroEnergyTab.set('equipment')">
+          <button class="ze-tab"
+                  [class.active]="zeroEnergyTab() === 'equipment'"
+                  [class.needs-attention]="needsMoreEquipment()"
+                  (click)="zeroEnergyTab.set('equipment')">
             <mat-icon>precision_manufacturing</mat-icon>
             Equipment ({{ selectedZeroEnergyEquipment().length }})
+            @if (needsMoreEquipment()) {
+              <span class="attention-badge">!</span>
+            }
           </button>
         </div>
         <div class="ze-content">
           @if (zeroEnergyTab() === 'phrase') {
             <div class="ze-phrase-tab">
-              <p class="dialog-instructions">
-                Select or create a zero energy verification phrase. Use placeholders like [tag1], [tag2]
-                for equipment references.
-              </p>
+              <div class="tips-panel">
+                <div class="tip">
+                  <mat-icon>lightbulb</mat-icon>
+                  <span>Select or create a verification phrase. Phrases can have placeholders like <code>[tag1]</code>, <code>[tag2]</code> for equipment references.</span>
+                </div>
+              </div>
               <app-zero-energy-phrase-builder
+                #phraseBuilder
                 label="Zero Energy Phrase"
                 [selectedEquipment]="selectedZeroEnergyEquipment()"
+                [initialPhraseId]="selectedZeroEnergyPhrase()?.phraseId"
                 (clipboardItemSelected)="onZeroEnergyClipboardSelected($event)"
+                (placeholderCountChange)="updateRequiredPlaceholderCount($event)"
               />
+
+              <!-- Equipment selection prompt -->
+              @if (needsMoreEquipment()) {
+                <div class="equipment-prompt">
+                  <mat-icon>warning</mat-icon>
+                  <div class="prompt-content">
+                    <strong>Equipment selection required</strong>
+                    <p>Your phrase has {{ getRequiredPlaceholderCount() }} placeholder(s). Please select {{ getRequiredPlaceholderCount() - selectedZeroEnergyEquipment().length }} more equipment item(s).</p>
+                    <button mat-stroked-button color="primary" (click)="zeroEnergyTab.set('equipment')">
+                      <mat-icon>arrow_forward</mat-icon>
+                      Go to Equipment Tab
+                    </button>
+                  </div>
+                </div>
+              }
+
               @if (selectedZeroEnergyEquipment().length > 0) {
                 <div class="selected-equipment-summary">
-                  <span class="summary-label">Equipment for placeholders:</span>
+                  <span class="summary-label">Equipment for placeholders ({{ selectedZeroEnergyEquipment().length }}/{{ getRequiredPlaceholderCount() || '?' }}):</span>
                   @for (eq of selectedZeroEnergyEquipment(); track eq.id; let i = $index) {
                     <span class="eq-tag">
                       [tag{{ i + 1 }}] {{ getEquipmentDisplay(eq) }}
@@ -295,12 +348,26 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
                     </span>
                   }
                 </div>
-              } @else {
-                <p class="hint-text">Switch to "Equipment" tab to select equipment for placeholders.</p>
               }
             </div>
           } @else {
             <div class="ze-equipment-tab">
+              <div class="tips-panel">
+                <div class="tip">
+                  <mat-icon>lightbulb</mat-icon>
+                  <span>Click on equipment shapes in the P&ID to select them. Selected equipment will fill placeholders [tag1], [tag2], etc. in order.</span>
+                </div>
+                @if (needsMoreEquipment()) {
+                  <div class="tip warning">
+                    <mat-icon>info</mat-icon>
+                    <span>Select {{ getRequiredPlaceholderCount() - selectedZeroEnergyEquipment().length }} more equipment to fill all placeholders.</span>
+                  </div>
+                }
+                <div class="tip">
+                  <mat-icon>add_circle</mat-icon>
+                  <span><strong>Need a new LOTO point?</strong> You can select equipment that doesn't have a LOTO point yet - the system will prompt you to create one.</span>
+                </div>
+              </div>
               <app-equipment-browser-dialog
                 (equipmentSelected)="onEquipmentSelected($event)"
                 (close)="zeroEnergyTab.set('phrase')"
@@ -310,7 +377,7 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
         </div>
         <div class="dialog-footer-bar">
           <button mat-stroked-button (click)="closeDialog()">Cancel</button>
-          <button mat-flat-button color="primary" (click)="saveZeroEnergy()">
+          <button mat-flat-button color="primary" (click)="saveZeroEnergy()" [disabled]="needsMoreEquipment()">
             <mat-icon>check</mat-icon>
             Save Zero Energy
           </button>
@@ -330,33 +397,96 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
     <ng-template #fileConnectionDialog>
       <div class="dialog-wrapper file-connection-dialog">
         <div class="dialog-header">
-          <h2>Connect to Equipment</h2>
+          <h2>Connect to P&ID File</h2>
           <button mat-icon-button (click)="closeDialog()">
             <mat-icon>close</mat-icon>
           </button>
         </div>
-        @if (linkedEquipment().length > 0) {
-          <div class="linked-bar">
-            <span>{{ linkedEquipment().length }} linked:</span>
-            @for (eq of linkedEquipment(); track eq.id; let i = $index) {
-              <span class="linked-tag">
-                {{ getEquipmentDisplay(eq) }}
-                <mat-icon class="remove-tag" (click)="removeLinkedEquipment(i)">close</mat-icon>
-              </span>
-            }
+
+        <!-- Info/Warning Banner -->
+        <div class="file-connection-info">
+          <div class="info-content">
+            <mat-icon class="info-icon">info</mat-icon>
+            <div class="info-text">
+              <strong>Connect this LOTO point to a location on a P&ID file.</strong>
+              <p>Select an existing equipment shape or draw a new one on a P&ID.</p>
+            </div>
           </div>
-        }
-        <div class="browser-full">
-          <app-equipment-browser-dialog
-            (equipmentSelected)="onFileEquipmentSelected($event)"
-            (close)="closeDialog()"
-          />
+          @if (linkedEquipment().length > 0) {
+            <div class="linked-summary">
+              <span class="linked-count">{{ linkedEquipment().length }} equipment linked</span>
+              @for (eq of linkedEquipment(); track eq.id; let i = $index) {
+                <span class="linked-chip">
+                  {{ getEquipmentDisplay(eq) }}
+                  <mat-icon class="chip-remove" (click)="removeLinkedEquipment(i)">close</mat-icon>
+                </span>
+              }
+            </div>
+          }
         </div>
+
+        <!-- Tabs for Browse / Draw -->
+        <div class="fc-tabs">
+          <button class="fc-tab" [class.active]="fileConnectionTab() === 'browse'" (click)="fileConnectionTab.set('browse')">
+            <mat-icon>search</mat-icon>
+            Select Existing Shape
+          </button>
+          <button class="fc-tab" [class.active]="fileConnectionTab() === 'draw'" (click)="fileConnectionTab.set('draw')">
+            <mat-icon>edit</mat-icon>
+            Draw New Shape
+          </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="fc-content">
+          @if (fileConnectionTab() === 'browse') {
+            <!-- Browse existing equipment -->
+            <div class="fc-browse-tab">
+              <div class="tips-panel">
+                <div class="tip">
+                  <mat-icon>lightbulb</mat-icon>
+                  <span>Click on a shape in the P&ID image to select it.</span>
+                </div>
+                <div class="tip warning">
+                  <mat-icon>warning</mat-icon>
+                  <span>If selected equipment already has a LOTO point, your selection will replace that association.</span>
+                </div>
+              </div>
+              <app-equipment-browser-dialog
+                (equipmentSelected)="onFileEquipmentSelected($event)"
+                (close)="fileConnectionTab.set('browse')"
+              />
+            </div>
+          } @else {
+            <!-- Draw new shape -->
+            <div class="fc-draw-tab">
+              <div class="tips-panel">
+                <div class="tip">
+                  <mat-icon>mouse</mat-icon>
+                  <span><strong>How to draw:</strong> Select a P&ID file, click "Start Drawing", then right-click and drag to draw a rectangle around the equipment.</span>
+                </div>
+                <div class="tip">
+                  <mat-icon>save</mat-icon>
+                  <span>The shape will be automatically saved when you finish drawing.</span>
+                </div>
+                <div class="tip warning">
+                  <mat-icon>warning</mat-icon>
+                  <span>Drawing creates new equipment. If you need to select existing equipment, use the "Select Existing Shape" tab.</span>
+                </div>
+              </div>
+              <app-equipment-shape-drawer-dialog
+                (saveSuccess)="onShapeDrawn($event)"
+                (close)="fileConnectionTab.set('browse')"
+              />
+            </div>
+          }
+        </div>
+
         <div class="dialog-footer-bar">
           <button mat-stroked-button (click)="closeDialog()">Cancel</button>
-          <button mat-flat-button color="primary" (click)="saveFileConnection()">
+          <button mat-flat-button color="primary" [disabled]="linkedEquipment().length === 0" (click)="saveFileConnection()">
             <mat-icon>check</mat-icon>
-            Save Connection
+            Save Connection ({{ linkedEquipment().length }})
           </button>
         </div>
       </div>
@@ -1053,6 +1183,321 @@ import { EquipmentDto } from '../../../../models/equipment/equipment.model';
         background: white;
         flex-shrink: 0;
       }
+
+      /* File Connection Dialog Enhancements */
+      .file-connection-info {
+        padding: 12px 16px;
+        background: var(--info-bg, #e3f2fd);
+        border-bottom: 1px solid var(--border-color, #e0e0e0);
+      }
+
+      .info-content {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .info-content .info-icon {
+        color: var(--primary-color, #1976d2);
+        flex-shrink: 0;
+      }
+
+      .info-text {
+        flex: 1;
+      }
+
+      .info-text strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 14px;
+      }
+
+      .info-text p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-secondary, #666);
+      }
+
+      .linked-summary {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      .linked-count {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary, #666);
+      }
+
+      .linked-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px 4px 12px;
+        background: var(--primary-color, #1976d2);
+        color: white;
+        border-radius: 16px;
+        font-size: 12px;
+      }
+
+      .chip-remove {
+        font-size: 14px !important;
+        width: 14px !important;
+        height: 14px !important;
+        cursor: pointer;
+        opacity: 0.8;
+      }
+
+      .chip-remove:hover {
+        opacity: 1;
+      }
+
+      .fc-tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid var(--border-color, #e0e0e0);
+        background: var(--surface-alt, #f5f5f5);
+      }
+
+      .fc-tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary, #666);
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s ease;
+      }
+
+      .fc-tab:hover {
+        background: rgba(0, 0, 0, 0.04);
+        color: var(--text-primary, #333);
+      }
+
+      .fc-tab.active {
+        color: var(--primary-color, #1976d2);
+        border-bottom-color: var(--primary-color, #1976d2);
+        background: white;
+      }
+
+      .fc-tab mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+
+      .fc-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      .fc-browse-tab,
+      .fc-draw-tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .fc-browse-tab app-equipment-browser-dialog,
+      .fc-draw-tab app-equipment-shape-drawer-dialog {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .tips-panel {
+        padding: 12px 16px;
+        background: var(--surface-alt, #f8f9fa);
+        border-bottom: 1px solid var(--border-color, #e0e0e0);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .tip {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--text-secondary, #666);
+      }
+
+      .tip mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        color: var(--primary-color, #1976d2);
+      }
+
+      .tip.warning mat-icon {
+        color: var(--warning-color, #ff9800);
+      }
+
+      .tip.warning {
+        color: var(--text-primary, #333);
+      }
+
+      .tip code {
+        background: rgba(0, 0, 0, 0.08);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+      }
+
+      /* Zero Energy Guidance Banner */
+      .ze-guidance {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 12px 16px;
+        background: var(--surface-alt, #f5f5f5);
+        border-bottom: 1px solid var(--border-color, #e0e0e0);
+      }
+
+      .guidance-step {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        border-radius: 20px;
+        border: 2px solid var(--border-color, #e0e0e0);
+        font-size: 13px;
+        color: var(--text-secondary, #666);
+        transition: all 0.3s ease;
+      }
+
+      .guidance-step.active {
+        border-color: var(--primary-color, #1976d2);
+        background: var(--info-bg, #e3f2fd);
+        color: var(--primary-color, #1976d2);
+        animation: pulse-border 1.5s infinite;
+      }
+
+      .guidance-step.completed {
+        border-color: var(--success-color, #4caf50);
+        background: var(--success-bg, #e8f5e9);
+        color: var(--success-color, #4caf50);
+      }
+
+      .step-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: var(--text-tertiary, #999);
+        color: white;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .guidance-step.active .step-number {
+        background: var(--primary-color, #1976d2);
+      }
+
+      .guidance-step.completed .step-number {
+        background: var(--success-color, #4caf50);
+      }
+
+      .step-check {
+        color: var(--success-color, #4caf50);
+        font-size: 20px !important;
+        width: 20px !important;
+        height: 20px !important;
+      }
+
+      .step-arrow {
+        color: var(--text-tertiary, #999);
+      }
+
+      /* Blinking attention for equipment tab */
+      .ze-tab.needs-attention {
+        animation: blink-attention 1s infinite;
+      }
+
+      .attention-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        background: var(--warning-color, #ff9800);
+        color: white;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 700;
+        margin-left: 4px;
+      }
+
+      @keyframes blink-attention {
+        0%, 100% {
+          background: transparent;
+        }
+        50% {
+          background: rgba(255, 152, 0, 0.15);
+        }
+      }
+
+      @keyframes pulse-border {
+        0%, 100% {
+          box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4);
+        }
+        50% {
+          box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.1);
+        }
+      }
+
+      /* Equipment selection prompt */
+      .equipment-prompt {
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+        background: var(--warning-bg, #fff3e0);
+        border: 1px solid var(--warning-color, #ff9800);
+        border-radius: 8px;
+        margin-top: 16px;
+      }
+
+      .equipment-prompt mat-icon {
+        color: var(--warning-color, #ff9800);
+        flex-shrink: 0;
+      }
+
+      .prompt-content {
+        flex: 1;
+      }
+
+      .prompt-content strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--text-primary, #333);
+      }
+
+      .prompt-content p {
+        margin: 0 0 12px;
+        font-size: 13px;
+        color: var(--text-secondary, #666);
+      }
     `,
   ],
 })
@@ -1090,8 +1535,10 @@ export class GuideTutorialStepComponent implements OnInit {
   zeroEnergyTab = signal<'phrase' | 'equipment'>('phrase');
   selectedZeroEnergyEquipment = signal<EquipmentDto[]>([]);
   selectedZeroEnergyPhrase = signal<any>(null);
+  requiredPlaceholderCount = signal<number>(0);
 
   // File connection state
+  fileConnectionTab = signal<'browse' | 'draw'>('browse');
   linkedEquipment = signal<EquipmentDto[]>([]);
 
   // Counterpart state - no longer using generated counterpart, using dual form instead
@@ -1130,7 +1577,7 @@ export class GuideTutorialStepComponent implements OnInit {
 
   ngOnInit(): void {
     // Force reload zero energy phrase category to ensure options are available
-    this.valueService.refreshCategory('zeroEnergyPhrase');
+    this.valueService.refreshCategory('zeroEnergyTemplate');
   }
 
   // Compute current value based on topic
@@ -1200,8 +1647,9 @@ export class GuideTutorialStepComponent implements OnInit {
   private openNamingConventionDialog(): void {
     this.manualDescription = this.state().lotoPointData?.description || '';
     this.dialogRef = this.dialog.open(this.namingConventionDialogTemplate, {
-      width: '650px',
-      maxHeight: '85vh',
+      width: '90vw',
+      maxWidth: '900px',
+      height: '85vh',
       panelClass: 'guide-dialog',
     });
   }
@@ -1219,45 +1667,69 @@ export class GuideTutorialStepComponent implements OnInit {
   }
 
   private openZeroEnergyDialog(): void {
-    // Force reload phrase options before opening
-    this.valueService.refreshCategory('zeroEnergyPhrase');
-
-    // Reset tab state to phrase tab
-    this.zeroEnergyTab.set('phrase');
-
-    // Initialize from existing state
+    // Use the new dedicated guide zero energy dialog
     const lotoData = this.state().lotoPointData;
-    if (lotoData?.zeroEnergy?.templateEquipment) {
-      this.selectedZeroEnergyEquipment.set([...lotoData.zeroEnergy.templateEquipment]);
-    } else {
-      this.selectedZeroEnergyEquipment.set([]);
-    }
 
-    this.dialogRef = this.dialog.open(this.zeroEnergyDialogTemplate, {
+    this.dialogRef = this.dialog.open(GuideZeroEnergyDialogComponent, {
       width: '90vw',
-      maxWidth: '1000px',
+      maxWidth: '1200px',
       height: '85vh',
       panelClass: 'guide-dialog',
+      data: {
+        initialPhraseId: lotoData?.zeroEnergy?.zeroEnergyTemplate?.id || null,
+        initialEquipment: lotoData?.zeroEnergy?.templateEquipment || []
+      }
+    });
+
+    this.dialogRef.componentInstance.confirmed.subscribe((result: GuideZeroEnergyResult) => {
+      this.onZeroEnergyConfirmed(result);
+    });
+
+    this.dialogRef.componentInstance.cancelled.subscribe(() => {
+      this.closeDialog();
     });
   }
 
-  private openFileConnectionDialog(): void {
-    // Initialize from existing state
-    const lotoData = this.state().lotoPointData;
-    if (lotoData?.equipmentIds?.length) {
-      // We would need to load the equipment objects from IDs
-      // For now, just initialize empty
-      this.linkedEquipment.set([]);
-    } else {
-      this.linkedEquipment.set([]);
-    }
+  private onZeroEnergyConfirmed(result: GuideZeroEnergyResult): void {
+    const zeroEnergy = {
+      zeroEnergyTemplate: { id: result.phraseId, name: result.phraseName },
+      templateEquipment: result.templateEquipment,
+      templateEquipmentIds: result.templateEquipmentIds
+    };
+    this.onValueChange.emit({ field: 'zeroEnergy', value: zeroEnergy });
+    this.closeDialog();
+    this.onComplete.emit();
+  }
 
-    this.dialogRef = this.dialog.open(this.fileConnectionDialogTemplate, {
-      width: '95vw',
+  private openFileConnectionDialog(): void {
+    // Use the new dedicated guide file connection dialog
+    this.dialogRef = this.dialog.open(GuideFileConnectionDialogComponent, {
+      width: '90vw',
       maxWidth: '1200px',
-      height: '90vh',
+      height: '85vh',
       panelClass: 'guide-dialog',
     });
+
+    this.dialogRef.componentInstance.confirmed.subscribe((result: GuideFileConnectionResult) => {
+      this.onFileConnectionConfirmed(result);
+    });
+
+    this.dialogRef.componentInstance.cancelled.subscribe(() => {
+      this.closeDialog();
+    });
+  }
+
+  private onFileConnectionConfirmed(result: GuideFileConnectionResult): void {
+    // Add the equipment ID to the list
+    const lotoData = this.state().lotoPointData;
+    const currentIds = lotoData?.equipmentIds || [];
+    const newIds = currentIds.includes(result.equipment.id)
+      ? currentIds
+      : [...currentIds, result.equipment.id];
+
+    this.onValueChange.emit({ field: 'equipmentIds', value: newIds });
+    this.closeDialog();
+    this.onComplete.emit();
   }
 
   private openCounterpartDialog(): void {
@@ -1371,11 +1843,37 @@ export class GuideTutorialStepComponent implements OnInit {
     this.onComplete.emit();
   }
 
+  // Zero Energy helper methods
+  needsMoreEquipment(): boolean {
+    const required = this.requiredPlaceholderCount();
+    const selected = this.selectedZeroEnergyEquipment().length;
+    return required > 0 && selected < required;
+  }
+
+  getRequiredPlaceholderCount(): number {
+    return this.requiredPlaceholderCount();
+  }
+
+  updateRequiredPlaceholderCount(count: number): void {
+    this.requiredPlaceholderCount.set(count);
+  }
+
   // File Connection
   onFileEquipmentSelected(equipment: EquipmentDto): void {
     const current = this.linkedEquipment();
     if (!current.find(e => e.id === equipment.id)) {
       this.linkedEquipment.set([...current, equipment]);
+    }
+  }
+
+  onShapeDrawn(equipment: EquipmentDto | null): void {
+    if (equipment) {
+      const current = this.linkedEquipment();
+      if (!current.find(e => e.id === equipment.id)) {
+        this.linkedEquipment.set([...current, equipment]);
+      }
+      // Switch back to browse tab after drawing
+      this.fileConnectionTab.set('browse');
     }
   }
 

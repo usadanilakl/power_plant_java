@@ -44,12 +44,16 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
 
   // Inputs
   label = input<string>('Zero Energy Phrase');
-  categoryAlias = input<string>('zeroEnergyPhrase');
+  categoryAlias = input<string>('zeroEnergyTemplate');
   canManageValues = input<boolean>(true);
   selectedEquipment = input<any[]>([]); // Array of selected equipment/LOTO points for placeholder substitution
+  initialPhraseId = input<number | null>(null); // Initial phrase ID to preselect
 
   // Output for clipboard item selection - includes full equipment objects for proper form population
   clipboardItemSelected = output<{ phraseId: number; templateEquipment: any[]; templateEquipmentIds: number[] }>();
+
+  // Output for placeholder count changes
+  placeholderCountChange = output<number>();
 
   // State
   selectedPhraseId = signal<number | null>(null);
@@ -199,6 +203,10 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
         const id = val?.id ?? val;
         this.selectedPhraseId.set(id);
         this.onChange({id:id});
+        // Emit placeholder count after selection changes (with slight delay to let computed update)
+        setTimeout(() => {
+          this.placeholderCountChange.emit(this.selectedPhrasePlaceholderCount());
+        }, 0);
       });
       this.selectInput.registerOnTouched(() => {
         this.onTouched();
@@ -219,6 +227,19 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
           setTimeout(() => {
             if (this.selectInput) {
               this.selectInput.writeValue(val);
+            }
+          }, 0);
+        }
+      }, { injector: this.injector });
+
+      // Apply initialPhraseId when it changes
+      effect(() => {
+        const initialId = this.initialPhraseId();
+        if (initialId !== null && initialId !== undefined && this.selectInput) {
+          this.selectedPhraseId.set(initialId);
+          setTimeout(() => {
+            if (this.selectInput) {
+              this.selectInput.writeValue(initialId);
             }
           }, 0);
         }

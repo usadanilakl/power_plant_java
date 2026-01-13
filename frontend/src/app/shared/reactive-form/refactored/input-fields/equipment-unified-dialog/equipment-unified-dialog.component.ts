@@ -43,6 +43,8 @@ export class EquipmentUnifiedDialogComponent {
 
   // Inputs
   requireLotoPointForDrawn = input<boolean>(false);  // When true, emits equipmentDrawnForLotoPoint instead of equipmentAcquired for drawn shapes
+  immediateSelection = input<boolean>(false);  // When true, emit immediately on shape click (no confirm needed)
+  hideActions = input<boolean>(false);  // When true, hide the dialog action buttons
 
   // Outputs
   equipmentAcquired = output<EquipmentDto>();  // Emitted for browsed equipment (always) and drawn equipment (when requireLotoPointForDrawn=false)
@@ -142,6 +144,19 @@ export class EquipmentUnifiedDialogComponent {
         this.selectedEquipment.set(selected);
         this.highlightEquipmentId.set(selectedId);
         this.currentMode.set('browse');
+
+        // If immediate selection mode, emit right away
+        if (this.immediateSelection()) {
+          const file = this.selectedFile();
+          if (file) {
+            const enrichedEquipment = new EquipmentDto({
+              ...selected,
+              mainFileId: file.id,
+              mainFileObject: file
+            });
+            this.equipmentAcquired.emit(enrichedEquipment);
+          }
+        }
       }
     }
   }

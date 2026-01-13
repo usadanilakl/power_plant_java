@@ -201,7 +201,7 @@ export const INTERACTIVE_IMAGE_PRESETS: Record<string, InteractiveImageConfig> =
   /**
    * Equipment Shape Drawer Context
    * Drawing mode: create ONE new equipment shape
-   * Auto-closes after drawing one rectangle
+   * Auto-closes after drawing one rectangle or symbol
    */
   EQUIPMENT_DRAWER: {
     canPan: true,
@@ -215,11 +215,11 @@ export const INTERACTIVE_IMAGE_PRESETS: Record<string, InteractiveImageConfig> =
     canResizeShapes: false,
     canRotateShapes: false,
     drawingMode: 'single',
-    allowedShapeTypes: ['rectangle'],
+    allowedShapeTypes: ['rectangle', 'symbol'],
     showToolbar: true,
     toolbarPosition: 'top',
-    enabledTools: ['draw-rectangle', 'zoom-in', 'zoom-out', 'zoom-fit', 'reset-view'],
-    showSymbolPalette: false,
+    enabledTools: ['draw-rectangle', 'place-symbol', 'toggle-symbols', 'zoom-in', 'zoom-out', 'zoom-fit', 'reset-view'],
+    showSymbolPalette: true,
     showContextMenu: false,
     autoDeselectOnEmptyClick: false,
     showResizeHandles: false,
@@ -258,6 +258,7 @@ export const INTERACTIVE_IMAGE_PRESETS: Record<string, InteractiveImageConfig> =
    * Equipment Unified Context
    * Combined browse and draw: left-click to select existing, right-click drag to draw new
    * Used in the unified equipment dialog for LOTO point forms
+   * Supports both rectangles and symbols
    */
   EQUIPMENT_UNIFIED: {
     canPan: true,
@@ -271,11 +272,11 @@ export const INTERACTIVE_IMAGE_PRESETS: Record<string, InteractiveImageConfig> =
     canResizeShapes: false,
     canRotateShapes: false,
     drawingMode: 'single',
-    allowedShapeTypes: ['rectangle'],
+    allowedShapeTypes: ['rectangle', 'symbol'],
     showToolbar: true,
     toolbarPosition: 'top',
-    enabledTools: ['zoom-in', 'zoom-out', 'zoom-fit', 'reset-view'],
-    showSymbolPalette: false,
+    enabledTools: ['select', 'draw-rectangle', 'place-symbol', 'toggle-symbols', 'zoom-in', 'zoom-out', 'zoom-fit', 'reset-view'],
+    showSymbolPalette: true,
     showContextMenu: false,
     autoDeselectOnEmptyClick: true,
     showResizeHandles: false,

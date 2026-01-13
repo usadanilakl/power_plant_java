@@ -1,4 +1,4 @@
-import { Component, inject, output, signal, computed, effect } from '@angular/core';
+import { Component, inject, input, output, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CurrentFileService } from '../../../../../services/current-file.service';
 import { InteractiveImageComponent } from '../../../../image/refactored/interactive-image/interactive-image.component';
@@ -28,6 +28,10 @@ export class EquipmentBrowserDialogComponent {
   currentFileService = inject(CurrentFileService);
   lotoPointMenuService = inject(RfLotoPointLeftMenuService);
   lotoPointApiService = inject(RfLotoPointApiService);
+
+  // Inputs
+  immediateSelection = input<boolean>(false); // When true, emit equipmentSelected immediately on click (no confirm button needed)
+  hideActions = input<boolean>(false); // When true, hide the dialog action buttons
 
   // Outputs
   equipmentSelected = output<EquipmentDto>();
@@ -202,6 +206,19 @@ export class EquipmentBrowserDialogComponent {
           console.log('Selected equipment:', selected);
           this.selectedEquipment.set(selected);
           this.highlightEquipmentId.set(selectedId);
+
+          // If immediate selection mode, emit right away
+          if (this.immediateSelection()) {
+            const file = this.activeFile();
+            if (file) {
+              const enrichedEquipment = new EquipmentDto({
+                ...selected,
+                mainFileId: file.id,
+                mainFileObject: file
+              });
+              this.equipmentSelected.emit(enrichedEquipment);
+            }
+          }
         }
       }
     }

@@ -25,7 +25,7 @@
         </div>
         <div class="viewer-content"
              appGuide="create-loto-point:image-unified"
-             guideMessage="Left-click on an equipment shape to select it. Right-click and drag to draw a new equipment shape."
+             guideMessage="Left-click on an equipment shape to select it. Right-click and drag to draw a new equipment shape. Use the Symbol button to place P&ID symbols."
              [guideTooltipOnly]="true">
           <app-interactive-image
             [imageUrl]="currentFileLink()"
@@ -43,33 +43,36 @@
       } @else {
         <div class="no-selection">
           <p>Select a P&ID file to view and select equipment</p>
-          <p class="hint">Left-click on a shape to select existing equipment</p>
-          <p class="hint">Right-click and drag to draw new equipment</p>
+          <p class="hint">🖱️ Left-click on a shape to select existing equipment</p>
+          <p class="hint">✏️ Right-click and drag to draw new equipment shape</p>
+          <p class="hint">⭐ Use toolbar Symbol button to place P&ID symbols</p>
         </div>
       }
     </div>
   </div>
 
   <!-- Dialog Actions -->
-  <div class="dialog-actions">
-    <button
-      type="button"
-      class="btn-cancel"
-      (click)="onCancel()">
-      Cancel
-    </button>
-    <button
-      type="button"
-      class="btn-select"
-      [disabled]="!canConfirm() || isLoading()"
-      (click)="onConfirm()">
-      @if (isLoading()) {
-        Saving...
-      } @else if (currentMode() === 'drawn') {
-        Save & Select Equipment
-      } @else {
-        Select Equipment
-      }
-    </button>
-  </div>
+  @if (!hideActions()) {
+    <div class="dialog-actions">
+      <button
+        type="button"
+        class="btn-cancel"
+        (click)="onCancel()">
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn-select"
+        [disabled]="!canConfirm() || isLoading()"
+        (click)="onConfirm()">
+        @if (isLoading()) {
+          Saving...
+        } @else if (currentMode() === 'drawn') {
+          Save & Select Equipment
+        } @else {
+          Select Equipment
+        }
+      </button>
+    </div>
+  }
 </div>

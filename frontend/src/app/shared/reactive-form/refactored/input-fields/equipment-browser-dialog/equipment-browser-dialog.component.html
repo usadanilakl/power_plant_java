@@ -105,19 +105,21 @@
   </div>
 
   <!-- Dialog Actions -->
-  <div class="dialog-actions">
-    <button
-      type="button"
-      class="btn-cancel"
-      (click)="onCancel()">
-      Cancel
-    </button>
-    <button
-      type="button"
-      class="btn-select"
-      [disabled]="!selectedEquipment()"
-      (click)="onConfirmSelection()">
-      Select Equipment
-    </button>
-  </div>
+  @if (!hideActions()) {
+    <div class="dialog-actions">
+      <button
+        type="button"
+        class="btn-cancel"
+        (click)="onCancel()">
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn-select"
+        [disabled]="!selectedEquipment()"
+        (click)="onConfirmSelection()">
+        Select Equipment
+      </button>
+    </div>
+  }
 </div>

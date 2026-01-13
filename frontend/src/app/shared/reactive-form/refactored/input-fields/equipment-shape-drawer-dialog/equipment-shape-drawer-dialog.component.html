@@ -3,7 +3,7 @@
     <!-- Left Panel: File List -->
     <div class="file-list-panel"
          appGuide="create-loto-point:file-selector"
-         guideMessage="Expand folders and click on a P&ID file to load it. You can then draw equipment shapes on the image."
+         guideMessage="Expand folders and click on a P&ID file to load it. You can then draw equipment shapes or place symbols on the image."
          [guideTooltipOnly]="true">
       <h3>Select P&ID</h3>
       <app-rf-toggle-menu
@@ -27,7 +27,7 @@
               </button>
             } @else {
               <div class="drawing-status">
-                <span class="status-text">Draw a rectangle on the P&ID</span>
+                <span class="status-text">Draw a rectangle or place a symbol on the P&ID</span>
                 @if (drawnShape()) {
                   <span class="shape-info">Shape created!</span>
                 }
@@ -37,7 +37,7 @@
         </div>
         <div class="viewer-content"
              appGuide="create-loto-point:image-drawer"
-             guideMessage="Right-click and drag to draw a rectangle around the equipment. Release to create the shape."
+             guideMessage="Right-click and drag to draw a rectangle, or use the Symbol button in the toolbar to place P&ID symbols."
              [guideTooltipOnly]="true">
           <app-interactive-image
             [imageUrl]="currentFileLink()"
@@ -53,7 +53,9 @@
         }
       } @else {
         <div class="no-selection">
-          <p>Select a P&ID file to draw equipment shape</p>
+          <p>Select a P&ID file to draw equipment</p>
+          <p class="hint">✏️ Right-click and drag to draw a rectangle shape</p>
+          <p class="hint">⭐ Use toolbar Symbol button to place P&ID symbols</p>
         </div>
       }
     </div>
