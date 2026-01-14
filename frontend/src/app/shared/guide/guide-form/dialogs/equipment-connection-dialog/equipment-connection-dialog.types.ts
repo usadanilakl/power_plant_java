@@ -38,6 +38,12 @@ export interface ExistingAssociationWarning {
   message: string;
 }
 
+/** Warning for equipment that has no LOTO point (used in zero energy mode) */
+export interface MissingAssociationWarning {
+  equipment: EquipmentDto;
+  message: string;
+}
+
 export const DEFAULT_DIALOG_DATA: Partial<EquipmentConnectionDialogData> = {
   mode: 'single',
   allowBrowse: true,

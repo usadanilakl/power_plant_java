@@ -17,6 +17,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
 
 import { RfFileLeftMenuComponent } from '../../../../../features/files/refactored/rf-file-left-menu/rf-file-left-menu.component';
 import { InteractiveImageComponent } from '../../../../image/refactored/interactive-image/interactive-image.component';
@@ -33,6 +38,7 @@ import {
   EquipmentConnectionDialogData,
   EquipmentConnectionDialogResult,
   ExistingAssociationWarning,
+  MissingAssociationWarning,
   DEFAULT_DIALOG_DATA,
 } from './equipment-connection-dialog.types';
 
@@ -48,6 +54,10 @@ import {
     MatDialogModule,
     MatDividerModule,
     MatExpansionModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    ReactiveFormsModule,
     RfFileLeftMenuComponent,
     InteractiveImageComponent,
   ],
@@ -106,8 +116,8 @@ import {
         </div>
       }
 
-      <!-- Warning Banner -->
-      @if (existingAssociationWarnings().length > 0) {
+      <!-- Warning Banner for P&ID Connection mode (equipment already has LOTO point) -->
+      @if (existingAssociationWarnings().length > 0 && !dialogData.requireLotoPointForUnassociated) {
         <div class="warning-banner">
           <mat-icon>warning</mat-icon>
           <span>
@@ -129,6 +139,101 @@ import {
             }
           </div>
         }
+      }
+
+      <!-- Warning Banner for Zero Energy mode (equipment missing LOTO point) -->
+      @if (missingAssociationWarnings().length > 0 && dialogData.requireLotoPointForUnassociated) {
+        <div class="warning-banner warning-missing">
+          <mat-icon>add_circle</mat-icon>
+          <span>
+            {{ missingAssociationWarnings().length }}
+            equipment {{ missingAssociationWarnings().length === 1 ? 'has' : 'have' }}
+            no LOTO point association. A LOTO point needs to be created.
+          </span>
+          <button mat-flat-button color="primary" (click)="openQuickCreateForm()">
+            <mat-icon>add</mat-icon>
+            Create LOTO Point
+          </button>
+        </div>
+        @if (showWarningDetails) {
+          <div class="warning-details warning-missing-details">
+            @for (warning of missingAssociationWarnings(); track warning.equipment.id) {
+              <div class="warning-item">
+                <mat-icon>info</mat-icon>
+                <span>{{ warning.message }}</span>
+              </div>
+            }
+          </div>
+        }
+      }
+
+      <!-- Quick-Create Form for Zero Energy mode -->
+      @if (showQuickCreateForm() && pendingEquipmentForQuickCreate()) {
+        <div class="quick-create-panel">
+          <div class="quick-create-header">
+            <mat-icon>add_circle</mat-icon>
+            <h4>Create LOTO Point for {{ getEquipmentLabel(pendingEquipmentForQuickCreate()!) }}</h4>
+            <button mat-icon-button (click)="closeQuickCreateForm()" matTooltip="Close">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <form [formGroup]="quickCreateForm" (ngSubmit)="submitQuickCreate()" class="quick-create-form">
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Tag Number</mat-label>
+                <input matInput formControlName="tagNumber" placeholder="e.g., V-101">
+                @if (quickCreateForm.get('tagNumber')?.hasError('required')) {
+                  <mat-error>Tag Number is required</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Description</mat-label>
+                <input matInput formControlName="description" placeholder="e.g., Main Isolation Valve">
+                @if (quickCreateForm.get('description')?.hasError('required')) {
+                  <mat-error>Description is required</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Location</mat-label>
+                <input matInput formControlName="location" placeholder="e.g., Unit 1, Level 2">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Isolated Position</mat-label>
+                <input matInput formControlName="isoPos" placeholder="e.g., Closed">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Normal Position</mat-label>
+                <input matInput formControlName="normPos" placeholder="e.g., Open">
+              </mat-form-field>
+            </div>
+
+            <div class="form-actions">
+              <button mat-stroked-button type="button" (click)="closeQuickCreateForm()">
+                Cancel
+              </button>
+              <button
+                mat-flat-button
+                color="primary"
+                type="submit"
+                [disabled]="quickCreateForm.invalid || isCreatingLotoPoint()"
+              >
+                @if (isCreatingLotoPoint()) {
+                  <mat-icon class="spinning">sync</mat-icon>
+                  Creating...
+                } @else {
+                  <mat-icon>save</mat-icon>
+                  Create LOTO Point
+                }
+              </button>
+            </div>
+          </form>
+        </div>
       }
 
       <!-- Selected Equipment Chips -->
@@ -163,6 +268,12 @@ import {
           </div>
           <div class="panel-content">
             <app-rf-file-left-menu></app-rf-file-left-menu>
+          </div>
+          <div class="panel-footer">
+            <div class="upload-hint">
+              <mat-icon>cloud_upload</mat-icon>
+              <span>Need to upload a new P&ID file? Use the <strong>File Management</strong> section to add files first.</span>
+            </div>
           </div>
         </div>
 
@@ -394,6 +505,81 @@ import {
       color: #ff9800;
     }
 
+    /* Missing Association Warning (Zero Energy mode) */
+    .warning-banner.warning-missing {
+      background: #e3f2fd;
+      border-bottom: 1px solid #90caf9;
+    }
+
+    .warning-banner.warning-missing mat-icon {
+      color: #1976d2;
+    }
+
+    .warning-banner.warning-missing span {
+      color: #0d47a1;
+    }
+
+    .warning-missing-details {
+      background: #e8f4fd;
+      border-bottom: 1px solid #bbdefb;
+    }
+
+    .warning-missing-details .warning-item mat-icon {
+      color: #1976d2;
+    }
+
+    /* Quick-Create Form Panel */
+    .quick-create-panel {
+      background: #f3e5f5;
+      border-bottom: 1px solid #ce93d8;
+      padding: 16px 20px;
+    }
+
+    .quick-create-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .quick-create-header mat-icon {
+      color: #7b1fa2;
+    }
+
+    .quick-create-header h4 {
+      flex: 1;
+      margin: 0;
+      font-size: 16px;
+      font-weight: 500;
+      color: #4a148c;
+    }
+
+    .quick-create-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .form-row mat-form-field {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 8px;
+      padding-top: 12px;
+      border-top: 1px solid #e1bee7;
+    }
+
     /* Selected Bar */
     .selected-bar {
       display: flex;
@@ -423,6 +609,7 @@ import {
       min-width: 280px;
       max-width: 500px;
       border-right: 1px solid #e0e0e0;
+      height: 100%;
     }
 
     .panel-header {
@@ -432,6 +619,7 @@ import {
       padding: 12px 16px;
       background: #f5f5f5;
       border-bottom: 1px solid #e0e0e0;
+      flex-shrink: 0;
     }
 
     .panel-header h3 {
@@ -453,6 +641,54 @@ import {
     .panel-content {
       flex: 1;
       overflow: auto;
+      min-height: 0;
+    }
+
+    .panel-content ::ng-deep .toggle-menu-container {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-content ::ng-deep .menu-tree {
+      flex: 1;
+      overflow: auto;
+    }
+
+    .panel-footer {
+      flex-shrink: 0;
+      padding: 12px;
+      background: #f5f5f5;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .upload-hint {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #e3f2fd;
+      border-radius: 6px;
+      border: 1px solid #bbdefb;
+    }
+
+    .upload-hint mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: #1976d2;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .upload-hint span {
+      font-size: 12px;
+      color: #1565c0;
+      line-height: 1.4;
+    }
+
+    .upload-hint strong {
+      color: #0d47a1;
     }
 
     /* Divider */
@@ -616,7 +852,18 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
   private currentFileService = inject(CurrentFileService);
   private equipmentMapper = inject(EquipmentMapperService);
   private equipmentService = inject(RfEquipmentService);
+  private lotoPointApiService = inject(RfLotoPointApiService);
+  private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
+
+  // Quick-create form
+  quickCreateForm: FormGroup = this.fb.group({
+    tagNumber: ['', Validators.required],
+    description: ['', Validators.required],
+    location: [null],
+    isoPos: [null],
+    normPos: [null],
+  });
 
   // Apply defaults
   constructor() {
@@ -633,6 +880,12 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
   selectedEquipment = signal<EquipmentDto[]>([]);
   drawnShape = signal<RfShape | null>(null);
   existingAssociationWarnings = signal<ExistingAssociationWarning[]>([]);
+  missingAssociationWarnings = signal<MissingAssociationWarning[]>([]);
+
+  // Quick-create form state for zero energy mode
+  showQuickCreateForm = signal(false);
+  pendingEquipmentForQuickCreate = signal<EquipmentDto | null>(null);
+  isCreatingLotoPoint = signal(false);
 
   // File State
   currentFile = signal<FileDto | null>(null);
@@ -758,19 +1011,41 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
       mainFileObject: file || undefined,
     });
 
-    // Check for existing LOTO point association
-    if (equipment.lotoPoints && equipment.lotoPoints.length > 0) {
-      const lotoPoint = equipment.lotoPoints[0];
-      const warning: ExistingAssociationWarning = {
-        equipment: enrichedEquipment,
-        existingLotoPoint: lotoPoint,
-        message: `Equipment "${this.getEquipmentLabel(enrichedEquipment)}" is already associated with LOTO point "${lotoPoint.tagNumber || lotoPoint.id}".`,
-      };
+    const hasLotoPoint = equipment.lotoPoints && equipment.lotoPoints.length > 0;
 
-      // Check if warning already exists
-      const warnings = this.existingAssociationWarnings();
-      if (!warnings.some(w => w.equipment.id === enrichedEquipment.id)) {
-        this.existingAssociationWarnings.set([...warnings, warning]);
+    // Handle warnings based on mode
+    if (this.dialogData.requireLotoPointForUnassociated) {
+      // ZERO ENERGY MODE: Warn if equipment has NO LOTO point
+      if (!hasLotoPoint) {
+        const warning: MissingAssociationWarning = {
+          equipment: enrichedEquipment,
+          message: `Equipment "${this.getEquipmentLabel(enrichedEquipment)}" has no LOTO point association. A LOTO point needs to be created.`,
+        };
+
+        // Check if warning already exists
+        const warnings = this.missingAssociationWarnings();
+        if (!warnings.some(w => w.equipment.id === enrichedEquipment.id)) {
+          this.missingAssociationWarnings.set([...warnings, warning]);
+        }
+
+        // Set pending equipment for quick create
+        this.pendingEquipmentForQuickCreate.set(enrichedEquipment);
+      }
+    } else {
+      // P&ID CONNECTION MODE: Warn if equipment already HAS LOTO point
+      if (hasLotoPoint) {
+        const lotoPoint = equipment.lotoPoints![0];
+        const warning: ExistingAssociationWarning = {
+          equipment: enrichedEquipment,
+          existingLotoPoint: lotoPoint,
+          message: `Equipment "${this.getEquipmentLabel(enrichedEquipment)}" is already associated with LOTO point "${lotoPoint.tagNumber || lotoPoint.id}".`,
+        };
+
+        // Check if warning already exists
+        const warnings = this.existingAssociationWarnings();
+        if (!warnings.some(w => w.equipment.id === enrichedEquipment.id)) {
+          this.existingAssociationWarnings.set([...warnings, warning]);
+        }
       }
     }
 
@@ -787,6 +1062,9 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
         this.selectedEquipment.set([enrichedEquipment]);
         // Keep only relevant warnings
         this.existingAssociationWarnings.update(warnings =>
+          warnings.filter(w => w.equipment.id === enrichedEquipment.id)
+        );
+        this.missingAssociationWarnings.update(warnings =>
           warnings.filter(w => w.equipment.id === enrichedEquipment.id)
         );
       } else {
@@ -810,12 +1088,112 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
     this.existingAssociationWarnings.update(warnings =>
       warnings.filter(w => w.equipment.id !== equipment.id)
     );
+    this.missingAssociationWarnings.update(warnings =>
+      warnings.filter(w => w.equipment.id !== equipment.id)
+    );
+
+    // Clear pending equipment if it's the one being removed
+    if (this.pendingEquipmentForQuickCreate()?.id === equipment.id) {
+      this.pendingEquipmentForQuickCreate.set(null);
+      this.showQuickCreateForm.set(false);
+    }
   }
 
   clearSelections(): void {
     this.selectedEquipment.set([]);
     this.existingAssociationWarnings.set([]);
+    this.missingAssociationWarnings.set([]);
     this.drawnShape.set(null);
+    this.pendingEquipmentForQuickCreate.set(null);
+    this.showQuickCreateForm.set(false);
+  }
+
+  openQuickCreateForm(): void {
+    const pendingEquipment = this.pendingEquipmentForQuickCreate();
+    if (pendingEquipment || this.missingAssociationWarnings().length > 0) {
+      // Use the first equipment without LOTO point if no pending
+      if (!pendingEquipment && this.missingAssociationWarnings().length > 0) {
+        this.pendingEquipmentForQuickCreate.set(this.missingAssociationWarnings()[0].equipment);
+      }
+      this.showQuickCreateForm.set(true);
+    }
+  }
+
+  closeQuickCreateForm(): void {
+    this.showQuickCreateForm.set(false);
+  }
+
+  onQuickCreateComplete(newLotoPoint: LotoPointDto): void {
+    const equipment = this.pendingEquipmentForQuickCreate();
+    if (!equipment) return;
+
+    // Remove from missing warnings since LOTO point is now created
+    this.missingAssociationWarnings.update(warnings =>
+      warnings.filter(w => w.equipment.id !== equipment.id)
+    );
+
+    // Store the newly created LOTO point for return
+    if (!this.newlyCreatedLotoPoints) {
+      this.newlyCreatedLotoPoints = [];
+    }
+    this.newlyCreatedLotoPoints.push(newLotoPoint);
+
+    // Update equipment with new LOTO point reference
+    const updatedEquipment = new EquipmentDto({
+      ...equipment,
+      lotoPoints: [newLotoPoint],
+    });
+
+    // Update in selection
+    this.selectedEquipment.update(list =>
+      list.map(e => e.id === equipment.id ? updatedEquipment : e)
+    );
+
+    this.pendingEquipmentForQuickCreate.set(null);
+    this.showQuickCreateForm.set(false);
+  }
+
+  // Track newly created LOTO points
+  private newlyCreatedLotoPoints: LotoPointDto[] = [];
+
+  submitQuickCreate(): void {
+    if (this.quickCreateForm.invalid) return;
+
+    const equipment = this.pendingEquipmentForQuickCreate();
+    if (!equipment) return;
+
+    this.isCreatingLotoPoint.set(true);
+
+    const formValue = this.quickCreateForm.value;
+    const newLotoPoint = new LotoPointDto({
+      tagNumber: formValue.tagNumber,
+      description: formValue.description,
+      location: formValue.location,
+      isoPos: formValue.isoPos,
+      normPos: formValue.normPos,
+      equipmentList: [equipment],
+    });
+
+    this.lotoPointApiService.createLotoPoint(newLotoPoint)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.isCreatingLotoPoint.set(false);
+          if (response.responseData) {
+            const createdLotoPoint = LotoPointDto.fromJson(response.responseData);
+            this.onQuickCreateComplete(createdLotoPoint);
+            // Reset form for next use
+            this.quickCreateForm.reset();
+          } else {
+            this.error.set('Failed to create LOTO point.');
+          }
+        },
+        error: (err) => {
+          this.isCreatingLotoPoint.set(false);
+          console.error('Failed to create LOTO point:', err);
+          this.error.set('Failed to create LOTO point. Please try again.');
+        },
+      });
   }
 
   getEquipmentLabel(equipment: EquipmentDto): string {
@@ -856,6 +1234,7 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
               this.closeWithResult({
                 selectedEquipment: finalSelection,
                 selectedFile: file,
+                newlyCreatedLotoPoints: this.newlyCreatedLotoPoints.length > 0 ? this.newlyCreatedLotoPoints : undefined,
                 cancelled: false,
               });
             } else {
@@ -873,6 +1252,7 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
       this.closeWithResult({
         selectedEquipment: this.selectedEquipment(),
         selectedFile: this.currentFile(),
+        newlyCreatedLotoPoints: this.newlyCreatedLotoPoints.length > 0 ? this.newlyCreatedLotoPoints : undefined,
         cancelled: false,
       });
     }

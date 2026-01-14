@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed, inject } from '@angular/core';
+import { Component, input, output, signal, computed, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -377,6 +377,61 @@ export class WizardZeroEnergyStepComponent {
 
   // Store which placeholder we're currently selecting for
   private currentPlaceholderIndex = signal<number | null>(null);
+
+  // Flag to prevent re-initialization
+  private isInitialized = false;
+
+  constructor() {
+    // Restore state from frame's entity data when component loads
+    effect(() => {
+      const frameData = this.frame();
+      if (this.isInitialized || !frameData) return;
+
+      const zeroEnergy = frameData.entityData.zeroEnergy as any;
+      if (!zeroEnergy) return;
+
+      // Restore phrase selection
+      if (zeroEnergy.zeroEnergyTemplate?.id) {
+        const phraseId = zeroEnergy.zeroEnergyTemplate.id;
+        this.selectedPhraseId.set(phraseId);
+
+        // Get full phrase data from value service
+        const values = this.valueService.getValuesByCategory('zeroEnergyTemplate');
+        const selectedValue = values.find(v => v.id === phraseId);
+        if (selectedValue?.alias) {
+          try {
+            const phraseData: ZeroEnergyPhrase = JSON.parse(selectedValue.alias);
+            phraseData.id = phraseId;
+            phraseData.name = selectedValue.name;
+            this.selectedPhrase.set(phraseData);
+
+            // Restore equipment assignments
+            const placeholderCount = phraseData.segments?.filter(s => s.type === 'placeholder').length || 0;
+            const assignments: (EquipmentWithLotoPoint | null)[] = new Array(placeholderCount).fill(null);
+
+            // Check if we have saved equipment and loto points
+            const savedEquipment = zeroEnergy.templateEquipment as EquipmentDto[] | undefined;
+            const savedLotoPoints = zeroEnergy.templateLotoPoints as LotoPointDto[] | undefined;
+
+            if (savedEquipment && savedEquipment.length > 0) {
+              savedEquipment.forEach((equipment, index) => {
+                if (index < placeholderCount) {
+                  const lotoPoint = savedLotoPoints?.[index];
+                  assignments[index] = { equipment, lotoPoint };
+                }
+              });
+            }
+
+            this.equipmentAssignments.set(assignments);
+          } catch (e) {
+            console.error('Failed to restore phrase data:', e);
+          }
+        }
+      }
+
+      this.isInitialized = true;
+    });
+  }
 
   phraseOptions = computed(() => {
     const optionsSignal = this.valueService.getValueOptions('zeroEnergyTemplate');
