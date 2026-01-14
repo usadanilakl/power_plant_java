@@ -68,12 +68,12 @@ interface GuidedSearchFilters {
           </div>
           <div class="selected-list">
             @for (item of selectedItems(); track item.id) {
-              <div class="selected-item">
+              <div class="selected-item" [matTooltip]="item.tagNumber + ' - ' + (item.description || 'No description')">
                 <div class="item-info">
                   <span class="item-tag">{{ item.tagNumber || 'No Tag' }}</span>
                   <span class="item-desc">{{ item.description || 'No description' }}</span>
                 </div>
-                <button mat-icon-button (click)="removeItem(item)" matTooltip="Remove">
+                <button mat-icon-button (click)="removeItem(item); $event.stopPropagation()" matTooltip="Remove">
                   <mat-icon>close</mat-icon>
                 </button>
               </div>
@@ -191,6 +191,7 @@ interface GuidedSearchFilters {
                             [value]="item"
                             [selected]="isItemSelected(item)"
                             (click)="toggleResultSelection(item)"
+                            [matTooltip]="item.tagNumber + ' - ' + (item.description || '') + ' | ' + (item.eqType?.name || '') + ' • ' + (item.location?.name || '')"
                           >
                             <div class="result-item">
                               <span class="result-tag">{{ item.tagNumber || 'No Tag' }}</span>
