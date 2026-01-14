@@ -39,6 +39,6 @@ export class AppComponent {
   title = 'Jackson';
 
   startGuide(action: WizardFlowType): void {
-    this.wizardService.start(action);
+    this.wizardService.startOrResume(action);
   }
 }

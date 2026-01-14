@@ -1,4 +1,4 @@
-import { Component, input, output, signal, inject, OnInit } from '@angular/core';
+import { Component, input, output, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -623,7 +623,7 @@ interface GuidedSearchFilters {
     }
   `],
 })
-export class WizardLotoPointSelectorStepComponent implements OnInit {
+export class WizardLotoPointSelectorStepComponent {
   private dialog = inject(MatDialog);
   private lotoPointApiService = inject(RfLotoPointApiService);
 
@@ -651,12 +651,20 @@ export class WizardLotoPointSelectorStepComponent implements OnInit {
     description: '',
   };
 
-  ngOnInit(): void {
-    // Initialize selected items from input
-    const current = this.currentValue();
-    if (current && Array.isArray(current)) {
-      this.selectedItems.set([...current]);
-    }
+  constructor() {
+    // React to currentValue changes (including initial value after input binding)
+    effect(() => {
+      const current = this.currentValue();
+      if (current && Array.isArray(current)) {
+        // Compare arrays to avoid redundant updates
+        const currentSelected = this.selectedItems();
+        const isSame = current.length === currentSelected.length &&
+          current.every((item, idx) => item.id === currentSelected[idx]?.id);
+        if (!isSame) {
+          this.selectedItems.set([...current]);
+        }
+      }
+    });
   }
 
   toggleGuidedSearch(): void {

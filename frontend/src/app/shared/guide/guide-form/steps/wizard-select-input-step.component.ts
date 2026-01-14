@@ -136,10 +136,20 @@ export class WizardSelectInputStepComponent implements OnInit {
       const current = this.currentValue();
       if (current) {
         if (typeof current === 'object' && current.id) {
-          this.selectedValue = current.id;
-          this.searchText = current.name || '';
+          if (this.selectedValue !== current.id) {
+            this.selectedValue = current.id;
+            this.searchText = current.name || '';
+          }
         } else {
-          this.selectedValue = current;
+          if (this.selectedValue !== current) {
+            this.selectedValue = current;
+          }
+        }
+      } else {
+        // Reset when no value
+        if (this.selectedValue !== null) {
+          this.selectedValue = null;
+          this.searchText = '';
         }
       }
     });

@@ -12,7 +12,6 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
@@ -20,6 +19,7 @@ import { firstValueFrom } from 'rxjs';
 import { WizardStackService } from '../services/wizard-stack.service';
 import { WizardStepRendererComponent } from './wizard-step-renderer.component';
 import { WizardBreadcrumbComponent } from './wizard-breadcrumb.component';
+import { WizardStepIndicatorComponent } from './wizard-step-indicator.component';
 import { WizardBranchRequest, StepDataPayload, WizardEntityData } from '../wizard-stack.types';
 import { RfLotoStandardApiService } from '../../../../features/loto-standard/refactored/services/rf-loto-standard-api.service';
 import { RfLotoPointApiService } from '../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
@@ -38,11 +38,11 @@ import { FileDto } from '../../../../models/file/file.model';
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    MatProgressBarModule,
     CdkDrag,
     CdkDragHandle,
     WizardStepRendererComponent,
     WizardBreadcrumbComponent,
+    WizardStepIndicatorComponent,
   ],
   template: `
     @if (wizardService.isActive()) {
@@ -97,17 +97,15 @@ import { FileDto } from '../../../../models/file/file.model';
           </div>
 
           @if (!wizardService.isMinimized()) {
-            <!-- Progress Bar -->
-            <div class="progress-container">
-              <mat-progress-bar
-                mode="determinate"
-                [value]="wizardService.progress()"
-                [class.branch-progress]="wizardService.isBranch()"
-              ></mat-progress-bar>
-              <span class="step-counter">
-                Step {{ wizardService.currentStepIndex() + 1 }} of {{ wizardService.totalSteps() }}
-              </span>
-            </div>
+            <!-- Step Indicator -->
+            @if (wizardService.currentFlow()?.steps; as steps) {
+              <app-wizard-step-indicator
+                [steps]="steps"
+                [currentStepIndex]="wizardService.currentStepIndex()"
+                [visitedSteps]="wizardService.visitedSteps()"
+                (stepClick)="onStepIndicatorClick($event)"
+              />
+            }
 
             <!-- Step Content -->
             <div class="dialog-content">
@@ -306,30 +304,6 @@ import { FileDto } from '../../../../models/file/file.model';
       color: #d32f2f;
     }
 
-    .progress-container {
-      padding: 8px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: #fafafa;
-    }
-
-    mat-progress-bar {
-      flex: 1;
-      height: 6px;
-      border-radius: 3px;
-    }
-
-    mat-progress-bar.branch-progress {
-      --mdc-linear-progress-active-indicator-color: #1976d2;
-    }
-
-    .step-counter {
-      font-size: 12px;
-      color: #666;
-      white-space: nowrap;
-    }
-
     .dialog-content {
       flex: 1;
       padding: 24px;
@@ -439,6 +413,10 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
     this.wizardService.updateEntityData(payload);
   }
 
+  onStepIndicatorClick(stepId: string): void {
+    this.wizardService.goToStep(stepId);
+  }
+
   onBranchRequest(request: WizardBranchRequest): void {
     this.wizardService.branch(request);
   }
@@ -542,7 +520,7 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
       this.onCancelBranch();
     } else {
       if (confirm('Close the wizard? Your progress will be saved and you can resume later.')) {
-        this.wizardService.cancel();
+        this.wizardService.suspend();
       }
     }
   }

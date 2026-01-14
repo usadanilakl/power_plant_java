@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed } from '@angular/core';
+import { Component, input, output, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -197,11 +197,15 @@ export class WizardDescriptionStepComponent {
   });
 
   constructor() {
-    // Initialize from current value if provided
-    const initial = this.currentValue();
-    if (initial) {
-      this.description.set(initial);
-    }
+    // React to currentValue changes (including initial value after input binding)
+    effect(() => {
+      const initial = this.currentValue();
+      // Set the value (including empty string) - only skip if truly not provided
+      const newValue = initial ?? '';
+      if (this.description() !== newValue) {
+        this.description.set(newValue);
+      }
+    });
   }
 
   onDescriptionChange(value: string): void {

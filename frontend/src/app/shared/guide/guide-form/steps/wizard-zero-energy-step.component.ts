@@ -73,6 +73,7 @@ interface EquipmentWithLotoPoint {
           [options]="phraseOptions()"
           [label]="'Zero Energy Phrase'"
           [categoryName]="'zeroEnergyTemplate'"
+          [ngModel]="selectedPhraseId()"
           (valueChange)="onPhraseSelected($event)"
           (addNewOption)="onAddNewPhrase()"
         />
@@ -378,14 +379,14 @@ export class WizardZeroEnergyStepComponent {
   // Store which placeholder we're currently selecting for
   private currentPlaceholderIndex = signal<number | null>(null);
 
-  // Flag to prevent re-initialization
-  private isInitialized = false;
+  // Track the last restored phrase ID to avoid redundant restoration
+  private lastRestoredPhraseId: number | null = null;
 
   constructor() {
     // Restore state from frame's entity data when component loads
     effect(() => {
       const frameData = this.frame();
-      if (this.isInitialized || !frameData) return;
+      if (!frameData) return;
 
       const zeroEnergy = frameData.entityData.zeroEnergy as any;
       if (!zeroEnergy) return;
@@ -393,6 +394,11 @@ export class WizardZeroEnergyStepComponent {
       // Restore phrase selection
       if (zeroEnergy.zeroEnergyTemplate?.id) {
         const phraseId = zeroEnergy.zeroEnergyTemplate.id;
+
+        // Only restore if the phrase ID is different (avoid redundant restoration)
+        if (this.lastRestoredPhraseId === phraseId) return;
+        this.lastRestoredPhraseId = phraseId;
+
         this.selectedPhraseId.set(phraseId);
 
         // Get full phrase data from value service
@@ -428,8 +434,6 @@ export class WizardZeroEnergyStepComponent {
           }
         }
       }
-
-      this.isInitialized = true;
     });
   }
 

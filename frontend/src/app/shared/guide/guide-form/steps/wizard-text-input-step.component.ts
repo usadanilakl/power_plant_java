@@ -65,8 +65,10 @@ export class WizardTextInputStepComponent {
   constructor() {
     effect(() => {
       const current = this.currentValue();
-      if (current !== undefined && current !== null) {
-        this.inputValue = current;
+      // Set the value (including empty string) - only skip if truly not provided
+      const newValue = current ?? '';
+      if (this.inputValue !== newValue) {
+        this.inputValue = newValue;
       }
     });
   }

@@ -90,6 +90,14 @@ export class WizardStackService {
     return frame.currentStepIndex === frame.flow.steps.length - 1;
   });
 
+  // All visited step indices (from step history + current)
+  visitedSteps = computed(() => {
+    const frame = this.currentFrame();
+    if (!frame) return [];
+    // Include all steps from history plus current step
+    return [...new Set([...frame.stepHistory, frame.currentStepIndex])];
+  });
+
   // Whether current frame is a branch (has parent)
   isBranch = computed(() => this.stackDepth() > 1);
 
@@ -139,6 +147,28 @@ export class WizardStackService {
 
     this.saveToStorage();
     return true;
+  }
+
+  /**
+   * Start a wizard or resume from saved session if one exists for the same flow type.
+   * Returns 'resumed' if a session was resumed, 'started' if a new session was started, or false on error.
+   */
+  startOrResume(flowType: WizardFlowType, initialData?: Record<string, any>): 'resumed' | 'started' | false {
+    const savedInfo = this.getSavedSessionInfo();
+
+    // If there's a saved session for the same flow type, resume it
+    if (savedInfo && savedInfo.flowType === flowType) {
+      if (this.resume()) {
+        return 'resumed';
+      }
+    }
+
+    // Otherwise start fresh (this will also clear any old saved session)
+    if (this.start(flowType, initialData)) {
+      return 'started';
+    }
+
+    return false;
   }
 
   /**
@@ -457,7 +487,7 @@ export class WizardStackService {
   }
 
   /**
-   * Cancel and close the wizard entirely
+   * Cancel and close the wizard entirely, clearing all saved data
    */
   cancel(): void {
     this._context.set({
@@ -466,6 +496,20 @@ export class WizardStackService {
       isMinimized: false,
     });
     this.clearStorage();
+  }
+
+  /**
+   * Suspend the wizard (close UI but keep data in localStorage for later resume)
+   */
+  suspend(): void {
+    // Save current state before suspending
+    this.saveToStorage();
+    // Deactivate UI but don't clear storage
+    this._context.set({
+      stack: [],
+      isActive: false,
+      isMinimized: false,
+    });
   }
 
   /**
@@ -763,6 +807,11 @@ export class WizardStackService {
 
   private saveToStorage(): void {
     const ctx = this._context();
+
+    // Don't save if stack is empty
+    if (ctx.stack.length === 0) {
+      return;
+    }
 
     const serializable: SerializableWizardContext = {
       stack: ctx.stack.map(frame => ({

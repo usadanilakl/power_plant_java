@@ -22,7 +22,7 @@ import { RfValueDto } from '../../../../features/values/refactored/models/rf-val
           [categoryAlias]="categoryAlias()"
           [label]="label()"
           [canManageValues]="canManageValues()"
-          [(ngModel)]="selectedValueId"
+          [ngModel]="selectedValueId()"
           (ngModelChange)="onValueIdChange($event)"
           (valueSelected)="onValueSelected($event)"
         />
@@ -41,7 +41,7 @@ import { RfValueDto } from '../../../../features/values/refactored/models/rf-val
         </div>
       }
 
-      @if (!selectedValueId && step().valueSelectConfig?.required) {
+      @if (!selectedValueId() && step().valueSelectConfig?.required) {
         <div class="required-hint">
           <mat-icon>info</mat-icon>
           <span>This field is required. Please select or create a value.</span>
@@ -120,11 +120,12 @@ import { RfValueDto } from '../../../../features/values/refactored/models/rf-val
 })
 export class WizardValueSelectStepComponent {
   step = input.required<WizardStep>();
-  currentValue = input<number | null>(null);
+  // Accept either a number (ID) or a full ValueDto object
+  currentValue = input<number | { id: number; name?: string; alias?: string | null } | null>(null);
 
   valueChange = output<StepDataPayload>();
 
-  selectedValueId: number | null = null;
+  selectedValueId = signal<number | null>(null);
   selectedValue = signal<RfValueDto | null>(null);
 
   categoryAlias = computed((): string => {
@@ -140,18 +141,31 @@ export class WizardValueSelectStepComponent {
   });
 
   constructor() {
-    // Initialize from current value if provided
+    // Initialize from current value when input is bound
     effect(() => {
       const initial = this.currentValue();
-      if (initial && !this.selectedValueId) {
-        this.selectedValueId = initial;
+      if (initial) {
+        // Handle both number and object formats
+        if (typeof initial === 'number') {
+          // Only update if different to avoid infinite loops
+          if (this.selectedValueId() !== initial) {
+            this.selectedValueId.set(initial);
+          }
+        } else if (typeof initial === 'object' && 'id' in initial) {
+          if (this.selectedValueId() !== initial.id) {
+            this.selectedValueId.set(initial.id);
+            // Also set the selected value for display
+            this.selectedValue.set(initial as RfValueDto);
+          }
+        }
       }
     });
   }
 
   onValueIdChange(valueId: number | null): void {
     // Only emit value ID, wait for valueSelected for full object
-    if (valueId !== this.selectedValueId) {
+    if (valueId !== this.selectedValueId()) {
+      this.selectedValueId.set(valueId);
       this.emitValue(valueId);
     }
   }
