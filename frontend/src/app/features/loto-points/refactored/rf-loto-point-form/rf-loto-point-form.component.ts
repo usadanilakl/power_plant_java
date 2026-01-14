@@ -99,6 +99,9 @@ export class RfLotoPointFormComponent {
   private draftCheckDone = signal<boolean>(false);
   // Track the last entity ID we checked drafts for
   private lastEntityIdChecked = signal<number | null | undefined>(undefined);
+  // Track whether the draft dialog has been shown for this form session
+  // This prevents showing the dialog again when the user is actively editing
+  private draftDialogShownForSession = signal<boolean>(false);
 
   // Reset draft check when entity ID changes
   private resetDraftCheck = effect(() => {
@@ -106,9 +109,10 @@ export class RfLotoPointFormComponent {
     const currentId = currentEntity?.id ?? null;
     const lastId = this.lastEntityIdChecked();
 
-    // If entity ID changed, reset the draft check flag
+    // If entity ID changed, reset the draft check flags
     if (lastId !== undefined && currentId !== lastId) {
       this.draftCheckDone.set(false);
+      this.draftDialogShownForSession.set(false);
     }
     this.lastEntityIdChecked.set(currentId);
   });
@@ -116,6 +120,16 @@ export class RfLotoPointFormComponent {
   // Check for drafts when entity changes
   private checkForDrafts = effect(() => {
     const currentEntity = this.entity();
+
+    // Skip if we've already shown the dialog for this form session
+    // This prevents the dialog from appearing when the user edits fields
+    if (this.draftDialogShownForSession()) {
+      // Still store the original server version if not set
+      if (!this.originalServerVersion()) {
+        this.originalServerVersion.set(currentEntity);
+      }
+      return;
+    }
 
     // Check for existing item (has ID) or new item that has data
     const isExistingItem = currentEntity && currentEntity.id;
@@ -141,20 +155,27 @@ export class RfLotoPointFormComponent {
             this.serverEntity.set(currentEntity);
             this.draftEntity.set(draftData);
             this.draftTimestamp.set(draft.timestamp);
+            // Mark that we've shown the dialog for this session BEFORE showing it
+            this.draftDialogShownForSession.set(true);
             this.showDraftDialog.set(true);
           } else {
             // No real differences - just clear the draft silently
             this.stateService.clearDraftForItem(lotoPointId);
+            // Mark session as checked even if no dialog shown
+            this.draftDialogShownForSession.set(true);
+            this.originalServerVersion.set(currentEntity);
           }
         } else if (!this.draftCheckDone()) {
           // For new items (including blank forms), auto-load draft
           // Only do this once to prevent infinite loops
           this.draftCheckDone.set(true);
+          this.draftDialogShownForSession.set(true);
           this.stateService.setSelectedItem(draftData);
         }
       } else {
-        // No draft - store the original server version
+        // No draft - store the original server version and mark session as checked
         this.originalServerVersion.set(currentEntity);
+        this.draftDialogShownForSession.set(true);
       }
     }
   });

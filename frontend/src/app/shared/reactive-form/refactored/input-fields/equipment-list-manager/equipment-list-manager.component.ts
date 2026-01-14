@@ -31,6 +31,7 @@ interface EquipmentListItem {
   fileName?: string;
   originalPictureSize?: string;
   tagNumber?: string;
+  lotoPoints?: any[]; // Store LOTO point associations for tag number display
   source: 'browsed' | 'drawn'; // Track how equipment was added
 }
 
@@ -65,6 +66,7 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   @Input() currentLotoPointTagNumber?: string;  // For conflict dialog display
   @Input() conflictMode: ConflictMode = 'has-association';  // Conflict detection mode
   @Input() requireLotoPointForDrawn: boolean = false;  // Require LOTO point creation for newly drawn equipment
+  @Input() requireLotoPointForUnassociated: boolean = false;  // Require LOTO point creation for equipment without LOTO point association
 
   // ViewContainerRef for dynamic component loading
   @ViewChild('lotoFormContainer', { read: ViewContainerRef }) lotoFormContainer!: ViewContainerRef;
@@ -104,17 +106,27 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   writeValue(value: any): void {
     if (Array.isArray(value)) {
       this.equipmentList.set(
-        value.map((item) => ({
-          ...item,
-          fileId: item.mainFileId ?? item.fileId,
-          // Use mainFile (string field), fallback to mainFileObject.name, then fileName
-          fileName:
-            item.mainFileObject?.name ??
-            item.mainFile ??
-            item.fileName ??
-            (item.mainFileId ? `File #${item.mainFileId}` : undefined),
-          source: item.source ?? 'browsed', // Default to browsed for draft-loaded items
-        }))
+        value.map((item) => {
+          // Extract tag number from LOTO points if available
+          let tagNumber = item.tagNumber || '';
+          if (item.lotoPoints && item.lotoPoints.length > 0 && item.lotoPoints[0]?.tagNumber) {
+            tagNumber = item.lotoPoints[0].tagNumber;
+          }
+
+          return {
+            ...item,
+            fileId: item.mainFileId ?? item.fileId,
+            // Use mainFile (string field), fallback to mainFileObject.name, then fileName
+            fileName:
+              item.mainFileObject?.name ??
+              item.mainFile ??
+              item.fileName ??
+              (item.mainFileId ? `File #${item.mainFileId}` : undefined),
+            tagNumber: tagNumber,
+            lotoPoints: item.lotoPoints || [],
+            source: item.source ?? 'browsed', // Default to browsed for draft-loaded items
+          };
+        })
       );
       this.value.set(value);
     } else {
@@ -164,6 +176,12 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
       }
     } else if (this.conflictMode === 'no-association') {
       if (this.conflictService.hasNoAssociation(equipment.id)) {
+        // If we require LOTO point for unassociated equipment, open LOTO form
+        if (this.requireLotoPointForUnassociated) {
+          this.closeUnifiedDialog();
+          this.openLotoPointFormForEquipment(equipment);
+          return;
+        }
         this.showConflictDialog(equipment, [], 'no-association');
         this.closeUnifiedDialog();
         return;
@@ -240,6 +258,13 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   }
 
   private showConflictDialog(equipment: EquipmentDto, conflicts: any[], conflictType: 'has-association' | 'no-association') {
+    // If equipment has no LOTO point association and we require one, open LOTO form instead of conflict dialog
+    if (conflictType === 'no-association' && this.requireLotoPointForUnassociated) {
+      this.closeBrowser();
+      this.openLotoPointFormForEquipment(equipment);
+      return;
+    }
+
     this.pendingEquipment.set(equipment);
     this.conflictDialogData.set({
       equipment,
@@ -252,13 +277,20 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
   }
 
   private addEquipmentToList(equipment: EquipmentDto, source: 'browsed' | 'drawn' = 'browsed') {
+    // Get tag number from LOTO point if available, otherwise use equipment tag
+    let tagNumber = equipment.tagNumber || '';
+    if (equipment.lotoPoints && equipment.lotoPoints.length > 0 && equipment.lotoPoints[0].tagNumber) {
+      tagNumber = equipment.lotoPoints[0].tagNumber;
+    }
+
     const newItem: EquipmentListItem = {
       id: equipment.id,
       coordinates: equipment.coordinates || '',
       fileId: equipment.mainFileId ?? undefined,
       fileName: equipment.mainFileObject?.name ?? (equipment.mainFileId ? `File #${equipment.mainFileId}` : ''),
       originalPictureSize: equipment.originalPictureSize || '',
-      tagNumber: equipment.tagNumber || '',
+      tagNumber: tagNumber,
+      lotoPoints: equipment.lotoPoints || [],
       source
     };
 
@@ -500,7 +532,16 @@ export class EquipmentListManagerComponent implements ControlValueAccessor {
 
   // Display helpers
   getItemDisplay(item: EquipmentListItem): string {
-    return `Shape on File #${item.fileName || item.fileId || 'Unknown'}`;
+    // Priority 1: LOTO point tag number from lotoPoints array
+    if (item.lotoPoints && item.lotoPoints.length > 0 && item.lotoPoints[0]?.tagNumber) {
+      return item.lotoPoints[0].tagNumber;
+    }
+    // Priority 2: direct tag number on the item
+    if (item.tagNumber) {
+      return item.tagNumber;
+    }
+    // Fallback: show file reference
+    return `Shape on ${item.fileName || (item.fileId ? `File #${item.fileId}` : 'Unknown File')}`;
   }
 
   getItemIcon(item: EquipmentListItem): string {

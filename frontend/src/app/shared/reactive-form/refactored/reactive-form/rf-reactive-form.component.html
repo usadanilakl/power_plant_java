@@ -113,6 +113,8 @@
           [label]="field.label"
           [formControl]="getFormControl(field.name)"
           [useUnifiedDialog]="field.context?.useUnifiedDialog ?? false"
+          [requireLotoPointForDrawn]="field.context?.requireLotoPointForDrawn ?? false"
+          [requireLotoPointForUnassociated]="field.context?.requireLotoPointForUnassociated ?? false"
           [currentLotoPointId]="field.context?.currentLotoPointId"
           [currentLotoPointTagNumber]="field.context?.currentLotoPointTagNumber"
           [conflictMode]="field.context?.conflictMode ?? 'has-association'"

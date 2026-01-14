@@ -22,6 +22,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
+import { RfValueService } from '../../../../../features/values/refactored/services/rf-value.service';
+import { RfValueDto } from '../../../../../features/values/refactored/models/rf-value.model';
+import { ValueDto } from '../../../../../models/value.model';
 
 import { RfFileLeftMenuComponent } from '../../../../../features/files/refactored/rf-file-left-menu/rf-file-left-menu.component';
 import { InteractiveImageComponent } from '../../../../image/refactored/interactive-image/interactive-image.component';
@@ -198,18 +201,45 @@ import {
 
             <div class="form-row">
               <mat-form-field appearance="outline">
-                <mat-label>Location</mat-label>
-                <input matInput formControlName="location" placeholder="e.g., Unit 1, Level 2">
+                <mat-label>Equipment Type</mat-label>
+                <mat-select formControlName="eqType">
+                  <mat-option [value]="null">-- Select --</mat-option>
+                  @for (opt of eqTypeOptions(); track opt.id) {
+                    <mat-option [value]="opt.id">{{ opt.name }}</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
 
               <mat-form-field appearance="outline">
+                <mat-label>Location</mat-label>
+                <mat-select formControlName="location">
+                  <mat-option [value]="null">-- Select --</mat-option>
+                  @for (opt of locationOptions(); track opt.id) {
+                    <mat-option [value]="opt.id">{{ opt.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
                 <mat-label>Isolated Position</mat-label>
-                <input matInput formControlName="isoPos" placeholder="e.g., Closed">
+                <mat-select formControlName="isoPos">
+                  <mat-option [value]="null">-- Select --</mat-option>
+                  @for (opt of isoPosOptions(); track opt.id) {
+                    <mat-option [value]="opt.id">{{ opt.name }}</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
 
               <mat-form-field appearance="outline">
                 <mat-label>Normal Position</mat-label>
-                <input matInput formControlName="normPos" placeholder="e.g., Open">
+                <mat-select formControlName="normPos">
+                  <mat-option [value]="null">-- Select --</mat-option>
+                  @for (opt of normPosOptions(); track opt.id) {
+                    <mat-option [value]="opt.id">{{ opt.name }}</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
             </div>
 
@@ -347,7 +377,18 @@ import {
           </span>
         }
         <button mat-stroked-button (click)="onCancel()">Cancel</button>
-        @if (drawnShape() && !isSaving()) {
+        @if (dialogData.requireLotoPointForUnassociated && missingAssociationWarnings().length > 0) {
+          <!-- Zero energy mode with missing LOTO points - show warning button -->
+          <button
+            mat-flat-button
+            color="warn"
+            [disabled]="isSaving()"
+            (click)="openQuickCreateForm()"
+          >
+            <mat-icon>warning</mat-icon>
+            Create LOTO Point First
+          </button>
+        } @else if (drawnShape() && !isSaving()) {
           <button
             mat-flat-button
             color="primary"
@@ -867,13 +908,21 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
   private equipmentMapper = inject(EquipmentMapperService);
   private equipmentService = inject(RfEquipmentService);
   private lotoPointApiService = inject(RfLotoPointApiService);
+  private valueService = inject(RfValueService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
 
-  // Quick-create form
+  // Value options for dropdowns
+  eqTypeOptions = computed(() => this.valueService.getValuesByCategory('eqType'));
+  locationOptions = computed(() => this.valueService.getValuesByCategory('location'));
+  isoPosOptions = computed(() => this.valueService.getValuesByCategory('isoPos'));
+  normPosOptions = computed(() => this.valueService.getValuesByCategory('normPos'));
+
+  // Quick-create form - stores ValueDto IDs for select fields
   quickCreateForm: FormGroup = this.fb.group({
     tagNumber: ['', Validators.required],
     description: ['', Validators.required],
+    eqType: [null],
     location: [null],
     isoPos: [null],
     normPos: [null],
@@ -900,6 +949,9 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
   showQuickCreateForm = signal(false);
   pendingEquipmentForQuickCreate = signal<EquipmentDto | null>(null);
   isCreatingLotoPoint = signal(false);
+
+  // State for drawn shape that was saved as equipment and needs LOTO point
+  savedEquipmentFromDrawnShape = signal<EquipmentDto | null>(null);
 
   // File State
   currentFile = signal<FileDto | null>(null);
@@ -1158,10 +1210,27 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
       lotoPoints: [newLotoPoint],
     });
 
-    // Update in selection
-    this.selectedEquipment.update(list =>
-      list.map(e => e.id === equipment.id ? updatedEquipment : e)
-    );
+    // Check if this was equipment from a drawn shape
+    const savedFromDrawn = this.savedEquipmentFromDrawnShape();
+    const isFromDrawnShape = savedFromDrawn && savedFromDrawn.id === equipment.id;
+
+    // Update in selection or add if it was from drawn shape
+    this.selectedEquipment.update(list => {
+      const existingIndex = list.findIndex(e => e.id === equipment.id);
+      if (existingIndex >= 0) {
+        // Update existing
+        return list.map(e => e.id === equipment.id ? updatedEquipment : e);
+      } else if (isFromDrawnShape) {
+        // Add to selection if it came from a drawn shape
+        return [...list, updatedEquipment];
+      }
+      return list;
+    });
+
+    // Clear the saved equipment from drawn shape state
+    if (isFromDrawnShape) {
+      this.savedEquipmentFromDrawnShape.set(null);
+    }
 
     this.pendingEquipmentForQuickCreate.set(null);
     this.showQuickCreateForm.set(false);
@@ -1169,6 +1238,16 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
 
   // Track newly created LOTO points
   private newlyCreatedLotoPoints: LotoPointDto[] = [];
+
+  /**
+   * Helper to find a ValueDto by ID from an options array
+   */
+  private findValueById(options: RfValueDto[], id: number | null): ValueDto | null {
+    if (!id) return null;
+    const found = options.find(opt => opt.id === id);
+    if (!found) return null;
+    return new ValueDto({ id: found.id, name: found.name });
+  }
 
   submitQuickCreate(): void {
     if (this.quickCreateForm.invalid) return;
@@ -1179,12 +1258,20 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
     this.isCreatingLotoPoint.set(true);
 
     const formValue = this.quickCreateForm.value;
+
+    // Convert form IDs to ValueDto objects
+    const eqType = this.findValueById(this.eqTypeOptions(), formValue.eqType);
+    const location = this.findValueById(this.locationOptions(), formValue.location);
+    const isoPos = this.findValueById(this.isoPosOptions(), formValue.isoPos);
+    const normPos = this.findValueById(this.normPosOptions(), formValue.normPos);
+
     const newLotoPoint = new LotoPointDto({
       tagNumber: formValue.tagNumber,
       description: formValue.description,
-      location: formValue.location,
-      isoPos: formValue.isoPos,
-      normPos: formValue.normPos,
+      eqType: eqType,
+      location: location,
+      isoPos: isoPos,
+      normPos: normPos,
       equipmentList: [equipment],
     });
 
@@ -1220,6 +1307,13 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
 
   // Confirm and Save
   async onConfirm(): Promise<void> {
+    // Check if there are any equipment missing LOTO points in zero energy mode
+    if (this.dialogData.requireLotoPointForUnassociated && this.missingAssociationWarnings().length > 0) {
+      // Don't allow submission until all equipment have LOTO points
+      this.openQuickCreateForm();
+      return;
+    }
+
     const drawn = this.drawnShape();
     const file = this.currentFile();
 
@@ -1242,15 +1336,31 @@ export class EquipmentConnectionDialogComponent implements OnInit, OnDestroy {
                 mainFileObject: file,
               });
 
-              // Add to selection
-              const finalSelection = [...this.selectedEquipment(), enrichedEquipment];
+              // In zero energy mode, we need to create a LOTO point for the new equipment
+              if (this.dialogData.requireLotoPointForUnassociated) {
+                // Save the equipment and prompt for LOTO point creation
+                this.savedEquipmentFromDrawnShape.set(enrichedEquipment);
+                this.pendingEquipmentForQuickCreate.set(enrichedEquipment);
+                this.drawnShape.set(null); // Clear the drawn shape since equipment is saved
+                this.showQuickCreateForm.set(true);
 
-              this.closeWithResult({
-                selectedEquipment: finalSelection,
-                selectedFile: file,
-                newlyCreatedLotoPoints: this.newlyCreatedLotoPoints.length > 0 ? this.newlyCreatedLotoPoints : undefined,
-                cancelled: false,
-              });
+                // Add a missing association warning
+                const warning: MissingAssociationWarning = {
+                  equipment: enrichedEquipment,
+                  message: `New equipment requires a LOTO point association.`,
+                };
+                this.missingAssociationWarnings.set([...this.missingAssociationWarnings(), warning]);
+              } else {
+                // Add to selection and close
+                const finalSelection = [...this.selectedEquipment(), enrichedEquipment];
+
+                this.closeWithResult({
+                  selectedEquipment: finalSelection,
+                  selectedFile: file,
+                  newlyCreatedLotoPoints: this.newlyCreatedLotoPoints.length > 0 ? this.newlyCreatedLotoPoints : undefined,
+                  cancelled: false,
+                });
+              }
             } else {
               this.error.set('Failed to save equipment.');
             }

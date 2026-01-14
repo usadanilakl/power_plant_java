@@ -19,7 +19,9 @@
       @if (selectedFile()) {
         <div class="viewer-header">
           <h3>{{ selectedFile()?.name }}</h3>
-          <div class="status-message" [class.has-selection]="canConfirm()">
+          <div class="status-message"
+               [class.has-selection]="selectedEquipment()"
+               [class.needs-loto]="needsLotoPointForm()">
             {{ statusMessage() }}
           </div>
         </div>
@@ -51,6 +53,81 @@
     </div>
   </div>
 
+  <!-- LOTO Point Form (shown when equipment needs LOTO point) -->
+  @if (needsLotoPointForm()) {
+    <div class="loto-form-section">
+      <div class="loto-form-header">
+        <span class="loto-form-icon">📋</span>
+        <h4>Create LOTO Point for Equipment #{{ pendingEquipmentForLotoPoint()?.id }}</h4>
+      </div>
+      <form [formGroup]="lotoPointForm" (ngSubmit)="submitLotoPointForm()" class="loto-form">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Tag Number *</label>
+            <input type="text" formControlName="tagNumber" placeholder="e.g., V-101">
+          </div>
+          <div class="form-field">
+            <label>Description *</label>
+            <input type="text" formControlName="description" placeholder="e.g., Main Isolation Valve">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Equipment Type</label>
+            <select formControlName="eqType">
+              <option [ngValue]="null">-- Select --</option>
+              @for (opt of eqTypeOptions(); track opt.id) {
+                <option [ngValue]="opt.id">{{ opt.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Location</label>
+            <select formControlName="location">
+              <option [ngValue]="null">-- Select --</option>
+              @for (opt of locationOptions(); track opt.id) {
+                <option [ngValue]="opt.id">{{ opt.name }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Isolated Position</label>
+            <select formControlName="isoPos">
+              <option [ngValue]="null">-- Select --</option>
+              @for (opt of isoPosOptions(); track opt.id) {
+                <option [ngValue]="opt.id">{{ opt.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Normal Position</label>
+            <select formControlName="normPos">
+              <option [ngValue]="null">-- Select --</option>
+              @for (opt of normPosOptions(); track opt.id) {
+                <option [ngValue]="opt.id">{{ opt.name }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        @if (lotoPointFormError()) {
+          <div class="form-error">{{ lotoPointFormError() }}</div>
+        }
+        <div class="form-actions">
+          <button type="button" class="btn-cancel-small" (click)="cancelLotoPointForm()">Cancel</button>
+          <button type="submit" class="btn-submit" [disabled]="lotoPointForm.invalid || isCreatingLotoPoint()">
+            @if (isCreatingLotoPoint()) {
+              Creating...
+            } @else {
+              Create LOTO Point
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
   <!-- Dialog Actions -->
   @if (!hideActions()) {
     <div class="dialog-actions">
@@ -63,12 +140,12 @@
       <button
         type="button"
         class="btn-select"
-        [disabled]="!canConfirm() || isLoading()"
+        [disabled]="!canConfirm() || isLoading() || isCreatingLotoPoint()"
         (click)="onConfirm()">
         @if (isLoading()) {
           Saving...
-        } @else if (currentMode() === 'drawn') {
-          Save & Select Equipment
+        } @else if (drawnShape()) {
+          Save & Select
         } @else {
           Select Equipment
         }

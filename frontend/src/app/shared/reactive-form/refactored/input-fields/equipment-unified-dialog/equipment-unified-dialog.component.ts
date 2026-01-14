@@ -1,12 +1,18 @@
 import { Component, inject, input, output, signal, computed, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { InteractiveImageComponent } from '../../../../image/refactored/interactive-image/interactive-image.component';
 import { RfToggleMenuComponent } from '../../../../menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
 import { EquipmentDialogFileService } from '../services/equipment-dialog-file.service';
 import { EquipmentMapperService } from '../../../../../features/equipment/refactored/services/equipment-mapper.service';
 import { RfEquipmentService } from '../../../../../features/equipment/refactored/services/rf-equipment.service';
+import { RfLotoPointApiService } from '../../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
+import { RfValueService } from '../../../../../features/values/refactored/services/rf-value.service';
 import { EquipmentDto } from '../../../../../models/equipment/equipment.model';
+import { LotoPointDto } from '../../../../../models/loto/loto-point.model';
+import { ValueDto } from '../../../../../models/value.model';
+import { RfValueDto } from '../../../../../features/values/refactored/models/rf-value.model';
 import { NestedItem } from '../../../../../models/ui/nested-item.model';
 import { RfShape } from '../../../../image/refactored/models/fr-shape.model';
 import { GuideDirective } from '../../../../guide/guide.directive';
@@ -18,14 +24,20 @@ import { GuideDirective } from '../../../../guide/guide.directive';
  * - Left-click on existing equipment shape to select it
  * - Right-click and drag to draw a new equipment shape
  *
- * Used in LOTO point forms where users need to either select existing
- * equipment or create new equipment in one unified workflow.
+ * Flow for zero energy mode (requireLotoPointForUnassociated=true):
+ * 1. User draws shape or selects equipment without LOTO point
+ * 2. Click "Save & Select" -> Equipment is saved (if drawn)
+ * 3. LOTO form appears for equipment without association
+ * 4. User fills LOTO form and submits
+ * 5. Equipment is updated with LOTO point
+ * 6. Click "Select Equipment" to close and return the fully associated equipment
  */
 @Component({
   selector: 'app-equipment-unified-dialog',
   standalone: true,
   imports: [
     CommonModule,
+    ReactiveFormsModule,
     InteractiveImageComponent,
     RfToggleMenuComponent,
     GuideDirective
@@ -39,16 +51,20 @@ export class EquipmentUnifiedDialogComponent {
   private fileService = inject(EquipmentDialogFileService);
   private equipmentMapper = inject(EquipmentMapperService);
   private equipmentService = inject(RfEquipmentService);
+  private lotoPointApiService = inject(RfLotoPointApiService);
+  private valueService = inject(RfValueService);
+  private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
 
   // Inputs
-  requireLotoPointForDrawn = input<boolean>(false);  // When true, emits equipmentDrawnForLotoPoint instead of equipmentAcquired for drawn shapes
-  immediateSelection = input<boolean>(false);  // When true, emit immediately on shape click (no confirm needed)
-  hideActions = input<boolean>(false);  // When true, hide the dialog action buttons
+  requireLotoPointForDrawn = input<boolean>(false);
+  requireLotoPointForUnassociated = input<boolean>(false);
+  immediateSelection = input<boolean>(false);
+  hideActions = input<boolean>(false);
 
   // Outputs
-  equipmentAcquired = output<EquipmentDto>();  // Emitted for browsed equipment (always) and drawn equipment (when requireLotoPointForDrawn=false)
-  equipmentDrawnForLotoPoint = output<EquipmentDto>();  // Emitted for drawn equipment when requireLotoPointForDrawn=true
+  equipmentAcquired = output<EquipmentDto>();
+  equipmentDrawnForLotoPoint = output<EquipmentDto>(); // Keep for backwards compatibility but won't use
   close = output<void>();
 
   // Delegated to file service
@@ -56,15 +72,34 @@ export class EquipmentUnifiedDialogComponent {
   fileMenuItems = this.fileService.menuItems;
   currentFileLink = this.fileService.currentFileLink;
 
-  // State
-  selectedEquipment = signal<EquipmentDto | null>(null);
-  drawnShape = signal<RfShape | null>(null);
+  // State - mimicking wizard's approach
+  selectedEquipment = signal<EquipmentDto | null>(null);  // Currently selected/saved equipment
+  drawnShape = signal<RfShape | null>(null);  // Drawn shape (before saving)
   highlightEquipmentId = signal<number | null>(null);
   isLoading = signal(false);
   error = signal<string | null>(null);
 
-  // Mode: 'browse' when selecting existing, 'drawn' when a new shape was drawn
-  currentMode = signal<'browse' | 'drawn'>('browse');
+  // LOTO Point Form State - shown when equipment needs LOTO point
+  showLotoPointForm = signal(false);
+  pendingEquipmentForLotoPoint = signal<EquipmentDto | null>(null);  // Equipment waiting for LOTO point
+  isCreatingLotoPoint = signal(false);
+  lotoPointFormError = signal<string | null>(null);
+
+  // Value options for LOTO point form dropdowns
+  eqTypeOptions = computed(() => this.valueService.getValuesByCategory('eqType'));
+  locationOptions = computed(() => this.valueService.getValuesByCategory('location'));
+  isoPosOptions = computed(() => this.valueService.getValuesByCategory('isoPos'));
+  normPosOptions = computed(() => this.valueService.getValuesByCategory('normPos'));
+
+  // LOTO Point quick-create form
+  lotoPointForm: FormGroup = this.fb.group({
+    tagNumber: ['', Validators.required],
+    description: ['', Validators.required],
+    eqType: [null],
+    location: [null],
+    isoPos: [null],
+    normPos: [null],
+  });
 
   // Equipment from selected file
   equipment = computed(() => {
@@ -77,6 +112,7 @@ export class EquipmentUnifiedDialogComponent {
   equipmentShapes = computed(() => {
     const eq = this.equipment();
     const drawn = this.drawnShape();
+    const selected = this.selectedEquipment();
 
     // Map existing equipment to shapes
     const shapes = eq.map((e: EquipmentDto) =>
@@ -84,10 +120,9 @@ export class EquipmentUnifiedDialogComponent {
     ).filter(s => s !== null) as RfShape[];
 
     // Highlight selected equipment
-    const highlightId = this.highlightEquipmentId();
-    if (highlightId !== null) {
+    if (selected?.id) {
       shapes.forEach((shape: RfShape) => {
-        if (shape.id === highlightId) {
+        if (shape.id === selected.id) {
           shape.isSelected = true;
           shape.color = '#FF0000';
         }
@@ -107,25 +142,77 @@ export class EquipmentUnifiedDialogComponent {
     return shapes;
   });
 
-  // Can confirm when either equipment is selected OR a shape was drawn
+  // Check if we need to show LOTO form
+  needsLotoPointForm = computed(() => {
+    return this.showLotoPointForm() && this.pendingEquipmentForLotoPoint() !== null;
+  });
+
+  // Can confirm - equipment is selected and has LOTO point (if required)
   canConfirm = computed(() => {
-    return this.selectedEquipment() !== null || this.drawnShape() !== null;
+    const selected = this.selectedEquipment();
+    const drawn = this.drawnShape();
+    const pendingLoto = this.pendingEquipmentForLotoPoint();
+
+    // If there's a pending equipment waiting for LOTO point, can't confirm yet
+    if (pendingLoto) {
+      return false;
+    }
+
+    // If there's a drawn shape, user needs to click to save it first
+    if (drawn) {
+      return true; // Enable button to trigger save flow
+    }
+
+    // If equipment is selected and has LOTO point (or LOTO not required)
+    if (selected) {
+      if (this.requireLotoPointForUnassociated()) {
+        // Must have LOTO point
+        return selected.lotoPoints && selected.lotoPoints.length > 0;
+      }
+      return true;
+    }
+
+    return false;
   });
 
   // Status message for user guidance
   statusMessage = computed(() => {
-    const mode = this.currentMode();
     const selected = this.selectedEquipment();
     const drawn = this.drawnShape();
+    const pending = this.pendingEquipmentForLotoPoint();
+
+    if (pending) {
+      return `Equipment saved. Fill out LOTO Point form below to associate.`;
+    }
 
     if (drawn) {
-      return 'New shape drawn. Click "Select Equipment" to save and associate.';
+      return 'New shape drawn. Click "Save & Select" to save the equipment.';
     }
+
     if (selected) {
-      return `Selected: ${selected.tagNumber || `Equipment #${selected.id}`}`;
+      const lotoTag = selected.lotoPoints?.[0]?.tagNumber;
+      if (lotoTag) {
+        return `Selected: ${this.getEquipmentLabel(selected)} (LOTO: ${lotoTag})`;
+      }
+      if (this.requireLotoPointForUnassociated()) {
+        return `Selected: ${this.getEquipmentLabel(selected)} - No LOTO Point. Will prompt for creation.`;
+      }
+      return `Selected: ${this.getEquipmentLabel(selected)}`;
     }
+
     return 'Left-click to select existing equipment, or right-click and drag to draw new.';
   });
+
+  // Get display label for equipment
+  getEquipmentLabel(equipment: EquipmentDto): string {
+    if (equipment.lotoPoints?.[0]?.tagNumber) {
+      return equipment.lotoPoints[0].tagNumber;
+    }
+    if (equipment.tagNumber) {
+      return equipment.tagNumber;
+    }
+    return `Equipment #${equipment.id}`;
+  }
 
   onFileSelect(fileItem: NestedItem) {
     this.fileService.selectFileFromNestedItem(fileItem);
@@ -141,21 +228,21 @@ export class EquipmentUnifiedDialogComponent {
       if (selected) {
         // Clear any drawn shape when selecting existing
         this.drawnShape.set(null);
-        this.selectedEquipment.set(selected);
+
+        // Enrich with file info
+        const file = this.selectedFile();
+        const enrichedEquipment = new EquipmentDto({
+          ...selected,
+          mainFileId: file?.id,
+          mainFileObject: file || undefined
+        });
+
+        this.selectedEquipment.set(enrichedEquipment);
         this.highlightEquipmentId.set(selectedId);
-        this.currentMode.set('browse');
 
         // If immediate selection mode, emit right away
         if (this.immediateSelection()) {
-          const file = this.selectedFile();
-          if (file) {
-            const enrichedEquipment = new EquipmentDto({
-              ...selected,
-              mainFileId: file.id,
-              mainFileObject: file
-            });
-            this.equipmentAcquired.emit(enrichedEquipment);
-          }
+          this.equipmentAcquired.emit(enrichedEquipment);
         }
       }
     }
@@ -167,68 +254,88 @@ export class EquipmentUnifiedDialogComponent {
     this.selectedEquipment.set(null);
     this.highlightEquipmentId.set(null);
     this.drawnShape.set(shape);
-    this.currentMode.set('drawn');
   }
 
   onConfirm() {
     const file = this.selectedFile();
     if (!file) return;
 
-    if (this.currentMode() === 'browse') {
-      // Selecting existing equipment
-      const equipment = this.selectedEquipment();
-      if (equipment) {
-        const enrichedEquipment = new EquipmentDto({
-          ...equipment,
-          mainFileId: file.id,
-          mainFileObject: file
-        });
-        this.equipmentAcquired.emit(enrichedEquipment);
-        this.reset();
-      }
-    } else if (this.currentMode() === 'drawn') {
-      // Saving new drawn equipment
-      const shape = this.drawnShape();
-      if (shape) {
-        this.isLoading.set(true);
-        this.error.set(null);
+    const drawn = this.drawnShape();
+    const selected = this.selectedEquipment();
 
-        // Add file context to shape before saving
-        const shapeWithFileContext: RfShape = { ...shape, fileId: file.id };
-
-        this.equipmentService
-          .saveEquipmentFromShape(shapeWithFileContext)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (savedEquipment) => {
-              this.isLoading.set(false);
-              if (savedEquipment) {
-                const enrichedEquipment = new EquipmentDto({
-                  ...savedEquipment,
-                  mainFileId: file.id,
-                  mainFileObject: file
-                });
-
-                // If LOTO point creation is required for drawn equipment, emit special event
-                if (this.requireLotoPointForDrawn()) {
-                  this.equipmentDrawnForLotoPoint.emit(enrichedEquipment);
-                  // Don't reset - parent will handle closing after LOTO point form
-                } else {
-                  this.equipmentAcquired.emit(enrichedEquipment);
-                  this.reset();
-                }
-              } else {
-                this.error.set('Failed to save equipment.');
-              }
-            },
-            error: (err) => {
-              this.isLoading.set(false);
-              console.error('Failed to save equipment:', err);
-              this.error.set('Failed to save equipment. Please try again.');
-            }
-          });
-      }
+    // Case 1: There's a drawn shape - save it first
+    if (drawn) {
+      this.saveDrawnShape(file);
+      return;
     }
+
+    // Case 2: Equipment is selected
+    if (selected) {
+      // Check if LOTO point is required but missing
+      if (this.requireLotoPointForUnassociated()) {
+        const hasLotoPoint = selected.lotoPoints && selected.lotoPoints.length > 0;
+        if (!hasLotoPoint) {
+          // Need to create LOTO point first
+          this.pendingEquipmentForLotoPoint.set(selected);
+          this.showLotoPointForm.set(true);
+          return;
+        }
+      }
+
+      // Equipment is ready - emit and close
+      this.equipmentAcquired.emit(selected);
+      this.reset();
+    }
+  }
+
+  /**
+   * Save drawn shape as equipment, then check if LOTO point is needed
+   */
+  private saveDrawnShape(file: any) {
+    const shape = this.drawnShape();
+    if (!shape) return;
+
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    const shapeWithFileContext: RfShape = { ...shape, fileId: file.id };
+
+    this.equipmentService
+      .saveEquipmentFromShape(shapeWithFileContext)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (savedEquipment) => {
+          this.isLoading.set(false);
+          if (savedEquipment) {
+            const enrichedEquipment = new EquipmentDto({
+              ...savedEquipment,
+              mainFileId: file.id,
+              mainFileObject: file
+            });
+
+            // Clear drawn shape - it's now a saved equipment
+            this.drawnShape.set(null);
+
+            // Check if LOTO point is required
+            if (this.requireLotoPointForDrawn() || this.requireLotoPointForUnassociated()) {
+              // Show LOTO form for the newly saved equipment
+              this.pendingEquipmentForLotoPoint.set(enrichedEquipment);
+              this.showLotoPointForm.set(true);
+            } else {
+              // No LOTO required - emit and close
+              this.equipmentAcquired.emit(enrichedEquipment);
+              this.reset();
+            }
+          } else {
+            this.error.set('Failed to save equipment.');
+          }
+        },
+        error: (err) => {
+          this.isLoading.set(false);
+          console.error('Failed to save equipment:', err);
+          this.error.set('Failed to save equipment. Please try again.');
+        }
+      });
   }
 
   onCancel() {
@@ -240,12 +347,102 @@ export class EquipmentUnifiedDialogComponent {
     this.selectedEquipment.set(null);
     this.drawnShape.set(null);
     this.highlightEquipmentId.set(null);
-    this.currentMode.set('browse');
     this.error.set(null);
+    this.showLotoPointForm.set(false);
+    this.pendingEquipmentForLotoPoint.set(null);
+    this.lotoPointFormError.set(null);
+    this.lotoPointForm.reset();
   }
 
   private reset() {
     this.fileService.reset();
+    this.clearSelection();
+  }
+
+  // ==================== LOTO Point Form Methods ====================
+
+  /**
+   * Helper to find a ValueDto by ID from an options array
+   */
+  private findValueById(options: RfValueDto[], id: number | null): ValueDto | null {
+    if (!id) return null;
+    const found = options.find(opt => opt.id === id);
+    if (!found) return null;
+    return new ValueDto({ id: found.id, name: found.name });
+  }
+
+  /**
+   * Submit the LOTO point form
+   */
+  submitLotoPointForm(): void {
+    if (this.lotoPointForm.invalid) return;
+
+    const equipment = this.pendingEquipmentForLotoPoint();
+    if (!equipment) {
+      this.lotoPointFormError.set('No equipment available for LOTO point.');
+      return;
+    }
+
+    this.isCreatingLotoPoint.set(true);
+    this.lotoPointFormError.set(null);
+
+    const formValue = this.lotoPointForm.value;
+
+    // Convert form IDs to ValueDto objects
+    const eqType = this.findValueById(this.eqTypeOptions(), formValue.eqType);
+    const location = this.findValueById(this.locationOptions(), formValue.location);
+    const isoPos = this.findValueById(this.isoPosOptions(), formValue.isoPos);
+    const normPos = this.findValueById(this.normPosOptions(), formValue.normPos);
+
+    const newLotoPoint = new LotoPointDto({
+      tagNumber: formValue.tagNumber,
+      description: formValue.description,
+      eqType: eqType,
+      location: location,
+      isoPos: isoPos,
+      normPos: normPos,
+      equipmentList: [equipment],
+    });
+
+    this.lotoPointApiService.createLotoPoint(newLotoPoint)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.isCreatingLotoPoint.set(false);
+          if (response.responseData) {
+            const createdLotoPoint = LotoPointDto.fromJson(response.responseData);
+
+            // Update equipment with the new LOTO point
+            const updatedEquipment = new EquipmentDto({
+              ...equipment,
+              lotoPoints: [createdLotoPoint]
+            });
+
+            // Set as selected equipment (now fully associated)
+            this.selectedEquipment.set(updatedEquipment);
+
+            // Clear LOTO form state
+            this.pendingEquipmentForLotoPoint.set(null);
+            this.showLotoPointForm.set(false);
+            this.lotoPointForm.reset();
+
+            // Don't auto-close - let user click "Select Equipment" to confirm
+          } else {
+            this.lotoPointFormError.set('Failed to create LOTO point.');
+          }
+        },
+        error: (err) => {
+          this.isCreatingLotoPoint.set(false);
+          console.error('Failed to create LOTO point:', err);
+          this.lotoPointFormError.set('Failed to create LOTO point. Please try again.');
+        },
+      });
+  }
+
+  /**
+   * Cancel the LOTO point form
+   */
+  cancelLotoPointForm(): void {
     this.clearSelection();
   }
 }

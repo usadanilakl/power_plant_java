@@ -155,21 +155,8 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
       if (segment.type === 'placeholder' && segment.placeholderIndex !== undefined) {
         const equipmentItem = equipment[segment.placeholderIndex];
         if (equipmentItem) {
-          // Extract loto point tag number from equipment's lotoPoints array
-          let tagNumber = `Equipment ${segment.placeholderIndex + 1}`;
-
-          // First, try to get from lotoPoints array (equipment contains loto points)
-          if (equipmentItem.lotoPoints && Array.isArray(equipmentItem.lotoPoints) && equipmentItem.lotoPoints.length > 0) {
-            tagNumber = equipmentItem.lotoPoints[0].tagNumber || tagNumber;
-          }
-          // Fallback: if this is a loto point object directly
-          else if (equipmentItem.tagNumber) {
-            tagNumber = equipmentItem.tagNumber;
-          }
-          // Another fallback for older data
-          else if (equipmentItem.tag) {
-            tagNumber = equipmentItem.tag;
-          }
+          // Extract the best identifier for this equipment/LOTO point
+          const tagNumber = this.getEquipmentTagNumber(equipmentItem, segment.placeholderIndex);
 
           return {
             ...segment,
@@ -189,6 +176,37 @@ export class ZeroEnergyPhraseBuilderComponent implements ControlValueAccessor, A
       segments: substitutedSegments
     };
   });
+
+  /**
+   * Gets the best identifier for an equipment item to display in the phrase.
+   * Priority: LOTO point tagNumber > equipment tagNumber > equipment tag > fallback
+   */
+  private getEquipmentTagNumber(equipmentItem: any, index: number): string {
+    const fallback = `Equipment ${index + 1}`;
+
+    // First priority: LOTO points array (equipment has associated LOTO points)
+    if (equipmentItem.lotoPoints && Array.isArray(equipmentItem.lotoPoints) && equipmentItem.lotoPoints.length > 0) {
+      const lotoTagNumber = equipmentItem.lotoPoints[0]?.tagNumber;
+      if (lotoTagNumber) return lotoTagNumber;
+    }
+
+    // Second priority: direct tagNumber on the item (could be equipment or LOTO point)
+    if (equipmentItem.tagNumber) {
+      return equipmentItem.tagNumber;
+    }
+
+    // Third priority: tag field (older data format)
+    if (equipmentItem.tag) {
+      return equipmentItem.tag;
+    }
+
+    // Fourth priority: if this item has an ID, show a reference
+    if (equipmentItem.id) {
+      return `Equipment #${equipmentItem.id}`;
+    }
+
+    return fallback;
+  }
 
   // ControlValueAccessor
   private onChange = (value: any) => {};

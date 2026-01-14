@@ -116,6 +116,7 @@
   (close)="closeUnifiedDialog()">
   <app-equipment-unified-dialog
     [requireLotoPointForDrawn]="requireLotoPointForDrawn"
+    [requireLotoPointForUnassociated]="requireLotoPointForUnassociated"
     (equipmentAcquired)="onUnifiedEquipmentAcquired($event)"
     (equipmentDrawnForLotoPoint)="onUnifiedEquipmentDrawnForLotoPoint($event)"
     (close)="closeUnifiedDialog()"
