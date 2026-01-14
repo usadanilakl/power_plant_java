@@ -5,20 +5,18 @@ import { Column } from '../../../models/column.model';
 import { LotoPointDetailFormComponent } from "../loto-point-detail-form/loto-point-detail-form.component";
 import { LotoPointService } from '../../../services/loto/loto-point.service';
 import { BehaviorSubject, catchError, map, Observable, of, take, tap } from 'rxjs';
-import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { ExcelService } from '../../../services/excel.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
-import { PopupComponent } from "../../../shared/popup/popup.component";
 import { GuideDirective } from '../../../shared/guide/guide.directive';
 
 @Component({
   selector: 'app-loto-point-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, PopupProjectionComponent, PopupComponent, LotoPointDetailFormComponent, GuideDirective],
+  imports: [CommonModule, TableComponent, PopupProjectionComponent, LotoPointDetailFormComponent, GuideDirective],
   templateUrl: './loto-point-table.component.html',
 })
 export class LotoPointTableComponent implements OnInit {

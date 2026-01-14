@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, OnDestroy, output } from '@angular/core';
-import { AsyncPipe, NgIf, NgFor, CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
 import { LotoPointDto } from '../../../../models/loto/loto-point.model';
 import { CurrentEquipmentService } from '../../../../services/current-items-services/current-equipment.service';
@@ -10,7 +10,7 @@ import { Subscription } from 'rxjs';
   templateUrl: './file-editor-bottom-menu.component.html',
   styleUrls: ['./file-editor-bottom-menu.component.css'],
   standalone: true,
-  imports: [CommonModule, AsyncPipe, NgIf, NgFor]
+  imports: [CommonModule]
 })
 export class FileEditorBottomMenuComponent implements OnInit, OnDestroy {
 

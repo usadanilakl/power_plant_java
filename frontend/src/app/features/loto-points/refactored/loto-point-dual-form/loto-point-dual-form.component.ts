@@ -220,7 +220,7 @@ export class LotoPointDualFormComponent {
         // New item with only unit field set - use unit as the tag prefix
         this.loadCounterpartByTagNumber(primary.unit);
       }
-    }, { allowSignalWrites: true });
+    });
   }
 
   /**
@@ -962,7 +962,7 @@ export class LotoPointDualFormComponent {
     ) {
       this.initialCounterpartEntity.set(structuredClone(entity));
     }
-  }, { allowSignalWrites: true });
+  });
 
   /**
    * Check if entity has valid data for clipboard operations

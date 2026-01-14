@@ -1,7 +1,6 @@
 import { Component, computed, forwardRef, inject, input, Input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule, FormControl, FormArray, FormBuilder } from '@angular/forms';
-import { ContainerContentPipe } from '../../../../pipes/container-content.pipe';
 import { InvisibleInputFieldComponent } from '../../inputs/invisible-input-field/invisible-input-field.component';
 import { RadioCheckboxesComponent } from '../../inputs/radio-checkboxes/radio-checkboxes.component';
 import { InvisibleSearchableSelectComponent } from '../../inputs/invisible-searchable-select/invisible-searchable-select.component';
@@ -18,7 +17,6 @@ import { PrintableFormDto } from '../../../../models/forms/printable-form.model'
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    ContainerContentPipe,
     InvisibleInputFieldComponent,
     RadioCheckboxesComponent,
     InvisibleSearchableSelectComponent,

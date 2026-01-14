@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { MainLayoutComponent } from './layout/refactored/main-layout.component';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { PrintLayoutComponent } from "./features/form-designer/printable-form/print-layout/print-layout.component";
 import { GlobalMessageComponent } from "./shared/global-message/global-message.component";
@@ -17,7 +16,6 @@ import { MatMenuModule } from '@angular/material/menu';
   standalone: true,
   imports: [
     RouterOutlet,
-    MainLayoutComponent,
     PrintLayoutComponent,
     GlobalMessageComponent,
     GlobalContextMenuComponent,

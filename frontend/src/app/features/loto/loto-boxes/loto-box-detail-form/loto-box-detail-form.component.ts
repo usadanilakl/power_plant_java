@@ -6,15 +6,13 @@ import { BehaviorSubject, catchError, finalize, forkJoin, map, Observable, of, t
 import { ValueDto } from '../../../../models/value.model';
 import { Option } from '../../../../models/option.model';
 import { Validators } from '@angular/forms';
-import { ImageCarouselComponent } from "../../../../shared/image/image-carusel/image-carousel.component";
 import { CommonModule  } from '@angular/common';
 import { LotoBoxDto } from '../../../../models/loto/loto-box.model';
-import { NonNullablePipe } from "../../../../pipes/nonNullable.pipe";
 
 @Component({
   selector: 'app-loto-lotoBox-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe],
+  imports: [DetailsFormComponent, CommonModule],
   templateUrl: './loto-box-detail-form.component.html',
   styleUrl: './loto-box-detail-form.component.css'
 })

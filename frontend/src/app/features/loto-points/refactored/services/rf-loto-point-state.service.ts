@@ -130,9 +130,7 @@ export class RfLotoPointStateService {
       .getLotoPointById(id+'')
       .pipe(
         tap((response) => {
-          console.log('Loaded full LOTO Point from server:', response.responseData);
           this.setSelectedItem(LotoPointDto.fromJson(response.responseData));
-          console.log('Converted from Json:', LotoPointDto.fromJson(response.responseData));
         }),
         catchError((error) => {
           console.error('Error loading LOTO Point:', error);

@@ -1,5 +1,4 @@
 import { Component, computed, DestroyRef, inject, Input, input, OnInit, output, Signal, signal } from '@angular/core';
-import { ReactiveFormComponent } from "../../../../shared/reactive-form/reactive-form.component";
 import { CurrentValueService } from '../../../../services/current-value.service';
 import { ConfinedSpaceDto } from '../../../../models/permits/confined-space.model';
 import { Option } from '../../../../models/option.model';
@@ -8,7 +7,7 @@ import { SmartFormComponent } from "../../../../shared/reactive-form/smart-form/
 
 @Component({
   selector: 'app-confined-space-form',
-  imports: [ReactiveFormComponent, SmartFormComponent],
+  imports: [SmartFormComponent],
   templateUrl: './confined-space-form.component.html',
   styleUrl: './confined-space-form.component.css'
 })

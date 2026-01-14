@@ -1,6 +1,5 @@
 import { Component, ElementRef, EventEmitter, HostListener, Input, Output, forwardRef, inject, input, output, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { FindPipe } from "../../pipes/find.pipe";
 import { Option } from '../../models/option.model';
 import { Observable, Subscription, take } from 'rxjs';
 import { Question } from '../../models/ui/question.model';
@@ -20,7 +19,7 @@ import { CopyPasteDirective } from '../../directives/copy-paste.directive';
       multi: true
     }
   ],
-  imports: [FindPipe, MatIconModule, QaMenuComponent, CopyPasteDirective]
+  imports: [MatIconModule, QaMenuComponent, CopyPasteDirective]
 })
 export class SearchableDropdownComponent implements ControlValueAccessor {
 

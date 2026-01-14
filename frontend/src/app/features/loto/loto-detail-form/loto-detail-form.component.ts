@@ -1,27 +1,21 @@
-import { Component, Output, EventEmitter, Input, OnInit, DestroyRef, input, Signal, ɵunwrapWritableSignal, signal, output, effect} from '@angular/core';
-import { DetailsFormComponent } from '../../../shared/details-form/details-form.component';
+import { Component, Output, EventEmitter, Input, OnInit, DestroyRef, input, Signal, signal, output, effect} from '@angular/core';
 import { SharedDataService } from '../../../services/shared-data.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, catchError, finalize, forkJoin, map, Observable, of, tap } from 'rxjs';
 import { ValueDto } from '../../../models/value.model';
 import { Option } from '../../../models/option.model';
 import { Validators } from '@angular/forms';
-import { ImageCarouselComponent } from "../../../shared/image/image-carusel/image-carousel.component";
 import { CommonModule  } from '@angular/common';
 import { LotoDto } from '../../../models/loto/loto.model';
-import { NonNullablePipe } from "../../../pipes/nonNullable.pipe";
-import { PopupComponent } from "../../../shared/popup/popup.component";
 import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { Column } from '../../../models/column.model';
-import { FileService } from '../../../services/file.service';
-import { LotoPointSimpleTableComponent } from "../../loto-points/loto-point-simple-table/loto-point-simple-table.component";
 import { SmartFormComponent } from "../../../shared/reactive-form/smart-form/smart-form.component";
 
 @Component({
   selector: 'app-loto-detail-form',
   standalone: true,
-  imports: [DetailsFormComponent, ImageCarouselComponent, CommonModule, NonNullablePipe, PopupComponent, LotoPointTableComponent, LotoPointSimpleTableComponent, SmartFormComponent],
+  imports: [CommonModule, LotoPointTableComponent, SmartFormComponent],
   templateUrl: './loto-detail-form.component.html',
   styleUrl: './loto-detail-form.component.css'
 })

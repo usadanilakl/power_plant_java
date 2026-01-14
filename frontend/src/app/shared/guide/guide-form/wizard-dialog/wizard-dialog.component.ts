@@ -135,35 +135,47 @@ import { FileDto } from '../../../../models/file/file.model';
 
               <div class="footer-right">
                 @if (isCompleteStep()) {
-                  <button
-                    mat-flat-button
-                    color="primary"
-                    (click)="onFinish()"
-                    [disabled]="isSubmitting()"
-                  >
-                    @if (isSubmitting()) {
+                  @if (isSubmitting()) {
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      (click)="onFinish()"
+                      [disabled]="true"
+                    >
                       <mat-icon class="spinning">sync</mat-icon>
                       Saving...
-                    } @else {
+                    </button>
+                  } @else {
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      (click)="onFinish()"
+                    >
                       <mat-icon>check</mat-icon>
                       Done
-                    }
-                  </button>
+                    </button>
+                  }
                 } @else if (isReviewStep()) {
-                  <button
-                    mat-flat-button
-                    color="primary"
-                    (click)="onSubmit()"
-                    [disabled]="isSubmitting()"
-                  >
-                    @if (isSubmitting()) {
+                  @if (isSubmitting()) {
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      (click)="onSubmit()"
+                      [disabled]="true"
+                    >
                       <mat-icon class="spinning">sync</mat-icon>
                       Saving...
-                    } @else {
+                    </button>
+                  } @else {
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      (click)="onSubmit()"
+                    >
                       <mat-icon>save</mat-icon>
                       {{ wizardService.isBranch() ? 'Save & Return' : 'Save' }}
-                    }
-                  </button>
+                    </button>
+                  }
                 } @else if (isWelcomeStep()) {
                   <button
                     mat-flat-button

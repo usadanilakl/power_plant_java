@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { TagNumberService } from '../../../services/tag-number.service';
 import { Column } from '../../../models/column.model';
-import { PopupComponent } from "../../../shared/popup/popup.component";
 import { BehaviorSubject, Observable } from 'rxjs';
 import { LotoPointService } from '../../../services/loto/loto-point.service';
 import { LotoPointDetailFormComponent } from '../../loto-points/loto-point-detail-form/loto-point-detail-form.component';
@@ -14,7 +13,7 @@ import { PopupProjectionComponent } from "../../../shared/popup-projection/popup
 @Component({
   selector: 'app-tag-number-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, PopupComponent, LotoPointDetailFormComponent, TagNumberGeneratorComponent, PopupProjectionComponent],
+  imports: [CommonModule, TableComponent, LotoPointDetailFormComponent, TagNumberGeneratorComponent, PopupProjectionComponent],
   templateUrl: `./tag-number-table.component.html`,
 })
 export class TagNumberTableComponent implements OnInit {

@@ -1,16 +1,14 @@
-import { Component, computed, effect, ElementRef, inject, input, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, NgZone, Renderer2, signal, ViewChild } from '@angular/core';
 import { LotoTableComponent } from "../loto-table/loto-table.component";
 import { LotoDetailFormComponent } from "../loto-detail-form/loto-detail-form.component";
-import { LotoPointTableComponent } from "../../loto-points/loto-point-table/loto-point-table.component";
 import { LotoPointDto } from '../../../models/loto/loto-point.model';
 import { CurrentLotoService } from '../../../services/current-items-services/current-loto.service';
 import { LotoDto } from '../../../models/loto/loto.model';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { LotoComponent } from '../loto.component';
 
 @Component({
   selector: 'app-loto-side-menu',
-  imports: [LotoTableComponent, LotoDetailFormComponent, LotoPointTableComponent],
+  imports: [LotoTableComponent, LotoDetailFormComponent],
   templateUrl: './loto-side-menu.component.html',
   styleUrl: './loto-side-menu.component.css'
 })

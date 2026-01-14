@@ -4,13 +4,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { PrintableFormDto } from '../../../../models/forms/printable-form.model';
 import { PopupProjectionComponent } from "../../../../shared/popup-projection/popup-projection.component";
 import { Router } from '@angular/router';
-import { SingleFieldFormComponent } from '../../../../shared/reactive-form/single-field-form/single-field-form.component';
 import { PrintableFormFormComponent } from "../printable-form-form/printable-form-form.component";
 
 @Component({
   selector: 'app-printable-form-side-menu',
   standalone: true,
-  imports: [PopupProjectionComponent, SingleFieldFormComponent, PrintableFormFormComponent],
+  imports: [PopupProjectionComponent, PrintableFormFormComponent],
   templateUrl: './printable-form-side-menu.component.html',
   styleUrl: './printable-form-side-menu.component.css'
 })

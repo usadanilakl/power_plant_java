@@ -12,8 +12,6 @@ import { CurrentValueService } from '../../../services/current-value.service';
 import { CurrentEquipmentService } from '../../../services/current-items-services/current-equipment.service';
 import { CurrentFileService } from '../../../services/current-file.service';
 import { FileTableComponent } from "../../files/file-table/file-table.component";
-import { TagNumberGeneratorComponent } from "../../tag-number/tag-number-generator/tag-number-generator.component";
-import { PopupProjectionComponent } from "../../../shared/popup-projection/popup-projection.component";
 
 @Component({
   selector: 'app-loto-point-detail-form',
@@ -23,9 +21,7 @@ import { PopupProjectionComponent } from "../../../shared/popup-projection/popup
     CommonModule,
     NonNullablePipe,
     ReactiveFormComponent,
-    FileTableComponent,
-    TagNumberGeneratorComponent,
-    PopupProjectionComponent
+    FileTableComponent
   ],
   templateUrl: './loto-point-detail-form.component.html',
   styleUrl: './loto-point-detail-form.component.css'

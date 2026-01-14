@@ -93,7 +93,7 @@
                 <button
                   class="link-btn link"
                   (click)="linkCounterparts()"
-                  [disabled]="isLinking() || !(currentPrimaryValues()?.id || primaryLotoPoint()?.id)"
+                  [disabled]="isLinking() || !(currentPrimaryValues()?.id || primaryLotoPoint().id)"
                   title="Link these LOTO points as counterparts"
                 >
                   @if (isLinking()) { Linking... } @else { Link }

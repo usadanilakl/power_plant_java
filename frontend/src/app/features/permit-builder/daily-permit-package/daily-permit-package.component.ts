@@ -2,7 +2,6 @@ import { Component, computed, DestroyRef, inject } from '@angular/core';
 import { CurrentDailyPermitPackageService } from '../../../services/current-items-services/current-daily-permit-package.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DailyPermitPackageDto } from '../../../models/permits/dailt-permit-package.model';
-import { DailyPermitPackageFormComponent } from "./daily-permit-package-form/daily-permit-package-form.component";
 import { SafeWorkDto } from '../../../models/permits/safe-work.model';
 import { WorkRequestDto } from '../../../models/permits/work-request.model';
 import { HotWorkDto } from '../../../models/permits/hot-work.model';
@@ -14,7 +13,7 @@ import { ActivatedRoute } from '@angular/router';
 @Component({
   selector: 'app-daily-permit-package',
   standalone: true,
-  imports: [DailyPermitPackageFormComponent, DailyPermitPackageBuilderComponent],
+  imports: [DailyPermitPackageBuilderComponent],
   templateUrl: './daily-permit-package.component.html',
   styleUrl: './daily-permit-package.component.css'
 })

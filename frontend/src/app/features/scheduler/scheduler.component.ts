@@ -1,11 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { DiagramBlockDto } from '../../models/ui/diagram-block.model';
-import { PyramidComponent } from "../../shared/diagrams/pyramid/pyramid.component";
 import { PyramidGraphComponent } from "../../shared/diagrams/pyramid-graph/pyramid-graph.component";
 
 @Component({
   selector: 'app-scheduler',
-  imports: [PyramidComponent, PyramidGraphComponent],
+  imports: [PyramidGraphComponent],
   templateUrl: './scheduler.component.html',
   styleUrl: './scheduler.component.css'
 })

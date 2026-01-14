@@ -285,7 +285,6 @@ export class InteractiveImageComponent {
   }
 
   ngAfterViewInit() {
-    console.log('File URL:', this.imageUrl());
     this._zoomElement = this.zoomElementRef.nativeElement;
     this._zoomOuter = this.zoomOuterRef.nativeElement;
     this._img = this.imgRef.nativeElement;

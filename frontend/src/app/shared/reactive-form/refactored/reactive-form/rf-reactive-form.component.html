@@ -32,7 +32,7 @@
         @switch (field.type) { @case ('select') {
         <app-searchable-select-input
           [label]="field.label"
-          [options]="getFieldOptions(field.options) ?? []"
+          [options]="getFieldOptions(field.options)"
           [formControl]="getFormControl(field.name)"
           [categoryName]="field.name"
         >
@@ -40,7 +40,7 @@
         } @case ('checkbox-group') {
         <app-chekcbox-group
           [label]="field.label"
-          [options]="getFieldOptions(field.options) ?? []"
+          [options]="getFieldOptions(field.options)"
           [formControl]="getFormControl(field.name)"
         >
         </app-chekcbox-group>
@@ -54,13 +54,13 @@
         } @case ('radio-group') {
         <app-rf-radio-group
           [label]="field.label"
-          [options]="getFieldOptions(field.options) ?? []"
+          [options]="getFieldOptions(field.options)"
           [formControl]="getFormControl(field.name)"
         >
         </app-rf-radio-group>
         } @case('multi-select'){
         <app-searchable-multi-select-input
-          [options]="getFieldOptions(field.options) ?? []"
+          [options]="getFieldOptions(field.options)"
           [label]="field.label"
           [formControl]="getFormControl(field.name)"
           [categoryName]="field.name"

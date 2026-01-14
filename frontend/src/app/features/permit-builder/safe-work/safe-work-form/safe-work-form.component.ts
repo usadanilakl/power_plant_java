@@ -1,6 +1,5 @@
 import { Component, computed, DestroyRef, inject, Input, input, OnInit, output, Signal, signal } from '@angular/core';
 import { SafeWorkDto } from '../../../../models/permits/safe-work.model';
-import { ReactiveFormComponent } from "../../../../shared/reactive-form/reactive-form.component";
 import { Option } from '../../../../models/option.model';
 import { CurrentValueService } from '../../../../services/current-value.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -8,7 +7,7 @@ import { SmartFormComponent } from "../../../../shared/reactive-form/smart-form/
 
 @Component({
   selector: 'app-safe-work-form',
-  imports: [ReactiveFormComponent, SmartFormComponent],
+  imports: [SmartFormComponent],
   templateUrl: './safe-work-form.component.html',
   styleUrl: './safe-work-form.component.css'
 })

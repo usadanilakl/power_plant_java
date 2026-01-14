@@ -10,7 +10,7 @@ import { PrintTagFormComponent } from '../print-tag-form/print-tag-form.componen
 @Component({
   selector: 'app-active-loto-points',
   standalone: true,
-  imports: [CommonModule, LotoPointTableComponent, PopupComponent, PrintTagFormComponent],
+  imports: [CommonModule, LotoPointTableComponent, PopupComponent],
   templateUrl: './active-loto-points.component.html',
   styleUrls: ['./active-loto-points.component.css']
 })

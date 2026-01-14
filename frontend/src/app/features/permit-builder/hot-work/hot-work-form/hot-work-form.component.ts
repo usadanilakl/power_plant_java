@@ -3,12 +3,11 @@ import { CurrentValueService } from '../../../../services/current-value.service'
 import { HotWorkDto } from '../../../../models/permits/hot-work.model';
 import { Option } from '../../../../models/option.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ReactiveFormComponent } from "../../../../shared/reactive-form/reactive-form.component";
 import { SmartFormComponent } from "../../../../shared/reactive-form/smart-form/smart-form.component";
 
 @Component({
   selector: 'app-hot-work-form',
-  imports: [ReactiveFormComponent, SmartFormComponent],
+  imports: [SmartFormComponent],
   templateUrl: './hot-work-form.component.html',
   styleUrl: './hot-work-form.component.css'
 })

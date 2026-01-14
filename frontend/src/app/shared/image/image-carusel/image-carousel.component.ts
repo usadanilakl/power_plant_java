@@ -1,7 +1,6 @@
 import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit, inject, OnDestroy, SimpleChanges, Signal, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { catchError, map, Observable, of, Subscription } from 'rxjs';
-import { PopupComponent } from "../../popup/popup.component";
 import { ImageZoomInteractiveComponent } from '../image-zoom-interactive/image-zoom-interactive.component';
 import { FileService } from '../../../services/file.service';
 import { FileDto } from '../../../models/file/file.model';
@@ -12,7 +11,7 @@ import { PopupProjectionComponent } from "../../popup-projection/popup-projectio
 @Component({
   selector: 'app-image-carousel',
   standalone: true,
-  imports: [CommonModule, PopupComponent, PopupProjectionComponent, ImageZoomInteractiveComponent],
+  imports: [CommonModule, PopupProjectionComponent, ImageZoomInteractiveComponent],
   templateUrl: './image-carousel.component.html',
   styleUrls: ['./image-carousel.component.css']
 })

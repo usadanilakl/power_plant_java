@@ -7,7 +7,7 @@
           @case ('select') {
             <app-searchable-select-input
               [label]="field.label"
-              [options]="getFieldOptions()(field.options) ?? []"
+              [options]="getFieldOptions()(field.options)"
               [formControl]="getFormControl(field.name)"
               [categoryName]="field.name"
             >

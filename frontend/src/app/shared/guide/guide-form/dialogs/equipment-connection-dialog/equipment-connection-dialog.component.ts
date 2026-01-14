@@ -217,20 +217,27 @@ import {
               <button mat-stroked-button type="button" (click)="closeQuickCreateForm()">
                 Cancel
               </button>
-              <button
-                mat-flat-button
-                color="primary"
-                type="submit"
-                [disabled]="quickCreateForm.invalid || isCreatingLotoPoint()"
-              >
-                @if (isCreatingLotoPoint()) {
+              @if (isCreatingLotoPoint()) {
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="submit"
+                  [disabled]="true"
+                >
                   <mat-icon class="spinning">sync</mat-icon>
                   Creating...
-                } @else {
+                </button>
+              } @else {
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="submit"
+                  [disabled]="quickCreateForm.invalid"
+                >
                   <mat-icon>save</mat-icon>
                   Create LOTO Point
-                }
-              </button>
+                </button>
+              }
             </div>
           </form>
         </div>
@@ -340,20 +347,27 @@ import {
           </span>
         }
         <button mat-stroked-button (click)="onCancel()">Cancel</button>
-        <button
-          mat-flat-button
-          color="primary"
-          [disabled]="selectedEquipment().length === 0 && !drawnShape() || isSaving()"
-          (click)="onConfirm()"
-        >
-          @if (drawnShape() && !isSaving()) {
+        @if (drawnShape() && !isSaving()) {
+          <button
+            mat-flat-button
+            color="primary"
+            [disabled]="selectedEquipment().length === 0 && !drawnShape() || isSaving()"
+            (click)="onConfirm()"
+          >
             <mat-icon>save</mat-icon>
             Save & Connect
-          } @else {
+          </button>
+        } @else {
+          <button
+            mat-flat-button
+            color="primary"
+            [disabled]="selectedEquipment().length === 0 && !drawnShape() || isSaving()"
+            (click)="onConfirm()"
+          >
             <mat-icon>check</mat-icon>
             Connect {{ selectedEquipment().length }} Equipment
-          }
-        </button>
+          </button>
+        }
       </div>
     </div>
   `,

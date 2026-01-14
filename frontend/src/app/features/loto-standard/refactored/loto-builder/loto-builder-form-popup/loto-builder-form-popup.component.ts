@@ -133,7 +133,7 @@ export class LotoBuilderFormPopupComponent implements AfterViewInit {
       }
 
       this.wasVisible = isNowVisible;
-    }, { allowSignalWrites: true });
+    });
 
     // Effect to sync unit-specific state to builder state service (for contextual guide)
     effect(() => {

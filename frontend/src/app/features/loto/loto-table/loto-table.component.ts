@@ -2,20 +2,19 @@ import { Component, DestroyRef, effect, inject, input, OnInit, output, ViewChild
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
-import { LotoDetailFormComponent } from "../loto-detail-form/loto-detail-form.component";
 import { PopupComponent } from "../../../shared/popup/popup.component";
 import { LotoService } from '../../../services/loto/loto.service';
-import { BehaviorSubject, catchError, map, Observable, of, switchMap, tap } from 'rxjs';
-import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
+import { BehaviorSubject, catchError, map, of } from 'rxjs';
 import { LotoDto } from '../../../models/loto/loto.model';
 import { SpringPaginatedResponse } from '../../../models/api/spring-pagenated.response.model';
 import { SearchCriteria } from '../../../models/api/search-criteria.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { LotoDetailFormComponent } from '../loto-detail-form/loto-detail-form.component';
 
 @Component({
   selector: 'app-loto-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, LotoDetailFormComponent, PopupComponent],
+  imports: [CommonModule, TableComponent, PopupComponent],
   templateUrl: './loto-table.component.html',
   styleUrls: ['./loto-table.component.css']
 })

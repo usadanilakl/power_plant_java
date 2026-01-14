@@ -3,14 +3,13 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
-import { CopyPasteDirective } from '../../../../directives/copy-paste.directive';
 import { Option } from '../../../../models/option.model';
 import { OverlayModule, ConnectedPosition } from '@angular/cdk/overlay';
 
 @Component({
   selector: 'app-invisible-searchable-select',
   standalone: true,
-  imports: [CommonModule, MatIconModule, CopyPasteDirective, OverlayModule],
+  imports: [CommonModule, MatIconModule, OverlayModule],
   templateUrl: './invisible-searchable-select.component.html',
   styleUrl: './invisible-searchable-select.component.css',
   providers: [

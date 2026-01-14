@@ -12,7 +12,6 @@ import { CurrentFileService } from '../../../../../../services/current-file.serv
 import { LotoPointDto } from '../../../../../../models/loto/loto-point.model';
 import { FileDto } from '../../../../../../models/file/file.model';
 import { LotoBuilderLotoPointContextMenuService } from '../loto-builder-loto-point-table/loto-builder-loto-point-context-menu.service';
-import { GuideDirective } from '../../../../../../shared/guide/guide.directive';
 
 /**
  * Builder-specific LOTO point left menu component.
@@ -22,7 +21,7 @@ import { GuideDirective } from '../../../../../../shared/guide/guide.directive';
 @Component({
   selector: 'app-loto-builder-loto-point-left-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, RfToggleMenuComponent, GuideDirective],
+  imports: [CommonModule, MatIconModule, RfToggleMenuComponent],
   providers: [
     LotoBuilderLotoPointContextMenuService,
   ],

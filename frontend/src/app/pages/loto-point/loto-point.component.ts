@@ -4,19 +4,18 @@ import { Column } from '../../models/column.model';
 import { LotoPointService } from '../../services/loto/loto-point.service';
 import { LotoPointDto, LotoPointFormField } from '../../models/loto/loto-point.model';
 import { SharedDataService } from '../../services/shared-data.service';
-import { BehaviorSubject, catchError, finalize, forkJoin, map, Observable, of, tap } from 'rxjs';
+import { BehaviorSubject, catchError, forkJoin, map, Observable, of, tap } from 'rxjs';
 import { Option } from '../../models/option.model';
 import { ValueDto } from '../../models/value.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DetailsFormComponent } from '../../shared/details-form/details-form.component';
-import { PopupProjectionComponent } from '../../shared/popup-projection/popup-projection.component';
 import { LotoPointIdDto } from '../../models/loto/loto-point-id.model';
 import { MainLayoutComponent } from "../../layout/refactored/main-layout.component";
 import { RouterMenuComponent } from "../../shared/menu/router-menu/router-menu.component";
 
 @Component({
   selector: 'app-loto-point',
-  imports: [LotoPointTableComponent, PopupProjectionComponent, DetailsFormComponent, MainLayoutComponent, RouterMenuComponent],
+  imports: [LotoPointTableComponent, MainLayoutComponent, RouterMenuComponent],
   templateUrl: './loto-point.component.html',
   styleUrl: './loto-point.component.css'
 })

@@ -24,7 +24,6 @@ import {
 } from '../services/loto-point-counterpart.service';
 import { RfLotoPointFormComponent } from '../rf-loto-point-form/rf-loto-point-form.component';
 import { RfLotoPointTableComponent } from '../rf-loto-point-table/rf-loto-point-table.component';
-import { PopupProjectionComponent } from '../../../../shared/popup-projection/popup-projection.component';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
 import { ConfirmationService } from '../../../../services/ui/confirmation.service';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
@@ -68,7 +67,6 @@ import { RfLotoPointTableDataService } from '../rf-loto-point-table/rf-loto-poin
     CommonModule,
     RfLotoPointFormComponent,
     RfLotoPointTableComponent,
-    PopupProjectionComponent,
   ],
   providers: [
     // Provide isolated instances for this component's table (manual search)
@@ -228,7 +226,7 @@ export class RfLotoPointDualFormComponent {
       }
       // Non unit-specific new items: no automatic counterpart search
       // User can use manual search to find/create counterpart
-    }, { allowSignalWrites: true });
+    });
   }
 
   /**

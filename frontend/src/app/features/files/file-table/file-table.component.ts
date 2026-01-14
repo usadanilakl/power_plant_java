@@ -1,14 +1,13 @@
-import { ChangeDetectorRef, Component, DestroyRef, EventEmitter, inject, OnInit, Output, signal } from '@angular/core';
+import { Component, DestroyRef, EventEmitter, inject, OnInit, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableComponent } from '../../../shared/table/table.component';
 import { Column } from '../../../models/column.model';
 import { FileDetailFormComponent } from "../file-detail-form/file-detail-form.component";
-import { PopupComponent } from "../../../shared/popup/popup.component";
 import { FileService } from '../../../services/file.service';
 import { ImageInteractiveComponent } from "../../../shared/image/image-interactive/image-interactive.component";
 import { DrawingComponent } from '../../../shared/image/drawing/drawing.component';
 import { ImageZoomInteractiveComponent } from '../../../shared/image/image-zoom-interactive/image-zoom-interactive.component';
-import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
+import { BehaviorSubject, catchError, map, of, tap } from 'rxjs';
 import { SpringApiResponse } from '../../../models/api/spring-api-response.model';
 import { FileDto } from '../../../models/file/file.model';
 import { EquipmentDto } from '../../../models/equipment/equipment.model';
@@ -20,7 +19,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 @Component({
   selector: 'app-file-table',
   standalone: true,
-  imports: [CommonModule, TableComponent, FileDetailFormComponent, PopupComponent, ImageInteractiveComponent, PopupProjectionComponent, ImageZoomInteractiveComponent],
+  imports: [CommonModule, TableComponent, FileDetailFormComponent, PopupProjectionComponent, ImageZoomInteractiveComponent],
   templateUrl: './file-table.component.html',
   styleUrls: ['./file-table.component.css'],
 })
