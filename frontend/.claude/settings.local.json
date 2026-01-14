@@ -19,7 +19,9 @@
       "Bash(nvm use default)",
       "Bash(npm install:*)",
       "Bash(cat:*)",
-      "Bash(~/.nvm/versions/node/v22.14.0/bin/npm run build)"
+      "Bash(~/.nvm/versions/node/v22.14.0/bin/npm run build)",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
     ]
   }
 }

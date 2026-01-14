@@ -1,20 +1,20 @@
 import { Component, input, output, signal, computed, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
 import { WizardStep, WizardContextFrame, StepDataPayload, WizardFlowType } from '../wizard-stack.types';
-import { InteractiveImageComponent } from '../../../image/refactored/interactive-image/interactive-image.component';
-import { RfToggleMenuComponent } from '../../../menu/refactored/rf-toggle-menu/rf-toggle-menu.component';
-import { EquipmentDialogFileService } from '../../../reactive-form/refactored/input-fields/services/equipment-dialog-file.service';
-import { EquipmentMapperService } from '../../../../features/equipment/refactored/services/equipment-mapper.service';
-import { RfEquipmentService } from '../../../../features/equipment/refactored/services/rf-equipment.service';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
-import { RfShape } from '../../../image/refactored/models/fr-shape.model';
-import { INTERACTIVE_IMAGE_PRESETS } from '../../../image/refactored/models/interactive-image-config.model';
-import { NestedItem } from '../../../../models/ui/nested-item.model';
+import {
+  EquipmentConnectionDialogComponent
+} from '../dialogs/equipment-connection-dialog/equipment-connection-dialog.component';
+import {
+  EquipmentConnectionDialogData,
+  EquipmentConnectionDialogResult
+} from '../dialogs/equipment-connection-dialog/equipment-connection-dialog.types';
 
 @Component({
   selector: 'app-wizard-equipment-picker-step',
@@ -25,261 +25,235 @@ import { NestedItem } from '../../../../models/ui/nested-item.model';
     MatButtonModule,
     MatCardModule,
     MatTooltipModule,
-    InteractiveImageComponent,
-    RfToggleMenuComponent,
+    MatChipsModule,
   ],
-  providers: [EquipmentDialogFileService],
   template: `
     <div class="equipment-picker-step">
-      <!-- File Selection Panel -->
-      <div class="file-panel">
-        <h4 class="panel-title">
-          <mat-icon>folder_open</mat-icon>
-          Select P&ID File
-        </h4>
-        <app-rf-toggle-menu
-          [menuItems]="fileMenuItems()"
-          [enableSearch]="true"
-          (itemClick)="onFileSelect($event)"
-        />
-      </div>
-
-      <!-- Image Viewer Panel -->
-      <div class="image-panel">
-        @if (selectedFile()) {
-          <div class="image-header">
-            <span class="file-name">{{ selectedFile()?.name }}</span>
-            <span class="instruction-hint">
-              @if (allowDraw() && allowBrowse()) {
-                Left-click to select existing equipment. Right-click + drag to draw new.
-              } @else if (allowBrowse()) {
-                Click on equipment to select it.
-              } @else if (allowDraw()) {
-                Right-click + drag to draw equipment.
-              }
-            </span>
+      <!-- Main Action Card -->
+      <mat-card class="action-card">
+        <mat-card-content>
+          <div class="action-content">
+            <div class="action-icon">
+              <mat-icon>link</mat-icon>
+            </div>
+            <div class="action-info">
+              <h3>Connect to P&ID Drawing</h3>
+              <p>
+                Link this LOTO point to equipment on a P&ID file. This helps visualize the
+                isolation point location and makes it easier to find during field work.
+              </p>
+              <div class="action-hints">
+                @if (allowBrowse() && allowDraw()) {
+                  <span class="hint"><mat-icon>touch_app</mat-icon> Select existing equipment or draw new</span>
+                } @else if (allowBrowse()) {
+                  <span class="hint"><mat-icon>touch_app</mat-icon> Select from existing equipment</span>
+                } @else if (allowDraw()) {
+                  <span class="hint"><mat-icon>draw</mat-icon> Draw new equipment on P&ID</span>
+                }
+                @if (multiSelect()) {
+                  <span class="hint"><mat-icon>select_all</mat-icon> Multiple equipment can be selected</span>
+                }
+              </div>
+            </div>
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="openConnectionDialog()"
+              class="action-button"
+            >
+              <mat-icon>folder_open</mat-icon>
+              Browse P&ID Files
+            </button>
           </div>
+        </mat-card-content>
+      </mat-card>
 
-          <app-interactive-image
-            [imageUrl]="currentFileLink()"
-            [shapesInput]="equipmentShapes()"
-            [preset]="getPreset()"
-            (shapeClicked)="onEquipmentClicked($event)"
-            (shapeDrawn)="onShapeDrawn($event)"
-          />
-        } @else {
-          <div class="no-file-selected">
-            <mat-icon>image</mat-icon>
-            <p>Select a P&ID file from the left panel</p>
-          </div>
-        }
-      </div>
-
-      <!-- Selection Summary -->
-      @if (selectedEquipment() || drawnShape()) {
-        <mat-card class="selection-summary">
+      <!-- Selected Equipment Summary -->
+      @if (selectedEquipmentList().length > 0) {
+        <mat-card class="selection-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="selection-icon">check_circle</mat-icon>
+            <mat-card-title>Connected Equipment</mat-card-title>
+            <mat-card-subtitle>
+              {{ selectedEquipmentList().length }} equipment
+              {{ selectedEquipmentList().length === 1 ? 'shape' : 'shapes' }} linked
+            </mat-card-subtitle>
+          </mat-card-header>
           <mat-card-content>
-            @if (currentMode() === 'browse' && selectedEquipment()) {
-              <div class="summary-content">
-                <mat-icon class="summary-icon browse">touch_app</mat-icon>
-                <div class="summary-info">
-                  <span class="summary-label">Selected Equipment:</span>
-                  <span class="summary-value">{{ getEquipmentDisplay(selectedEquipment()) }}</span>
-                </div>
-                <button mat-icon-button (click)="clearSelection()" matTooltip="Clear selection">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-            } @else if (currentMode() === 'drawn' && drawnShape()) {
-              <div class="summary-content">
-                <mat-icon class="summary-icon drawn">draw</mat-icon>
-                <div class="summary-info">
-                  <span class="summary-label">New Equipment Shape Drawn</span>
-                  <span class="summary-hint">Click Save to create equipment from this shape</span>
-                </div>
-                <button mat-stroked-button (click)="saveDrawnEquipment()" [disabled]="isSaving()">
-                  @if (isSaving()) {
-                    <mat-icon class="spinning">sync</mat-icon>
-                    Saving...
-                  } @else {
-                    <mat-icon>save</mat-icon>
-                    Save Equipment
+            <mat-chip-set>
+              @for (eq of selectedEquipmentList(); track eq.id) {
+                <mat-chip (removed)="removeEquipment(eq)">
+                  <mat-icon matChipAvatar>location_on</mat-icon>
+                  {{ getEquipmentLabel(eq) }}
+                  @if (eq.mainFileObject?.name) {
+                    <span class="file-name">({{ eq.mainFileObject.name }})</span>
                   }
-                </button>
-                <button mat-icon-button (click)="clearSelection()" matTooltip="Clear shape">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-            }
+                  <button matChipRemove matTooltip="Remove">
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </mat-chip>
+              }
+            </mat-chip-set>
+
+            <div class="selection-actions">
+              <button mat-stroked-button (click)="openConnectionDialog()">
+                <mat-icon>add</mat-icon>
+                Add More
+              </button>
+              <button mat-stroked-button color="warn" (click)="clearAllSelections()">
+                <mat-icon>clear_all</mat-icon>
+                Clear All
+              </button>
+            </div>
           </mat-card-content>
         </mat-card>
       }
 
-      @if (error()) {
-        <div class="error-message">
-          <mat-icon>error</mat-icon>
-          {{ error() }}
+      <!-- Empty State Hint -->
+      @if (selectedEquipmentList().length === 0) {
+        <div class="empty-hint">
+          <mat-icon>info</mat-icon>
+          <span>
+            This step is optional. You can skip it and connect to a P&ID later,
+            or click "Browse P&ID Files" to make the connection now.
+          </span>
         </div>
       }
     </div>
   `,
   styles: [`
     .equipment-picker-step {
-      display: grid;
-      grid-template-columns: 250px 1fr;
+      display: flex;
+      flex-direction: column;
       gap: 16px;
-      min-height: 400px;
     }
 
-    .file-panel {
+    .action-card {
+      border: 2px dashed #e0e0e0;
       background: #fafafa;
-      border-radius: 8px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
     }
 
-    .panel-title {
+    .action-content {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 0;
-      padding: 12px 16px;
-      background: #f0f0f0;
-      font-size: 14px;
-      font-weight: 500;
+      gap: 20px;
+      padding: 8px;
     }
 
-    .panel-title mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
-      color: #1976d2;
-    }
-
-    .image-panel {
-      display: flex;
-      flex-direction: column;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .image-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 16px;
-      background: #f5f5f5;
-      border-bottom: 1px solid #e0e0e0;
-    }
-
-    .file-name {
-      font-weight: 500;
-      font-size: 14px;
-    }
-
-    .instruction-hint {
-      font-size: 12px;
-      color: #666;
-    }
-
-    .no-file-selected {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #999;
-      padding: 40px;
-    }
-
-    .no-file-selected mat-icon {
-      font-size: 64px;
+    .action-icon {
       width: 64px;
       height: 64px;
-      margin-bottom: 16px;
-    }
-
-    .selection-summary {
-      grid-column: 1 / -1;
-      margin-top: 8px;
-    }
-
-    .summary-content {
+      border-radius: 50%;
+      background: #e3f2fd;
       display: flex;
       align-items: center;
-      gap: 16px;
+      justify-content: center;
+      flex-shrink: 0;
     }
 
-    .summary-icon {
+    .action-icon mat-icon {
       font-size: 32px;
       width: 32px;
       height: 32px;
-    }
-
-    .summary-icon.browse {
       color: #1976d2;
     }
 
-    .summary-icon.drawn {
-      color: #4caf50;
-    }
-
-    .summary-info {
+    .action-info {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
     }
 
-    .summary-label {
-      font-size: 12px;
-      color: #666;
+    .action-info h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      font-weight: 500;
+      color: #333;
     }
 
-    .summary-value {
-      font-weight: 600;
+    .action-info p {
+      margin: 0 0 12px 0;
       font-size: 14px;
+      color: #666;
+      line-height: 1.5;
     }
 
-    .summary-hint {
-      font-size: 12px;
-      color: #999;
+    .action-hints {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
-    .spinning {
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-    .error-message {
-      grid-column: 1 / -1;
+    .action-hints .hint {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px;
-      background: #ffebee;
-      border-radius: 6px;
-      color: #c62828;
-      font-size: 13px;
+      gap: 4px;
+      font-size: 12px;
+      color: #888;
     }
 
-    .error-message mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
+    .action-hints .hint mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    .action-button {
+      flex-shrink: 0;
+      padding: 8px 24px;
+    }
+
+    .selection-card {
+      border-left: 4px solid #4caf50;
+    }
+
+    .selection-icon {
+      background: #e8f5e9 !important;
+      color: #4caf50 !important;
+    }
+
+    .selection-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .file-name {
+      font-size: 11px;
+      color: #888;
+      margin-left: 4px;
+    }
+
+    .empty-hint {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .empty-hint mat-icon {
+      color: #9e9e9e;
+      flex-shrink: 0;
+    }
+
+    .empty-hint span {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    mat-chip-set {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
   `],
 })
 export class WizardEquipmentPickerStepComponent {
-  private fileService = inject(EquipmentDialogFileService);
-  private equipmentMapper = inject(EquipmentMapperService);
-  private equipmentService = inject(RfEquipmentService);
+  private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
 
   step = input.required<WizardStep>();
@@ -288,19 +262,7 @@ export class WizardEquipmentPickerStepComponent {
   valueChange = output<StepDataPayload>();
   branchRequest = output<{ flowType: WizardFlowType; field: string; initialData?: any }>();
 
-  // Delegated to file service
-  selectedFile = this.fileService.selectedFile;
-  fileMenuItems = this.fileService.menuItems;
-  currentFileLink = this.fileService.currentFileLink;
-
-  // State
-  selectedEquipment = signal<EquipmentDto | null>(null);
-  drawnShape = signal<RfShape | null>(null);
-  highlightEquipmentId = signal<number | null>(null);
-  currentMode = signal<'browse' | 'drawn'>('browse');
-  isSaving = signal(false);
-  error = signal<string | null>(null);
-
+  // Computed config values
   allowBrowse = computed(() => {
     const config = this.step().equipmentPickerConfig;
     return config?.allowBrowse !== false;
@@ -311,183 +273,128 @@ export class WizardEquipmentPickerStepComponent {
     return config?.allowDraw !== false;
   });
 
-  // Get the appropriate preset based on allowed actions
-  getPreset(): keyof typeof INTERACTIVE_IMAGE_PRESETS {
-    const canBrowse = this.allowBrowse();
-    const canDraw = this.allowDraw();
-
-    if (canBrowse && canDraw) {
-      return 'EQUIPMENT_UNIFIED';
-    } else if (canDraw) {
-      return 'EQUIPMENT_DRAWER';
-    } else {
-      return 'EQUIPMENT_BROWSER';
-    }
-  }
-
-  // Equipment from selected file
-  equipment = computed(() => {
-    const file = this.selectedFile();
-    if (!file) return [];
-    return file.points ?? [];
+  multiSelect = computed(() => {
+    const config = this.step().equipmentPickerConfig;
+    return config?.multiSelect === true;
   });
 
-  // Equipment shapes for InteractiveImageComponent
-  equipmentShapes = computed(() => {
-    const eq = this.equipment();
-    const drawn = this.drawnShape();
-
-    // Map existing equipment to shapes
-    const shapes = eq.map((e: EquipmentDto) =>
-      this.equipmentMapper.mapToRfShape(e)
-    ).filter(s => s !== null) as RfShape[];
-
-    // Highlight selected equipment
-    const highlightId = this.highlightEquipmentId();
-    if (highlightId !== null) {
-      shapes.forEach((shape: RfShape) => {
-        if (shape.id === highlightId) {
-          shape.isSelected = true;
-          shape.color = '#FF0000';
-        }
-      });
-    }
-
-    // Add drawn shape if exists (with highlight)
-    if (drawn) {
-      const drawnWithHighlight = {
-        ...drawn,
-        isSelected: true,
-        color: '#00FF00'
-      };
-      shapes.push(drawnWithHighlight);
-    }
-
-    return shapes;
+  // Get currently selected equipment from frame data
+  selectedEquipmentList = computed(() => {
+    const fieldName = this.step().equipmentPickerConfig?.fieldName || 'equipmentList';
+    const data = this.frame().entityData.lotoPoint;
+    if (!data) return [];
+    const equipment = (data as any)[fieldName];
+    if (!equipment) return [];
+    return Array.isArray(equipment) ? equipment : [equipment];
   });
 
-  onFileSelect(fileItem: NestedItem): void {
-    this.fileService.selectFileFromNestedItem(fileItem);
-    this.clearSelection();
+  openConnectionDialog(): void {
+    const config = this.step().equipmentPickerConfig;
+    const currentSelection = this.selectedEquipmentList();
 
-    // Emit file selection
-    const fieldName = this.step().equipmentPickerConfig?.fileFieldName || 'mainFileId';
-    this.valueChange.emit({
-      field: fieldName,
-      value: fileItem.id,
-      entityType: 'lotoPoint',
+    const dialogData: EquipmentConnectionDialogData = {
+      mode: config?.multiSelect ? 'multi' : 'single',
+      allowBrowse: config?.allowBrowse !== false,
+      allowDraw: config?.allowDraw !== false,
+      allowUpload: true,
+      preselectedEquipmentIds: currentSelection.map(e => e.id).filter((id): id is number => id !== undefined),
+      preselectedFileId: (this.frame().entityData.lotoPoint as any)?.mainFileId,
+    };
+
+    const dialogRef = this.dialog.open(EquipmentConnectionDialogComponent, {
+      data: dialogData,
+      width: '95vw',
+      maxWidth: '1400px',
+      height: '85vh',
+      panelClass: 'equipment-connection-dialog-panel',
+    });
+
+    dialogRef.afterClosed().subscribe((result: EquipmentConnectionDialogResult | undefined) => {
+      if (result && !result.cancelled) {
+        this.handleEquipmentSelection(result);
+      }
     });
   }
 
-  onEquipmentClicked(shape: RfShape): void {
-    if (!this.allowBrowse()) return;
+  private handleEquipmentSelection(result: EquipmentConnectionDialogResult): void {
+    const fieldName = this.step().equipmentPickerConfig?.fieldName || 'equipmentList';
+    const fileFieldName = this.step().equipmentPickerConfig?.fileFieldName || 'mainFileId';
 
-    const selectedId = shape.id;
-    if (selectedId !== null) {
-      const eq = this.equipment();
-      const selected = eq.find((e: EquipmentDto) => e.id === selectedId);
-      if (selected) {
-        this.drawnShape.set(null);
-        this.selectedEquipment.set(selected);
-        this.highlightEquipmentId.set(selectedId);
-        this.currentMode.set('browse');
-        this.emitEquipmentSelection(selected);
+    if (this.multiSelect()) {
+      // In multi-select mode, merge with existing selections
+      const current = this.selectedEquipmentList();
+      const currentIds = new Set(current.map(e => e.id));
+      const newItems = result.selectedEquipment.filter(e => !currentIds.has(e.id));
+      const merged = [...current, ...newItems];
+
+      this.valueChange.emit({
+        field: fieldName,
+        value: merged,
+        entityType: 'lotoPoint',
+      });
+    } else {
+      // Single mode: replace selection
+      this.valueChange.emit({
+        field: fieldName,
+        value: result.selectedEquipment,
+        entityType: 'lotoPoint',
+      });
+    }
+
+    // Also emit the file ID from the last selected equipment
+    if (result.selectedFile?.id) {
+      this.valueChange.emit({
+        field: fileFieldName,
+        value: result.selectedFile.id,
+        entityType: 'lotoPoint',
+      });
+    } else if (result.selectedEquipment.length > 0) {
+      const lastEquipment = result.selectedEquipment[result.selectedEquipment.length - 1];
+      const fileId = lastEquipment.mainFileId || lastEquipment.mainFileObject?.id;
+      if (fileId) {
+        this.valueChange.emit({
+          field: fileFieldName,
+          value: fileId,
+          entityType: 'lotoPoint',
+        });
       }
     }
   }
 
-  onShapeDrawn(shape: RfShape): void {
-    if (!this.allowDraw()) return;
-
-    this.selectedEquipment.set(null);
-    this.highlightEquipmentId.set(null);
-    this.drawnShape.set(shape);
-    this.currentMode.set('drawn');
-  }
-
-  saveDrawnEquipment(): void {
-    const shape = this.drawnShape();
-    const file = this.selectedFile();
-    if (!shape || !file) return;
-
-    this.isSaving.set(true);
-    this.error.set(null);
-
-    // Add file context to shape before saving
-    const shapeWithFileContext: RfShape = { ...shape, fileId: file.id };
-
-    this.equipmentService
-      .saveEquipmentFromShape(shapeWithFileContext)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (savedEquipment) => {
-          this.isSaving.set(false);
-          if (savedEquipment) {
-            const enrichedEquipment = new EquipmentDto({
-              ...savedEquipment,
-              mainFileId: file.id,
-              mainFileObject: file
-            });
-            this.selectedEquipment.set(enrichedEquipment);
-            this.drawnShape.set(null);
-            this.currentMode.set('browse');
-            this.emitEquipmentSelection(enrichedEquipment);
-          } else {
-            this.error.set('Failed to save equipment.');
-          }
-        },
-        error: (err) => {
-          this.isSaving.set(false);
-          console.error('Failed to save equipment:', err);
-          this.error.set('Failed to save equipment. Please try again.');
-        }
-      });
-  }
-
-  clearSelection(): void {
-    this.selectedEquipment.set(null);
-    this.drawnShape.set(null);
-    this.highlightEquipmentId.set(null);
-    this.currentMode.set('browse');
-    this.error.set(null);
-
-    // Clear the equipment field
+  removeEquipment(equipment: EquipmentDto): void {
     const fieldName = this.step().equipmentPickerConfig?.fieldName || 'equipmentList';
+    const current = this.selectedEquipmentList();
+    const updated = current.filter(e => e.id !== equipment.id);
+
+    this.valueChange.emit({
+      field: fieldName,
+      value: updated.length > 0 ? updated : null,
+      entityType: 'lotoPoint',
+    });
+  }
+
+  clearAllSelections(): void {
+    const fieldName = this.step().equipmentPickerConfig?.fieldName || 'equipmentList';
+    const fileFieldName = this.step().equipmentPickerConfig?.fileFieldName || 'mainFileId';
+
     this.valueChange.emit({
       field: fieldName,
       value: null,
       entityType: 'lotoPoint',
     });
+
+    this.valueChange.emit({
+      field: fileFieldName,
+      value: null,
+      entityType: 'lotoPoint',
+    });
   }
 
-  getEquipmentDisplay(equipment: EquipmentDto | null): string {
-    if (!equipment) return '';
+  getEquipmentLabel(equipment: EquipmentDto): string {
     if (equipment.tagNumber) return equipment.tagNumber;
     if ((equipment as any).lotoPoints?.[0]?.tagNumber) {
       return (equipment as any).lotoPoints[0].tagNumber;
     }
     return `Equipment #${equipment.id}`;
-  }
-
-  private emitEquipmentSelection(equipment: EquipmentDto): void {
-    const fieldName = this.step().equipmentPickerConfig?.fieldName || 'equipmentList';
-    const multiSelect = this.step().equipmentPickerConfig?.multiSelect;
-
-    if (multiSelect) {
-      // Append to array
-      const current = this.frame().entityData.lotoPoint?.equipmentList || [];
-      this.valueChange.emit({
-        field: fieldName,
-        value: [...current, equipment],
-        entityType: 'lotoPoint',
-      });
-    } else {
-      // Single selection - wrap in array
-      this.valueChange.emit({
-        field: fieldName,
-        value: [equipment],
-        entityType: 'lotoPoint',
-      });
-    }
   }
 }

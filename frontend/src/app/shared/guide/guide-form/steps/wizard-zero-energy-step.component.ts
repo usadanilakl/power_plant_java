@@ -7,10 +7,20 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { WizardStep, WizardContextFrame, StepDataPayload, WizardFlowType } from '../wizard-stack.types';
 import { RfValueService } from '../../../../features/values/refactored/services/rf-value.service';
 import { SearchableSelectInputComponent } from '../../../reactive-form/refactored/input-fields/searchable-select-input/searchable-select-input.component';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
+import { LotoPointDto } from '../../../../models/loto/loto-point.model';
+import {
+  EquipmentConnectionDialogComponent
+} from '../dialogs/equipment-connection-dialog/equipment-connection-dialog.component';
+import {
+  EquipmentConnectionDialogData,
+  EquipmentConnectionDialogResult
+} from '../dialogs/equipment-connection-dialog/equipment-connection-dialog.types';
 
 interface PhraseSegment {
   type: 'text' | 'placeholder';
@@ -27,6 +37,11 @@ interface ZeroEnergyPhrase {
   rawText: string;
 }
 
+interface EquipmentWithLotoPoint {
+  equipment: EquipmentDto;
+  lotoPoint?: LotoPointDto;
+}
+
 @Component({
   selector: 'app-wizard-zero-energy-step',
   standalone: true,
@@ -39,6 +54,7 @@ interface ZeroEnergyPhrase {
     MatIconModule,
     MatDividerModule,
     MatCardModule,
+    MatTooltipModule,
     SearchableSelectInputComponent,
   ],
   template: `
@@ -73,7 +89,7 @@ interface ZeroEnergyPhrase {
           </h3>
           <p class="section-description">
             The selected phrase has {{ placeholders().length }} placeholder(s).
-            Select equipment for each placeholder.
+            Select equipment for each placeholder from P&ID drawings.
           </p>
 
           <div class="placeholders-list">
@@ -87,9 +103,20 @@ interface ZeroEnergyPhrase {
                     }
                   </div>
 
-                  @if (equipmentAssignments()[i]) {
+                  @if (equipmentAssignments()[i]; as assignment) {
                     <div class="assigned-equipment">
-                      <span class="equipment-tag">{{ getEquipmentDisplay(equipmentAssignments()[i]) }}</span>
+                      <div class="equipment-info">
+                        <span class="equipment-tag">{{ getEquipmentDisplay(assignment.equipment) }}</span>
+                        @if (assignment.lotoPoint) {
+                          <span class="loto-point-tag">
+                            <mat-icon>lock</mat-icon>
+                            {{ assignment.lotoPoint.tagNumber || 'LOTO #' + assignment.lotoPoint.id }}
+                          </span>
+                        }
+                        @if (assignment.equipment.mainFileObject?.name; as fileName) {
+                          <span class="file-name">({{ fileName }})</span>
+                        }
+                      </div>
                       <button mat-icon-button (click)="clearEquipment(i)" matTooltip="Clear">
                         <mat-icon>close</mat-icon>
                       </button>
@@ -98,9 +125,12 @@ interface ZeroEnergyPhrase {
                     <div class="equipment-actions">
                       <button mat-flat-button color="primary" (click)="openEquipmentPicker(i)">
                         <mat-icon>touch_app</mat-icon>
-                        Select or Draw Equipment
+                        Select Equipment from P&ID
                       </button>
-                      <span class="action-hint">Browse P&ID to select existing or draw new</span>
+                      <span class="action-hint">
+                        Browse P&ID files to select existing equipment or draw new.
+                        If equipment has no LOTO point, you'll be prompted to create one.
+                      </span>
                     </div>
                   }
                 </mat-card-content>
@@ -232,9 +262,34 @@ interface ZeroEnergyPhrase {
       justify-content: space-between;
     }
 
+    .equipment-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
     .equipment-tag {
       font-weight: 500;
       color: #2e7d32;
+    }
+
+    .loto-point-tag {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: #1976d2;
+    }
+
+    .loto-point-tag mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+
+    .file-name {
+      font-size: 11px;
+      color: #888;
     }
 
     .equipment-actions {
@@ -248,6 +303,7 @@ interface ZeroEnergyPhrase {
       font-size: 12px;
       color: #666;
       font-style: italic;
+      line-height: 1.4;
     }
 
     .preview-title-icon {
@@ -307,6 +363,7 @@ interface ZeroEnergyPhrase {
 })
 export class WizardZeroEnergyStepComponent {
   private valueService = inject(RfValueService);
+  private dialog = inject(MatDialog);
 
   step = input.required<WizardStep>();
   frame = input.required<WizardContextFrame>();
@@ -316,7 +373,10 @@ export class WizardZeroEnergyStepComponent {
 
   selectedPhraseId = signal<number | null>(null);
   selectedPhrase = signal<ZeroEnergyPhrase | null>(null);
-  equipmentAssignments = signal<(EquipmentDto | null)[]>([]);
+  equipmentAssignments = signal<(EquipmentWithLotoPoint | null)[]>([]);
+
+  // Store which placeholder we're currently selecting for
+  private currentPlaceholderIndex = signal<number | null>(null);
 
   phraseOptions = computed(() => {
     const optionsSignal = this.valueService.getValueOptions('zeroEnergyTemplate');
@@ -361,11 +421,12 @@ export class WizardZeroEnergyStepComponent {
 
     return phrase.segments.map(segment => {
       if (segment.type === 'placeholder' && segment.placeholderIndex !== undefined) {
-        const equipment = assignments[segment.placeholderIndex];
+        const assignment = assignments[segment.placeholderIndex];
+        const displayText = assignment ? this.getEquipmentDisplay(assignment.equipment) : '';
         return {
           ...segment,
-          substitutedText: equipment ? this.getEquipmentDisplay(equipment) : '',
-          hasSubstitution: !!equipment,
+          substitutedText: displayText,
+          hasSubstitution: !!assignment,
         };
       }
       return segment;
@@ -411,24 +472,54 @@ export class WizardZeroEnergyStepComponent {
     });
   }
 
-  // Store which placeholder we're currently selecting for
-  private currentPlaceholderIndex = signal<number | null>(null);
-
   openEquipmentPicker(placeholderIndex: number): void {
     this.currentPlaceholderIndex.set(placeholderIndex);
 
-    // Branch to equipment-picker-dialog flow which handles both
-    // selecting existing equipment and drawing new with simplified form
-    this.branchRequest.emit({
-      flowType: 'select-equipment-for-zero-energy' as any,
-      field: `zeroEnergy.templateEquipment`,
-      initialData: {
-        placeholderIndex,
-        // Use simplified form when drawing - only essential fields
-        simplifiedForm: true,
-        requiredFields: ['tagNumber', 'description', 'eqType', 'location', 'normPos', 'isoPos'],
-      },
+    const dialogData: EquipmentConnectionDialogData = {
+      mode: 'single',
+      allowBrowse: true,
+      allowDraw: true,
+      allowUpload: false,
+      // Enable quick-create mode for equipment without LOTO points
+      requireLotoPointForUnassociated: true,
+      lotoPointQuickCreateFields: ['tagNumber', 'description', 'location', 'isoPos', 'normPos'],
+    };
+
+    const dialogRef = this.dialog.open(EquipmentConnectionDialogComponent, {
+      data: dialogData,
+      width: '95vw',
+      maxWidth: '1400px',
+      height: '85vh',
+      panelClass: 'equipment-connection-dialog-panel',
     });
+
+    dialogRef.afterClosed().subscribe((result: EquipmentConnectionDialogResult | undefined) => {
+      if (result && !result.cancelled && result.selectedEquipment.length > 0) {
+        this.handleEquipmentSelection(placeholderIndex, result);
+      }
+    });
+  }
+
+  private handleEquipmentSelection(placeholderIndex: number, result: EquipmentConnectionDialogResult): void {
+    const equipment = result.selectedEquipment[0];
+
+    // Check if the equipment has a LOTO point
+    let lotoPoint: LotoPointDto | undefined;
+
+    if (equipment.lotoPoints && equipment.lotoPoints.length > 0) {
+      // Use existing LOTO point
+      lotoPoint = equipment.lotoPoints[0];
+    } else if (result.newlyCreatedLotoPoints && result.newlyCreatedLotoPoints.length > 0) {
+      // Use newly created LOTO point from quick-create
+      lotoPoint = result.newlyCreatedLotoPoints[0];
+    }
+
+    const assignment: EquipmentWithLotoPoint = {
+      equipment,
+      lotoPoint,
+    };
+
+    this.setEquipment(placeholderIndex, assignment);
   }
 
   clearEquipment(index: number): void {
@@ -438,9 +529,9 @@ export class WizardZeroEnergyStepComponent {
     this.emitEquipmentAssignments();
   }
 
-  setEquipment(index: number, equipment: EquipmentDto): void {
+  setEquipment(index: number, assignment: EquipmentWithLotoPoint): void {
     const assignments = [...this.equipmentAssignments()];
-    assignments[index] = equipment;
+    assignments[index] = assignment;
     this.equipmentAssignments.set(assignments);
     this.emitEquipmentAssignments();
   }
@@ -457,17 +548,35 @@ export class WizardZeroEnergyStepComponent {
   }
 
   private emitEquipmentAssignments(): void {
-    const assignments = this.equipmentAssignments().filter(e => e !== null);
+    const assignments = this.equipmentAssignments().filter(a => a !== null) as EquipmentWithLotoPoint[];
+
+    // Emit equipment
     this.valueChange.emit({
       field: 'templateEquipment',
-      value: assignments,
+      value: assignments.map(a => a.equipment),
       entityType: 'zeroEnergy',
     });
 
     this.valueChange.emit({
       field: 'templateEquipmentIds',
-      value: assignments.map(e => e?.id).filter(id => id),
+      value: assignments.map(a => a.equipment.id).filter(id => id),
       entityType: 'zeroEnergy',
     });
+
+    // Emit LOTO points if available
+    const lotoPoints = assignments.filter(a => a.lotoPoint).map(a => a.lotoPoint!);
+    if (lotoPoints.length > 0) {
+      this.valueChange.emit({
+        field: 'templateLotoPoints',
+        value: lotoPoints,
+        entityType: 'zeroEnergy',
+      });
+
+      this.valueChange.emit({
+        field: 'templateLotoPointIds',
+        value: lotoPoints.map(lp => lp.id).filter(id => id),
+        entityType: 'zeroEnergy',
+      });
+    }
   }
 }
