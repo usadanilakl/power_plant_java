@@ -141,7 +141,7 @@ export const BUILD_STANDARD_FLOW: WizardFlow = {
     // Step 5: Add LOTO Points
     {
       id: 'add-loto-points',
-      type: 'multi-select',
+      type: 'loto-point-selector',
       title: 'Add LOTO Points',
       description: 'Select existing LOTO points or create new ones to add to this standard.',
       tableConfig: {
@@ -154,18 +154,18 @@ export const BUILD_STANDARD_FLOW: WizardFlow = {
       },
       hints: [
         {
-          message: 'Click a row to add it to the standard. Click again to remove.',
-          icon: 'touch_app',
+          message: 'Choose how you want to search: by file, table, menu, or use guided filters.',
+          icon: 'search',
           type: 'tip',
         },
         {
-          message: 'Use "Create New" if the LOTO point doesn\'t exist yet.',
+          message: 'If you can\'t find the LOTO point, use "Create New" to add it.',
           icon: 'add',
           type: 'tip',
         },
         {
-          message: 'You can search by tag number, description, or equipment type.',
-          icon: 'search',
+          message: 'You can select multiple LOTO points. Selected items appear at the top.',
+          icon: 'checklist',
           type: 'info',
         },
       ],

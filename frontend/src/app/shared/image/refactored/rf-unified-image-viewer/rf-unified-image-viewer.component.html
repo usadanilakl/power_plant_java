@@ -66,6 +66,7 @@
                 [shapesInput]="currentShapes()"
                 [preset]="mode()"
                 [hoveredShapeId]="externalHoveredShapeId()"
+                [highlightedShapeIds]="highlightedShapeIds()"
                 (shapeHovered)="onShapeHovered($event)"
                 (shapeClicked)="onShapeClicked($event)"
                 (shapeDoubleClicked)="onShapeDoubleClicked($event)"

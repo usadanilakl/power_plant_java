@@ -44,7 +44,7 @@ import { TagNumberGeneratorComponent } from '../../../../features/tag-number/tag
                   [(ngModel)]="manualTagNumber"
                   (ngModelChange)="onManualInput($event)"
                   [placeholder]="'Enter tag number manually'"
-                  [required]="step().tagNumberConfig?.required"
+                  [required]="step().tagNumberConfig?.required ?? false"
                 />
                 <mat-hint>Enter the tag number directly or use the generator tab</mat-hint>
               </mat-form-field>

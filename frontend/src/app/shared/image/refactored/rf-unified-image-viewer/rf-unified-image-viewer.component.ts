@@ -99,6 +99,11 @@ export class RfUnifiedImageViewerComponent {
    */
   externalClickedLotoPoint = input<LotoPointDto | null>(null);
 
+  /**
+   * External list of equipment/shape IDs to highlight (e.g., selected LOTO points' equipment)
+   */
+  highlightedShapeIds = input<number[]>([]);
+
   // ==================== OUTPUTS ====================
 
   imageSelected = output<CarouselImage>();

@@ -35,7 +35,7 @@ import { NamingConventionComponent } from '../../../../features/tag-number/namin
           (ngModelChange)="onDescriptionChange($event)"
           [placeholder]="'Enter description'"
           [maxlength]="maxLength()"
-          [required]="step().descriptionConfig?.required"
+          [required]="step().descriptionConfig?.required ?? false"
           rows="4"
         ></textarea>
         @if (maxLength()) {

@@ -96,14 +96,11 @@ interface ZeroEnergyPhrase {
                     </div>
                   } @else {
                     <div class="equipment-actions">
-                      <button mat-stroked-button (click)="selectEquipment(i)">
-                        <mat-icon>search</mat-icon>
-                        Select Existing
+                      <button mat-flat-button color="primary" (click)="openEquipmentPicker(i)">
+                        <mat-icon>touch_app</mat-icon>
+                        Select or Draw Equipment
                       </button>
-                      <button mat-stroked-button (click)="createLotoPoint(i)">
-                        <mat-icon>add</mat-icon>
-                        Create New LOTO Point
-                      </button>
+                      <span class="action-hint">Browse P&ID to select existing or draw new</span>
                     </div>
                   }
                 </mat-card-content>
@@ -242,8 +239,15 @@ interface ZeroEnergyPhrase {
 
     .equipment-actions {
       display: flex;
+      flex-direction: column;
+      align-items: flex-start;
       gap: 8px;
-      flex-wrap: wrap;
+    }
+
+    .action-hint {
+      font-size: 12px;
+      color: #666;
+      font-style: italic;
     }
 
     .preview-title-icon {
@@ -407,18 +411,23 @@ export class WizardZeroEnergyStepComponent {
     });
   }
 
-  selectEquipment(placeholderIndex: number): void {
-    // For now, this would trigger equipment selection
-    // In full implementation, this would open equipment picker or branch
-    console.log('Select equipment for placeholder:', placeholderIndex);
-    // Could emit a branch request to equipment picker
-  }
+  // Store which placeholder we're currently selecting for
+  private currentPlaceholderIndex = signal<number | null>(null);
 
-  createLotoPoint(placeholderIndex: number): void {
-    // Branch to add-loto-point flow
+  openEquipmentPicker(placeholderIndex: number): void {
+    this.currentPlaceholderIndex.set(placeholderIndex);
+
+    // Branch to equipment-picker-dialog flow which handles both
+    // selecting existing equipment and drawing new with simplified form
     this.branchRequest.emit({
-      flowType: 'add-loto-point',
-      field: `templateEquipment[${placeholderIndex}]`,
+      flowType: 'select-equipment-for-zero-energy' as any,
+      field: `zeroEnergy.templateEquipment`,
+      initialData: {
+        placeholderIndex,
+        // Use simplified form when drawing - only essential fields
+        simplifiedForm: true,
+        requiredFields: ['tagNumber', 'description', 'eqType', 'location', 'normPos', 'isoPos'],
+      },
     });
   }
 

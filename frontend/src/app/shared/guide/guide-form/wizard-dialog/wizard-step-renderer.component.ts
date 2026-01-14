@@ -29,6 +29,7 @@ import { WizardDescriptionStepComponent } from '../steps/wizard-description-step
 import { WizardValueSelectStepComponent } from '../steps/wizard-value-select-step.component';
 import { WizardZeroEnergyStepComponent } from '../steps/wizard-zero-energy-step.component';
 import { WizardEquipmentPickerStepComponent } from '../steps/wizard-equipment-picker-step.component';
+import { WizardLotoPointSelectorStepComponent } from '../steps/wizard-loto-point-selector-step.component';
 
 @Component({
   selector: 'app-wizard-step-renderer',
@@ -53,6 +54,7 @@ import { WizardEquipmentPickerStepComponent } from '../steps/wizard-equipment-pi
     WizardValueSelectStepComponent,
     WizardZeroEnergyStepComponent,
     WizardEquipmentPickerStepComponent,
+    WizardLotoPointSelectorStepComponent,
   ],
   template: `
     @if (step()) {
@@ -100,6 +102,15 @@ import { WizardEquipmentPickerStepComponent } from '../steps/wizard-equipment-pi
 
             @case ('multi-select') {
               <app-wizard-multi-select-step
+                [step]="step()!"
+                [currentValue]="getCurrentValue(step()?.tableConfig?.fieldName)"
+                (valueChange)="onValueChange($event)"
+                (createNew)="onCreateNew($event)"
+              />
+            }
+
+            @case ('loto-point-selector') {
+              <app-wizard-loto-point-selector-step
                 [step]="step()!"
                 [currentValue]="getCurrentValue(step()?.tableConfig?.fieldName)"
                 (valueChange)="onValueChange($event)"
@@ -320,11 +331,21 @@ export class WizardStepRendererComponent {
   }
 
   onCreateNew(config: { flowType: WizardFlowType; field: string; initialData?: any }): void {
+    // Determine the correct entity path based on field name and current flow
+    const frame = this.frame();
+    let entityPath = config.field;
+
+    // If we're in build-standard flow and creating loto points, use lotoStandard path
+    if (frame?.flow.type === 'build-standard' && config.field === 'lotoPoints') {
+      entityPath = 'lotoStandard.lotoPoints';
+    }
+
     this.branchRequest.emit({
       flowType: config.flowType,
       initialData: config.initialData,
       returnCallback: {
-        field: config.field,
+        field: entityPath,
+        mode: 'append', // Append to array instead of replacing
       },
     });
   }

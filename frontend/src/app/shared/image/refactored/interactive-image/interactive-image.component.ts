@@ -71,6 +71,8 @@ export class InteractiveImageComponent {
   hoveredShapeId = input<number | null>(null);
   /** ID of shape to select programmatically (shows selection handles) */
   selectedShapeIdInput = input<number | null>(null);
+  /** IDs of shapes to highlight (e.g., for selected LOTO points' equipment) */
+  highlightedShapeIds = input<number[]>([]);
 
   // Configuration-based approach (replaces simple 'mode')
   config = input<InteractiveImageConfig>();
@@ -229,6 +231,14 @@ export class InteractiveImageComponent {
     // Effect to redraw canvas when hoveredShapeId changes
     effect(() => {
       const hoveredId = this.hoveredShapeId();
+      if (this.canvas && this.img) {
+        this.updateCanvasAndRedraw();
+      }
+    });
+
+    // Effect to redraw when highlighted shapes change
+    effect(() => {
+      const highlightedIds = this.highlightedShapeIds();
       if (this.canvas && this.img) {
         this.updateCanvasAndRedraw();
       }
@@ -398,7 +408,8 @@ export class InteractiveImageComponent {
       this.imageScale,
       this.hoveredShapeId(),
       this.img.naturalWidth,
-      this.img.naturalHeight
+      this.img.naturalHeight,
+      this.highlightedShapeIds()
     );
   }
 

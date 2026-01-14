@@ -1,4 +1,5 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import {
   WizardContext,
   WizardContextFrame,
@@ -18,6 +19,8 @@ const STORAGE_KEY = 'wizard-stack-context';
 @Injectable({ providedIn: 'root' })
 export class WizardStackService {
   private flowRegistry = inject(WizardFlowRegistryService);
+  private platformId = inject(PLATFORM_ID);
+  private isBrowser = isPlatformBrowser(this.platformId);
 
   // ========== Core State ==========
   private _context = signal<WizardContext>({
@@ -489,6 +492,7 @@ export class WizardStackService {
    * Check if there's a saved session to resume
    */
   hasSavedSession(): boolean {
+    if (!this.isBrowser) return false;
     return localStorage.getItem(STORAGE_KEY) !== null;
   }
 
@@ -496,6 +500,7 @@ export class WizardStackService {
    * Resume from saved session
    */
   resume(): boolean {
+    if (!this.isBrowser) return false;
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return false;
 
@@ -535,6 +540,7 @@ export class WizardStackService {
    * Get saved session info without resuming
    */
   getSavedSessionInfo(): { flowType: WizardFlowType; flowName: string; lastUpdated: Date } | null {
+    if (!this.isBrowser) return null;
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return null;
 
@@ -774,7 +780,9 @@ export class WizardStackService {
       parallelBuild: ctx.parallelBuild ? { enabled: ctx.parallelBuild.enabled } : undefined,
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+    if (this.isBrowser) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+    }
   }
 
   private sanitizeEntityData(entityData: WizardEntityData): WizardEntityData {
@@ -790,6 +798,8 @@ export class WizardStackService {
   }
 
   private clearStorage(): void {
-    localStorage.removeItem(STORAGE_KEY);
+    if (this.isBrowser) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }
 }

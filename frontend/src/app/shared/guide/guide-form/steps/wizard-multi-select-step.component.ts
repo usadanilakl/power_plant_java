@@ -1,4 +1,4 @@
-import { Component, input, output, signal, effect } from '@angular/core';
+import { Component, input, output, signal, effect, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -6,13 +6,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { WizardStep, StepDataPayload, WizardFlowType } from '../wizard-stack.types';
+import { RfLotoPointApiService } from '../../../../features/loto-points/refactored/services/rf-loto-point-api.service';
+import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 
 interface SelectableItem {
   id: number;
-  name?: string;
-  tagNumber?: string;
-  description?: string;
+  name?: string | null;
+  tagNumber?: string | null;
+  description?: string | null;
   [key: string]: any;
 }
 
@@ -201,6 +204,9 @@ interface SelectableItem {
   `],
 })
 export class WizardMultiSelectStepComponent {
+  private lotoPointApi = inject(RfLotoPointApiService);
+  private destroyRef = inject(DestroyRef);
+
   step = input.required<WizardStep>();
   currentValue = input<SelectableItem[]>([]);
 
@@ -212,8 +218,12 @@ export class WizardMultiSelectStepComponent {
   filteredItems = signal<SelectableItem[]>([]);
   selectedItems = signal<SelectableItem[]>([]);
   isLoading = signal(false);
+  private searchTimeout: any = null;
+
+  private hasLoadedInitialData = false;
 
   constructor() {
+    // Effect for currentValue changes
     effect(() => {
       const current = this.currentValue();
       if (current && Array.isArray(current)) {
@@ -221,40 +231,83 @@ export class WizardMultiSelectStepComponent {
       }
     });
 
-    // Load mock data
-    this.loadItems();
+    // Effect to load initial data when step input becomes available
+    effect(() => {
+      const stepValue = this.step();
+      if (stepValue && !this.hasLoadedInitialData) {
+        this.hasLoadedInitialData = true;
+        this.loadItems();
+      }
+    });
   }
 
   loadItems(): void {
-    this.isLoading.set(true);
-    // TODO: Use actual API service based on step().tableConfig?.entityType
-    setTimeout(() => {
-      const mockItems: SelectableItem[] = [
-        { id: 1, tagNumber: '01-MV-001', description: 'Main Isolation Valve A' },
-        { id: 2, tagNumber: '01-MV-002', description: 'Main Isolation Valve B' },
-        { id: 3, tagNumber: '01-CB-001', description: 'Circuit Breaker Main' },
-        { id: 4, tagNumber: '02-MV-001', description: 'Unit 2 Main Valve' },
-        { id: 5, tagNumber: '02-HV-001', description: 'Unit 2 Hand Valve' },
-      ];
-      this.availableItems.set(mockItems);
-      this.filteredItems.set(mockItems);
+    const entityType = this.step().tableConfig?.entityType;
+
+    if (entityType === 'loto-point') {
+      this.loadLotoPoints();
+    } else {
+      // Fallback for other entity types
       this.isLoading.set(false);
-    }, 300);
+      this.availableItems.set([]);
+      this.filteredItems.set([]);
+    }
+  }
+
+  private loadLotoPoints(searchText?: string): void {
+    this.isLoading.set(true);
+
+    const criteria: SearchCriteria = {
+      page: 1,
+      filters: searchText ? { tagNumber: searchText } : {},
+    };
+
+    this.lotoPointApi.searchLotoPoints(criteria, 50)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          const items = response.responseData?.content || [];
+          this.availableItems.set(items);
+          this.filteredItems.set(items);
+          this.isLoading.set(false);
+        },
+        error: (err) => {
+          console.error('Failed to load LOTO points:', err);
+          this.isLoading.set(false);
+          this.availableItems.set([]);
+          this.filteredItems.set([]);
+        }
+      });
   }
 
   onSearchChange(text: string): void {
-    const items = this.availableItems();
-    if (!text) {
-      this.filteredItems.set(items);
-      return;
+    // Debounce search API calls
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
     }
 
-    const lower = text.toLowerCase();
-    const filtered = items.filter(item =>
-      this.getItemLabel(item).toLowerCase().includes(lower) ||
-      item.description?.toLowerCase().includes(lower)
-    );
-    this.filteredItems.set(filtered);
+    const entityType = this.step().tableConfig?.entityType;
+
+    if (entityType === 'loto-point') {
+      // For LOTO points, search via API with debounce
+      this.searchTimeout = setTimeout(() => {
+        this.loadLotoPoints(text);
+      }, 300);
+    } else {
+      // For other entities, filter locally
+      const items = this.availableItems();
+      if (!text) {
+        this.filteredItems.set(items);
+        return;
+      }
+
+      const lower = text.toLowerCase();
+      const filtered = items.filter(item =>
+        this.getItemLabel(item).toLowerCase().includes(lower) ||
+        item.description?.toLowerCase().includes(lower)
+      );
+      this.filteredItems.set(filtered);
+    }
   }
 
   getItemLabel(item: SelectableItem): string {

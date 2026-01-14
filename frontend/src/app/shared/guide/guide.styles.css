@@ -268,3 +268,20 @@ tr.guide-active.guide-pulse {
   --guide-tooltip-text: #f1f5f9;
   --guide-tooltip-secondary: #94a3b8;
 }
+
+/* ===== LOTO Point Finder Dialog ===== */
+
+.loto-finder-dialog-panel {
+  max-width: 95vw !important;
+  max-height: 90vh !important;
+}
+
+.loto-finder-dialog-panel .mat-mdc-dialog-container {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.loto-finder-dialog-panel .mat-mdc-dialog-surface {
+  padding: 0;
+}

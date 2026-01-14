@@ -18,7 +18,8 @@ export class CanvasRenderService {
     scale: number,
     hoveredShapeId?: number | null,
     currentImageWidth?: number,
-    currentImageHeight?: number
+    currentImageHeight?: number,
+    highlightedShapeIds?: number[]
   ): void {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -27,7 +28,7 @@ export class CanvasRenderService {
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    shapes.forEach((shape) => this.drawShape(ctx, shape, scale, hoveredShapeId, currentImageWidth, currentImageHeight));
+    shapes.forEach((shape) => this.drawShape(ctx, shape, scale, hoveredShapeId, currentImageWidth, currentImageHeight, highlightedShapeIds));
   }
 
   private drawShape(
@@ -36,21 +37,24 @@ export class CanvasRenderService {
     scale: number,
     hoveredShapeId?: number | null,
     currentImageWidth?: number,
-    currentImageHeight?: number
+    currentImageHeight?: number,
+    highlightedShapeIds?: number[]
   ): void {
     const isHovered = hoveredShapeId !== null && hoveredShapeId !== undefined && shape.id === hoveredShapeId;
+    const isHighlighted = highlightedShapeIds && shape.id !== undefined && highlightedShapeIds.includes(shape.id);
 
-    ctx.strokeStyle = isHovered ? '#ff6600' : shape.color; // Bright orange for hover
+    // Green for highlighted (selected LOTO point equipment), orange for hovered
+    ctx.strokeStyle = isHighlighted ? '#4caf50' : isHovered ? '#ff6600' : shape.color;
     ctx.fillStyle = shape.color;
     ctx.lineWidth = shape.isSelected
       ? this.SELECTED_LINE_WIDTH
-      : isHovered
-      ? 4  // Thicker line for hover to make it more noticeable
+      : isHovered || isHighlighted
+      ? 4  // Thicker line for hover/highlight to make it more noticeable
       : this.DEFAULT_LINE_WIDTH;
 
-    // Draw highlight overlay for hovered shapes
-    if (isHovered && (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol')) {
-      this.drawHoverHighlight(ctx, shape, scale, currentImageWidth, currentImageHeight);
+    // Draw highlight overlay for hovered or highlighted shapes
+    if ((isHovered || isHighlighted) && (shape.type === 'rectangle' || shape.type === 'image' || shape.type === 'svg-symbol')) {
+      this.drawHoverHighlight(ctx, shape, scale, currentImageWidth, currentImageHeight, isHighlighted);
     }
 
     const scaledShape = this.scaleShape(shape, scale, currentImageWidth, currentImageHeight);
@@ -328,14 +332,16 @@ export class CanvasRenderService {
   }
 
   /**
-   * Draw a prominent highlight overlay for hovered shapes
+   * Draw a prominent highlight overlay for hovered or highlighted shapes
+   * @param isHighlighted - if true, uses green color (for selected items), otherwise orange (for hover)
    */
   private drawHoverHighlight(
     ctx: CanvasRenderingContext2D,
     shape: RfShape,
     scale: number,
     currentImageWidth?: number,
-    currentImageHeight?: number
+    currentImageHeight?: number,
+    isHighlighted: boolean = false
   ): void {
     if (shape.type !== 'rectangle' && shape.type !== 'image' && shape.type !== 'svg-symbol') {
       return;
@@ -359,14 +365,18 @@ export class CanvasRenderService {
       ctx.translate(-centerX, -centerY);
     }
 
-    // Draw semi-transparent orange fill
-    ctx.fillStyle = 'rgba(255, 102, 0, 0.25)';
+    // Green for highlighted (selected LOTO points), orange for hover
+    const fillColor = isHighlighted ? 'rgba(76, 175, 80, 0.3)' : 'rgba(255, 102, 0, 0.25)';
+    const strokeColor = isHighlighted ? '#4caf50' : '#ff6600';
+
+    // Draw semi-transparent fill
+    ctx.fillStyle = fillColor;
     ctx.fillRect(x, y, width, height);
 
-    // Draw thicker orange border with glow effect
-    ctx.shadowColor = '#ff6600';
+    // Draw thicker border with glow effect
+    ctx.shadowColor = strokeColor;
     ctx.shadowBlur = 10;
-    ctx.strokeStyle = '#ff6600';
+    ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, width, height);
 

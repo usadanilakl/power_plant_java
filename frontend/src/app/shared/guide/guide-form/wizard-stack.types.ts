@@ -17,11 +17,13 @@ export type WizardFlowType =
   | 'build-standard'        // Create new LOTO standard with all steps
   | 'modify-standard'       // Edit existing LOTO standard
   | 'add-loto-point'        // Create new LOTO point (standalone or branch)
+  | 'add-loto-point-simple' // Create LOTO point with simplified form (for drawn equipment)
   | 'edit-loto-point'       // Edit existing LOTO point
   | 'create-value'          // Create ValueDto (eqType, isoPos, normPos, location)
   | 'create-zero-energy'    // Create zero energy configuration
   | 'upload-file'           // Upload new file
-  | 'select-file';          // Select existing file
+  | 'select-file'           // Select existing file
+  | 'select-equipment-for-zero-energy'; // Select or draw equipment for zero energy placeholder
 
 // ============================================================================
 // Step Types - UI component types for steps
@@ -34,6 +36,7 @@ export type WizardStepType =
   | 'select-input'          // Dropdown/searchable select with optional "Create New"
   | 'value-select'          // ValueDto select using RfValueSelectComponent (CRUD built-in)
   | 'multi-select'          // Multi-select from table/list with "Add" capability
+  | 'loto-point-selector'   // Advanced LOTO point selection with multiple search strategies
   | 'form-section'          // Group of form fields rendered together
   | 'tag-number'            // Tag number with manual input + generator tabs
   | 'description-builder'   // Description with naming convention keywords

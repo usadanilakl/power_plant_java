@@ -610,14 +610,14 @@ export class WizardDialogComponent implements OnInit, OnDestroy {
       isoPos: data.lotoPoint.isoPos || null,
     });
 
-    // Handle zero energy if present - create ZeroEnergyDto
+    // Handle zero energy if present - create ZeroEnergyModel compatible object
     if (data.zeroEnergy?.zeroEnergyTemplate) {
       pointData.zeroEnergy = {
-        id: null,
-        name: null,
-        objectType: null,
+        id: 0,
+        name: '',
+        objectType: 'ZeroEnergy',
         isVerified: false,
-        method: '',
+        method: data.zeroEnergy.method || '',
         zeroEnergyTemplate: data.zeroEnergy.zeroEnergyTemplate,
         templateEquipment: data.zeroEnergy.templateEquipment || [],
         templateEquipmentIds: data.zeroEnergy.templateEquipmentIds || [],

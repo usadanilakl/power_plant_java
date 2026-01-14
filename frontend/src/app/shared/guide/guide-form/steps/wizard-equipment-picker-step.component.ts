@@ -13,6 +13,7 @@ import { EquipmentMapperService } from '../../../../features/equipment/refactore
 import { RfEquipmentService } from '../../../../features/equipment/refactored/services/rf-equipment.service';
 import { EquipmentDto } from '../../../../models/equipment/equipment.model';
 import { RfShape } from '../../../image/refactored/models/fr-shape.model';
+import { INTERACTIVE_IMAGE_PRESETS } from '../../../image/refactored/models/interactive-image-config.model';
 import { NestedItem } from '../../../../models/ui/nested-item.model';
 
 @Component({
@@ -60,10 +61,9 @@ import { NestedItem } from '../../../../models/ui/nested-item.model';
           </div>
 
           <app-interactive-image
-            [fileLink]="currentFileLink()"
-            [shapes]="equipmentShapes()"
-            [enableDrawing]="allowDraw()"
-            [drawMode]="'rectangle'"
+            [imageUrl]="currentFileLink()"
+            [shapesInput]="equipmentShapes()"
+            [preset]="getPreset()"
             (shapeClicked)="onEquipmentClicked($event)"
             (shapeDrawn)="onShapeDrawn($event)"
           />
@@ -310,6 +310,20 @@ export class WizardEquipmentPickerStepComponent {
     const config = this.step().equipmentPickerConfig;
     return config?.allowDraw !== false;
   });
+
+  // Get the appropriate preset based on allowed actions
+  getPreset(): keyof typeof INTERACTIVE_IMAGE_PRESETS {
+    const canBrowse = this.allowBrowse();
+    const canDraw = this.allowDraw();
+
+    if (canBrowse && canDraw) {
+      return 'EQUIPMENT_UNIFIED';
+    } else if (canDraw) {
+      return 'EQUIPMENT_DRAWER';
+    } else {
+      return 'EQUIPMENT_BROWSER';
+    }
+  }
 
   // Equipment from selected file
   equipment = computed(() => {

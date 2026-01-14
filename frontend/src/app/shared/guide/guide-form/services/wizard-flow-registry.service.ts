@@ -4,10 +4,12 @@ import { WizardFlow, WizardFlowType } from '../wizard-stack.types';
 // Import flow definitions
 import { BUILD_STANDARD_FLOW } from '../flows/build-standard.flow';
 import { ADD_LOTO_POINT_FLOW } from '../flows/add-loto-point.flow';
+import { ADD_LOTO_POINT_SIMPLE_FLOW } from '../flows/add-loto-point-simple.flow';
 import { CREATE_VALUE_FLOW } from '../flows/create-value.flow';
 import { CREATE_ZERO_ENERGY_FLOW } from '../flows/create-zero-energy.flow';
 import { UPLOAD_FILE_FLOW } from '../flows/upload-file-wizard.flow';
 import { SELECT_FILE_FLOW } from '../flows/select-file.flow';
+import { SELECT_EQUIPMENT_FOR_ZERO_ENERGY_FLOW } from '../flows/select-equipment-for-zero-energy.flow';
 
 @Injectable({ providedIn: 'root' })
 export class WizardFlowRegistryService {
@@ -17,10 +19,12 @@ export class WizardFlowRegistryService {
     // Register all flows
     this.registerFlow(BUILD_STANDARD_FLOW);
     this.registerFlow(ADD_LOTO_POINT_FLOW);
+    this.registerFlow(ADD_LOTO_POINT_SIMPLE_FLOW);
     this.registerFlow(CREATE_VALUE_FLOW);
     this.registerFlow(CREATE_ZERO_ENERGY_FLOW);
     this.registerFlow(UPLOAD_FILE_FLOW);
     this.registerFlow(SELECT_FILE_FLOW);
+    this.registerFlow(SELECT_EQUIPMENT_FOR_ZERO_ENERGY_FLOW);
   }
 
   /**
