@@ -1,273 +1,335 @@
-import { GuideFlow } from '../guide-form.types';
+import { WizardFlow } from '../wizard-stack.types';
 
-export const ADD_LOTO_POINT_FLOW: GuideFlow = {
-  action: 'add-loto-point',
-  name: 'Add LOTO Point',
-  description: 'Step-by-step guide to creating a LOTO point',
+export const ADD_LOTO_POINT_FLOW: WizardFlow = {
+  type: 'add-loto-point',
+  name: 'Create LOTO Point',
+  description: 'Create a new LOTO point with all required details',
   icon: 'add_location',
+  canBranch: true, // Can be used as a branch from build-standard
+
   steps: [
-    // Step 1: Welcome
+    // Step 1: Welcome (only shown when not a branch)
     {
       id: 'welcome',
       type: 'welcome',
       title: 'Create a LOTO Point',
-      description:
-        "This guide will walk you through creating a LOTO point step by step. You'll learn how to properly fill out each field using our specialized tools.",
-      icon: 'add_location',
-      actionLabel: 'Start Tutorial',
+      description: 'This guide will help you create a new LOTO point with all the necessary details.',
       hints: [
         {
-          message: 'Each field will be explained with examples and conventions',
-          icon: 'school',
+          message: 'A LOTO point represents a single isolation point on equipment.',
+          icon: 'info',
           type: 'info',
         },
         {
-          message: 'Estimated time: 5-10 minutes for your first LOTO point',
-          icon: 'schedule',
+          message: 'Each step focuses on one piece of information at a time.',
+          icon: 'lightbulb',
           type: 'tip',
         },
       ],
     },
 
-    // Step 2: Tag Number Generation
+    // Step 2: Tag Number - using specialized tag number step with generator
     {
       id: 'tag-number',
-      type: 'tutorial',
-      title: 'Step 1: Tag Number',
-      description: 'The tag number is the unique identifier for this LOTO point.',
-      tutorialTopic: 'tag-number',
-      tutorialConfig: {
-        explanation:
-          'Tag numbers follow a specific format based on Unit, Equipment Type, and System. The generator will create a standardized tag number for you.',
-        examples: [
-          '01-BV-001 (Unit 01, Ball Valve, System 001)',
-          '02-MCC-015 (Unit 02, Motor Control Center, System 015)',
-          '01-XV-COND (Unit 01, Control Valve, Condensate)',
-        ],
-        conventions: [
-          'Always starts with unit number (01 or 02)',
-          'Equipment type abbreviation in the middle',
-          'System or sequence number at the end',
-          'Use the generator to ensure uniqueness',
-        ],
-        actionLabel: 'Open Tag Generator',
-        actionIcon: 'tag',
+      type: 'tag-number',
+      title: 'Tag Number',
+      description: 'Enter or generate a unique tag number for this LOTO point.',
+      tagNumberConfig: {
         fieldName: 'tagNumber',
-        canSkip: false,
+        showGenerator: true,
+        showManualInput: true,
+        required: true,
       },
       hints: [
         {
-          message: 'The tag generator checks for duplicates automatically',
-          icon: 'verified',
-          type: 'tip',
-        },
-      ],
-    },
-
-    // Step 3: Description with Naming Convention
-    {
-      id: 'description',
-      type: 'tutorial',
-      title: 'Step 2: Description',
-      description: 'The description helps identify what this LOTO point controls.',
-      tutorialTopic: 'description',
-      tutorialConfig: {
-        explanation:
-          'Descriptions should follow naming conventions to maintain consistency across all LOTO points. Use the Naming Convention helper to build a proper description.',
-        examples: [
-          'HP TERM ATEMP STR (BFW100) OUTLET ROOT',
-          'COND PUMP A DISCH ISO',
-          'MVB SWITCHGEAR 1 CUBICLE 9B',
-        ],
-        conventions: [
-          'Use standard abbreviations (ISO, DISCH, SUCT, etc.)',
-          'Include equipment identifier in parentheses',
-          'Specify location (INLET, OUTLET, ROOT, etc.)',
-          'Keep it concise but descriptive',
-        ],
-        actionLabel: 'Open Naming Helper',
-        actionIcon: 'text_fields',
-        fieldName: 'description',
-        canSkip: false,
-      },
-      hints: [
-        {
-          message: 'Consistent descriptions make searching easier',
-          icon: 'search',
+          message: 'Tag numbers typically follow format: XX-YYY-### (Unit-Type-Number)',
+          icon: 'format_list_numbered',
           type: 'info',
         },
-      ],
-    },
-
-    // Step 4: Positions (isoPos, normPos)
-    {
-      id: 'positions',
-      type: 'tutorial',
-      title: 'Step 3: Positions',
-      description: 'Set the Normal and Isolated positions for this LOTO point.',
-      tutorialTopic: 'positions',
-      tutorialConfig: {
-        explanation:
-          'Every LOTO point has two key positions: the Normal operating position (how it runs during normal operation) and the Isolated position (how it should be set during LOTO).',
-        examples: [
-          'Valve: Normal = OPEN, Isolated = CLOSED',
-          'Breaker: Normal = CLOSED, Isolated = OPEN/RACKED OUT',
-          'Disconnect: Normal = ENERGIZED, Isolated = DE-ENERGIZED',
-        ],
-        conventions: [
-          'Normal Position = state during normal plant operation',
-          'Isolated Position = state required for safe isolation',
-          'Select from predefined values for consistency',
-        ],
-        actionLabel: 'Set Positions',
-        actionIcon: 'swap_horiz',
-        fieldName: 'positions',
-        canSkip: false,
-      },
-      hints: [
         {
-          message: 'Think: "What state is it normally in?" and "What state isolates it?"',
-          icon: 'psychology',
+          message: 'Use the "Generate" tab for automatic tag number generation.',
+          icon: 'auto_awesome',
           type: 'tip',
         },
-      ],
-    },
-
-    // Step 5: Zero Energy Configuration
-    {
-      id: 'zero-energy',
-      type: 'tutorial',
-      title: 'Step 4: Zero Energy',
-      description: 'Define how to verify zero energy state for this point.',
-      tutorialTopic: 'zero-energy',
-      tutorialConfig: {
-        explanation:
-          'Zero Energy verification ensures the equipment is truly de-energized. You\'ll select a phrase template and specify which equipment to reference in the verification steps.',
-        examples: [
-          'Verify no flow through [tag1] by checking downstream gauge',
-          'Confirm [tag1] breaker is racked out and LOTO applied',
-          'Check pressure gauge at [tag1] reads zero PSI',
-        ],
-        conventions: [
-          'Use [tag1], [tag2] placeholders for equipment references',
-          'Phrases should be actionable verification steps',
-          'Select equipment that will be substituted into placeholders',
-        ],
-        actionLabel: 'Configure Zero Energy',
-        actionIcon: 'energy_savings_leaf',
-        fieldName: 'zeroEnergy',
-        canSkip: true,
-        skipLabel: 'Skip for Now',
-      },
-      hints: [
         {
-          message: 'Zero energy is optional but recommended for safety',
-          icon: 'warning',
-          type: 'warning',
+          message: 'Example: 01-MV-001 (Unit 01, Motor Operated Valve, Number 001)',
+          icon: 'text_snippet',
+          type: 'example',
         },
       ],
     },
 
-    // Step 6: File/Equipment Connection
+    // Step 3: Description - using specialized description step with naming convention
     {
-      id: 'file-connection',
-      type: 'tutorial',
-      title: 'Step 5: Connect to File',
-      description: 'Link this LOTO point to a file and mark its location.',
-      tutorialTopic: 'file-connection',
-      tutorialConfig: {
-        explanation:
-          'LOTO points are associated with files (P&IDs, electrical drawings, etc.) through equipment. This connection allows the point to be shown on the drawing and helps operators locate it.',
-        examples: [
-          'Select the P&ID where this valve appears',
-          'Choose the electrical drawing showing this breaker',
-          'Pick equipment symbols that represent this point',
-        ],
-        conventions: [
-          'Select the primary file where this point is documented',
-          'Choose equipment symbols on the drawing',
-          'The point will appear on the file viewer',
-        ],
-        actionLabel: 'Connect to File',
-        actionIcon: 'link',
-        fieldName: 'fileConnection',
-        canSkip: true,
-        skipLabel: 'Connect Later',
+      id: 'description',
+      type: 'description-builder',
+      title: 'Description',
+      description: 'Enter a clear description for this LOTO point.',
+      descriptionConfig: {
+        fieldName: 'description',
+        showNamingConvention: true,
+        maxLength: 500,
+        required: true,
       },
       hints: [
         {
-          message: 'You can connect to multiple equipment symbols if needed',
-          icon: 'hub',
+          message: 'Include the equipment name and function in the description.',
+          icon: 'lightbulb',
           type: 'tip',
         },
+        {
+          message: 'Use Quick Keywords to quickly add common terms.',
+          icon: 'flash_on',
+          type: 'tip',
+        },
+        {
+          message: 'Example: "FW PUMP 1A SUCTION ISO"',
+          icon: 'text_snippet',
+          type: 'example',
+        },
       ],
     },
 
-    // Step 7: Counterpart Configuration
+    // Step 4: Specific Location
     {
-      id: 'counterpart',
-      type: 'tutorial',
-      title: 'Step 6: Counterpart',
-      description: 'Create a matching LOTO point for the other unit.',
-      tutorialTopic: 'counterpart',
-      tutorialConfig: {
-        explanation:
-          'Most plants have duplicate equipment in Unit 01 and Unit 02. A counterpart is the matching LOTO point on the other unit. The system can automatically create it with adjusted tag numbers and descriptions.',
-        examples: [
-          '01-BV-001 counterpart is 02-BV-001',
-          '"Unit 1 Pump" becomes "Unit 2 Pump"',
-          'Most fields are synced, positions may differ',
-        ],
-        conventions: [
-          'Counterparts have mirrored unit numbers (01 ↔ 02)',
-          'Text references to units are automatically transformed',
-          'You can sync individual fields or all at once',
-          'Link the counterparts for easy navigation',
-        ],
-        actionLabel: 'Create Counterpart',
-        actionIcon: 'sync_alt',
-        fieldName: 'counterpart',
-        canSkip: true,
-        skipLabel: 'No Counterpart Needed',
+      id: 'specific-location',
+      type: 'text-input',
+      title: 'Specific Location',
+      description: 'Where exactly is this LOTO point located?',
+      inputConfig: {
+        fieldName: 'specificLocation',
+        placeholder: 'e.g., Turbine Building, Floor 2, Column A-5',
+        required: false,
       },
+      isOptional: true,
       hints: [
         {
-          message: 'If this equipment only exists in one unit, skip this step',
+          message: 'Include building, floor, and any reference points.',
+          icon: 'place',
+          type: 'tip',
+        },
+        {
+          message: 'This helps field workers locate the equipment quickly.',
           icon: 'info',
           type: 'info',
         },
       ],
     },
 
-    // Step 8: Review & Save
+    // Step 5: Equipment Type - using RfValueSelectComponent
     {
-      id: 'review',
-      type: 'review',
-      title: 'Review & Save',
-      description: 'Review your LOTO point details before saving.',
+      id: 'equipment-type',
+      type: 'value-select',
+      title: 'Equipment Type',
+      description: 'Select the type of equipment for this LOTO point.',
+      valueSelectConfig: {
+        fieldName: 'eqType',
+        categoryAlias: 'eqType',
+        label: 'Equipment Type',
+        required: true,
+        canManageValues: true,
+      },
       hints: [
         {
-          message: 'Click Back to make changes to any field',
-          icon: 'edit',
+          message: 'Equipment type helps categorize and filter LOTO points.',
+          icon: 'category',
+          type: 'info',
+        },
+        {
+          message: 'Use the + button to create a new type if needed.',
+          icon: 'add',
+          type: 'tip',
+        },
+        {
+          message: 'Examples: MV (Motor Valve), CB (Circuit Breaker), HV (Hand Valve)',
+          icon: 'text_snippet',
+          type: 'example',
+        },
+      ],
+    },
+
+    // Step 6: Location (General) - using RfValueSelectComponent
+    {
+      id: 'location',
+      type: 'value-select',
+      title: 'General Location',
+      description: 'Select the general area/system location.',
+      valueSelectConfig: {
+        fieldName: 'location',
+        categoryAlias: 'location',
+        label: 'Location',
+        required: false,
+        canManageValues: true,
+      },
+      isOptional: true,
+      hints: [
+        {
+          message: 'General location helps group related LOTO points.',
+          icon: 'location_on',
+          type: 'info',
+        },
+        {
+          message: 'Examples: Turbine Hall, Boiler Area, Switchyard',
+          icon: 'text_snippet',
+          type: 'example',
+        },
+      ],
+    },
+
+    // Step 7: Normal Position - using RfValueSelectComponent
+    {
+      id: 'normal-position',
+      type: 'value-select',
+      title: 'Normal Position',
+      description: 'What is the normal operating position of this equipment?',
+      valueSelectConfig: {
+        fieldName: 'normPos',
+        categoryAlias: 'normPos',
+        label: 'Normal Position',
+        required: true,
+        canManageValues: true,
+      },
+      hints: [
+        {
+          message: 'Normal position is how the equipment operates during normal plant operation.',
+          icon: 'play_arrow',
+          type: 'info',
+        },
+        {
+          message: 'Examples: OPEN, CLOSED, ON, OFF, AUTO',
+          icon: 'text_snippet',
+          type: 'example',
+        },
+      ],
+    },
+
+    // Step 8: Isolated Position - using RfValueSelectComponent
+    {
+      id: 'isolated-position',
+      type: 'value-select',
+      title: 'Isolated Position',
+      description: 'What position should this equipment be in when isolated?',
+      valueSelectConfig: {
+        fieldName: 'isoPos',
+        categoryAlias: 'isoPos',
+        label: 'Isolated Position',
+        required: true,
+        canManageValues: true,
+      },
+      hints: [
+        {
+          message: 'Isolated position is the safe state for maintenance work.',
+          icon: 'lock',
+          type: 'info',
+        },
+        {
+          message: 'This is typically the opposite of normal position for valves.',
+          icon: 'lightbulb',
+          type: 'tip',
+        },
+        {
+          message: 'Examples: CLOSED, OPEN, OFF, RACKED OUT',
+          icon: 'text_snippet',
+          type: 'example',
+        },
+      ],
+    },
+
+    // Step 9: Zero Energy - using specialized zero energy step
+    {
+      id: 'zero-energy',
+      type: 'zero-energy',
+      title: 'Zero Energy Verification',
+      description: 'Configure how zero energy state should be verified. (Optional)',
+      zeroEnergyConfig: {
+        showPhraseBuilder: true,
+        showEquipmentMapping: true,
+        allowCreateLotoPoint: true,
+      },
+      isOptional: true,
+      hints: [
+        {
+          message: 'Zero energy verification ensures equipment is truly de-energized.',
+          icon: 'verified_user',
+          type: 'info',
+        },
+        {
+          message: 'Select a phrase template, then assign equipment to placeholders.',
+          icon: 'lightbulb',
+          type: 'tip',
+        },
+        {
+          message: 'Example: "Verify [tag1] is closed and no pressure on [tag2]"',
+          icon: 'text_snippet',
+          type: 'example',
+        },
+      ],
+    },
+
+    // Step 10: File/Equipment Connection - using specialized equipment picker
+    {
+      id: 'file-connection',
+      type: 'equipment-picker',
+      title: 'P&ID Connection',
+      description: 'Link this LOTO point to a location on a P&ID drawing. (Optional)',
+      equipmentPickerConfig: {
+        fieldName: 'equipmentList',
+        allowBrowse: true,
+        allowDraw: true,
+        fileFieldName: 'mainFileId',
+        multiSelect: false,
+      },
+      isOptional: true,
+      hints: [
+        {
+          message: 'Connecting to a P&ID helps visualize the LOTO point location.',
+          icon: 'insert_drive_file',
+          type: 'info',
+        },
+        {
+          message: 'Left-click to select existing equipment, or right-click + drag to draw new.',
+          icon: 'draw',
+          type: 'tip',
+        },
+        {
+          message: 'This step is optional but recommended for clarity.',
+          icon: 'lightbulb',
           type: 'tip',
         },
       ],
     },
 
-    // Step 9: Complete
+    // Step 11: Review
+    {
+      id: 'review',
+      type: 'review',
+      title: 'Review LOTO Point',
+      description: 'Review all details before saving.',
+      hints: [
+        {
+          message: 'Verify all information is correct before creating.',
+          icon: 'checklist',
+          type: 'info',
+        },
+        {
+          message: 'Click Back to make any changes.',
+          icon: 'arrow_back',
+          type: 'tip',
+        },
+      ],
+    },
+
+    // Step 12: Complete
     {
       id: 'complete',
       type: 'complete',
       title: 'LOTO Point Created!',
-      description:
-        'Your LOTO point has been saved. You can now view it on the file or create another one.',
-      icon: 'check_circle',
-      actionLabel: 'Done',
+      description: 'Your LOTO point has been saved successfully.',
       hints: [
         {
-          message: 'Want to add more LOTO points? Select "Add Another" below',
-          icon: 'add_location',
-          type: 'tip',
+          message: 'The LOTO point is now available for use in standards.',
+          icon: 'check_circle',
+          type: 'info',
         },
       ],
     },

@@ -5,21 +5,21 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkDrag, CdkDragHandle } from '@angular/cdk/drag-drop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GuideFormService } from './guide-form.service';
-import { GuideWelcomeStepComponent } from './steps/guide-welcome-step.component';
-import { GuideFileSelectStepComponent } from './steps/guide-file-select-step.component';
-import { GuideFormStepComponent } from './steps/guide-form-step.component';
-import { GuideReviewStepComponent } from './steps/guide-review-step.component';
-import { GuideCompleteStepComponent } from './steps/guide-complete-step.component';
+import { GuideWelcomeStepComponent } from './guide-welcome-step.component';
+import { GuideFileSelectStepComponent } from './guide-file-select-step.component';
+import { GuideFormStepComponent } from './guide-form-step.component';
+import { GuideReviewStepComponent } from './guide-review-step.component';
+import { GuideCompleteStepComponent } from './guide-complete-step.component';
 import { RfFileApiService } from '../../../features/files/refactored/services/rf-file-api.service';
 import { CurrentFileService } from '../../../services/current-file.service';
 import { GlobalMessageService } from '../../global-message/global-message.service';
 import { FileDto } from '../../../models/file/file.model';
 import { GuideAction } from './guide-form.types';
-import { GuideFileSelectorStepComponent } from './steps/guide-file-selector-step.component';
-import { GuideFileViewerStepComponent } from './steps/guide-file-viewer-step.component';
-import { GuideLotoFormStepComponent } from './steps/guide-loto-form-step.component';
-import { GuideTutorialStepComponent } from './steps/guide-tutorial-step.component';
-import { GuideLotoReviewStepComponent } from './steps/guide-loto-review-step.component';
+import { GuideFileSelectorStepComponent } from './guide-file-selector-step.component';
+import { GuideFileViewerStepComponent } from './guide-file-viewer-step.component';
+import { GuideLotoFormStepComponent } from './guide-loto-form-step.component';
+import { GuideTutorialStepComponent } from './guide-tutorial-step.component';
+import { GuideLotoReviewStepComponent } from './guide-loto-review-step.component';
 
 @Component({
   selector: 'app-guide-form-dialog',

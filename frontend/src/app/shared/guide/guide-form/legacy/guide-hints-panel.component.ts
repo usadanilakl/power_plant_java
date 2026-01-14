@@ -1,6 +1,6 @@
 import { Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { GuideHint } from '../guide-form.types';
+import { GuideHint } from './guide-form.types';
 
 @Component({
   selector: 'app-guide-hints-panel',

@@ -1,7 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { GuideFormStep, GuideFormState } from '../guide-form.types';
+import { GuideFormStep, GuideFormState } from './guide-form.types';
 import { GuideHintsPanelComponent } from './guide-hints-panel.component';
 
 @Component({

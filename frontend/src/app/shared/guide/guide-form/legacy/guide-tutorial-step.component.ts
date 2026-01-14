@@ -19,7 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { GuideFormStep, GuideFormState } from '../guide-form.types';
+import { GuideFormStep, GuideFormState } from './guide-form.types';
 import { GuideHintsPanelComponent } from './guide-hints-panel.component';
 
 // Import components for dialogs

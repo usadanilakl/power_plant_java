@@ -18,7 +18,8 @@
       "Bash(mkdir:*)",
       "Bash(nvm use default)",
       "Bash(npm install:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(~/.nvm/versions/node/v22.14.0/bin/npm run build)"
     ]
   }
 }

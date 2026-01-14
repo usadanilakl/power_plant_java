@@ -1,5 +1,5 @@
 import { Component, inject, input, output, computed, signal, effect } from '@angular/core';
-import { GuideFormStep } from '../guide-form.types';
+import { GuideFormStep } from './guide-form.types';
 import { GuideHintsPanelComponent } from './guide-hints-panel.component';
 import { RfReactiveFormComponent } from '../../../reactive-form/refactored/reactive-form/rf-reactive-form.component';
 import { FileMapperService } from '../../../../features/files/refactored/services/rf-file-mapper.service';

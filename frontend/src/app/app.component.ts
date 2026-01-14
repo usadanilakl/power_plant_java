@@ -6,13 +6,11 @@ import { GlobalMessageComponent } from "./shared/global-message/global-message.c
 import { GlobalContextMenuComponent } from "./shared/menu/context-menu/global-context-menu/global-context-menu.component";
 import { QrScannerComponent } from "./shared/qr-code/qr-scanner/qr-scanner.component";
 import { BradyPrinterManagerComponent } from "./shared/brady-printer-manager/brady-printer-manager.component";
-import { GuideFormDialogComponent } from "./shared/guide/guide-form/guide-form-dialog.component";
-import { GuideFormService } from "./shared/guide/guide-form/guide-form.service";
+import { WizardDialogComponent, WizardStackService, WizardFlowType } from "./shared/guide/guide-form";
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
-import { GuideAction } from './shared/guide/guide-form/guide-form.types';
 
 @Component({
   selector: 'app-root',
@@ -25,7 +23,7 @@ import { GuideAction } from './shared/guide/guide-form/guide-form.types';
     GlobalContextMenuComponent,
     QrScannerComponent,
     BradyPrinterManagerComponent,
-    GuideFormDialogComponent,
+    WizardDialogComponent,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
@@ -35,12 +33,12 @@ import { GuideAction } from './shared/guide/guide-form/guide-form.types';
   styleUrl: './app.component.css'
 })
 export class AppComponent {
-  guideService = inject(GuideFormService);
+  wizardService = inject(WizardStackService);
 
   constructor(public route: ActivatedRoute) {}
   title = 'Jackson';
 
-  startGuide(action: GuideAction): void {
-    this.guideService.start(action);
+  startGuide(action: WizardFlowType): void {
+    this.wizardService.start(action);
   }
 }

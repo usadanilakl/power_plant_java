@@ -7,7 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, Subject } from 'rxjs';
-import { GuideFormStep } from '../guide-form.types';
+import { GuideFormStep } from './guide-form.types';
 import { GuideHintsPanelComponent } from './guide-hints-panel.component';
 import { RfFileApiService } from '../../../../features/files/refactored/services/rf-file-api.service';
 import { FileDto } from '../../../../models/file/file.model';

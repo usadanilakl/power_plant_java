@@ -1,4 +1,4 @@
-import { GuideFlow } from '../guide-form.types';
+import { GuideFlow } from './guide-form.types';
 
 export const UPLOAD_FILE_FLOW: GuideFlow = {
   action: 'upload-file',
