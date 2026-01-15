@@ -92,16 +92,25 @@ public class FieldSyncController {
         fc.setEntityType((String) map.get("entityType"));
         fc.setEntityId(((Number) map.get("entityId")).longValue());
         fc.setFieldName((String) map.get("fieldName"));
-        fc.setOldValue((String) map.get("oldValue"));
-        fc.setNewValue((String) map.get("newValue"));
+        fc.setOldValue(getStringValue(map.get("oldValue")));
+        fc.setNewValue(getStringValue(map.get("newValue")));
         fc.setOriginMachineId((String) map.get("originMachineId"));
         fc.setOriginMachineName((String) map.get("originMachineName"));
         fc.setSyncedToMachines((String) map.get("syncedToMachines"));
         fc.setRelationshipType((String) map.get("relationshipType"));
 
-        String timestamp = (String) map.get("timestamp");
-        if (timestamp != null) {
-            fc.setTimestamp(Instant.parse(timestamp));
+        // Handle timestamp - can be String (ISO format) or Number (epoch seconds)
+        Object timestampObj = map.get("timestamp");
+        if (timestampObj != null) {
+            if (timestampObj instanceof String) {
+                fc.setTimestamp(Instant.parse((String) timestampObj));
+            } else if (timestampObj instanceof Number) {
+                // Timestamp as epoch seconds (possibly with decimal for nanos)
+                double epochSeconds = ((Number) timestampObj).doubleValue();
+                long seconds = (long) epochSeconds;
+                long nanos = (long) ((epochSeconds - seconds) * 1_000_000_000);
+                fc.setTimestamp(Instant.ofEpochSecond(seconds, nanos));
+            }
         }
 
         String changeType = (String) map.get("changeType");
@@ -110,6 +119,12 @@ public class FieldSyncController {
         }
 
         return fc;
+    }
+
+    private String getStringValue(Object value) {
+        if (value == null) return null;
+        if (value instanceof String) return (String) value;
+        return String.valueOf(value);
     }
 
     /**

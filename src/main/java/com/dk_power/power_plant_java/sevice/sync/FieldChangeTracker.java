@@ -30,6 +30,7 @@ public class FieldChangeTracker {
 
     // Fields to exclude from tracking
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
+        "id", // ID is never changed for updates, and Hibernate snapshot doesn't include it
         "dateCreated", "dateModified", "objectType", "serialVersionUID",
         "hibernateLazyInitializer", "handler"
     );
@@ -431,17 +432,35 @@ public class FieldChangeTracker {
     }
 
     /**
-     * Compare two values for equality, handling collections and entities
+     * Compare two values for equality, handling collections and entities.
+     * Special handling for Hibernate snapshot values (IDs) vs current entity values (full objects).
      */
     private boolean areValuesEqual(Object oldValue, Object newValue) {
         if (oldValue == null && newValue == null) return true;
+
+        // Handle null vs empty collection - treat as equal
+        if (oldValue == null && newValue instanceof Collection && ((Collection<?>) newValue).isEmpty()) return true;
+        if (newValue == null && oldValue instanceof Collection && ((Collection<?>) oldValue).isEmpty()) return true;
+
         if (oldValue == null || newValue == null) return false;
 
         // Handle entity references - compare by ID
+        // Case 1: Both are entities
         if (oldValue instanceof BaseIdEntity && newValue instanceof BaseIdEntity) {
             Long oldId = ((BaseIdEntity) oldValue).getId();
             Long newId = ((BaseIdEntity) newValue).getId();
             return Objects.equals(oldId, newId);
+        }
+
+        // Case 2: Hibernate snapshot returns entity ID (Long), current value is entity
+        // This happens because getDatabaseSnapshot() returns foreign key IDs for ManyToOne relations
+        if (oldValue instanceof Long && newValue instanceof BaseIdEntity) {
+            Long newId = ((BaseIdEntity) newValue).getId();
+            return Objects.equals(oldValue, newId);
+        }
+        if (oldValue instanceof BaseIdEntity && newValue instanceof Long) {
+            Long oldId = ((BaseIdEntity) oldValue).getId();
+            return Objects.equals(oldId, newValue);
         }
 
         // Handle collections - compare by content
