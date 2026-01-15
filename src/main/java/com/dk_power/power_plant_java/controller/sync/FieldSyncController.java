@@ -296,6 +296,21 @@ public class FieldSyncController {
             String machineId = (String) peerStatus.get("machineId");
             String machineName = name != null ? name : (String) peerStatus.get("machineName");
 
+            // Check if peer has same machine ID as us (invalid configuration)
+            if (machineId.equals(syncConfig.getMachineId())) {
+                result.put("success", false);
+                result.put("message", "ERROR: Peer has the SAME machine ID as this machine (" + machineId + "). " +
+                    "Delete 'machine-id.properties' file on one of the machines and restart to generate a unique ID.");
+                result.put("peer", Map.of(
+                    "machineId", machineId,
+                    "machineName", machineName,
+                    "ip", ip,
+                    "port", port
+                ));
+                log.error("Cannot register peer - same machine ID: {} ({})", machineName, machineId);
+                return ResponseEntity.ok(result);
+            }
+
             // Register the peer
             Peer peer = peerDiscoveryService.getAllPeers().stream()
                 .filter(p -> p.getMachineId().equals(machineId))

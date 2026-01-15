@@ -294,6 +294,13 @@ h2 {
   color: #666;
 }
 
+/* Error State */
+.error-state {
+  text-align: center;
+  background: #fff5f5;
+  border: 1px solid #f5c6cb;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .info-grid {

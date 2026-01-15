@@ -32,7 +32,9 @@ export class SyncMonitorComponent implements OnInit, OnDestroy {
   messageType: 'success' | 'error' | 'info' = 'info';
 
   // Loading states
-  isLoading: boolean = false;
+  isLoading: boolean = true;
+  isStatusLoaded: boolean = false;
+  statusError: string | null = null;
   isSyncing: boolean = false;
   isRegistering: boolean = false;
 
@@ -47,10 +49,16 @@ export class SyncMonitorComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadData();
-    this.syncService.startPolling(5000); // Poll every 5 seconds
+    // Subscribe to status updates
     this.statusSub = this.syncService.status$.subscribe(status => {
       this.status = status;
+      if (status) {
+        this.isStatusLoaded = true;
+        this.statusError = null;
+      }
     });
+    // Start polling after initial load
+    this.syncService.startPolling(10000); // Poll every 10 seconds
   }
 
   ngOnDestroy(): void {
@@ -60,15 +68,37 @@ export class SyncMonitorComponent implements OnInit, OnDestroy {
 
   loadData(): void {
     this.isLoading = true;
+    this.statusError = null;
+
+    // Load status first
+    this.syncService.fetchStatus().subscribe({
+      next: (status) => {
+        if (status) {
+          this.isStatusLoaded = true;
+        } else {
+          this.statusError = 'Failed to load sync status - check if backend is running';
+        }
+      },
+      error: (err) => {
+        this.statusError = 'Failed to connect to sync API: ' + (err.message || err);
+        this.isLoading = false;
+      }
+    });
+
     this.loadAllPeers();
     this.loadRecentChanges();
-    this.isLoading = false;
   }
 
   loadAllPeers(): void {
     this.syncService.getAllPeers().subscribe({
-      next: (peers) => this.allPeers = peers,
-      error: (err) => this.showMessage('Failed to load peers: ' + err.message, 'error')
+      next: (peers) => {
+        this.allPeers = peers;
+        this.isLoading = false;
+      },
+      error: (err) => {
+        this.showMessage('Failed to load peers: ' + err.message, 'error');
+        this.isLoading = false;
+      }
     });
   }
 

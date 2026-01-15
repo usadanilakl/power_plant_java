@@ -64,8 +64,19 @@
   </div>
 
   <!-- Loading state -->
-  <div *ngIf="!status" class="card loading">
+  <div *ngIf="!status && !statusError" class="card loading">
     <p>Loading sync status...</p>
+    <button (click)="loadData()" class="btn btn-secondary" style="margin-top: 10px;">
+      Retry
+    </button>
+  </div>
+
+  <!-- Error state -->
+  <div *ngIf="statusError" class="card error-state">
+    <p style="color: #dc3545;">{{ statusError }}</p>
+    <button (click)="loadData()" class="btn btn-primary" style="margin-top: 10px;">
+      Retry Connection
+    </button>
   </div>
 
   <!-- Register Peer -->
@@ -97,7 +108,10 @@
       Known Peers
       <button (click)="loadAllPeers()" class="btn btn-small btn-secondary">Refresh</button>
     </h3>
-    <div *ngIf="allPeers.length === 0" class="empty-state">
+    <div *ngIf="isLoading && allPeers.length === 0" class="empty-state">
+      Loading peers...
+    </div>
+    <div *ngIf="!isLoading && allPeers.length === 0" class="empty-state">
       No peers discovered yet. Either open firewall port 8083 for UDP discovery,
       or manually register a peer above.
     </div>
