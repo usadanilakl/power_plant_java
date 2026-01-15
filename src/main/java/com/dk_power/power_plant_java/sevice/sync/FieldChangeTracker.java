@@ -56,6 +56,8 @@ public class FieldChangeTracker {
         }
 
         try {
+            log.info("trackChanges called for {} #{}, oldEntity={}", entityType, entityId, oldEntity != null ? "present" : "null");
+
             // Handle create (new entity)
             if (oldEntity == null) {
                 changes.addAll(trackEntityCreation(entityType, entityId, newEntity));
@@ -64,18 +66,23 @@ public class FieldChangeTracker {
                 changes.addAll(trackEntityUpdate(entityType, entityId, oldEntity, newEntity));
             }
 
+            log.info("Found {} changes for {} #{}", changes.size(), entityType, entityId);
+
             // Save all changes and trigger sync (only if not already processing incoming sync)
             if (!changes.isEmpty()) {
                 fieldChangeRepository.saveAll(changes);
-                log.debug("Tracked {} field changes for {} #{}", changes.size(), entityType, entityId);
+                log.info("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
 
                 // Only broadcast if this is a LOCAL change, not an incoming sync
                 // This prevents infinite sync loops between machines
                 if (!syncContext.isSyncing()) {
+                    log.info("Publishing {} changes for sync broadcast", changes.size());
                     syncEventPublisher.publishChanges(changes);
                 } else {
-                    log.debug("Skipping broadcast - change originated from sync");
+                    log.info("Skipping broadcast - change originated from sync");
                 }
+            } else {
+                log.info("No field changes detected for {} #{}", entityType, entityId);
             }
         } catch (Exception e) {
             log.error("Error tracking changes for {} #{}: {}", entityType, entityId, e.getMessage(), e);

@@ -46,11 +46,15 @@ public class FieldSyncService {
     @Async
     @EventListener
     public void onChangesDetected(SyncEventPublisher.ChangesDetectedEvent event) {
+        log.info("onChangesDetected event received with {} changes",
+            event.getChanges() != null ? event.getChanges().size() : 0);
+
         if (event.getChanges() == null || event.getChanges().isEmpty()) {
+            log.info("No changes in event, skipping sync");
             return;
         }
 
-        log.debug("Changes detected, triggering sync with peers");
+        log.info("Changes detected, triggering sync with peers");
         syncWithAllPeers();
     }
 
@@ -59,12 +63,15 @@ public class FieldSyncService {
      * Called on-demand when changes are detected (event-driven).
      */
     public void syncWithAllPeers() {
+        log.info("syncWithAllPeers called, syncing={}", syncing);
+
         if (syncing) {
-            log.debug("Sync already in progress, skipping");
+            log.info("Sync already in progress, skipping");
             return;
         }
 
         List<Peer> activePeers = peerDiscoveryService.getActivePeers();
+        log.info("Found {} active peers", activePeers.size());
 
         if (activePeers.isEmpty()) {
             log.debug("No active peers found for sync");

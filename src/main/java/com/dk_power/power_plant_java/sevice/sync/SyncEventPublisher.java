@@ -27,11 +27,13 @@ public class SyncEventPublisher {
      */
     public void publishChanges(List<FieldChange> changes) {
         if (changes == null || changes.isEmpty()) {
+            log.info("publishChanges called with empty/null changes, skipping");
             return;
         }
 
-        log.debug("Publishing {} changes for sync", changes.size());
+        log.info("Publishing {} changes for sync event", changes.size());
         eventPublisher.publishEvent(new ChangesDetectedEvent(changes));
+        log.info("Event published successfully");
     }
 
     /**
