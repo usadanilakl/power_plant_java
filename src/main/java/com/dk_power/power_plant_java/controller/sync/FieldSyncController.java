@@ -4,6 +4,7 @@ import com.dk_power.power_plant_java.config.SyncConfig;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.sync.Peer;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
+import com.dk_power.power_plant_java.repository.sync.PeerRepository;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
 import com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class FieldSyncController {
     private final FieldSyncService fieldSyncService;
     private final PeerDiscoveryService peerDiscoveryService;
     private final FieldChangeRepository fieldChangeRepository;
+    private final PeerRepository peerRepository;
     private final SyncConfig syncConfig;
 
     /**
@@ -254,6 +256,78 @@ public class FieldSyncController {
             result.put("success", false);
             result.put("message", e.getMessage());
         }
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Manually register a peer (bypasses UDP discovery)
+     * POST /api/field-sync/peers/register
+     * Body: { "ip": "192.168.1.100", "port": 8082, "name": "OtherMachine" }
+     */
+    @PostMapping("/peers/register")
+    public ResponseEntity<Map<String, Object>> registerPeer(@RequestBody Map<String, Object> request) {
+        Map<String, Object> result = new HashMap<>();
+
+        String ip = (String) request.get("ip");
+        Integer port = request.get("port") != null ? ((Number) request.get("port")).intValue() : 8082;
+        String name = (String) request.get("name");
+
+        if (ip == null || ip.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "IP address is required");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        try {
+            // Try to fetch the peer's status to get their machine ID
+            String statusUrl = "http://" + ip + ":" + port + "/api/field-sync/status";
+            log.info("Attempting to register peer at {}", statusUrl);
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> peerStatus = new org.springframework.web.client.RestTemplate()
+                .getForObject(statusUrl, Map.class);
+
+            if (peerStatus == null) {
+                result.put("success", false);
+                result.put("message", "Could not connect to peer at " + ip + ":" + port);
+                return ResponseEntity.ok(result);
+            }
+
+            String machineId = (String) peerStatus.get("machineId");
+            String machineName = name != null ? name : (String) peerStatus.get("machineName");
+
+            // Register the peer
+            Peer peer = peerDiscoveryService.getAllPeers().stream()
+                .filter(p -> p.getMachineId().equals(machineId))
+                .findFirst()
+                .orElse(new Peer(machineId, machineName, ip, port));
+
+            peer.setIpAddress(ip);
+            peer.setPort(port);
+            peer.setMachineName(machineName);
+            peer.setLastSeen(Instant.now());
+            peer.setStatus(Peer.PeerStatus.ONLINE);
+
+            // Save via repository directly
+            peerRepository.save(peer);
+
+            result.put("success", true);
+            result.put("message", "Peer registered successfully");
+            result.put("peer", Map.of(
+                "machineId", machineId,
+                "machineName", machineName,
+                "ip", ip,
+                "port", port
+            ));
+
+            log.info("Manually registered peer: {} ({}) at {}:{}", machineName, machineId, ip, port);
+
+        } catch (Exception e) {
+            log.error("Failed to register peer at {}:{} - {}", ip, port, e.getMessage());
+            result.put("success", false);
+            result.put("message", "Failed to connect to peer: " + e.getMessage());
+        }
+
         return ResponseEntity.ok(result);
     }
 }
