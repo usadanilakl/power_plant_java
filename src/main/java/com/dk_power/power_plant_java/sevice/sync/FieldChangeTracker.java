@@ -136,12 +136,25 @@ public class FieldChangeTracker {
     private <T extends BaseIdEntity> List<FieldChange> trackEntityUpdate(String entityType, Long entityId, T oldEntity, T newEntity) {
         List<FieldChange> changes = new ArrayList<>();
 
+        log.info("Comparing fields for {} #{}", entityType, entityId);
+        log.info("oldEntity class: {}, newEntity class: {}", oldEntity.getClass().getName(), newEntity.getClass().getName());
+
         for (Field field : getAllFields(newEntity.getClass())) {
             if (shouldTrackField(field)) {
                 try {
                     field.setAccessible(true);
                     Object oldValue = field.get(oldEntity);
                     Object newValue = field.get(newEntity);
+
+                    // Debug: log first few fields to see what's happening
+                    if (field.getName().equals("description") || field.getName().equals("tagNumber") ||
+                        field.getName().equals("specificLocation") || field.getName().equals("tagged")) {
+                        log.info("Field '{}': old='{}' ({}), new='{}' ({}), equal={}",
+                            field.getName(),
+                            truncateValue(oldValue), oldValue != null ? oldValue.getClass().getSimpleName() : "null",
+                            truncateValue(newValue), newValue != null ? newValue.getClass().getSimpleName() : "null",
+                            areValuesEqual(oldValue, newValue));
+                    }
 
                     if (!areValuesEqual(oldValue, newValue)) {
                         FieldChange fieldChange = createFieldChange(
@@ -151,13 +164,135 @@ public class FieldChangeTracker {
                             getRelationshipType(field)
                         );
                         changes.add(fieldChange);
-                        log.trace("Field changed: {}.{} = {} -> {}", entityType, field.getName(),
+                        log.info("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, field.getName(),
                             truncateValue(oldValue), truncateValue(newValue));
                     }
                 } catch (Exception e) {
                     log.warn("Error comparing field {}: {}", field.getName(), e.getMessage());
                 }
             }
+        }
+
+        log.info("Total changes found: {}", changes.size());
+        return changes;
+    }
+
+    /**
+     * Track entity creation - called from EntityListener
+     * Public wrapper that handles saving and broadcasting
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public <T extends BaseIdEntity> List<FieldChange> trackEntityCreation(T entity) {
+        List<FieldChange> changes = new ArrayList<>();
+
+        if (entity == null || entity.getId() == null) {
+            log.warn("Cannot track creation: entity or ID is null");
+            return changes;
+        }
+
+        String entityType = entity.getClass().getSimpleName();
+        Long entityId = entity.getId();
+
+        try {
+            log.info("trackEntityCreation called for {} #{}", entityType, entityId);
+            changes.addAll(trackEntityCreation(entityType, entityId, entity));
+
+            if (!changes.isEmpty()) {
+                fieldChangeRepository.saveAll(changes);
+                log.info("Saved {} field changes for new {} #{}", changes.size(), entityType, entityId);
+
+                if (!syncContext.isSyncing()) {
+                    log.info("Publishing {} changes for sync broadcast (create)", changes.size());
+                    syncEventPublisher.publishChanges(changes);
+                } else {
+                    log.info("Skipping broadcast - creation originated from sync");
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error tracking entity creation for {} #{}: {}", entityType, entityId, e.getMessage(), e);
+        }
+
+        return changes;
+    }
+
+    /**
+     * Track entity update using map of original values - called from EntityListener
+     * Compares original database values (from Hibernate snapshot) with current entity values
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public <T extends BaseIdEntity> List<FieldChange> trackEntityUpdate(Map<String, Object> originalValues, T newEntity) {
+        List<FieldChange> changes = new ArrayList<>();
+
+        if (newEntity == null || newEntity.getId() == null) {
+            log.warn("Cannot track update: entity or ID is null");
+            return changes;
+        }
+
+        if (originalValues == null || originalValues.isEmpty()) {
+            log.warn("Cannot track update: no original values captured");
+            return changes;
+        }
+
+        String entityType = newEntity.getClass().getSimpleName();
+        Long entityId = newEntity.getId();
+
+        try {
+            log.info("trackEntityUpdate (map-based) called for {} #{} with {} original values",
+                entityType, entityId, originalValues.size());
+
+            // Compare each field
+            for (Field field : getAllFields(newEntity.getClass())) {
+                if (shouldTrackField(field)) {
+                    try {
+                        field.setAccessible(true);
+                        String fieldName = field.getName();
+                        Object oldValue = originalValues.get(fieldName);
+                        Object newValue = field.get(newEntity);
+
+                        // Debug logging for key fields
+                        if (fieldName.equals("description") || fieldName.equals("tagNumber") ||
+                            fieldName.equals("specificLocation") || fieldName.equals("tagged")) {
+                            log.info("Field '{}': oldFromMap='{}' ({}), newFromEntity='{}' ({}), equal={}",
+                                fieldName,
+                                truncateValue(oldValue), oldValue != null ? oldValue.getClass().getSimpleName() : "null",
+                                truncateValue(newValue), newValue != null ? newValue.getClass().getSimpleName() : "null",
+                                areValuesEqual(oldValue, newValue));
+                        }
+
+                        if (!areValuesEqual(oldValue, newValue)) {
+                            FieldChange fieldChange = createFieldChange(
+                                entityType, entityId, fieldName,
+                                oldValue, newValue,
+                                FieldChange.ChangeType.UPDATE,
+                                getRelationshipType(field)
+                            );
+                            changes.add(fieldChange);
+                            log.info("Field CHANGED: {}.{} = '{}' -> '{}'", entityType, fieldName,
+                                truncateValue(oldValue), truncateValue(newValue));
+                        }
+                    } catch (Exception e) {
+                        log.warn("Error comparing field {}: {}", field.getName(), e.getMessage());
+                    }
+                }
+            }
+
+            log.info("Found {} changes for {} #{}", changes.size(), entityType, entityId);
+
+            if (!changes.isEmpty()) {
+                fieldChangeRepository.saveAll(changes);
+                log.info("Saved {} field changes for {} #{}", changes.size(), entityType, entityId);
+
+                if (!syncContext.isSyncing()) {
+                    log.info("Publishing {} changes for sync broadcast (update)", changes.size());
+                    syncEventPublisher.publishChanges(changes);
+                } else {
+                    log.info("Skipping broadcast - update originated from sync");
+                }
+            } else {
+                log.info("No field changes detected for {} #{}", entityType, entityId);
+            }
+        } catch (Exception e) {
+            log.error("Error tracking entity update for {} #{}: {}", entityType, entityId, e.getMessage(), e);
         }
 
         return changes;

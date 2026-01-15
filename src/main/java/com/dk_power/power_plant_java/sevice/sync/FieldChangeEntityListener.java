@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 /**
  * JPA Entity Listener that automatically tracks field changes for sync.
  *
@@ -31,7 +33,8 @@ public class FieldChangeEntityListener {
     }
 
     /**
-     * Capture entity state before update for comparison
+     * Capture entity state before update for comparison.
+     * Uses Hibernate to get the ORIGINAL database values before the in-memory changes.
      */
     @PreUpdate
     public void preUpdate(Object entity) {
@@ -49,7 +52,7 @@ public class FieldChangeEntityListener {
             try {
                 BaseIdEntity baseEntity = (BaseIdEntity) entity;
                 // For new entities, old state is null
-                fieldChangeTracker.trackChanges(null, baseEntity);
+                fieldChangeTracker.trackEntityCreation(baseEntity);
                 log.debug("Tracked creation of {} #{}",
                     baseEntity.getClass().getSimpleName(), baseEntity.getId());
             } catch (Exception e) {
@@ -59,18 +62,22 @@ public class FieldChangeEntityListener {
     }
 
     /**
-     * Track changes after entity is updated
+     * Track changes after entity is updated.
+     * Compares the original database values (captured in @PreUpdate) with current values.
      */
     @PostUpdate
     public void postUpdate(Object entity) {
         if (fieldChangeTracker != null && entityStateCapture != null && entity instanceof BaseIdEntity) {
             try {
                 BaseIdEntity newState = (BaseIdEntity) entity;
-                BaseIdEntity oldState = entityStateCapture.getAndClearState(newState.getId());
+                Map<String, Object> originalValues = entityStateCapture.getAndClearStateMap(newState.getId());
 
-                if (oldState != null) {
-                    fieldChangeTracker.trackChanges(oldState, newState);
+                if (originalValues != null && !originalValues.isEmpty()) {
+                    fieldChangeTracker.trackEntityUpdate(originalValues, newState);
                     log.debug("Tracked update of {} #{}",
+                        newState.getClass().getSimpleName(), newState.getId());
+                } else {
+                    log.warn("No original state captured for {} #{}, cannot track changes",
                         newState.getClass().getSimpleName(), newState.getId());
                 }
             } catch (Exception e) {
