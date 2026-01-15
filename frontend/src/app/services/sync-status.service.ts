@@ -49,7 +49,7 @@ export interface TriggerSyncResponse {
 
 @Injectable({ providedIn: 'root' })
 export class SyncStatusService {
-  private apiUrl = `${environment.apiUrl}/field-sync`;
+  private apiUrl = `${environment.baseApiUrl}/api/field-sync`;
   private statusSubject = new BehaviorSubject<SyncStatus | null>(null);
   private pollingSubscription: any;
 
@@ -163,4 +163,29 @@ export class SyncStatusService {
   healthCheck(): Observable<{ status: string; machineId: string; machineName: string; timestamp: string }> {
     return this.http.get<{ status: string; machineId: string; machineName: string; timestamp: string }>(`${this.apiUrl}/health`);
   }
+
+  /**
+   * Manually register a peer (bypasses UDP discovery)
+   */
+  registerPeer(ip: string, port: number = 8082, name?: string): Observable<RegisterPeerResponse> {
+    return this.http.post<RegisterPeerResponse>(`${this.apiUrl}/peers/register`, { ip, port, name });
+  }
+
+  /**
+   * Get all changes (recent)
+   */
+  getAllChanges(): Observable<FieldChange[]> {
+    return this.http.get<FieldChange[]>(`${this.apiUrl}/changes`);
+  }
+}
+
+export interface RegisterPeerResponse {
+  success: boolean;
+  message: string;
+  peer?: {
+    machineId: string;
+    machineName: string;
+    ip: string;
+    port: number;
+  };
 }

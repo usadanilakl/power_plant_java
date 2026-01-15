@@ -21,7 +21,8 @@ export const MAIN_MENU_ITEMS: RouterMenuItems = [
     { route: '/backup', label: 'Backup' },
     { route: '/scheduler', label: 'Scheduler' },
     { route: '/permit-builder', label: 'Permit Builder' },
-    { route: '/form-designer', label: 'Form Designer' }
+    { route: '/form-designer', label: 'Form Designer' },
+    { route: '/sync', label: 'Sync Monitor' }
 ];
 
 export const FILE_NAV_MENU_ITEMS: RouterMenuItems = [
