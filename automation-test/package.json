@@ -1,0 +1,32 @@
+{
+  "name": "automation-test",
+  "version": "1.0.0",
+  "description": "E2E tests for Power Plant Java application using Playwright",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report",
+
+    "test:files": "playwright test tests/files/",
+    "test:files:headed": "playwright test tests/files/ --headed",
+
+    "test:loto-points": "playwright test tests/loto-points/",
+    "test:loto-points:headed": "playwright test tests/loto-points/ --headed",
+
+    "test:loto-standards": "playwright test tests/loto-standards/",
+    "test:loto-standards:headed": "playwright test tests/loto-standards/ --headed",
+
+    "test:one": "playwright test --headed -g",
+
+    "codegen": "playwright codegen http://localhost:4200"
+  },
+  "keywords": ["e2e", "playwright", "testing"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "typescript": "^5.9.3"
+  }
+}
