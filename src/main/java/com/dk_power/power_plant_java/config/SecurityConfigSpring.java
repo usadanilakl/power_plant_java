@@ -27,7 +27,7 @@ public class SecurityConfigSpring {
                 .csrf(csrf->csrf.ignoringRequestMatchers(
                         "/h2-console/**", "/images-api/**", "/ng/**","server/**","api/backup/**",
                         "/browser/**","/print/**", "/api-lotos/**","/red-tag-controls/**","/power-automate/**",
-                        "/work-request/**"
+                        "/work-request/**", "api/field-sync/**"
                 ))
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
