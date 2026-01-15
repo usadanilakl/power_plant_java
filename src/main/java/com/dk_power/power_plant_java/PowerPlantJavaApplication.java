@@ -21,6 +21,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.Arrays;
@@ -31,6 +32,7 @@ import java.util.List;
 @EnableJpaRepositories(basePackages = "com.dk_power.power_plant_java.repository")
 @EntityScan(basePackages = "com.dk_power.power_plant_java.entities")
 @EnableScheduling
+@EnableAsync
 public class PowerPlantJavaApplication implements CommandLineRunner {
 
     private final RedTagAutomationService redTagAutomationService;

@@ -1,5 +1,6 @@
 package com.dk_power.power_plant_java.entities.base_entities;
 
+import com.dk_power.power_plant_java.sevice.sync.FieldChangeEntityListener;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.UUID;
 //@FilterDef(name = "deletedFilter", parameters = @ParamDef(name = "isDeleted", type = Boolean.class))
 //@Filter(name = "deletedFilter", condition = "deleted = :isDeleted")
 @NoArgsConstructor
+@EntityListeners(FieldChangeEntityListener.class)
 public class BaseIdEntity {
 
     @Id

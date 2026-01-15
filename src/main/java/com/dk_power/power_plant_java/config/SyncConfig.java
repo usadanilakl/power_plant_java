@@ -1,0 +1,116 @@
+package com.dk_power.power_plant_java.config;
+
+import jakarta.annotation.PostConstruct;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.net.InetAddress;
+import java.util.Properties;
+import java.util.UUID;
+
+@Configuration
+@Getter
+@Setter
+@Slf4j
+public class SyncConfig {
+
+    @Value("${sync.machine.id:}")
+    private String machineId;
+
+    @Value("${sync.machine.name:${COMPUTERNAME:${HOSTNAME:Unknown}}}")
+    private String machineName;
+
+    @Value("${server.port:8082}")
+    private int syncPort;
+
+    @Value("${sync.discovery.port:8083}")
+    private int discoveryPort;
+
+    @Value("${sync.discovery.enabled:true}")
+    private boolean discoveryEnabled;
+
+    @Value("${sync.interval.seconds:30}")
+    private int syncIntervalSeconds;
+
+    @Value("${sync.retention.days:30}")
+    private int retentionDays;
+
+    private static final String MACHINE_ID_FILE = "./machine-id.properties";
+
+    @PostConstruct
+    public void init() {
+        // Ensure persistent machine ID across restarts
+        if (machineId == null || machineId.isEmpty()) {
+            machineId = loadOrCreateMachineId();
+        }
+
+        // Try to get computer name from environment if not set
+        if (machineName == null || machineName.isEmpty() || machineName.equals("Unknown")) {
+            machineName = getComputerName();
+        }
+
+        log.info("===========================================");
+        log.info("FIELD SYNC CONFIG INITIALIZED");
+        log.info("Machine ID: {}", machineId);
+        log.info("Machine Name: {}", machineName);
+        log.info("Sync Port: {}", syncPort);
+        log.info("Discovery Port: {}", discoveryPort);
+        log.info("Discovery Enabled: {}", discoveryEnabled);
+        log.info("Sync Interval: {} seconds", syncIntervalSeconds);
+        log.info("===========================================");
+    }
+
+    private String loadOrCreateMachineId() {
+        File file = new File(MACHINE_ID_FILE);
+        Properties props = new Properties();
+
+        if (file.exists()) {
+            try (FileInputStream fis = new FileInputStream(file)) {
+                props.load(fis);
+                String id = props.getProperty("machine.id");
+                if (id != null && !id.isEmpty()) {
+                    log.info("Loaded existing machine ID: {}", id);
+                    return id;
+                }
+            } catch (Exception e) {
+                log.error("Error loading machine ID: {}", e.getMessage());
+            }
+        }
+
+        // Generate new ID and save
+        String newId = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        props.setProperty("machine.id", newId);
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            props.store(fos, "Machine identification for field-based sync");
+            log.info("Generated new machine ID: {}", newId);
+        } catch (Exception e) {
+            log.error("Error saving machine ID: {}", e.getMessage());
+        }
+
+        return newId;
+    }
+
+    private String getComputerName() {
+        // Try environment variables first
+        String name = System.getenv("COMPUTERNAME");
+        if (name != null && !name.isEmpty()) return name;
+
+        name = System.getenv("HOSTNAME");
+        if (name != null && !name.isEmpty()) return name;
+
+        // Try getting hostname
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (Exception e) {
+            log.warn("Could not determine hostname: {}", e.getMessage());
+        }
+
+        return "Unknown-" + machineId;
+    }
+}
