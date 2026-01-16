@@ -39,6 +39,7 @@ public class CentralSyncService {
 
     private volatile boolean syncing = false;
     private volatile boolean serverAvailable = false;
+    private volatile boolean pendingSyncRequest = false; // Queue another sync if one is in progress
 
     private ServerSseClient getServerSseClient() {
         if (serverSseClient == null) {
@@ -73,6 +74,7 @@ public class CentralSyncService {
 
     /**
      * Triggered when local changes are detected.
+     * Uses small delay to ensure the transaction that created the changes has committed.
      */
     @Async
     @EventListener
@@ -85,7 +87,29 @@ public class CentralSyncService {
             return;
         }
 
-        log.info("Changes detected, syncing {} changes with central server", event.getChanges().size());
+        log.info("Changes detected ({} changes), scheduling sync with central server", event.getChanges().size());
+
+        // Small delay to ensure the transaction that created the FieldChange records has committed
+        // This prevents race condition where we query for changes before they're visible
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+
+        // If sync is in progress, wait for it to finish then retry
+        int retries = 0;
+        while (syncing && retries < 5) {
+            try {
+                Thread.sleep(1000);
+                retries++;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+
         syncWithServer();
     }
 
@@ -110,11 +134,13 @@ public class CentralSyncService {
         }
 
         if (syncing) {
-            log.debug("Sync already in progress, skipping");
+            log.debug("Sync already in progress, marking pending sync request");
+            pendingSyncRequest = true;
             return new SyncResult(false, "Sync in progress", 0, 0, 0);
         }
 
         syncing = true;
+        pendingSyncRequest = false;
         SyncResult result = new SyncResult();
 
         try {
@@ -123,6 +149,13 @@ public class CentralSyncService {
             // Get changes that haven't been synced to server yet
             List<FieldChange> outgoingChanges = fieldChangeRepository.findChangesNotSyncedTo("SERVER");
             result.setChangesSent(outgoingChanges.size());
+
+            log.info("Found {} changes to send to server", outgoingChanges.size());
+            if (!outgoingChanges.isEmpty()) {
+                log.debug("Changes: {}", outgoingChanges.stream()
+                    .map(c -> c.getEntityType() + "#" + c.getEntityId() + "." + c.getFieldName())
+                    .toList());
+            }
 
             // Prepare request
             HttpHeaders headers = new HttpHeaders();
@@ -182,6 +215,21 @@ public class CentralSyncService {
             // Changes remain in local DB, will be synced when server is available
         } finally {
             syncing = false;
+
+            // If another sync was requested while we were syncing, trigger it now
+            if (pendingSyncRequest) {
+                log.info("Processing pending sync request");
+                pendingSyncRequest = false;
+                // Use async to avoid stack overflow with recursive calls
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(200);
+                        syncWithServer();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }).start();
+            }
         }
 
         return result;
