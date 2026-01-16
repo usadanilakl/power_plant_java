@@ -1,6 +1,7 @@
 package com.dk_power.power_plant_java.sevice.sync;
 
 import com.dk_power.power_plant_java.config.SyncConfig;
+import com.dk_power.power_plant_java.controller.sync.SyncUpdateController;
 import com.dk_power.power_plant_java.entities.base_entities.BaseIdEntity;
 import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.sync.Peer;
@@ -37,6 +38,7 @@ public class FieldSyncService {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final SyncContext syncContext;
+    private final SyncUpdateController syncUpdateController;
 
     private volatile boolean syncing = false;
 
@@ -269,6 +271,11 @@ public class FieldSyncService {
 
                 int applied = applyEntityChanges(entityType, entityId, changes);
                 totalApplied += applied;
+
+                // Broadcast entity update to connected frontend clients via SSE
+                if (applied > 0) {
+                    syncUpdateController.broadcastEntityUpdate(entityType, entityId, changes);
+                }
             }
         }
 

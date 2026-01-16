@@ -27,7 +27,7 @@ public class SecurityConfigSpring {
                 .csrf(csrf->csrf.ignoringRequestMatchers(
                         "/h2-console/**", "/images-api/**", "/ng/**","server/**","api/backup/**",
                         "/browser/**","/print/**", "/api-lotos/**","/red-tag-controls/**","/power-automate/**",
-                        "/work-request/**", "/api/field-sync/**"
+                        "/work-request/**", "/api/field-sync/**", "/api/sync-updates/**"
                 ))
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
@@ -80,7 +80,7 @@ public class SecurityConfigSpring {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200", "http://localhost", "null"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
+        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token", "X-Machine-Id", "X-Machine-Name"));
         configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

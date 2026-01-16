@@ -11,6 +11,7 @@ import { tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { LotoPointLocalStorageService } from './rf-loto-point-local-storage.service';
 import { GlobalMessageService } from '../../../../shared/global-message/global-message.service';
+import { SyncUpdateService, EntityUpdateEvent } from '../../../../services/sync/sync-update.service';
 
 @Injectable({
   providedIn: 'root',
@@ -20,6 +21,7 @@ export class RfLotoPointStateService {
   private localStorage = inject(LotoPointLocalStorageService);
   private destroyRef = inject(DestroyRef);
   private messageService = inject(GlobalMessageService);
+  private syncUpdateService = inject(SyncUpdateService);
 
   private pageSize = 50;
   private currentPage = 1;
@@ -64,6 +66,54 @@ export class RfLotoPointStateService {
       .subscribe((deletedId) => {
         this.removeLotoPointById(deletedId);
       });
+
+    // Subscribe to LOTO point update events to update local state
+    this.apiService.lotoPointUpdated$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updatedLotoPoint) => {
+        this.updateLotoPointInList(updatedLotoPoint);
+      });
+
+    // Subscribe to SSE sync updates for real-time reactivity
+    this.syncUpdateService.getEntityTypeUpdates$('LotoPoint')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        this.handleSyncUpdate(event);
+      });
+  }
+
+  /**
+   * Handle sync update from SSE - reload the entity from server
+   * This is called when a LotoPoint is updated by server sync
+   */
+  private handleSyncUpdate(event: EntityUpdateEvent): void {
+    const entityId = event.entityId;
+    console.log(`SSE: LotoPoint #${entityId} was updated by sync, reloading...`);
+
+    // Reload the entity from server to get fresh data
+    this.apiService.getLotoPointById(entityId + '')
+      .pipe(
+        tap((response) => {
+          if (response.responseData) {
+            const updatedItem = LotoPointDto.fromJson(response.responseData);
+
+            // Update the item in the list
+            this.updateLotoPointInList(updatedItem);
+
+            // Show a notification if the currently selected item was updated
+            const selectedItem = this.selectedItem();
+            if (selectedItem?.id === entityId) {
+              this.messageService.showInfo('This LOTO point was updated from another machine');
+            }
+          }
+        }),
+        catchError((error) => {
+          console.error('Error reloading synced LOTO point:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   addLotoPoints(items: LotoPointDto[]): void {
@@ -74,6 +124,42 @@ export class RfLotoPointStateService {
   clearLotoPoints(): void {
     this.allLoadedLotoPointsSubject.next([]);
     this.currentPage = 1;
+  }
+
+  /**
+   * Update a LOTO point in the local list or add it if not present.
+   * Called automatically when an update event is received.
+   */
+  updateLotoPointInList(updatedItem: LotoPointDto): void {
+    if (!updatedItem.id) return;
+
+    const current = this.allLoadedLotoPointsSubject.value;
+    const index = current.findIndex(lp => lp.id === updatedItem.id);
+
+    if (index >= 0) {
+      // Update existing item in the list
+      const updated = [...current];
+      updated[index] = updatedItem;
+      this.allLoadedLotoPointsSubject.next(updated);
+    } else {
+      // Item not in current list - add it at the beginning
+      this.allLoadedLotoPointsSubject.next([updatedItem, ...current]);
+    }
+
+    // Also update selectedItem if it's the same one being edited
+    const selectedItem = this.selectedItem();
+    if (selectedItem?.id === updatedItem.id) {
+      this.selectedItem.set(updatedItem);
+    }
+
+    // Also update in selectedItems array if present
+    const selectedItems = this.selectedItems();
+    const selectedIndex = selectedItems.findIndex(item => item.id === updatedItem.id);
+    if (selectedIndex >= 0) {
+      const updatedSelected = [...selectedItems];
+      updatedSelected[selectedIndex] = updatedItem;
+      this.selectedItems.set(updatedSelected);
+    }
   }
 
   /**
