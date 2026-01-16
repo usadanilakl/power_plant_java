@@ -6,6 +6,7 @@ import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -31,10 +32,20 @@ public class CentralSyncService {
     private final RestTemplate restTemplate;
     private final SyncContext syncContext;
     private final FieldSyncService fieldSyncService;
-    private final ServerSseClient serverSseClient;
+    private final ApplicationContext applicationContext;
+
+    // Lazily fetched to avoid circular dependency
+    private ServerSseClient serverSseClient;
 
     private volatile boolean syncing = false;
     private volatile boolean serverAvailable = false;
+
+    private ServerSseClient getServerSseClient() {
+        if (serverSseClient == null) {
+            serverSseClient = applicationContext.getBean(ServerSseClient.class);
+        }
+        return serverSseClient;
+    }
 
     /**
      * Sync with central server on application startup.
@@ -199,7 +210,12 @@ public class CentralSyncService {
      * Check if SSE real-time connection is active.
      */
     public boolean isSseConnected() {
-        return serverSseClient != null && serverSseClient.isConnected();
+        try {
+            ServerSseClient client = getServerSseClient();
+            return client != null && client.isConnected();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
