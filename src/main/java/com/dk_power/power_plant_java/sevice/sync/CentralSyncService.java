@@ -31,6 +31,7 @@ public class CentralSyncService {
     private final RestTemplate restTemplate;
     private final SyncContext syncContext;
     private final FieldSyncService fieldSyncService;
+    private final ServerSseClient serverSseClient;
 
     private volatile boolean syncing = false;
     private volatile boolean serverAvailable = false;
@@ -192,6 +193,13 @@ public class CentralSyncService {
      */
     public boolean isServerAvailable() {
         return serverAvailable;
+    }
+
+    /**
+     * Check if SSE real-time connection is active.
+     */
+    public boolean isSseConnected() {
+        return serverSseClient != null && serverSseClient.isConnected();
     }
 
     /**

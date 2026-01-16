@@ -170,10 +170,13 @@ public class FieldSyncController {
         status.put("syncServerUrl", syncConfig.getSyncServerUrl());
         if (syncConfig.isServerSyncEnabled()) {
             status.put("serverAvailable", centralSyncService.isServerAvailable());
+            status.put("sseConnected", centralSyncService.isSseConnected());
             status.put("pendingServerChanges", centralSyncService.getPendingChangeCount());
             status.put("syncMode", "SERVER");
+            status.put("realtimeEnabled", centralSyncService.isSseConnected());
         } else {
             status.put("syncMode", "PEER_TO_PEER");
+            status.put("realtimeEnabled", false);
         }
 
         List<Peer> peers = peerDiscoveryService.getActivePeers();
