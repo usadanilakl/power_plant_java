@@ -50,4 +50,34 @@ public class SyncEventPublisher {
             return changes;
         }
     }
+
+    /**
+     * Event indicating a peer has come online (new or returning)
+     */
+    public static class PeerOnlineEvent {
+        private final Peer peer;
+        private final boolean isNew;
+
+        public PeerOnlineEvent(Peer peer, boolean isNew) {
+            this.peer = peer;
+            this.isNew = isNew;
+        }
+
+        public Peer getPeer() {
+            return peer;
+        }
+
+        public boolean isNew() {
+            return isNew;
+        }
+    }
+
+    /**
+     * Publish event that a peer has come online
+     */
+    public void publishPeerOnline(Peer peer, boolean isNew) {
+        log.info("Publishing peer online event: {} ({}) - {}",
+            peer.getMachineName(), peer.getMachineId(), isNew ? "NEW" : "RETURNING");
+        eventPublisher.publishEvent(new PeerOnlineEvent(peer, isNew));
+    }
 }

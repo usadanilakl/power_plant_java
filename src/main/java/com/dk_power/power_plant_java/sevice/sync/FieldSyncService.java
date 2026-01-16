@@ -10,6 +10,7 @@ import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -38,6 +39,41 @@ public class FieldSyncService {
     private final SyncContext syncContext;
 
     private volatile boolean syncing = false;
+
+    /**
+     * Sync with all known peers on application startup.
+     * Ensures this instance catches up with any changes it missed while offline.
+     */
+    @Async
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReady() {
+        log.info("Application ready - syncing with all known peers to catch up on missed changes");
+        // Small delay to ensure all services are fully initialized
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        syncWithAllPeers();
+    }
+
+    /**
+     * Sync with a peer when it comes online (new or returning).
+     * Ensures the peer gets all changes it missed while offline.
+     */
+    @Async
+    @EventListener
+    public void onPeerOnline(SyncEventPublisher.PeerOnlineEvent event) {
+        log.info("Peer online event: {} ({}) - triggering sync",
+            event.getPeer().getMachineName(), event.getPeer().getMachineId());
+        try {
+            syncWithPeer(event.getPeer());
+        } catch (Exception e) {
+            log.error("Failed to sync with newly online peer {} ({}): {}",
+                event.getPeer().getMachineName(), event.getPeer().getMachineId(), e.getMessage());
+        }
+    }
 
     /**
      * Event-driven sync: triggered when changes are detected locally.

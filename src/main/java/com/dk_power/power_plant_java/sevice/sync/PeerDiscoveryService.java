@@ -25,6 +25,7 @@ public class PeerDiscoveryService {
     private final SyncConfig syncConfig;
     private final PeerRepository peerRepository;
     private final ObjectMapper objectMapper;
+    private final SyncEventPublisher syncEventPublisher;
 
     private DatagramSocket broadcastSocket;
     private DatagramSocket listenSocket;
@@ -202,6 +203,7 @@ public class PeerDiscoveryService {
                 .orElse(new Peer(machineId, machineName, senderIp, port));
 
             boolean isNew = peer.getLastSeen() == null;
+            boolean wasOffline = !isNew && peer.getStatus() != Peer.PeerStatus.ONLINE;
 
             peer.setIpAddress(senderIp);
             peer.setPort(port);
@@ -213,6 +215,10 @@ public class PeerDiscoveryService {
 
             if (isNew) {
                 log.info("Discovered new peer: {} ({}) at {}:{}", machineName, machineId, senderIp, port);
+                syncEventPublisher.publishPeerOnline(peer, true);
+            } else if (wasOffline) {
+                log.info("Peer came back online: {} ({}) at {}:{}", machineName, machineId, senderIp, port);
+                syncEventPublisher.publishPeerOnline(peer, false);
             } else {
                 log.debug("Updated peer: {} ({}) at {}:{}", machineName, machineId, senderIp, port);
             }
