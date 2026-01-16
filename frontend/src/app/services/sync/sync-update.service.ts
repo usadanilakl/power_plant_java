@@ -1,4 +1,5 @@
-import { Injectable, inject, DestroyRef, NgZone } from '@angular/core';
+import { Injectable, inject, DestroyRef, NgZone, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Subject, BehaviorSubject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -40,6 +41,7 @@ type SyncEvent = EntityUpdateEvent | SyncCompleteEvent;
 export class SyncUpdateService {
   private ngZone = inject(NgZone);
   private destroyRef = inject(DestroyRef);
+  private platformId = inject(PLATFORM_ID);
 
   private eventSource: EventSource | null = null;
   private reconnectAttempts = 0;
@@ -62,19 +64,27 @@ export class SyncUpdateService {
   private entityTypeUpdatedSubjects = new Map<string, Subject<EntityUpdateEvent>>();
 
   constructor() {
-    // Auto-connect on service initialization
-    this.connect();
+    // Only connect in browser environment (not during SSR/prerendering)
+    if (isPlatformBrowser(this.platformId)) {
+      // Auto-connect on service initialization
+      this.connect();
 
-    // Cleanup on destroy
-    this.destroyRef.onDestroy(() => {
-      this.disconnect();
-    });
+      // Cleanup on destroy
+      this.destroyRef.onDestroy(() => {
+        this.disconnect();
+      });
+    }
   }
 
   /**
    * Connect to the SSE endpoint
    */
   connect(): void {
+    // Don't connect during SSR
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
     if (this.eventSource) {
       return; // Already connected
     }
