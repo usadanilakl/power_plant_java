@@ -1,3 +1,17 @@
+Goal:
+1. Normal operations - centralized server works with desktop and web clients. 
+2. If Server fails - desktop app on network with P2P sync
+3. If Newtork fails desktop app runs everything locally and syncs when network or server comes back.
+
+Vital functionalities:
+1. each desktop app holds all file copies (P&IDs, drawints, procedures) for full offline capabilites - but they need to sync.
+2. Computer interactions: excel read/write, desktop automation
+3. External interactions: MS Sharepoint
+
+Plan:
+create NX nomorepo with: NestJS, Electron, Angular and shared libraries. Replace springboot server with NestJS. Use RxDb field based custom sync service that would handle both sync with server and p2p. 
+
+
 Entity Refactor:
 1. Enhance Enverse to keep set number of history items and delete history items beyond set limit. 
 2. Clean up Base Entity:
