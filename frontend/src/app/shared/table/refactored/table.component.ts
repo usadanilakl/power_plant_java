@@ -143,7 +143,7 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.dataService.items.set(items);
     this.clickService.allItems.set(items);
     this.searchService.updateFilteredItems();
-    this.cdr.detectChanges();
+    this.cdr.markForCheck();
   });
 
   private flagEffects = effect(() => {

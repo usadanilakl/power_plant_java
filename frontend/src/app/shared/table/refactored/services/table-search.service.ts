@@ -1,4 +1,4 @@
-import { computed, effect, inject, Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { SearchCriteria } from '../../../../models/api/search-criteria.model';
 import { TableDataService } from './table-data.service';
 import { TableSyncService } from './table-sync.service';
@@ -154,9 +154,10 @@ export class TableSearchService {
   // }
   //======================================================================
   updateFilteredItems(): void {
+    const allItems = this.dataService.items();
+
     // Start with all items, but filter out any that are in the exclusion set.
-    const itemsToFilter = this.dataService
-      .items()
+    const itemsToFilter = allItems
       .filter((item) => !this.dataService.excludedItemIds.has(item.id));
 
     // Apply global and column-specific search queries.
@@ -192,7 +193,6 @@ export class TableSearchService {
     // This is crucial for accurate width calculation after filtering/sorting.
     setTimeout(() => {
       this.syncService.synchronizeColumnWidths();
-      // this.cdr.detectChanges();
     }, 50);
   }
 

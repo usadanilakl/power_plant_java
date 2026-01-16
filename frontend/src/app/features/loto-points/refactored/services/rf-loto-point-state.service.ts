@@ -1,4 +1,4 @@
-import { Injectable, inject, DestroyRef, signal } from '@angular/core';
+import { Injectable, inject, DestroyRef, signal, NgZone } from '@angular/core';
 import {
   LotoPointDto,
   LotoPointFieldName,
@@ -22,6 +22,7 @@ export class RfLotoPointStateService {
   private destroyRef = inject(DestroyRef);
   private messageService = inject(GlobalMessageService);
   private syncUpdateService = inject(SyncUpdateService);
+  private ngZone = inject(NgZone);
 
   private pageSize = 50;
   private currentPage = 1;
@@ -88,7 +89,6 @@ export class RfLotoPointStateService {
    */
   private handleSyncUpdate(event: EntityUpdateEvent): void {
     const entityId = event.entityId;
-    console.log(`SSE: LotoPoint #${entityId} was updated by sync, reloading...`);
 
     // Reload the entity from server to get fresh data
     this.apiService.getLotoPointById(entityId + '')
@@ -96,8 +96,6 @@ export class RfLotoPointStateService {
         tap((response) => {
           if (response.responseData) {
             const updatedItem = LotoPointDto.fromJson(response.responseData);
-
-            // Update the item in the list
             this.updateLotoPointInList(updatedItem);
 
             // Show a notification if the currently selected item was updated
@@ -131,35 +129,43 @@ export class RfLotoPointStateService {
    * Called automatically when an update event is received.
    */
   updateLotoPointInList(updatedItem: LotoPointDto): void {
-    if (!updatedItem.id) return;
-
-    const current = this.allLoadedLotoPointsSubject.value;
-    const index = current.findIndex(lp => lp.id === updatedItem.id);
-
-    if (index >= 0) {
-      // Update existing item in the list
-      const updated = [...current];
-      updated[index] = updatedItem;
-      this.allLoadedLotoPointsSubject.next(updated);
-    } else {
-      // Item not in current list - add it at the beginning
-      this.allLoadedLotoPointsSubject.next([updatedItem, ...current]);
+    if (!updatedItem.id) {
+      return;
     }
 
-    // Also update selectedItem if it's the same one being edited
-    const selectedItem = this.selectedItem();
-    if (selectedItem?.id === updatedItem.id) {
-      this.selectedItem.set(updatedItem);
-    }
+    // Ensure we run inside Angular zone for proper change detection
+    this.ngZone.run(() => {
+      const current = this.allLoadedLotoPointsSubject.value;
+      const index = current.findIndex(lp => lp.id === updatedItem.id);
 
-    // Also update in selectedItems array if present
-    const selectedItems = this.selectedItems();
-    const selectedIndex = selectedItems.findIndex(item => item.id === updatedItem.id);
-    if (selectedIndex >= 0) {
-      const updatedSelected = [...selectedItems];
-      updatedSelected[selectedIndex] = updatedItem;
-      this.selectedItems.set(updatedSelected);
-    }
+      if (index >= 0) {
+        // Update existing item in the list - create new array with new object
+        const updated = [...current];
+        // Add a version marker to force cdkVirtualFor to re-render
+        (updatedItem as any)._version = Date.now();
+        updated[index] = updatedItem;
+        this.allLoadedLotoPointsSubject.next(updated);
+      } else {
+        // Item not in current list - add it at the beginning
+        (updatedItem as any)._version = Date.now();
+        this.allLoadedLotoPointsSubject.next([updatedItem, ...current]);
+      }
+
+      // Also update selectedItem if it's the same one being edited
+      const selectedItem = this.selectedItem();
+      if (selectedItem?.id === updatedItem.id) {
+        this.selectedItem.set(updatedItem);
+      }
+
+      // Also update in selectedItems array if present
+      const selectedItems = this.selectedItems();
+      const selectedIndex = selectedItems.findIndex(item => item.id === updatedItem.id);
+      if (selectedIndex >= 0) {
+        const updatedSelected = [...selectedItems];
+        updatedSelected[selectedIndex] = updatedItem;
+        this.selectedItems.set(updatedSelected);
+      }
+    });
   }
 
   /**

@@ -19,6 +19,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
@@ -261,6 +263,9 @@ public class FieldSyncService {
 
         int totalApplied = 0;
 
+        // Collect broadcasts to send AFTER transaction commits
+        List<Runnable> pendingBroadcasts = new ArrayList<>();
+
         // Process each entity's changes
         for (Map.Entry<String, Map<Long, List<FieldChange>>> entityEntry : changesByEntity.entrySet()) {
             String entityType = entityEntry.getKey();
@@ -272,11 +277,30 @@ public class FieldSyncService {
                 int applied = applyEntityChanges(entityType, entityId, changes);
                 totalApplied += applied;
 
-                // Broadcast entity update to connected frontend clients via SSE
+                // Queue broadcast for after transaction commits
                 if (applied > 0) {
-                    syncUpdateController.broadcastEntityUpdate(entityType, entityId, changes);
+                    // Capture values for lambda
+                    final String type = entityType;
+                    final Long id = entityId;
+                    final List<FieldChange> changeList = new ArrayList<>(changes);
+                    pendingBroadcasts.add(() -> syncUpdateController.broadcastEntityUpdate(type, id, changeList));
                 }
             }
+        }
+
+        // Register callback to broadcast AFTER transaction commits
+        // This ensures frontend API calls will see the committed data
+        if (!pendingBroadcasts.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    log.debug("Transaction committed, broadcasting {} entity updates", pendingBroadcasts.size());
+                    pendingBroadcasts.forEach(Runnable::run);
+                }
+            });
+        } else {
+            // No active transaction synchronization, broadcast immediately (fallback)
+            pendingBroadcasts.forEach(Runnable::run);
         }
 
         return totalApplied;

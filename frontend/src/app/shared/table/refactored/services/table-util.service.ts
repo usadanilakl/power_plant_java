@@ -65,7 +65,14 @@ export class TableUtilService {
   }
 
   trackByItemId(index: number, item: any): any {
-    return item.id || index;
+    // Return the item's id combined with a version marker (if available).
+    // This ensures cdkVirtualFor re-renders the row when the item is updated,
+    // not just when it's added/removed/moved.
+    if (!item) return index;
+
+    // Use _version (internal marker), updatedAt, or modifiedAt if available
+    const version = item._version || item.updatedAt || item.modifiedAt || item.lastModified || '';
+    return version ? `${item.id}-${version}` : item.id;
   }
 
   getUniqueColumnOptionsMap(
