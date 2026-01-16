@@ -5,6 +5,7 @@ import com.dk_power.power_plant_java.entities.sync.FieldChange;
 import com.dk_power.power_plant_java.entities.sync.Peer;
 import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.repository.sync.PeerRepository;
+import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
 import com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ import java.util.Map;
 public class FieldSyncController {
 
     private final FieldSyncService fieldSyncService;
+    private final CentralSyncService centralSyncService;
     private final PeerDiscoveryService peerDiscoveryService;
     private final FieldChangeRepository fieldChangeRepository;
     private final PeerRepository peerRepository;
@@ -163,6 +165,17 @@ public class FieldSyncController {
         status.put("discoveryEnabled", syncConfig.isDiscoveryEnabled());
         status.put("syncIntervalSeconds", syncConfig.getSyncIntervalSeconds());
 
+        // Server sync status
+        status.put("serverSyncEnabled", syncConfig.isServerSyncEnabled());
+        status.put("syncServerUrl", syncConfig.getSyncServerUrl());
+        if (syncConfig.isServerSyncEnabled()) {
+            status.put("serverAvailable", centralSyncService.isServerAvailable());
+            status.put("pendingServerChanges", centralSyncService.getPendingChangeCount());
+            status.put("syncMode", "SERVER");
+        } else {
+            status.put("syncMode", "PEER_TO_PEER");
+        }
+
         List<Peer> peers = peerDiscoveryService.getActivePeers();
         status.put("activePeers", peers);
         status.put("peerCount", peers.size());
@@ -174,7 +187,7 @@ public class FieldSyncController {
     }
 
     /**
-     * Manually trigger sync with all peers
+     * Manually trigger sync (with server or peers depending on mode)
      * POST /api/field-sync/trigger
      */
     @PostMapping("/trigger")
@@ -182,10 +195,23 @@ public class FieldSyncController {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            fieldSyncService.syncWithAllPeers();
-            result.put("success", true);
-            result.put("message", "Sync triggered successfully");
-            result.put("activePeers", peerDiscoveryService.getActivePeers().size());
+            if (syncConfig.isServerSyncEnabled()) {
+                // Server sync mode
+                CentralSyncService.SyncResult syncResult = centralSyncService.syncWithServer();
+                result.put("success", syncResult.isSuccess());
+                result.put("message", syncResult.isSuccess() ? "Server sync triggered successfully" : syncResult.getErrorMessage());
+                result.put("changesSent", syncResult.getChangesSent());
+                result.put("changesReceived", syncResult.getChangesReceived());
+                result.put("changesApplied", syncResult.getChangesApplied());
+                result.put("syncMode", "SERVER");
+            } else {
+                // Peer-to-peer mode
+                fieldSyncService.syncWithAllPeers();
+                result.put("success", true);
+                result.put("message", "Peer sync triggered successfully");
+                result.put("activePeers", peerDiscoveryService.getActivePeers().size());
+                result.put("syncMode", "PEER_TO_PEER");
+            }
         } catch (Exception e) {
             result.put("success", false);
             result.put("message", "Sync failed: " + e.getMessage());

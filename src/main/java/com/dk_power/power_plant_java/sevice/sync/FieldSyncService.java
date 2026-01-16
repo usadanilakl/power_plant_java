@@ -42,11 +42,16 @@ public class FieldSyncService {
 
     /**
      * Sync with all known peers on application startup.
-     * Ensures this instance catches up with any changes it missed while offline.
+     * Only runs if server sync is disabled (peer-to-peer mode).
      */
     @Async
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
+        if (syncConfig.isServerSyncEnabled()) {
+            log.info("Server sync enabled - skipping peer-to-peer startup sync");
+            return;
+        }
+
         log.info("Application ready - syncing with all known peers to catch up on missed changes");
         // Small delay to ensure all services are fully initialized
         try {
@@ -60,11 +65,15 @@ public class FieldSyncService {
 
     /**
      * Sync with a peer when it comes online (new or returning).
-     * Ensures the peer gets all changes it missed while offline.
+     * Only runs if server sync is disabled (peer-to-peer mode).
      */
     @Async
     @EventListener
     public void onPeerOnline(SyncEventPublisher.PeerOnlineEvent event) {
+        if (syncConfig.isServerSyncEnabled()) {
+            return; // Server sync handles this
+        }
+
         log.info("Peer online event: {} ({}) - triggering sync",
             event.getPeer().getMachineName(), event.getPeer().getMachineId());
         try {
@@ -77,11 +86,15 @@ public class FieldSyncService {
 
     /**
      * Event-driven sync: triggered when changes are detected locally.
-     * This replaces the polling-based approach for immediate sync.
+     * Only runs if server sync is disabled (peer-to-peer mode).
      */
     @Async
     @EventListener
     public void onChangesDetected(SyncEventPublisher.ChangesDetectedEvent event) {
+        if (syncConfig.isServerSyncEnabled()) {
+            return; // CentralSyncService handles this
+        }
+
         log.info("onChangesDetected event received with {} changes",
             event.getChanges() != null ? event.getChanges().size() : 0);
 

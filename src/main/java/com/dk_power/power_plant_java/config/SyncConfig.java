@@ -41,6 +41,20 @@ public class SyncConfig {
     @Value("${sync.retention.days:30}")
     private int retentionDays;
 
+    // Central sync server configuration
+    @Value("${sync.server.url:}")
+    private String syncServerUrl;
+
+    @Value("${sync.server.enabled:false}")
+    private boolean syncServerEnabled;
+
+    /**
+     * Check if central server sync is enabled and configured.
+     */
+    public boolean isServerSyncEnabled() {
+        return syncServerEnabled && syncServerUrl != null && !syncServerUrl.isEmpty();
+    }
+
     private static final String MACHINE_ID_FILE = "./machine-id.properties";
 
     @PostConstruct
@@ -63,7 +77,42 @@ public class SyncConfig {
         log.info("Discovery Port: {}", discoveryPort);
         log.info("Discovery Enabled: {}", discoveryEnabled);
         log.info("Sync Interval: {} seconds", syncIntervalSeconds);
+        log.info("Server Sync Enabled: {}", syncServerEnabled);
+        log.info("Sync Server URL: {}", syncServerUrl);
         log.info("===========================================");
+
+        // Try to configure firewall for sync ports (Windows only)
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            configureWindowsFirewall();
+        }
+    }
+
+    private void configureWindowsFirewall() {
+        try {
+            // Add TCP rule for HTTP sync
+            String tcpRuleName = "PowerPlantSync_TCP_" + syncPort;
+            ProcessBuilder tcpBuilder = new ProcessBuilder(
+                "netsh", "advfirewall", "firewall", "add", "rule",
+                "name=" + tcpRuleName, "dir=in", "action=allow", "protocol=TCP", "localport=" + syncPort);
+            Process tcpProcess = tcpBuilder.start();
+            int tcpResult = tcpProcess.waitFor();
+
+            // Add UDP rule for discovery
+            String udpRuleName = "PowerPlantSync_UDP_" + discoveryPort;
+            ProcessBuilder udpBuilder = new ProcessBuilder(
+                "netsh", "advfirewall", "firewall", "add", "rule",
+                "name=" + udpRuleName, "dir=in", "action=allow", "protocol=UDP", "localport=" + discoveryPort);
+            Process udpProcess = udpBuilder.start();
+            int udpResult = udpProcess.waitFor();
+
+            if (tcpResult == 0 || udpResult == 0) {
+                log.info("Firewall rules configured for sync ports (TCP:{}, UDP:{})", syncPort, discoveryPort);
+            } else {
+                log.debug("Firewall rules may already exist or require admin privileges");
+            }
+        } catch (Exception e) {
+            log.debug("Could not configure firewall automatically: {} (this is normal if not running as admin)", e.getMessage());
+        }
     }
 
     private String loadOrCreateMachineId() {
