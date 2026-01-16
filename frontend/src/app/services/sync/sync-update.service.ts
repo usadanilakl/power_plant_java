@@ -90,7 +90,7 @@ export class SyncUpdateService {
     }
 
     this.connectionStateSubject.next('connecting');
-    const url = `${environment.apiUrl}/sync-updates/stream`;
+    const url = `${environment.baseApiUrl}/api/sync-updates/stream`;
 
     try {
       this.eventSource = new EventSource(url);
