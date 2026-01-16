@@ -1,0 +1,254 @@
+<div class="sync-testing-container">
+  <h1>Sync Testing Dashboard</h1>
+
+  <!-- Message Banner -->
+  <div *ngIf="message" class="message-banner" [ngClass]="'message-' + messageType">
+    {{ message }}
+    <button class="close-btn" (click)="message = ''">&times;</button>
+  </div>
+
+  <!-- Metrics Panel -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Sync Metrics</h2>
+      <div class="header-actions">
+        <label class="checkbox-label">
+          <input type="checkbox" [(ngModel)]="autoRefresh" />
+          Auto-refresh
+        </label>
+        <button class="btn btn-secondary btn-sm" (click)="loadMetrics()" [disabled]="loading">
+          Refresh
+        </button>
+      </div>
+    </div>
+    <div class="metrics-grid" *ngIf="metrics">
+      <div class="metric-card">
+        <span class="metric-label">Machine ID</span>
+        <span class="metric-value">{{ metrics.machineId }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Machine Name</span>
+        <span class="metric-value">{{ metrics.machineName }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Sync Mode</span>
+        <span class="metric-value" [ngClass]="metrics.serverSyncEnabled ? 'status-online' : 'status-offline'">
+          {{ metrics.serverSyncEnabled ? 'Server Sync' : 'Peer-to-Peer' }}
+        </span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Test Data Count</span>
+        <span class="metric-value highlight">{{ metrics.testDataCount }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Pending Changes</span>
+        <span class="metric-value" [ngClass]="metrics.pendingChanges > 0 ? 'status-warning' : ''">
+          {{ metrics.pendingChanges }}
+        </span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Total Changes</span>
+        <span class="metric-value">{{ metrics.totalChanges }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Total Generated</span>
+        <span class="metric-value">{{ metrics.totalGenerated }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Total Cleared</span>
+        <span class="metric-value">{{ metrics.totalCleared }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Sync Tests Run</span>
+        <span class="metric-value">{{ metrics.totalSyncTests }}</span>
+      </div>
+    </div>
+    <div *ngIf="!metrics" class="loading-text">Loading metrics...</div>
+  </div>
+
+  <!-- Entity Counts -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Existing Entity Counts</h2>
+    </div>
+    <div class="entity-counts-grid">
+      <div class="entity-card" *ngFor="let entry of entityCounts | keyvalue">
+        <span class="entity-name">{{ entry.key }}</span>
+        <span class="entity-count">{{ entry.value }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Controls -->
+  <div class="test-controls-section">
+    <!-- Synthetic Tests -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Synthetic Data Tests</h2>
+      </div>
+      <div class="form-group">
+        <label>Test Type</label>
+        <select [(ngModel)]="selectedTestType" class="form-control">
+          <option value="BULK_CREATE">Bulk Create</option>
+          <option value="BULK_UPDATE">Bulk Update</option>
+          <option value="BULK_DELETE">Bulk Delete</option>
+          <option value="MIXED">Mixed</option>
+          <option value="STRESS">Stress Test</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Count</label>
+        <input type="number" [(ngModel)]="bulkCount" class="form-control" min="1" max="100000" />
+      </div>
+      <div class="button-group">
+        <button class="btn btn-primary" (click)="generateTestData()" [disabled]="loading">
+          Generate Test Data
+        </button>
+        <button class="btn btn-success" (click)="runFullCycle()" [disabled]="loading">
+          Run Full Cycle
+        </button>
+      </div>
+
+      <hr />
+
+      <h3>Mixed Changes</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Creates</label>
+          <input type="number" [(ngModel)]="mixedCreates" class="form-control" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Updates</label>
+          <input type="number" [(ngModel)]="mixedUpdates" class="form-control" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Deletes</label>
+          <input type="number" [(ngModel)]="mixedDeletes" class="form-control" min="0" />
+        </div>
+      </div>
+      <button class="btn btn-primary" (click)="generateMixedChanges()" [disabled]="loading">
+        Generate Mixed Changes
+      </button>
+    </div>
+
+    <!-- Existing Entity Tests -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Existing Entity Tests</h2>
+      </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" [(ngModel)]="revertChanges" />
+          Revert changes after test
+        </label>
+      </div>
+      <div class="entity-test-buttons">
+        <button class="btn btn-warning" (click)="testEquipment()" [disabled]="loading">
+          Test Equipment ({{ entityCounts['Equipment'] || 0 }})
+        </button>
+        <button class="btn btn-warning" (click)="testLotoPoints()" [disabled]="loading">
+          Test LOTO Points ({{ entityCounts['LotoPoint'] || 0 }})
+        </button>
+        <button class="btn btn-warning" (click)="testFileObjects()" [disabled]="loading">
+          Test File Objects ({{ entityCounts['FileObject'] || 0 }})
+        </button>
+        <button class="btn btn-danger" (click)="testAllEntities()" [disabled]="loading">
+          Test ALL Entities
+        </button>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Actions</h2>
+      </div>
+      <div class="button-group">
+        <button class="btn btn-success" (click)="triggerSync()" [disabled]="loading">
+          Trigger Sync Now
+        </button>
+        <button class="btn btn-danger" (click)="clearTestData()" [disabled]="loading">
+          Clear All Test Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Last Result -->
+  <div class="card" *ngIf="lastResult">
+    <div class="card-header">
+      <h2>Last Result</h2>
+    </div>
+    <div class="result-details">
+      <div class="result-row">
+        <span class="result-label">Status:</span>
+        <span [ngClass]="lastResult.success ? 'status-success' : 'status-error'">
+          {{ lastResult.success ? 'Success' : 'Failed' }}
+        </span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Message:</span>
+        <span>{{ lastResult.message }}</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Changes:</span>
+        <span>{{ lastResult.count }}</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Duration:</span>
+        <span>{{ formatDuration(lastResult.durationMs) }}</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Rate:</span>
+        <span>{{ formatRate(lastResult.changesPerSecond) }} changes/sec</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test History -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Test History</h2>
+      <button class="btn btn-secondary btn-sm" (click)="loadHistory()" [disabled]="loading">
+        Refresh
+      </button>
+    </div>
+    <div class="table-container" *ngIf="testHistory.length > 0">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Operation</th>
+            <th>Type</th>
+            <th>Count</th>
+            <th>Duration</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let run of testHistory">
+            <td>{{ formatTimestamp(run.timestamp) }}</td>
+            <td>{{ run.operation }}</td>
+            <td>{{ run.testType }}</td>
+            <td>{{ run.count }}</td>
+            <td>{{ formatDuration(run.durationMs) }}</td>
+            <td>
+              <span [ngClass]="getStatusClass(run.success)">
+                {{ run.success ? 'Success' : 'Failed' }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div *ngIf="testHistory.length === 0" class="empty-state">
+      No test history yet. Run a test to see results here.
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="spinner"></div>
+    <span>Processing...</span>
+  </div>
+</div>

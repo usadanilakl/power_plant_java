@@ -16,19 +16,23 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * SSE Client that connects to the sync server and receives real-time change notifications.
  *
  * Key features:
  * - Automatic reconnection with exponential backoff
+ * - Circuit breaker pattern: backs off after too many failures
  * - Infinite loop prevention: changes received via SSE are marked to prevent re-broadcasting
+ * - Connection health monitoring
  * - Graceful shutdown
  */
 @Service
@@ -45,11 +49,18 @@ public class ServerSseClient {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean shouldReconnect = new AtomicBoolean(true);
     private final AtomicInteger reconnectAttempts = new AtomicInteger(0);
+    private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
+    private final AtomicLong totalEventsReceived = new AtomicLong(0);
+    private final AtomicLong totalChangesApplied = new AtomicLong(0);
 
     private static final int MAX_RECONNECT_DELAY_SECONDS = 60;
     private static final int BASE_RECONNECT_DELAY_SECONDS = 2;
+    private static final int CIRCUIT_BREAKER_THRESHOLD = 10;
+    private static final int CIRCUIT_BREAKER_RESET_DELAY_MINUTES = 5;
 
     private volatile HttpURLConnection currentConnection;
+    private volatile Instant lastSuccessfulConnection;
+    private volatile Instant circuitBreakerOpenedAt;
 
     /**
      * Start SSE subscription after application is ready.
@@ -87,20 +98,40 @@ public class ServerSseClient {
     }
 
     /**
-     * Main connection loop with automatic reconnection.
+     * Main connection loop with automatic reconnection and circuit breaker.
      */
     private void connectAndListen() {
         while (shouldReconnect.get()) {
+            // Circuit breaker check
+            if (isCircuitBreakerOpen()) {
+                log.warn("Circuit breaker is open, waiting before retry...");
+                try {
+                    Thread.sleep(CIRCUIT_BREAKER_RESET_DELAY_MINUTES * 60 * 1000L);
+                    resetCircuitBreaker();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                continue;
+            }
+
             try {
                 running.set(true);
                 connect();
+                // Connection ended normally (server closed it)
+                consecutiveFailures.set(0);
             } catch (Exception e) {
                 log.warn("SSE connection error: {}", e.getMessage());
+                int failures = consecutiveFailures.incrementAndGet();
+                if (failures >= CIRCUIT_BREAKER_THRESHOLD) {
+                    circuitBreakerOpenedAt = Instant.now();
+                    log.error("Circuit breaker opened after {} consecutive failures", failures);
+                }
             } finally {
                 running.set(false);
             }
 
-            if (shouldReconnect.get()) {
+            if (shouldReconnect.get() && !isCircuitBreakerOpen()) {
                 int delay = calculateReconnectDelay();
                 log.info("Reconnecting to SSE in {} seconds...", delay);
                 try {
@@ -112,6 +143,30 @@ public class ServerSseClient {
             }
         }
         log.info("SSE client stopped");
+    }
+
+    /**
+     * Check if circuit breaker is open.
+     */
+    private boolean isCircuitBreakerOpen() {
+        if (circuitBreakerOpenedAt == null) {
+            return false;
+        }
+        // Auto-reset after the delay period
+        if (Instant.now().isAfter(circuitBreakerOpenedAt.plusSeconds(CIRCUIT_BREAKER_RESET_DELAY_MINUTES * 60L))) {
+            resetCircuitBreaker();
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Reset the circuit breaker.
+     */
+    public void resetCircuitBreaker() {
+        circuitBreakerOpenedAt = null;
+        consecutiveFailures.set(0);
+        log.info("Circuit breaker reset");
     }
 
     /**
@@ -137,6 +192,8 @@ public class ServerSseClient {
 
         log.info("SSE connection established successfully");
         reconnectAttempts.set(0); // Reset reconnect attempts on successful connection
+        consecutiveFailures.set(0); // Reset failures on successful connection
+        lastSuccessfulConnection = Instant.now();
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(currentConnection.getInputStream()))) {
@@ -197,11 +254,12 @@ public class ServerSseClient {
      */
     private void handleSyncEvent(String data) {
         try {
+            totalEventsReceived.incrementAndGet();
+
             // Parse the SSE data
             Map<String, Object> eventData = objectMapper.readValue(data, new TypeReference<>() {});
 
             String originMachineId = (String) eventData.get("originMachineId");
-            Integer count = (Integer) eventData.get("count");
 
             // Double-check: don't process our own changes (server should already filter this)
             if (syncConfig.getMachineId().equals(originMachineId)) {
@@ -226,6 +284,7 @@ public class ServerSseClient {
             syncContext.startSync();
             try {
                 int applied = fieldSyncService.applyIncomingChanges(changes);
+                totalChangesApplied.addAndGet(applied);
                 log.info("SSE: Applied {} of {} changes from {}", applied, changes.size(), originMachineId);
             } finally {
                 syncContext.endSync();
@@ -276,11 +335,41 @@ public class ServerSseClient {
     }
 
     /**
+     * Get SSE client metrics for monitoring.
+     */
+    public SseClientMetrics getMetrics() {
+        return new SseClientMetrics(
+            isConnected(),
+            isCircuitBreakerOpen(),
+            consecutiveFailures.get(),
+            reconnectAttempts.get(),
+            totalEventsReceived.get(),
+            totalChangesApplied.get(),
+            lastSuccessfulConnection
+        );
+    }
+
+    /**
      * Graceful shutdown.
      */
     @PreDestroy
     public void shutdown() {
         stop();
         executor.shutdownNow();
+    }
+
+    /**
+     * SSE Client metrics for monitoring.
+     */
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    public static class SseClientMetrics {
+        private boolean connected;
+        private boolean circuitBreakerOpen;
+        private int consecutiveFailures;
+        private int reconnectAttempts;
+        private long totalEventsReceived;
+        private long totalChangesApplied;
+        private Instant lastSuccessfulConnection;
     }
 }

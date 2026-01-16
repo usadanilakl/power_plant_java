@@ -304,6 +304,126 @@ public class FieldSyncController {
     }
 
     /**
+     * Get detailed sync metrics for monitoring.
+     * GET /api/field-sync/metrics
+     */
+    @GetMapping("/metrics")
+    public ResponseEntity<Map<String, Object>> getMetrics() {
+        Map<String, Object> metrics = new HashMap<>();
+
+        // Central sync metrics
+        if (syncConfig.isServerSyncEnabled()) {
+            CentralSyncService.SyncMetrics syncMetrics = centralSyncService.getMetrics();
+            metrics.put("syncMetrics", Map.of(
+                "totalChangesSent", syncMetrics.getTotalChangesSent(),
+                "totalChangesReceived", syncMetrics.getTotalChangesReceived(),
+                "consecutiveFailures", syncMetrics.getConsecutiveFailures(),
+                "syncInProgress", syncMetrics.isSyncInProgress(),
+                "serverAvailable", syncMetrics.isServerAvailable(),
+                "sseConnected", syncMetrics.isSseConnected(),
+                "pendingChanges", syncMetrics.getPendingChanges()
+            ));
+        }
+
+        // Database stats
+        metrics.put("totalChangesInDb", fieldChangeRepository.count());
+        metrics.put("pendingToServer", fieldChangeRepository.countPendingChangesFor("SERVER"));
+
+        return ResponseEntity.ok(metrics);
+    }
+
+    /**
+     * Generate test data for sync testing.
+     * POST /api/field-sync/test/generate?count=1000
+     */
+    @PostMapping("/test/generate")
+    public ResponseEntity<Map<String, Object>> generateTestData(
+            @RequestParam(defaultValue = "100") int count) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            long startTime = System.currentTimeMillis();
+
+            for (int i = 0; i < count; i++) {
+                FieldChange change = new FieldChange();
+                change.setEntityType("TestEntity");
+                change.setEntityId((long) (i % 100)); // 100 different entities
+                change.setFieldName("testField" + (i % 10)); // 10 different fields
+                change.setOldValue("\"oldValue" + i + "\"");
+                change.setNewValue("\"newValue" + i + "\"");
+                change.setTimestamp(Instant.now().minusSeconds(count - i)); // Spread over time
+                change.setOriginMachineId(syncConfig.getMachineId());
+                change.setOriginMachineName(syncConfig.getMachineName());
+                change.setChangeType(FieldChange.ChangeType.UPDATE);
+                change.setSyncedToMachines(""); // Not synced to anyone yet
+                fieldChangeRepository.save(change);
+            }
+
+            long duration = System.currentTimeMillis() - startTime;
+
+            result.put("success", true);
+            result.put("message", "Generated " + count + " test changes");
+            result.put("count", count);
+            result.put("durationMs", duration);
+            result.put("pendingToServer", fieldChangeRepository.countPendingChangesFor("SERVER"));
+
+            log.info("Generated {} test changes in {}ms", count, duration);
+
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Failed: " + e.getMessage());
+            log.error("Failed to generate test data", e);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Clear test data.
+     * DELETE /api/field-sync/test/clear
+     */
+    @DeleteMapping("/test/clear")
+    public ResponseEntity<Map<String, Object>> clearTestData() {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            long countBefore = fieldChangeRepository.count();
+
+            // Delete all TestEntity changes
+            List<FieldChange> testChanges = fieldChangeRepository.findAll().stream()
+                .filter(c -> "TestEntity".equals(c.getEntityType()))
+                .toList();
+
+            fieldChangeRepository.deleteAll(testChanges);
+
+            result.put("success", true);
+            result.put("deleted", testChanges.size());
+            result.put("remaining", fieldChangeRepository.count());
+
+            log.info("Cleared {} test changes", testChanges.size());
+
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Failed: " + e.getMessage());
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Reset circuit breaker (manual intervention).
+     * POST /api/field-sync/reset-circuit-breaker
+     */
+    @PostMapping("/reset-circuit-breaker")
+    public ResponseEntity<Map<String, Object>> resetCircuitBreaker() {
+        Map<String, Object> result = new HashMap<>();
+        centralSyncService.resetCircuitBreaker();
+        result.put("success", true);
+        result.put("message", "Circuit breaker reset");
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Manually register a peer (bypasses UDP discovery)
      * POST /api/field-sync/peers/register
      * Body: { "ip": "192.168.1.100", "port": 8082, "name": "OtherMachine" }

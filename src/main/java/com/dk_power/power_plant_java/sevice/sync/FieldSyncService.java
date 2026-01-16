@@ -251,10 +251,11 @@ public class FieldSyncService {
     }
 
     /**
-     * Internal method that actually applies the changes
+     * Internal method that actually applies the changes.
+     * Uses batch queries for conflict resolution to eliminate N+1 query problem.
      */
     private int applyIncomingChangesInternal(List<FieldChange> incomingChanges) {
-        // Group changes by entity
+        // Group changes by entity type first
         Map<String, Map<Long, List<FieldChange>>> changesByEntity = incomingChanges.stream()
             .collect(Collectors.groupingBy(
                 FieldChange::getEntityType,
@@ -266,15 +267,20 @@ public class FieldSyncService {
         // Collect broadcasts to send AFTER transaction commits
         List<Runnable> pendingBroadcasts = new ArrayList<>();
 
-        // Process each entity's changes
+        // Process each entity type with batch conflict resolution
         for (Map.Entry<String, Map<Long, List<FieldChange>>> entityEntry : changesByEntity.entrySet()) {
             String entityType = entityEntry.getKey();
+            Map<Long, List<FieldChange>> changesById = entityEntry.getValue();
 
-            for (Map.Entry<Long, List<FieldChange>> idEntry : entityEntry.getValue().entrySet()) {
+            // Batch fetch latest changes for all entities of this type (eliminates N+1)
+            List<Long> entityIds = new ArrayList<>(changesById.keySet());
+            Map<String, FieldChange> latestChangesMap = batchFetchLatestChanges(entityType, entityIds);
+
+            for (Map.Entry<Long, List<FieldChange>> idEntry : changesById.entrySet()) {
                 Long entityId = idEntry.getKey();
                 List<FieldChange> changes = idEntry.getValue();
 
-                int applied = applyEntityChanges(entityType, entityId, changes);
+                int applied = applyEntityChangesBatched(entityType, entityId, changes, latestChangesMap);
                 totalApplied += applied;
 
                 // Queue broadcast for after transaction commits
@@ -307,10 +313,31 @@ public class FieldSyncService {
     }
 
     /**
-     * Apply changes to a single entity using LWW per field
+     * Batch fetch latest changes for multiple entities of the same type.
+     * Returns a map keyed by "entityType:entityId:fieldName".
+     */
+    private Map<String, FieldChange> batchFetchLatestChanges(String entityType, List<Long> entityIds) {
+        if (entityIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<FieldChange> latestChanges = fieldChangeRepository.findLatestChangesForEntities(entityType, entityIds);
+
+        return latestChanges.stream()
+            .collect(Collectors.toMap(
+                fc -> fc.getEntityType() + ":" + fc.getEntityId() + ":" + fc.getFieldName(),
+                fc -> fc,
+                (a, b) -> a.getTimestamp().isAfter(b.getTimestamp()) ? a : b // Keep newer on conflict
+            ));
+    }
+
+    /**
+     * Apply changes to a single entity using LWW per field with pre-fetched latest changes.
+     * This version uses a pre-populated map to avoid N+1 queries.
      */
     @SuppressWarnings("unchecked")
-    private int applyEntityChanges(String entityType, Long entityId, List<FieldChange> changes) {
+    private int applyEntityChangesBatched(String entityType, Long entityId, List<FieldChange> changes,
+                                          Map<String, FieldChange> latestChangesMap) {
         int appliedCount = 0;
 
         try {
@@ -356,15 +383,15 @@ public class FieldSyncService {
                 return 0;
             }
 
-            // Apply field changes using LWW
+            // Apply field changes using LWW with pre-fetched map
             boolean modified = false;
             for (FieldChange change : changes) {
                 if ("_entity_".equals(change.getFieldName())) {
                     continue; // Skip entity-level markers
                 }
 
-                // Check if we should apply this change (LWW)
-                if (shouldApplyChange(change)) {
+                // Check if we should apply this change (LWW) using pre-fetched map
+                if (shouldApplyChangeBatched(change, latestChangesMap)) {
                     boolean applied = applyFieldChange(entity, change);
                     if (applied) {
                         modified = true;
@@ -390,7 +417,33 @@ public class FieldSyncService {
     }
 
     /**
-     * Determine if an incoming change should be applied based on LWW
+     * Determine if an incoming change should be applied based on LWW using pre-fetched map.
+     * This eliminates the N+1 query problem by using batch-loaded data.
+     */
+    private boolean shouldApplyChangeBatched(FieldChange incoming, Map<String, FieldChange> latestChangesMap) {
+        String key = incoming.getEntityType() + ":" + incoming.getEntityId() + ":" + incoming.getFieldName();
+        FieldChange local = latestChangesMap.get(key);
+
+        if (local == null) {
+            return true; // No local change exists, apply incoming
+        }
+
+        // If incoming is newer, apply it
+        if (incoming.getTimestamp().isAfter(local.getTimestamp())) {
+            return true;
+        }
+
+        // If timestamps are equal, use machine ID as tiebreaker (deterministic)
+        if (incoming.getTimestamp().equals(local.getTimestamp())) {
+            return incoming.getOriginMachineId().compareTo(local.getOriginMachineId()) > 0;
+        }
+
+        return false; // Local is newer
+    }
+
+    /**
+     * Determine if an incoming change should be applied based on LWW.
+     * Legacy method - use shouldApplyChangeBatched for batch operations.
      */
     private boolean shouldApplyChange(FieldChange incoming) {
         Optional<FieldChange> localChange = fieldChangeRepository.findLatestChange(

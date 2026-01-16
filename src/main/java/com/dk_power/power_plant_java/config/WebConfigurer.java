@@ -1,10 +1,16 @@
 package com.dk_power.power_plant_java.config;
 
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
@@ -102,7 +108,25 @@ public class WebConfigurer implements WebMvcConfigurer {
 
     @Bean
     public RestTemplate restTemplate() {
-        RestTemplate restTemplate = new RestTemplate();
+        // Configure connection pooling and timeouts for sync operations
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+        connectionManager.setMaxTotal(100); // Max total connections
+        connectionManager.setDefaultMaxPerRoute(20); // Max connections per route
+
+        RequestConfig requestConfig = RequestConfig.custom()
+            .setConnectionRequestTimeout(Timeout.ofSeconds(30))
+            .setResponseTimeout(Timeout.ofMinutes(5)) // Allow longer for large sync transfers
+            .build();
+
+        HttpClient httpClient = HttpClientBuilder.create()
+            .setConnectionManager(connectionManager)
+            .setDefaultRequestConfig(requestConfig)
+            .build();
+
+        HttpComponentsClientHttpRequestFactory requestFactory =
+            new HttpComponentsClientHttpRequestFactory(httpClient);
+
+        RestTemplate restTemplate = new RestTemplate(requestFactory);
 
         // Add FormHttpMessageConverter to handle multipart requests
         restTemplate.getMessageConverters().add(new FormHttpMessageConverter());
@@ -111,8 +135,6 @@ public class WebConfigurer implements WebMvcConfigurer {
         restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
 
         restTemplate.getInterceptors().add(new LoggingInterceptor());
-
-
 
         return restTemplate;
     }

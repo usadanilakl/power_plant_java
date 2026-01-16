@@ -9,7 +9,10 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.*;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -17,10 +20,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Handles synchronization with a central sync server.
  * This replaces peer-to-peer sync when sync.server.enabled=true.
+ *
+ * Key improvements for large data handling:
+ * - Batched sync with configurable batch size (default 500)
+ * - Pagination support for retrieving changes
+ * - Progress tracking for long-running syncs
+ * - Graceful handling of partial failures
  */
 @Service
 @RequiredArgsConstructor
@@ -41,11 +52,28 @@ public class CentralSyncService {
     private volatile boolean serverAvailable = false;
     private volatile boolean pendingSyncRequest = false; // Queue another sync if one is in progress
 
+    // Sync metrics
+    private final AtomicLong totalChangesSent = new AtomicLong(0);
+    private final AtomicLong totalChangesReceived = new AtomicLong(0);
+    private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
+
+    // Configurable batch size - can be adjusted based on network/memory constraints
+    private static final int DEFAULT_BATCH_SIZE = 500;
+    private static final int MAX_CONSECUTIVE_FAILURES = 5;
+
     private ServerSseClient getServerSseClient() {
         if (serverSseClient == null) {
             serverSseClient = applicationContext.getBean(ServerSseClient.class);
         }
         return serverSseClient;
+    }
+
+    /**
+     * Get the configured batch size for sync operations.
+     */
+    private int getBatchSize() {
+        // Could be made configurable via SyncConfig
+        return DEFAULT_BATCH_SIZE;
     }
 
     /**
@@ -126,8 +154,8 @@ public class CentralSyncService {
 
     /**
      * Main sync method - sends local changes to server, receives changes from server.
+     * Now uses batched processing to handle large datasets safely.
      */
-    @Transactional
     public SyncResult syncWithServer() {
         if (!syncConfig.isServerSyncEnabled()) {
             return new SyncResult(false, "Server sync not enabled", 0, 0, 0);
@@ -139,78 +167,46 @@ public class CentralSyncService {
             return new SyncResult(false, "Sync in progress", 0, 0, 0);
         }
 
+        // Circuit breaker: if too many consecutive failures, back off
+        if (consecutiveFailures.get() >= MAX_CONSECUTIVE_FAILURES) {
+            log.warn("Too many consecutive sync failures ({}), backing off", consecutiveFailures.get());
+            // Reset after some failures to allow retry
+            if (consecutiveFailures.get() > MAX_CONSECUTIVE_FAILURES * 2) {
+                consecutiveFailures.set(0);
+            }
+            return new SyncResult(false, "Circuit breaker open - too many failures", 0, 0, 0);
+        }
+
         syncing = true;
         pendingSyncRequest = false;
         SyncResult result = new SyncResult();
 
         try {
-            String url = syncConfig.getSyncServerUrl() + "/api/sync/exchange";
+            // Phase 1: Send outgoing changes in batches
+            int totalSent = sendOutgoingChangesInBatches();
+            result.setChangesSent(totalSent);
 
-            // Get changes that haven't been synced to server yet
-            List<FieldChange> outgoingChanges = fieldChangeRepository.findChangesNotSyncedTo("SERVER");
-            result.setChangesSent(outgoingChanges.size());
+            // Phase 2: Receive incoming changes in batches
+            BatchedReceiveResult receiveResult = receiveIncomingChangesInBatches();
+            result.setChangesReceived(receiveResult.totalReceived);
+            result.setChangesApplied(receiveResult.totalApplied);
 
-            log.info("Found {} changes to send to server", outgoingChanges.size());
-            if (!outgoingChanges.isEmpty()) {
-                log.debug("Changes: {}", outgoingChanges.stream()
-                    .map(c -> c.getEntityType() + "#" + c.getEntityId() + "." + c.getFieldName())
-                    .toList());
-            }
-
-            // Prepare request
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("X-Machine-Id", syncConfig.getMachineId());
-            headers.set("X-Machine-Name", syncConfig.getMachineName());
-
-            Map<String, Object> request = new HashMap<>();
-            request.put("machineId", syncConfig.getMachineId());
-            request.put("machineName", syncConfig.getMachineName());
-            request.put("changes", outgoingChanges);
-
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
-
-            // Exchange with server
-            log.debug("Sending {} changes to server", outgoingChanges.size());
-            ResponseEntity<SyncResponse> response = restTemplate.exchange(
-                url, HttpMethod.POST, entity,
-                new ParameterizedTypeReference<SyncResponse>() {}
-            );
-
+            result.setSuccess(true);
             serverAvailable = true;
-            SyncResponse serverResponse = response.getBody();
+            consecutiveFailures.set(0); // Reset on success
 
-            if (serverResponse != null && serverResponse.isSuccess()) {
-                // Mark outgoing changes as synced to server
-                for (FieldChange change : outgoingChanges) {
-                    change.addSyncedMachine("SERVER");
-                }
-                if (!outgoingChanges.isEmpty()) {
-                    fieldChangeRepository.saveAll(outgoingChanges);
-                }
+            // Update metrics
+            totalChangesSent.addAndGet(totalSent);
+            totalChangesReceived.addAndGet(receiveResult.totalReceived);
 
-                // Apply incoming changes from server
-                List<FieldChange> incomingChanges = serverResponse.getChanges();
-                result.setChangesReceived(incomingChanges != null ? incomingChanges.size() : 0);
-
-                if (incomingChanges != null && !incomingChanges.isEmpty()) {
-                    int applied = applyIncomingChanges(incomingChanges);
-                    result.setChangesApplied(applied);
-                }
-
-                result.setSuccess(true);
-                log.info("Server sync complete: sent={}, received={}, applied={}",
-                    result.getChangesSent(), result.getChangesReceived(), result.getChangesApplied());
-            } else {
-                result.setSuccess(false);
-                result.setErrorMessage(serverResponse != null ? serverResponse.getErrorMessage() : "Unknown error");
-                log.error("Server sync failed: {}", result.getErrorMessage());
-            }
+            log.info("Server sync complete: sent={}, received={}, applied={}",
+                result.getChangesSent(), result.getChangesReceived(), result.getChangesApplied());
 
         } catch (Exception e) {
             serverAvailable = false;
             result.setSuccess(false);
             result.setErrorMessage(e.getMessage());
+            consecutiveFailures.incrementAndGet();
             log.error("Failed to sync with server: {}", e.getMessage());
             // Changes remain in local DB, will be synced when server is available
         } finally {
@@ -233,6 +229,213 @@ public class CentralSyncService {
         }
 
         return result;
+    }
+
+    /**
+     * Send outgoing changes to server in batches.
+     * This prevents memory issues with large change sets.
+     */
+    @Transactional
+    protected int sendOutgoingChangesInBatches() {
+        int batchSize = getBatchSize();
+        int totalSent = 0;
+        int batchNumber = 0;
+
+        // First, count total pending changes
+        long totalPending = fieldChangeRepository.countPendingChangesFor("SERVER");
+        if (totalPending == 0) {
+            log.debug("No outgoing changes to send");
+            return 0;
+        }
+
+        log.info("Sending {} pending changes to server in batches of {}", totalPending, batchSize);
+
+        // Process in batches until no more changes
+        while (true) {
+            Page<FieldChange> batch = fieldChangeRepository.findChangesNotSyncedTo(
+                "SERVER", PageRequest.of(0, batchSize)); // Always page 0 since we mark as synced
+
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            List<FieldChange> changes = batch.getContent();
+            batchNumber++;
+
+            try {
+                // Send this batch
+                SyncResponse response = sendBatchToServer(changes);
+
+                if (response != null && response.isSuccess()) {
+                    // Mark changes as synced
+                    for (FieldChange change : changes) {
+                        change.addSyncedMachine("SERVER");
+                    }
+                    fieldChangeRepository.saveAll(changes);
+                    totalSent += changes.size();
+
+                    log.debug("Batch {}: sent {} changes successfully", batchNumber, changes.size());
+                } else {
+                    log.warn("Batch {} failed: {}", batchNumber,
+                        response != null ? response.getErrorMessage() : "null response");
+                    break; // Stop on failure, will retry next sync
+                }
+            } catch (Exception e) {
+                log.error("Error sending batch {}: {}", batchNumber, e.getMessage());
+                break; // Stop on error, will retry next sync
+            }
+
+            // Safety check to prevent infinite loop
+            if (batchNumber > 1000) {
+                log.warn("Too many batches ({}), stopping to prevent infinite loop", batchNumber);
+                break;
+            }
+        }
+
+        log.info("Finished sending {} changes in {} batches", totalSent, batchNumber);
+        return totalSent;
+    }
+
+    /**
+     * Send a single batch of changes to the server.
+     */
+    private SyncResponse sendBatchToServer(List<FieldChange> changes) {
+        String url = syncConfig.getSyncServerUrl() + "/api/sync/exchange";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Machine-Name", syncConfig.getMachineName());
+        headers.set("Accept-Encoding", "gzip"); // Request compressed response
+
+        Map<String, Object> request = new HashMap<>();
+        request.put("machineId", syncConfig.getMachineId());
+        request.put("machineName", syncConfig.getMachineName());
+        request.put("changes", changes);
+        request.put("batchMode", true); // Indicate batched sync
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+
+        ResponseEntity<SyncResponse> response = restTemplate.exchange(
+            url, HttpMethod.POST, entity,
+            new ParameterizedTypeReference<SyncResponse>() {}
+        );
+
+        return response.getBody();
+    }
+
+    /**
+     * Receive incoming changes from server in batches.
+     */
+    @Transactional
+    protected BatchedReceiveResult receiveIncomingChangesInBatches() {
+        BatchedReceiveResult result = new BatchedReceiveResult();
+        int batchSize = getBatchSize();
+        int batchNumber = 0;
+
+        // First, check how many changes the server has for us
+        long pendingCount = getPendingChangeCountFromServer();
+        if (pendingCount == 0) {
+            log.debug("No incoming changes from server");
+            return result;
+        }
+
+        log.info("Receiving approximately {} pending changes from server in batches of {}", pendingCount, batchSize);
+
+        // Request changes in batches using the paginated endpoint
+        int page = 0;
+        while (true) {
+            try {
+                List<FieldChange> batch = fetchBatchFromServer(page, batchSize);
+
+                if (batch == null || batch.isEmpty()) {
+                    break;
+                }
+
+                batchNumber++;
+                result.totalReceived += batch.size();
+
+                // Apply this batch within sync context
+                int applied = applyIncomingChanges(batch);
+                result.totalApplied += applied;
+
+                log.debug("Batch {}: received {} changes, applied {}", batchNumber, batch.size(), applied);
+
+                // If we got less than batch size, we've reached the end
+                if (batch.size() < batchSize) {
+                    break;
+                }
+
+                page++;
+
+                // Safety check
+                if (batchNumber > 1000) {
+                    log.warn("Too many receive batches ({}), stopping", batchNumber);
+                    break;
+                }
+            } catch (Exception e) {
+                log.error("Error receiving batch {}: {}", batchNumber, e.getMessage());
+                break;
+            }
+        }
+
+        log.info("Finished receiving {} changes ({} applied) in {} batches",
+            result.totalReceived, result.totalApplied, batchNumber);
+        return result;
+    }
+
+    /**
+     * Get the count of pending changes from server.
+     */
+    private long getPendingChangeCountFromServer() {
+        try {
+            String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/count";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Machine-Id", syncConfig.getMachineId());
+
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map<String, Long>> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity,
+                new ParameterizedTypeReference<Map<String, Long>>() {}
+            );
+
+            Map<String, Long> body = response.getBody();
+            return body != null ? body.getOrDefault("count", 0L) : 0L;
+        } catch (Exception e) {
+            log.warn("Failed to get pending change count: {}", e.getMessage());
+            return 0L;
+        }
+    }
+
+    /**
+     * Fetch a batch of changes from the server.
+     */
+    private List<FieldChange> fetchBatchFromServer(int page, int size) {
+        String url = syncConfig.getSyncServerUrl() + "/api/sync/changes/batch?page=" + page + "&size=" + size;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Machine-Id", syncConfig.getMachineId());
+        headers.set("X-Machine-Name", syncConfig.getMachineName());
+        headers.set("Accept-Encoding", "gzip");
+
+        HttpEntity<?> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<List<FieldChange>> response = restTemplate.exchange(
+            url, HttpMethod.GET, entity,
+            new ParameterizedTypeReference<List<FieldChange>>() {}
+        );
+
+        return response.getBody();
+    }
+
+    /**
+     * Helper class for batched receive results.
+     */
+    private static class BatchedReceiveResult {
+        int totalReceived = 0;
+        int totalApplied = 0;
     }
 
     /**
@@ -268,9 +471,10 @@ public class CentralSyncService {
 
     /**
      * Get pending changes count (not yet synced to server).
+     * Uses count query instead of loading all changes.
      */
     public long getPendingChangeCount() {
-        return fieldChangeRepository.findChangesNotSyncedTo("SERVER").size();
+        return fieldChangeRepository.countPendingChangesFor("SERVER");
     }
 
     /**
@@ -292,6 +496,29 @@ public class CentralSyncService {
         }
     }
 
+    /**
+     * Get sync metrics for monitoring.
+     */
+    public SyncMetrics getMetrics() {
+        return new SyncMetrics(
+            totalChangesSent.get(),
+            totalChangesReceived.get(),
+            consecutiveFailures.get(),
+            syncing,
+            serverAvailable,
+            isSseConnected(),
+            getPendingChangeCount()
+        );
+    }
+
+    /**
+     * Reset consecutive failure counter (e.g., after manual intervention).
+     */
+    public void resetCircuitBreaker() {
+        consecutiveFailures.set(0);
+        log.info("Circuit breaker reset");
+    }
+
     // DTOs
     @lombok.Data
     public static class SyncResponse {
@@ -301,6 +528,11 @@ public class CentralSyncService {
         private int changesSent;
         private List<FieldChange> changes;
         private String errorMessage;
+        // Pagination support
+        private int page;
+        private int totalPages;
+        private long totalElements;
+        private boolean hasMore;
     }
 
     @lombok.Data
@@ -312,5 +544,17 @@ public class CentralSyncService {
         private int changesSent;
         private int changesReceived;
         private int changesApplied;
+    }
+
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    public static class SyncMetrics {
+        private long totalChangesSent;
+        private long totalChangesReceived;
+        private int consecutiveFailures;
+        private boolean syncInProgress;
+        private boolean serverAvailable;
+        private boolean sseConnected;
+        private long pendingChanges;
     }
 }
