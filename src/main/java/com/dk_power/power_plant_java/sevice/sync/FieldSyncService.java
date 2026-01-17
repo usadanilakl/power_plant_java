@@ -9,7 +9,6 @@ import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.sevice.ServiceFacade;
 import com.dk_power.power_plant_java.sevice.base_services.CrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
@@ -19,18 +18,21 @@ import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestTemplate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class FieldSyncService {
 
@@ -43,8 +45,35 @@ public class FieldSyncService {
     private final SyncContext syncContext;
     private final SyncUpdateController syncUpdateController;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransactionTemplate transactionTemplate;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private volatile boolean syncing = false;
+
+    public FieldSyncService(
+            FieldChangeRepository fieldChangeRepository,
+            PeerDiscoveryService peerDiscoveryService,
+            ServiceFacade serviceFacade,
+            SyncConfig syncConfig,
+            ObjectMapper objectMapper,
+            RestTemplate restTemplate,
+            SyncContext syncContext,
+            SyncUpdateController syncUpdateController,
+            ApplicationEventPublisher eventPublisher,
+            PlatformTransactionManager transactionManager) {
+        this.fieldChangeRepository = fieldChangeRepository;
+        this.peerDiscoveryService = peerDiscoveryService;
+        this.serviceFacade = serviceFacade;
+        this.syncConfig = syncConfig;
+        this.objectMapper = objectMapper;
+        this.restTemplate = restTemplate;
+        this.syncContext = syncContext;
+        this.syncUpdateController = syncUpdateController;
+        this.eventPublisher = eventPublisher;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
 
     /**
      * Sync with all known peers on application startup.
@@ -238,15 +267,28 @@ public class FieldSyncService {
     /**
      * Apply incoming changes with Last-Writer-Wins per field.
      * Wrapped in sync context to prevent triggering broadcasts for incoming changes.
+     *
+     * This method uses programmatic transaction management to work correctly
+     * when called from non-Spring-managed threads (e.g., SSE client thread).
+     *
      * @return number of changes actually applied
      */
-    @Transactional
     public int applyIncomingChanges(List<FieldChange> incomingChanges) {
         // Mark that we're processing sync - prevents infinite loop
         // When entities are saved, the EntityListener won't broadcast these changes
         syncContext.startSync();
         try {
-            return applyIncomingChangesInternal(incomingChanges);
+            // Use programmatic transaction to ensure it works from any thread
+            Integer result = transactionTemplate.execute(status -> {
+                try {
+                    return applyIncomingChangesInternal(incomingChanges);
+                } catch (Exception e) {
+                    log.error("Error applying incoming changes, rolling back: {}", e.getMessage(), e);
+                    status.setRollbackOnly();
+                    return 0;
+                }
+            });
+            return result != null ? result : 0;
         } finally {
             syncContext.endSync();
         }
@@ -553,11 +595,8 @@ public class FieldSyncService {
                 // For now, we'll use a workaround: update all references
                 // This assumes the entity was just created and has no relationships yet
                 try {
-                    // Get EntityManager from Hibernate session
-                    var session = service.getSessionFactory().getCurrentSession();
-                    String tableName = entityClass.getSimpleName();
-
-                    // Some entities have different table names, handle common cases
+                    // Determine table name - handle common cases
+                    String tableName;
                     if ("FileObject".equals(entityType)) {
                         tableName = "file_object";
                     } else {
@@ -565,15 +604,19 @@ public class FieldSyncService {
                         tableName = entityType.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
                     }
 
-                    // Update the ID using native SQL
-                    session.createNativeQuery(
+                    // Use EntityManager to execute native query (works with Spring's transaction management)
+                    int updated = entityManager.createNativeQuery(
                         "UPDATE " + tableName + " SET id = :newId WHERE id = :oldId")
                         .setParameter("newId", entityId)
                         .setParameter("oldId", tempId)
                         .executeUpdate();
 
-                    session.flush();
-                    session.clear(); // Clear session cache to reload with new ID
+                    if (updated == 0) {
+                        log.warn("No rows updated when changing ID from {} to {} for {}", tempId, entityId, entityType);
+                    }
+
+                    entityManager.flush();
+                    entityManager.clear(); // Clear cache to reload with new ID
 
                     // Reload entity with correct ID
                     newEntity = (BaseIdEntity) service.getEntityById(entityId);
