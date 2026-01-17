@@ -45,8 +45,9 @@ export class SyncUpdateService {
 
   private eventSource: EventSource | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 3000; // 3 seconds
+  private maxReconnectAttempts = 10; // Increased from 5
+  private baseReconnectDelay = 1000; // 1 second base delay
+  private maxReconnectDelay = 60000; // Max 60 seconds between attempts
 
   // Connection state
   private connectionStateSubject = new BehaviorSubject<'connected' | 'disconnected' | 'connecting'>('disconnected');
@@ -160,7 +161,9 @@ export class SyncUpdateService {
   }
 
   /**
-   * Handle reconnection with exponential backoff
+   * Handle reconnection with exponential backoff.
+   * Delay doubles each attempt: 1s, 2s, 4s, 8s, 16s, 32s, 60s (capped), ...
+   * With jitter to prevent thundering herd when server recovers.
    */
   private handleReconnect(): void {
     if (this.eventSource) {
@@ -170,14 +173,27 @@ export class SyncUpdateService {
 
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      const delay = this.reconnectDelay * this.reconnectAttempts;
+
+      // Exponential backoff: baseDelay * 2^(attempt-1), capped at maxDelay
+      const exponentialDelay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+      const cappedDelay = Math.min(exponentialDelay, this.maxReconnectDelay);
+
+      // Add jitter (±20%) to prevent thundering herd
+      const jitter = cappedDelay * 0.2 * (Math.random() * 2 - 1);
+      const delay = Math.round(cappedDelay + jitter);
+
       console.log(`SSE reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
       setTimeout(() => {
         this.connect();
       }, delay);
     } else {
-      console.warn('SSE max reconnect attempts reached. Manual reconnect required.');
+      console.warn('SSE max reconnect attempts reached. Will retry in 5 minutes or on manual reconnect.');
+      // Auto-retry after 5 minutes even if max attempts reached
+      setTimeout(() => {
+        this.reconnectAttempts = 0;
+        this.connect();
+      }, 5 * 60 * 1000);
     }
   }
 

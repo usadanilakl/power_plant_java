@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -41,6 +42,7 @@ public class FieldSyncService {
     private final RestTemplate restTemplate;
     private final SyncContext syncContext;
     private final SyncUpdateController syncUpdateController;
+    private final ApplicationEventPublisher eventPublisher;
 
     private volatile boolean syncing = false;
 
@@ -294,6 +296,11 @@ public class FieldSyncService {
             }
         }
 
+        // Collect FileObject changes for file sync
+        List<FieldChange> fileObjectChanges = incomingChanges.stream()
+            .filter(c -> "FileObject".equals(c.getEntityType()))
+            .toList();
+
         // Register callback to broadcast AFTER transaction commits
         // This ensures frontend API calls will see the committed data
         if (!pendingBroadcasts.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -302,11 +309,24 @@ public class FieldSyncService {
                 public void afterCommit() {
                     log.debug("Transaction committed, broadcasting {} entity updates", pendingBroadcasts.size());
                     pendingBroadcasts.forEach(Runnable::run);
+
+                    // Publish FileObject sync event for file download handling
+                    if (!fileObjectChanges.isEmpty()) {
+                        log.debug("Publishing FileObjectSyncEvent with {} changes", fileObjectChanges.size());
+                        eventPublisher.publishEvent(
+                            new FileObjectSyncHandler.FileObjectSyncEvent(fileObjectChanges, "sync"));
+                    }
                 }
             });
         } else {
             // No active transaction synchronization, broadcast immediately (fallback)
             pendingBroadcasts.forEach(Runnable::run);
+
+            // Publish FileObject sync event
+            if (!fileObjectChanges.isEmpty()) {
+                eventPublisher.publishEvent(
+                    new FileObjectSyncHandler.FileObjectSyncEvent(fileObjectChanges, "sync"));
+            }
         }
 
         return totalApplied;

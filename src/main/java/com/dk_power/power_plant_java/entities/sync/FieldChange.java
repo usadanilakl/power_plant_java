@@ -82,19 +82,31 @@ public class FieldChange {
         this.originMachineId = machineId;
         this.originMachineName = machineName;
         this.changeType = changeType;
-        this.syncedToMachines = machineId; // Initially only synced to origin
+        this.syncedToMachines = "|" + machineId + "|"; // Initially only synced to origin (delimited format)
     }
 
+    /**
+     * Add a machine to the synced list.
+     * Uses delimiter format: |MACHINE_ID| to prevent substring matching issues.
+     * e.g., "MACHINE_1" won't accidentally match "MACHINE_10".
+     */
     public void addSyncedMachine(String machineId) {
+        String delimitedId = "|" + machineId + "|";
         if (syncedToMachines == null || syncedToMachines.isEmpty()) {
-            syncedToMachines = machineId;
-        } else if (!syncedToMachines.contains(machineId)) {
-            syncedToMachines += "," + machineId;
+            syncedToMachines = delimitedId;
+        } else if (!syncedToMachines.contains(delimitedId)) {
+            syncedToMachines += delimitedId;
         }
     }
 
+    /**
+     * Check if this change has been synced to a specific machine.
+     */
     public boolean isSyncedTo(String machineId) {
-        return syncedToMachines != null && syncedToMachines.contains(machineId);
+        if (syncedToMachines == null || syncedToMachines.isEmpty()) {
+            return false;
+        }
+        return syncedToMachines.contains("|" + machineId + "|");
     }
 
     @Override

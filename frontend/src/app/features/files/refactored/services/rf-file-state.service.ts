@@ -1,5 +1,5 @@
 
-import { Injectable, inject, DestroyRef, signal } from "@angular/core";
+import { Injectable, inject, DestroyRef, signal, NgZone } from "@angular/core";
 import { FileDto } from "../../../../models/file/file.model";
 import { BehaviorSubject, Observable } from "rxjs";
 import { SearchCriteria } from "../../../../models/api/search-criteria.model";
@@ -11,6 +11,7 @@ import { RfFileApiService } from "./rf-file-api.service";
 import { FileLocalStorageService } from "./rf-file-local-storage.service";
 import { GlobalMessageService } from "../../../../shared/global-message/global-message.service";
 import { CurrentFileService } from "../../../../services/current-file.service";
+import { SyncUpdateService, EntityUpdateEvent } from "../../../../services/sync/sync-update.service";
 
 @Injectable({
   providedIn: 'root'
@@ -21,17 +22,19 @@ export class RfFileStateService {
   private destroyRef = inject(DestroyRef);
   private messageService = inject(GlobalMessageService);
   private currentFileService = inject(CurrentFileService);
+  private syncUpdateService = inject(SyncUpdateService);
+  private ngZone = inject(NgZone);
 
   private pageSize = 50;
   private currentPage = 1;
-  
+
   allLoadedFilesSubject = new BehaviorSubject<FileDto[]>([]);
   allLoadedFiles$ = this.allLoadedFilesSubject.asObservable();
 
   filterOutItems = signal<FileDto[]>([]);
   selectedItems = signal<FileDto[]>([]);
   selectedItem = signal<FileDto | null>(null);
-  
+
   private currentSortColumnSubject = new BehaviorSubject<string | null>(null);
   currentSortColumn$ = this.currentSortColumnSubject.asObservable();
 
@@ -43,7 +46,7 @@ export class RfFileStateService {
 
   // Unique items cache for column filters
   private uniqueItemsCache = new Map<string, BehaviorSubject<any[]>>();
-  
+
   // Unique values cache with pagination metadata
   private uniqueValuesCache = new Map<string, { values: string[]; page: number; hasMore: boolean }>();
   currentColumnUniqueItems = signal<string[]>([]);
@@ -51,6 +54,119 @@ export class RfFileStateService {
 
   constructor() {
     this.loadFromLocalStorage();
+
+    // Subscribe to SSE sync updates for real-time reactivity
+    // Entity type is 'FileObject' as that's the Java entity class name
+    this.syncUpdateService.getEntityTypeUpdates$('FileObject')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        this.handleSyncUpdate(event);
+      });
+  }
+
+  /**
+   * Handle sync update from SSE - reload the entity from server.
+   * Called when a FileObject is updated by server sync from another machine.
+   */
+  private handleSyncUpdate(event: EntityUpdateEvent): void {
+    const entityId = event.entityId;
+
+    // Reload the entity from server to get fresh data
+    this.apiService.getFileById(entityId + '')
+      .pipe(
+        tap((response) => {
+          if (response.responseData) {
+            const updatedItem = new FileDto(response.responseData);
+            this.updateFileInList(updatedItem);
+
+            // Show a notification if the currently selected item was updated
+            const selectedItem = this.selectedItem();
+            if (selectedItem?.id === entityId) {
+              this.messageService.showInfo('This file was updated from another machine');
+            }
+          }
+        }),
+        catchError((error) => {
+          console.error('Error reloading synced file:', error);
+          return of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  /**
+   * Update a file in the local list or add it if not present.
+   * Called when an SSE sync update is received.
+   * Uses NgZone to ensure proper Angular change detection.
+   */
+  updateFileInList(updatedItem: FileDto): void {
+    if (!updatedItem.id) {
+      return;
+    }
+
+    // Ensure we run inside Angular zone for proper change detection
+    this.ngZone.run(() => {
+      const current = this.allLoadedFilesSubject.value;
+      const index = current.findIndex(f => f.id === updatedItem.id);
+
+      if (index >= 0) {
+        // Update existing item in the list - create new array with new object
+        const updated = [...current];
+        // Add a version marker to force cdkVirtualFor to re-render
+        (updatedItem as any)._version = Date.now();
+        updated[index] = updatedItem;
+        this.allLoadedFilesSubject.next(updated);
+      } else {
+        // Item not in current list - add it at the beginning
+        (updatedItem as any)._version = Date.now();
+        this.allLoadedFilesSubject.next([updatedItem, ...current]);
+      }
+
+      // Also update selectedItem if it's the same one being viewed/edited
+      const selectedItem = this.selectedItem();
+      if (selectedItem?.id === updatedItem.id) {
+        this.selectedItem.set(updatedItem);
+      }
+
+      // Also update in selectedItems array if present
+      const selectedItems = this.selectedItems();
+      const selectedIndex = selectedItems.findIndex(item => item.id === updatedItem.id);
+      if (selectedIndex >= 0) {
+        const updatedSelected = [...selectedItems];
+        updatedSelected[selectedIndex] = updatedItem;
+        this.selectedItems.set(updatedSelected);
+      }
+
+      // Notify CurrentFileService to update the left menu
+      this.notifyFileUpdate(updatedItem);
+    });
+  }
+
+  /**
+   * Remove a file from the local list by ID.
+   * Called when a deletion sync event is received.
+   */
+  removeFileById(id: number): void {
+    const current = this.allLoadedFilesSubject.value;
+    const filtered = current.filter(f => f.id !== id);
+
+    // Only update if something was actually removed
+    if (filtered.length !== current.length) {
+      this.allLoadedFilesSubject.next(filtered);
+
+      // Also clear selected item if it was the deleted one
+      const selectedItem = this.selectedItem();
+      if (selectedItem?.id === id) {
+        this.selectedItem.set(null);
+      }
+
+      // Also remove from selectedItems array
+      const selectedItems = this.selectedItems();
+      if (selectedItems.some(item => item.id === id)) {
+        this.selectedItems.set(selectedItems.filter(item => item.id !== id));
+      }
+    }
   }
 
   addFiles(items: FileDto[]): void {

@@ -12,7 +12,6 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.*;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -20,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -48,9 +48,11 @@ public class CentralSyncService {
     // Lazily fetched to avoid circular dependency
     private ServerSseClient serverSseClient;
 
-    private volatile boolean syncing = false;
+    // Using AtomicBoolean instead of volatile boolean to prevent race conditions
+    // where two threads could both pass the syncing check simultaneously
+    private final AtomicBoolean syncing = new AtomicBoolean(false);
     private volatile boolean serverAvailable = false;
-    private volatile boolean pendingSyncRequest = false; // Queue another sync if one is in progress
+    private final AtomicBoolean pendingSyncRequest = new AtomicBoolean(false);
 
     // Sync metrics
     private final AtomicLong totalChangesSent = new AtomicLong(0);
@@ -128,7 +130,7 @@ public class CentralSyncService {
 
         // If sync is in progress, wait for it to finish then retry
         int retries = 0;
-        while (syncing && retries < 5) {
+        while (syncing.get() && retries < 5) {
             try {
                 Thread.sleep(1000);
                 retries++;
@@ -161,9 +163,10 @@ public class CentralSyncService {
             return new SyncResult(false, "Server sync not enabled", 0, 0, 0);
         }
 
-        if (syncing) {
+        // Use compareAndSet for atomic check-and-set to prevent race conditions
+        if (!syncing.compareAndSet(false, true)) {
             log.debug("Sync already in progress, marking pending sync request");
-            pendingSyncRequest = true;
+            pendingSyncRequest.set(true);
             return new SyncResult(false, "Sync in progress", 0, 0, 0);
         }
 
@@ -174,11 +177,12 @@ public class CentralSyncService {
             if (consecutiveFailures.get() > MAX_CONSECUTIVE_FAILURES * 2) {
                 consecutiveFailures.set(0);
             }
+            syncing.set(false); // Release the lock we acquired
             return new SyncResult(false, "Circuit breaker open - too many failures", 0, 0, 0);
         }
 
-        syncing = true;
-        pendingSyncRequest = false;
+        // syncing is already true from compareAndSet above
+        pendingSyncRequest.set(false);
         SyncResult result = new SyncResult();
 
         try {
@@ -210,12 +214,11 @@ public class CentralSyncService {
             log.error("Failed to sync with server: {}", e.getMessage());
             // Changes remain in local DB, will be synced when server is available
         } finally {
-            syncing = false;
+            syncing.set(false);
 
             // If another sync was requested while we were syncing, trigger it now
-            if (pendingSyncRequest) {
+            if (pendingSyncRequest.compareAndSet(true, false)) {
                 log.info("Processing pending sync request");
-                pendingSyncRequest = false;
                 // Use async to avoid stack overflow with recursive calls
                 new Thread(() -> {
                     try {
@@ -504,7 +507,7 @@ public class CentralSyncService {
             totalChangesSent.get(),
             totalChangesReceived.get(),
             consecutiveFailures.get(),
-            syncing,
+            syncing.get(),
             serverAvailable,
             isSseConnected(),
             getPendingChangeCount()

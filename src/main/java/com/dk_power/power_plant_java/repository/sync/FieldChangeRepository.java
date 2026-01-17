@@ -18,11 +18,13 @@ import java.util.UUID;
 public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> {
 
     // Get changes not yet synced to a specific machine (legacy - use paginated version for large datasets)
-    @Query("SELECT fc FROM FieldChange fc WHERE fc.syncedToMachines NOT LIKE CONCAT('%', :machineId, '%') ORDER BY fc.timestamp ASC")
+    // Uses delimited format |MACHINE_ID| to prevent substring matching (e.g., MACHINE_1 vs MACHINE_10)
+    @Query("SELECT fc FROM FieldChange fc WHERE fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') ORDER BY fc.timestamp ASC")
     List<FieldChange> findChangesNotSyncedTo(@Param("machineId") String machineId);
 
     // PAGINATED: Get changes not yet synced to a specific machine
-    @Query("SELECT fc FROM FieldChange fc WHERE fc.syncedToMachines NOT LIKE CONCAT('%', :machineId, '%') ORDER BY fc.timestamp ASC")
+    // Uses delimited format |MACHINE_ID| to prevent substring matching
+    @Query("SELECT fc FROM FieldChange fc WHERE fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%') ORDER BY fc.timestamp ASC")
     Page<FieldChange> findChangesNotSyncedTo(@Param("machineId") String machineId, Pageable pageable);
 
     // Get changes since a timestamp, excluding a specific machine's own changes
@@ -50,7 +52,8 @@ public interface FieldChangeRepository extends JpaRepository<FieldChange, UUID> 
     List<FieldChange> findByEntityTypeAndTimestampAfterOrderByTimestampAsc(String entityType, Instant since);
 
     // Count pending changes to sync for a machine
-    @Query("SELECT COUNT(fc) FROM FieldChange fc WHERE fc.syncedToMachines NOT LIKE CONCAT('%', :machineId, '%')")
+    // Uses delimited format |MACHINE_ID| to prevent substring matching
+    @Query("SELECT COUNT(fc) FROM FieldChange fc WHERE fc.syncedToMachines NOT LIKE CONCAT('%|', :machineId, '|%')")
     long countPendingChangesFor(@Param("machineId") String machineId);
 
     // Count total changes

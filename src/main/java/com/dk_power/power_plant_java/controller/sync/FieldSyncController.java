@@ -7,6 +7,7 @@ import com.dk_power.power_plant_java.repository.sync.FieldChangeRepository;
 import com.dk_power.power_plant_java.repository.sync.PeerRepository;
 import com.dk_power.power_plant_java.sevice.sync.CentralSyncService;
 import com.dk_power.power_plant_java.sevice.sync.FieldSyncService;
+import com.dk_power.power_plant_java.sevice.sync.FileObjectSyncHandler;
 import com.dk_power.power_plant_java.sevice.sync.PeerDiscoveryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class FieldSyncController {
     private final FieldChangeRepository fieldChangeRepository;
     private final PeerRepository peerRepository;
     private final SyncConfig syncConfig;
+    private final FileObjectSyncHandler fileObjectSyncHandler;
 
     /**
      * Exchange changes with a peer
@@ -421,6 +423,19 @@ public class FieldSyncController {
         result.put("success", true);
         result.put("message", "Circuit breaker reset");
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Get file sync status and queue information.
+     * GET /api/field-sync/file-sync/status
+     */
+    @GetMapping("/file-sync/status")
+    public ResponseEntity<Map<String, Object>> getFileSyncStatus() {
+        Map<String, Object> status = new HashMap<>();
+        status.put("enabled", syncConfig.isServerSyncEnabled());
+        status.put("syncServerUrl", syncConfig.getSyncServerUrl());
+        status.put("queues", fileObjectSyncHandler.getQueueStats());
+        return ResponseEntity.ok(status);
     }
 
     /**

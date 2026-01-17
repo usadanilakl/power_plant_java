@@ -28,6 +28,13 @@ public class FieldChangeTracker {
     private final SyncEventPublisher syncEventPublisher;
     private final SyncContext syncContext;
 
+    // Lazy injection to avoid circular dependency
+    private FileObjectSyncHandler fileObjectSyncHandler;
+
+    public void setFileObjectSyncHandler(FileObjectSyncHandler handler) {
+        this.fileObjectSyncHandler = handler;
+    }
+
     // Fields to exclude from tracking
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
         "id", // ID is never changed for updates, and Hibernate snapshot doesn't include it
@@ -205,6 +212,12 @@ public class FieldChangeTracker {
                 if (!syncContext.isSyncing()) {
                     log.info("Publishing {} changes for sync broadcast (create)", changes.size());
                     syncEventPublisher.publishChanges(changes);
+
+                    // Notify FileObjectSyncHandler for file uploads
+                    if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
+                        fileObjectSyncHandler.onLocalFileObjectChanged(
+                            (com.dk_power.power_plant_java.entities.files.FileObject) entity, true);
+                    }
                 } else {
                     log.info("Skipping broadcast - creation originated from sync");
                 }
@@ -286,6 +299,12 @@ public class FieldChangeTracker {
                 if (!syncContext.isSyncing()) {
                     log.info("Publishing {} changes for sync broadcast (update)", changes.size());
                     syncEventPublisher.publishChanges(changes);
+
+                    // Notify FileObjectSyncHandler for file uploads
+                    if ("FileObject".equals(entityType) && fileObjectSyncHandler != null) {
+                        fileObjectSyncHandler.onLocalFileObjectChanged(
+                            (com.dk_power.power_plant_java.entities.files.FileObject) newEntity, false);
+                    }
                 } else {
                     log.info("Skipping broadcast - update originated from sync");
                 }
