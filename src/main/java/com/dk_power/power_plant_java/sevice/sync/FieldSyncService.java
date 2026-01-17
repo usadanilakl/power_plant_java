@@ -596,13 +596,7 @@ public class FieldSyncService {
                 // This assumes the entity was just created and has no relationships yet
                 try {
                     // Determine table name - handle common cases
-                    String tableName;
-                    if ("FileObject".equals(entityType)) {
-                        tableName = "file_object";
-                    } else {
-                        // Convert CamelCase to snake_case
-                        tableName = entityType.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
-                    }
+                    String tableName = getTableName(entityType);
 
                     // Use EntityManager to execute native query (works with Spring's transaction management)
                     int updated = entityManager.createNativeQuery(
@@ -745,6 +739,30 @@ public class FieldSyncService {
             }
         }
         return null;
+    }
+
+    /**
+     * Get the database table name for an entity type.
+     * Handles reserved SQL keywords by quoting them.
+     */
+    private String getTableName(String entityType) {
+        // Handle specific entity types with known table names
+        switch (entityType) {
+            case "FileObject":
+                return "file_object";
+            case "Value":
+                // "value" is a reserved SQL keyword - must be quoted
+                return "\"value\"";
+            case "Category":
+                return "category";
+            case "Equipment":
+                return "equipment";
+            case "LotoPoint":
+                return "loto_point";
+            default:
+                // Convert CamelCase to snake_case for other entities
+                return entityType.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+        }
     }
 
     /**

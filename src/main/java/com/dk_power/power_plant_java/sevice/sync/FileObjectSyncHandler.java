@@ -383,6 +383,19 @@ public class FileObjectSyncHandler {
      * Queue a file for download from sync server.
      */
     private void queueFileDownload(FileObject fileObject) {
+        // Validate required fields before queueing
+        String fullPath = getFullPath(fileObject);
+        if (fullPath == null) {
+            log.debug("Cannot queue download for FileObject #{} - fileLink is not set yet", fileObject.getId());
+            return;
+        }
+
+        String fileNumber = fileObject.getFileNumber();
+        if (fileNumber == null || fileNumber.isEmpty()) {
+            log.debug("Cannot queue download for FileObject #{} - fileNumber is not set", fileObject.getId());
+            return;
+        }
+
         String taskKey = "download:" + fileObject.getId();
         if (!inProgressDownloads.add(taskKey)) {
             log.debug("Download already in progress for FileObject #{}", fileObject.getId());
@@ -391,9 +404,9 @@ public class FileObjectSyncHandler {
 
         FileDownloadTask task = new FileDownloadTask(
             fileObject.getId(),
-            fileObject.getFileNumber(),
+            fileNumber,
             fileObject.getExtensionsArray(),
-            getFullPath(fileObject)
+            fullPath
         );
         downloadQueue.add(task);
         log.debug("Queued download for FileObject #{}", fileObject.getId());
@@ -733,9 +746,14 @@ public class FileObjectSyncHandler {
 
     /**
      * Get full path for a FileObject.
+     * Returns null if fileLink is not set.
      */
     private String getFullPath(FileObject fileObject) {
-        return Paths.get(projectRootPath, fileObject.getFileLink()).toString();
+        String fileLink = fileObject.getFileLink();
+        if (fileLink == null || fileLink.isEmpty()) {
+            return null;
+        }
+        return Paths.get(projectRootPath, fileLink).toString();
     }
 
     // Task records with retry support
