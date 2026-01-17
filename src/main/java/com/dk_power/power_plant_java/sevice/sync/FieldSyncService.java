@@ -743,22 +743,38 @@ public class FieldSyncService {
 
     /**
      * Get the database table name for an entity type.
-     * Handles reserved SQL keywords by quoting them.
+     * Handles entities with custom @Table annotations.
      */
     private String getTableName(String entityType) {
-        // Handle specific entity types with known table names
+        // Handle specific entity types with custom table names from @Table annotations
         switch (entityType) {
             case "FileObject":
                 return "file_object";
             case "Value":
-                // "value" is a reserved SQL keyword - must be quoted
-                return "\"value\"";
+                // Value entity uses @Table(name = "val_table")
+                return "val_table";
             case "Category":
                 return "category";
             case "Equipment":
                 return "equipment";
             case "LotoPoint":
                 return "loto_point";
+            case "User":
+                return "users";
+            case "Role":
+                return "roles";
+            case "LotoBox":
+                return "loto_boxes";
+            case "ConfinedSpace":
+                return "confined_space";
+            case "HotWork":
+                return "hot_work";
+            case "WorkRequest":
+                return "work_request";
+            case "EspDevice":
+                return "esp_devices";
+            case "LedStrip":
+                return "led_strips";
             default:
                 // Convert CamelCase to snake_case for other entities
                 return entityType.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
