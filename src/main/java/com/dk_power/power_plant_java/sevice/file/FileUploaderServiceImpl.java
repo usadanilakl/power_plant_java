@@ -130,11 +130,15 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         }
     }
 
+    /**
+     * Convert PDF to JPG.
+     * Uses InputStream loading to avoid memory-mapping issues on Windows.
+     */
     @Override
     public void PdfToJpgConverter() {
         try {
-            String sourceDir = "uploads/display.pdf"; // Pdf files are read from this folder
-            String destinationDir = "uploads/"; // converted images from pdf would be saved here
+            String sourceDir = "uploads/display.pdf";
+            String destinationDir = "uploads/";
 
             File sourceFile = new File(sourceDir);
             File destinationFile = new File(destinationDir);
@@ -143,17 +147,18 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 destinationFile.mkdir();
             }
             if (sourceFile.exists()) {
-                PDDocument document = PDDocument.load(sourceFile);
+                // Use InputStream to avoid memory-mapping which locks files on Windows
+                try (InputStream is = new BufferedInputStream(new FileInputStream(sourceFile));
+                     PDDocument document = PDDocument.load(is)) {
 
-                PDFRenderer pdfRenderer = new PDFRenderer(document);
-                int numberOfPages = document.getNumberOfPages();
+                    PDFRenderer pdfRenderer = new PDFRenderer(document);
+                    int numberOfPages = document.getNumberOfPages();
 
-                for (int i = 0; i < numberOfPages; ++i) {
-                    BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 300);
-                    ImageIO.write(bim, "jpg", new File(destinationDir + "/" + (i + 1) + ".jpg"));
+                    for (int i = 0; i < numberOfPages; ++i) {
+                        BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 300);
+                        ImageIO.write(bim, "jpg", new File(destinationDir + "/" + (i + 1) + ".jpg"));
+                    }
                 }
-
-                document.close();
                 System.out.println("Images created");
             } else {
                 System.err.println(sourceFile.getName() + " File not exists");
@@ -163,11 +168,14 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         }
     }
 
+    /**
+     * Convert PDF to JPG.
+     * Uses InputStream loading to avoid memory-mapping issues on Windows.
+     */
     public String PdfToJpgConverter(String pathToFile) {
         try {
-            String sourceDir = pathToFile.replaceAll("jpg", "pdf"); // Pdf files are read from this folder
-//            String destinationDir = "uploads/"; // converted images from pdf would be saved here
-            String destinationDir = pathToFile; // converted images from pdf would be saved here
+            String sourceDir = pathToFile.replaceAll("jpg", "pdf");
+            String destinationDir = pathToFile;
 
             File sourceFile = new File(sourceDir);
             File destinationFile = new File(destinationDir);
@@ -176,18 +184,16 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                 destinationFile.mkdir();
             }
             if (sourceFile.exists()) {
-                PDDocument document = PDDocument.load(sourceFile);
+                // Use InputStream to avoid memory-mapping which locks files on Windows
+                try (InputStream is = new BufferedInputStream(new FileInputStream(sourceFile));
+                     PDDocument document = PDDocument.load(is)) {
 
-                PDFRenderer pdfRenderer = new PDFRenderer(document);
-                int numberOfPages = document.getNumberOfPages();
+                    PDFRenderer pdfRenderer = new PDFRenderer(document);
 
-                for (int i = 0; i < numberOfPages; ++i) {
-                    BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 300); //216
+                    // Convert only first page
+                    BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 300);
                     ImageIO.write(bim, "jpg", new File(destinationDir));
-                    break; //for now just converting first page;
                 }
-
-                document.close();
                 String result = "Images created";
                 System.out.println(result);
                 return result;
@@ -202,16 +208,24 @@ public class FileUploaderServiceImpl implements FileUploaderService {
         }
     }
 
+    /**
+     * Split PDF into single-page files.
+     * Uses InputStream loading to avoid memory-mapping issues on Windows.
+     */
     public List<File> splitPdfIntoSinglePageFiles(File file) throws IOException {
         String originalFileName = file.getName();
         int dotIndex = originalFileName.lastIndexOf('.');
         if (dotIndex > 0) {
             originalFileName = originalFileName.substring(0, dotIndex);
         }
-        PDDocument pdf = PDDocument.load(file);
         List<File> result = new ArrayList<>();
-        try {
-            for (int i = 0; i < pdf.getNumberOfPages(); i++) {
+
+        // Use InputStream to avoid memory-mapping which locks files on Windows
+        try (InputStream is = new BufferedInputStream(new FileInputStream(file));
+             PDDocument pdf = PDDocument.load(is)) {
+
+            int numberOfPages = pdf.getNumberOfPages();
+            for (int i = 0; i < numberOfPages; i++) {
                 PDDocument newDoc = new PDDocument();
                 try {
                     PDPage page = pdf.getPage(i);
@@ -220,21 +234,9 @@ public class FileUploaderServiceImpl implements FileUploaderService {
                     File outputFile = new File(fileName);
                     newDoc.save(outputFile);
                     result.add(outputFile);
-                } catch (IOException e) {
-                    e.printStackTrace();
                 } finally {
-                    try {
-                        newDoc.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    newDoc.close();
                 }
-            }
-        } finally {
-            try {
-                pdf.close();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
         return result;

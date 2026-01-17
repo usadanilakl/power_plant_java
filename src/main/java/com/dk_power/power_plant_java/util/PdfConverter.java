@@ -7,15 +7,21 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PdfConverter {
 
+    /**
+     * Convert PDF to JPG.
+     * Uses InputStream loading to avoid memory-mapping issues on Windows
+     * that prevent temp file deletion.
+     */
     public static String PdfToJpgConverter(String pathToFile) {
         try {
             String sourceDir = pathToFile.replaceAll("jpg", "pdf"); // Pdf files are read from this folder
@@ -28,18 +34,16 @@ public class PdfConverter {
                 destinationFile.mkdir();
             }
             if (sourceFile.exists()) {
-                PDDocument document = PDDocument.load(sourceFile);
+                // Use InputStream to avoid memory-mapping which locks files on Windows
+                try (InputStream is = new BufferedInputStream(new FileInputStream(sourceFile));
+                     PDDocument document = PDDocument.load(is)) {
 
-                PDFRenderer pdfRenderer = new PDFRenderer(document);
-                int numberOfPages = document.getNumberOfPages();
+                    PDFRenderer pdfRenderer = new PDFRenderer(document);
 
-                for (int i = 0; i < numberOfPages; ++i) {
-                    BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 300); //216
+                    // Convert only first page
+                    BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 300);
                     ImageIO.write(bim, "jpg", new File(destinationDir));
-                    break; //for now just converting first page;
                 }
-
-                document.close();
                 String result = "Images created";
                 System.out.println(result);
                 return result;
@@ -54,71 +58,91 @@ public class PdfConverter {
         }
     }
 
+    /**
+     * Split a PDF file into single-page PDF files.
+     * Uses InputStream loading to avoid memory-mapping issues on Windows
+     * that prevent temp file deletion.
+     */
     public static List<File> splitPdfIntoSinglePageFiles(File file, String baseName) throws IOException {
         String originalFileName = file.getName();
         int dotIndex = originalFileName.lastIndexOf('.');
         if (dotIndex > 0) {
             originalFileName = originalFileName.substring(0, dotIndex);
         }
-        String finalName = baseName !=null && !baseName.isEmpty()? baseName : originalFileName;
-        PDDocument pdf = PDDocument.load(file);
+        String finalName = baseName != null && !baseName.isEmpty() ? baseName : originalFileName;
         List<File> result = new ArrayList<>();
-        try {
-            for (int i = 0; i < pdf.getNumberOfPages(); i++) {
+
+        // Use InputStream to avoid memory-mapping which locks files on Windows
+        try (InputStream is = new BufferedInputStream(new FileInputStream(file));
+             PDDocument pdf = PDDocument.load(is)) {
+
+            int numberOfPages = pdf.getNumberOfPages();
+            for (int i = 0; i < numberOfPages; i++) {
                 PDDocument newDoc = new PDDocument();
                 try {
                     PDPage page = pdf.getPage(i);
                     newDoc.addPage(page);
-                    String fileName = pdf.getNumberOfPages() > 1 ? finalName + "_page_" + (i + 1) + ".pdf" : finalName + ".pdf";
+                    String fileName = numberOfPages > 1 ? finalName + "_page_" + (i + 1) + ".pdf" : finalName + ".pdf";
                     File outputFile = new File(fileName);
                     newDoc.save(outputFile);
                     result.add(outputFile);
-                } catch (IOException e) {
-                    e.printStackTrace();
                 } finally {
-                    try {
-                        newDoc.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    newDoc.close();
                 }
             }
-        } finally {
-            try {
-                pdf.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+        }
+        return result;
+    }
+
+    /**
+     * Split a MultipartFile PDF into single-page PDF files.
+     * Reads directly from the MultipartFile's InputStream to avoid creating
+     * temp files that may be locked on Windows.
+     */
+    public static List<File> splitPdfIntoSinglePageFiles(MultipartFile multipartFile, String baseName) throws IOException {
+        if (multipartFile == null || multipartFile.getOriginalFilename() == null || multipartFile.getOriginalFilename().isEmpty()) {
+            throw new IOException("No file provided for conversion");
+        }
+
+        String originalFileName = multipartFile.getOriginalFilename();
+        int dotIndex = originalFileName.lastIndexOf('.');
+        if (dotIndex > 0) {
+            originalFileName = originalFileName.substring(0, dotIndex);
+        }
+        String finalName = baseName != null && !baseName.isEmpty() ? baseName : originalFileName;
+        List<File> result = new ArrayList<>();
+
+        // Read directly from MultipartFile's InputStream - no temp file needed!
+        // This avoids the Windows file locking issue entirely.
+        try (InputStream is = new BufferedInputStream(multipartFile.getInputStream());
+             PDDocument pdf = PDDocument.load(is)) {
+
+            int numberOfPages = pdf.getNumberOfPages();
+            for (int i = 0; i < numberOfPages; i++) {
+                PDDocument newDoc = new PDDocument();
+                try {
+                    PDPage page = pdf.getPage(i);
+                    newDoc.addPage(page);
+                    String fileName = numberOfPages > 1 ? finalName + "_page_" + (i + 1) + ".pdf" : finalName + ".pdf";
+                    File outputFile = new File(fileName);
+                    newDoc.save(outputFile);
+                    result.add(outputFile);
+                } finally {
+                    newDoc.close();
+                }
             }
         }
         return result;
     }
 
-    public static List<File> splitPdfIntoSinglePageFiles(MultipartFile multipartFile, String baseName) throws IOException {
-        // Create a temporary file from the MultipartFile
-        if(multipartFile==null || multipartFile.getOriginalFilename().isEmpty()) {
-            throw new IOException("No file provided for conversion");
-        }
-        String originalFileName = multipartFile.getOriginalFilename();
-        String extension = FileUtil.getFileExtension(originalFileName);
-        originalFileName = originalFileName.substring(0, originalFileName.lastIndexOf('.'));
-        Path tempFile = Files.createTempFile(originalFileName, extension);
-        multipartFile.transferTo(tempFile.toFile());
-
-        // Call the existing method with the temporary file
-        List<File> result = splitPdfIntoSinglePageFiles(tempFile.toFile(), baseName);
-
-        // Delete the temporary file
-        Files.delete(tempFile);
-
-        return result;
-    }
-
+    /**
+     * Convert a PDF file to JPG (first page only).
+     * Uses InputStream loading to avoid memory-mapping issues on Windows
+     * that prevent temp file deletion.
+     */
     public static File convertPdfToJpg(File pdfFile) {
         try {
             if (pdfFile.exists()) {
-                PDDocument document = PDDocument.load(pdfFile);
-                PDFRenderer pdfRenderer = new PDFRenderer(document);
-
                 // Create output JPG file
                 String jpgFileName = pdfFile.getName();
                 int lastDotIndex = jpgFileName.lastIndexOf('.');
@@ -128,11 +152,17 @@ public class PdfConverter {
                 jpgFileName += ".jpg";
                 File outputFile = new File(pdfFile.getParent(), jpgFileName);
 
-                // Convert only the first page
-                BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 300); // 0 for first page
-                ImageIO.write(bim, "jpg", outputFile);
+                // Use InputStream to avoid memory-mapping which locks files on Windows
+                try (InputStream is = new BufferedInputStream(new FileInputStream(pdfFile));
+                     PDDocument document = PDDocument.load(is)) {
 
-                document.close();
+                    PDFRenderer pdfRenderer = new PDFRenderer(document);
+
+                    // Convert only the first page
+                    BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 300);
+                    ImageIO.write(bim, "jpg", outputFile);
+                }
+
                 System.out.println("JPG created: " + outputFile.getAbsolutePath());
                 return outputFile;
             } else {
