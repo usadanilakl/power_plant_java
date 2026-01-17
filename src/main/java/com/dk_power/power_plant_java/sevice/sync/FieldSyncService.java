@@ -396,11 +396,19 @@ public class FieldSyncService {
                     return 0;
                 }
 
-                // For now, we skip creating entities from remote changes
-                // This would need entity factory implementation
-                log.info("Received CREATE for {}#{} but entity creation from sync not yet implemented",
-                    entityType, entityId);
-                return 0;
+                // Create new entity from sync
+                entity = createEntityFromSync(entityType, entityId, service);
+                if (entity == null) {
+                    log.error("Failed to create entity {}#{} from sync", entityType, entityId);
+                    return 0;
+                }
+                log.info("Created new entity {}#{} from sync", entityType, entityId);
+
+                // Save the CREATE change
+                saveIncomingChange(changes.stream()
+                    .filter(c -> c.getChangeType() == FieldChange.ChangeType.CREATE)
+                    .findFirst().orElse(null));
+                appliedCount++;
             }
 
             // Apply field changes using LWW with pre-fetched map
@@ -516,6 +524,77 @@ public class FieldSyncService {
     }
 
     /**
+     * Create a new entity from sync with the specified ID.
+     * Uses reflection to create instance and set ID via native SQL to preserve the ID from origin.
+     */
+    @SuppressWarnings("unchecked")
+    private BaseIdEntity createEntityFromSync(String entityType, Long entityId, CrudService service) {
+        try {
+            // Get the entity class from service
+            BaseIdEntity templateEntity = (BaseIdEntity) service.getEntity();
+            Class<?> entityClass = templateEntity.getClass();
+
+            // Create new instance
+            BaseIdEntity newEntity = (BaseIdEntity) entityClass.getDeclaredConstructor().newInstance();
+
+            // We need to save with the specific ID from the source system
+            // This requires using native SQL or a special repository method
+            // For now, we'll set the ID and use saveAndFlush with GenerationType.IDENTITY workaround
+
+            // First save without ID to get a placeholder
+            newEntity = (BaseIdEntity) service.getRepo().saveAndFlush(newEntity);
+
+            // Now update to the correct ID using native query if IDs don't match
+            if (!entityId.equals(newEntity.getId())) {
+                // Use the repository to update the ID - this is tricky with JPA
+                // We need to delete and re-insert, or use native SQL
+                Long tempId = newEntity.getId();
+
+                // For now, we'll use a workaround: update all references
+                // This assumes the entity was just created and has no relationships yet
+                try {
+                    // Get EntityManager from Hibernate session
+                    var session = service.getSessionFactory().getCurrentSession();
+                    String tableName = entityClass.getSimpleName();
+
+                    // Some entities have different table names, handle common cases
+                    if ("FileObject".equals(entityType)) {
+                        tableName = "file_object";
+                    } else {
+                        // Convert CamelCase to snake_case
+                        tableName = entityType.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+                    }
+
+                    // Update the ID using native SQL
+                    session.createNativeQuery(
+                        "UPDATE " + tableName + " SET id = :newId WHERE id = :oldId")
+                        .setParameter("newId", entityId)
+                        .setParameter("oldId", tempId)
+                        .executeUpdate();
+
+                    session.flush();
+                    session.clear(); // Clear session cache to reload with new ID
+
+                    // Reload entity with correct ID
+                    newEntity = (BaseIdEntity) service.getEntityById(entityId);
+
+                    log.debug("Updated entity ID from {} to {} for {}", tempId, entityId, entityType);
+                } catch (Exception e) {
+                    log.error("Failed to update entity ID for {}#{}: {}", entityType, entityId, e.getMessage());
+                    // Rollback - delete the temp entity
+                    service.getRepo().deleteById(tempId);
+                    return null;
+                }
+            }
+
+            return newEntity;
+        } catch (Exception e) {
+            log.error("Failed to create entity {} with ID {}: {}", entityType, entityId, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
      * Save an incoming change to our log (mark as synced to us)
      */
     private void saveIncomingChange(FieldChange change) {
@@ -542,12 +621,36 @@ public class FieldSyncService {
         if (json == null || "null".equals(json)) return null;
 
         try {
-            // Handle relationship references - would need to fetch entity
+            // Handle relationship references - fetch referenced entity by ID
             if (relationshipType != null && BaseIdEntity.class.isAssignableFrom(targetType)) {
-                // For relationships, we'd need to load the referenced entity
-                // For now, skip relationship fields in sync
-                log.debug("Skipping relationship field deserialization for type {}", targetType.getSimpleName());
-                return null;
+                // Parse entity ID from JSON and load the referenced entity
+                String cleanedJson = json.replace("\"", "").trim();
+                if (cleanedJson.isEmpty() || "null".equals(cleanedJson)) {
+                    return null; // Relationship cleared
+                }
+
+                try {
+                    Long relatedId = Long.parseLong(cleanedJson);
+                    String targetTypeName = targetType.getSimpleName();
+                    CrudService relatedService = serviceFacade.getService(targetTypeName);
+
+                    if (relatedService != null) {
+                        Object relatedEntity = relatedService.getEntityById(relatedId);
+                        if (relatedEntity != null) {
+                            log.debug("Resolved relationship {} -> entity #{}", targetTypeName, relatedId);
+                            return relatedEntity;
+                        } else {
+                            log.warn("Related entity {}#{} not found", targetTypeName, relatedId);
+                            return null;
+                        }
+                    } else {
+                        log.warn("No service registered for relationship type: {}", targetTypeName);
+                        return null;
+                    }
+                } catch (NumberFormatException e) {
+                    log.warn("Could not parse relationship ID from '{}' for type {}", json, targetType.getSimpleName());
+                    return null;
+                }
             }
 
             // Handle primitives and wrappers

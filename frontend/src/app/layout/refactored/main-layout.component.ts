@@ -5,10 +5,11 @@ import { isPlatformBrowser } from '@angular/common';
 import { ClipboardComponent } from "../../shared/clipboard/clipboard.component";
 import { TourTriggerComponent } from "../../shared/tour/tour-trigger.component";
 import { GuideMenuComponent } from "../../shared/guide/guide-menu.component";
+import { SyncIndicatorComponent } from "../../shared/sync-indicator/sync-indicator.component";
 
 @Component({
   selector: 'app-main-layout',
-  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, GuideMenuComponent],
+  imports: [ThemeToggleComponent, ClipboardComponent, TourTriggerComponent, GuideMenuComponent, SyncIndicatorComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })

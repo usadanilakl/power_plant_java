@@ -177,6 +177,20 @@ export class SyncStatusService {
   getAllChanges(): Observable<FieldChange[]> {
     return this.http.get<FieldChange[]>(`${this.apiUrl}/changes`);
   }
+
+  /**
+   * Get file sync queue status
+   */
+  getFileSyncStatus(): Observable<FileSyncStatus> {
+    return this.http.get<FileSyncStatus>(`${this.apiUrl}/file-sync/status`);
+  }
+
+  /**
+   * Get sync server health status (calls sync server directly)
+   */
+  getSyncServerHealth(syncServerUrl: string): Observable<SyncServerHealth> {
+    return this.http.get<SyncServerHealth>(`${syncServerUrl}/api/sync/health`);
+  }
 }
 
 export interface RegisterPeerResponse {
@@ -188,4 +202,37 @@ export interface RegisterPeerResponse {
     ip: string;
     port: number;
   };
+}
+
+export interface FileSyncStatus {
+  enabled: boolean;
+  syncServerUrl: string;
+  queues: {
+    pendingUploads: number;
+    pendingDownloads: number;
+    inProgressUploads: number;
+    inProgressDownloads: number;
+  };
+}
+
+export interface SyncServerHealth {
+  status: string;
+  fileStorage?: {
+    available: boolean;
+    path: string;
+    exists: boolean;
+    writable: boolean;
+    freeSpaceBytes: number;
+    freeSpaceMB: number;
+    totalSpaceBytes: number;
+    usableSpaceBytes: number;
+    usedBySync?: {
+      bytes: number;
+      megabytes: number;
+      fileCount: number;
+    };
+  };
+  sseConnections?: number;
+  activeClients?: number;
+  warning?: string;
 }

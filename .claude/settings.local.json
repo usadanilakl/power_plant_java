@@ -20,7 +20,8 @@
       "Bash(/home/dk-power/.nvm/versions/node/v20.17.0/bin/npx ng build)",
       "Bash(/usr/local/bin/ng build:*)",
       "Bash(tsc:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(tree:*)"
     ]
   }
 }
